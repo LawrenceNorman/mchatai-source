@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pomodoro Timer — mChatAI</title>
+<link rel="stylesheet" href="/uiassets/css/pico.min.css">
+<link rel="stylesheet" href="/uiassets/css/miniapp-theme.css">
+<script src="/uiassets/icons/miniapp-icons.js"></script>
+<style>
+  body { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 1rem; }
+  .timer-circle {
+    width: 240px; height: 240px; border-radius: 50%;
+    border: 4px solid var(--pico-primary);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    margin: 1.5rem 0; position: relative;
+  }
+  .timer-circle.break { border-color: var(--mchat-success); }
+  .time { font-size: 3.2rem; font-weight: 200; font-variant-numeric: tabular-nums; }
+  .phase { font-size: 0.85rem; opacity: 0.6; text-transform: uppercase; letter-spacing: 0.1em; }
+  .controls { display: flex; gap: 0.5rem; margin: 1rem 0; }
+  .controls button { min-width: 80px; }
+  footer { margin-top: 2rem; opacity: 0.4; font-size: 0.75rem; }
+</style>
+</head>
+<body>
+  <h2>Pomodoro Timer</h2>
+
+  <div class="timer-circle" id="ring">
+    <div class="time" id="time">25:00</div>
+    <div class="phase" id="phase">Work</div>
+  </div>
+
+  <div class="grid-3" style="text-align:center; margin-bottom:1rem; gap:0.5rem;">
+    <article class="stat" style="padding:0.5rem;">
+      <div class="stat-value" id="sessions">0</div>
+      <div class="stat-label">Sessions</div>
+    </article>
+    <article class="stat" style="padding:0.5rem;">
+      <div class="stat-value" id="today">0</div>
+      <div class="stat-label">Today</div>
+    </article>
+    <article class="stat" style="padding:0.5rem;">
+      <div class="stat-value" id="totalMin">0</div>
+      <div class="stat-label">Minutes</div>
+    </article>
+  </div>
+
+  <div class="controls">
+    <button class="primary" id="startBtn" onclick="toggle()">Start</button>
+    <button class="secondary" onclick="resetTimer()">Reset</button>
+    <button class="secondary" onclick="skip()">Skip</button>
+  </div>
+
+  <fieldset role="group" style="margin-top:1rem;">
+    <label>Work <input type="number" id="workMin" value="25" min="1" max="90" style="width:60px;text-align:center;"> min</label>
+    <label>Break <input type="number" id="breakMin" value="5" min="1" max="30" style="width:60px;text-align:center;"> min</label>
+  </fieldset>
+
+  <footer>mChatAI Pomodoro Timer</footer>
+
+<script>
+var workDuration = 25 * 60, breakDuration = 5 * 60;
+var remaining, isWork = true, running = false, interval;
+var totalSessions = 0, todaySessions = 0, totalMinutes = 0;
+var timeEl = document.getElementById('time');
+var phaseEl = document.getElementById('phase');
+var ring = document.getElementById('ring');
+var startBtn = document.getElementById('startBtn');
+var sessionsEl = document.getElementById('sessions');
+var todayEl = document.getElementById('today');
+var totalMinEl = document.getElementById('totalMin');
+var workInput = document.getElementById('workMin');
+var breakInput = document.getElementById('breakMin');
+
+function loadState() {
+  try {
+    var s = localStorage.getItem('pomodoroState');
+    if (s) {
+      var state = JSON.parse(s);
+      totalSessions = state.totalSessions || 0;
+      todaySessions = state.todaySessions || 0;
+      totalMinutes = state.totalMinutes || 0;
+      workDuration = (state.workMin || 25) * 60;
+      breakDuration = (state.breakMin || 5) * 60;
+      workInput.value = state.workMin || 25;
+      breakInput.value = state.breakMin || 5;
+      if (state.lastDate !== new Date().toDateString()) todaySessions = 0;
+    }
+  } catch(e) {}
+  sessionsEl.textContent = totalSessions;
+  todayEl.textContent = todaySessions;
+  totalMinEl.textContent = totalMinutes;
+  remaining = workDuration;
+  renderTime();
+}
+
+function saveState() {
+  try {
+    localStorage.setItem('pomodoroState', JSON.stringify({
+      totalSessions: totalSessions, todaySessions: todaySessions, totalMinutes: totalMinutes,
+      workMin: parseInt(workInput.value) || 25, breakMin: parseInt(breakInput.value) || 5,
+      lastDate: new Date().toDateString()
+    }));
+  } catch(e) {}
+}
+
+function renderTime() {
+  var m = Math.floor(remaining / 60);
+  var s = remaining % 60;
+  timeEl.textContent = String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+  phaseEl.textContent = isWork ? 'Work' : 'Break';
+  ring.className = 'timer-circle' + (isWork ? '' : ' break');
+  document.title = timeEl.textContent + ' — ' + (isWork ? 'Work' : 'Break');
+}
+
+function toggle() {
+  if (running) { clearInterval(interval); running = false; startBtn.textContent = 'Resume'; }
+  else { interval = setInterval(tick, 1000); running = true; startBtn.textContent = 'Pause'; }
+}
+
+function tick() {
+  remaining--;
+  if (remaining < 0) {
+    if (isWork) { totalSessions++; todaySessions++; totalMinutes += parseInt(workInput.value) || 25; }
+    isWork = !isWork;
+    remaining = isWork ? workDuration : breakDuration;
+    sessionsEl.textContent = totalSessions;
+    todayEl.textContent = todaySessions;
+    totalMinEl.textContent = totalMinutes;
+    saveState();
+  }
+  renderTime();
+}
+
+function resetTimer() {
+  clearInterval(interval); running = false;
+  workDuration = (parseInt(workInput.value) || 25) * 60;
+  breakDuration = (parseInt(breakInput.value) || 5) * 60;
+  isWork = true; remaining = workDuration;
+  startBtn.textContent = 'Start';
+  renderTime(); saveState();
+}
+
+function skip() {
+  clearInterval(interval); running = false;
+  if (isWork) { totalSessions++; todaySessions++; totalMinutes += parseInt(workInput.value) || 25; }
+  isWork = !isWork;
+  remaining = isWork ? workDuration : breakDuration;
+  sessionsEl.textContent = totalSessions;
+  todayEl.textContent = todaySessions;
+  totalMinEl.textContent = totalMinutes;
+  startBtn.textContent = 'Start';
+  renderTime(); saveState();
+}
+
+workInput.addEventListener('change', resetTimer);
+breakInput.addEventListener('change', resetTimer);
+loadState();
+</script>
+</body>
+</html>

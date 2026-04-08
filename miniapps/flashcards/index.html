@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Flashcards — mChatAI</title>
+<link rel="stylesheet" href="/uiassets/css/pico.min.css">
+<link rel="stylesheet" href="/uiassets/css/miniapp-theme.css">
+<script src="/uiassets/icons/miniapp-icons.js"></script>
+<style>
+  body { max-width: 600px; margin: 0 auto; padding: 1rem; }
+  .card-container {
+    perspective: 800px; margin: 1.5rem 0; cursor: pointer; min-height: 200px;
+  }
+  .flashcard {
+    position: relative; width: 100%; min-height: 200px;
+    transition: transform 0.5s; transform-style: preserve-3d;
+  }
+  .flashcard.flipped { transform: rotateY(180deg); }
+  .card-face {
+    position: absolute; inset: 0; backface-visibility: hidden;
+    display: flex; align-items: center; justify-content: center;
+    padding: 2rem; border-radius: var(--mchat-radius); text-align: center;
+    font-size: 1.1rem; line-height: 1.6;
+  }
+  .card-front { background: var(--pico-card-background-color); border: 1px solid var(--pico-muted-border-color); }
+  .card-back { background: var(--pico-primary); color: white; transform: rotateY(180deg); }
+  .progress-info { text-align: center; margin-bottom: 1rem; }
+  .deck-controls { display: flex; gap: 0.5rem; justify-content: center; margin: 1rem 0; }
+  .deck-controls button { min-width: 100px; }
+  #addForm { margin-top: 1.5rem; }
+  .deck-list { margin-top: 1rem; }
+  .deck-item {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 0.5rem 0; border-bottom: 1px solid var(--pico-muted-border-color);
+  }
+  .deck-item .q { font-weight: 600; flex: 1; }
+  footer { text-align: center; margin-top: 2rem; opacity: 0.4; font-size: 0.75rem; }
+</style>
+</head>
+<body>
+  <hgroup>
+    <h2>AI Flashcards</h2>
+    <p>Create, study, and master your flashcard decks</p>
+  </hgroup>
+
+  <div class="progress-info">
+    <small>Card <strong id="cardNum">1</strong> of <strong id="totalCards">0</strong></small>
+    <progress id="progressBar" value="0" max="100" style="margin-top:0.5rem;"></progress>
+  </div>
+
+  <div class="card-container" onclick="flipCard()">
+    <div class="flashcard" id="flashcard">
+      <div class="card-face card-front" id="frontText">Add some flashcards to get started</div>
+      <div class="card-face card-back" id="backText">Answer</div>
+    </div>
+  </div>
+
+  <div class="deck-controls">
+    <button class="secondary" onclick="prevCard()" data-icon="arrow-left"><span data-icon="arrow-left" data-icon-size="16"></span> Prev</button>
+    <button onclick="flipCard()">Flip</button>
+    <button class="secondary" onclick="nextCard()">Next <span data-icon="arrow-right" data-icon-size="16"></span></button>
+  </div>
+
+  <details id="addForm">
+    <summary>Add Flashcard</summary>
+    <label>Question <input type="text" id="questionInput" placeholder="What is..."></label>
+    <label>Answer <input type="text" id="answerInput" placeholder="The answer is..."></label>
+    <button onclick="addCard()">Add Card</button>
+  </details>
+
+  <details>
+    <summary>All Cards (<span id="deckCount">0</span>)</summary>
+    <div class="deck-list" id="deckList"></div>
+  </details>
+
+  <footer>mChatAI AI Flashcards</footer>
+
+<script>
+var cards = [];
+var currentIndex = 0;
+var isFlipped = false;
+
+function loadCards() {
+  try {
+    var s = localStorage.getItem('flashcards');
+    if (s) cards = JSON.parse(s);
+  } catch(e) {}
+  if (cards.length === 0) {
+    cards = [
+      { q: 'What does LLM stand for?', a: 'Large Language Model' },
+      { q: 'What is a pipeline in mChatAI?', a: 'A sequence of skills that execute step-by-step, with data flowing between them.' },
+      { q: 'What is an autonomous agent?', a: 'An AI that plans, executes, and reflects — given a goal and tools, it figures out the steps.' }
+    ];
+  }
+  renderCard();
+  renderDeckList();
+}
+
+function saveCards() {
+  try { localStorage.setItem('flashcards', JSON.stringify(cards)); } catch(e) {}
+}
+
+function renderCard() {
+  if (cards.length === 0) {
+    document.getElementById('frontText').textContent = 'Add some flashcards to get started';
+    document.getElementById('backText').textContent = '';
+    document.getElementById('cardNum').textContent = '0';
+    document.getElementById('totalCards').textContent = '0';
+    document.getElementById('progressBar').value = 0;
+    return;
+  }
+  var card = cards[currentIndex];
+  document.getElementById('frontText').textContent = card.q;
+  document.getElementById('backText').textContent = card.a;
+  document.getElementById('cardNum').textContent = currentIndex + 1;
+  document.getElementById('totalCards').textContent = cards.length;
+  document.getElementById('progressBar').value = ((currentIndex + 1) / cards.length) * 100;
+  document.getElementById('flashcard').classList.remove('flipped');
+  isFlipped = false;
+}
+
+function flipCard() { document.getElementById('flashcard').classList.toggle('flipped'); isFlipped = !isFlipped; }
+function nextCard() { if (cards.length > 0) { currentIndex = (currentIndex + 1) % cards.length; renderCard(); } }
+function prevCard() { if (cards.length > 0) { currentIndex = (currentIndex - 1 + cards.length) % cards.length; renderCard(); } }
+
+function addCard() {
+  var q = document.getElementById('questionInput').value.trim();
+  var a = document.getElementById('answerInput').value.trim();
+  if (!q || !a) return;
+  cards.push({ q: q, a: a });
+  document.getElementById('questionInput').value = '';
+  document.getElementById('answerInput').value = '';
+  saveCards(); renderCard(); renderDeckList();
+}
+
+function deleteCard(idx) {
+  cards.splice(idx, 1);
+  if (currentIndex >= cards.length) currentIndex = Math.max(0, cards.length - 1);
+  saveCards(); renderCard(); renderDeckList();
+}
+
+function renderDeckList() {
+  var list = document.getElementById('deckList');
+  document.getElementById('deckCount').textContent = cards.length;
+  list.innerHTML = cards.map(function(c, i) {
+    return '<div class="deck-item"><span class="q">' + c.q + '</span><button class="secondary outline" style="padding:4px 8px;" onclick="deleteCard(' + i + ')">Remove</button></div>';
+  }).join('');
+}
+
+loadCards();
+</script>
+</body>
+</html>

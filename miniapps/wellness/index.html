@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wellness Dashboard — mChatAI</title>
+<link rel="stylesheet" href="/uiassets/css/pico.min.css">
+<link rel="stylesheet" href="/uiassets/css/miniapp-theme.css">
+<script src="/uiassets/icons/miniapp-icons.js"></script>
+<style>
+  body { max-width: 700px; margin: 0 auto; padding: 1rem; }
+  .metric-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 0.75rem; margin: 1rem 0; }
+  .metric article { padding: 1rem; text-align: center; margin: 0; }
+  .metric-icon { font-size: 1.5rem; margin-bottom: 0.5rem; }
+  .metric-value { font-size: 1.8rem; font-weight: 700; }
+  .metric-label { font-size: 0.75rem; opacity: 0.6; text-transform: uppercase; letter-spacing: 0.05em; }
+  .metric-target { font-size: 0.7rem; opacity: 0.4; margin-top: 0.25rem; }
+  .log-entry { display: flex; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px solid var(--pico-muted-border-color); font-size: 0.88rem; }
+  .mood-picker { display: flex; gap: 0.5rem; justify-content: center; margin: 1rem 0; }
+  .mood-btn { font-size: 1.8rem; background: none; border: 2px solid transparent; border-radius: 50%; width: 50px; height: 50px; cursor: pointer; transition: all 0.15s; padding: 0; }
+  .mood-btn.selected { border-color: var(--pico-primary); transform: scale(1.15); }
+  footer { text-align: center; margin-top: 2rem; opacity: 0.4; font-size: 0.75rem; }
+</style>
+</head>
+<body>
+  <hgroup>
+    <h2><span data-icon="heart" data-icon-size="20"></span> Wellness Dashboard</h2>
+    <p id="dateLabel">Today</p>
+  </hgroup>
+
+  <div class="metric-grid">
+    <div class="metric"><article>
+      <div class="metric-icon" data-icon="dumbbell" data-icon-size="28"></div>
+      <div class="metric-value" id="steps">0</div>
+      <div class="metric-label">Steps</div>
+      <div class="metric-target">Goal: 10,000</div>
+    </article></div>
+    <div class="metric"><article>
+      <div class="metric-icon" data-icon="zap" data-icon-size="28"></div>
+      <div class="metric-value" id="water">0</div>
+      <div class="metric-label">Water (cups)</div>
+      <div class="metric-target">Goal: 8</div>
+    </article></div>
+    <div class="metric"><article>
+      <div class="metric-icon" data-icon="moon" data-icon-size="28"></div>
+      <div class="metric-value" id="sleep">0</div>
+      <div class="metric-label">Sleep (hrs)</div>
+      <div class="metric-target">Goal: 8</div>
+    </article></div>
+    <div class="metric"><article>
+      <div class="metric-icon" data-icon="brain" data-icon-size="28"></div>
+      <div class="metric-value" id="mood">—</div>
+      <div class="metric-label">Mood</div>
+    </article></div>
+  </div>
+
+  <h3>Log Today's Activity</h3>
+
+  <div role="group">
+    <label>Steps <input type="number" id="stepsInput" placeholder="e.g., 5000" min="0"></label>
+    <button onclick="logSteps()">Log</button>
+  </div>
+
+  <div role="group">
+    <label>Water (cups) <input type="number" id="waterInput" placeholder="e.g., 3" min="0" max="20"></label>
+    <button onclick="logWater()">Log</button>
+  </div>
+
+  <div role="group">
+    <label>Sleep (hours) <input type="number" id="sleepInput" placeholder="e.g., 7.5" min="0" max="24" step="0.5"></label>
+    <button onclick="logSleep()">Log</button>
+  </div>
+
+  <h3>How are you feeling?</h3>
+  <div class="mood-picker">
+    <button class="mood-btn" onclick="setMood(this, 'Great')" title="Great">😄</button>
+    <button class="mood-btn" onclick="setMood(this, 'Good')" title="Good">🙂</button>
+    <button class="mood-btn" onclick="setMood(this, 'Okay')" title="Okay">😐</button>
+    <button class="mood-btn" onclick="setMood(this, 'Low')" title="Low">😔</button>
+    <button class="mood-btn" onclick="setMood(this, 'Rough')" title="Rough">😢</button>
+  </div>
+
+  <details>
+    <summary>Recent Log</summary>
+    <div id="logList"></div>
+  </details>
+
+  <footer>mChatAI Wellness Dashboard</footer>
+
+<script>
+var today = new Date().toDateString();
+var data = { steps: 0, water: 0, sleep: 0, mood: '', log: [] };
+
+function loadData() {
+  try {
+    var s = localStorage.getItem('wellness_' + today);
+    if (s) data = JSON.parse(s);
+    var history = JSON.parse(localStorage.getItem('wellnessLog') || '[]');
+    data.log = history;
+  } catch(e) {}
+  document.getElementById('dateLabel').textContent = today;
+  render();
+}
+
+function saveData() {
+  try {
+    localStorage.setItem('wellness_' + today, JSON.stringify(data));
+    localStorage.setItem('wellnessLog', JSON.stringify(data.log.slice(-20)));
+  } catch(e) {}
+}
+
+function render() {
+  document.getElementById('steps').textContent = data.steps.toLocaleString();
+  document.getElementById('water').textContent = data.water;
+  document.getElementById('sleep').textContent = data.sleep;
+  document.getElementById('mood').textContent = data.mood || '—';
+  renderLog();
+}
+
+function logSteps() {
+  var v = parseInt(document.getElementById('stepsInput').value) || 0;
+  data.steps += v;
+  data.log.unshift({ type: 'Steps', value: '+' + v, time: new Date().toLocaleTimeString() });
+  document.getElementById('stepsInput').value = '';
+  saveData(); render();
+}
+
+function logWater() {
+  var v = parseInt(document.getElementById('waterInput').value) || 0;
+  data.water += v;
+  data.log.unshift({ type: 'Water', value: '+' + v + ' cups', time: new Date().toLocaleTimeString() });
+  document.getElementById('waterInput').value = '';
+  saveData(); render();
+}
+
+function logSleep() {
+  var v = parseFloat(document.getElementById('sleepInput').value) || 0;
+  data.sleep = v;
+  data.log.unshift({ type: 'Sleep', value: v + ' hrs', time: new Date().toLocaleTimeString() });
+  document.getElementById('sleepInput').value = '';
+  saveData(); render();
+}
+
+function setMood(btn, mood) {
+  data.mood = mood;
+  document.querySelectorAll('.mood-btn').forEach(function(b) { b.classList.remove('selected'); });
+  btn.classList.add('selected');
+  data.log.unshift({ type: 'Mood', value: mood, time: new Date().toLocaleTimeString() });
+  saveData(); render();
+}
+
+function renderLog() {
+  var list = document.getElementById('logList');
+  if (data.log.length === 0) { list.innerHTML = '<p><small>No activity logged yet.</small></p>'; return; }
+  list.innerHTML = data.log.slice(0, 10).map(function(e) {
+    return '<div class="log-entry"><span><strong>' + e.type + '</strong> ' + e.value + '</span><small>' + e.time + '</small></div>';
+  }).join('');
+}
+
+loadData();
+</script>
+</body>
+</html>

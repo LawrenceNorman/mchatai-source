@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Unit Converter — mChatAI</title>
+<link rel="stylesheet" href="/uiassets/css/pico.min.css">
+<link rel="stylesheet" href="/uiassets/css/miniapp-theme.css">
+<script src="/uiassets/icons/miniapp-icons.js"></script>
+<style>
+  body { max-width: 500px; margin: 0 auto; padding: 1rem; }
+  .result { text-align: center; margin: 1.5rem 0; }
+  .result-value { font-size: 2.2rem; font-weight: 700; }
+  .result-unit { font-size: 1rem; opacity: 0.6; }
+  .swap-btn { background: none; border: none; font-size: 1.5rem; cursor: pointer; padding: 0.5rem; }
+  .history-item { display: flex; justify-content: space-between; padding: 0.4rem 0; border-bottom: 1px solid var(--pico-muted-border-color); font-size: 0.85rem; }
+  footer { text-align: center; margin-top: 2rem; opacity: 0.4; font-size: 0.75rem; }
+</style>
+</head>
+<body>
+  <hgroup>
+    <h2><span data-icon="ruler" data-icon-size="20"></span> Unit Converter</h2>
+    <p>Length, weight, temperature, volume, speed, and data</p>
+  </hgroup>
+
+  <label>Category
+    <select id="category" onchange="updateUnits()">
+      <option value="length">Length</option>
+      <option value="weight">Weight</option>
+      <option value="temperature">Temperature</option>
+      <option value="volume">Volume</option>
+      <option value="speed">Speed</option>
+      <option value="data">Data</option>
+    </select>
+  </label>
+
+  <div style="display:flex; gap:0.5rem; align-items:end;">
+    <label style="flex:1;">From
+      <select id="fromUnit"></select>
+    </label>
+    <button class="swap-btn outline" onclick="swapUnits()" title="Swap" style="margin-bottom:0.5rem;">⇄</button>
+    <label style="flex:1;">To
+      <select id="toUnit"></select>
+    </label>
+  </div>
+
+  <label>Value
+    <input type="number" id="valueInput" value="1" step="any" oninput="convert()">
+  </label>
+
+  <div class="result">
+    <div class="result-value" id="resultValue">—</div>
+    <div class="result-unit" id="resultLabel"></div>
+  </div>
+
+  <details>
+    <summary>History (<span id="historyCount">0</span>)</summary>
+    <div id="historyList"></div>
+    <button class="secondary outline" onclick="clearHistory()" style="margin-top:0.5rem;">Clear</button>
+  </details>
+
+  <footer>mChatAI Unit Converter</footer>
+
+<script>
+var units = {
+  length: { m: 1, km: 1000, cm: 0.01, mm: 0.001, mi: 1609.344, yd: 0.9144, ft: 0.3048, in: 0.0254 },
+  weight: { kg: 1, g: 0.001, mg: 0.000001, lb: 0.453592, oz: 0.0283495, ton: 907.185, tonne: 1000 },
+  volume: { L: 1, mL: 0.001, gal: 3.78541, qt: 0.946353, cup: 0.236588, 'fl oz': 0.0295735, tbsp: 0.0147868 },
+  speed: { 'km/h': 1, 'mph': 1.60934, 'm/s': 3.6, knot: 1.852 },
+  data: { B: 1, KB: 1024, MB: 1048576, GB: 1073741824, TB: 1099511627776 },
+  temperature: { '°C': 'C', '°F': 'F', K: 'K' }
+};
+
+var history = [];
+
+function updateUnits() {
+  var cat = document.getElementById('category').value;
+  var keys = Object.keys(units[cat]);
+  ['fromUnit', 'toUnit'].forEach(function(id, i) {
+    var sel = document.getElementById(id);
+    sel.innerHTML = keys.map(function(k) { return '<option value="' + k + '">' + k + '</option>'; }).join('');
+    if (i === 1 && keys.length > 1) sel.selectedIndex = 1;
+  });
+  convert();
+}
+
+function swapUnits() {
+  var from = document.getElementById('fromUnit');
+  var to = document.getElementById('toUnit');
+  var tmp = from.value;
+  from.value = to.value;
+  to.value = tmp;
+  convert();
+}
+
+function convert() {
+  var cat = document.getElementById('category').value;
+  var fromU = document.getElementById('fromUnit').value;
+  var toU = document.getElementById('toUnit').value;
+  var val = parseFloat(document.getElementById('valueInput').value);
+  if (isNaN(val)) { document.getElementById('resultValue').textContent = '—'; return; }
+
+  var result;
+  if (cat === 'temperature') {
+    result = convertTemp(val, fromU, toU);
+  } else {
+    var fromFactor = units[cat][fromU];
+    var toFactor = units[cat][toU];
+    result = (val * fromFactor) / toFactor;
+  }
+
+  var formatted = result % 1 === 0 ? result.toLocaleString() : parseFloat(result.toPrecision(8)).toLocaleString();
+  document.getElementById('resultValue').textContent = formatted;
+  document.getElementById('resultLabel').textContent = fromU + ' → ' + toU;
+
+  // Add to history
+  history.unshift(val + ' ' + fromU + ' = ' + formatted + ' ' + toU);
+  if (history.length > 20) history.pop();
+  try { localStorage.setItem('converterHistory', JSON.stringify(history)); } catch(e) {}
+  renderHistory();
+}
+
+function convertTemp(val, from, to) {
+  var c;
+  if (from === '°C') c = val;
+  else if (from === '°F') c = (val - 32) * 5 / 9;
+  else c = val - 273.15;
+
+  if (to === '°C') return c;
+  if (to === '°F') return c * 9 / 5 + 32;
+  return c + 273.15;
+}
+
+function renderHistory() {
+  document.getElementById('historyCount').textContent = history.length;
+  document.getElementById('historyList').innerHTML = history.map(function(h) {
+    return '<div class="history-item"><span>' + h + '</span></div>';
+  }).join('');
+}
+
+function clearHistory() { history = []; localStorage.removeItem('converterHistory'); renderHistory(); }
+
+function loadHistory() {
+  try { var s = localStorage.getItem('converterHistory'); if (s) history = JSON.parse(s); } catch(e) {}
+}
+
+loadHistory();
+updateUnits();
+</script>
+</body>
+</html>
