@@ -1,0 +1,238 @@
+:root {
+  color-scheme: dark;
+}
+
+body.mchatai-word-grid-page {
+  margin: 0;
+  min-height: 100vh;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background:
+    radial-gradient(circle at top, rgba(56, 189, 248, 0.22), transparent 38%),
+    radial-gradient(circle at bottom, rgba(59, 130, 246, 0.24), transparent 30%),
+    var(--bg, #07111f);
+  color: var(--text, #eff6ff);
+}
+
+.mchatai-game-page {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: calc(env(safe-area-inset-top) + 18px) 18px calc(env(safe-area-inset-bottom) + 32px);
+}
+
+.mchatai-game-shell {
+  --bg: #07111f;
+  --panel: rgba(10, 26, 46, 0.86);
+  --panel-border: rgba(147, 197, 253, 0.18);
+  --tile: #10243d;
+  --tile-active: #1d4ed8;
+  --tile-found: #14532d;
+  --text: #eff6ff;
+  --muted: #a5b4fc;
+  --accent: #7dd3fc;
+  --danger: #fb7185;
+  --button-text: #031525;
+}
+
+.mchatai-game-shell * {
+  box-sizing: border-box;
+}
+
+.mchatai-game-panel {
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: 24px;
+  backdrop-filter: blur(16px);
+  padding: 18px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
+}
+
+.mchatai-game-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.mchatai-game-header h1 {
+  margin: 0;
+  font-size: clamp(2.3rem, 8vw, 3.8rem);
+  letter-spacing: -0.06em;
+}
+
+.mchatai-game-eyebrow {
+  margin: 0 0 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 0.8rem;
+  color: var(--accent);
+}
+
+.mchatai-game-subhead {
+  margin: 12px 0 0;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.mchatai-game-badges {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.mchatai-game-badges span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 0 14px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text);
+  font-weight: 700;
+}
+
+.mchatai-status-row {
+  margin-top: 18px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.mchatai-stat {
+  padding: 14px;
+  border-radius: 18px;
+  background: rgba(15, 23, 42, 0.6);
+}
+
+.mchatai-stat-label {
+  display: block;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+.mchatai-stat-value {
+  display: block;
+  margin-top: 6px;
+  font-size: 1.4rem;
+  font-weight: 700;
+}
+
+.mchatai-grid-wrap {
+  margin-top: 18px;
+}
+
+.mchatai-grid {
+  display: grid;
+  grid-template-columns: repeat(var(--grid-columns, 5), 1fr);
+  gap: 10px;
+  touch-action: none;
+}
+
+.mchatai-tile {
+  appearance: none;
+  aspect-ratio: 1 / 1;
+  border: 0;
+  border-radius: 18px;
+  background: var(--tile);
+  color: var(--text);
+  font-size: clamp(1.2rem, 5vw, 2rem);
+  font-weight: 800;
+  box-shadow: inset 0 0 0 1px rgba(191, 219, 254, 0.12);
+}
+
+.mchatai-tile.active {
+  background: var(--tile-active);
+}
+
+.mchatai-tile.found {
+  background: var(--tile-found);
+}
+
+.mchatai-current-word {
+  margin-top: 14px;
+  min-height: 28px;
+  font-size: 1.2rem;
+  letter-spacing: 0.16em;
+  color: var(--accent);
+}
+
+.mchatai-message {
+  margin-top: 14px;
+  min-height: 24px;
+  font-weight: 600;
+}
+
+.mchatai-message.error {
+  color: var(--danger);
+}
+
+.mchatai-controls {
+  margin-top: 18px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.mchatai-action {
+  appearance: none;
+  border: 0;
+  border-radius: 999px;
+  padding: 14px 18px;
+  font: inherit;
+  font-weight: 700;
+  text-decoration: none;
+  color: var(--button-text);
+  background: linear-gradient(135deg, #7dd3fc, #c4b5fd);
+}
+
+.mchatai-action.secondary {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 0 0 1px rgba(191, 219, 254, 0.14);
+}
+
+.mchatai-targets {
+  margin-top: 18px;
+}
+
+.mchatai-targets ul {
+  list-style: none;
+  padding: 0;
+  margin: 12px 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.mchatai-targets li {
+  padding: 10px 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.mchatai-targets li.found {
+  background: rgba(21, 128, 61, 0.32);
+}
+
+.mchatai-install-note {
+  margin: 18px 0 0;
+  color: var(--muted);
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+@media (max-width: 640px) {
+  .mchatai-game-header {
+    flex-direction: column;
+  }
+
+  .mchatai-game-badges {
+    justify-content: flex-start;
+  }
+
+  .mchatai-status-row {
+    grid-template-columns: 1fr;
+  }
+}
