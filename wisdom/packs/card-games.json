@@ -1,0 +1,74 @@
+{
+  "packID": "card-games",
+  "version": 1,
+  "displayName": "Card Game Guidelines",
+  "description": "Quality rules for poker, blackjack, solitaire, and other card games.",
+  "categories": ["card-games"],
+  "keywords": ["poker", "blackjack", "solitaire", "hearts", "spades", "rummy", "cards", "card game", "holdem", "texas", "bridge", "gin", "deck", "dealing"],
+  "guidelines": [
+    {
+      "id": "cg-001",
+      "rule": "The human player MUST have explicit controls for their turn — Fold, Call, Raise (or Hit, Stand for blackjack). The game MUST pause and wait for the human's input. AI opponents play automatically AFTER the human acts.",
+      "why": "This is the single most common bug: the game plays all players automatically with no human interaction. Every card game session has required this fix.",
+      "severity": "critical",
+      "appliesTo": "card-games",
+      "examples": ["Show Fold/Call/Raise buttons during human's turn", "Disable buttons during AI turns", "Show 'Your Turn' indicator prominently"]
+    },
+    {
+      "id": "cg-002",
+      "rule": "Cards that should be hidden (opponents' hole cards, undealt cards) MUST show card back graphics, not be invisible or show their face values. Use a card back SVG pattern.",
+      "why": "Games frequently show all cards face-up or make hidden cards invisible, breaking the game mechanics.",
+      "severity": "critical",
+      "appliesTo": "card-games",
+      "examples": ["Opponents' hole cards show card back until showdown", "Deck shows card back for undealt cards"]
+    },
+    {
+      "id": "cg-003",
+      "rule": "Use proper card face rendering with rank and suit symbols — never plain text like '10H' or 'AS'. Use SVG card faces with corner indices and centered suit pips.",
+      "why": "Plain text card representations look amateur. Proper card graphics are essential for a polished look.",
+      "severity": "important",
+      "appliesTo": "card-games",
+      "examples": ["Use renderCard('A', '♠') if the asset pack provides it", "Show rank in top-left and bottom-right corners", "Red suits (♥♦) in red, black suits (♠♣) in black"]
+    },
+    {
+      "id": "cg-004",
+      "rule": "Implement complete hand evaluation with proper ranking. For poker: Royal Flush > Straight Flush > Four of a Kind > Full House > Flush > Straight > Three of a Kind > Two Pair > One Pair > High Card.",
+      "why": "Incorrect hand evaluation makes the game unplayable. Users notice when a pair beats a flush.",
+      "severity": "critical",
+      "appliesTo": "card-games",
+      "examples": ["Evaluate all 5-card combinations from 7 cards (Texas Hold'em)", "Handle kicker comparisons for tie-breaking"]
+    },
+    {
+      "id": "cg-005",
+      "rule": "Handle chip/money management correctly: track each player's stack, deduct bets properly, handle all-in scenarios (side pots), and eliminate players who run out of chips.",
+      "why": "Money bugs break game balance — players getting free chips, bets not deducting, or eliminated players still acting.",
+      "severity": "critical",
+      "appliesTo": "card-games",
+      "examples": ["Player can't bet more than their stack", "All-in creates a side pot", "Busted player is removed from future hands"]
+    },
+    {
+      "id": "cg-006",
+      "rule": "Shuffle the deck properly before each hand. Use Fisher-Yates shuffle. Never reuse cards within a hand.",
+      "why": "Duplicate cards or predictable dealing patterns break game integrity.",
+      "severity": "important",
+      "appliesTo": "card-games",
+      "examples": ["Create fresh 52-card deck each hand", "Fisher-Yates: for i from n-1 to 1, swap arr[i] with arr[random 0..i]"]
+    },
+    {
+      "id": "cg-007",
+      "rule": "Show the pot/stakes clearly at all times. Players should always see how much is in the pot and what the current bet is.",
+      "why": "Players can't make informed betting decisions without seeing the pot size and current bet.",
+      "severity": "important",
+      "appliesTo": "card-games",
+      "examples": ["Pot: $45 displayed prominently", "Current bet: $10 shown near controls", "Each player's chip stack visible"]
+    },
+    {
+      "id": "cg-008",
+      "rule": "Use a casino-style felt green table background with proper card spacing. Position players around the table (bottom = human, top/sides = AI).",
+      "why": "A green felt table is the universal visual language for card games. Without it, the game looks like a prototype.",
+      "severity": "recommended",
+      "appliesTo": "card-games",
+      "examples": ["Radial gradient green felt background", "Human player at bottom center", "Community cards in center of table"]
+    }
+  ]
+}

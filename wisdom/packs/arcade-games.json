@@ -1,0 +1,42 @@
+{
+  "packID": "arcade-games",
+  "version": 1,
+  "displayName": "Arcade Game Guidelines",
+  "description": "Quality rules for snake, breakout, platformers, and other arcade/action games.",
+  "categories": ["arcade"],
+  "keywords": ["snake", "breakout", "pong", "tetris", "space invaders", "pac-man", "arcade", "platformer", "shooter", "asteroid"],
+  "guidelines": [
+    {
+      "id": "ag-001",
+      "rule": "The game must respond to keyboard input immediately. Use keydown events (not keypress) for game controls. Arrow keys, WASD, or Space should work.",
+      "why": "Arcade games need instant responsive controls. Laggy or non-functional controls make the game unplayable.",
+      "severity": "critical",
+      "appliesTo": "arcade",
+      "examples": ["document.addEventListener('keydown', handleKey)", "preventDefault() on arrow keys to stop page scrolling"]
+    },
+    {
+      "id": "ag-002",
+      "rule": "Use requestAnimationFrame for the game loop, NOT setInterval. Target 60fps. Delta-time based movement for consistent speed.",
+      "why": "setInterval causes inconsistent frame rates and janky movement. rAF syncs with the display refresh.",
+      "severity": "important",
+      "appliesTo": "arcade",
+      "examples": ["function gameLoop(timestamp) { update(dt); render(); requestAnimationFrame(gameLoop); }"]
+    },
+    {
+      "id": "ag-003",
+      "rule": "Show score, lives, and level prominently. Include a game-over screen with final score and restart option.",
+      "why": "Players need constant feedback on their performance.",
+      "severity": "important",
+      "appliesTo": "arcade",
+      "examples": ["HUD at top: Score: 1250 | Lives: 3 | Level: 2", "Game Over overlay with 'Press Space to restart'"]
+    },
+    {
+      "id": "ag-004",
+      "rule": "Implement proper collision detection. For rectangles use AABB, for circles use distance checks.",
+      "why": "Bad collision detection — objects passing through each other or false collisions — ruins gameplay.",
+      "severity": "critical",
+      "appliesTo": "arcade",
+      "examples": ["AABB: if (a.x < b.x+b.w && a.x+a.w > b.x && a.y < b.y+b.h && a.y+a.h > b.y)"]
+    }
+  ]
+}
