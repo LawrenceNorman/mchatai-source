@@ -1,0 +1,24 @@
+{
+  "packID": "arcade-retro",
+  "version": 1,
+  "displayName": "Arcade & Retro Game Pack",
+  "description": "Pixel-style sprites, retro fonts, CRT effects, neon colors, and classic arcade UI patterns.",
+  "categories": ["arcade"],
+  "keywords": ["snake", "breakout", "pong", "space invaders", "pac-man", "arcade", "retro", "pixel", "tetris", "asteroid", "platformer", "shooter", "brick", "paddle", "missile"],
+  "promptInjection": "Use this arcade asset pack for retro-style game visuals.\n\n**RETRO BACKGROUND** — CRT-style scanline effect:\n```css\nbody { background:#0a0a0a; color:#00ff41; font-family:'Courier New',monospace; }\n.game-screen { position:relative; background:#000; border:3px solid #333; border-radius:8px; box-shadow:0 0 30px rgba(0,255,65,0.15), inset 0 0 60px rgba(0,0,0,0.5); overflow:hidden; }\n.game-screen::after { content:''; position:absolute; inset:0; background:repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.1) 2px, rgba(0,0,0,0.1) 4px); pointer-events:none; }\n```\n\n**PIXEL RENDERING** — Crisp pixel art scaling:\n```css\n.pixel-art { image-rendering:pixelated; image-rendering:crisp-edges; }\ncanvas.pixel-art { image-rendering:pixelated; }\n```\n\n**NEON TEXT:**\n```css\n.neon { color:#00ff41; text-shadow:0 0 5px #00ff41, 0 0 10px #00ff41, 0 0 20px #00cc33; }\n.neon-red { color:#ff0040; text-shadow:0 0 5px #ff0040, 0 0 10px #ff0040, 0 0 20px #cc0033; }\n.neon-blue { color:#00d4ff; text-shadow:0 0 5px #00d4ff, 0 0 10px #00d4ff, 0 0 20px #0099cc; }\n```\n\n**SCORE HUD:**\n```css\n.hud { display:flex; justify-content:space-between; padding:8px 16px; background:rgba(0,0,0,0.8); border-bottom:2px solid #333; font-family:'Courier New',monospace; font-size:14px; }\n.hud .label { color:#666; text-transform:uppercase; font-size:10px; letter-spacing:2px; }\n.hud .value { color:#00ff41; font-size:20px; font-weight:bold; }\n```\n\n**GAME OVER OVERLAY:**\n```css\n.game-over { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; background:rgba(0,0,0,0.85); z-index:100; }\n.game-over h1 { font-size:48px; color:#ff0040; text-shadow:0 0 20px #ff0040; animation:blink 1s infinite; }\n@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }\n.game-over .restart { margin-top:20px; padding:10px 30px; background:transparent; border:2px solid #00ff41; color:#00ff41; font-family:'Courier New',monospace; cursor:pointer; font-size:16px; } .game-over .restart:hover { background:#00ff41; color:#000; }\n```\n\n**PIXEL SPRITE RENDERER** — Creates simple pixel sprites from a grid pattern:\n```js\nfunction renderSprite(grid, colors, scale=4) {\n  const h = grid.length, w = grid[0].length;\n  let svg = `<svg viewBox=\"0 0 ${w*scale} ${h*scale}\" xmlns=\"http://www.w3.org/2000/svg\">`;\n  for(let y=0;y<h;y++) for(let x=0;x<w;x++) { const c=colors[grid[y][x]]; if(c) svg+=`<rect x=\"${x*scale}\" y=\"${y*scale}\" width=\"${scale}\" height=\"${scale}\" fill=\"${c}\"/>`; }\n  return svg+'</svg>';\n}\n```\nUsage: `renderSprite([[0,1,0],[1,1,1],[0,1,0]], {1:'#00ff41'})` creates a cross sprite.\n\nIMPORTANT: Use .game-screen for the main play area. Use .neon for headings. Use .hud for score display. Use CRT scanline effect. Keep the retro monochrome aesthetic.",
+  "css": {
+    "crt-screen": {
+      "type": "background",
+      "description": "CRT scanline effect on game screen",
+      "css": ".game-screen { position:relative; background:#000; border:3px solid #333; border-radius:8px; box-shadow:0 0 30px rgba(0,255,65,0.15), inset 0 0 60px rgba(0,0,0,0.5); } .game-screen::after { content:''; position:absolute; inset:0; background:repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.1) 2px, rgba(0,0,0,0.1) 4px); pointer-events:none; }",
+      "usage": "Wrap game canvas in <div class=\"game-screen\">"
+    }
+  },
+  "js": {
+    "sprite-renderer": {
+      "description": "Renders pixel sprites from grid arrays",
+      "js": "function renderSprite(grid,colors,scale){scale=scale||4;const h=grid.length,w=grid[0].length;let svg='<svg viewBox=\"0 0 '+(w*scale)+' '+(h*scale)+'\" xmlns=\"http://www.w3.org/2000/svg\">';for(let y=0;y<h;y++)for(let x=0;x<w;x++){const c=colors[grid[y][x]];if(c)svg+='<rect x=\"'+(x*scale)+'\" y=\"'+(y*scale)+'\" width=\"'+scale+'\" height=\"'+scale+'\" fill=\"'+c+'\"/>';}return svg+'</svg>';}",
+      "usage": "renderSprite([[0,1,0],[1,1,1]], {1:'#00ff41'}) for a pixel cross"
+    }
+  }
+}
