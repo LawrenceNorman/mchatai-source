@@ -1,0 +1,36 @@
+{
+  "id": "official.qz-topic-validator",
+  "name": "Quiznect Topic Validator",
+  "version": "1.0.0",
+  "type": "microservice",
+  "runtime": "python3",
+  "description": "Validates whether a user query is a legitimate learning topic for quiz generation",
+  "author": "mchatai-labs",
+  "license": "MIT",
+  "platforms": ["mchatai-cloud"],
+  "cloudConfig": {
+    "cloudRunService": "mchatai-qz-topic-validator",
+    "region": "us-central1",
+    "minInstances": 0,
+    "maxInstances": 10,
+    "memory": "256Mi",
+    "cpu": "1",
+    "timeoutSeconds": 60
+  },
+  "endpoints": [
+    {
+      "path": "/validate",
+      "method": "POST",
+      "description": "Validate a learning topic query",
+      "estimatedTokenCost": 0.1,
+      "inputSchema": {
+        "query": "string"
+      },
+      "outputSchema": {
+        "valid": "boolean",
+        "normalized_topic": "string",
+        "reason": "string"
+      }
+    }
+  ]
+}

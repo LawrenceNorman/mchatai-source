@@ -1,0 +1,52 @@
+{
+  "id": "official.qz-quiz-generator",
+  "name": "Quiznect Quiz Generator",
+  "version": "1.0.0",
+  "type": "microservice",
+  "runtime": "python3",
+  "description": "Core quiz generation — structures, questions, learning goals, and learning plans",
+  "author": "mchatai-labs",
+  "license": "MIT",
+  "platforms": ["mchatai-cloud"],
+  "cloudConfig": {
+    "cloudRunService": "mchatai-qz-quiz-generator",
+    "region": "us-central1",
+    "minInstances": 0,
+    "maxInstances": 10,
+    "memory": "512Mi",
+    "cpu": "1",
+    "timeoutSeconds": 300
+  },
+  "endpoints": [
+    {
+      "path": "/structure",
+      "method": "POST",
+      "description": "Generate hierarchical quiz structure",
+      "estimatedTokenCost": 0.5
+    },
+    {
+      "path": "/example-question",
+      "method": "POST",
+      "description": "Generate a single example question",
+      "estimatedTokenCost": 0.1
+    },
+    {
+      "path": "/batch-questions",
+      "method": "POST",
+      "description": "Generate N questions for a topic",
+      "estimatedTokenCost": 1.5
+    },
+    {
+      "path": "/evaluate-goal",
+      "method": "POST",
+      "description": "Evaluate and format a learning goal",
+      "estimatedTokenCost": 0.1
+    },
+    {
+      "path": "/learning-plan",
+      "method": "POST",
+      "description": "Generate detailed learning plan from structure",
+      "estimatedTokenCost": 0.5
+    }
+  ]
+}

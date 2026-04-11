@@ -1,0 +1,28 @@
+{
+  "id": "official.qz-podcast",
+  "name": "Quiznect Podcast",
+  "version": "1.0.0",
+  "type": "microservice",
+  "runtime": "python3",
+  "description": "Podcast script generation, smoothing, text-to-speech, and text segment timing",
+  "author": "mchatai-labs",
+  "license": "MIT",
+  "platforms": ["mchatai-cloud"],
+  "cloudConfig": {
+    "cloudRunService": "mchatai-qz-podcast",
+    "region": "us-central1",
+    "minInstances": 0,
+    "maxInstances": 10,
+    "memory": "512Mi",
+    "cpu": "1",
+    "timeoutSeconds": 300
+  },
+  "endpoints": [
+    {"path": "/generate-script", "method": "POST", "description": "Generate podcast script from content", "estimatedTokenCost": 0.5},
+    {"path": "/smooth-script", "method": "POST", "description": "Rewrite script for natural narration", "estimatedTokenCost": 0.3},
+    {"path": "/text-to-speech", "method": "POST", "description": "Convert text to MP3 audio", "estimatedTokenCost": 2},
+    {"path": "/generate-segments", "method": "POST", "description": "Generate timed text segments", "estimatedTokenCost": 0},
+    {"path": "/split-text", "method": "POST", "description": "Split text into chunks by sentence", "estimatedTokenCost": 0},
+    {"path": "/batch-tts", "method": "POST", "description": "Generate TTS for multiple chunks", "estimatedTokenCost": 5}
+  ]
+}
