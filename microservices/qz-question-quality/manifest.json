@@ -1,0 +1,30 @@
+{
+  "id": "official.qz-question-quality",
+  "name": "Quiznect Question Quality",
+  "version": "1.0.0",
+  "type": "microservice",
+  "runtime": "python3",
+  "description": "Validate, enhance explanations, clean, deduplicate, and verify quiz questions",
+  "author": "mchatai-labs",
+  "license": "MIT",
+  "platforms": ["mchatai-cloud"],
+  "cloudConfig": {
+    "cloudRunService": "mchatai-qz-question-quality",
+    "region": "us-central1",
+    "minInstances": 0,
+    "maxInstances": 10,
+    "memory": "512Mi",
+    "cpu": "1",
+    "timeoutSeconds": 300
+  },
+  "endpoints": [
+    {"path": "/validate", "method": "POST", "description": "Validate a single question", "estimatedTokenCost": 0.1},
+    {"path": "/enhance-explanation", "method": "POST", "description": "Enhance explanation with HTML + Wikipedia URL", "estimatedTokenCost": 0.2},
+    {"path": "/clean-explanation", "method": "POST", "description": "Regex cleanup of validation artifacts", "estimatedTokenCost": 0},
+    {"path": "/clean-explanations-batch", "method": "POST", "description": "Batch clean explanations", "estimatedTokenCost": 0},
+    {"path": "/deduplicate", "method": "POST", "description": "Remove similar questions via SequenceMatcher", "estimatedTokenCost": 0},
+    {"path": "/verify-content", "method": "POST", "description": "Verify correct answer is in options", "estimatedTokenCost": 0},
+    {"path": "/validate-batch", "method": "POST", "description": "Validate batch of questions via LLM", "estimatedTokenCost": 2},
+    {"path": "/enhance-batch", "method": "POST", "description": "Enhance explanations for batch of questions", "estimatedTokenCost": 2}
+  ]
+}

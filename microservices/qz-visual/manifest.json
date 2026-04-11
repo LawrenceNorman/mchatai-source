@@ -1,0 +1,28 @@
+{
+  "id": "official.qz-visual",
+  "name": "Quiznect Visual",
+  "version": "1.0.0",
+  "type": "microservice",
+  "runtime": "python3",
+  "description": "Narration scripts, visual choreography, DALL-E image generation, and Bing image search",
+  "author": "mchatai-labs",
+  "license": "MIT",
+  "platforms": ["mchatai-cloud"],
+  "cloudConfig": {
+    "cloudRunService": "mchatai-qz-visual",
+    "region": "us-central1",
+    "minInstances": 0,
+    "maxInstances": 10,
+    "memory": "512Mi",
+    "cpu": "1",
+    "timeoutSeconds": 300,
+    "secrets": ["BING_SEARCH_API_KEY"]
+  },
+  "endpoints": [
+    {"path": "/generate-narration", "method": "POST", "description": "Create narration script", "estimatedTokenCost": 0.3},
+    {"path": "/create-choreography", "method": "POST", "description": "Generate visual sync JSON", "estimatedTokenCost": 0.5},
+    {"path": "/generate-image", "method": "POST", "description": "Generate image via DALL-E", "estimatedTokenCost": 4},
+    {"path": "/fetch-image-url", "method": "POST", "description": "Search Bing for image", "estimatedTokenCost": 0.1},
+    {"path": "/batch-images", "method": "POST", "description": "Generate multiple images", "estimatedTokenCost": 16}
+  ]
+}

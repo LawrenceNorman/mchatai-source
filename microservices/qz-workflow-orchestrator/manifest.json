@@ -1,0 +1,25 @@
+{
+  "id": "official.qz-workflow-orchestrator",
+  "name": "Quiznect Workflow Orchestrator",
+  "version": "1.0.0",
+  "type": "microservice",
+  "runtime": "python3",
+  "description": "DAG workflow engine for composed AIActions — retry, checkpoint/resume, fan-out/fan-in, budget tracking",
+  "author": "mchatai-labs",
+  "license": "MIT",
+  "platforms": ["mchatai-cloud"],
+  "cloudConfig": {
+    "cloudRunService": "mchatai-qz-workflow-orchestrator",
+    "region": "us-central1",
+    "minInstances": 0,
+    "maxInstances": 20,
+    "memory": "1Gi",
+    "cpu": "2",
+    "timeoutSeconds": 3600
+  },
+  "endpoints": [
+    {"path": "/execute", "method": "POST", "description": "Execute a workflow action"},
+    {"path": "/workflows", "method": "GET", "description": "List available workflows"},
+    {"path": "/health", "method": "GET", "description": "Health check"}
+  ]
+}

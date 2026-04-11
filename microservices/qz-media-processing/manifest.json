@@ -1,0 +1,28 @@
+{
+  "id": "official.qz-media-processing",
+  "name": "Quiznect Media Processing",
+  "version": "1.0.0",
+  "type": "microservice",
+  "runtime": "python3",
+  "description": "FFmpeg-based audio/video processing — splice, normalize, attach, overlay, split",
+  "author": "mchatai-labs",
+  "license": "MIT",
+  "platforms": ["mchatai-cloud"],
+  "cloudConfig": {
+    "cloudRunService": "mchatai-qz-media-processing",
+    "region": "us-central1",
+    "minInstances": 0,
+    "maxInstances": 10,
+    "memory": "2Gi",
+    "cpu": "2",
+    "timeoutSeconds": 600
+  },
+  "endpoints": [
+    {"path": "/splice-audio", "method": "POST", "description": "Concatenate audio segments", "estimatedTokenCost": 0},
+    {"path": "/normalize-audio", "method": "POST", "description": "Normalize audio levels", "estimatedTokenCost": 0},
+    {"path": "/attach-audio", "method": "POST", "description": "Combine audio + video", "estimatedTokenCost": 0},
+    {"path": "/add-text-overlays", "method": "POST", "description": "Add text overlays to video", "estimatedTokenCost": 0},
+    {"path": "/split-text", "method": "POST", "description": "Split text into token-bounded chunks", "estimatedTokenCost": 0},
+    {"path": "/audio-info", "method": "POST", "description": "Get audio file information", "estimatedTokenCost": 0}
+  ]
+}
