@@ -11,8 +11,13 @@ games/            Web games (HTML/JS/CSS game bundles)
 microservices/    Python services for mChatAIShell
 templates/        Project templates for AIWizard / mchataiDev
 swift-apps/       Swift macOS apps (Sources/ + Package.swift)
+frameworks/       Framework reference scaffolds — buildable starters keyed by
+                  framework name (audiokit, three-js, fastapi, etc.) that
+                  AIWizard pulls into generation when it detects a framework
+                  keyword in the user prompt. See frameworks/README.md.
 pipelines/        Pipeline definitions (JSON step configs)
 agents/           Agent definitions (persona + skill bindings)
+wisdom/           Wisdom packs — JSON rules captured from QAFlywheel runs
 catalog.json      Master index of all artifacts
 ```
 

@@ -1,0 +1,28 @@
+{
+  "id": "official.lb-leaderboard-service",
+  "name": "Leaderboard Service",
+  "version": "1.0.0",
+  "type": "microservice",
+  "runtime": "python3",
+  "description": "Global leaderboards for mini-apps and games. Score submit/fetch, auto-create boards, rank/percentile calculation.",
+  "author": "mchatai-labs",
+  "license": "MIT",
+  "platforms": ["mchatai-macos", "mchatai-ios", "mchatai-android", "mchatai-web"],
+  "cloudRun": {
+    "service": "lb-leaderboard-service",
+    "region": "us-central1",
+    "project": "mchatai-2367e",
+    "memory": "512Mi",
+    "minInstances": 0,
+    "maxInstances": 10
+  },
+  "endpoints": [
+    "POST /scores",
+    "GET /scores/{gameID}/top",
+    "GET /scores/{gameID}/user/{uid}",
+    "POST /scores/batch",
+    "GET /health"
+  ],
+  "auth": "firebase-id-token",
+  "firestoreCollections": ["leaderboards", "leaderboard_scores"]
+}

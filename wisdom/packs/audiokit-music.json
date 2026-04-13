@@ -1,0 +1,71 @@
+{
+  "$schema": "https://mchatai.com/schemas/wisdom-pack-v1.json",
+  "packID": "audiokit-music",
+  "name": "AudioKit Music App Wisdom",
+  "version": "1.0.0",
+  "lastUpdated": "2026-04-13",
+  "scaffold": "frameworks/macos/audiokit-midi-synth",
+  "description": "Rules for generating macOS audio/music/MIDI apps with AudioKit. Captured from successful QAFlywheel runs against the audiokit-midi-synth scaffold.",
+  "appliesWhen": [
+    "User prompt mentions audio, music, MIDI, synthesizer, drum machine, sequencer, DAW",
+    "Generation target is macOSApp",
+    "Framework keyword index matched 'audiokit'"
+  ],
+  "rules": [
+    {
+      "id": "ak-001-conductor-pattern",
+      "title": "Use Conductor pattern, not raw engine in views",
+      "applies_when": "Any AudioKit app with SwiftUI",
+      "guidance": "Wrap AudioEngine, oscillators, effects in an ObservableObject 'Conductor'. Views call high-level methods (noteOn, setReverbAmount). Never connect AudioKit nodes from inside View body.",
+      "example": "final class SynthConductor: ObservableObject { private let engine = AudioEngine(); ... }",
+      "severity": "blocking"
+    },
+    {
+      "id": "ak-002-engine-start-main-thread",
+      "title": "AudioEngine.start() on main thread, after view appears",
+      "applies_when": "Initializing AudioKit",
+      "guidance": "Call try engine.start() inside .onAppear, not in the conductor's init(). Calling from background thread or before the view is mounted causes silent failure on macOS 14+.",
+      "example": ".onAppear { try? conductor.start() }",
+      "severity": "blocking"
+    },
+    {
+      "id": "ak-003-microphone-entitlement",
+      "title": "Microphone entitlement required even for output-only apps",
+      "applies_when": "Any AudioKit app, even synths that never record",
+      "guidance": "AudioKit initializes the audio I/O subsystem, which requires com.apple.security.device.microphone entitlement. Without it, engine.start() throws on sandboxed apps. Use frameworks/_index/entitlements/audiokit.plist as the template.",
+      "example": "<key>com.apple.security.device.microphone</key><true/>",
+      "severity": "blocking"
+    },
+    {
+      "id": "ak-004-velocity-mapping",
+      "title": "Map MIDI velocity (0-127) to amplitude (0.0-1.0) explicitly",
+      "applies_when": "Triggering notes from MIDI or keyboard",
+      "guidance": "DynamicOscillator.amplitude expects 0.0–1.0. MIDI velocity is 0–127. Always divide: oscillator.amplitude = AUValue(velocity) / 127.0. Don't pass raw velocity.",
+      "example": "oscillator.amplitude = AUValue(velocity) / 127.0",
+      "severity": "high"
+    },
+    {
+      "id": "ak-005-keyboard-frame-height",
+      "title": "AudioKitUI KeyboardView needs explicit frame height",
+      "applies_when": "Using KeyboardView or KeyboardControl in SwiftUI",
+      "guidance": "Without a height constraint the keyboard collapses to 0pt. Wrap with .frame(height: 120-160).",
+      "example": ".frame(height: 140)",
+      "severity": "medium"
+    },
+    {
+      "id": "ak-006-graph-before-start",
+      "title": "Connect all nodes before engine.start()",
+      "applies_when": "Building effects chains or multi-track mixers",
+      "guidance": "AudioKit can't reconnect graph nodes while running. Connect oscillator → envelope → effects → mixer → engine.output before calling engine.start(). To swap nodes later, stop, reconnect, restart.",
+      "severity": "high"
+    },
+    {
+      "id": "ak-007-availability",
+      "title": "AudioKit types need @available(macOS 12.0, *) or higher",
+      "applies_when": "Wrapping AudioKit types in custom classes",
+      "guidance": "Don't slap @available(macOS 26.0, *) on AudioKit-using types — keep at 12.0. Reserve 26.0 only for app-level SwiftUI types using the latest APIs.",
+      "severity": "medium"
+    }
+  ],
+  "_seedingPlan": "Initial 7 rules from manual scaffold authoring. Additional rules get appended automatically by QAFlywheel runs against this scaffold and its derivatives (V2 synth, V3 MIDI controller, V4 sequencer, etc. — see AUDIOKIT_MUSIC_APP_ARCHITECTURE.md)."
+}

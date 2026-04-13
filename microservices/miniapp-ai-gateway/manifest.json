@@ -1,0 +1,28 @@
+{
+  "id": "official.miniapp-ai-gateway",
+  "name": "Mini-App AI Gateway",
+  "version": "1.0.0",
+  "type": "microservice",
+  "runtime": "python3",
+  "description": "Token-metered LLM/TTS/image gateway for mini-apps. Deducts compute tokens before serving requests.",
+  "author": "mchatai-labs",
+  "license": "MIT",
+  "platforms": ["mchatai-macos", "mchatai-ios", "mchatai-android"],
+  "cloudRun": {
+    "service": "miniapp-ai-gateway",
+    "region": "us-central1",
+    "project": "mchatai-2367e",
+    "memory": "1Gi",
+    "minInstances": 0,
+    "maxInstances": 20
+  },
+  "endpoints": [
+    "POST /generate",
+    "POST /hint",
+    "POST /opponent-move",
+    "GET /availability",
+    "GET /health"
+  ],
+  "auth": "firebase-id-token",
+  "firestoreCollections": ["users"]
+}
