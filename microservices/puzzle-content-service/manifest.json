@@ -1,0 +1,30 @@
+{
+  "id": "official.puzzle-content-service",
+  "name": "Puzzle Content Service",
+  "version": "1.0.0",
+  "type": "microservice",
+  "runtime": "python3",
+  "description": "Daily and on-demand puzzle generation: trivia questions, word sets, crossword grids. Pre-generates content via cron; falls back to AI generation on cache miss.",
+  "author": "mchatai-labs",
+  "license": "MIT",
+  "platforms": ["mchatai-macos", "mchatai-ios", "mchatai-android", "mchatai-web"],
+  "cloudRun": {
+    "service": "puzzle-content-service",
+    "region": "us-central1",
+    "project": "mchatai-2367e",
+    "memory": "512Mi",
+    "minInstances": 0,
+    "maxInstances": 5
+  },
+  "endpoints": [
+    "GET /puzzles/trivia/daily",
+    "POST /puzzles/trivia/generate",
+    "GET /puzzles/words/daily",
+    "POST /puzzles/words/generate",
+    "GET /health"
+  ],
+  "auth": "firebase-id-token",
+  "cronJobs": [
+    {"schedule": "0 0 * * *", "endpoint": "/puzzles/trivia/daily?prefill=true", "description": "Pre-generate daily trivia at midnight UTC"}
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "id": "official.game-state-service",
+  "name": "Game State Service",
+  "version": "1.0.0",
+  "type": "microservice",
+  "runtime": "python3",
+  "description": "Cross-device save/load for in-progress games. Up to 5 save slots per app per user, 64KB each.",
+  "author": "mchatai-labs",
+  "license": "MIT",
+  "platforms": ["mchatai-macos", "mchatai-ios", "mchatai-android"],
+  "cloudRun": {
+    "service": "game-state-service",
+    "region": "us-central1",
+    "project": "mchatai-2367e",
+    "memory": "256Mi",
+    "minInstances": 0,
+    "maxInstances": 5
+  },
+  "endpoints": [
+    "POST /state/{gameID}",
+    "GET /state/{gameID}",
+    "DELETE /state/{gameID}/{slot}",
+    "GET /health"
+  ],
+  "auth": "firebase-id-token",
+  "limits": {
+    "maxSlots": 5,
+    "maxSlotSizeBytes": 65536
+  }
+}

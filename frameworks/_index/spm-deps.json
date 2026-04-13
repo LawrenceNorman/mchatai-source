@@ -1,0 +1,32 @@
+{
+  "$schema": "https://mchatai.com/schemas/spm-deps-v1.json",
+  "version": "1.0.0",
+  "lastUpdated": "2026-04-13",
+  "description": "Maps framework IDs to SPM Package.swift declarations. AIWizard's macOSApp generator looks up detected frameworks here and injects the .package() + .product() entries into the generated Package.swift.",
+  "frameworks": {
+    "audiokit": {
+      "packages": [
+        { "url": "https://github.com/AudioKit/AudioKit.git", "from": "5.6.0", "products": ["AudioKit"] },
+        { "url": "https://github.com/AudioKit/AudioKitUI.git", "from": "0.4.0", "products": ["AudioKitUI"] },
+        { "url": "https://github.com/AudioKit/SoundpipeAudioKit.git", "from": "5.6.0", "products": ["SoundpipeAudioKit"] }
+      ],
+      "minMacOS": "12.0",
+      "buildTimeImpact": "30-45s on first build",
+      "entitlements": ["microphone"]
+    },
+    "audiokit-midi": {
+      "extends": "audiokit",
+      "packages": [
+        { "url": "https://github.com/orchetect/MIDIKit.git", "from": "0.9.0", "products": ["MIDIKit"] }
+      ],
+      "entitlements": ["microphone", "midi-input"]
+    },
+    "audiokit-music-theory": {
+      "extends": "audiokit",
+      "packages": [
+        { "url": "https://github.com/AudioKit/Tonic.git", "from": "1.0.0", "products": ["Tonic"] }
+      ]
+    }
+  },
+  "_seedingPlan": "Seeded with AudioKit family. Extend with each new SPM-using framework (Alamofire, Lottie, GRDB, etc.) — see SPM_FRAMEWORK_CATALOG.md for the full vetted list."
+}

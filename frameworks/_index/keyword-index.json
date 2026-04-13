@@ -1,0 +1,32 @@
+{
+  "$schema": "https://mchatai.com/schemas/framework-keyword-index-v1.json",
+  "version": "1.0.0",
+  "lastUpdated": "2026-04-13",
+  "description": "Maps user-prompt keywords to framework scaffolds. AIWizard scans incoming prompts for these keywords (case-insensitive, word-boundary) and loads the matching scaffold.",
+  "matching": {
+    "caseSensitive": false,
+    "wordBoundary": true,
+    "scoring": "first-match-wins-per-platform"
+  },
+  "frameworks": {
+    "audiokit": {
+      "scaffold": "frameworks/macos/audiokit-midi-synth",
+      "platform": "macos",
+      "keywords": ["audiokit", "audio kit", "swift synth", "swift synthesizer", "macos midi", "swift midi", "swift audio engine"],
+      "wisdomPackID": "audiokit-music",
+      "entitlements": "frameworks/_index/entitlements/audiokit.plist",
+      "promptIntent": "User wants to build a macOS audio/music/MIDI app using AudioKit. Use this scaffold as the synth foundation; extend with the user's specific request (sequencer, drum machine, FX rack, etc.)."
+    }
+  },
+  "platformDefaults": {
+    "macos": { "buildTool": "swift build", "openWith": "Xcode" },
+    "web": { "buildTool": "none (static)", "openWith": "browser" },
+    "unity": { "buildTool": "Unity Hub", "openWith": "Unity 6 LTS" },
+    "react-native": { "buildTool": "expo start", "openWith": "Expo Go / simulator" },
+    "python": { "buildTool": "pip install -r requirements.txt", "openWith": "python3" },
+    "tauri": { "buildTool": "cargo tauri build", "openWith": "tauri dev" },
+    "electron": { "buildTool": "npm install && npm start", "openWith": "electron ." },
+    "android": { "buildTool": "./gradlew assembleDebug", "openWith": "Android Studio" }
+  },
+  "_seedingPlan": "This file starts with one entry (audiokit) as a proof of concept. Additional entries get added incrementally as scaffolds are built — see FRAMEWORK_REFERENCE_CATALOG.md for the full 160-entry roadmap. New framework PRs MUST add an entry here."
+}
