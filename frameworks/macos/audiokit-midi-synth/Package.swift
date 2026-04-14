@@ -3,7 +3,7 @@ import PackageDescription
 
 let package = Package(
     name: "AudioKitMIDISynth",
-    platforms: [.macOS(.v13)],
+    platforms: [.macOS(.v14)],
     products: [
         .executable(name: "AudioKitMIDISynth", targets: ["AudioKitMIDISynth"])
     ],
