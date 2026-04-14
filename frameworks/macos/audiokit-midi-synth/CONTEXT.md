@@ -41,8 +41,33 @@ This is the **starter** for any macOS app the user describes that involves audio
 
 - **`AudioKitMIDISynthApp.swift`** — SwiftUI `@main` app entrypoint
 - **`SynthConductor.swift`** — `ObservableObject` wrapping `AudioEngine`, `DynamicOscillator`, `AmplitudeEnvelope`. Owns audio lifecycle. This is the pattern AudioKit apps follow — keep this shape when extending.
-- **`ContentView.swift`** — `KeyboardView` (from AudioKitUI) wired to the conductor + waveform picker + ADSR sliders
-- **`Package.swift`** — SPM manifest with AudioKit + AudioKitUI
+- **`ContentView.swift`** — Simple SwiftUI piano keyboard wired to the conductor + waveform picker + ADSR sliders
+- **`Package.swift`** — SPM manifest with AudioKit + AudioKitUI + SoundpipeAudioKit (all 3 required — see Type-to-Package Mapping below)
+
+## Type-to-Package Mapping (CRITICAL — do NOT drop dependencies)
+
+This scaffold's Package.swift has **3 `.package(...)` entries and 3 `.product(...)` entries**. ALL THREE are required because different types live in different packages. If you drop any package, you'll get `cannot find type X in scope` errors for the types below. Rule of thumb: the name "AudioKit" covers ONE package; the other two have their own type sets.
+
+| Type (Swift symbol) | Lives in package | Typical use |
+|---|---|---|
+| `AudioEngine` | AudioKit | Root signal graph |
+| `Mixer`, `Settings` | AudioKit | Multi-track mixing, audio session config |
+| `MIDINoteNumber`, `MIDIVelocity` | AudioKit | MIDI event types |
+| `AmplitudeEnvelope` | AudioKit | ADSR envelope on any node |
+| `Table` | AudioKit | Wavetable source for oscillators |
+| `DynamicOscillator`, `Oscillator` | SoundpipeAudioKit | Polyphonic sine/square/saw/triangle oscillators |
+| `OscillatorBank`, `FMOscillator`, `FMOscillatorBank` | SoundpipeAudioKit | Polyphonic oscillator banks, FM synthesis |
+| `Reverb`, `CostelloReverb`, `ChowningReverb` | SoundpipeAudioKit | Reverb effects |
+| `Delay`, `VariableDelay`, `Chorus`, `Flanger`, `Phaser` | SoundpipeAudioKit | Delay/modulation effects |
+| `Distortion`, `BitCrusher`, `Clipper` | SoundpipeAudioKit | Distortion effects |
+| `PluckedString`, `VocalTract`, `WhiteNoise`, `PinkNoise` | SoundpipeAudioKit | Physical modeling / noise generators |
+| `FFTView`, `NodeOutputView` | AudioKitUI | Real-time spectrum / waveform visualization |
+
+If your generated app uses ANY Soundpipe-level DSP type (oscillator bank, reverb, delay, distortion, FM, physical modeling), you MUST include `SoundpipeAudioKit` in dependencies AND `import SoundpipeAudioKit` in the Swift file. Same for AudioKitUI if you use visualization views.
+
+**Version pinning**: the scaffold's `from:` strings are the ONLY versions known to resolve. Do NOT bump to `5.10.0` / `5.12.0` / `^6.0.0` — those versions don't exist in the registry. Copy byte-for-byte.
+
+**Platform target**: `platforms: [.macOS(.v13)]`. Do NOT change to `.v12`, `.v14`, or `.v15` — the scaffold's code uses macOS 13-compatible APIs only.
 
 ## Key APIs already wired
 
