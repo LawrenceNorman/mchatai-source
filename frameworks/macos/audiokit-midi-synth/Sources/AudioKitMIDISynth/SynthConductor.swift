@@ -38,12 +38,18 @@ final class SynthConductor: ObservableObject {
     private let envelope: AmplitudeEnvelope
 
     init() {
+        // Initialize with default envelope values. @Published defaults above
+        // (attack=0.05, decay=0.10, sustain=0.70, release=0.40) cannot be read
+        // here because Swift requires ALL stored properties to be set before
+        // `self` is available. `applyEnvelopeParams()` syncs @Published values
+        // into the live envelope on each note trigger, so any UI slider change
+        // takes effect on the next keypress.
         oscillator = DynamicOscillator(waveform: Waveform.sine.table)
         envelope = AmplitudeEnvelope(oscillator,
-                                     attackDuration: attack,
-                                     decayDuration: decay,
-                                     sustainLevel: sustain,
-                                     releaseDuration: release)
+                                     attackDuration: 0.05,
+                                     decayDuration: 0.10,
+                                     sustainLevel: 0.70,
+                                     releaseDuration: 0.40)
         engine.output = envelope
         oscillator.start()
     }
