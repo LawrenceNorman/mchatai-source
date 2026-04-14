@@ -67,7 +67,7 @@ If your generated app uses ANY Soundpipe-level DSP type (oscillator bank, reverb
 
 **Version pinning**: the scaffold's `from:` strings are the ONLY versions known to resolve. Do NOT bump to `5.10.0` / `5.12.0` / `^6.0.0` — those versions don't exist in the registry. Copy byte-for-byte.
 
-**Platform target**: `platforms: [.macOS(.v13)]`. Do NOT change to `.v12`, `.v14`, `.v15`, or `.v16` — the scaffold's code uses macOS 13-compatible APIs only. Upgrading to `.v15`/`.v16` triggers Swift 6 strict concurrency which breaks `@Published` + `didSet` combos, the `static let shared = ...` singleton pattern, and the `oscillator.start()`-in-init pattern used throughout. Stick with `.v13`.
+**Platform target**: `platforms: [.macOS(.v14)]`. Do NOT change to `.v12`, `.v14`, `.v15`, or `.v16` — the scaffold's code uses macOS 13-compatible APIs only. Upgrading to `.v15`/`.v16` triggers Swift 6 strict concurrency which breaks `@Published` + `didSet` combos, the `static let shared = ...` singleton pattern, and the `oscillator.start()`-in-init pattern used throughout. Stick with `.v14`.
 
 **Swift tools version**: `// swift-tools-version:5.9` at the top of Package.swift. Do NOT bump to `6.0`. Tools version 6.0 activates strict concurrency checking which flags every `@Published` property with a `didSet` observer, every `ObservableObject` class with stored AudioKit nodes, and every `static let shared = Foo()` singleton. The scaffold compiles cleanly at 5.9 — keep it there.
 
