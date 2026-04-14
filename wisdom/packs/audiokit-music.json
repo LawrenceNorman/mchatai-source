@@ -13,6 +13,15 @@
   ],
   "rules": [
     {
+      "id": "ak-000-package-swift-verbatim",
+      "title": "Copy the scaffold's Package.swift dependencies VERBATIM — do not change versions",
+      "applies_when": "Generating Package.swift for any macOSApp that uses AudioKit",
+      "guidance": "The framework scaffold injected above contains the CANONICAL Package.swift with specific dependency versions (from: 5.6.0 for AudioKit, 0.3.0 for AudioKitUI, 5.6.0 for SoundpipeAudioKit). Copy those .package() and .product() lines VERBATIM into your generated Package.swift. DO NOT hallucinate higher versions like 5.10.0 or 5.12.0 — they do not exist. DO NOT drop AudioKitUI or SoundpipeAudioKit — they provide MIDINoteNumber, KeyboardView, Reverb, Delay and other types the scaffold code depends on. Match the scaffold's platforms: [.macOS(.v13)] exactly.",
+      "example": ".package(url: \"https://github.com/AudioKit/AudioKit.git\", from: \"5.6.0\"),\n.package(url: \"https://github.com/AudioKit/AudioKitUI.git\", from: \"0.3.0\"),\n.package(url: \"https://github.com/AudioKit/SoundpipeAudioKit.git\", from: \"5.6.0\")",
+      "severity": "blocking",
+      "learnedFrom": "2026-04-13 AudioKit canary runs where generator repeatedly invented 5.10.0 / 5.12.0 versions despite scaffold showing 5.6.0; builds failed with 'no versions match the requirement' errors"
+    },
+    {
       "id": "ak-001-conductor-pattern",
       "title": "Use Conductor pattern, not raw engine in views",
       "applies_when": "Any AudioKit app with SwiftUI",

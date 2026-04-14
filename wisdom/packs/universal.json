@@ -61,6 +61,18 @@
       "severity": "important",
       "appliesTo": "all",
       "examples": ["Use renderCard('A', '♠') for card faces, not plain text", "Use the .chip CSS classes for chip displays", "Use the felt gradient CSS for the table background"]
+    },
+    {
+      "id": "u-008",
+      "rule": "When a framework scaffold is injected (section starting '## Framework Scaffold:'), the scaffold's Package.swift / package.json / Cargo.toml / build.gradle is CANONICAL. Copy dependency URLs and versions VERBATIM. Do not bump or guess newer versions — the scaffold versions are vetted against real package registries.",
+      "why": "LLMs under pressure hallucinate non-existent versions (e.g., AudioKit 5.10.0 / 5.12.0 when actual latest is 5.7.2). This causes SPM/npm/cargo resolution failures and wastes build cycles. The scaffold's versions were verified to resolve and compile.",
+      "severity": "critical",
+      "appliesTo": "all",
+      "examples": [
+        "If scaffold shows 'from: \"5.6.0\"' for AudioKit, copy '5.6.0' exactly — do not write '5.10.0' or '^5.0.0'",
+        "If scaffold lists AudioKitUI + SoundpipeAudioKit as dependencies, include BOTH in your Package.swift — do not drop any (they provide types like KeyboardView, MIDINoteNumber, Reverb that the scaffold code references)",
+        "If scaffold declares platforms: [.macOS(.v13)], match .v13 exactly — not .v15 or .v12"
+      ]
     }
   ]
 }
