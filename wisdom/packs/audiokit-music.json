@@ -22,6 +22,15 @@
       "learnedFrom": "2026-04-13 AudioKit canary runs v4-v8: generator repeatedly (a) invented 5.10.0/5.12.0 versions that don't exist, (b) dropped AudioKitUI + SoundpipeAudioKit packages while using OscillatorBank/CostelloReverb/KeyboardView types that LIVE in those packages. Each auto-fix cycle re-produced the same missing-type errors because the LLM kept matching 'AudioKit = one package.' Needs explicit type-to-package mapping to break that pattern."
     },
     {
+      "id": "ak-000b-preserve-scaffold-filenames",
+      "title": "Preserve the scaffold's exact Swift filenames and class names",
+      "applies_when": "Generating or auto-fixing an AudioKit macOS app based on the scaffold",
+      "guidance": "The scaffold ships with specific filenames (SynthConductor.swift, ContentView.swift, AudioKitMIDISynthApp.swift) and class names (SynthConductor, SimplePianoKeyboard). Do NOT rename these to 'AudioEngineManager.swift', 'SynthEngine.swift', 'AudioManager.swift' etc. — the scaffold's tests and the auto-fix re-injection both reference the original names. Renaming breaks subsequent auto-fix cycles because the reinjected scaffold no longer matches your output's file structure. Extend by ADDING files (e.g., 'SequencerGridView.swift' for a sequencer add-on), not by renaming existing ones.",
+      "example": "Keep: Sources/AudioKitMIDISynth/SynthConductor.swift (class SynthConductor). Add: Sources/AudioKitMIDISynth/SequencerGridView.swift (new file for a sequencer grid).",
+      "severity": "blocking",
+      "learnedFrom": "2026-04-14 canary v12 where generator renamed SynthConductor.swift → AudioEngineManager.swift → SynthEngine.swift across 5 auto-fix cycles, each re-introducing compile errors because the scaffold reinjection kept bringing back the original names."
+    },
+    {
       "id": "ak-001-conductor-pattern",
       "title": "Use Conductor pattern, not raw engine in views",
       "applies_when": "Any AudioKit app with SwiftUI",
