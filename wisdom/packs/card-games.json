@@ -4,7 +4,7 @@
   "displayName": "Card Game Guidelines",
   "description": "Quality rules for poker, blackjack, solitaire, and other card games.",
   "categories": ["card-games"],
-  "keywords": ["poker", "blackjack", "solitaire", "hearts", "spades", "rummy", "cards", "card game", "holdem", "texas", "bridge", "gin", "deck", "dealing"],
+  "keywords": ["poker", "blackjack", "solitaire", "hearts", "spades", "rummy", "cards", "card game", "holdem", "texas", "bridge", "gin", "deck", "dealing", "cribbage", "crib", "pegging", "nobs", "his heels"],
   "guidelines": [
     {
       "id": "cg-001",
@@ -64,11 +64,139 @@
     },
     {
       "id": "cg-008",
-      "rule": "Use a casino-style felt green table background with proper card spacing. Position players around the table (bottom = human, top/sides = AI).",
-      "why": "A green felt table is the universal visual language for card games. Without it, the game looks like a prototype.",
-      "severity": "recommended",
+      "rule": "Use a casino-style felt green table background with proper card spacing. Position players around the table (bottom = human, top/sides = AI). Felt green range: #1e6b3a to #2a7d4a, with a subtle radial gradient (darker edges, lighter center) OR a subtle noise texture to evoke felt fabric. Do NOT ship a flat-gray or solid-black background for card games.",
+      "why": "A green felt table is the universal visual language for card games. Multiple generations shipped with flat dark backgrounds (#1a1a2e etc.) and looked like prototypes, not card games. User feedback: 'the play area would probably look better with some kind of felt table (green or something)'.",
+      "severity": "important",
       "appliesTo": "card-games",
       "examples": ["Radial gradient green felt background", "Human player at bottom center", "Community cards in center of table"]
+    },
+    {
+      "id": "cg-009",
+      "rule": "The human player MUST see their own cards face-up at the bottom of the screen. AI players' cards show face-down (card backs). The human's cards must be LARGER and more prominent than AI cards.",
+      "why": "Multiple iterations have produced games where the human can't see their own cards, or all cards look identical. The human needs to see their hand to make decisions.",
+      "severity": "critical",
+      "appliesTo": "card-games",
+      "examples": ["Human cards: face-up, 80px wide, bottom center", "AI cards: face-down (card back SVG), 60px wide", "Human cards should have a subtle glow or border to distinguish them"]
+    },
+    {
+      "id": "cg-010",
+      "rule": "Table layout: use position:absolute with percentage-based positioning inside a 100vh container. Human at bottom:8%, AI opponents distributed at top:5% and sides at top:35%. Community cards at top:42% center. Pot display at center. Buttons below human's cards.",
+      "why": "Every poker game iteration has had layout issues — players crammed at the top, empty space at the bottom, or elements off-screen. This specific layout works.",
+      "severity": "critical",
+      "appliesTo": "card-games",
+      "examples": ["#table { width:100%; height:100vh; position:relative; overflow:hidden; }", ".human { position:absolute; bottom:8%; left:50%; transform:translateX(-50%); }", ".ai-top { position:absolute; top:5%; left:50%; transform:translateX(-50%); }", ".ai-left { position:absolute; left:5%; top:35%; }", ".ai-right { position:absolute; right:5%; top:35%; }", ".community { position:absolute; top:42%; left:50%; transform:translate(-50%,-50%); }"]
+    },
+    {
+      "id": "cg-011",
+      "rule": "For trick-taking games (Hearts, Spades, Bridge, Euchre) use a 4-seat cross layout: human 'You' at BOTTOM, one AI at TOP, one AI on LEFT, one AI on RIGHT. Each AI zone shows a small stack of card backs plus a card count badge. Trick area in the CENTER showing 4 played cards in a cross pattern (played card from each seat slides toward center). Human's hand is a fanned row of face-up cards at the very bottom, SORTED by suit then rank, with cards larger than AI card backs (80x112 vs 38x54). CRITICAL: use height:100vh on the game container, NEVER min-height:100vh, and never use flex:1 on the table element without a fixed parent height — it will collapse and pile everything at the top.",
+      "why": "Hearts mini-app came out with all 4 player zones piled at the top because the flex chain collapsed when body used min-height and .table used flex:1. The trick area was empty and unusable.",
+      "severity": "critical",
+      "appliesTo": "card-games",
+      "examples": ["body { height:100vh; margin:0; overflow:hidden; }", "#table { position:relative; width:100%; height:100vh; } (NOT flex:1)", "#zoneS { position:absolute; bottom:2%; left:50%; transform:translateX(-50%); } — Human", "#zoneN { position:absolute; top:2%; left:50%; transform:translateX(-50%); } — AI top", "#zoneW { position:absolute; left:2%; top:50%; transform:translateY(-50%); } — AI left", "#zoneE { position:absolute; right:2%; top:50%; transform:translateY(-50%); } — AI right", "#trick { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:200px; height:200px; } — center cross", "Sort human hand: hand.sort((a,b) => suitOrder[a.s] - suitOrder[b.s] || rankOrder[a.r] - rankOrder[b.r]);"]
+    },
+    {
+      "id": "cg-012",
+      "rule": "Playing cards MUST be readable at all times. Always use a WHITE card face with BLACK text for spades/clubs and RED text for hearts/diamonds. Never render cards with a dark background. Card faces must stay white even in dark-mode themes. Use `background:#fff; color:#000;` on .card and override color:#c0392b (or similar red) for .hearts/.diamonds.",
+      "why": "Hearts mini-app rendered played cards with a black/dark background making the rank and suit unreadable. Users could not tell what cards were in the trick. Dark-mode CSS was incorrectly applied to the card face instead of just the table background.",
+      "severity": "critical",
+      "appliesTo": "card-games",
+      "examples": ["GOOD: .card { background:#fff; color:#000; } .card.hearts, .card.diamonds { color:#c0392b; }", "BAD: .card { background:var(--card-bg); } where --card-bg flips dark in dark mode", "BAD: @media (prefers-color-scheme:dark) { .card { background:#1a1a1a; color:#eee; } }", "Card back: use a dark pattern background, but FRONT must be white always"]
+    },
+    {
+      "id": "cg-013",
+      "rule": "Sort the human player's hand by SUIT first, then by RANK within each suit, using alternating-color suit order: clubs (black), diamonds (red), spades (black), hearts (red). This puts same-color suits apart so the eye can easily spot cards. Always sort AFTER receiving cards and AFTER every play.",
+      "why": "Unsorted hands are painful — the user has to scan every card to find what they want to play. Trick-taking games like Hearts and Bridge REQUIRE suit-grouped sorting so the player can see voids and plan the trick.",
+      "severity": "important",
+      "appliesTo": "card-games",
+      "examples": ["const suitOrder = {'♣':0, '♦':1, '♠':2, '♥':3};", "const rankOrder = {'2':0,'3':1,'4':2,'5':3,'6':4,'7':5,'8':6,'9':7,'10':8,'J':9,'Q':10,'K':11,'A':12};", "hand.sort((a,b) => suitOrder[a.suit]-suitOrder[b.suit] || rankOrder[a.rank]-rankOrder[b.rank]);", "For Hearts specifically: always use the alternating-color order above"]
+    }
+  ,
+    {
+      "id": "cg-014",
+      "rule": "Cribbage pegging phase MUST support a Go button path: when a player CANNOT play a card without exceeding 31, they click a 'Go' (pass) button — NOT a silent auto-skip. The LAST PLAYER TO LAY A CARD before everyone passes or someone hits exactly 31 scores 1 point (for 'Go') or 2 (for exactly 31), then the running count resets to 0 and play continues from that player's opponent using the REMAINING cards in each hand. Score 2 for reaching exactly 15 or 31, 2 for a pair, 6 for three-of-a-kind, 12 for four-of-a-kind, and 1 per card for a run of 3+ in any order. The running count and each score event must be shown in real time. Pegging continues until BOTH hands are fully played out (each player played all 4 cards).",
+      "why": "Every Cribbage generation so far has shipped one of two bugs: (a) no visible Go button, so when the player can't legally play, the game appears stuck; (b) Go awarded to 'the opponent', which is backwards — Go goes to the LAST PLAYER who laid a card. Also: implementations often reset on 31 but don't continue to play out the remaining cards, ending a round with players still holding cards.",
+      "severity": "critical",
+      "appliesTo": "card-games",
+      "examples": [
+        "UI: show a 'Go' button that enables ONLY when player has cards but none can be played under 31",
+        "Logic: if playerGoSaid && cpuGoSaid → lastPlayerToLay gets 1 point, runningCount=0, pegging continues with lastPlayerToLay's opponent",
+        "Exactly 31: player who laid the card reaching 31 gets 2 points, runningCount=0, continue with remaining cards",
+        "Continue until BOTH hands empty — don't stop after the first reset",
+        "After a reset: clear or visually fade the played-cards display for that sub-round; the NEW sub-round starts with an empty play area",
+        "Last-card bonus: if the final card of the hand is laid without exceeding 31 (but isn't exactly 31), that player gets 1 point for 'last card'"
+      ]
+    },
+    {
+      "id": "cg-015",
+      "rule": "Cribbage hand scoring MUST count ALL scoring combinations: fifteens (any subset summing to 15 = 2 pts each), pairs/pairs-royal/double-pairs-royal, runs of 3/4/5, flushes (4+ in hand, 5 with starter for crib), nobs (J matching starter suit = 1 pt). Use the starter card (cut card) for all hand counts. The crib is scored by the dealer only.",
+      "why": "Hand scoring in cribbage is combinatorially complex — a hand of 5-5-5-J with a 5 starter scores 29 points (maximum). Implementations that only count pairs and simple fifteens will score most hands wrong.",
+      "severity": "critical",
+      "appliesTo": "card-games",
+      "examples": [
+        "Enumerate ALL subsets of 5 cards (hand + starter) for fifteen counting",
+        "Runs: find longest run first; a double run (3-4-4-5) scores as two runs of 3 = 6 pts",
+        "Flush: 4 cards same suit in hand = 4 pts (NOT crib); 5 including starter = 5 pts",
+        "Nobs: J in hand matching starter's suit = 1 pt; Nibs/his-heels = dealer scores 2 if cut card is J",
+        "Always show the breakdown: 'Two fifteens: 4, Pair: 2, Run of 3: 3 = 9 points'"
+      ]
+    },
+    {
+      "id": "cg-016",
+      "rule": "Cribbage board MUST use a warm wood/brown aesthetic — brown background (e.g. #6b4423, #8b5a2b gradient), dark-wood track lanes, and pegs rendered as small circles in two CONTRASTING colors (e.g. one yellow/gold, one red). The board is the classic 120-hole two-track layout grouped in fives (gap every 5 holes so you can count at a glance). Each player has two pegs: FRONT peg = current score, BACK peg = previous score; scoring a point LEAPFROGS the back peg to (front position + points_scored). Win at 121. Show the numeric score alongside the board.",
+      "why": "Earlier generations rendered the peg board on a dark-blue/gray background with uniform-colored peg dots — looked like a generic progress bar, not a cribbage board. The wood brown + 5-hole groupings + leapfrog pegs are what make it READ as cribbage to the player.",
+      "severity": "important",
+      "appliesTo": "card-games",
+      "examples": [
+        "background: linear-gradient(135deg, #8b5a2b, #6b4423); (warm wood tones)",
+        "Track: two parallel rows of 60 holes, rendered as dark brown recessed dots; gap every 5 holes",
+        "Player 1 pegs: #f1c40f (gold); Player 2 pegs: #c0392b (red). No yellow-on-yellow peg/background.",
+        "Front/back pegs visually distinct (front = solid, back = slightly smaller or lighter)",
+        "Text labels: 'YOU 47' and 'CPU 43' near the board",
+        "Animate peg leapfrog: back peg jumps forward to (front + delta) in a smooth 300ms transition"
+      ]
+    },
+    {
+      "id": "cg-017",
+      "rule": "Each Cribbage round MUST prominently display WHOSE crib it is this round. The dealer alternates every round. The crib always belongs to the current dealer. Use a visible label like 'Your crib' or 'CPU's crib' somewhere persistent (header, near the score, or under the crib pile).",
+      "why": "User confirmed feedback: 'Is this my crib or the computers crib this round?' — they couldn't tell. Without this indicator, the player doesn't know whose counting comes last, can't strategize their discards correctly (throw trash to opponent's crib, throw helpers to your own), and feels confused throughout the hand.",
+      "severity": "critical",
+      "appliesTo": "card-games",
+      "examples": [
+        "Header shows 'Round 3 — CPU's crib' or 'Round 4 — Your crib'",
+        "Crib card pile has a small tag above it: 'YOUR CRIB' (gold) or 'CPU CRIB' (red)",
+        "Tooltip on the crib pile: 'The dealer counts the crib last. This round: You are dealer.'",
+        "At round start, briefly animate a 'Dealer: YOU' badge near the score",
+        "Discard phase instruction text names the crib owner explicitly: 'Pick 2 to discard to CPU's crib' or 'to your crib'"
+      ]
+    },
+    {
+      "id": "cg-018",
+      "rule": "Cribbage MUST use consistent terminology across UI strings AND code: ROUND = one complete deal-play-count cycle (ends when both hands + crib are counted). HAND = the 4 cards held by a player (the 'show' count source). PEGGING PLAY = the sub-phase of alternating card plays up to 31. 31-RUN (or 'run to 31') = one sub-sequence of the pegging play that ends on a Go or exactly 31. THE SHOW = the end-of-round counting phase. CRIB = dealer's bonus 4-card hand counted last. GO = pass when you can't play under 31. PEG = a point scored. Do NOT use 'hand' to mean 'round' in UI strings.",
+      "why": "When the LLM conflates 'hand' and 'round' and 'play', the UI says 'Play your hand' when it means 'play ONE card of your hand', 'End of hand' when it means 'end of round', etc. Users get confused and the auto-fix agent's instructions become ambiguous. Pinning the vocabulary gives every downstream rule a shared glossary.",
+      "severity": "important",
+      "appliesTo": "card-games",
+      "examples": [
+        "Status: 'Round 3 of ~6 — Pegging play — Running count: 23'",
+        "Buttons: 'Play card', 'Go' (NOT 'Pass hand')",
+        "End-of-round modal: 'Round 3 show: Your hand 8 · CPU hand 6 · Your crib 4'",
+        "Instruction: 'Select 2 cards from your hand to discard to the crib' (NOT 'discard from your round')",
+        "Internally in code: `currentRound`, `pegHistory`, `playerHand`, `crib`, `starterCard` — one term per concept"
+      ]
+    },
+    {
+      "id": "cg-019",
+      "rule": "During the pegging play, ALL cards played since the last reset (31 or go) MUST stay visibly face-up in a dedicated 'play area' row until that 31-run ends. When the run resets, slide the played cards into a 'previous tricks' zone (or fade them) and start a fresh play area. The current running total goes next to the play area, not alone.",
+      "why": "User feedback: 'Can't see the cards played in a given round to 31' — the existing Cribbage generation hid played cards behind card backs immediately after the play animation, so the player couldn't reason about what had been played. In real cribbage you can see every card in the current play sequence. Hiding them defeats the strategic decision of what to play next.",
+      "severity": "critical",
+      "appliesTo": "card-games",
+      "examples": [
+        "Play area row with face-up cards in play order: [5♥] [8♠] [3♦] [Total: 16]",
+        "On 31 or Go: fade these cards to 30% opacity or slide them out to a 'past plays' stack, then clear for the next sub-run",
+        "Running total rendered RIGHT NEXT to the play area: 'Count: 16 / 31'",
+        "Each played card should show WHO played it (small colored border: gold for player, red for CPU)",
+        "Do NOT flip played cards back to card-back immediately — they stay face-up until reset"
+      ]
     }
   ]
 }
+
