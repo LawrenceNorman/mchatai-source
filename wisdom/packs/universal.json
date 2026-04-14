@@ -63,6 +63,19 @@
       "examples": ["Use renderCard('A', '♠') for card faces, not plain text", "Use the .chip CSS classes for chip displays", "Use the felt gradient CSS for the table background"]
     },
     {
+      "id": "u-009",
+      "rule": "When a framework scaffold is injected, copy its `swift-tools-version` comment and `platforms: [...]` line VERBATIM. Do NOT upgrade `// swift-tools-version:5.9` to `6.0`. Do NOT upgrade `.macOS(.v13)` to `.v14`, `.v15`, or `.v16`. Same rule for Node `engines`, Rust `edition`, Android `compileSdk` — use the scaffold's value.",
+      "why": "Toolchain/platform upgrades activate features (Swift 6 strict concurrency, newer SDK APIs) that break scaffold code written for the pinned target. Scaffolds are tested at their pinned targets — changing them is guaranteed to break. Observed 2026-04-14: LLMs repeatedly upgraded `.macOS(.v13)` to `.v15`, which triggered Swift 6 concurrency errors (`'self' used in property access before stored properties initialized`, `'shared' not concurrency-safe`, `onKeyPress` API mismatch) — all of which are not errors at the scaffold's pinned target.",
+      "severity": "critical",
+      "appliesTo": "all",
+      "examples": [
+        "If scaffold first line is `// swift-tools-version:5.9`, your output's first line must be the same — not `// swift-tools-version: 6.0`",
+        "If scaffold has `platforms: [.macOS(.v13)]`, keep `.v13` — do not upgrade to `.v14`, `.v15`, `.v16`",
+        "If Cargo.toml has `edition = \"2021\"`, keep `2021` — do not bump to `2024`",
+        "If package.json has `\"engines\": { \"node\": \">=18\" }`, keep `>=18` — do not bump"
+      ]
+    },
+    {
       "id": "u-008",
       "rule": "When a framework scaffold is injected ('## Framework Scaffold:' section), the scaffold's package manifest (Package.swift / package.json / Cargo.toml / build.gradle) is CANONICAL. Count the dependencies and copy ALL of them with EXACT URLs, version strings, and platform target. Do not drop packages. Do not bump versions. Do not change platform.",
       "why": "LLMs under pressure do two bad things: (1) invent non-existent versions (AudioKit 5.10.0 / 5.12.0 when latest is 5.7.2) — causing 'no versions match the requirement' errors; (2) drop 'less obvious' packages while keeping the one whose name matches the framework (keeping AudioKit but dropping AudioKitUI + SoundpipeAudioKit) — causing 'cannot find type X in scope' errors because those types live in the dropped packages. Both fail the build and waste auto-fix cycles.",
