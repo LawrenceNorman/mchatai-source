@@ -1,0 +1,87 @@
+{
+  "$schema": "https://mchatai.com/schemas/artifact-types-v1.json",
+  "version": "1.0.0",
+  "last_updated": "2026-04-14",
+  "artifact_types": {
+    "miniApp": {
+      "id": "miniApp",
+      "display_name": "Mini App",
+      "icon_sf_symbol": "sparkles",
+      "fence_marker": "```miniapp",
+      "tunnel_id_field": "miniAppID",
+      "steering_hint": "Output the COMPLETE mini-app in a ```miniapp JSON block with id, name, manifest, and html.",
+      "prereq_env_profile": null,
+      "description": "Single-page HTML/JS/CSS app rendered in a webview. Default for games, tools, interactive UI."
+    },
+    "macOSApp": {
+      "id": "macOSApp",
+      "display_name": "macOS App",
+      "icon_sf_symbol": "macwindow",
+      "fence_marker": "```macosapp",
+      "tunnel_id_field": "miniAppID",
+      "steering_hint": "Output the COMPLETE app in a ```macosapp JSON block with id, name, template, and files.",
+      "prereq_env_profile": "app.native.macos",
+      "description": "Native Swift macOS app (Package.swift project, compiled locally via mChatAIShell playground)."
+    },
+    "unityGame": {
+      "id": "unityGame",
+      "display_name": "Unity Game",
+      "icon_sf_symbol": "gamecontroller.fill",
+      "fence_marker": "```unitygame",
+      "tunnel_id_field": "unityGameID",
+      "steering_hint": "Output the COMPLETE Unity game in a ```unitygame JSON block with id, name, genre (arcade/platformer/topDown/puzzle/card/shooter), unityVersion, and files (Assets/Scripts/SceneSetup.cs plus gameplay scripts). Include a SceneSetup.cs bootstrapper that creates all scene objects from code (no .unity file). No prefab dependencies.",
+      "prereq_env_profile": "app.native.unity",
+      "description": "Unity 6 LTS C# game project. No on-our-side compile — user opens files in Unity Hub."
+    },
+    "pythonMicroservice": {
+      "id": "pythonMicroservice",
+      "display_name": "Python Microservice",
+      "icon_sf_symbol": "server.rack",
+      "fence_marker": "```pythonservice",
+      "tunnel_id_field": "pythonServiceID",
+      "steering_hint": "Output the COMPLETE Python microservice in a ```pythonservice JSON block with id, name, framework (fastapi/flask/django), pythonVersion, and files. Include a main.py entry point, requirements.txt with pinned versions, and a Dockerfile. No cloud-specific config — the service should run locally with `pip install -r requirements.txt && python main.py`.",
+      "prereq_env_profile": "service.python",
+      "description": "Python web microservice (FastAPI/Flask/Django). Delivered as files dict; user runs locally or deploys via their own Docker/Cloud Run pipeline."
+    },
+    "reactNativeApp": {
+      "id": "reactNativeApp",
+      "display_name": "React Native App",
+      "icon_sf_symbol": "iphone",
+      "fence_marker": "```reactnative",
+      "tunnel_id_field": "reactNativeID",
+      "steering_hint": "Output the COMPLETE React Native app in a ```reactnative JSON block with id, name, expoVersion, and files (App.js, package.json, app.json). Self-contained — should run via `npx expo start`.",
+      "prereq_env_profile": "app.native.reactnative",
+      "description": "React Native / Expo mobile app. Cross-platform iOS + Android."
+    },
+    "electronApp": {
+      "id": "electronApp",
+      "display_name": "Electron App",
+      "icon_sf_symbol": "desktopcomputer",
+      "fence_marker": "```electronapp",
+      "tunnel_id_field": "electronAppID",
+      "steering_hint": "Output the COMPLETE Electron app in a ```electronapp JSON block with id, name, electronVersion, and files (main.js, renderer.html, package.json). Should run via `npm install && npm start`.",
+      "prereq_env_profile": "app.native.electron",
+      "description": "Electron desktop app. Cross-platform Windows/macOS/Linux."
+    },
+    "androidApp": {
+      "id": "androidApp",
+      "display_name": "Android App",
+      "icon_sf_symbol": "phone.bubble",
+      "fence_marker": "```androidapp",
+      "tunnel_id_field": "androidAppID",
+      "steering_hint": "Output the COMPLETE Android app in a ```androidapp JSON block with id, name, minSdk, targetSdk, language (kotlin), and files (MainActivity.kt, build.gradle, AndroidManifest.xml). Should build via `./gradlew assembleDebug`.",
+      "prereq_env_profile": "app.native.android",
+      "description": "Native Android app (Kotlin + Jetpack Compose). Built locally via gradle."
+    },
+    "webSPA": {
+      "id": "webSPA",
+      "display_name": "Web SPA",
+      "icon_sf_symbol": "globe",
+      "fence_marker": "```webspa",
+      "tunnel_id_field": "webSpaID",
+      "steering_hint": "Output the COMPLETE web SPA in a ```webspa JSON block with id, name, framework (react/vue/svelte), and files (index.html, main.js, package.json). Should build via `npm install && npm run build`.",
+      "prereq_env_profile": "app.web",
+      "description": "Web single-page application (React/Vue/Svelte). More structured than a miniApp — multi-file build pipeline."
+    }
+  }
+}
