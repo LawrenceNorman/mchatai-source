@@ -64,14 +64,16 @@
     },
     {
       "id": "u-008",
-      "rule": "When a framework scaffold is injected (section starting '## Framework Scaffold:'), the scaffold's Package.swift / package.json / Cargo.toml / build.gradle is CANONICAL. Copy dependency URLs and versions VERBATIM. Do not bump or guess newer versions — the scaffold versions are vetted against real package registries.",
-      "why": "LLMs under pressure hallucinate non-existent versions (e.g., AudioKit 5.10.0 / 5.12.0 when actual latest is 5.7.2). This causes SPM/npm/cargo resolution failures and wastes build cycles. The scaffold's versions were verified to resolve and compile.",
+      "rule": "When a framework scaffold is injected ('## Framework Scaffold:' section), the scaffold's package manifest (Package.swift / package.json / Cargo.toml / build.gradle) is CANONICAL. Count the dependencies and copy ALL of them with EXACT URLs, version strings, and platform target. Do not drop packages. Do not bump versions. Do not change platform.",
+      "why": "LLMs under pressure do two bad things: (1) invent non-existent versions (AudioKit 5.10.0 / 5.12.0 when latest is 5.7.2) — causing 'no versions match the requirement' errors; (2) drop 'less obvious' packages while keeping the one whose name matches the framework (keeping AudioKit but dropping AudioKitUI + SoundpipeAudioKit) — causing 'cannot find type X in scope' errors because those types live in the dropped packages. Both fail the build and waste auto-fix cycles.",
       "severity": "critical",
       "appliesTo": "all",
       "examples": [
-        "If scaffold shows 'from: \"5.6.0\"' for AudioKit, copy '5.6.0' exactly — do not write '5.10.0' or '^5.0.0'",
-        "If scaffold lists AudioKitUI + SoundpipeAudioKit as dependencies, include BOTH in your Package.swift — do not drop any (they provide types like KeyboardView, MIDINoteNumber, Reverb that the scaffold code references)",
-        "If scaffold declares platforms: [.macOS(.v13)], match .v13 exactly — not .v15 or .v12"
+        "If the scaffold has 3 .package() entries, your output must have 3 .package() entries — do not consolidate, do not omit, do not substitute",
+        "If the scaffold has 3 .product() on the target dependencies, your output must have 3 .product() — they are all imported by scaffold code",
+        "If scaffold shows 'from: \"5.6.0\"', copy '5.6.0' exactly. Do NOT write '5.10.0', '^5.0.0', or bump the minor version",
+        "If scaffold declares platforms: [.macOS(.v13)], match .v13 exactly — not .v12, .v14, or .v15",
+        "Before emitting Package.swift, RECOUNT: did I keep all .package() entries? All .product() entries? Did I copy versions byte-for-byte?"
       ]
     }
   ]
