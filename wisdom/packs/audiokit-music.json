@@ -2,8 +2,8 @@
   "$schema": "https://mchatai.com/schemas/wisdom-pack-v1.json",
   "packID": "audiokit-music",
   "name": "AudioKit Music App Wisdom",
-  "version": "1.0.0",
-  "lastUpdated": "2026-04-13",
+  "version": "1.1.0",
+  "lastUpdated": "2026-04-15",
   "scaffold": "frameworks/macos/audiokit-midi-synth",
   "description": "Rules for generating macOS audio/music/MIDI apps with AudioKit. Captured from successful QAFlywheel runs against the audiokit-midi-synth scaffold.",
   "appliesWhen": [
@@ -16,7 +16,7 @@
       "id": "ak-000-package-swift-verbatim",
       "title": "AudioKit Package.swift MUST contain ALL THREE scaffold dependencies",
       "applies_when": "Generating Package.swift for any macOSApp that uses AudioKit",
-      "guidance": "The scaffold injected above has EXACTLY 3 .package() entries and 3 .product() entries. Your generated Package.swift MUST have the same 3 of each — do NOT drop any. The three packages provide DIFFERENT types, and the scaffold code references all of them. Type-to-package mapping: (a) AudioKit package → AudioEngine, Mixer, Settings, MIDINoteNumber, AmplitudeEnvelope. (b) AudioKitUI package → FFTView, NodeOutputView, and related visualization types. (c) SoundpipeAudioKit package → DynamicOscillator, Oscillator, CostelloReverb, Reverb, Delay, Distortion, FMOscillator, FMOscillatorBank, OscillatorBank, PluckedString, and most concrete DSP nodes. If your code uses ANY of those Soundpipe types (which the scaffold does), you MUST keep SoundpipeAudioKit in the dependencies — dropping it is the #1 reason AudioKit builds fail with 'cannot find type X in scope'. Versions: copy from: \"5.6.0\" / \"0.3.0\" / \"5.6.0\" byte-for-byte — DO NOT use 5.10.0 / 5.12.0 / 6.0.0 / ^5.0.0 (those don't exist). Platform: platforms: [.macOS(.v14)] — do NOT write .v12, .v13, .v15, or .v16. The scaffold code uses @Observable which requires macOS 14+.",
+      "guidance": "The scaffold injected above has EXACTLY 3 .package() entries and 3 .product() entries. Your generated Package.swift MUST have the same 3 of each \u2014 do NOT drop any. The three packages provide DIFFERENT types, and the scaffold code references all of them. Type-to-package mapping: (a) AudioKit package \u2192 AudioEngine, Mixer, Settings, MIDINoteNumber, AmplitudeEnvelope. (b) AudioKitUI package \u2192 FFTView, NodeOutputView, and related visualization types. (c) SoundpipeAudioKit package \u2192 DynamicOscillator, Oscillator, CostelloReverb, Reverb, Delay, Distortion, FMOscillator, FMOscillatorBank, OscillatorBank, PluckedString, and most concrete DSP nodes. If your code uses ANY of those Soundpipe types (which the scaffold does), you MUST keep SoundpipeAudioKit in the dependencies \u2014 dropping it is the #1 reason AudioKit builds fail with 'cannot find type X in scope'. Versions: copy from: \"5.6.0\" / \"0.3.0\" / \"5.6.0\" byte-for-byte \u2014 DO NOT use 5.10.0 / 5.12.0 / 6.0.0 / ^5.0.0 (those don't exist). Platform: platforms: [.macOS(.v14)] \u2014 do NOT write .v12, .v13, .v15, or .v16. The scaffold code uses @Observable which requires macOS 14+.",
       "example": "// REQUIRED Package.swift pattern for AudioKit scaffolds:\nlet package = Package(\n    name: \"MyApp\",\n    platforms: [.macOS(.v14)],\n    dependencies: [\n        .package(url: \"https://github.com/AudioKit/AudioKit.git\", from: \"5.6.0\"),\n        .package(url: \"https://github.com/AudioKit/AudioKitUI.git\", from: \"0.3.0\"),\n        .package(url: \"https://github.com/AudioKit/SoundpipeAudioKit.git\", from: \"5.6.0\")\n    ],\n    targets: [\n        .executableTarget(\n            name: \"MyApp\",\n            dependencies: [\n                .product(name: \"AudioKit\", package: \"AudioKit\"),\n                .product(name: \"AudioKitUI\", package: \"AudioKitUI\"),\n                .product(name: \"SoundpipeAudioKit\", package: \"SoundpipeAudioKit\")\n            ]\n        )\n    ]\n)",
       "severity": "blocking",
       "learnedFrom": "2026-04-13 AudioKit canary runs v4-v8: generator repeatedly (a) invented 5.10.0/5.12.0 versions that don't exist, (b) dropped AudioKitUI + SoundpipeAudioKit packages while using OscillatorBank/CostelloReverb/KeyboardView types that LIVE in those packages. Each auto-fix cycle re-produced the same missing-type errors because the LLM kept matching 'AudioKit = one package.' Needs explicit type-to-package mapping to break that pattern."
@@ -25,10 +25,10 @@
       "id": "ak-000b-preserve-scaffold-filenames",
       "title": "Preserve the scaffold's exact Swift filenames and class names",
       "applies_when": "Generating or auto-fixing an AudioKit macOS app based on the scaffold",
-      "guidance": "The scaffold ships with specific filenames (SynthConductor.swift, ContentView.swift, AudioKitMIDISynthApp.swift) and class names (SynthConductor, SimplePianoKeyboard). Do NOT rename these to 'AudioEngineManager.swift', 'SynthEngine.swift', 'AudioManager.swift' etc. — the scaffold's tests and the auto-fix re-injection both reference the original names. Renaming breaks subsequent auto-fix cycles because the reinjected scaffold no longer matches your output's file structure. Extend by ADDING files (e.g., 'SequencerGridView.swift' for a sequencer add-on), not by renaming existing ones.",
+      "guidance": "The scaffold ships with specific filenames (SynthConductor.swift, ContentView.swift, AudioKitMIDISynthApp.swift) and class names (SynthConductor, SimplePianoKeyboard). Do NOT rename these to 'AudioEngineManager.swift', 'SynthEngine.swift', 'AudioManager.swift' etc. \u2014 the scaffold's tests and the auto-fix re-injection both reference the original names. Renaming breaks subsequent auto-fix cycles because the reinjected scaffold no longer matches your output's file structure. Extend by ADDING files (e.g., 'SequencerGridView.swift' for a sequencer add-on), not by renaming existing ones.",
       "example": "Keep: Sources/AudioKitMIDISynth/SynthConductor.swift (class SynthConductor). Add: Sources/AudioKitMIDISynth/SequencerGridView.swift (new file for a sequencer grid).",
       "severity": "blocking",
-      "learnedFrom": "2026-04-14 canary v12 where generator renamed SynthConductor.swift → AudioEngineManager.swift → SynthEngine.swift across 5 auto-fix cycles, each re-introducing compile errors because the scaffold reinjection kept bringing back the original names."
+      "learnedFrom": "2026-04-14 canary v12 where generator renamed SynthConductor.swift \u2192 AudioEngineManager.swift \u2192 SynthEngine.swift across 5 auto-fix cycles, each re-introducing compile errors because the scaffold reinjection kept bringing back the original names."
     },
     {
       "id": "ak-001-conductor-pattern",
@@ -58,7 +58,7 @@
       "id": "ak-004-velocity-mapping",
       "title": "Map MIDI velocity (0-127) to amplitude (0.0-1.0) explicitly",
       "applies_when": "Triggering notes from MIDI or keyboard",
-      "guidance": "DynamicOscillator.amplitude expects 0.0–1.0. MIDI velocity is 0–127. Always divide: oscillator.amplitude = AUValue(velocity) / 127.0. Don't pass raw velocity.",
+      "guidance": "DynamicOscillator.amplitude expects 0.0\u20131.0. MIDI velocity is 0\u2013127. Always divide: oscillator.amplitude = AUValue(velocity) / 127.0. Don't pass raw velocity.",
       "example": "oscillator.amplitude = AUValue(velocity) / 127.0",
       "severity": "high"
     },
@@ -74,16 +74,43 @@
       "id": "ak-006-graph-before-start",
       "title": "Connect all nodes before engine.start()",
       "applies_when": "Building effects chains or multi-track mixers",
-      "guidance": "AudioKit can't reconnect graph nodes while running. Connect oscillator → envelope → effects → mixer → engine.output before calling engine.start(). To swap nodes later, stop, reconnect, restart.",
+      "guidance": "AudioKit can't reconnect graph nodes while running. Connect oscillator \u2192 envelope \u2192 effects \u2192 mixer \u2192 engine.output before calling engine.start(). To swap nodes later, stop, reconnect, restart.",
       "severity": "high"
     },
     {
       "id": "ak-007-availability",
       "title": "AudioKit types need @available(macOS 12.0, *) or higher",
       "applies_when": "Wrapping AudioKit types in custom classes",
-      "guidance": "Don't slap @available(macOS 26.0, *) on AudioKit-using types — keep at 12.0. Reserve 26.0 only for app-level SwiftUI types using the latest APIs.",
+      "guidance": "Don't slap @available(macOS 26.0, *) on AudioKit-using types \u2014 keep at 12.0. Reserve 26.0 only for app-level SwiftUI types using the latest APIs.",
       "severity": "medium"
+    },
+    {
+      "id": "ak-008-target-path-matches-filenames",
+      "title": "Package.swift target `path:` MUST point to the directory where Swift files actually live",
+      "applies_when": "Generating or auto-fixing Package.swift for an AudioKit macOSApp",
+      "guidance": "If your target uses `path: \"Sources/MyTarget\"`, then ALL of the target's .swift files MUST be inside `Sources/MyTarget/`. Do NOT mix: do not put App.swift, ContentView.swift, etc. directly under Sources/ and ALSO declare `path: \"Sources/MyTarget\"` \u2014 Swift Package Manager will fail with `invalid custom path 'Sources/MyTarget' for target 'MyTarget'` because the path is empty or doesn't contain matching .swift files. Two valid layouts: (A) Convention: omit `path:` entirely AND put files under `Sources/{TargetName}/*.swift`. (B) Custom: include `path: \"Sources/MyTarget\"` AND put files under `Sources/MyTarget/*.swift`. Pick ONE \u2014 never mix the two for the same target. The scaffold uses layout B with `path: \"Sources/AudioKitMIDISynth\"` so every file must be under that subdirectory.",
+      "example": "// CORRECT (layout B):\n// Package.swift: .executableTarget(name: \"AudioKitMIDISynth\", path: \"Sources/AudioKitMIDISynth\")\n// Files:\n//   Sources/AudioKitMIDISynth/AudioKitMIDISynthApp.swift\n//   Sources/AudioKitMIDISynth/ContentView.swift\n//   Sources/AudioKitMIDISynth/SynthConductor.swift\n\n// WRONG (mixed):\n// Package.swift: .executableTarget(name: \"AudioKitMIDISynth\", path: \"Sources/AudioKitMIDISynth\")\n// Files:\n//   Sources/AudioKitMIDISynth/App.swift  \u2190 under custom path: OK\n//   Sources/ContentView.swift            \u2190 stranded! NOT under custom path \u2192 SPM error",
+      "severity": "blocking",
+      "learnedFrom": "2026-04-15 audiokit synth canary qa-synth-hq6: generator emitted a Package.swift with `path: \"Sources/AudioKitMIDISynth\"` but ALSO put ContentView.swift + AudioKitSynthApp.swift directly at Sources/. Build failed with: `error: 'pg-...': invalid custom path 'Sources/AudioKitMIDISynth' for target 'AudioKitMIDISynth'`. Auto-fix could not recover because each cycle reproduced the same layout."
+    },
+    {
+      "id": "ak-009-no-arrow-operator",
+      "title": "AudioKit 5.x removed the `>>>` connection operator \u2014 use explicit node init instead",
+      "applies_when": "Connecting AudioKit nodes (oscillator \u2192 effect \u2192 output)",
+      "guidance": "AudioKit 5.x and later does NOT define the `>>>` operator. Code like `engine.output = osc >>> reverb` will FAIL with `cannot find operator '>>>' in scope`. To wire an effect onto a source, pass the source as the first argument to the effect's initializer: `let chain = Reverb(osc)`. To chain multiple effects: `let delay = Delay(reverb)`. To mix multiple sources: `let mixer = Mixer(osc1, osc2); let reverb = Reverb(mixer)`. Then `engine.output = chain`. The `>>>` operator existed in AudioKit 4.x and earlier and gets memorized by LLMs from old tutorials \u2014 it's gone now.",
+      "example": "// CORRECT (AudioKit 5.x):\nlet osc = DynamicOscillator()\nlet reverb = Reverb(osc)            // \u2190 effect wraps source\nlet delay = Delay(reverb)           // \u2190 chain by wrapping\nengine.output = delay\n\n// Multiple sources via Mixer:\nlet mixer = Mixer(osc1, osc2)\nlet reverb = Reverb(mixer)\nengine.output = reverb\n\n// WRONG (AudioKit 4.x syntax \u2014 removed):\nengine.output = osc >>> reverb >>> delay   // cannot find operator '>>>' in scope",
+      "severity": "blocking",
+      "learnedFrom": "2026-04-15 audiokit synth canary qa-synth-hq6: ContentView.swift line 27 used `engine.output = osc >>> reverb`. Build failed: `cannot find operator '>>>' in scope`. Five auto-fix cycles all reproduced the same error because the LLM kept treating `>>>` as canonical AudioKit syntax (memorized from old AudioKit 4.x docs)."
+    },
+    {
+      "id": "ak-010-reverb-init-signature",
+      "title": "Reverb initializer takes the SOURCE node \u2014 not zero args",
+      "applies_when": "Creating a Reverb, Delay, Distortion, or other AudioKit effect node",
+      "guidance": "AudioKit effect nodes (Reverb, Delay, Distortion, Compressor, etc.) require a source node as their first init parameter. Calling `Reverb()` with no arguments will FAIL with `missing argument for parameter #1 in call`. Always wire the source: `Reverb(osc)`. The Apple `AVAudioUnitReverb` (different framework) is what takes no args \u2014 don't confuse the two.",
+      "example": "// CORRECT:\nlet osc = DynamicOscillator()\nlet reverb = Reverb(osc)\nreverb.dryWetMix = 0.5\nengine.output = reverb\n\n// WRONG:\nlet reverb = Reverb()              // missing argument for parameter #1\nreverb.input = osc                 // not how AudioKit works",
+      "severity": "blocking",
+      "learnedFrom": "2026-04-15 audiokit synth canary qa-synth-hq6: ContentView.swift line 22 had `let reverb = Reverb()`. Build failed: `missing argument for parameter #1 in call`. Companion error to ak-009 \u2014 together they cover the most common AudioKit 5.x signal-chain pitfalls."
     }
   ],
-  "_seedingPlan": "Initial 7 rules from manual scaffold authoring. Additional rules get appended automatically by QAFlywheel runs against this scaffold and its derivatives (V2 synth, V3 MIDI controller, V4 sequencer, etc. — see AUDIOKIT_MUSIC_APP_ARCHITECTURE.md)."
+  "_seedingPlan": "Initial 7 rules from manual scaffold authoring. Additional rules get appended automatically by QAFlywheel runs against this scaffold and its derivatives (V2 synth, V3 MIDI controller, V4 sequencer, etc. \u2014 see AUDIOKIT_MUSIC_APP_ARCHITECTURE.md)."
 }
