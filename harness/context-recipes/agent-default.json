@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "surface": "agent:default",
+  "description": "Default context recipe for autonomous AI agents (multi-turn agent runs). Lighter again than wizard recipes — agents typically have their own system prompt + skill catalog already injected, so the harness layer just adds user goal + recent history.",
+  "layers": [
+    {
+      "id": "user-goal",
+      "loader": "user-goal",
+      "priority": 60,
+      "maxTokens": 800
+    },
+    {
+      "id": "history-recent",
+      "loader": "history-recent",
+      "priority": 50,
+      "maxTokens": 2000,
+      "options": {
+        "limit": 8,
+        "includeAssistant": true
+      }
+    }
+  ]
+}
