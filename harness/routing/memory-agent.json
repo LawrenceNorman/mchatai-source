@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "description": "Phase MA — MemoryRetrievalAgent ladder. Runs on the small-model / cheap tier before every main LLM turn in a HarnessSession. Latency-biased (≤400ms budget); must never block the main turn.",
+  "qualityBias": "lowestLatency",
+  "ladders": {
+    "memory-retrieval": [
+      { "backend": "apple-foundation-models",    "condition": "always",                "reason": "On-device Apple Intelligence — zero cost, zero latency, offline-safe" },
+      { "backend": "ollama:qwen3:4b",            "condition": "always",                "reason": "Local Ollama small model — private, zero token cost" },
+      { "backend": "api:openai:gpt-4o-mini",     "condition": "credentials.openai",    "reason": "Fast + cheap cloud fallback" },
+      { "backend": "api:google:gemini-1.5-flash","condition": "credentials.google",    "reason": "Fast + cheap cloud fallback" },
+      { "backend": "api:anthropic:claude-haiku-4-5", "condition": "credentials.anthropic", "reason": "Fast + cheap cloud fallback" }
+    ]
+  }
+}
