@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "description": "Code generation ladder — Swift, JS/TS, Python, Kotlin, C#, HTML/CSS. CLI-first because coding CLIs (Claude Code / Codex / Gemini CLI) have richer tool-use harnesses than raw API models.",
+  "qualityBias": "bestQuality",
+  "ladders": {
+    "coding-task": [
+      { "backend": "claude-cli",   "condition": "cli.available",         "reason": "Claude Code — local-first, no token cost, full tool-use harness" },
+      { "backend": "codex-cli",    "condition": "cli.available",         "reason": "OpenAI Codex CLI — comparable harness when Claude Code unavailable" },
+      { "backend": "gemini-cli",   "condition": "cli.available",         "reason": "Gemini CLI — fallback coding harness" },
+      { "backend": "api:anthropic","condition": "credentials.anthropic", "reason": "Anthropic API — cloud coder when no CLI is installed" },
+      { "backend": "api:openai",   "condition": "credentials.openai",    "reason": "OpenAI API fallback" },
+      { "backend": "api:google",   "condition": "credentials.google",    "reason": "Google API fallback" },
+      { "backend": "api:openrouter","condition": "credentials.openrouter","reason": "OpenRouter last-resort cloud fallback" }
+    ]
+  }
+}

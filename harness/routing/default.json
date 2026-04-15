@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "description": "Fallback ladder for general non-coding tasks (research, summarization, explanation, planning prose).",
+  "qualityBias": "bestQuality",
+  "ladders": {
+    "default": [
+      { "backend": "api:anthropic", "condition": "credentials.anthropic", "reason": "Claude is the quality leader on general reasoning" },
+      { "backend": "api:openai",    "condition": "credentials.openai",    "reason": "OpenAI fallback when Claude is unavailable or failing" },
+      { "backend": "api:google",    "condition": "credentials.google",    "reason": "Google fallback" },
+      { "backend": "api:openrouter","condition": "credentials.openrouter","reason": "Aggregator as last-resort cloud fallback" },
+      { "backend": "ollama:qwen3:32b", "condition": "always",             "reason": "Local Ollama as offline last resort" }
+    ]
+  }
+}
