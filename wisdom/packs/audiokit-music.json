@@ -2,7 +2,7 @@
   "$schema": "https://mchatai.com/schemas/wisdom-pack-v1.json",
   "packID": "audiokit-music",
   "name": "AudioKit Music App Wisdom",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "lastUpdated": "2026-04-15",
   "scaffold": "frameworks/macos/audiokit-midi-synth",
   "description": "Rules for generating macOS audio/music/MIDI apps with AudioKit. Captured from successful QAFlywheel runs against the audiokit-midi-synth scaffold.",
@@ -29,6 +29,15 @@
       "example": "Keep: Sources/AudioKitMIDISynth/SynthConductor.swift (class SynthConductor). Add: Sources/AudioKitMIDISynth/SequencerGridView.swift (new file for a sequencer grid).",
       "severity": "blocking",
       "learnedFrom": "2026-04-14 canary v12 where generator renamed SynthConductor.swift \u2192 AudioEngineManager.swift \u2192 SynthEngine.swift across 5 auto-fix cycles, each re-introducing compile errors because the scaffold reinjection kept bringing back the original names."
+    },
+    {
+      "id": "ak-011-no-ak-prefix",
+      "title": "AudioKit 5.x removed the `AK` class prefix \u2014 types are `Oscillator`, `Reverb`, `Table`, NOT `AKOscillator`, `AKReverb`, `AKTable`",
+      "applies_when": "Using any AudioKit type (oscillators, effects, tables, nodes, sequencers)",
+      "guidance": "AudioKit 5.0 (released 2020) dropped the `AK` prefix from every public type. Code like `AKOscillator`, `AKTable(.sawtooth)`, `AKReverb()`, `AKAmplitudeEnvelope`, `AKMixer` etc. will ALL fail with `cannot find 'AKXxx' in scope` against AudioKit 5.6+. The tutorials, Stack Overflow answers, and older docs that LLMs memorize are pre-5.0 and use the prefix \u2014 your fresh code MUST NOT. Strip the prefix from EVERY AudioKit type you reference: AKOscillator \u2192 Oscillator; AKTable \u2192 Table; AKReverb \u2192 Reverb; AKMixer \u2192 Mixer; AKAmplitudeEnvelope \u2192 AmplitudeEnvelope; AKEngine \u2192 AudioEngine (this one also renamed); AKSequencer \u2192 AppleSequencer; etc. Check each import site and each type reference. A single missed `AK` prefix breaks the whole file's type checking.",
+      "example": "// CORRECT (AudioKit 5.x):\nimport AudioKit\nimport SoundpipeAudioKit\n\nlet osc = DynamicOscillator()\nlet table = Table(.sawtooth)\nlet oscWithTable = Oscillator(waveform: Table(.sawtooth))\nlet reverb = Reverb(osc)\nlet mixer = Mixer(osc1, osc2)\nlet engine = AudioEngine()  // NOT AKEngine\n\n// WRONG (AudioKit 4.x \u2014 removed):\nlet osc = AKOscillator(waveform: AKTable(.sawtooth))  // cannot find 'AKOscillator' in scope\nlet reverb = AKReverb()                                 // cannot find 'AKReverb' in scope\nlet engine = AKEngine()                                 // cannot find 'AKEngine' in scope",
+      "severity": "blocking",
+      "learnedFrom": "2026-04-15 audiokit synth canary qa-synth-hq7b: ContentView.swift used AKOscillator/AKTable/AKReverb throughout. 6 'cannot find X in scope' errors blocked the entire file. Auto-fix couldn't recover because it treated the errors as individual typos rather than a systemic AudioKit-version mismatch. Companion to ak-009 (no >>> operator) and ak-010 (Reverb needs source arg) \u2014 together these three rules cover every API mistake an LLM will make going from 4.x docs to 5.x compile."
     },
     {
       "id": "ak-001-conductor-pattern",
