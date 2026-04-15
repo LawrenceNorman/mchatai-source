@@ -17,8 +17,42 @@ harness/
 │   ├── default.json           # fallback ladder — general non-coding tasks
 │   ├── coding-task.json       # Swift / JS / Python / Kotlin / etc. code generation
 │   └── memory-agent.json      # Proactive Memory Agent (Phase MA) — small-model tier
-└── context-recipes/           # (populated in Phase HX.2)
+├── context-recipes/
+│   ├── aiwizard-macos-app.json
+│   ├── aiwizard-miniapp.json
+│   ├── agent-default.json
+│   └── pipeline-llm-step.json
+└── providers/                 # Phase HX.3.b — per-model Gearshift backends
+    ├── anthropic.json         # Claude Opus 4.6 / Sonnet 4.6 / Haiku 4.5
+    ├── openai.json            # o3 / GPT-4.1 / GPT-4o / o4-mini / o3-mini / mini variants
+    ├── google.json            # Gemini 2.5 Pro / 2.5 Flash / 2.0 Flash / Flash Lite
+    └── perplexity.json        # Sonar Reasoning Pro / Sonar Pro / Sonar Reasoning / Sonar
 ```
+
+## Provider catalog (HX.3.b)
+
+Each `providers/<provider>.json` declares the models the Gearshift picker exposes
+for that provider. Adding a new model is a one-line PR; the picker re-reads the
+catalog after the next mchatai-source pull (or via the popover Refresh button).
+
+```json
+{
+  "version": 1,
+  "provider": "anthropic",
+  "displayName": "Anthropic",
+  "credentialKey": "anthropic",
+  "models": [
+    { "id": "claude-opus-4-6",   "displayName": "Claude Opus 4.6",   "costTier": "high"   },
+    { "id": "claude-sonnet-4-6", "displayName": "Claude Sonnet 4.6", "costTier": "medium" },
+    { "id": "claude-haiku-4-5-20251001", "displayName": "Claude Haiku 4.5", "costTier": "low" }
+  ]
+}
+```
+
+Cost tiers are `low | medium | high` (matches `ProviderConfigService.CostTier`).
+Local providers (Ollama) do NOT have a JSON file — their model list is enumerated
+live via `OllamaService.fetchInstalledModelNames()` so installed-but-not-pulled
+models reflect ground truth without a content PR.
 
 ## Loading order (mirrors wisdom + prompts)
 
