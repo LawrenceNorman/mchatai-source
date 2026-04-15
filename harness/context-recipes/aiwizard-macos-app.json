@@ -1,13 +1,23 @@
 {
-  "version": 1,
+  "version": 2,
   "surface": "aiwizard",
-  "description": "Default context recipe for AIWizard macOS-app generation. Loads in priority order: framework scaffold > universal wisdom > framework-specific wisdom > feature manifest > user goal > recent history. Each layer skips cleanly when its prerequisite isn't available.",
+  "description": "Default context recipe for AIWizard macOS-app generation. Loads in priority order: framework scaffold > active memory > universal wisdom > framework-specific wisdom > feature manifest > user goal > recent history. Each layer skips cleanly when its prerequisite isn't available. v2 adds active-memory layer (Phase MA.3) gated by .harnessProactiveMemory flag.",
   "layers": [
     {
       "id": "framework-scaffold",
       "loader": "framework-scaffold",
       "priority": 100,
       "maxTokens": 12000
+    },
+    {
+      "id": "active-memory",
+      "loader": "active-memory",
+      "priority": 95,
+      "maxTokens": 1500,
+      "options": {
+        "budgetChars": 6000,
+        "budgetMillis": 400
+      }
     },
     {
       "id": "wisdom-universal",
