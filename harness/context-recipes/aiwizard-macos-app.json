@@ -1,7 +1,7 @@
 {
-  "version": 2,
+  "version": 3,
   "surface": "aiwizard",
-  "description": "Default context recipe for AIWizard macOS-app generation. Loads in priority order: framework scaffold > active memory > universal wisdom > framework-specific wisdom > feature manifest > user goal > recent history. Each layer skips cleanly when its prerequisite isn't available. v2 adds active-memory layer (Phase MA.3) gated by .harnessProactiveMemory flag.",
+  "description": "Default context recipe for AIWizard macOS-app generation. Loads in priority order: framework scaffold > active memory > universal wisdom > framework-specific wisdom > feature manifest > user goal > recent history. Each layer skips cleanly when its prerequisite isn't available. v2 added active-memory layer (Phase MA.3). v3 adds excludeTitlePatterns to drop CCAA / AgentRuntime / ScheduledJob log spam from retrieval results — the FTS5 index includes 9000+ historical agent log entries that are noise for context injection.",
   "layers": [
     {
       "id": "framework-scaffold",
@@ -16,7 +16,12 @@
       "maxTokens": 1500,
       "options": {
         "budgetChars": 6000,
-        "budgetMillis": 400
+        "budgetMillis": 400,
+        "excludeTitlePatterns": [
+          "^\\[CCAA\\]",
+          "^\\[AgentRuntime_",
+          "^\\[ScheduledJob\\]"
+        ]
       }
     },
     {
