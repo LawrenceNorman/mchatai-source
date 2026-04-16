@@ -1,0 +1,50 @@
+{
+  "$schema": "https://mchatai.com/schemas/cli-invocation-v1.json",
+  "version": "1.0.0",
+  "last_updated": "2026-04-16",
+  "description": "Per-CLI-backend invocation policy for mChatAIShell dev sessions. Read by AIWizard before calling startDevSession + during session polling to drive autoApprove behavior. When a vendor changes flag names (e.g. Codex adds --sandbox false, Gemini adds --yolo), edit this file and refresh via the tunnel command — no Swift rebuild.",
+
+  "defaults": {
+    "startBody": {
+      "maxTurns": 15,
+      "autoApprove": true,
+      "skipPermissionsAfterApproval": true
+    },
+    "autoApprovePlan": true,
+    "approveAllOnPlan": true,
+    "autoApproveRecurringSteps": true,
+    "queuedBailAfterAttempts": 3,
+    "pollIntervalSeconds": 5,
+    "maxPollAttempts": 60,
+    "stalledWarnSeconds": 300
+  },
+
+  "backends": {
+    "claude": {
+      "displayName": "Claude Code CLI",
+      "startBody": {
+        "autoApprove": true,
+        "skipPermissionsAfterApproval": true
+      },
+      "notes": "Shell bridge currently ignores autoApprove in the POST body for Claude — use /approve-all on awaiting_approval. --dangerously-skip-permissions is the CLI-level flag; mChatAIShell controls whether it's added."
+    },
+    "codex": {
+      "displayName": "OpenAI Codex CLI",
+      "startBody": {
+        "autoApprove": true,
+        "skipPermissionsAfterApproval": true,
+        "sandbox": false
+      },
+      "notes": "Codex uses --sandbox false rather than a permissions flag. mChatAIShell maps `sandbox:false` in the body to the CLI arg."
+    },
+    "gemini": {
+      "displayName": "Gemini CLI",
+      "startBody": {
+        "autoApprove": true,
+        "skipPermissionsAfterApproval": true,
+        "yolo": true
+      },
+      "notes": "Gemini CLI has --yolo for auto-accept."
+    }
+  }
+}

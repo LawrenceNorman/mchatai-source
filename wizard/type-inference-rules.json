@@ -1,0 +1,69 @@
+{
+  "$schema": "https://mchatai.com/schemas/type-inference-rules-v1.json",
+  "version": "1.0.0",
+  "last_updated": "2026-04-16",
+  "description": "Keyword-driven rules for inferring AISolutionType from a user goal when the wizard session hasn't yet committed a type. Ordered top-down — first matching rule wins. Goal is lowercased before matching. Edit/add rules without a Swift rebuild; refresh via the refreshMchataisourceCache tunnel command.",
+
+  "rules": [
+    {
+      "id": "explicit-unity",
+      "targetType": "unityGame",
+      "matchAny": ["unity", "c# game", "unitygame"],
+      "notes": "Unambiguous explicit mentions"
+    },
+    {
+      "id": "explicit-macos",
+      "targetType": "macOSApp",
+      "matchAny": ["macos app", "mac app", "native app", "swiftui", "menu bar app", "menubar"]
+    },
+    {
+      "id": "explicit-pipeline",
+      "targetType": "pipeline",
+      "matchAny": ["pipeline", "automation recipe"]
+    },
+    {
+      "id": "explicit-microservice",
+      "targetType": "microservice",
+      "matchAny": ["microservice", "fastapi"]
+    },
+    {
+      "id": "explicit-widget",
+      "targetType": "widget",
+      "matchAny": ["widget"]
+    },
+    {
+      "id": "agent-build",
+      "targetType": "agent",
+      "matchAll": [["agent"], ["build", "create"]],
+      "notes": "Requires 'agent' AND one of build/create"
+    },
+    {
+      "id": "game-nouns",
+      "targetType": "miniApp",
+      "matchAny": [
+        "game", "blackjack", "checkers", "chess", "solitaire", "snake",
+        "tetris", "pong", "sudoku", "tictactoe", "tic tac toe", "minesweeper",
+        "roguelike", "puzzle", "arcade", "maze", "quiz"
+      ],
+      "notes": "Game object nouns → mini-app (our default game target)"
+    },
+    {
+      "id": "build-app",
+      "targetType": "miniApp",
+      "matchAll": [
+        ["build", "make", "create", "design", "implement"],
+        ["app", "mini-app", "mini app", "webapp", "web app", "site", "tool", "page", "dashboard"]
+      ],
+      "notes": "Build verb + app-ish noun → mini-app"
+    },
+    {
+      "id": "fix-bug",
+      "targetType": "miniApp",
+      "matchAll": [
+        ["fix", "repair"],
+        ["bug"]
+      ],
+      "notes": "Bug-report phrasing — targets mini-app by default in our flow. Tune per-project if needed."
+    }
+  ]
+}
