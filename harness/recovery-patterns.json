@@ -1,0 +1,50 @@
+{
+  "$schema": "https://mchatai.com/schemas/recovery-patterns-v1.json",
+  "version": "1.0.0",
+  "last_updated": "2026-04-16",
+  "description": "Per-artifact-type file-scan patterns used by CLIArtifactRecovery when a CLI dev session completes but parseResponse returns no fenced artifact. Each entry tells the recovery scanner which relative paths to check in the workDir and what content markers validate a hit. Add a new artifact type by appending an entry — no Swift rebuild needed.",
+
+  "types": {
+    "miniApp": {
+      "scanPaths": [
+        "index.html",
+        "public/index.html",
+        "dist/index.html",
+        "src/index.html",
+        "app.html"
+      ],
+      "contentMarkers": ["<html", "<script", "<body"],
+      "markerMatchMode": "any",
+      "minSizeBytes": 200,
+      "notes": "Mini-app = single-page HTML doc. Accept any file with common HTML markers."
+    },
+    "macOSApp": {
+      "findCommand": "find . -maxdepth 4 -type f \\( -name '*.swift' -o -name 'Package.swift' \\) | head -50",
+      "contentMarkers": ["struct", "class", "@main"],
+      "markerMatchMode": "any",
+      "templateInferenceMarkers": {
+        "menuBarApp": ["menubarextra", "nsstatusitem"],
+        "documentApp": ["documentgroup"],
+        "swiftuiApp": []
+      },
+      "defaultTemplate": "swiftuiApp",
+      "notes": "macOS Swift project. Find all .swift + Package.swift, validate with Swift symbol presence."
+    },
+    "unityGame": {
+      "findCommand": "find . -maxdepth 5 -type f -name '*.cs' | head -40",
+      "contentMarkers": [],
+      "markerMatchMode": "any",
+      "defaults": {
+        "genre": "arcade",
+        "unityVersion": "6 LTS"
+      },
+      "notes": "Unity C# files. No strict marker — any .cs file present counts."
+    },
+    "pythonMicroservice": {
+      "findCommand": "find . -maxdepth 3 -type f \\( -name '*.py' -o -name 'requirements.txt' -o -name 'Dockerfile' \\) | head -40",
+      "contentMarkers": ["def ", "import ", "@app", "fastapi"],
+      "markerMatchMode": "any",
+      "notes": "Python service. Requires at least one .py file + Python-shape content."
+    }
+  }
+}
