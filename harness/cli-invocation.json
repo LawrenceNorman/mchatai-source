@@ -30,6 +30,23 @@
     "description": "Shell bridge has a 2-session concurrency cap. 'look-before-leap' = show BackgroundCommandCenterView when pool is full; user decides to cancel stale, cancel all, or wait."
   },
 
+  "capabilityProbe": {
+    "probeOnLaunch": true,
+    "periodicIntervalSeconds": 14400,
+    "staleThresholdSeconds": 3600,
+    "neverProbedThresholdSeconds": 86400,
+    "awaitOnFirstSend": true,
+    "description": "Capability grid probe timing. probeOnLaunch: fire probeAll() in init. periodicIntervalSeconds: background re-probe interval (4 hours). staleThresholdSeconds: fire-and-forget background refresh in send() if older. neverProbedThresholdSeconds: AWAIT in send() if grid has never been populated (blocks until probe completes ~2s). awaitOnFirstSend: whether to block on probe in send() when grid is empty."
+  },
+
+  "assetGathering": {
+    "workDirSubdirectory": ".mchatai-assets",
+    "copyPackFiles": true,
+    "copyStarterCode": true,
+    "agentInstructionsTemplate": "asset-gathering-instructions",
+    "description": "Phase AQ.GATHER: copy matched asset pack JSON + starter code into workDir before CLI session. The CLI agent reads these files directly instead of parsing prompt-injected strings. agentInstructionsTemplate references a prompt template in mchatai-source/harness/prompts/."
+  },
+
   "backends": {
     "claude": {
       "displayName": "Claude Code CLI",
