@@ -1,0 +1,57 @@
+{
+  "packID": "visual-quality",
+  "version": 1,
+  "displayName": "Visual Quality Standards",
+  "description": "Rules ensuring generated games and apps have professional-quality visuals — no plain colored rectangles.",
+  "categories": ["all"],
+  "keywords": [],
+  "guidelines": [
+    {
+      "id": "vq-001",
+      "rule": "NEVER use plain colored rectangles (div with background-color only) for game entities like players, enemies, projectiles, or obstacles. Every entity must have a recognizable shape using SVG, CSS shapes (clip-path, border-radius, box-shadow), pixel-art grid rendering, or canvas drawing.",
+      "why": "Users rated Space Invaders with red rectangles as 'terrible' and refused to publish it. The game was functionally correct but visually unacceptable. Professional-quality sprites are the difference between shareable and shameful.",
+      "severity": "critical",
+      "appliesTo": "games",
+      "examples": [
+        "BAD: <div style='width:30px;height:20px;background:red'></div> for an alien",
+        "GOOD: renderSprite(ALIEN_1, {1:'#ff0040'}, 4) using pixel grid arrays",
+        "GOOD: <svg viewBox='0 0 40 30'><path d='M20,0 L40,30 L0,30 Z' fill='#ff0040'/></svg> for a triangle ship",
+        "GOOD: clip-path:polygon(50% 0, 100% 100%, 0 100%) for a simple ship shape"
+      ]
+    },
+    {
+      "id": "vq-002",
+      "rule": "Every game must have at least 3 visually distinct entity types. Enemies/aliens should look different from each other (different shapes, colors, or patterns). The player entity must be immediately recognizable and distinct from enemies.",
+      "why": "Games where all entities are the same colored box are boring and confusing. Visual variety is a core quality signal.",
+      "severity": "important",
+      "appliesTo": "games",
+      "examples": [
+        "Space Invaders: 3 alien types (squid, crab, octopus) + player ship + UFO — each a different shape and color",
+        "Breakout: colored bricks (gradient rows), distinct paddle, visible ball with trail"
+      ]
+    },
+    {
+      "id": "vq-003",
+      "rule": "Include visual feedback for game events: explosions for destroyed entities, screen shake or flash for impacts, particle effects or trails for movement. Use CSS animations (@keyframes) — they cost zero extra code complexity.",
+      "why": "Static games feel lifeless. Even simple CSS animations dramatically improve perceived quality.",
+      "severity": "important",
+      "appliesTo": "games",
+      "examples": [
+        "Explosion: @keyframes explode { 0%{transform:scale(1);opacity:1} 100%{transform:scale(2);opacity:0} }",
+        "Hit flash: @keyframes flash { 0%,100%{filter:brightness(1)} 50%{filter:brightness(3)} }",
+        "Bullet trail: box-shadow:0 0 4px #00ff41, 0 0 8px #00ff41"
+      ]
+    },
+    {
+      "id": "vq-004",
+      "rule": "Use the asset pack's renderSprite() function when available. If the arcade-retro asset pack is injected, use its pre-built sprite grids (ALIEN_1, ALIEN_2, ALIEN_3, PLAYER_SHIP, UFO_SHIP) rather than inventing new rectangle-based entities.",
+      "why": "The pre-built sprites are pixel-perfect and tested. LLMs that ignore injected asset packs and fall back to plain rectangles produce the worst visual quality.",
+      "severity": "critical",
+      "appliesTo": "games",
+      "examples": [
+        "const alienHTML = renderSprite(ALIEN_1, {1:'#ff0040'}, 4);",
+        "const playerHTML = renderSprite(PLAYER_SHIP, {1:'#00ff41'}, 4);"
+      ]
+    }
+  ]
+}
