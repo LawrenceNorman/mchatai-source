@@ -15,8 +15,19 @@
     "autoApproveRecurringSteps": true,
     "queuedBailAfterAttempts": 3,
     "pollIntervalSeconds": 5,
-    "maxPollAttempts": 60,
+    "maxPollAttempts": 240,
     "stalledWarnSeconds": 300
+  },
+
+  "concurrency": {
+    "cap": 2,
+    "onFullPolicy": "look-before-leap",
+    "staleThresholdPerPhaseSeconds": {
+      "awaiting_approval": 600,
+      "queued": 60,
+      "planning": 300
+    },
+    "description": "Shell bridge has a 2-session concurrency cap. 'look-before-leap' = show BackgroundCommandCenterView when pool is full; user decides to cancel stale, cancel all, or wait. Stale thresholds define which sessions are candidates for 'Cancel Stale'. Change cap here, not in Swift."
   },
 
   "backends": {
