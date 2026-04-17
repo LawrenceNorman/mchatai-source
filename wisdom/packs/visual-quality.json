@@ -52,6 +52,43 @@
         "const alienHTML = renderSprite(ALIEN_1, {1:'#ff0040'}, 4);",
         "const playerHTML = renderSprite(PLAYER_SHIP, {1:'#00ff41'}, 4);"
       ]
+    },
+    {
+      "id": "vq-005",
+      "rule": "All text must have sufficient contrast against its background. Toasts, tooltips, overlays, and status messages must use HIGH-CONTRAST color pairs: white text (#fff) on dark backgrounds (#000 to #333), or black text (#000) on light backgrounds (#fff to #eee). NEVER use dark gray text (#666 or darker) on gray backgrounds (#888 or lighter) — it's unreadable.",
+      "why": "User feedback 2026-04-17: Hearts card game had dark gray text on gray toast messages — unreadable. Contrast failures make the app unusable even when functionality is correct. WCAG AA requires 4.5:1 contrast ratio for normal text.",
+      "severity": "critical",
+      "appliesTo": "all",
+      "examples": [
+        "BAD: .toast { background: #888; color: #666; }  — both gray, unreadable",
+        "GOOD: .toast { background: #1e293b; color: #fff; }  — dark bg, white text",
+        "GOOD: .toast-success { background: #16a34a; color: #fff; }  — green with white",
+        "GOOD: .toast-error { background: #dc2626; color: #fff; }  — red with white",
+        "GOOD: .toast-warning { background: #f59e0b; color: #000; }  — amber with black"
+      ]
+    },
+    {
+      "id": "vq-006",
+      "rule": "Card game rank display must use full rank characters when space permits. Show '10' not 'T'. Ace is 'A', King is 'K', Queen is 'Q', Jack is 'J' — but 10 is '10', not 'T'. Only abbreviate to 'T' in extreme-narrow layouts (under 20px wide per card).",
+      "why": "User feedback 2026-04-17: Hearts game showed 'T' for 10, which users mistook for 'Trump' (wrong concept in Hearts) or couldn't parse. Standard card game conventions use '10' not 'T'.",
+      "severity": "important",
+      "appliesTo": "card-games",
+      "examples": [
+        "BAD: const RANKS = ['A','2','3','4','5','6','7','8','9','T','J','Q','K'];",
+        "GOOD: const RANKS = ['A','2','3','4','5','6','7','8','9','10','J','Q','K'];"
+      ]
+    },
+    {
+      "id": "vq-007",
+      "rule": "Turn-based games with CPU opponents MUST implement actual CPU turn logic. When it's a CPU player's turn, the game must: (1) detect it's their turn, (2) pick a legal move via AI (even if random), (3) execute the move after a short delay (300-800ms for UX feedback), (4) advance to the next turn. Games that say 'Waiting for [CPU name]' forever are broken.",
+      "why": "User feedback 2026-04-17: Hearts game got stuck on 'Waiting for West' — CPU opponents never played. This is the #2 most common bug in multi-player games after rule violations.",
+      "severity": "critical",
+      "appliesTo": "card-games",
+      "examples": [
+        "BAD: if (currentPlayer !== 'human') showMessage('Waiting for ' + currentPlayer);  // never advances",
+        "GOOD: if (currentPlayer !== 'human') { setTimeout(() => { cpuPlayTurn(currentPlayer); advanceTurn(); }, 500); }",
+        "GOOD: function cpuPlayTurn(player) { const legal = getLegalMoves(player); const choice = pickMove(legal); playCard(player, choice); }"
+      ]
     }
   ]
 }
