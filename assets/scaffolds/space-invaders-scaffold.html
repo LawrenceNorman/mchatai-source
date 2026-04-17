@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Space Invaders</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a0a;color:#00ff41;font-family:'Courier New',monospace;overflow:hidden;height:100vh;display:flex;flex-direction:column;align-items:center}
+.game-screen{position:relative;background:#000;border:3px solid #333;border-radius:8px;box-shadow:0 0 30px rgba(0,255,65,0.15);overflow:hidden}
+.game-screen::after{content:'';position:absolute;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.1) 2px,rgba(0,0,0,0.1) 4px);pointer-events:none;z-index:999}
+.hud{display:flex;justify-content:space-between;padding:8px 16px;background:rgba(0,0,0,0.8);border-bottom:2px solid #333;font-size:14px}
+.hud .label{color:#666;text-transform:uppercase;font-size:10px;letter-spacing:2px}
+.hud .value{color:#00ff41;font-size:20px;font-weight:bold}
+.neon{color:#00ff41;text-shadow:0 0 5px #00ff41,0 0 10px #00ff41,0 0 20px #00cc33}
+.game-over{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(0,0,0,0.85);z-index:100;display:none}
+.game-over h1{font-size:48px;color:#ff0040;text-shadow:0 0 20px #ff0040;animation:blink 1s infinite}
+.game-over .restart{margin-top:20px;padding:10px 30px;background:transparent;border:2px solid #00ff41;color:#00ff41;font-family:'Courier New',monospace;cursor:pointer;font-size:16px}
+.game-over .restart:hover{background:#00ff41;color:#000}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+@keyframes explode{0%{transform:scale(1);opacity:1}20%{transform:scale(1.3);filter:brightness(2)}100%{transform:scale(2);opacity:0}}
+.exploding{animation:explode 0.3s ease-out forwards;pointer-events:none}
+.bullet{width:3px;height:12px;background:#00ff41;box-shadow:0 0 4px #00ff41,0 0 8px #00ff41;border-radius:1px;position:absolute}
+.enemy-bullet{width:3px;height:12px;background:#ff0040;box-shadow:0 0 4px #ff0040;border-radius:1px;position:absolute}
+.shield{display:inline-grid;grid-template-columns:repeat(22,3px);grid-template-rows:repeat(16,3px);gap:0;position:absolute}
+.shield-block{width:3px;height:3px;background:#00ff41;transition:opacity 0.1s}
+.shield-block.destroyed{background:transparent}
+</style>
+</head><body>
+<script>
+// ═══════════════════════════════════════════════════════════════
+// PIXEL SPRITE RENDERER — DO NOT REMOVE OR REPLACE
+// Renders pixel art from grid arrays. Used for ALL game entities.
+// ═══════════════════════════════════════════════════════════════
+function renderSprite(g,c,s){s=s||4;var h=g.length,w=g[0].length,v='<svg viewBox="0 0 '+(w*s)+' '+(h*s)+'" xmlns="http://www.w3.org/2000/svg" style="display:block">';for(var y=0;y<h;y++)for(var x=0;x<w;x++){var cl=c[g[y][x]];if(cl)v+='<rect x="'+(x*s)+'" y="'+(y*s)+'" width="'+s+'" height="'+s+'" fill="'+cl+'"/>';}return v+'</svg>';}
+
+// ALIEN SPRITES — 3 distinct types
+const ALIEN_1=[[0,0,0,1,1,0,0,0],[0,0,1,1,1,1,0,0],[0,1,1,1,1,1,1,0],[1,1,0,1,1,0,1,1],[1,1,1,1,1,1,1,1],[0,0,1,0,0,1,0,0],[0,1,0,1,1,0,1,0],[1,0,1,0,0,1,0,1]];
+const ALIEN_2=[[0,0,1,0,0,0,0,0,1,0,0],[0,0,0,1,0,0,0,1,0,0,0],[0,0,1,1,1,1,1,1,1,0,0],[0,1,1,0,1,1,1,0,1,1,0],[1,1,1,1,1,1,1,1,1,1,1],[1,0,1,1,1,1,1,1,1,0,1],[1,0,1,0,0,0,0,0,1,0,1],[0,0,0,1,1,0,1,1,0,0,0]];
+const ALIEN_3=[[0,0,0,0,1,1,1,1,0,0,0,0],[0,1,1,1,1,1,1,1,1,1,1,0],[1,1,1,1,1,1,1,1,1,1,1,1],[1,1,1,0,0,1,1,0,0,1,1,1],[1,1,1,1,1,1,1,1,1,1,1,1],[0,0,0,1,1,0,0,1,1,0,0,0],[0,0,1,1,0,1,1,0,1,1,0,0],[1,1,0,0,0,0,0,0,0,0,1,1]];
+const PLAYER_SHIP=[[0,0,0,0,0,0,1,0,0,0,0,0,0],[0,0,0,0,0,1,1,1,0,0,0,0,0],[0,0,0,0,0,1,1,1,0,0,0,0,0],[0,1,1,1,1,1,1,1,1,1,1,1,0],[1,1,1,1,1,1,1,1,1,1,1,1,1],[1,1,1,1,1,1,1,1,1,1,1,1,1],[1,1,1,1,1,1,1,1,1,1,1,1,1],[1,1,1,1,1,1,1,1,1,1,1,1,1]];
+const UFO_SHIP=[[0,0,0,0,0,1,1,1,1,1,1,0,0,0,0,0],[0,0,0,1,1,1,1,1,1,1,1,1,1,0,0,0],[0,0,1,1,1,1,1,1,1,1,1,1,1,1,0,0],[0,1,1,0,1,1,0,1,1,0,1,1,0,1,1,0],[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],[0,0,1,1,1,0,0,1,1,0,0,1,1,1,0,0],[0,0,0,1,0,0,0,0,0,0,0,0,1,0,0,0]];
+
+// USAGE: element.innerHTML = renderSprite(ALIEN_1, {1:'#ff0040'}, 4);
+// Row 1 aliens: renderSprite(ALIEN_1, {1:'#ff0040'}, 4)  — red squid
+// Row 2 aliens: renderSprite(ALIEN_2, {1:'#00d4ff'}, 3)  — cyan crab
+// Row 3 aliens: renderSprite(ALIEN_3, {1:'#aa00ff'}, 3)  — purple octopus
+// Player:       renderSprite(PLAYER_SHIP, {1:'#00ff41'}, 3) — green ship
+// UFO:          renderSprite(UFO_SHIP, {1:'#ff6600'}, 3) — orange mystery ship
+
+// ═══════════════════════════════════════════════════════════════
+// YOUR GAME CODE BELOW — use renderSprite() for all entities
+// ═══════════════════════════════════════════════════════════════
+
+</script>
+</body></html>
