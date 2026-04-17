@@ -1,8 +1,8 @@
 {
   "$schema": "https://mchatai.com/schemas/cli-invocation-v1.json",
-  "version": "1.0.0",
-  "last_updated": "2026-04-16",
-  "description": "Per-CLI-backend invocation policy for mChatAIShell dev sessions. Read by AIWizard before calling startDevSession + during session polling to drive autoApprove behavior. When a vendor changes flag names (e.g. Codex adds --sandbox false, Gemini adds --yolo), edit this file and refresh via the tunnel command — no Swift rebuild.",
+  "version": "2.0.0",
+  "last_updated": "2026-04-17",
+  "description": "Per-CLI-backend invocation policy + optimization config for mChatAIShell dev sessions. Each CLI has unique capabilities (MCP, sub-agents, model selection, context management) — this file is the single source of truth for how we configure them.",
 
   "defaults": {
     "startBody": {
@@ -27,7 +27,7 @@
       "queued": 60,
       "planning": 300
     },
-    "description": "Shell bridge has a 2-session concurrency cap. 'look-before-leap' = show BackgroundCommandCenterView when pool is full; user decides to cancel stale, cancel all, or wait. Stale thresholds define which sessions are candidates for 'Cancel Stale'. Change cap here, not in Swift."
+    "description": "Shell bridge has a 2-session concurrency cap. 'look-before-leap' = show BackgroundCommandCenterView when pool is full; user decides to cancel stale, cancel all, or wait."
   },
 
   "backends": {
@@ -37,7 +37,30 @@
         "autoApprove": true,
         "skipPermissionsAfterApproval": true
       },
-      "notes": "Shell bridge currently ignores autoApprove in the POST body for Claude — use /approve-all on awaiting_approval. --dangerously-skip-permissions is the CLI-level flag; mChatAIShell controls whether it's added."
+      "optimization": {
+        "model": "opus",
+        "permissionMode": "bypassPermissions",
+        "effortLevel": "max",
+        "contextFiles": ["CLAUDE.md"],
+        "mcpServers": ["codegraphcontext"],
+        "capabilities": {
+          "subAgents": true,
+          "webSearch": true,
+          "fileAccess": true,
+          "worktree": true,
+          "promptCaching": true,
+          "sessionResume": true,
+          "addDir": true
+        },
+        "flags": {
+          "quality": ["--model", "opus"],
+          "speed": ["--model", "sonnet"],
+          "fullAuto": ["--dangerously-skip-permissions"],
+          "bigProject": ["--model", "opus"],
+          "research": ["--model", "opus"]
+        },
+        "notes": "Claude Code has the richest toolset: MCP servers, sub-agents via --agents, prompt caching (automatic for CLAUDE.md content), worktree isolation, /compact for context management. Use opus for quality-critical generation, sonnet for iterative fixes. --add-dir expands file access beyond cwd."
+      }
     },
     "codex": {
       "displayName": "OpenAI Codex CLI",
@@ -46,7 +69,31 @@
         "skipPermissionsAfterApproval": true,
         "sandbox": false
       },
-      "notes": "Codex uses --sandbox false rather than a permissions flag. mChatAIShell maps `sandbox:false` in the body to the CLI arg."
+      "optimization": {
+        "model": "gpt-5.4",
+        "reasoningEffort": "high",
+        "approvalPolicy": "never",
+        "contextFiles": [".codex/rules/"],
+        "capabilities": {
+          "subAgents": false,
+          "webSearch": true,
+          "fileAccess": true,
+          "worktree": false,
+          "promptCaching": false,
+          "sessionResume": false,
+          "addDir": true,
+          "mcpServer": true,
+          "cloudExec": true
+        },
+        "flags": {
+          "quality": ["--model", "gpt-5.4", "--model-reasoning-effort", "high"],
+          "speed": ["--model", "o4-mini"],
+          "fullAuto": ["--full-auto"],
+          "bigProject": ["--model", "o3", "--model-reasoning-effort", "high"],
+          "research": ["--search"]
+        },
+        "notes": "Codex's --search flag enables native web_search tool (great for API research). gpt-5.4 is current flagship. --sandbox workspace-write is the safe default. codex exec for non-interactive, codex review for code review. Can act as MCP server itself (codex mcp-server)."
+      }
     },
     "gemini": {
       "displayName": "Gemini CLI",
@@ -55,7 +102,59 @@
         "skipPermissionsAfterApproval": true,
         "yolo": true
       },
-      "notes": "Gemini CLI has --yolo for auto-accept."
+      "optimization": {
+        "model": "gemini-2.5-pro",
+        "contextFiles": ["GEMINI.md"],
+        "capabilities": {
+          "subAgents": false,
+          "webSearch": true,
+          "fileAccess": true,
+          "worktree": true,
+          "promptCaching": false,
+          "sessionResume": true,
+          "addDir": true,
+          "extensions": true,
+          "hooks": true,
+          "mcpServer": true
+        },
+        "flags": {
+          "quality": ["--model", "gemini-2.5-pro"],
+          "speed": ["--model", "gemini-2.5-flash"],
+          "fullAuto": ["--yolo"],
+          "bigProject": ["--model", "gemini-2.5-pro"],
+          "research": ["--model", "gemini-2.5-pro"]
+        },
+        "notes": "Gemini 2.5 Pro has 1M token context — largest of all three. Best for whole-codebase analysis or massive refactors. --yolo for full auto. GEMINI.md is the project context file (equivalent to CLAUDE.md). --include-directories expands scope. Extensions and hooks provide pre/post-action automation."
+      }
+    }
+  },
+
+  "taskProfiles": {
+    "description": "Which backend + flags to use for different task types. The routing ladder picks the first GREEN backend; these profiles tell it which optimization flags to apply.",
+    "codeGeneration": {
+      "preferredBackend": "claude",
+      "flagProfile": "quality",
+      "reason": "Claude Code opus with sub-agents produces the best first-pass code quality"
+    },
+    "iterativeFix": {
+      "preferredBackend": "claude",
+      "flagProfile": "speed",
+      "reason": "Sonnet is fast for targeted fixes where the context is already established"
+    },
+    "codebaseAnalysis": {
+      "preferredBackend": "gemini",
+      "flagProfile": "bigProject",
+      "reason": "Gemini 2.5 Pro's 1M context can ingest entire codebases in one shot"
+    },
+    "apiResearch": {
+      "preferredBackend": "codex",
+      "flagProfile": "research",
+      "reason": "Codex --search enables native web search for API docs and examples"
+    },
+    "refactor": {
+      "preferredBackend": "gemini",
+      "flagProfile": "bigProject",
+      "reason": "Large refactors benefit from Gemini's massive context window"
     }
   }
 }
