@@ -89,6 +89,19 @@
         "GOOD: if (currentPlayer !== 'human') { setTimeout(() => { cpuPlayTurn(currentPlayer); advanceTurn(); }, 500); }",
         "GOOD: function cpuPlayTurn(player) { const legal = getLegalMoves(player); const choice = pickMove(legal); playCard(player, choice); }"
       ]
+    },
+    {
+      "id": "vq-008",
+      "rule": "Playing cards MUST color suits correctly: Hearts (♥) and Diamonds (♦) are RED (#dc2626 or similar). Spades (♠) and Clubs (♣) are BLACK (#000 or #1a1a1a). NEVER render hearts or diamonds in black/gray. This is a 500-year-old card design convention — violating it makes the game look wrong instantly.",
+      "why": "User feedback 2026-04-17: Hearts card game showed all suits in black/gray. Players use color to quickly distinguish suits at a glance. Wrong colors make the game feel broken even when rules are correct.",
+      "severity": "critical",
+      "appliesTo": "card-games",
+      "examples": [
+        "BAD: <span class='suit'>♥</span> with no color → renders as default text color (often gray/black)",
+        "GOOD: const SUIT_COLORS = { '♥':'#dc2626', '♦':'#dc2626', '♠':'#000', '♣':'#000' };",
+        "GOOD: .card[data-suit='hearts'], .card[data-suit='diamonds'] { color: #dc2626; }",
+        "GOOD: <span style='color:#dc2626'>♥</span> for hearts, <span style='color:#000'>♠</span> for spades"
+      ]
     }
   ]
 }
