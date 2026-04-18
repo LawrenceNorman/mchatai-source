@@ -113,6 +113,12 @@ SYMBOL_KEYWORDS: List[Tuple[str, str]] = [
     ("lock", "lock"), ("key", "vpn_key"), ("shield", "shield"), ("security", "shield"),
     ("flag", "flag"), ("trophy", "emoji_events"), ("award", "emoji_events"),
     ("paint", "palette"), ("brush", "brush"), ("draw", "draw"), ("art", "palette"),
+    ("forge", "gavel"), ("forging", "gavel"), ("hammer", "gavel"), ("anvil", "gavel"),
+    ("magic", "auto_fix_high"), ("spell", "auto_fix_high"), ("wand", "auto_fix_high"),
+    ("space", "rocket_launch"), ("rocket", "rocket_launch"), ("astro", "rocket_launch"),
+    ("nature", "park"), ("forest", "park"),
+    ("retro", "videogame_asset"),  # 8-bit gamepad — distinct from sports_esports
+    ("hunt", "search"), ("find", "search"),
     ("circle", "circle"), ("square", "square"), ("triangle", "change_history"),
     ("eye", "visibility"),
     ("gift", "redeem"),
@@ -257,12 +263,22 @@ def _extract_text_overlay(prompt: str) -> Optional[Dict]:
 
 
 def _extract_symbol(prompt: str) -> Optional[str]:
-    """First keyword hit wins. Returns a Material Icons name or None."""
+    """Earliest match in the prompt wins (not iteration order).
+
+    Tie-break by longer keyword (more specific). This means in "word puzzle
+    game", "puzzle" beats "game" because it appears at character offset 5
+    vs offset 12.
+    """
     lower = prompt.lower()
+    best: Optional[Tuple[int, int, str]] = None  # (position, -length, material_name)
     for keyword, material_name in SYMBOL_KEYWORDS:
-        if re.search(rf"\b{re.escape(keyword)}\b", lower):
-            return material_name
-    return None
+        m = re.search(rf"\b{re.escape(keyword)}\b", lower)
+        if m is None:
+            continue
+        score = (m.start(), -len(keyword), material_name)
+        if best is None or score < best:
+            best = score
+    return best[2] if best else None
 
 
 def _extract_style_preset(prompt: str) -> Optional[str]:
@@ -367,5 +383,15 @@ def parse_to_request(prompt: str) -> Dict:
     preset = _extract_style_preset(prompt)
     if preset:
         request["style_preset"] = preset
+
+    # Final pass — apply wisdom rules (category defaults, low-contrast nudges,
+    # neon-on-neon guards, etc.). Wisdom never overrides values the user
+    # explicitly set; it only nudges weak or default choices.
+    try:
+        from wisdom import apply_prompt_shaping
+        request = apply_prompt_shaping(request, prompt)
+    except Exception:
+        # Wisdom is best-effort — a bad rule must never break the renderer.
+        pass
 
     return request
