@@ -1,0 +1,76 @@
+{
+  "version": 1,
+  "description": "Declarative rendering + prompt-shaping rules for Icon Maker. Edited as content — no Python rebuild needed. Loaded by wisdom.py at render time; explicit caller fields always win over wisdom suggestions.",
+
+  "compositional": [
+    {
+      "id": "c-001-outline-on-pale-bg",
+      "when": {"bg_luminance_gte": 0.88, "has_stroke": false},
+      "apply": {"extras.stroke": {"color": "#D1D5DB", "width": 2}},
+      "why": "Pale icons vanish on a white page. A soft 2px stroke gives a crisp edge without visual weight."
+    },
+    {
+      "id": "c-002-drop-shadow-on-light-bg",
+      "when": {"bg_luminance_gte": 0.80, "has_shadow": false},
+      "apply": {"extras.shadow": {"blur": 18, "dy": 6, "alpha": 0.18}},
+      "why": "Light-bg icons look pasted-on without a subtle drop shadow beneath the glyph."
+    },
+    {
+      "id": "c-003-glow-on-dark-bg",
+      "when": {"bg_luminance_lte": 0.15, "has_glow": false, "symbol_is_bright": true},
+      "apply": {"extras.glow": {"blur": 32, "alpha": 0.35, "follow_symbol_color": true}},
+      "why": "Bright glyph on near-black reads as flat. A soft glow in the symbol color makes it pop without looking neon."
+    },
+    {
+      "id": "c-004-contrast-flip",
+      "when": {"contrast_ratio_lt": 3.0},
+      "apply": {"flip_symbol_to_contrast": true},
+      "why": "If symbol:bg contrast is below WCAG AA Large, flip symbol to pure white (dark bg) or charcoal #111827 (light bg)."
+    },
+    {
+      "id": "c-005-shadow-boost-on-low-contrast-dark",
+      "when": {"bg_luminance_lte": 0.35, "contrast_ratio_gte": 3.0, "contrast_ratio_lt": 4.5, "has_shadow": false},
+      "apply": {"extras.shadow": {"blur": 12, "dy": 4, "alpha": 0.30}},
+      "why": "Medium-dark backgrounds sometimes land in a mushy contrast zone. A subtle shadow separates the glyph without a full contrast-flip."
+    }
+  ],
+
+  "prompt_shaping": [
+    {
+      "id": "p-001-low-contrast-gradient-nudge",
+      "when": {"gradient_delta_luminance_lt": 0.18},
+      "apply": {"darken_second_color_by": 0.35},
+      "why": "Two colors with near-identical luminance produce a muddy gradient. Darken the second stop so the glyph reads."
+    },
+    {
+      "id": "p-002-neon-on-neon-anchor",
+      "when": {"both_colors_saturated_and_bright": true},
+      "apply": {"swap_second_color": "#0F0F23"},
+      "why": "Two full-saturation colors clash (e.g. cyan + magenta both at 1.0). Anchor one to near-black so the neon has contrast."
+    },
+    {
+      "id": "p-003-category-default-style-game",
+      "when": {"no_style_preset": true, "prompt_matches": ["game", "puzzle", "arcade", "word game", "spell", "hunt"]},
+      "apply": {"style_preset": "gradient"},
+      "why": "Games should feel vibrant + playful by default, not flat or minimal."
+    },
+    {
+      "id": "p-004-category-default-style-utility",
+      "when": {"no_style_preset": true, "prompt_matches": ["timer", "calendar", "todo", "focus", "pomodoro", "flashcard", "wellness", "converter"]},
+      "apply": {"style_preset": "flat"},
+      "why": "Utility/productivity apps read better as clean flat tiles than gradients with glows."
+    },
+    {
+      "id": "p-005-symbol-color-contrast-fallback",
+      "when": {"symbol_color_matches_bg_approx": true},
+      "apply": {"symbol_color_fallback": "auto"},
+      "why": "If parser picked a symbol color near the background color, fall back to white (dark bg) or charcoal (light bg)."
+    },
+    {
+      "id": "p-006-dark-gradient-symbol-lift",
+      "when": {"bg_gradient_mean_luminance_lt": 0.25, "symbol_color_default": true},
+      "apply": {"symbol_color": "#FFFFFF"},
+      "why": "Dark gradients need a pure-white symbol, not #F5E6C8 or similar off-whites that muddy the contrast."
+    }
+  ]
+}

@@ -166,6 +166,12 @@ def _canonical_seed(req: ComposeRequest) -> int:
 @router.post("/compose", response_model=ComposeResponse)
 async def compose(req: ComposeRequest) -> ComposeResponse:
     normalized = _apply_style_preset(req)
+    try:
+        from wisdom import apply_compositional
+        normalized = apply_compositional(normalized, ComposeRequest())
+    except Exception:
+        # Wisdom is best-effort — never break the renderer over a bad rule.
+        pass
     _validate_sizes(normalized.sizes)
     _validate_workspace(normalized)
 
@@ -264,6 +270,11 @@ def _png_bytes_for(size: int, pngs: Dict[str, str], files: Dict[str, str]) -> by
 async def preview(req: PreviewRequest) -> PreviewResponse:
     compose_req = ComposeRequest.model_validate(req.model_dump(exclude={"preview_size"}))
     normalized = _apply_style_preset(compose_req)
+    try:
+        from wisdom import apply_compositional
+        normalized = apply_compositional(normalized, ComposeRequest())
+    except Exception:
+        pass
     resolved = resolve_symbol(normalized.symbol_id, normalized.symbol_set, _get_catalog())
     seed = _canonical_seed(normalized)
 
