@@ -19,6 +19,7 @@ from pydantic import BaseModel, Field
 
 from compositor import compose_icon, downsample, render_at_native_size
 from packaging import build_icns, build_appiconset_zip
+from prompt_parser import parse_to_request
 from styles import STYLE_PRESETS, list_style_names
 from symbols import MaterialSymbolCatalog, resolve_symbol
 from textures import list_texture_names
@@ -290,6 +291,46 @@ async def preview(req: PreviewRequest) -> PreviewResponse:
         width=img.width,
         height=img.height,
         meta={"symbol_resolved": resolved.dict() if resolved else None, "seed": seed},
+    )
+
+
+class FromPromptRequest(BaseModel):
+    prompt: str = Field(..., min_length=1, max_length=2000)
+    sizes: Optional[List[int]] = None
+    preview_only: bool = True   # if True, only render the largest size for fast preview
+
+
+class FromPromptResponse(BaseModel):
+    request: Dict             # the parsed ComposeRequest dict (so callers can populate editor controls)
+    pngs: Dict[str, str]      # base64 PNG per size
+    meta: Dict
+
+
+@router.post("/from_prompt", response_model=FromPromptResponse)
+async def from_prompt(req: FromPromptRequest) -> FromPromptResponse:
+    """Freeform prompt → structured ComposeRequest + rendered PNG(s).
+
+    Used by the macOS Icon Maker app's chat-prompt input: the user types
+    a description, we parse it deterministically (v1) into a ComposeRequest,
+    render, and return BOTH the request dict (so the editor controls can be
+    populated) AND the PNG bytes (so the preview shows immediately).
+    """
+    parsed = parse_to_request(req.prompt)
+    if req.sizes:
+        parsed["sizes"] = req.sizes
+    elif req.preview_only:
+        parsed["sizes"] = [1024]
+
+    compose_req = ComposeRequest.model_validate(parsed)
+    response = await compose(compose_req)
+
+    return FromPromptResponse(
+        request=parsed,
+        pngs=response.pngs,
+        meta={
+            **response.meta,
+            "parsed_from_prompt": req.prompt,
+        },
     )
 
 
