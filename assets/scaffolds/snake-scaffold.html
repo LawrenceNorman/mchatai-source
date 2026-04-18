@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Snake</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a0a;color:#00ff41;font-family:'Courier New',monospace;overflow:hidden;height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px}
+.hud{display:flex;justify-content:space-between;width:400px;padding:8px 16px;background:rgba(0,0,0,0.8);border:2px solid #333;border-radius:4px;font-size:14px}
+.hud .label{color:#666;text-transform:uppercase;font-size:10px;letter-spacing:2px}
+.hud .value{color:#00ff41;font-size:20px;font-weight:bold}
+canvas{background:#000;border:3px solid #333;border-radius:8px;box-shadow:0 0 30px rgba(0,255,65,0.15);image-rendering:pixelated}
+.controls{color:#888;font-size:12px;letter-spacing:1px}
+.game-over{position:fixed;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;background:rgba(0,0,0,0.85);z-index:100;gap:16px}
+.game-over.show{display:flex}
+.game-over h1{font-size:48px;color:#ff0040;text-shadow:0 0 20px #ff0040;animation:blink 1s infinite}
+.game-over .restart{padding:10px 30px;background:transparent;border:2px solid #00ff41;color:#00ff41;font-family:inherit;cursor:pointer;font-size:16px;letter-spacing:2px}
+.game-over .restart:hover{background:#00ff41;color:#000}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+</style>
+</head><body>
+<div class="hud">
+  <div><div class="label">Score</div><div class="value" id="score">0</div></div>
+  <div><div class="label">High</div><div class="value" id="high">0</div></div>
+</div>
+<canvas id="game" width="400" height="400"></canvas>
+<div class="controls">Arrow keys / WASD to move</div>
+<div class="game-over" id="gameOver">
+  <h1>GAME OVER</h1>
+  <div id="finalScore" style="color:#00ff41;font-size:18px"></div>
+  <button class="restart" onclick="restart()">PRESS SPACE TO RESTART</button>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+// SNAKE GAME — extend this scaffold with your variations.
+// Built-in: grid, snake body, food spawn, collision, scoring,
+// game over, high-score (localStorage), keyboard controls.
+// ═══════════════════════════════════════════════════════════════
+
+const ctx = document.getElementById('game').getContext('2d');
+const GRID = 20;        // 20x20 cells
+const CELL = 20;        // 20px per cell
+const COLORS = {
+  bg: '#000',
+  snakeHead: '#00ff41',
+  snakeBody: '#00cc33',
+  food: '#ff0040',
+  gridLine: 'rgba(0,255,65,0.05)'
+};
+
+let snake, dir, nextDir, food, score, high, alive, tick;
+high = parseInt(localStorage.getItem('snake_high') || '0');
+document.getElementById('high').textContent = high;
+
+function reset() {
+  snake = [{x:10,y:10},{x:9,y:10},{x:8,y:10}];
+  dir = {x:1,y:0};
+  nextDir = dir;
+  spawnFood();
+  score = 0;
+  alive = true;
+  document.getElementById('score').textContent = '0';
+  document.getElementById('gameOver').classList.remove('show');
+  if (tick) clearInterval(tick);
+  tick = setInterval(step, 100);
+}
+
+function spawnFood() {
+  while (true) {
+    const f = {x: Math.floor(Math.random()*GRID), y: Math.floor(Math.random()*GRID)};
+    if (!snake.some(s => s.x === f.x && s.y === f.y)) { food = f; return; }
+  }
+}
+
+function step() {
+  if (!alive) return;
+  dir = nextDir;
+  const head = {x: snake[0].x + dir.x, y: snake[0].y + dir.y};
+  // Wall collision
+  if (head.x < 0 || head.x >= GRID || head.y < 0 || head.y >= GRID) return die();
+  // Self collision
+  if (snake.some(s => s.x === head.x && s.y === head.y)) return die();
+  snake.unshift(head);
+  // Food
+  if (head.x === food.x && head.y === food.y) {
+    score++;
+    document.getElementById('score').textContent = score;
+    spawnFood();
+  } else {
+    snake.pop();
+  }
+  draw();
+}
+
+function draw() {
+  ctx.fillStyle = COLORS.bg;
+  ctx.fillRect(0, 0, 400, 400);
+  // Grid
+  ctx.strokeStyle = COLORS.gridLine;
+  ctx.lineWidth = 1;
+  for (let i = 0; i <= GRID; i++) {
+    ctx.beginPath(); ctx.moveTo(i*CELL, 0); ctx.lineTo(i*CELL, 400); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, i*CELL); ctx.lineTo(400, i*CELL); ctx.stroke();
+  }
+  // Snake
+  snake.forEach((s, i) => {
+    ctx.fillStyle = i === 0 ? COLORS.snakeHead : COLORS.snakeBody;
+    ctx.fillRect(s.x * CELL + 1, s.y * CELL + 1, CELL - 2, CELL - 2);
+  });
+  // Food
+  ctx.fillStyle = COLORS.food;
+  ctx.shadowColor = COLORS.food; ctx.shadowBlur = 8;
+  ctx.fillRect(food.x * CELL + 4, food.y * CELL + 4, CELL - 8, CELL - 8);
+  ctx.shadowBlur = 0;
+}
+
+function die() {
+  alive = false;
+  clearInterval(tick);
+  if (score > high) {
+    high = score;
+    localStorage.setItem('snake_high', high);
+    document.getElementById('high').textContent = high;
+  }
+  document.getElementById('finalScore').textContent = `Score: ${score}  •  High: ${high}`;
+  document.getElementById('gameOver').classList.add('show');
+}
+
+function restart() { reset(); }
+
+document.addEventListener('keydown', e => {
+  const k = e.key.toLowerCase();
+  if (['arrowup','arrowdown','arrowleft','arrowright',' '].includes(k)) e.preventDefault();
+  if (!alive && (k === ' ' || k === 'enter')) { restart(); return; }
+  if ((k === 'arrowup' || k === 'w') && dir.y === 0) nextDir = {x:0,y:-1};
+  if ((k === 'arrowdown' || k === 's') && dir.y === 0) nextDir = {x:0,y:1};
+  if ((k === 'arrowleft' || k === 'a') && dir.x === 0) nextDir = {x:-1,y:0};
+  if ((k === 'arrowright' || k === 'd') && dir.x === 0) nextDir = {x:1,y:0};
+});
+
+// ═══════════════════════════════════════════════════════════════
+// EXTEND BELOW: power-ups, levels, walls, multiple foods, etc.
+// ═══════════════════════════════════════════════════════════════
+
+reset();
+</script>
+</body></html>

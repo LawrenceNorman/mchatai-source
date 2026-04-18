@@ -21,12 +21,20 @@ You are a coding CLI (Claude Code / Codex / Gemini) running under the mChatAI Ha
 - `/Users/lawrencenorman/mystuff/src/mchatai_platform/mchatai-source/assets/scaffolds/space-invaders-scaffold.html` — complete HTML skeleton with renderSprite pre-loaded. **EXTEND this file** instead of building from scratch.
 - `/Users/lawrencenorman/mystuff/src/mchatai_platform/mchatai-source/wisdom/packs/arcade-games.json` — keyboard input, rAF loop, collision detection
 
-### Card games (Hearts, Spades, Poker, Blackjack, Cribbage, etc.)
-- `/Users/lawrencenorman/mystuff/src/mchatai_platform/mchatai-source/assets/packs/casino-card-game.json` — card rendering, suit symbols, felt backgrounds
-- **CRITICAL card-game rules** (from visual-quality.json):
-  - Card ranks must show `'10'`, NEVER `'T'` (users mistake 'T' for 'Trump')
-  - CPU opponents MUST have real turn logic — never get stuck on "Waiting for [CPU]"
-  - Implement: detect CPU's turn → pick legal move → execute after 300-800ms delay → advance
+### Snake-style games (Snake, Worm, etc.)
+- `/Users/lawrencenorman/mystuff/src/mchatai_platform/mchatai-source/assets/scaffolds/snake-scaffold.html` — complete Snake game with grid, food, collision, scoring, high-score, game-over. **EXTEND this file** — add power-ups, walls, multiple foods, etc.
+
+### Brick-breaker / paddle games (Breakout, Arkanoid, Pong)
+- `/Users/lawrencenorman/mystuff/src/mchatai_platform/mchatai-source/assets/scaffolds/breakout-scaffold.html` — paddle + ball physics + rainbow brick rows + lives + level progression. **EXTEND this file** with power-ups, special bricks, boss levels, etc.
+
+### Card games (Hearts, Spades, Bridge, Poker, Blackjack, Cribbage, etc.)
+- `/Users/lawrencenorman/mystuff/src/mchatai_platform/mchatai-source/assets/scaffolds/card-game-scaffold.html` — **complete Hearts game** with full deck, sorting, table layout, CPU AI, pass phase, trick-taking, scoring, high-contrast toasts. **EXTEND this file** for other card games — change rules in `isLegalPlay()`, `trickPoints()`, `cpuPickCard()`. The scaffold already complies with vq-005, vq-006, vq-007, vq-008.
+- `/Users/lawrencenorman/mystuff/src/mchatai_platform/mchatai-source/assets/packs/casino-card-game.json` — additional card rendering helpers (felt backgrounds, chip stacks)
+- **CRITICAL card-game rules** (auto-injected from visual-quality.json):
+  - vq-006: Card ranks must show `'10'`, NEVER `'T'`
+  - vq-007: CPU opponents MUST auto-play with `setTimeout(() => cpuPlayTurn(), 500)`
+  - vq-008: Hearts (♥) and Diamonds (♦) MUST be RED (#dc2626); Spades (♠) and Clubs (♣) BLACK
+  - vq-005: Toasts must be high-contrast — white on dark, never gray-on-gray
 
 ### Board games (Chess, Checkers, Backgammon, Go, etc.)
 - `/Users/lawrencenorman/mystuff/src/mchatai_platform/mchatai-source/assets/packs/board-game.json`
