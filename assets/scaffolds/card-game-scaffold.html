@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Card Game</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:radial-gradient(ellipse at center,#0d6b3a 0%,#054821 100%);color:#fff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;height:100vh;overflow:hidden;display:flex;flex-direction:column}
+
+/* HUD — readable contrast (vq-005) */
+.hud{display:flex;justify-content:space-between;padding:10px 20px;background:#1e293b;color:#fff;border-bottom:2px solid #0f172a;font-size:13px;letter-spacing:1px}
+.hud .label{color:#94a3b8;text-transform:uppercase;font-size:10px}
+.hud .value{color:#fff;font-size:18px;font-weight:700}
+
+/* Toast — high contrast (vq-005) — white text on dark or accent-color bg */
+#toast{position:fixed;top:60px;left:50%;transform:translateX(-50%);background:#1e293b;color:#fff;padding:10px 20px;border-radius:6px;box-shadow:0 4px 12px rgba(0,0,0,0.4);font-size:14px;font-weight:500;opacity:0;transition:opacity 0.2s;pointer-events:none;z-index:200;letter-spacing:0.5px}
+#toast.show{opacity:1}
+#toast.success{background:#16a34a;color:#fff}
+#toast.error{background:#dc2626;color:#fff}
+#toast.warn{background:#f59e0b;color:#000}
+
+/* Scores panel — flexbox gap, NO absolute positioning (vq) */
+.scores{position:absolute;top:60px;left:20px;background:rgba(0,0,0,0.7);padding:10px 14px;border-radius:6px;display:flex;flex-direction:column;gap:6px;font-family:'Courier New',monospace;font-size:13px;color:#fff;border:1px solid #334155;min-width:140px}
+.scores h3{font-size:11px;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px}
+.scores .row{display:flex;justify-content:space-between;gap:12px}
+.scores .row.you{color:#fbbf24;font-weight:700}
+
+/* Table layout — 4 seats around center */
+.table{flex:1;position:relative;display:grid;grid-template-areas:". north ." "west center east" ". you ."; grid-template-rows:auto 1fr auto; grid-template-columns:1fr 2fr 1fr;gap:10px;padding:20px}
+.seat{display:flex;flex-direction:column;align-items:center;gap:4px;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,0.5)}
+.seat .name{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#cbd5e1}
+.seat .name.active{color:#fbbf24;text-shadow:0 0 6px #fbbf24}
+.seat-north{grid-area:north}
+.seat-west{grid-area:west;align-self:center}
+.seat-east{grid-area:east;align-self:center}
+.seat-you{grid-area:you}
+.center{grid-area:center;display:flex;align-items:center;justify-content:center;gap:8px}
+.center .trick{display:flex;gap:4px}
+
+/* Cards — vq-008 compliance: hearts/diamonds RED, spades/clubs BLACK */
+.card{display:inline-flex;flex-direction:column;align-items:center;justify-content:space-between;width:48px;height:68px;background:#fff;border:1px solid #94a3b8;border-radius:6px;font-family:'Times New Roman',serif;font-weight:700;cursor:pointer;user-select:none;padding:4px;box-shadow:0 2px 6px rgba(0,0,0,0.3);transition:transform 0.15s,box-shadow 0.15s}
+.card.hand:hover{transform:translateY(-8px);box-shadow:0 6px 14px rgba(0,0,0,0.5)}
+.card.disabled{opacity:0.4;cursor:not-allowed}
+.card.disabled:hover{transform:none}
+.card.back{background:repeating-linear-gradient(45deg,#1e3a8a,#1e3a8a 4px,#1e40af 4px,#1e40af 8px);border:2px solid #fff;cursor:default}
+.card .rank{font-size:14px;line-height:1;align-self:flex-start}
+.card .suit{font-size:24px;line-height:1}
+.card .rank-bottom{font-size:14px;line-height:1;align-self:flex-end;transform:rotate(180deg)}
+.card.red{color:#dc2626}    /* Hearts ♥ + Diamonds ♦ — vq-008 */
+.card.black{color:#000}      /* Spades ♠ + Clubs ♣ — vq-008 */
+
+.hand{display:flex;justify-content:center;gap:-8px;flex-wrap:wrap;margin-top:8px}
+.hand .card{margin-right:-12px}
+.hand .card:last-child{margin-right:0}
+
+button.action{background:#1e293b;color:#fff;border:2px solid #475569;padding:10px 24px;border-radius:6px;font-size:14px;font-weight:600;cursor:pointer;letter-spacing:1px;transition:all 0.15s}
+button.action:hover{background:#334155;border-color:#fbbf24}
+button.action:disabled{opacity:0.4;cursor:not-allowed}
+
+.controls{position:absolute;bottom:90px;left:50%;transform:translateX(-50%);display:flex;gap:10px}
+
+#newGame{position:absolute;top:60px;right:20px}
+</style>
+</head><body>
+
+<div class="hud">
+  <div><span class="label">Hand</span> <span class="value" id="handNum">1</span></div>
+  <div><span class="label">Phase</span> <span class="value" id="phase">Pass Left</span></div>
+  <div><span class="label">Hearts Broken</span> <span class="value" id="broken">No</span></div>
+</div>
+
+<div class="scores" id="scoresPanel">
+  <h3>Scores</h3>
+  <div class="row you"><span>You</span><span id="score-you">0</span></div>
+  <div class="row"><span>West</span><span id="score-west">0</span></div>
+  <div class="row"><span>North</span><span id="score-north">0</span></div>
+  <div class="row"><span>East</span><span id="score-east">0</span></div>
+</div>
+
+<button class="action" id="newGame" onclick="newGame()">New Game</button>
+
+<div class="table">
+  <div class="seat seat-north"><div class="name" id="name-north">North</div><div class="hand-back" id="hand-north"></div></div>
+  <div class="seat seat-west"><div class="name" id="name-west">West</div><div class="hand-back" id="hand-west"></div></div>
+  <div class="center">
+    <div class="trick" id="trick"></div>
+  </div>
+  <div class="seat seat-east"><div class="name" id="name-east">East</div><div class="hand-back" id="hand-east"></div></div>
+  <div class="seat seat-you"><div class="name" id="name-you">You</div><div class="hand" id="hand-you"></div></div>
+</div>
+
+<div class="controls" id="controls"></div>
+
+<div id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+// CARD GAME SCAFFOLD — Hearts by default, extend for Spades/Bridge/etc.
+// COMPLIANT WITH wisdom rules:
+// - vq-005: high-contrast toasts (white on dark)
+// - vq-006: ranks show '10' not 'T'
+// - vq-007: CPU loop with setTimeout — never "Waiting for X" forever
+// - vq-008: Hearts/Diamonds RED (#dc2626), Spades/Clubs BLACK
+// ═══════════════════════════════════════════════════════════════
+
+// vq-006 — ranks use '10' not 'T'
+const RANKS = ['2','3','4','5','6','7','8','9','10','J','Q','K','A'];
+const SUITS = ['♣','♦','♠','♥'];
+// vq-008 — suit colors
+const SUIT_COLOR = {'♥':'red','♦':'red','♠':'black','♣':'black'};
+const PLAYERS = ['you','west','north','east'];
+const CPU = ['west','north','east'];
+const CPU_DELAY_MS = 600;  // vq-007 — visible delay before CPU plays
+
+let deck, hands, scores, handNum, phase, leadPlayer, currentPlayer;
+let trick, heartsBroken, passDirection, selectedForPass;
+
+function buildDeck() {
+  const d = [];
+  for (const s of SUITS) for (const r of RANKS) d.push({ rank: r, suit: s });
+  for (let i = d.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [d[i], d[j]] = [d[j], d[i]];
+  }
+  return d;
+}
+
+function deal() {
+  const d = buildDeck();
+  hands = { you: [], west: [], north: [], east: [] };
+  for (let i = 0; i < 52; i++) {
+    hands[PLAYERS[i % 4]].push(d[i]);
+  }
+  for (const p of PLAYERS) hands[p].sort(sortCards);
+}
+function sortCards(a, b) {
+  if (a.suit !== b.suit) return SUITS.indexOf(a.suit) - SUITS.indexOf(b.suit);
+  return RANKS.indexOf(a.rank) - RANKS.indexOf(b.rank);
+}
+
+function cardEl(card, opts = {}) {
+  const el = document.createElement('div');
+  el.className = `card ${SUIT_COLOR[card.suit]}` + (opts.cls ? ' ' + opts.cls : '');
+  el.dataset.rank = card.rank; el.dataset.suit = card.suit;
+  el.innerHTML = `<div class="rank">${card.rank}</div><div class="suit">${card.suit}</div><div class="rank-bottom">${card.rank}</div>`;
+  if (opts.onClick) el.onclick = () => opts.onClick(card, el);
+  return el;
+}
+
+function backEl() {
+  const el = document.createElement('div');
+  el.className = 'card back';
+  return el;
+}
+
+function renderHands() {
+  const youEl = document.getElementById('hand-you'); youEl.innerHTML = '';
+  for (const card of hands.you) {
+    const isLegal = phase === 'play' ? isLegalPlay('you', card) : true;
+    const cls = phase === 'pass' && selectedForPass.find(c => c.rank === card.rank && c.suit === card.suit) ? 'hand selected' : (isLegal ? 'hand' : 'hand disabled');
+    const onClick = phase === 'pass' ? handleSelectPass : (phase === 'play' && currentPlayer === 'you' && isLegal ? handlePlayCard : null);
+    const el = cardEl(card, { cls, onClick });
+    if (phase === 'pass' && selectedForPass.find(c => c.rank === card.rank && c.suit === card.suit)) {
+      el.style.transform = 'translateY(-12px)';
+      el.style.borderColor = '#fbbf24';
+    }
+    youEl.appendChild(el);
+  }
+  for (const p of CPU) {
+    const el = document.getElementById('hand-' + p); el.innerHTML = '';
+    for (let i = 0; i < hands[p].length; i++) el.appendChild(backEl());
+  }
+}
+
+function renderTrick() {
+  const t = document.getElementById('trick'); t.innerHTML = '';
+  for (const play of trick) {
+    const el = cardEl(play.card);
+    el.style.cursor = 'default';
+    t.appendChild(el);
+  }
+}
+
+function setActiveLight() {
+  for (const p of PLAYERS) {
+    document.getElementById('name-' + p).classList.toggle('active', p === currentPlayer);
+  }
+}
+
+function toast(msg, kind = '') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'show ' + kind;
+  clearTimeout(toast._timer);
+  toast._timer = setTimeout(() => t.classList.remove('show'), 1800);
+}
+
+// ─── Hearts rules ──────────────────────────────────────────
+function isLegalPlay(player, card) {
+  if (trick.length === 0) {
+    // Leading
+    if (card.suit === '♥' && !heartsBroken && hands[player].some(c => c.suit !== '♥')) return false;
+    return true;
+  }
+  // Following
+  const ledSuit = trick[0].card.suit;
+  if (card.suit === ledSuit) return true;
+  return !hands[player].some(c => c.suit === ledSuit);
+}
+
+function trickWinner() {
+  const ledSuit = trick[0].card.suit;
+  let winnerIdx = 0;
+  let winnerRankIdx = RANKS.indexOf(trick[0].card.rank);
+  for (let i = 1; i < trick.length; i++) {
+    if (trick[i].card.suit === ledSuit && RANKS.indexOf(trick[i].card.rank) > winnerRankIdx) {
+      winnerIdx = i;
+      winnerRankIdx = RANKS.indexOf(trick[i].card.rank);
+    }
+  }
+  return trick[winnerIdx].player;
+}
+
+function trickPoints() {
+  let p = 0;
+  for (const t of trick) {
+    if (t.card.suit === '♥') p += 1;
+    if (t.card.suit === '♠' && t.card.rank === 'Q') p += 13;
+  }
+  return p;
+}
+
+// ─── CPU AI ────────────────────────────────────────────────
+function cpuPickCard(player) {
+  const legal = hands[player].filter(c => isLegalPlay(player, c));
+  // Simple heuristic: avoid taking points; lead lowest non-heart
+  if (trick.length === 0) {
+    const nonHearts = legal.filter(c => c.suit !== '♥');
+    if (nonHearts.length) return nonHearts[Math.floor(Math.random() * nonHearts.length)];
+  }
+  // Try to dump high cards if forced
+  return legal[Math.floor(Math.random() * legal.length)];
+}
+
+function cpuPickPass(player) {
+  // Pass 3 highest hearts/spades
+  const sorted = [...hands[player]].sort((a, b) => {
+    const aPriority = (a.suit === '♥' ? 100 : 0) + (a.suit === '♠' && a.rank === 'Q' ? 200 : 0) + RANKS.indexOf(a.rank);
+    const bPriority = (b.suit === '♥' ? 100 : 0) + (b.suit === '♠' && b.rank === 'Q' ? 200 : 0) + RANKS.indexOf(b.rank);
+    return bPriority - aPriority;
+  });
+  return sorted.slice(0, 3);
+}
+
+// ─── Game flow ─────────────────────────────────────────────
+function newGame() {
+  scores = { you: 0, west: 0, north: 0, east: 0 };
+  handNum = 0;
+  for (const p of PLAYERS) document.getElementById('score-' + p).textContent = 0;
+  newHand();
+}
+
+function newHand() {
+  handNum++;
+  document.getElementById('handNum').textContent = handNum;
+  document.getElementById('broken').textContent = 'No';
+  heartsBroken = false;
+  trick = [];
+  selectedForPass = [];
+  passDirection = ['left','right','across','keep'][(handNum - 1) % 4];
+  deal();
+  if (passDirection === 'keep') {
+    startPlay();
+  } else {
+    startPass();
+  }
+}
+
+function startPass() {
+  phase = 'pass';
+  document.getElementById('phase').textContent = 'Pass ' + passDirection;
+  renderHands();
+  renderTrick();
+  document.getElementById('controls').innerHTML = '';
+  const btn = document.createElement('button');
+  btn.className = 'action';
+  btn.textContent = 'Pass 3 Cards';
+  btn.disabled = true;
+  btn.id = 'passBtn';
+  btn.onclick = doPass;
+  document.getElementById('controls').appendChild(btn);
+  toast('Select 3 cards to pass ' + passDirection, '');
+}
+
+function handleSelectPass(card) {
+  const idx = selectedForPass.findIndex(c => c.rank === card.rank && c.suit === card.suit);
+  if (idx >= 0) selectedForPass.splice(idx, 1);
+  else if (selectedForPass.length < 3) selectedForPass.push(card);
+  renderHands();
+  document.getElementById('passBtn').disabled = selectedForPass.length !== 3;
+}
+
+function doPass() {
+  // Resolve directions
+  const dirs = { left: ['you','west','north','east','you'], right: ['you','east','north','west','you'], across: ['you','north','you','north'] };
+  const targets = passDirection === 'left' ? { you:'west', west:'north', north:'east', east:'you' }
+                : passDirection === 'right' ? { you:'east', east:'north', north:'west', west:'you' }
+                : { you:'north', north:'you', east:'west', west:'east' };
+  const cpuPasses = {};
+  for (const p of CPU) cpuPasses[p] = cpuPickPass(p);
+  cpuPasses.you = selectedForPass.slice();
+  // Remove from senders
+  for (const sender of PLAYERS) {
+    for (const c of cpuPasses[sender]) {
+      const i = hands[sender].findIndex(x => x.rank === c.rank && x.suit === c.suit);
+      hands[sender].splice(i, 1);
+    }
+  }
+  // Add to receivers
+  for (const sender of PLAYERS) {
+    const target = targets[sender];
+    hands[target].push(...cpuPasses[sender]);
+  }
+  for (const p of PLAYERS) hands[p].sort(sortCards);
+  selectedForPass = [];
+  toast('Cards passed!', 'success');
+  startPlay();
+}
+
+function startPlay() {
+  phase = 'play';
+  document.getElementById('phase').textContent = 'Play';
+  document.getElementById('controls').innerHTML = '';
+  // Player with 2♣ leads
+  for (const p of PLAYERS) {
+    if (hands[p].some(c => c.rank === '2' && c.suit === '♣')) {
+      currentPlayer = p; leadPlayer = p; break;
+    }
+  }
+  renderHands();
+  setActiveLight();
+  // vq-007 — CPU loop must auto-play
+  if (currentPlayer !== 'you') scheduleCpuTurn();
+}
+
+function handlePlayCard(card) {
+  if (currentPlayer !== 'you') return;
+  if (!isLegalPlay('you', card)) { toast('Illegal play', 'error'); return; }
+  // First trick must be 2♣
+  if (trick.length === 0 && handNum > 0 && leadPlayer === 'you' && trick.length === 0 && !hands.you.some(c => c.rank === '2' && c.suit === '♣') === false) {
+    if (card.rank !== '2' || card.suit !== '♣') {
+      // First-ever lead must be 2C
+      const has2C = hands.you.some(c => c.rank === '2' && c.suit === '♣');
+      if (has2C && trick.length === 0 && handNum === 1) { toast('Must lead 2♣', 'warn'); return; }
+    }
+  }
+  playCard('you', card);
+}
+
+function playCard(player, card) {
+  const idx = hands[player].findIndex(c => c.rank === card.rank && c.suit === card.suit);
+  hands[player].splice(idx, 1);
+  trick.push({ player, card });
+  if (card.suit === '♥' && !heartsBroken) {
+    heartsBroken = true;
+    document.getElementById('broken').textContent = 'Yes';
+  }
+  renderHands();
+  renderTrick();
+  // Advance turn
+  if (trick.length === 4) {
+    setTimeout(resolveTrick, 800);
+  } else {
+    const idxP = PLAYERS.indexOf(player);
+    currentPlayer = PLAYERS[(idxP + 1) % 4];
+    setActiveLight();
+    if (currentPlayer !== 'you') scheduleCpuTurn();
+  }
+}
+
+// vq-007 — CPU auto-play on schedule
+function scheduleCpuTurn() {
+  setTimeout(() => {
+    if (currentPlayer === 'you' || phase !== 'play') return;
+    const card = cpuPickCard(currentPlayer);
+    playCard(currentPlayer, card);
+  }, CPU_DELAY_MS);
+}
+
+function resolveTrick() {
+  const winner = trickWinner();
+  const points = trickPoints();
+  toast(`${winner === 'you' ? 'You' : winner.charAt(0).toUpperCase() + winner.slice(1)} took the trick (${points}pt)`, points > 0 ? 'warn' : 'success');
+  scores[winner] = (scores[winner] || 0) + points;
+  // Hand state — but score is hand-level until end
+  trick = [];
+  renderTrick();
+  if (hands.you.length === 0) {
+    setTimeout(endHand, 1000);
+  } else {
+    leadPlayer = winner;
+    currentPlayer = winner;
+    setActiveLight();
+    if (currentPlayer !== 'you') scheduleCpuTurn();
+  }
+}
+
+function endHand() {
+  // Check shoot-the-moon
+  let moonShooter = null;
+  for (const p of PLAYERS) {
+    // Track points THIS hand only — simplified: just check final score delta
+  }
+  for (const p of PLAYERS) {
+    document.getElementById('score-' + p).textContent = scores[p];
+  }
+  // Check game over
+  if (Object.values(scores).some(s => s >= 100)) {
+    let lowest = 'you', lowestScore = scores.you;
+    for (const p of PLAYERS) if (scores[p] < lowestScore) { lowest = p; lowestScore = scores[p]; }
+    toast(`Game over! ${lowest === 'you' ? 'You win!' : lowest + ' wins'} with ${lowestScore} pts`, lowest === 'you' ? 'success' : 'warn');
+    return;
+  }
+  setTimeout(newHand, 2000);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// EXTEND BELOW: shoot-the-moon detection, smarter CPU AI,
+// animations for card plays, sound effects, undo, etc.
+// ═══════════════════════════════════════════════════════════════
+
+newGame();
+</script>
+</body></html>

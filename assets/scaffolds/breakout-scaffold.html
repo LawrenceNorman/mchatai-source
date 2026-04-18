@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Breakout</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a0a;color:#00ff41;font-family:'Courier New',monospace;overflow:hidden;height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px}
+.hud{display:flex;justify-content:space-between;width:600px;padding:8px 16px;background:rgba(0,0,0,0.8);border:2px solid #333;border-radius:4px;font-size:14px}
+.hud .label{color:#666;text-transform:uppercase;font-size:10px;letter-spacing:2px}
+.hud .value{color:#00ff41;font-size:20px;font-weight:bold}
+canvas{background:#000;border:3px solid #333;border-radius:8px;box-shadow:0 0 30px rgba(0,255,65,0.15)}
+.controls{color:#888;font-size:12px;letter-spacing:1px}
+.overlay{position:fixed;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;background:rgba(0,0,0,0.85);z-index:100;gap:16px}
+.overlay.show{display:flex}
+.overlay h1{font-size:48px;text-shadow:0 0 20px currentColor;animation:blink 1s infinite}
+.overlay h1.win{color:#00ff41}
+.overlay h1.lose{color:#ff0040}
+.overlay .restart{padding:10px 30px;background:transparent;border:2px solid #00ff41;color:#00ff41;font-family:inherit;cursor:pointer;font-size:16px;letter-spacing:2px}
+.overlay .restart:hover{background:#00ff41;color:#000}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.4}}
+</style>
+</head><body>
+<div class="hud">
+  <div><div class="label">Score</div><div class="value" id="score">0</div></div>
+  <div><div class="label">Lives</div><div class="value" id="lives">3</div></div>
+  <div><div class="label">Level</div><div class="value" id="level">1</div></div>
+</div>
+<canvas id="game" width="600" height="500"></canvas>
+<div class="controls">← → or A/D to move • SPACE to launch</div>
+<div class="overlay" id="overlay">
+  <h1 id="overlayTitle"></h1>
+  <div id="finalScore" style="color:#00ff41;font-size:18px"></div>
+  <button class="restart" onclick="restart()">PRESS SPACE TO RESTART</button>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+// BREAKOUT — extend this scaffold with your variations.
+// Built-in: paddle, ball with physics, brick grid (rainbow rows),
+// collision detection, scoring, lives, level progression, win/lose.
+// ═══════════════════════════════════════════════════════════════
+
+const ctx = document.getElementById('game').getContext('2d');
+const W = 600, H = 500;
+const PADDLE_W = 80, PADDLE_H = 12;
+const BALL_R = 6;
+const BRICK_ROWS = 6, BRICK_COLS = 10;
+const BRICK_W = 56, BRICK_H = 18, BRICK_GAP = 4, BRICK_TOP = 50;
+const BRICK_COLORS = ['#ff0040','#ff6600','#ffcc00','#00ff41','#00d4ff','#aa00ff'];
+
+let paddle, ball, bricks, score, lives, level, alive, launched, keys;
+keys = {};
+
+function reset() {
+  paddle = { x: W/2 - PADDLE_W/2, y: H - 30 };
+  ball = { x: W/2, y: paddle.y - BALL_R - 1, dx: 0, dy: 0 };
+  launched = false;
+  alive = true;
+  bricks = [];
+  for (let r = 0; r < BRICK_ROWS; r++) {
+    for (let c = 0; c < BRICK_COLS; c++) {
+      bricks.push({
+        x: c * (BRICK_W + BRICK_GAP) + 8,
+        y: BRICK_TOP + r * (BRICK_H + BRICK_GAP),
+        w: BRICK_W, h: BRICK_H,
+        color: BRICK_COLORS[r],
+        alive: true
+      });
+    }
+  }
+  document.getElementById('overlay').classList.remove('show');
+}
+
+function fullRestart() {
+  score = 0; lives = 3; level = 1;
+  document.getElementById('score').textContent = 0;
+  document.getElementById('lives').textContent = 3;
+  document.getElementById('level').textContent = 1;
+  reset();
+}
+function restart() { fullRestart(); }
+
+function launch() {
+  launched = true;
+  ball.dx = 4 * (Math.random() < 0.5 ? -1 : 1);
+  ball.dy = -4;
+}
+
+function update() {
+  // Paddle
+  if (keys['ArrowLeft'] || keys['a']) paddle.x -= 7;
+  if (keys['ArrowRight'] || keys['d']) paddle.x += 7;
+  paddle.x = Math.max(0, Math.min(W - PADDLE_W, paddle.x));
+
+  if (!launched) {
+    ball.x = paddle.x + PADDLE_W/2;
+    return;
+  }
+
+  // Ball physics
+  ball.x += ball.dx;
+  ball.y += ball.dy;
+
+  // Wall bounces
+  if (ball.x - BALL_R < 0) { ball.x = BALL_R; ball.dx *= -1; }
+  if (ball.x + BALL_R > W) { ball.x = W - BALL_R; ball.dx *= -1; }
+  if (ball.y - BALL_R < 0) { ball.y = BALL_R; ball.dy *= -1; }
+
+  // Paddle bounce
+  if (ball.y + BALL_R >= paddle.y && ball.y + BALL_R <= paddle.y + PADDLE_H &&
+      ball.x >= paddle.x && ball.x <= paddle.x + PADDLE_W) {
+    ball.y = paddle.y - BALL_R - 1;
+    const offset = (ball.x - paddle.x) / PADDLE_W - 0.5;
+    ball.dx = offset * 8;
+    ball.dy = -Math.abs(ball.dy);
+  }
+
+  // Brick collisions
+  for (const b of bricks) {
+    if (!b.alive) continue;
+    if (ball.x + BALL_R > b.x && ball.x - BALL_R < b.x + b.w &&
+        ball.y + BALL_R > b.y && ball.y - BALL_R < b.y + b.h) {
+      b.alive = false;
+      score += 10;
+      document.getElementById('score').textContent = score;
+      // Bounce direction based on where it hit
+      const cx = b.x + b.w/2, cy = b.y + b.h/2;
+      if (Math.abs(ball.x - cx) > Math.abs(ball.y - cy)) ball.dx *= -1;
+      else ball.dy *= -1;
+      break;
+    }
+  }
+
+  // Lose ball
+  if (ball.y > H) {
+    lives--;
+    document.getElementById('lives').textContent = lives;
+    if (lives <= 0) return endGame(false);
+    ball.x = paddle.x + PADDLE_W/2;
+    ball.y = paddle.y - BALL_R - 1;
+    ball.dx = 0; ball.dy = 0;
+    launched = false;
+  }
+
+  // Win
+  if (bricks.every(b => !b.alive)) {
+    level++;
+    document.getElementById('level').textContent = level;
+    if (level > 5) return endGame(true);
+    reset();
+  }
+}
+
+function draw() {
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, W, H);
+  // Bricks
+  for (const b of bricks) {
+    if (!b.alive) continue;
+    ctx.fillStyle = b.color;
+    ctx.fillRect(b.x, b.y, b.w, b.h);
+    ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+    ctx.strokeRect(b.x, b.y, b.w, b.h);
+  }
+  // Paddle
+  ctx.fillStyle = '#00ff41';
+  ctx.shadowColor = '#00ff41'; ctx.shadowBlur = 8;
+  ctx.fillRect(paddle.x, paddle.y, PADDLE_W, PADDLE_H);
+  // Ball
+  ctx.shadowColor = '#00d4ff'; ctx.shadowBlur = 12;
+  ctx.fillStyle = '#00d4ff';
+  ctx.beginPath(); ctx.arc(ball.x, ball.y, BALL_R, 0, Math.PI * 2); ctx.fill();
+  ctx.shadowBlur = 0;
+}
+
+function endGame(won) {
+  alive = false;
+  const o = document.getElementById('overlay');
+  const t = document.getElementById('overlayTitle');
+  t.textContent = won ? 'YOU WIN!' : 'GAME OVER';
+  t.className = won ? 'win' : 'lose';
+  document.getElementById('finalScore').textContent = `Score: ${score}  •  Level: ${level}`;
+  o.classList.add('show');
+}
+
+function loop() {
+  if (alive) update();
+  draw();
+  requestAnimationFrame(loop);
+}
+
+document.addEventListener('keydown', e => {
+  const k = e.key === ' ' ? ' ' : e.key.toLowerCase();
+  if (['arrowleft','arrowright',' '].includes(k)) e.preventDefault();
+  keys[e.key] = true;
+  if (e.key === ' ') {
+    if (!alive) restart();
+    else if (!launched) launch();
+  }
+});
+document.addEventListener('keyup', e => { keys[e.key] = false; });
+
+// ═══════════════════════════════════════════════════════════════
+// EXTEND BELOW: power-ups (multi-ball, wider paddle), boss bricks,
+// special brick types (unbreakable, explosive), etc.
+// ═══════════════════════════════════════════════════════════════
+
+fullRestart();
+loop();
+</script>
+</body></html>
