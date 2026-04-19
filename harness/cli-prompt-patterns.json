@@ -1,0 +1,71 @@
+{
+  "_description": "Phase Meta-CLI / Meta.2 — prompt-detection regexes for interactive CLI sessions under mChatAI+'s PTY harness. Loaded by CLIPromptPatternMatcher (macOS app). When a CLI pauses for input these fire an `awaitingInput` event, surfacing a banner in the harness UI + iOS push. Keep patterns narrow (false positives are worse than false negatives — the 20s idle detector backstops).",
+  "_scope": "line (default) matches a complete output line; trailing matches no-newline tail (e.g. `? [Y/n] ` with cursor sitting after).",
+  "_update_cycle": "Git PR here, then tunnel `refreshMchataisourceCache` to reload in the running app (no rebuild).",
+  "patterns": [
+    {
+      "backend": "claude",
+      "id": "claude-approve-edit",
+      "regex": "Do you want to (make this edit|create this file|run this command)\\?",
+      "hint": "Claude Code is asking for approval",
+      "scope": "line"
+    },
+    {
+      "backend": "claude",
+      "id": "claude-trust-folder",
+      "regex": "Do you trust the files in this folder\\?",
+      "hint": "Claude Code is asking to trust the working directory",
+      "scope": "line"
+    },
+    {
+      "backend": "claude",
+      "id": "claude-proceed",
+      "regex": "Continue\\?\\s*\\(y/n\\)",
+      "hint": "Claude Code is asking to continue",
+      "scope": "trailing"
+    },
+    {
+      "backend": "codex",
+      "id": "codex-approve-action",
+      "regex": "Approve this action\\?\\s*\\[.\\]",
+      "hint": "Codex is asking to run a command",
+      "scope": "line"
+    },
+    {
+      "backend": "codex",
+      "id": "codex-run-shell",
+      "regex": "Run shell command\\?",
+      "hint": "Codex wants to run a shell command",
+      "scope": "line"
+    },
+    {
+      "backend": "gemini",
+      "id": "gemini-continue",
+      "regex": "Continue\\?\\s*\\[Y/n\\]",
+      "hint": "Gemini CLI is asking to continue",
+      "scope": "trailing"
+    },
+    {
+      "backend": "*",
+      "id": "generic-yn-trailing",
+      "regex": "\\?\\s*\\[[YyNn]/[YyNn]\\]\\s*$",
+      "hint": "CLI is waiting for a yes/no answer",
+      "scope": "trailing"
+    },
+    {
+      "backend": "*",
+      "id": "generic-press-enter",
+      "regex": "Press (Enter|Return) to continue",
+      "hint": "CLI is waiting for you to press Enter",
+      "scope": "line"
+    },
+    {
+      "backend": "*",
+      "id": "generic-password-prompt",
+      "regex": "(?i)(password|passphrase)\\s*:\\s*$",
+      "hint": "CLI is asking for a password or passphrase",
+      "scope": "trailing"
+    }
+  ],
+  "idleTimeoutSeconds": 20
+}
