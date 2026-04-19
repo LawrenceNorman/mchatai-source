@@ -1,0 +1,541 @@
+<!--
+  trick-taking-hearts.html — LAYOUT REFERENCE for Hearts / Spades / Bridge / Euchre family.
+
+  The Generator MUST preserve this structural skeleton when producing a trick-taking
+  card game mini-app. Every id / class used below is referenced by the card-games
+  wisdom pack rules (cg-009, cg-011, cg-012, cg-020) — the evaluator checks for them.
+
+  Copy the structure verbatim. Modify:
+    - Card data / dealing logic / trick resolution rules (game-specific)
+    - Visual theme / color variables
+    - AI opponent names ("North", "East", "West" → "Alice", "Bob", "Carol" etc.)
+    - Scoring rules per game family
+
+  Do NOT remove or rename:
+    - #table container with 100vh height (NOT min-height — flex chains collapse)
+    - The 4 zone divs: #zoneN, #zoneE, #zoneW, #zoneS (human at S/bottom)
+    - #trick in the center
+    - The human zone's face-up rendering (rank + suit visible)
+    - The AI zones' card-back-only rendering
+-->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Hearts</title>
+<style>
+  :root {
+    --felt-a: #1e6b3a;
+    --felt-b: #0f4521;
+    --card-bg: #ffffff;
+    --card-border: #cbd5e1;
+    --rank-black: #0f172a;
+    --rank-red: #c0392b;
+    --back-pattern-a: #1a3a8a;
+    --back-pattern-b: #2c4fa8;
+    --accent: #f59e0b;
+    --text-on-felt: #f1f5f9;
+    --card-w: 56px;
+    --card-h: 82px;
+    --back-w: 38px;
+    --back-h: 56px;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    height: 100vh;
+    overflow: hidden;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    background: radial-gradient(ellipse at center, var(--felt-a), var(--felt-b));
+    color: var(--text-on-felt);
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  /* Top bar: scores + whose turn */
+  #hud {
+    position: absolute;
+    top: 6px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 16px;
+    align-items: center;
+    background: rgba(0,0,0,0.55);
+    color: #f1f5f9;
+    padding: 8px 16px;
+    border-radius: 10px;
+    font-size: 13px;
+    z-index: 10;
+  }
+  #hud .score { font-weight: 600; }
+  #hud .turn { color: var(--accent); font-weight: 700; }
+  #hud .score.active { color: var(--accent); }
+
+  /* Table — MUST be 100vh with position:relative. Do NOT use flex:1 or min-height. */
+  #table {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+  }
+
+  /* 4 seats: N (top) / E (right) / W (left) / S (bottom, human).
+     Cross layout — absolute positioning, percentage-based. */
+  .ai-zone, .human-zone {
+    position: absolute;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .ai-zone {
+    gap: 2px;
+    padding: 6px 10px;
+    background: rgba(0,0,0,0.25);
+    border-radius: 10px;
+  }
+  #zoneN { top: 6%;  left: 50%; transform: translateX(-50%); }
+  #zoneW { left: 2%; top: 50%; transform: translateY(-50%); flex-direction: column; }
+  #zoneE { right: 2%; top: 50%; transform: translateY(-50%); flex-direction: column; }
+  #zoneS {
+    bottom: 3%;
+    left: 50%;
+    transform: translateX(-50%);
+    flex-wrap: wrap;
+    gap: 4px;
+    max-width: 92%;
+  }
+
+  .ai-zone .seat-label {
+    position: absolute;
+    top: -18px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 11px;
+    color: #cbd5e1;
+    white-space: nowrap;
+  }
+  .ai-zone .count-badge {
+    position: absolute;
+    bottom: -20px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 11px;
+    color: #f1f5f9;
+    background: rgba(0,0,0,0.45);
+    padding: 1px 6px;
+    border-radius: 8px;
+  }
+
+  /* ——— Card back (AI, deck, hidden) ——— */
+  .card-back {
+    width: var(--back-w);
+    height: var(--back-h);
+    border-radius: 4px;
+    background:
+      repeating-linear-gradient(45deg,
+        var(--back-pattern-a) 0 6px,
+        var(--back-pattern-b) 6px 12px);
+    border: 1px solid rgba(255,255,255,0.15);
+    flex-shrink: 0;
+  }
+  /* Vertical side seats stack the backs slightly overlapped */
+  #zoneW .card-back, #zoneE .card-back { margin-top: -38px; }
+  #zoneW .card-back:first-child, #zoneE .card-back:first-child { margin-top: 0; }
+
+  /* ——— Card face (human hand + played trick cards) ——— */
+  .card {
+    width: var(--card-w);
+    height: var(--card-h);
+    border-radius: 6px;
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    color: var(--rank-black);
+    position: relative;
+    cursor: pointer;
+    transition: transform 120ms ease, box-shadow 120ms ease;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .card:hover { transform: translateY(-8px); box-shadow: 0 6px 14px rgba(0,0,0,0.35); }
+  .card.playable { box-shadow: 0 0 0 2px var(--accent); }
+  .card.disabled { opacity: 0.4; cursor: not-allowed; }
+  .card[data-suit="♥"], .card[data-suit="♦"] { color: var(--rank-red); }
+
+  .card .rank {
+    position: absolute;
+    top: 4px;
+    left: 6px;
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 1;
+  }
+  .card .suit-tl {
+    position: absolute;
+    top: 18px;
+    left: 6px;
+    font-size: 12px;
+    line-height: 1;
+  }
+  .card .suit-center {
+    font-size: 24px;
+    line-height: 1;
+  }
+  .card .rank-br {
+    position: absolute;
+    bottom: 4px;
+    right: 6px;
+    font-size: 14px;
+    font-weight: 700;
+    transform: rotate(180deg);
+    line-height: 1;
+  }
+
+  /* ——— Trick area (center) ——— */
+  #trick {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 240px;
+    height: 180px;
+    background: rgba(0,0,0,0.18);
+    border-radius: 12px;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-rows: 1fr 1fr 1fr;
+    place-items: center;
+  }
+  /* 4 positions inside trick — N / E / S / W */
+  #trick .trick-card { grid-column: 2; grid-row: 1; } /* N slot */
+  #trick .trick-card[data-seat="E"] { grid-column: 3; grid-row: 2; }
+  #trick .trick-card[data-seat="S"] { grid-column: 2; grid-row: 3; }
+  #trick .trick-card[data-seat="W"] { grid-column: 1; grid-row: 2; }
+
+  /* ——— Toasts / status messages ——— */
+  #toast {
+    position: absolute;
+    bottom: 12%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #1e293b;
+    color: #ffffff;
+    padding: 10px 18px;
+    border-radius: 10px;
+    font-size: 13px;
+    opacity: 0;
+    transition: opacity 200ms ease;
+    pointer-events: none;
+    z-index: 20;
+  }
+  #toast.show { opacity: 1; }
+
+  /* ——— New-game button ——— */
+  #new-game {
+    position: absolute;
+    top: 6px;
+    right: 10px;
+    background: rgba(0,0,0,0.55);
+    color: #fff;
+    border: 1px solid rgba(255,255,255,0.15);
+    padding: 7px 14px;
+    border-radius: 8px;
+    font-size: 12px;
+    cursor: pointer;
+    z-index: 10;
+  }
+  #new-game:hover { background: rgba(0,0,0,0.75); }
+</style>
+</head>
+<body>
+
+<button id="new-game" type="button">New Game</button>
+
+<div id="hud">
+  <span class="score" data-seat="S">You: <b>0</b></span>
+  <span class="score" data-seat="W">West: <b>0</b></span>
+  <span class="score" data-seat="N">North: <b>0</b></span>
+  <span class="score" data-seat="E">East: <b>0</b></span>
+  <span class="turn">Your turn</span>
+</div>
+
+<div id="table">
+
+  <!-- Top AI (North) -->
+  <div id="zoneN" class="ai-zone" aria-label="North AI hand">
+    <div class="seat-label">North</div>
+    <!-- 13 card backs; replaced/reduced as cards are played -->
+    <div class="card-back"></div><div class="card-back"></div><div class="card-back"></div>
+    <div class="card-back"></div><div class="card-back"></div><div class="card-back"></div>
+    <div class="card-back"></div><div class="card-back"></div><div class="card-back"></div>
+    <div class="card-back"></div><div class="card-back"></div><div class="card-back"></div>
+    <div class="card-back"></div>
+    <div class="count-badge">13</div>
+  </div>
+
+  <!-- Left AI (West) -->
+  <div id="zoneW" class="ai-zone" aria-label="West AI hand">
+    <div class="seat-label">West</div>
+    <div class="card-back"></div><div class="card-back"></div><div class="card-back"></div>
+    <div class="card-back"></div><div class="card-back"></div><div class="card-back"></div>
+    <div class="card-back"></div><div class="card-back"></div><div class="card-back"></div>
+    <div class="card-back"></div><div class="card-back"></div><div class="card-back"></div>
+    <div class="card-back"></div>
+    <div class="count-badge">13</div>
+  </div>
+
+  <!-- Right AI (East) -->
+  <div id="zoneE" class="ai-zone" aria-label="East AI hand">
+    <div class="seat-label">East</div>
+    <div class="card-back"></div><div class="card-back"></div><div class="card-back"></div>
+    <div class="card-back"></div><div class="card-back"></div><div class="card-back"></div>
+    <div class="card-back"></div><div class="card-back"></div><div class="card-back"></div>
+    <div class="card-back"></div><div class="card-back"></div><div class="card-back"></div>
+    <div class="card-back"></div>
+    <div class="count-badge">13</div>
+  </div>
+
+  <!-- Center trick area — four slots N/E/S/W -->
+  <div id="trick" aria-label="Current trick"></div>
+
+  <!-- Human (South) — 13 cards face-up. Populated by renderHand() below. -->
+  <div id="zoneS" class="human-zone" aria-label="Your hand"></div>
+
+</div>
+
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script>
+  // ---------------------------------------------------------------------------
+  // REFERENCE GAME LOGIC SKELETON
+  //
+  // This is a MINIMAL working Hearts loop. Replace rule details with the
+  // target game's logic (Spades bidding, Bridge auctions, Euchre trump, etc.).
+  // The DOM structure above is what matters — do NOT change zone IDs or card
+  // class names without updating the card-games wisdom rules.
+  // ---------------------------------------------------------------------------
+
+  const SUITS = ['♣', '♦', '♠', '♥'];               // sorted: black / red / black / red
+  const RANKS = ['2','3','4','5','6','7','8','9','10','J','Q','K','A'];
+  const SUIT_ORDER = {'♣':0, '♦':1, '♠':2, '♥':3};
+  const RANK_ORDER = Object.fromEntries(RANKS.map((r, i) => [r, i]));
+
+  const SEATS = ['S', 'W', 'N', 'E'];                // human + 3 AI (clockwise)
+  const SEAT_NAMES = {S: 'You', W: 'West', N: 'North', E: 'East'};
+
+  const state = {
+    hands: {S: [], W: [], N: [], E: []},
+    scores: {S: 0, W: 0, N: 0, E: 0},
+    trick: [],                                       // [{seat,card}, ...]
+    leader: 'S',                                     // seat that leads the current trick
+    turn: 'S',                                       // whose turn is it
+    heartsBroken: false
+  };
+
+  function makeDeck() {
+    const d = [];
+    for (const s of SUITS) for (const r of RANKS) d.push({s, r});
+    return d;
+  }
+  function shuffle(arr) {                            // Fisher-Yates
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  }
+  function deal() {
+    const deck = shuffle(makeDeck());
+    for (const seat of SEATS) state.hands[seat] = [];
+    for (let i = 0; i < deck.length; i++) state.hands[SEATS[i % 4]].push(deck[i]);
+    for (const seat of SEATS) sortHand(state.hands[seat]);
+  }
+  function sortHand(h) {
+    h.sort((a, b) =>
+      SUIT_ORDER[a.s] - SUIT_ORDER[b.s] ||
+      RANK_ORDER[a.r] - RANK_ORDER[b.r]);
+  }
+
+  // ——— Rendering ———
+  function renderHand() {
+    const zone = document.getElementById('zoneS');
+    zone.innerHTML = '';
+    for (const card of state.hands.S) {
+      const el = document.createElement('div');
+      el.className = 'card';
+      el.dataset.suit = card.s;
+      el.dataset.rank = card.r;
+      el.innerHTML = `
+        <span class="rank">${card.r}</span>
+        <span class="suit-tl">${card.s}</span>
+        <span class="suit-center">${card.s}</span>
+        <span class="rank-br">${card.r}</span>`;
+      const legal = isLegalPlay(card);
+      if (!legal) el.classList.add('disabled');
+      else if (state.turn === 'S') el.classList.add('playable');
+      el.addEventListener('click', () => {
+        if (state.turn !== 'S' || !legal) return;
+        playCard('S', card);
+      });
+      zone.appendChild(el);
+    }
+  }
+  function renderAIZones() {
+    for (const seat of ['N', 'W', 'E']) {
+      const zone = document.getElementById('zone' + seat);
+      const count = state.hands[seat].length;
+      // Reuse existing .card-back children; re-create if count mismatches.
+      const current = zone.querySelectorAll('.card-back').length;
+      if (current !== count) {
+        zone.querySelectorAll('.card-back').forEach(el => el.remove());
+        for (let i = 0; i < count; i++) {
+          const cb = document.createElement('div');
+          cb.className = 'card-back';
+          zone.appendChild(cb);
+        }
+      }
+      const badge = zone.querySelector('.count-badge');
+      if (badge) badge.textContent = count;
+    }
+  }
+  function renderTrick() {
+    const tr = document.getElementById('trick');
+    tr.innerHTML = '';
+    for (const play of state.trick) {
+      const el = document.createElement('div');
+      el.className = 'card trick-card';
+      el.dataset.suit = play.card.s;
+      el.dataset.rank = play.card.r;
+      el.dataset.seat = play.seat;
+      el.innerHTML = `
+        <span class="rank">${play.card.r}</span>
+        <span class="suit-tl">${play.card.s}</span>
+        <span class="suit-center">${play.card.s}</span>
+        <span class="rank-br">${play.card.r}</span>`;
+      tr.appendChild(el);
+    }
+  }
+  function renderScores() {
+    for (const seat of SEATS) {
+      const el = document.querySelector(`#hud .score[data-seat="${seat}"]`);
+      if (el) el.querySelector('b').textContent = state.scores[seat];
+      el && el.classList.toggle('active', state.turn === seat);
+    }
+    const turnEl = document.querySelector('#hud .turn');
+    if (turnEl) turnEl.textContent = state.turn === 'S' ? 'Your turn' : SEAT_NAMES[state.turn] + "'s turn";
+  }
+  function render() {
+    renderHand();
+    renderAIZones();
+    renderTrick();
+    renderScores();
+  }
+
+  // ——— Rules ———
+  function isLegalPlay(card) {
+    // Hearts-family rules: must follow suit if possible; can't lead hearts
+    // until hearts broken; 2♣ leads the first trick.
+    const hand = state.hands[state.turn];
+    if (state.trick.length === 0) {
+      // Leading. Can't lead hearts until broken (unless only hearts left).
+      if (card.s === '♥' && !state.heartsBroken) {
+        const hasNonHearts = hand.some(c => c.s !== '♥');
+        if (hasNonHearts) return false;
+      }
+      return true;
+    }
+    const leadSuit = state.trick[0].card.s;
+    const hasLead = hand.some(c => c.s === leadSuit);
+    if (hasLead && card.s !== leadSuit) return false;
+    return true;
+  }
+
+  function playCard(seat, card) {
+    state.hands[seat] = state.hands[seat].filter(c => !(c.s === card.s && c.r === card.r));
+    state.trick.push({seat, card});
+    if (card.s === '♥') state.heartsBroken = true;
+    render();
+    if (state.trick.length === 4) {
+      setTimeout(resolveTrick, 800);
+      return;
+    }
+    state.turn = nextSeat(state.turn);
+    render();
+    if (state.turn !== 'S') setTimeout(() => cpuPlayTurn(state.turn), 500);
+  }
+
+  function cpuPlayTurn(seat) {
+    if (state.turn !== seat) return;
+    const hand = state.hands[seat];
+    // Pick any legal card (random). Real AI would heuristic-evaluate.
+    const legal = hand.filter(c => {
+      state.turn = seat; return isLegalPlay(c);
+    });
+    const pool = legal.length ? legal : hand;
+    const pick = pool[Math.floor(Math.random() * pool.length)];
+    playCard(seat, pick);
+  }
+
+  function resolveTrick() {
+    const leadSuit = state.trick[0].card.s;
+    let winner = state.trick[0];
+    for (const play of state.trick) {
+      if (play.card.s === leadSuit &&
+          RANK_ORDER[play.card.r] > RANK_ORDER[winner.card.r]) {
+        winner = play;
+      }
+    }
+    const points = state.trick.reduce((acc, p) => {
+      if (p.card.s === '♥') return acc + 1;
+      if (p.card.s === '♠' && p.card.r === 'Q') return acc + 13;
+      return acc;
+    }, 0);
+    state.scores[winner.seat] += points;
+    toast(`${SEAT_NAMES[winner.seat]} takes the trick${points ? ` (+${points})` : ''}`);
+    state.trick = [];
+    state.leader = winner.seat;
+    state.turn = winner.seat;
+    render();
+    const handsEmpty = SEATS.every(s => state.hands[s].length === 0);
+    if (handsEmpty) {
+      setTimeout(() => toast('Hand complete — click New Game to deal again.', 3000), 600);
+      return;
+    }
+    if (state.turn !== 'S') setTimeout(() => cpuPlayTurn(state.turn), 600);
+  }
+
+  function nextSeat(seat) {
+    // Clockwise: S → W → N → E → S
+    const order = ['S', 'W', 'N', 'E'];
+    return order[(order.indexOf(seat) + 1) % 4];
+  }
+
+  function toast(msg, dur = 1600) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(toast._timer);
+    toast._timer = setTimeout(() => t.classList.remove('show'), dur);
+  }
+
+  function newGame() {
+    state.scores = {S: 0, W: 0, N: 0, E: 0};
+    state.trick = [];
+    state.heartsBroken = false;
+    deal();
+    // Whoever holds 2♣ leads in real Hearts; simplified here — human leads.
+    state.leader = 'S';
+    state.turn = 'S';
+    render();
+    toast('New game dealt — your turn', 1400);
+  }
+
+  document.getElementById('new-game').addEventListener('click', newGame);
+  newGame();
+</script>
+
+</body>
+</html>
