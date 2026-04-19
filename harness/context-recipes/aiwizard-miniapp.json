@@ -1,7 +1,7 @@
 {
-  "version": 4,
+  "version": 5,
   "surface": "aiwizard",
-  "description": "Context recipe for AIWizard mini-app (single-file HTML) generation. Lighter than the macOS-app recipe — no framework scaffold (mini-apps are self-contained HTML). v2 added active-memory layer (Phase MA.3). v3 added excludeTitlePatterns to drop CCAA / AgentRuntime / ScheduledJob log spam from retrieval results. v4 (2026-04-18): added wisdom-framework layer at priority 85 with its own 3500-token budget so framework-specific packs (card-games, arcade-games, visual-quality, etc.) get a dedicated slot instead of competing with universal rules in a single 2500-token pool. Root cause of mini-app quality plateau: the card-games pack alone is 19k+ raw bytes and was being truncated out of the wisdom-universal layer, so generated Hearts/Blackjack/Poker mini-apps missed critical layout and color rules.",
+  "description": "Context recipe for AIWizard mini-app (single-file HTML) generation. Lighter than the macOS-app recipe — no framework scaffold (mini-apps are self-contained HTML). v2 added active-memory layer (Phase MA.3). v3 added excludeTitlePatterns to drop CCAA / AgentRuntime / ScheduledJob log spam from retrieval results. v4 (2026-04-18): added wisdom-framework layer at priority 85 with its own 3500-token budget so framework-specific packs (card-games, arcade-games, visual-quality, etc.) get a dedicated slot instead of competing with universal rules in a single 2500-token pool. v5 (2026-04-19): bumped wisdom-framework to 11000 tokens (~44000 chars) because 3500 tokens was truncating card-games + visual-quality packs combined (30k raw → ~45k rendered) — rules late in the resolve order (cg-011, cg-012, cg-013, cg-020) were being chopped off at '…[truncated]' and the LLM never saw them. Root cause of mini-app quality plateau: the card-games pack alone is 19k+ raw bytes and was being truncated out of the wisdom-universal layer, so generated Hearts/Blackjack/Poker mini-apps missed critical layout and color rules.",
   "layers": [
     {
       "id": "active-memory",
@@ -28,7 +28,7 @@
       "id": "wisdom-framework",
       "loader": "wisdom-framework",
       "priority": 85,
-      "maxTokens": 3500
+      "maxTokens": 11000
     },
     {
       "id": "feature-manifest",

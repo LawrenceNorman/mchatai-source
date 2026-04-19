@@ -72,11 +72,29 @@
     },
     {
       "id": "cg-009",
-      "rule": "The human player MUST see their own cards face-up at the bottom of the screen. AI players' cards show face-down (card backs). The human's cards must be LARGER and more prominent than AI cards.",
-      "why": "Multiple iterations have produced games where the human can't see their own cards, or all cards look identical. The human needs to see their hand to make decisions.",
+      "rule": "VISIBILITY RULE — THE ONE YOU CANNOT GET WRONG: The human player is the ONLY seat whose cards are rendered FACE-UP showing full rank and suit. Every other player (AI1, AI2, AI3) shows FACE-DOWN card backs — never face-up, never visible, never hinted. The human's cards must render at the BOTTOM of the screen with rank + suit visible at minimum 40px height per card. NEVER apply card-back rendering to the human's hand. NEVER render the human's cards as blue rectangles, generic rectangles, or anything that hides the rank/suit. If you find yourself writing `.hand .card { background: #1a3a8a; }` for the human zone — STOP, you are rendering a card back instead of a card face.",
+      "why": "The Hearts mini-app generator has repeatedly rendered ALL four players' cards as blue rectangles / card backs, including the human's, making the game literally unplayable. This happens because rule cg-002 (hide opponents' cards) gets applied uniformly to all seats instead of ONLY to AI seats. The fix is to make the human/AI distinction unmissable: the human is special, every other seat uses card-back graphics. If any seat's cards are indistinguishable from another seat's, this rule is being violated.",
       "severity": "critical",
       "appliesTo": "card-games",
-      "examples": ["Human cards: face-up, 80px wide, bottom center", "AI cards: face-down (card back SVG), 60px wide", "Human cards should have a subtle glow or border to distinguish them"]
+      "examples": [
+        "GOOD: .human .card { background:#fff; color:#000; border-radius:6px; width:60px; height:88px; } and inside each card: <span class='rank'>A</span><span class='suit'>♠</span>",
+        "GOOD: .ai .card-back { background: repeating-linear-gradient(45deg,#1a3a8a 0 8px,#2c4fa8 8px 16px); width:38px; height:54px; } — card-back pattern ONLY on .ai",
+        "BAD: .card-back { ... } applied to .human .card — the human MUST show faces",
+        "BAD: rendering 13 blue rectangles at the bottom with no rank text — those are card backs, the human's seat MUST NOT use card backs",
+        "Test you can apply mentally: 'If I take a screenshot right now, can I tell what rank + suit each of my 13 cards is?' If the answer is NO, cg-009 is being violated"
+      ]
+    },
+    {
+      "id": "cg-020",
+      "rule": "CARD BACK USAGE MATRIX — where to apply a card-back graphic vs a card-face graphic: (1) The human player's hand: ALWAYS card-face (rank + suit visible). NEVER card-back. (2) AI player zones (AI1, AI2, AI3, CPU, North/East/West, etc.): ALWAYS card-back. NEVER card-face until the card is played into the trick. (3) The deck / stock pile: card-back. (4) Cards played into the trick (center area): card-face — once a card leaves a hand into the trick, everyone sees it. (5) End-of-hand / showdown: card-face for all — all hands revealed. This matrix covers every card location; if you're unsure which to render, re-read this list.",
+      "why": "Every Hearts / Spades / Poker / Rummy generation has gotten at least one cell of this matrix wrong — most commonly (1) rendering the human's hand as card backs. Spelling out all five cells in a single rule removes ambiguity.",
+      "severity": "critical",
+      "appliesTo": "card-games",
+      "examples": [
+        "function renderCard(card, zone) { if (zone === 'human' || zone === 'trick' || zone === 'showdown') return faceHTML(card); else return backHTML(); }",
+        "NEVER: `<div class='card-back'></div>` inside `.human-hand` — that's the wrong cell of the matrix",
+        "Positioning check: if your layout has 13 cards at `bottom: 2%` and they're all card backs, the matrix is wrong"
+      ]
     },
     {
       "id": "cg-010",
