@@ -1,0 +1,219 @@
+/* VERBATIM styles for the 4-seat card table. Extracted from the user's proven
+   Texas Hold'em build and made genre-neutral. Theme variables at the top —
+   retune freely. Layout selectors must stay as-is. */
+
+:root {
+  --table-bg: #0a3d1e;
+  --table-border: #5a3a22;
+  --felt-color: #0f5c2e;
+  --card-bg: #ffffff;
+  --card-border: #cbd5e1;
+  --text-light: #ecf0f1;
+  --text-dark: #1a1a1a;
+  --text-secondary: #bdc3c7;
+  --color-red: #e74c3c;
+  --color-black: #2c3e50;
+  --accent-color: #f1c40f;
+  --bg-dark: #1a1a2e;
+  --bg-light: #2c3e50;
+  --btn-bg: #34495e;
+  --btn-hover-bg: #4a627a;
+  --btn-disabled-bg: #7f8c8d;
+  --card-w: 56px;
+  --card-h: 82px;
+  --back-w: 38px;
+  --back-h: 56px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  background-color: var(--bg-dark);
+  color: var(--text-light);
+  display: flex; justify-content: center; align-items: center;
+  height: 100vh; overflow: hidden;
+  user-select: none; -webkit-user-select: none;
+}
+
+/* Main flex container: 70% table left + 30% info panel right */
+.poker-container {
+  display: flex; flex-direction: row; gap: 20px;
+  width: 100%; max-width: 1200px;
+  height: 95vh; max-height: 800px;
+  padding: 10px;
+}
+
+/* TABLE — the proven rounded-rect with inner felt oval */
+#poker-table {
+  position: relative; width: 70%; height: 100%;
+  background-color: var(--table-bg);
+  border: 8px solid var(--table-border);
+  border-radius: 48% / 32%;
+  box-shadow: inset 0 0 50px rgba(0, 0, 0, 0.5), 0 10px 30px rgba(0, 0, 0, 0.7);
+}
+#poker-table::before {
+  content: ''; position: absolute; inset: 20px;
+  border-radius: 46% / 30%;
+  background-color: var(--felt-color);
+  box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.5);
+}
+
+/* Center — community cards (Poker) / trick (Hearts) / dealer hand (Blackjack) */
+.table-center {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+  z-index: 2;
+}
+.center-cards {
+  display: flex; gap: 8px; min-height: var(--card-h);
+}
+#trick {
+  display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr);
+  place-items: center; width: 240px; height: 180px;
+}
+#trick .trick-card                  { grid-column: 2; grid-row: 1; }
+#trick .trick-card[data-seat="E"]   { grid-column: 3; grid-row: 2; }
+#trick .trick-card[data-seat="S"]   { grid-column: 2; grid-row: 3; }
+#trick .trick-card[data-seat="W"]   { grid-column: 1; grid-row: 2; }
+.pot-or-score {
+  font-size: 18px; font-weight: bold; color: var(--accent-color);
+  background-color: rgba(0, 0, 0, 0.5); padding: 5px 15px; border-radius: 20px;
+}
+#pot { /* alias */ }
+
+/* CARDS — white face, red hearts/diamonds, black spades/clubs */
+.card {
+  width: var(--card-w); height: var(--card-h); border-radius: 6px;
+  background-color: var(--card-bg); border: 1px solid var(--card-border);
+  color: var(--color-black); position: relative;
+  display: flex; flex-direction: column; justify-content: space-between;
+  padding: 5px 7px; box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+  cursor: pointer;
+  transition: transform 120ms ease, box-shadow 120ms ease;
+  flex-shrink: 0;
+}
+.card:hover { transform: translateY(-8px); box-shadow: 0 6px 14px rgba(0,0,0,0.35); }
+.card.playable { box-shadow: 0 0 0 2px var(--accent-color); }
+.card.disabled { opacity: 0.4; cursor: not-allowed; }
+.card[data-suit="♥"], .card[data-suit="♦"], .card.red { color: var(--color-red); }
+.card[data-suit="♠"], .card[data-suit="♣"], .card.black { color: var(--color-black); }
+.card .rank { font-size: 16px; font-weight: 700; line-height: 1; }
+.card .suit { font-size: 18px; line-height: 1; align-self: flex-end; }
+.card .suit-tl { position: absolute; top: 20px; left: 7px; font-size: 12px; line-height: 1; }
+.card .suit-center { font-size: 24px; line-height: 1; }
+.card .rank-br { position: absolute; bottom: 5px; right: 7px; font-size: 14px; font-weight: 700; transform: rotate(180deg); line-height: 1; }
+
+/* Card back — AI hands, deck, hidden cards. NEVER applied to human hand. */
+.card.face-down, .card-back {
+  background:
+    repeating-linear-gradient(45deg, #1a3a8a 0 6px, #2c4fa8 6px 12px);
+  color: transparent; border-color: rgba(255,255,255,0.15);
+}
+.card.face-down .rank, .card.face-down .suit,
+.card.face-down .suit-tl, .card.face-down .suit-center, .card.face-down .rank-br { opacity: 0; }
+
+/* PLAYER AREAS — fixed positions validated by the Poker build */
+.player-area {
+  position: absolute; min-width: 120px;
+  display: flex; flex-direction: column; align-items: center; gap: 5px;
+  padding: 8px 12px; border-radius: 10px;
+  background-color: rgba(0, 0, 0, 0.3); transition: box-shadow 200ms ease;
+  z-index: 3;
+}
+.player-area.active { box-shadow: 0 0 0 3px var(--accent-color); }
+.player-area.out    { opacity: 0.4; }
+
+#player-0, .player-area[data-seat="S"] { top: 80%; left: 50%; transform: translateX(-50%); }
+#player-1, .player-area[data-seat="W"] { top: 50%; left: 5%;  transform: translateY(-50%); }
+#player-2, .player-area[data-seat="N"] { top: 10%; left: 50%; transform: translateX(-50%); }
+#player-3, .player-area[data-seat="E"] { top: 50%; left: 95%; transform: translate(-100%, -50%); }
+
+.player-info { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.player-name { font-size: 13px; color: var(--text-secondary); }
+.player-chips { font-size: 15px; font-weight: 700; color: var(--accent-color); }
+
+/* Player cards — human gets a fanned row, AI gets a tight stack of backs */
+.player-cards { display: flex; gap: 4px; flex-wrap: wrap; justify-content: center; max-width: 90vw; }
+.player-cards.ai-cards { gap: 2px; }
+.player-cards.ai-cards .card,
+.player-cards.ai-cards .card-back { width: var(--back-w); height: var(--back-h); padding: 0; }
+/* Human hand can fan a full 13-card hand without wrap on wide screens */
+.player-cards.human-cards { max-width: 900px; }
+
+.dealer-button {
+  position: absolute; width: 24px; height: 24px; border-radius: 50%;
+  background-color: #fff; color: var(--color-black);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 700; z-index: 4;
+  top: 74%; left: 40%;   /* reposition per hand to point at the dealer seat */
+}
+
+.player-bet {
+  position: absolute; top: -16px;
+  background-color: var(--accent-color); color: var(--text-dark);
+  padding: 2px 8px; border-radius: 10px; font-size: 12px; font-weight: 700;
+  min-width: 20px; text-align: center;
+  display: none;
+}
+.player-area.betting .player-bet { display: block; }
+
+/* SIDE PANEL — game log + action buttons */
+.game-info {
+  width: 30%; display: flex; flex-direction: column; gap: 10px;
+  padding: 12px; border-radius: 10px;
+  background-color: rgba(255, 255, 255, 0.05);
+}
+.game-info-header { display: flex; justify-content: space-between; align-items: center; }
+.game-info-header h3 { color: var(--accent-color); font-size: 16px; }
+#rules-btn {
+  background-color: var(--btn-bg); color: var(--text-light);
+  border: none; border-radius: 6px; padding: 5px 10px; font-size: 12px;
+  cursor: pointer;
+}
+#rules-btn:hover { background-color: var(--btn-hover-bg); }
+
+#game-log-container {
+  flex: 1; overflow-y: auto;
+  background-color: rgba(0, 0, 0, 0.3); border-radius: 8px; padding: 10px;
+  font-size: 12px; line-height: 1.5;
+}
+#game-log p { margin-bottom: 5px; color: var(--text-secondary); }
+
+#player-controls { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+#player-controls button {
+  padding: 10px 12px; background-color: var(--btn-bg); color: var(--text-light);
+  border: none; border-radius: 6px; font-size: 14px; font-weight: 700;
+  cursor: pointer; transition: background-color 120ms ease;
+}
+#player-controls button:hover:not(:disabled) { background-color: var(--btn-hover-bg); }
+#player-controls button:disabled { background-color: var(--btn-disabled-bg); cursor: not-allowed; opacity: 0.7; }
+
+/* MODALS */
+.modal {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+  display: none; justify-content: center; align-items: center; z-index: 100;
+}
+.modal.visible { display: flex; }
+.modal-content {
+  background: var(--bg-light); color: var(--text-light);
+  padding: 24px 28px; border-radius: 12px; max-width: 480px; min-width: 320px;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+}
+.modal-content h2 { color: var(--accent-color); margin-bottom: 12px; }
+
+/* TOAST — high-contrast status (cg-005) */
+#toast {
+  position: absolute; bottom: 12%; left: 50%; transform: translateX(-50%);
+  background: #1e293b; color: #ffffff;
+  padding: 10px 18px; border-radius: 10px; font-size: 13px;
+  opacity: 0; transition: opacity 200ms ease; pointer-events: none; z-index: 20;
+}
+#toast.show { opacity: 1; }
+
+/* Small-viewport compression (the Poker build collapses to single column) */
+@media (max-width: 900px) {
+  .poker-container { flex-direction: column; gap: 10px; }
+  #poker-table { width: 100%; height: 60vh; }
+  .game-info { width: 100%; max-height: 35vh; }
+}

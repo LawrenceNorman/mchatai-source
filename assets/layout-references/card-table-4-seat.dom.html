@@ -1,0 +1,119 @@
+<!-- VERBATIM: 4-seat card table skeleton. Distilled from the user's
+     highly-rated Texas Hold'em Poker mini-app (mchatai.com/u/.../texas-holdem-poker/).
+     Any 4-player card game (Poker, Hearts, Spades, Bridge, Euchre, Rummy,
+     Crazy Eights, Uno, Blackjack) starts from this DOM + the styles companion.
+
+     Seats use the #player-0 … #player-3 naming (kept for parity with the proven
+     Poker build) AND the #zoneS/W/N/E aliases (for parity with the trick-taking
+     Hearts rules file which addresses seats by direction). You only need to
+     use one set — pick whichever your game's logic already expects.
+
+     Copy the structure verbatim. Customize:
+       - `.action-button` set (Poker: Fold/Check/Call/Bet; Hearts: none — clicks
+         are on the player's cards; Blackjack: Hit/Stand/Double/Split).
+       - `.game-info` right panel contents (game log, score table, rules modal).
+       - Modal dialogs (bet slider, rules, game over).
+
+     Do NOT remove:
+       - `.poker-container` flex row (table 70% left + info panel 30% right)
+       - `#table` + `::before` felt oval
+       - Four `.player-area` divs at 80/5/10/95 % positions
+       - `.table-center` with `.center-cards` and `.pot-or-score`
+       - `.card` with `.rank` + `.suit` inner spans
+       - `.card.face-down` distinct class
+-->
+
+<div class="poker-container">
+
+  <!-- LEFT: table itself -->
+  <div id="poker-table">
+
+    <!-- Center play area: community cards (Poker) / trick (Hearts) / dealer hand (Blackjack) -->
+    <div class="table-center">
+      <div id="community-cards" class="center-cards" aria-label="Community / trick area"></div>
+      <div id="trick" class="center-cards" aria-label="Current trick"></div>
+      <div id="pot" class="pot-or-score">Pot: $0</div>
+    </div>
+
+    <!-- SOUTH (player 0) — the human, at BOTTOM, 13 cards face-up -->
+    <div class="player-area" id="player-0" data-seat="S">
+      <div class="player-info">
+        <div class="player-name">You</div>
+        <div class="player-chips" id="chips-0">$1000</div>
+      </div>
+      <div class="player-cards human-cards" id="zoneS"></div>
+      <div class="player-bet" id="bet-0" aria-hidden="true"></div>
+    </div>
+
+    <!-- WEST (player 1) — left middle, card backs only -->
+    <div class="player-area" id="player-1" data-seat="W">
+      <div class="player-info">
+        <div class="player-name">West</div>
+        <div class="player-chips" id="chips-1">$1000</div>
+      </div>
+      <div class="player-cards ai-cards" id="zoneW"></div>
+      <div class="player-bet" id="bet-1" aria-hidden="true"></div>
+    </div>
+
+    <!-- NORTH (player 2) — top center, card backs only -->
+    <div class="player-area" id="player-2" data-seat="N">
+      <div class="player-info">
+        <div class="player-name">North</div>
+        <div class="player-chips" id="chips-2">$1000</div>
+      </div>
+      <div class="player-cards ai-cards" id="zoneN"></div>
+      <div class="player-bet" id="bet-2" aria-hidden="true"></div>
+    </div>
+
+    <!-- EAST (player 3) — right middle, card backs only -->
+    <div class="player-area" id="player-3" data-seat="E">
+      <div class="player-info">
+        <div class="player-name">East</div>
+        <div class="player-chips" id="chips-3">$1000</div>
+      </div>
+      <div class="player-cards ai-cards" id="zoneE"></div>
+      <div class="player-bet" id="bet-3" aria-hidden="true"></div>
+    </div>
+
+    <!-- Dealer button marker (optional for non-dealer games) -->
+    <div class="dealer-button" id="dealer-button" aria-hidden="true">D</div>
+  </div>
+
+  <!-- RIGHT: game info side panel (log + rules + action controls) -->
+  <aside id="game-info" class="game-info">
+    <div class="game-info-header">
+      <h3>Game Log</h3>
+      <button id="rules-btn" type="button">Rules</button>
+    </div>
+
+    <div id="game-log-container">
+      <div id="game-log" aria-live="polite"></div>
+    </div>
+
+    <!-- Customize per game: Poker → Fold/Check/Call/Bet. Hearts → (empty; click cards directly).
+         Blackjack → Hit/Stand/Double/Split. Uno → Draw/Play/UNO. -->
+    <div id="player-controls" class="action-buttons"></div>
+  </aside>
+
+</div>
+
+<!-- Modal: rules -->
+<div id="rules-modal" class="modal" aria-hidden="true">
+  <div class="modal-content">
+    <h2>How to Play</h2>
+    <div id="rules-content"></div>
+    <button id="close-rules-btn" type="button">Got it</button>
+  </div>
+</div>
+
+<!-- Modal: game over (end of hand or match) -->
+<div id="game-over-modal" class="modal" aria-hidden="true">
+  <div class="modal-content">
+    <h2>Hand Complete</h2>
+    <p id="game-over-text"></p>
+    <button id="play-again-btn" type="button">New Hand</button>
+  </div>
+</div>
+
+<!-- Toast (non-modal transient messages) -->
+<div id="toast" role="status" aria-live="polite"></div>

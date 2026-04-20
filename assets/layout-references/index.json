@@ -1,16 +1,26 @@
 {
-  "version": 2,
-  "description": "Keyword → layout-reference mapping. v2 (2026-04-19) adds `snippets`: a list of small atomic files (DOM, CSS, rules JS, AI JS, render JS) the loader injects as separately-labeled VERBATIM blocks. LLMs follow short concrete blocks more reliably than they follow a single 540-line .html file. The legacy `html` field is still honored when `snippets` is absent. To add a new genre: drop the .html/.css/.js files under this directory, list them in `snippets`, then add the entry below.",
+  "version": 3,
+  "description": "Keyword → layout-reference mapping. v3 (2026-04-19) composes archetype-level DOM+CSS (extracted from proven community builds) with game-specific logic snippets. v2 (2026-04-19) added `snippets`: a list of small atomic files the loader injects as separately-labeled VERBATIM blocks — LLMs follow short concrete blocks more reliably than single 540-line files. Legacy `html` field still honored when `snippets` is absent. To add a new genre: drop the .html/.css/.js files, list them in `snippets`, then add the entry below.",
+  "archetypes": {
+    "description": "Structural archetype → (dom + styles) reference pair. Multiple game entries below can borrow the same archetype. Phase QAF-AR will auto-extract new archetypes from best-rated published mini-apps; today this is hand-curated.",
+    "card-table-4-seat": {
+      "dom":    "card-table-4-seat.dom.html",
+      "styles": "card-table-4-seat.styles.css",
+      "notes":  "card-table-4-seat.md",
+      "source": "Texas Hold'em Poker (mchatai.com/u/GI1GHQ7wpLQKjJyf9QRQATyw5e33/texas-holdem-poker/)"
+    }
+  },
   "references": [
     {
       "id": "trick-taking-hearts",
-      "displayName": "Trick-Taking Card Game (Hearts family)",
+      "displayName": "Trick-Taking Card Game (Hearts / Spades / Bridge / Euchre)",
+      "archetype": "card-table-4-seat",
       "snippets": [
-        { "label": "DOM",         "file": "trick-taking-hearts.dom.html",   "language": "html" },
-        { "label": "Styles",      "file": "trick-taking-hearts.styles.css", "language": "css" },
-        { "label": "Rules",       "file": "trick-taking-hearts.rules.js",   "language": "js" },
-        { "label": "CPU AI",      "file": "trick-taking-hearts.ai.js",      "language": "js" },
-        { "label": "Render+Wire", "file": "trick-taking-hearts.render.js",  "language": "js" }
+        { "label": "DOM (card-table-4-seat archetype)",        "file": "card-table-4-seat.dom.html",     "language": "html" },
+        { "label": "Styles (card-table-4-seat archetype)",     "file": "card-table-4-seat.styles.css",   "language": "css" },
+        { "label": "Rules (Hearts scoring + legal play)",       "file": "trick-taking-hearts.rules.js",   "language": "js" },
+        { "label": "CPU AI (random-legal, 500ms delay)",        "file": "trick-taking-hearts.ai.js",      "language": "js" },
+        { "label": "Render + human click wiring",               "file": "trick-taking-hearts.render.js",  "language": "js" }
       ],
       "html": "trick-taking-hearts.html",
       "notes": "trick-taking-hearts.md",
@@ -26,6 +36,28 @@
         "trick taking",
         "follow suit",
         "trump card"
+      ],
+      "boost": 10,
+      "maxBytes": 48000,
+      "appliesTo": "card-games"
+    },
+    {
+      "id": "poker-holdem",
+      "displayName": "Texas Hold'em Poker (archetype demo)",
+      "archetype": "card-table-4-seat",
+      "snippets": [
+        { "label": "DOM (card-table-4-seat archetype)",    "file": "card-table-4-seat.dom.html",    "language": "html" },
+        { "label": "Styles (card-table-4-seat archetype)", "file": "card-table-4-seat.styles.css",  "language": "css" }
+      ],
+      "notes": "card-table-4-seat.md",
+      "keywords": [
+        "poker",
+        "texas hold",
+        "holdem",
+        "hold'em",
+        "omaha poker",
+        "seven-card stud",
+        "fold call raise"
       ],
       "boost": 10,
       "maxBytes": 32000,
