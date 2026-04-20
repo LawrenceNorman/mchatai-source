@@ -1,0 +1,225 @@
+/* VERBATIM styles for the webspa-single-screen-app archetype.
+   Phase DF — implements rule fs-012 (product UIs: orientation/status/action).
+
+   NO HERO. NO MARKETING COPY. The app IS the layout.
+
+   Three horizontal bands:
+     - .app-header (orientation) — slim, top
+     - .primary-surface (action)  — fills remaining viewport
+     - .status-strip (status)     — slim, bottom
+
+   Tokens mirror webspa-product-landing so an app and its marketing site can
+   share a design language. Keep retuning the palette consistent across both. */
+
+:root {
+  --bg: #fafaf8;
+  --surface: #ffffff;
+  --text: #101014;
+  --text-muted: #5a5a66;
+  --accent: #1a1a1a;
+  --on-accent: #ffffff;
+  --border: #e6e6e6;
+  --success: #1e8e3e;
+  --danger: #c5221f;
+
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+
+  --fs-h1: 1.0625rem;      /* app name — intentionally small, not a marketing display size */
+  --fs-primary-headline: clamp(1.5rem, 3vw, 2rem);
+  --fs-body: 1rem;
+  --fs-small: 0.8125rem;
+
+  --space-1: 8px;
+  --space-2: 16px;
+  --space-3: 24px;
+  --space-4: 40px;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+
+  --app-max: 960px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: var(--font-sans);
+  font-size: var(--fs-body);
+  line-height: 1.5;
+  color: var(--text);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+}
+
+button { font-family: inherit; }
+
+/* ===== APP SHELL — three horizontal zones, middle fills ===== */
+
+.app-shell {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  min-height: 100vh;
+  max-width: var(--app-max);
+  margin: 0 auto;
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+}
+
+/* ===== ORIENTATION (top) — app identity + context ===== */
+
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--border);
+  gap: var(--space-3);
+}
+.app-identity { display: flex; align-items: center; gap: var(--space-1); }
+.brand-mark { font-size: 1.125rem; }
+.app-name {
+  font-size: var(--fs-h1);           /* NOT a display size — this is a product UI, not a landing page */
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.app-context {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  line-height: 1.1;
+}
+.context-label {
+  font-size: var(--fs-small);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.context-value {
+  font-size: var(--fs-body);
+  font-weight: 500;
+}
+.settings-trigger {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 6px;
+  border-radius: var(--radius-sm);
+  transition: color 0.15s ease-out, background 0.15s ease-out;
+}
+.settings-trigger:hover { color: var(--text); background: var(--bg); }
+
+/* ===== ACTION (middle) — the primary surface the app exists for ===== */
+
+.primary-surface {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-3);
+}
+
+/* Placeholder content — app authors replace .placeholder-primary-content with
+   the real surface (list, canvas, input, keypad, etc.). The .action-row stays. */
+.placeholder-primary-content {
+  text-align: center;
+  max-width: 40ch;
+}
+.primary-content-headline {
+  font-size: var(--fs-primary-headline);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  margin-bottom: var(--space-1);
+}
+.primary-content-support {
+  color: var(--text-muted);
+}
+
+/* ACTION ROW — up to 3 buttons. fs-012 says lead with action. */
+.action-row {
+  display: flex;
+  gap: var(--space-1);
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.btn-primary,
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 20px;
+  border-radius: var(--radius-md);
+  font-weight: 500;
+  font-size: var(--fs-body);
+  cursor: pointer;
+  border: none;
+  transition: transform 0.15s ease-out, box-shadow 0.15s ease-out, border-color 0.15s ease-out;
+}
+.btn-primary {
+  background: var(--accent);
+  color: var(--on-accent);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+}
+.btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(0,0,0,0.12);
+}
+.btn-primary:active { transform: translateY(0); box-shadow: 0 1px 2px rgba(0,0,0,0.08); }
+.btn-secondary {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+.btn-secondary:hover { border-color: var(--text); }
+
+/* ===== STATUS (bottom) — at-a-glance metrics, max 3 ===== */
+
+.status-strip {
+  display: flex;
+  align-items: stretch;
+  justify-content: space-around;
+  padding: var(--space-2) var(--space-3);
+  border-top: 1px solid var(--border);
+  background: var(--bg);
+  gap: var(--space-1);
+}
+.status-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 72px;
+  flex: 1;
+}
+.status-value {
+  font-size: 1.125rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+.status-label {
+  font-size: var(--fs-small);
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+.status-divider {
+  width: 1px;
+  background: var(--border);
+  margin: 4px 0;
+}
+
+/* ===== ACCESSIBILITY ===== */
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}
+
+/* ===== RESPONSIVE — status strip wraps first on narrow screens ===== */
+
+@media (max-width: 520px) {
+  .app-header { flex-wrap: wrap; gap: var(--space-1); }
+  .status-strip { flex-wrap: wrap; }
+  .status-divider { display: none; }
+}

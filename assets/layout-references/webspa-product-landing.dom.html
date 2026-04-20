@@ -1,0 +1,138 @@
+<!-- VERBATIM: Product landing page skeleton for a webSPA.
+     Phase DF archetype — implements the rubric (fs-001..fs-012).
+
+     Narrative arc (fs-005): Hero → Supporting → Detail → Social proof → Final CTA.
+     Hero budget (fs-002): brand + 1 H1 + 1 support sentence + 1 CTA group + 1 dominant image.
+     No cards in hero (fs-003). One job per section (fs-004). No hero overlays (fs-006).
+     Motion recipe (fs-008): hero fade-up + sticky-nav compact + CTA hover.
+     Visual anchor (fs-010): hero <img> is the anchor — full-bleed object-cover.
+
+     Framework: framework-neutral HTML. Idiomatic React conversion = wrap each
+     <section> in a React component, turn class → className, turn data-* hooks
+     into state bindings. Tailwind utility classes used inline so the pattern
+     ports directly to a Tailwind codebase.
+
+     Copy the structure verbatim. Customize:
+       - .brand content (logo / wordmark)
+       - .hero-headline + .hero-support text
+       - .hero-cta-primary label + destination
+       - hero <img> src + alt
+       - feature-row content (3 rows — one job each, alternating image/text)
+       - testimonial quote + attribution
+       - final-cta headline + CTA
+
+     Do NOT remove / rename:
+       - #hero, #features, #social-proof, #final-cta section ids (evaluator greps)
+       - .nav (sticky), .hero, .feature-row, .testimonial, .final-cta structural classes
+       - data-motion="..." attributes (wire hooks for the motion snippets)
+-->
+
+<div class="page">
+
+  <!-- NAV (sticky; compacts after 40px scroll via data-motion hook) -->
+  <nav class="nav" data-motion="sticky-nav-compact">
+    <a class="brand" href="/" aria-label="Home">
+      <!-- brand mark — logo svg or wordmark -->
+      <span class="brand-mark">◆</span>
+      <span class="brand-name">Brand</span>
+    </a>
+    <ul class="nav-links" aria-label="Primary">
+      <li><a href="#features">Features</a></li>
+      <li><a href="#social-proof">Customers</a></li>
+      <li><a href="#final-cta">Pricing</a></li>
+    </ul>
+    <a class="nav-cta" href="#final-cta">Start free</a>
+  </nav>
+
+  <!-- HERO (fs-001, fs-002, fs-010) — one composition, minimal budget, full-bleed image -->
+  <section id="hero" class="hero" data-motion="hero-fade-up">
+    <!-- VISUAL ANCHOR: full-bleed, object-cover. Stable tonal area on the left for the overlay. -->
+    <img
+      class="hero-image"
+      src="/hero.jpg"
+      alt="A photograph showing the product in its real environment"
+    />
+    <div class="hero-overlay">
+      <h1 class="hero-headline">The one-line promise of the product.</h1>
+      <p class="hero-support">One short supporting sentence. Not marketing fluff. What the user actually gets.</p>
+      <div class="hero-cta-row">
+        <a class="btn-primary hero-cta-primary" href="#final-cta">Primary action</a>
+        <a class="btn-secondary hero-cta-secondary" href="#features">Secondary action</a>
+      </div>
+    </div>
+    <!-- NO floating badges, NO "New!" stickers (fs-006) -->
+  </section>
+
+  <!-- SUPPORTING (fs-005) — in-situ photography reinforcing the hero promise -->
+  <section id="supporting" class="supporting">
+    <figure class="supporting-figure">
+      <img src="/supporting.jpg" alt="Someone using the product in context" />
+      <figcaption>A brief line of product language — what this photograph shows.</figcaption>
+    </figure>
+  </section>
+
+  <!-- DETAIL: FEATURES (fs-004 one job per section, fs-003 no cards unless justified) -->
+  <!-- Alternating image/text rows — NOT a card grid. Each row has ONE headline and ONE purpose. -->
+  <section id="features" class="features">
+    <header class="section-header">
+      <h2>What you can do</h2>
+    </header>
+
+    <div class="feature-row feature-row-image-left">
+      <div class="feature-image">
+        <img src="/feature-1.jpg" alt="Feature one in use" />
+      </div>
+      <div class="feature-text">
+        <h3>Feature one headline in product language</h3>
+        <p>One short sentence explaining the feature — not marketing fluff.</p>
+      </div>
+    </div>
+
+    <div class="feature-row feature-row-image-right">
+      <div class="feature-text">
+        <h3>Feature two headline</h3>
+        <p>One short sentence.</p>
+      </div>
+      <div class="feature-image">
+        <img src="/feature-2.jpg" alt="Feature two in use" />
+      </div>
+    </div>
+
+    <div class="feature-row feature-row-image-left">
+      <div class="feature-image">
+        <img src="/feature-3.jpg" alt="Feature three in use" />
+      </div>
+      <div class="feature-text">
+        <h3>Feature three headline</h3>
+        <p>One short sentence.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- SOCIAL PROOF (fs-005) — a pull-quote, NOT a card grid of 3 testimonials -->
+  <section id="social-proof" class="social-proof">
+    <blockquote class="testimonial">
+      <p class="testimonial-quote">"One clear line of evidence the product works, written the way a real customer would speak."</p>
+      <footer class="testimonial-attribution">
+        <cite>— Name, role at Company</cite>
+      </footer>
+    </blockquote>
+  </section>
+
+  <!-- FINAL CTA (fs-005) — convergent endpoint of the narrative -->
+  <section id="final-cta" class="final-cta">
+    <h2 class="final-cta-headline">Short converging call to action.</h2>
+    <p class="final-cta-support">One short sentence. Then the button.</p>
+    <a class="btn-primary final-cta-button" href="/signup">Primary action</a>
+  </section>
+
+  <footer class="footer">
+    <span class="footer-brand">◆ Brand</span>
+    <nav class="footer-links">
+      <a href="/about">About</a>
+      <a href="/privacy">Privacy</a>
+      <a href="/contact">Contact</a>
+    </nav>
+  </footer>
+
+</div>

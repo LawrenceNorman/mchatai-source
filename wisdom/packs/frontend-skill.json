@@ -1,0 +1,164 @@
+{
+  "packID": "frontend-skill",
+  "version": 1,
+  "displayName": "Delightful Frontends — Taste Discipline",
+  "description": "Hard rules for generating delightful frontends. Distilled from OpenAI's 'Designing Delightful Frontends with GPT-5' field guide (Apr 2026). Applies to mini-apps, webSPA landing pages and product UIs, and (where idiomatic) macOS/iOS UI. Source: Phase DF spec. The rubric is the non-negotiable first-impression bar.",
+  "categories": ["all"],
+  "keywords": [
+    "landing",
+    "hero",
+    "marketing",
+    "webspa",
+    "miniapp",
+    "ui",
+    "frontend",
+    "design",
+    "layout",
+    "product page",
+    "app ui",
+    "single-screen"
+  ],
+  "guidelines": [
+    {
+      "id": "fs-001",
+      "rule": "The first viewport MUST read as ONE composition, not a dashboard. A single dominant arrangement — hero image plus headline plus CTA — NOT a grid of tiles, NOT a stack of cards, NOT a sidebar+main split above the fold. Everything below the fold can add sections; the first screen is one unified frame.",
+      "why": "Mini-apps and landing pages shipped today too often open with a SaaS-card-grid that gives no focal point. Users can't tell what the thing IS in the first second. One composition = one clear answer to 'what is this?'",
+      "severity": "critical",
+      "appliesTo": "miniapp, webspa",
+      "examples": [
+        "BAD: <div class='grid grid-cols-3 gap-4'>... 6 feature cards above the fold</div> — dashboard feel, no anchor",
+        "BAD: hero row split 50/50 into 'sign-up form' + '3 value-prop cards' — two compositions fighting",
+        "GOOD: <section class='min-h-screen flex flex-col items-center justify-center'><h1>...</h1><p>...</p><button>...</button><img class='absolute inset-0 object-cover -z-10' ... /></section> — one frame, one read"
+      ]
+    },
+    {
+      "id": "fs-002",
+      "rule": "Hero budget — the first viewport contains AT MOST: brand mark, ONE headline, ONE short supporting sentence, ONE CTA group (1 primary button, optional 1 secondary), ONE dominant image. No feature tiles above the fold. No testimonial cards above the fold. No newsletter signup above the fold.",
+      "why": "Every extra element in the hero dilutes the message. The OpenAI field study showed measurable quality lift from enforcing this strict budget.",
+      "severity": "critical",
+      "appliesTo": "webspa",
+      "examples": [
+        "BAD: hero with brand + 2 headlines + 3 bullets + CTA + email-signup + 3 trust logos — seven things, no focal point",
+        "GOOD: <Navbar/> then <section>{h1}{p}{CTAs}{heroImage}</section> — five elements, one intent"
+      ]
+    },
+    {
+      "id": "fs-003",
+      "rule": "DO NOT default to cards. Cards are an EXCEPTION used for genuinely comparable items (e.g. pricing tiers, a list of products). NEVER use cards in the hero. NEVER use cards as the primary layout scaffold for a single-screen app. If you catch yourself reaching for '<div class=\"rounded-xl shadow p-6\">' without justification, choose a layout section instead.",
+      "why": "'Cards-as-default' is the single most common failure mode in LLM-generated UIs. Cards should emerge from information that's actually card-shaped (discrete, comparable items), not be the delivery mechanism for every piece of content.",
+      "severity": "critical",
+      "appliesTo": "miniapp, webspa, macos",
+      "examples": [
+        "BAD: landing page with every section wrapped in a card — the whole page looks like a cork board",
+        "BAD: mini-app where settings, status, and primary action are three cards stacked — should be a single layout",
+        "GOOD: pricing section uses 3 cards (comparable tiers). Hero does not. Feature section uses alternating image/text rows, not cards. Testimonials use a single pull-quote layout, not a card grid."
+      ]
+    },
+    {
+      "id": "fs-004",
+      "rule": "One job per section. Each section has ONE headline, ONE purpose, ONE visual intent. If a section tries to introduce two ideas, split it into two sections or cut one.",
+      "why": "Sections that juggle multiple ideas produce weak scannable hierarchy. A reader scanning headlines alone should understand the page.",
+      "severity": "important",
+      "appliesTo": "webspa",
+      "examples": [
+        "BAD: 'Features + Pricing' section combining a feature list with a pricing table",
+        "GOOD: separate Features section and separate Pricing section, each with one H2 and one purpose"
+      ]
+    },
+    {
+      "id": "fs-005",
+      "rule": "Marketing pages follow a narrative arc: (1) HERO — identity and promise; (2) SUPPORTING — context, environment, proof of concept imagery; (3) DETAIL — explain the offering; (4) SOCIAL PROOF — testimonials, logos, or credibility; (5) FINAL CTA — conversion. Deviate only with a reason.",
+      "why": "This arc is a proven pattern. Going out of order (e.g. pricing before value prop, testimonials in hero) confuses the read.",
+      "severity": "important",
+      "appliesTo": "webspa",
+      "examples": [
+        "GOOD: Hero → in-situ product photo section → 3-part feature explainer → customer quote → pricing/CTA",
+        "BAD: Hero → pricing table → features → testimonials (pricing-first kills momentum unless this is a known-brand upgrade page)"
+      ]
+    },
+    {
+      "id": "fs-006",
+      "rule": "No hero overlays. Do NOT place detached labels, floating badges, 'New!' stickers, promo ribbons, or pill-style tags on top of the hero image. The hero's hierarchy is headline + support + CTA — floating decoration competes with the headline and erodes authority.",
+      "why": "Stickers and badges are a cheap way to 'add visual interest' but they read as ad-clutter. Premium UIs are quiet.",
+      "severity": "important",
+      "appliesTo": "webspa",
+      "examples": [
+        "BAD: hero with 'NEW ✨' pill, '50% OFF' starburst, and 'AS SEEN ON TECHCRUNCH' badge all floating over the hero image",
+        "GOOD: hero has headline, sentence, CTA. If 'new' matters, it's a navbar pill or a quiet eyebrow label ABOVE the headline — part of the composition, not floating on top of it"
+      ]
+    },
+    {
+      "id": "fs-007",
+      "rule": "Copy discipline: write in PRODUCT language, not design commentary. Cut 30% of copy if deletion improves clarity. One short supporting sentence per section maximum. NO 'welcome to our amazing platform' / 'revolutionize your workflow' / 'unlock the power of' — cut these phrases on sight.",
+      "why": "LLMs default to marketing fluff. Product language names a real thing the user gets; design commentary praises the product itself. 'Track habits in under 10 seconds' beats 'Revolutionize your habit-building journey.'",
+      "severity": "important",
+      "appliesTo": "all",
+      "examples": [
+        "BAD: 'Welcome to the next generation of productivity tools — unlock your potential and revolutionize your workflow today.'",
+        "GOOD: 'Log a habit in one tap. See your streak on the home screen.'",
+        "BAD section header: 'Powerful features designed to delight'",
+        "GOOD section header: 'What you can do'"
+      ]
+    },
+    {
+      "id": "fs-008",
+      "rule": "Motion recipe: deliver 2–3 INTENTIONAL motions per page, not more, not fewer. The set: (1) ONE entrance motion in the hero (fade + small rise, 400–700ms, once); (2) ONE scroll-linked or sticky/depth effect (parallax, sticky nav, pinned section); (3) ONE hover/reveal/layout transition that clarifies an affordance (button hover, card lift on hover, tab transition). All motion must be smooth on mobile, restrained, and serve hierarchy — NOT decorate.",
+      "why": "Zero motion reads as static / unfinished. More than 3 reads as busy / junior. Exactly 2–3 purposeful motions is the sweet spot. Framer Motion makes this easy on React; plain CSS @keyframes is fine otherwise.",
+      "severity": "important",
+      "appliesTo": "webspa, miniapp",
+      "examples": [
+        "GOOD (entrance): <motion.h1 initial={{opacity:0,y:16}} animate={{opacity:1,y:0}} transition={{duration:0.6,ease:'easeOut'}}>...</motion.h1>",
+        "GOOD (scroll): sticky navbar that compacts after 40px scroll; or a section with position:sticky pinning a phone mockup while text scrolls next to it",
+        "GOOD (hover): button with transform:translateY(-1px) and subtle shadow increase on hover",
+        "BAD: every element animates in on scroll — noise, slow on mobile, fights reading",
+        "BAD: looping floating particles behind hero — decorative, not purposeful"
+      ]
+    },
+    {
+      "id": "fs-009",
+      "rule": "Imagery standards: PREFER in-situ photography (product in real environment, people using it, authentic context) over abstract gradients or 3D blobs. Hero images must have stable tonal areas where text overlays will land (i.e. don't overlay text on a busy face). Source images must NOT contain embedded UI frames, fake device chrome, or watermarks.",
+      "why": "Abstract gradients are a default that LLMs reach for because they're 'safe' — but they do no narrative work. A real photograph of the product in context tells the story instantly. 'Embedded UI in the image' creates UI-within-UI that looks unprofessional.",
+      "severity": "important",
+      "appliesTo": "webspa",
+      "examples": [
+        "BAD: hero image is a generic purple-to-pink gradient with 'floating 3D spheres' — no narrative",
+        "BAD: hero image is a laptop mockup with the product's screenshot inside it — UI frames competing with real UI",
+        "GOOD: hero image is a photo of a person using the product at a desk; left third is an out-of-focus wall (stable tonal area) where the headline overlays cleanly"
+      ]
+    },
+    {
+      "id": "fs-010",
+      "rule": "The first viewport MUST have a real visual anchor — a dominant image, hero composition, or primary product element. Decorative texture (noise, gradient mesh, subtle pattern) alone does NOT count. Without an anchor, the page reads as 'a form on a background'.",
+      "why": "Paired with fs-001 and fs-002. The visual anchor is the thing a user's eye lands on first; headline + CTA are what they read second. Without an anchor there is no first.",
+      "severity": "critical",
+      "appliesTo": "webspa",
+      "examples": [
+        "BAD: hero is headline + sentence + CTA centered on a plain gradient — no anchor, feels like a splash screen",
+        "GOOD: full-bleed product photo (anchor) with headline+CTA overlaid on a stable tonal area; or a large hero illustration tied to the brand (anchor) offset to one side with text on the other"
+      ]
+    },
+    {
+      "id": "fs-011",
+      "rule": "Premium-without-decoration check: mentally strip every shadow, gradient, rounded corner, and subtle animation from your layout. Does it still read as premium and intentional? If removing decoration reveals a weak layout, the layout is weak — fix the bones, do not add more decoration.",
+      "why": "Decoration is compensation for weak hierarchy. Great designs work at 'wireframe' level — the skeleton alone communicates. Adding shadows/gradients to rescue a card-grid first-viewport will not save it; restructure the first viewport.",
+      "severity": "important",
+      "appliesTo": "all",
+      "examples": [
+        "Test: comment out `shadow-xl rounded-2xl bg-gradient-to-br` on your hero card. Does the hero still read well? If no, the hero itself is the problem.",
+        "BAD: layout that depends on heavy shadows + gradients to feel designed",
+        "GOOD: layout that works in monochrome with only a single accent color — decoration adds polish, not rescue"
+      ]
+    },
+    {
+      "id": "fs-012",
+      "rule": "For product UIs (apps, not landing pages): the first screen prioritizes ORIENTATION, STATUS, ACTION — not marketing language. The user knows they are in the app; they want to know where they are, what's going on, and what they can do next. Save marketing copy for the landing page.",
+      "why": "A mini-app or app-UI that opens with 'Welcome to your beautiful new habit tracker ✨' wastes the user's time. They just opened the app — they want to log a habit. Lead with the action.",
+      "severity": "important",
+      "appliesTo": "miniapp, macos",
+      "examples": [
+        "BAD first screen of a habit-tracker mini-app: hero with 'Build better habits' + decorative illustration + 'Get started' button",
+        "GOOD first screen of a habit-tracker mini-app: today's date, list of today's habits with one-tap checkboxes, streak counter in corner — orientation (today), status (3 of 5 done), action (tap to check)"
+      ]
+    }
+  ]
+}
