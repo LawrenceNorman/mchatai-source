@@ -21,3 +21,13 @@ Asset pack files have been placed in `{{assetDir}}/` in the working directory.
 - UFO bonus: `element.innerHTML = renderSprite(UFO_SHIP, {1:'#ff6600'}, 3);`
 - Explosion: Add CSS `@keyframes explode` + `.exploding` class on hit
 - Bullets: Use `.bullet` / `.enemy-bullet` CSS classes (3px wide, glowing)
+
+## webSPA + Landing Page Assets (Phase DF)
+
+For webSPA / marketing-page / product-UI generation, additional reference snippets live in `assets/layout-references/snippets/`:
+
+- **`motion-recipes.json`** — three canonical motion patterns (hero fade-up entrance, sticky-nav compact on scroll, CTA hover lift). Use 2–3 per page, not more. Each recipe has both a Framer Motion snippet and a plain-CSS fallback. Copy the appropriate snippet into your output verbatim.
+
+- **`imagery-guidance.md`** — long-form companion to wisdom rules fs-009 and fs-010 (imagery standards + visual anchor required). Consult before picking a hero image: in-situ photography over abstract gradients, stable tonal areas for overlays, no embedded UI in source images.
+
+When the frontend-skill wisdom pack is present in your context (rules prefixed `fs-`), its rules take precedence over any older guidance. The rules and these snippets ship together as Phase DF.

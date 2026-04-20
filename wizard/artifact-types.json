@@ -1,7 +1,8 @@
 {
   "$schema": "https://mchatai.com/schemas/artifact-types-v1.json",
-  "version": "1.0.0",
-  "last_updated": "2026-04-14",
+  "version": "1.1.0",
+  "last_updated": "2026-04-20",
+  "_notes": "v1.1.0 (Phase DF): added optional preferred_reasoning_level per artifact type. HarnessRouter reads it as a soft hint per stage — backends that support reasoning-effort knobs (OpenAI Responses reasoning.effort, Anthropic thinking budgets, Gemini thinking-token budgets) honor it; others ignore. Gearshift per-session overrides always win. Seed values from OpenAI's delightful-frontends field guide: webSPA/miniApp default to medium (the post found low/medium reasoning often produces stronger frontend results); microservice/Unity stay high for correctness-heavy work; autofix stages bump to high across the board because the generator already took a pass.",
   "artifact_types": {
     "miniApp": {
       "id": "miniApp",
@@ -11,7 +12,16 @@
       "tunnel_id_field": "miniAppID",
       "steering_hint": "Output the COMPLETE mini-app in a ```miniapp JSON block with id, name, manifest, and html.",
       "prereq_env_profile": null,
-      "description": "Single-page HTML/JS/CSS app rendered in a webview. Default for games, tools, interactive UI."
+      "description": "Single-page HTML/JS/CSS app rendered in a webview. Default for games, tools, interactive UI.",
+      "preferred_reasoning_level": {
+        "default": "medium",
+        "by_stage": {
+          "planner": "medium",
+          "generator": "medium",
+          "evaluator": "low",
+          "autofix": "high"
+        }
+      }
     },
     "macOSApp": {
       "id": "macOSApp",
@@ -21,7 +31,16 @@
       "tunnel_id_field": "miniAppID",
       "steering_hint": "Output the COMPLETE app in a ```macosapp JSON block with id, name, template, and files.",
       "prereq_env_profile": "app.native.macos",
-      "description": "Native Swift macOS app (Package.swift project, compiled locally via mChatAIShell playground)."
+      "description": "Native Swift macOS app (Package.swift project, compiled locally via mChatAIShell playground).",
+      "preferred_reasoning_level": {
+        "default": "medium",
+        "by_stage": {
+          "planner": "high",
+          "generator": "medium",
+          "evaluator": "low",
+          "autofix": "high"
+        }
+      }
     },
     "unityGame": {
       "id": "unityGame",
@@ -31,7 +50,16 @@
       "tunnel_id_field": "unityGameID",
       "steering_hint": "Output the COMPLETE Unity game in a ```unitygame JSON block with id, name, genre (arcade/platformer/topDown/puzzle/card/shooter), unityVersion, and files (Assets/Scripts/SceneSetup.cs plus gameplay scripts). Include a SceneSetup.cs bootstrapper that creates all scene objects from code (no .unity file). No prefab dependencies.",
       "prereq_env_profile": "app.native.unity",
-      "description": "Unity 6 LTS C# game project. No on-our-side compile — user opens files in Unity Hub."
+      "description": "Unity 6 LTS C# game project. No on-our-side compile — user opens files in Unity Hub.",
+      "preferred_reasoning_level": {
+        "default": "high",
+        "by_stage": {
+          "planner": "high",
+          "generator": "high",
+          "evaluator": "medium",
+          "autofix": "high"
+        }
+      }
     },
     "pythonMicroservice": {
       "id": "pythonMicroservice",
@@ -41,7 +69,16 @@
       "tunnel_id_field": "pythonServiceID",
       "steering_hint": "Output the COMPLETE Python microservice in a ```pythonservice JSON block with id, name, framework (fastapi/flask/django), pythonVersion, and files. Include a main.py entry point, requirements.txt with pinned versions, and a Dockerfile. No cloud-specific config — the service should run locally with `pip install -r requirements.txt && python main.py`.",
       "prereq_env_profile": "service.python",
-      "description": "Python web microservice (FastAPI/Flask/Django). Delivered as files dict; user runs locally or deploys via their own Docker/Cloud Run pipeline."
+      "description": "Python web microservice (FastAPI/Flask/Django). Delivered as files dict; user runs locally or deploys via their own Docker/Cloud Run pipeline.",
+      "preferred_reasoning_level": {
+        "default": "high",
+        "by_stage": {
+          "planner": "high",
+          "generator": "high",
+          "evaluator": "medium",
+          "autofix": "high"
+        }
+      }
     },
     "reactNativeApp": {
       "id": "reactNativeApp",
@@ -51,7 +88,16 @@
       "tunnel_id_field": "reactNativeID",
       "steering_hint": "Output the COMPLETE React Native app in a ```reactnative JSON block with id, name, expoVersion, and files (App.js, package.json, app.json). Self-contained — should run via `npx expo start`.",
       "prereq_env_profile": "app.native.reactnative",
-      "description": "React Native / Expo mobile app. Cross-platform iOS + Android."
+      "description": "React Native / Expo mobile app. Cross-platform iOS + Android.",
+      "preferred_reasoning_level": {
+        "default": "medium",
+        "by_stage": {
+          "planner": "medium",
+          "generator": "medium",
+          "evaluator": "low",
+          "autofix": "high"
+        }
+      }
     },
     "electronApp": {
       "id": "electronApp",
@@ -61,7 +107,16 @@
       "tunnel_id_field": "electronAppID",
       "steering_hint": "Output the COMPLETE Electron app in a ```electronapp JSON block with id, name, electronVersion, and files (main.js, renderer.html, package.json). Should run via `npm install && npm start`.",
       "prereq_env_profile": "app.native.electron",
-      "description": "Electron desktop app. Cross-platform Windows/macOS/Linux."
+      "description": "Electron desktop app. Cross-platform Windows/macOS/Linux.",
+      "preferred_reasoning_level": {
+        "default": "medium",
+        "by_stage": {
+          "planner": "medium",
+          "generator": "medium",
+          "evaluator": "low",
+          "autofix": "high"
+        }
+      }
     },
     "androidApp": {
       "id": "androidApp",
@@ -71,7 +126,16 @@
       "tunnel_id_field": "androidAppID",
       "steering_hint": "Output the COMPLETE Android app in a ```androidapp JSON block with id, name, minSdk, targetSdk, language (kotlin), and files (MainActivity.kt, build.gradle, AndroidManifest.xml). Should build via `./gradlew assembleDebug`.",
       "prereq_env_profile": "app.native.android",
-      "description": "Native Android app (Kotlin + Jetpack Compose). Built locally via gradle."
+      "description": "Native Android app (Kotlin + Jetpack Compose). Built locally via gradle.",
+      "preferred_reasoning_level": {
+        "default": "medium",
+        "by_stage": {
+          "planner": "medium",
+          "generator": "medium",
+          "evaluator": "low",
+          "autofix": "high"
+        }
+      }
     },
     "webSPA": {
       "id": "webSPA",
@@ -81,7 +145,16 @@
       "tunnel_id_field": "webSpaID",
       "steering_hint": "Output the COMPLETE web SPA in a ```webspa JSON block with id, name, framework (react/vue/svelte), and files (index.html, main.js, package.json). Should build via `npm install && npm run build`.",
       "prereq_env_profile": "app.web",
-      "description": "Web single-page application (React/Vue/Svelte). More structured than a miniApp — multi-file build pipeline."
+      "description": "Web single-page application (React/Vue/Svelte). More structured than a miniApp — multi-file build pipeline.",
+      "preferred_reasoning_level": {
+        "default": "medium",
+        "by_stage": {
+          "planner": "medium",
+          "generator": "medium",
+          "evaluator": "low",
+          "autofix": "high"
+        }
+      }
     }
   }
 }

@@ -1,7 +1,7 @@
 {
-  "version": 3,
+  "version": 4,
   "surface": "aiwizard",
-  "description": "Default context recipe for AIWizard macOS-app generation. Loads in priority order: framework scaffold > active memory > universal wisdom > framework-specific wisdom > feature manifest > user goal > recent history. Each layer skips cleanly when its prerequisite isn't available. v2 added active-memory layer (Phase MA.3). v3 adds excludeTitlePatterns to drop CCAA / AgentRuntime / ScheduledJob log spam from retrieval results — the FTS5 index includes 9000+ historical agent log entries that are noise for context injection.",
+  "description": "Default context recipe for AIWizard macOS-app generation. Loads in priority order: framework scaffold > active memory > universal wisdom > framework-specific wisdom > frontend-skill guidance > feature manifest > user goal > recent history. Each layer skips cleanly when its prerequisite isn't available. v2 added active-memory layer (Phase MA.3). v3 adds excludeTitlePatterns to drop CCAA / AgentRuntime / ScheduledJob log spam from retrieval results — the FTS5 index includes 9000+ historical agent log entries that are noise for context injection. v4 (2026-04-20): Phase DF — added frontend-skill-guidance layer at priority 82. For macOS apps, the frontend-skill pack contributes the subset of rules that transfer (fs-003 no-cards-by-default, fs-007 copy discipline, fs-011 premium-without-decoration, fs-012 orientation/status/action for product UIs). Rules scoped miniapp-only / webspa-only are ignored by the LLM via the `appliesTo` field.",
   "layers": [
     {
       "id": "framework-scaffold",
@@ -35,6 +35,24 @@
       "loader": "wisdom-framework",
       "priority": 85,
       "maxTokens": 3000
+    },
+    {
+      "id": "frontend-skill-guidance",
+      "loader": "wisdom-pack",
+      "priority": 82,
+      "maxTokens": 3500,
+      "options": {
+        "packID": "frontend-skill"
+      }
+    },
+    {
+      "id": "user-references",
+      "loader": "user-references",
+      "priority": 78,
+      "maxTokens": 6000,
+      "options": {
+        "includeImageData": false
+      }
     },
     {
       "id": "feature-manifest",

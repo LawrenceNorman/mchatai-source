@@ -1,0 +1,80 @@
+{
+  "version": 1,
+  "surface": "aiwizard",
+  "description": "Context recipe for AIWizard webSPA (React/Vue/Svelte) generation. Phase DF v1 (2026-04-20): webSPA previously fell back to the miniapp recipe, which is optimized for single-file HTML games. This dedicated recipe pins the frontend-skill wisdom pack (priority 82) and keeps wisdom-framework lighter (3500 tokens vs 11000) since framework-specific card-game packs aren't relevant here. layout-reference still fires for webSPA archetypes (webspa-product-landing, webspa-single-screen-app) when those are added in DF.4. When the user-references layer ships (DF.7) it slots in at priority 78.",
+  "layers": [
+    {
+      "id": "active-memory",
+      "loader": "active-memory",
+      "priority": 95,
+      "maxTokens": 1200,
+      "options": {
+        "budgetChars": 4800,
+        "budgetMillis": 400,
+        "excludeTitlePatterns": [
+          "^\\[CCAA\\]",
+          "^\\[AgentRuntime_",
+          "^\\[ScheduledJob\\]"
+        ]
+      }
+    },
+    {
+      "id": "wisdom-universal",
+      "loader": "wisdom-universal",
+      "priority": 90,
+      "maxTokens": 3000
+    },
+    {
+      "id": "wisdom-framework",
+      "loader": "wisdom-framework",
+      "priority": 85,
+      "maxTokens": 3500
+    },
+    {
+      "id": "frontend-skill-guidance",
+      "loader": "wisdom-pack",
+      "priority": 82,
+      "maxTokens": 4500,
+      "options": {
+        "packID": "frontend-skill"
+      }
+    },
+    {
+      "id": "layout-reference",
+      "loader": "layout-reference",
+      "priority": 80,
+      "maxTokens": 9000
+    },
+    {
+      "id": "user-references",
+      "loader": "user-references",
+      "priority": 78,
+      "maxTokens": 6000,
+      "options": {
+        "includeImageData": false
+      }
+    },
+    {
+      "id": "feature-manifest",
+      "loader": "feature-manifest",
+      "priority": 70,
+      "maxTokens": 1200
+    },
+    {
+      "id": "user-goal",
+      "loader": "user-goal",
+      "priority": 60,
+      "maxTokens": 800
+    },
+    {
+      "id": "history-recent",
+      "loader": "history-recent",
+      "priority": 50,
+      "maxTokens": 1500,
+      "options": {
+        "limit": 4,
+        "includeAssistant": true
+      }
+    }
+  ]
+}
