@@ -1,10 +1,17 @@
 {
-  "version": 1,
-  "description": "Keyword → layout-reference file mapping. The Swift `layout-reference` context loader matches the user goal against the `keywords` list (case-insensitive substring match); on hit it injects the `html` file's contents + the companion `notes` markdown as a new context layer. Boosts are additive across multiple hits (boost selects the winning entry when more than one matches). Add a new entry per genre: add a new .html + .md under this directory, then list them here.",
+  "version": 2,
+  "description": "Keyword → layout-reference mapping. v2 (2026-04-19) adds `snippets`: a list of small atomic files (DOM, CSS, rules JS, AI JS, render JS) the loader injects as separately-labeled VERBATIM blocks. LLMs follow short concrete blocks more reliably than they follow a single 540-line .html file. The legacy `html` field is still honored when `snippets` is absent. To add a new genre: drop the .html/.css/.js files under this directory, list them in `snippets`, then add the entry below.",
   "references": [
     {
       "id": "trick-taking-hearts",
       "displayName": "Trick-Taking Card Game (Hearts family)",
+      "snippets": [
+        { "label": "DOM",         "file": "trick-taking-hearts.dom.html",   "language": "html" },
+        { "label": "Styles",      "file": "trick-taking-hearts.styles.css", "language": "css" },
+        { "label": "Rules",       "file": "trick-taking-hearts.rules.js",   "language": "js" },
+        { "label": "CPU AI",      "file": "trick-taking-hearts.ai.js",      "language": "js" },
+        { "label": "Render+Wire", "file": "trick-taking-hearts.render.js",  "language": "js" }
+      ],
       "html": "trick-taking-hearts.html",
       "notes": "trick-taking-hearts.md",
       "keywords": [
