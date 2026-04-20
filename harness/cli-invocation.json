@@ -47,6 +47,33 @@
     "description": "Phase AQ.GATHER: copy matched asset pack JSON + starter code into workDir before CLI session. The CLI agent reads these files directly instead of parsing prompt-injected strings. agentInstructionsTemplate references a prompt template in mchatai-source/harness/prompts/."
   },
 
+  "streamJsonMapping": {
+    "claude": {
+      "invocationFlags": ["--output-format", "stream-json", "--verbose"],
+      "awaitingApproval": {
+        "type": "tool_use",
+        "requires": null
+      },
+      "complete": {
+        "type": "result",
+        "requires": null
+      },
+      "assistantText": {
+        "type": "assistant",
+        "requires": null
+      },
+      "toolUse": {
+        "type": "tool_use",
+        "requires": null
+      },
+      "toolResult": {
+        "type": "tool_result",
+        "requires": null
+      },
+      "notes": "Claude Code stream-json frames are line-delimited JSON objects with a top-level `type` field. `--verbose` is required when using --output-format stream-json (Claude Code refuses without it). Auto-approval writes y\\n on tool_use; complete fires on `result` event."
+    }
+  },
+
   "backends": {
     "claude": {
       "displayName": "Claude Code CLI",
