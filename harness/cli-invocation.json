@@ -146,6 +146,10 @@
         "autoApprove": true,
         "skipPermissionsAfterApproval": true
       },
+      "orchestration": {
+        "mode": "agentic",
+        "stallWindowSec": 600
+      },
       "optimization": {
         "model": "opus",
         "permissionMode": "bypassPermissions",
@@ -177,6 +181,10 @@
         "autoApprove": true,
         "skipPermissionsAfterApproval": true,
         "sandbox": false
+      },
+      "orchestration": {
+        "mode": "agentic",
+        "stallWindowSec": 600
       },
       "optimization": {
         "model": "gpt-5.4",
@@ -210,6 +218,23 @@
         "autoApprove": true,
         "skipPermissionsAfterApproval": true,
         "yolo": true
+      },
+      "orchestration": {
+        "mode": "stepwise",
+        "stallWindowSec": 600,
+        "stepwiseConfig": {
+          "plannerProvider": "google",
+          "plannerModel": "gemini-2.5-flash",
+          "plannerTemplate": "stepwise.planner",
+          "verifierTemplate": "stepwise.stepVerifier",
+          "maxStepsPerTurn": 7,
+          "perStepTimeoutSec": 120,
+          "stepInvocation": {
+            "argv": ["gemini", "-p", "{stepPrompt}", "--yolo"],
+            "stepPromptTemplate": "Execute step {n} of {total}: {description}\n\nOriginal goal: {goal}\n\nWorking directory already contains the project so far. Make the change cleanly and exit when this step is done — do not try to complete the whole goal in one shot."
+          },
+          "verifyAfterEachStep": false
+        }
       },
       "optimization": {
         "model": "gemini-2.5-pro",

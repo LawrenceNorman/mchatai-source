@@ -171,6 +171,18 @@
         "GOOD (a mini-app with no CSS transitions emits an empty motion set + hides the motion slider):\\n```tunables\\n{\\\"instanceValues\\\":{\\\"accent-hue\\\":220,\\\"density\\\":\\\"compact\\\"},\\\"hiddenTunables\\\":[\\\"motion-intensity\\\"]}\\n```",
         "BAD: inventing `\\\"font-family\\\": \\\"Georgia\\\"` — not in the manifest. App will ignore it silently."
       ]
+    },
+    {
+      "id": "fs-014",
+      "rule": "When generating a macOS SwiftUI app, wire the design tokens (tint, density, sidebarStyle) through a `DesignTokens` struct exposed as `@Environment(\\.designTokens)` so sliders in the Design panel can mutate them live. (1) Declare `struct DesignTokens { var accentHue: Double = 210; var density: String = \"comfortable\"; var sidebarStyle: String = \"none\" }`. (2) Add an EnvironmentKey + EnvironmentValues extension so views can read `@Environment(\\.designTokens) var tokens`. (3) Inject at the WindowGroup root via `.environment(\\.designTokens, DesignTokens(…))` using values sourced from a class / observable (so updates propagate). (4) READ from this environment in views — `Color(hue: tokens.accentHue/360, saturation: 0.7, brightness: 0.85)` for tint, `tokens.density == \"compact\" ? 8 : 16` for spacing, `switch tokens.sidebarStyle` for chrome. (5) After the code block, emit a ```tunables JSON block naming the bound IDs (\"tint-hue\", \"density\", \"sidebarStyle\") in `instanceValues`.",
+      "why": "Phase DX.2e — without this plumbing the macOSApp Design panel's sliders can only hint the NEXT generation. With it, the Design panel can mutate tokens in place (harness posts values into the running app's observable token bag) and the user sees the app re-style live the way the web miniApp bridge already does. The generator must opt-in explicitly because there's no CSS-variable surface on SwiftUI — it has to be an explicit protocol.",
+      "severity": "important",
+      "appliesTo": "macos",
+      "examples": [
+        "GOOD (at the top of the SwiftUI app file):\\n```swift\\nstruct DesignTokens { var accentHue: Double = 210; var density: String = \\\"comfortable\\\"; var sidebarStyle: String = \\\"none\\\" }\\nprivate struct DesignTokensKey: EnvironmentKey { static let defaultValue = DesignTokens() }\\nextension EnvironmentValues { var designTokens: DesignTokens { get { self[DesignTokensKey.self] } set { self[DesignTokensKey.self] = newValue } } }\\n\\n@MainActor final class TokenBag: ObservableObject { @Published var tokens = DesignTokens() }\\n\\n@main struct MyApp: App { @StateObject private var bag = TokenBag(); var body: some Scene { WindowGroup { RootView().environment(\\\\.designTokens, bag.tokens) } } }\\n```",
+        "GOOD (a view reading the tokens):\\n```swift\\nstruct BigButton: View { @Environment(\\\\.designTokens) var tokens; var body: some View { Button(\\\"Go\\\") { }.tint(Color(hue: tokens.accentHue/360, saturation: 0.7, brightness: 0.85)).padding(tokens.density == \\\"compact\\\" ? 6 : 12) } }\\n```",
+        "BAD: hardcoding `.tint(.blue)` or `Spacer().frame(height: 16)` everywhere — the Design panel's sliders will have nowhere to land, and the ```tunables block you emit will be claim-vs-reality broken."
+      ]
     }
   ]
 }
