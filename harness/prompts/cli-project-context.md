@@ -61,6 +61,14 @@ You are a coding CLI (Claude Code / Codex / Gemini) running under the mChatAI Ha
 8. **Use requestAnimationFrame** for game loops, not setInterval.
 9. **Output format:** Single-file HTML mini-app. All CSS, JS, SVG inline. Self-contained.
 
+### External APIs (CRITICAL — silent failure trap)
+10. **NEVER call external HTTPS APIs directly from a published web mini-app.** Published sites run under a strict Content-Security-Policy that blocks all cross-origin fetch(). The call works in the AIHarness preview, then silently fails in production with no console error users can act on. ALWAYS route external API calls through the mChatAI proxy:
+    ```js
+    const proxied = (url) => `https://mchatai.com/proxy/fetch?url=${encodeURIComponent(url)}`;
+    const r = await fetch(proxied('https://api.weather.gov/points/47.6,-122.3'));
+    ```
+    The proxy enforces an allowlist (`mchatai-source/proxy/allowlist.json`) — currently includes weather.gov, open-meteo, OpenStreetMap geocoding, Wikipedia, randomuser.me, dog.ceo, cat API, jokes, currency, Pokémon, spaceflight news, plus a few more. If you need a host that isn't on the list, the proxy returns HTTP 403 with `{ ok: false, howToAdd: "..." }` — surface that to the user; don't fall back to a third-party CORS proxy in production.
+
 ## Output
 Build a single-file `index.html`. Output the COMPLETE file content in a ```miniapp fenced JSON block. The JSON must have `id`, `name`, `manifest`, and `html` fields.
 
