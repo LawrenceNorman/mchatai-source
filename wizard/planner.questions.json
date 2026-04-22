@@ -1,0 +1,32 @@
+{
+  "$schema": "https://mchatai.com/schemas/planner-questions-v1.json",
+  "version": "1.0.0",
+  "_notes": "Phase DX.1 — registry for per-artifact clarifying-question flows. Before the planner fires for a new generation, if this registry has an entry for the session's artifactType AND the .designClarifyingQuestions flag is on, the harness runs a quick LLM call against `promptTemplate` to emit 1–N quick-pick questions. Questions render as chips in the chat; answers become a typed `designPreferences` dict passed into the planner. Skip = use defaults. Blocking with a 15s ceiling; if the question call exceeds budget, generation proceeds with defaults.",
+  "byArtifactType": {
+    "webSPA": {
+      "promptTemplate": "planner.questions.webspa",
+      "maxQuestions": 3,
+      "categories": ["audience", "tone", "hero-style", "density"]
+    },
+    "miniApp": {
+      "promptTemplate": "planner.questions.miniapp",
+      "maxQuestions": 2,
+      "categories": ["tone", "density"]
+    },
+    "macOSApp": {
+      "promptTemplate": "planner.questions.macos",
+      "maxQuestions": 2,
+      "categories": ["tone", "density"]
+    },
+    "reactNativeApp": {
+      "promptTemplate": "planner.questions.miniapp",
+      "maxQuestions": 2,
+      "categories": ["tone", "density"]
+    },
+    "electronApp": {
+      "promptTemplate": "planner.questions.miniapp",
+      "maxQuestions": 2,
+      "categories": ["tone", "density"]
+    }
+  }
+}

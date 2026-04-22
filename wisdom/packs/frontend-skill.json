@@ -159,6 +159,18 @@
         "BAD first screen of a habit-tracker mini-app: hero with 'Build better habits' + decorative illustration + 'Get started' button",
         "GOOD first screen of a habit-tracker mini-app: today's date, list of today's habits with one-tap checkboxes, streak counter in corner — orientation (today), status (3 of 5 done), action (tap to check)"
       ]
+    },
+    {
+      "id": "fs-013",
+      "rule": "After the artifact code block, emit a ```tunables JSON block that declares which tunables from this artifact's tunable-manifest.json this specific generation binds. Shape: {\"instanceValues\":{<id>:<value>}, \"hiddenTunables\":[<id>,...]}. Use manifest default values unless the generation deliberately chose a different value (e.g. 'accent-hue':30 for a warm brand). Put tunable IDs the artifact does NOT bind (no CSS variable, no class hook) in `hiddenTunables` so the app hides those controls. NEVER invent tunable IDs outside the manifest. If you can't emit this block, fall back to an empty `instanceValues` — the Design panel will still render the full manifest with defaults.",
+      "why": "Phase DX.2 — the app renders a right-pane Design panel that lets users drag sliders to mutate CSS variables on the preview WITHOUT a new LLM call. The panel reads this tunables block to know which sliders are wired. Without the block, every generation defaults to the full slider set; that's fine, but the user can get 'dead slider' experiences (dragging 'motion-intensity' when the artifact has no motion bindings). Your `hiddenTunables` list keeps the panel honest.",
+      "severity": "important",
+      "appliesTo": "miniapp, webspa",
+      "examples": [
+        "GOOD (end of a miniApp response):\\n```tunables\\n{\\n  \\\"instanceValues\\\": {\\n    \\\"accent-hue\\\": 200,\\n    \\\"density\\\": \\\"comfortable\\\",\\n    \\\"motion-intensity\\\": \\\"balanced\\\",\\n    \\\"radius\\\": 12\\n  },\\n  \\\"hiddenTunables\\\": []\\n}\\n```",
+        "GOOD (a mini-app with no CSS transitions emits an empty motion set + hides the motion slider):\\n```tunables\\n{\\\"instanceValues\\\":{\\\"accent-hue\\\":220,\\\"density\\\":\\\"compact\\\"},\\\"hiddenTunables\\\":[\\\"motion-intensity\\\"]}\\n```",
+        "BAD: inventing `\\\"font-family\\\": \\\"Georgia\\\"` — not in the manifest. App will ignore it silently."
+      ]
     }
   ]
 }

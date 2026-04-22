@@ -1,0 +1,85 @@
+{
+  "$schema": "https://mchatai.com/schemas/tunable-manifest-v1.json",
+  "version": "1.0.0",
+  "artifactType": "webSPA",
+  "_notes": "Phase DX.2 — tunable vocabulary for webSPA (React/Vue/Svelte). Richer than miniApp because landing pages have more surface area to tune: palette mood, hero weight, nav behavior, motion. Generator emits a `tunables` JSON block saying which IDs this specific generation binds; the Design panel renders only those, hiding any unbound tunables (keeps the panel honest — don't show controls that do nothing).",
+  "tunables": [
+    {
+      "id": "accent-hue",
+      "displayName": "Accent hue",
+      "kind": "hue",
+      "default": 220,
+      "range": {"min": 0, "max": 360},
+      "unit": "deg",
+      "bindings": [
+        {"target": "css-variable", "name": "--accent", "transform": "hsl({value}, 55%, 48%)"},
+        {"target": "css-variable", "name": "--accent-hover", "transform": "hsl({value}, 55%, 42%)"},
+        {"target": "css-variable", "name": "--accent-tint", "transform": "hsl({value}, 55%, 92%)"}
+      ]
+    },
+    {
+      "id": "palette-mood",
+      "displayName": "Palette mood",
+      "kind": "discrete",
+      "default": "neutral",
+      "choices": ["warm", "neutral", "cool", "bold"],
+      "bindings": [
+        {"target": "css-class-root", "classMap": {"warm": "mood-warm", "neutral": "", "cool": "mood-cool", "bold": "mood-bold"}}
+      ]
+    },
+    {
+      "id": "density",
+      "displayName": "Section density",
+      "kind": "discrete",
+      "default": "comfortable",
+      "choices": ["compact", "comfortable", "spacious"],
+      "bindings": [
+        {"target": "css-class-root", "classMap": {"compact": "density-compact", "comfortable": "", "spacious": "density-spacious"}}
+      ]
+    },
+    {
+      "id": "hero-weight",
+      "displayName": "Hero weight",
+      "kind": "discrete",
+      "default": "balanced",
+      "choices": ["image-dominant", "balanced", "text-dominant"],
+      "bindings": [
+        {"target": "css-class-root", "classMap": {"image-dominant": "hero-image-dominant", "balanced": "", "text-dominant": "hero-text-dominant"}}
+      ],
+      "safetyNote": "Bounded by fs-001 (one composition) + fs-010 (visual anchor required). 'text-dominant' still requires a real anchor — archetype CSS enforces this."
+    },
+    {
+      "id": "motion-intensity",
+      "displayName": "Motion intensity",
+      "kind": "discrete",
+      "default": "balanced",
+      "choices": ["off", "subtle", "balanced", "cinematic"],
+      "bindings": [
+        {"target": "css-class-root", "classMap": {"off": "motion-off", "subtle": "motion-subtle", "balanced": "", "cinematic": "motion-cinematic"}}
+      ]
+    },
+    {
+      "id": "radius",
+      "displayName": "Corner radius",
+      "kind": "continuous",
+      "default": 10,
+      "range": {"min": 0, "max": 24},
+      "unit": "px",
+      "bindings": [
+        {"target": "css-variable", "name": "--radius-md", "transform": "{value}px"},
+        {"target": "css-variable", "name": "--radius-sm", "transform": "calc({value}px * 0.6)"},
+        {"target": "css-variable", "name": "--radius-lg", "transform": "calc({value}px * 1.4)"}
+      ]
+    },
+    {
+      "id": "type-scale",
+      "displayName": "Type scale",
+      "kind": "discrete",
+      "default": "regular",
+      "choices": ["regular", "editorial", "compact"],
+      "bindings": [
+        {"target": "css-class-root", "classMap": {"regular": "", "editorial": "type-editorial", "compact": "type-compact"}}
+      ]
+    }
+  ]
+}
