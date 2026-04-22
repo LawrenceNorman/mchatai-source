@@ -90,7 +90,7 @@
       ]
     },
     {
-      "id": "u-010",
+      "id": "u-020",
       "rule": "When a published web mini-app needs to fetch data from an external HTTPS API (weather, geocoding, Wikipedia, currency rates, jokes, photos, Pokémon, etc.), it MUST route the call through the mChatAI proxy: `https://mchatai.com/proxy/fetch?url=<URL-encoded target>`. Direct cross-origin fetch() calls from a published site are blocked by Content-Security-Policy and will silently fail in production.",
       "why": "Published mini-apps run under a strict CSP (`connect-src 'self' https://mchatai.com ...`). Direct calls to api.weather.gov, en.wikipedia.org, etc. work in the AIHarness preview but fail once published, which produces 'Could not retrieve data' errors users can't diagnose. The proxy keeps CSP locked down (no data exfil to attacker servers) while letting the curated allowlist of safe public APIs reach published code. The allowlist lives at https://github.com/LawrenceNorman/mchatai-source/blob/main/proxy/allowlist.json — adding a host is a git PR.",
       "severity": "critical",
