@@ -1,0 +1,65 @@
+{
+  "$schema": "https://mchatai.com/schemas/tunable-manifest-v1.json",
+  "version": "1.0.0",
+  "artifactType": "miniApp",
+  "_notes": "Phase DX.2 — tunable vocabulary for mini-apps. The generator emits a `tunables` JSON block alongside the artifact that declares which of these IDs this specific generation actually binds to CSS/JS. Sliders in the app's right-pane Design panel mutate CSS variables / root classes via a WKWebView bridge — drag = no LLM call. Ranges/choices baked in here ensure a slider can't push the design out of the Phase DF rubric envelope (e.g. motion-intensity maxes at 'cinematic', which the archetype motion-recipes.json caps at 3 intentional motions, never 8).",
+  "tunables": [
+    {
+      "id": "accent-hue",
+      "displayName": "Accent hue",
+      "kind": "hue",
+      "default": 220,
+      "range": {"min": 0, "max": 360},
+      "unit": "deg",
+      "bindings": [
+        {"target": "css-variable", "name": "--accent", "transform": "hsl({value}, 60%, 50%)"},
+        {"target": "css-variable", "name": "--accent-hover", "transform": "hsl({value}, 60%, 45%)"}
+      ]
+    },
+    {
+      "id": "accent-saturation",
+      "displayName": "Accent saturation",
+      "kind": "continuous",
+      "default": 60,
+      "range": {"min": 0, "max": 100},
+      "unit": "%",
+      "bindings": [
+        {"target": "css-variable", "name": "--accent-saturation", "transform": "{value}%"}
+      ]
+    },
+    {
+      "id": "density",
+      "displayName": "Density",
+      "kind": "discrete",
+      "default": "comfortable",
+      "choices": ["compact", "comfortable", "spacious"],
+      "bindings": [
+        {"target": "css-class-root", "classMap": {"compact": "density-compact", "comfortable": "", "spacious": "density-spacious"}}
+      ]
+    },
+    {
+      "id": "motion-intensity",
+      "displayName": "Motion intensity",
+      "kind": "discrete",
+      "default": "balanced",
+      "choices": ["off", "subtle", "balanced", "cinematic"],
+      "bindings": [
+        {"target": "css-class-root", "classMap": {"off": "motion-off", "subtle": "motion-subtle", "balanced": "", "cinematic": "motion-cinematic"}}
+      ],
+      "safetyNote": "The DF rubric rule fs-008 caps at 3 intentional motions. Archetypes enforce the ceiling — 'cinematic' adds entrance choreography but does NOT exceed 3 motions."
+    },
+    {
+      "id": "radius",
+      "displayName": "Corner radius",
+      "kind": "continuous",
+      "default": 10,
+      "range": {"min": 0, "max": 24},
+      "unit": "px",
+      "bindings": [
+        {"target": "css-variable", "name": "--radius-md", "transform": "{value}px"},
+        {"target": "css-variable", "name": "--radius-sm", "transform": "calc({value}px * 0.6)"},
+        {"target": "css-variable", "name": "--radius-lg", "transform": "calc({value}px * 1.4)"}
+      ]
+    }
+  ]
+}
