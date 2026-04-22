@@ -1,0 +1,49 @@
+{
+  "version": "1.0.0",
+  "_comment": "Phase DX.3b — Per-axis variant seeding registry. The Harness variant picker uses these to seed N parallel LLM calls with distinct design directions rather than just a temperature spread. Each axis has a baseInstruction (system/user prompt addendum applied to every variant in the batch) and an ordered list of perVariantHints. The coordinator appends one hint per variant in index order, so with count=3 on axis=accent-hue the first variant gets hints[0], second hints[1], etc. `surprise-me` has no hints — it falls back to pure temperature-spread behaviour. Labels drive the menu UI. Adding a new axis is a content PR — no rebuild.",
+  "axes": [
+    {
+      "id": "surprise-me",
+      "label": "Surprise me",
+      "description": "No explicit hint. The coordinator spreads temperature across variants so they differ organically.",
+      "baseInstruction": "",
+      "perVariantHints": []
+    },
+    {
+      "id": "accent-hue",
+      "label": "Accent hue",
+      "description": "Each variant commits to a different dominant accent colour — cool vs warm vs neutral — while keeping layout + density constant.",
+      "baseInstruction": "Vary ONLY the accent-colour direction between variants. Everything else (typography scale, spacing, layout) stays close to the original.",
+      "perVariantHints": [
+        "Lean cool-accent: primary accent in the 210\u2013240 hue range (blue / indigo). Neutral surfaces, restrained saturation.",
+        "Lean warm-accent: primary accent in the 10\u201335 hue range (orange / amber / terracotta). Warm undertones in neutrals.",
+        "Lean emerald-accent: primary accent in the 140\u2013170 hue range (emerald / teal). Slightly cool neutrals.",
+        "Lean violet-accent: primary accent in the 270\u2013295 hue range (violet / magenta). Moody dark surfaces, high accent saturation."
+      ]
+    },
+    {
+      "id": "density",
+      "label": "Density",
+      "description": "Vary how tightly information is packed. One compact, one comfortable, one spacious.",
+      "baseInstruction": "Vary ONLY the information density between variants: padding, line-height, type scale, and gutter sizes. Colour palette and visual style stay consistent.",
+      "perVariantHints": [
+        "Lean compact: tight padding, smaller type, denser tables/lists, minimal whitespace. Information-dense.",
+        "Lean comfortable: balanced type scale + padding. Default breathing room. Neither dense nor airy.",
+        "Lean spacious: generous whitespace, larger type, ample padding, airy layout. Editorial feel.",
+        "Lean editorial: oversized type for hero content, long-form spacing, wide margins. Magazine-style."
+      ]
+    },
+    {
+      "id": "motion-intensity",
+      "label": "Motion intensity",
+      "description": "Vary how lively the UI feels \u2014 still / subtle / lively. Never affects gameplay timing.",
+      "baseInstruction": "Vary ONLY the motion + animation intensity between variants. Never change gameplay timers, physics, or event handlers \u2014 this is purely presentational motion.",
+      "perVariantHints": [
+        "Lean near-still: prefer reduced-motion. Fades under 120ms. No scroll animations. Minimal hover effects.",
+        "Lean subtle: gentle transitions (150\u2013250ms). Quiet micro-interactions on hover + focus. Small entrance fades.",
+        "Lean lively: entrance animations on load, spring easing, visible hover reveals, animated state changes. Still stays under 400ms per transition.",
+        "Lean playful: elastic + bounce easing, decorative motion (shimmer, parallax), animated illustrations. Clearly decorative but never distracting from primary task."
+      ]
+    }
+  ]
+}
