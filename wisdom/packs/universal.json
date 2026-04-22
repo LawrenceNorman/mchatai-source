@@ -3,7 +3,9 @@
   "version": 1,
   "displayName": "Universal Guidelines",
   "description": "Rules that apply to ALL generated apps regardless of category.",
-  "categories": ["all"],
+  "categories": [
+    "all"
+  ],
   "keywords": [],
   "guidelines": [
     {
@@ -12,7 +14,11 @@
       "why": "Users repeatedly report that generated apps play themselves with no way for the human to participate. This is the #1 most common complaint.",
       "severity": "critical",
       "appliesTo": "all",
-      "examples": ["Game: user needs buttons to make decisions", "Tool: user needs input fields and action buttons", "Tracker: user needs add/edit/delete controls"]
+      "examples": [
+        "Game: user needs buttons to make decisions",
+        "Tool: user needs input fields and action buttons",
+        "Tracker: user needs add/edit/delete controls"
+      ]
     },
     {
       "id": "u-002",
@@ -20,7 +26,10 @@
       "why": "Generated apps often have tiny, hard-to-find controls that overlap or get pushed off-screen.",
       "severity": "important",
       "appliesTo": "all",
-      "examples": ["Buttons should have padding: 10px 20px minimum", "Don't put buttons inside scrollable areas that can be hidden"]
+      "examples": [
+        "Buttons should have padding: 10px 20px minimum",
+        "Don't put buttons inside scrollable areas that can be hidden"
+      ]
     },
     {
       "id": "u-003",
@@ -28,7 +37,11 @@
       "why": "Users get confused when the app state changes without feedback — they don't know if it's their turn, if something loaded, or if an error occurred.",
       "severity": "important",
       "appliesTo": "all",
-      "examples": ["Show 'Your turn' indicator in games", "Show loading states during async operations", "Show success/error feedback after actions"]
+      "examples": [
+        "Show 'Your turn' indicator in games",
+        "Show loading states during async operations",
+        "Show success/error feedback after actions"
+      ]
     },
     {
       "id": "u-004",
@@ -36,7 +49,10 @@
       "why": "LLMs under token pressure often produce skeleton code with placeholder functions that compile but do nothing.",
       "severity": "critical",
       "appliesTo": "all",
-      "examples": ["call() must actually deduct chips and advance the game", "sort() must actually reorder the data"]
+      "examples": [
+        "call() must actually deduct chips and advance the game",
+        "sort() must actually reorder the data"
+      ]
     },
     {
       "id": "u-005",
@@ -44,7 +60,9 @@
       "why": "Feature regression is the #1 user complaint during iteration. New features often accidentally remove existing ones.",
       "severity": "critical",
       "appliesTo": "all",
-      "examples": ["If v1 had working card rendering, v2 must still render cards the same way or better"]
+      "examples": [
+        "If v1 had working card rendering, v2 must still render cards the same way or better"
+      ]
     },
     {
       "id": "u-006",
@@ -52,7 +70,11 @@
       "why": "Generated apps frequently have buttons positioned under cards, overlapping with other elements, or pushed off-screen. Users can't interact with controls they can't see or click.",
       "severity": "critical",
       "appliesTo": "all",
-      "examples": ["Fold/Call/Raise buttons must be in their own row BELOW the player's cards, not overlapping them", "Use flexbox or grid with proper gap spacing", "Controls should have at least 8px margin from adjacent elements"]
+      "examples": [
+        "Fold/Call/Raise buttons must be in their own row BELOW the player's cards, not overlapping them",
+        "Use flexbox or grid with proper gap spacing",
+        "Controls should have at least 8px margin from adjacent elements"
+      ]
     },
     {
       "id": "u-007",
@@ -60,7 +82,11 @@
       "why": "Asset packs provide tested, polished visuals. LLMs often ignore injected assets and create inferior replacements.",
       "severity": "important",
       "appliesTo": "all",
-      "examples": ["Use renderCard('A', '♠') for card faces, not plain text", "Use the .chip CSS classes for chip displays", "Use the felt gradient CSS for the table background"]
+      "examples": [
+        "Use renderCard('A', '♠') for card faces, not plain text",
+        "Use the .chip CSS classes for chip displays",
+        "Use the felt gradient CSS for the table background"
+      ]
     },
     {
       "id": "u-009",
@@ -99,6 +125,127 @@
         "BAD: const r = await fetch('https://api.weather.gov/points/47.6,-122.3') — blocked by CSP in production, looks fine in preview",
         "GOOD: const proxied = 'https://mchatai.com/proxy/fetch?url=' + encodeURIComponent('https://api.weather.gov/points/47.6,-122.3'); const r = await fetch(proxied)",
         "If the host you need is NOT on the proxy allowlist, the call will return HTTP 403 with a JSON body explaining how to add it. Tell the user — don't silently fall back to a third-party CORS proxy in production."
+      ]
+    },
+    {
+      "id": "u-010",
+      "rule": "For ANY game with a human player: there MUST be at least one computer/AI opponent. Never make the user play both sides. The AI opponent does not need to be sophisticated — even random legal moves are acceptable — but it MUST exist so the user has someone to play against.",
+      "why": "Users who ask for a 'playable game' expect an opponent. A game where you control both sides is a sandbox, not a game. This is the #2 most common complaint after auto-pilot.",
+      "severity": "critical",
+      "appliesTo": "all",
+      "examples": [
+        "Card game: AI opponents make decisions automatically after human acts",
+        "Board game: computer picks a legal move after human's turn",
+        "Fighting/sports game: AI-controlled opponent"
+      ]
+    },
+    {
+      "id": "u-011",
+      "rule": "NEVER use library stubs, shims, or abbreviated implementations. If the app needs a chess engine, game physics, or any complex logic — write it inline. Do NOT include a 'minified' library that is actually a stub returning empty values. Do NOT write comments like 'for brevity', 'abridged', 'for the sake of token limits', 'include full X in production'. Every line of code must be real, working logic.",
+      "why": "Models under token pressure produce fake 'minified' libraries that are actually stubs — e.g., a chess.js stub where every method returns null. This produces an app that looks correct on first glance but is completely non-functional. The Evaluator will flag any stub as an automatic failure.",
+      "severity": "critical",
+      "appliesTo": "all",
+      "examples": [
+        "BAD: Chess() constructor where .moves() returns [] and .board() returns []",
+        "BAD: Comment saying 'for the sake of token limits this is a stub'",
+        "GOOD: Full inline implementation of game logic, even if verbose"
+      ]
+    },
+    {
+      "id": "u-012",
+      "rule": "When using localStorage for game state (bankroll, score, progress), ALWAYS validate on load. If the saved value is missing, zero, negative, or corrupted, reset to the default starting value. Never trust localStorage blindly — it may have stale data from a previous session, be zero from a game-over state, or be absent on first load.",
+      "why": "A Blackjack game that reads bankroll from localStorage showed $0 on first load because the key didn't exist yet and parseInt returned NaN which displayed as 0. The game was unplayable despite having zero console errors.",
+      "severity": "critical",
+      "appliesTo": "all",
+      "examples": [
+        "GOOD: let bankroll = parseInt(localStorage.getItem('bj_bankroll')) || 100;",
+        "GOOD: if (!bankroll || bankroll <= 0) bankroll = DEFAULT_BANKROLL;",
+        "BAD: let bankroll = localStorage.getItem('bankroll'); // null on first load"
+      ]
+    },
+    {
+      "id": "u-013",
+      "rule": "NEVER use clip-path, overflow:hidden, or mask on a container that holds interactive game pieces (checkers, cards, tokens, characters). The child elements will be clipped by the parent's shape and become partially hidden or unclickable. If you need a shaped background (like a triangle), use a ::before or ::after pseudo-element for the shape, leave the parent as a plain rectangle, and place the game pieces inside the parent with z-index higher than the pseudo-element.",
+      "why": "Backgammon mini-app used clip-path:polygon(...) on the .triangle parent holding the checker children. The checkers got clipped by the triangle shape — their round tops poked out above the triangle line and the bottoms were hidden, and they were unclickable outside the triangle bounds. Same problem would occur for chess squares with corner badges, hex boards with tokens, etc.",
+      "severity": "critical",
+      "appliesTo": "all",
+      "examples": [
+        "GOOD: .triangle { position:relative; } .triangle::before { content:''; position:absolute; inset:0; clip-path:polygon(50% 0,100% 100%,0 100%); background:#c9a176; z-index:0; } .triangle > .checker { position:relative; z-index:1; }",
+        "BAD: .triangle { clip-path:polygon(50% 0,100% 100%,0 100%); } .triangle > .checker { ... } — checkers clipped by triangle",
+        "GOOD: For card stacks, use z-index layering (each card above the previous) with parent position:relative, children position:absolute, no overflow:hidden on parent"
+      ]
+    },
+    {
+      "id": "u-014",
+      "rule": "Interactive game pieces (checkers, cards, chips, tokens) must have z-index HIGHER than their background decoration. Set position:relative on pieces so z-index takes effect. The stacking order from bottom to top should be: board background (z-index 0), board decorations / triangles / grid lines (z-index 1), pieces (z-index 2), selected / highlighted state (z-index 3), dragged piece (z-index 10).",
+      "why": "Game pieces rendered beneath board decorations are unselectable because clicks hit the decoration, not the piece. Even when visible they look wrong because they appear 'behind' the board.",
+      "severity": "critical",
+      "appliesTo": "all",
+      "examples": [
+        "GOOD: .piece { position:relative; z-index:2; } .piece.selected { z-index:3; } .piece.dragging { z-index:10; }",
+        "GOOD: Use a fixed stacking context by setting position:relative on the board container itself"
+      ]
+    },
+    {
+      "id": "u-015",
+      "rule": "For pieces that STACK vertically (checkers on a backgammon point, poker chips, cards in a pile): use position:absolute with computed top values, or use flexbox with negative margins (e.g. margin-top:-18px for 30px pieces = 40% overlap). Never stack them flat on top of each other — the user must be able to see the count visually.",
+      "why": "Backgammon points can hold 5+ checkers which need to stack. Without proper stacking CSS they all render at the same position (looks like 1 piece), or they fall outside the point (looks broken).",
+      "severity": "important",
+      "appliesTo": "all",
+      "examples": [
+        "GOOD (flex): .stack { display:flex; flex-direction:column-reverse; align-items:center; } .stack > .checker { margin-bottom:-18px; } .stack > .checker:first-child { margin-bottom:0; }",
+        "GOOD (absolute): pieces[i].style.top = (i * 20) + 'px'; parent is position:relative",
+        "BAD: All pieces at top:0 — only top piece visible"
+      ]
+    },
+    {
+      "id": "u-016",
+      "rule": "When there is an Asset Pack or Reference Build that matches the user's request, PREFER to copy its CSS/JS exactly rather than re-inventing. Pack-provided components (like .bg-board, renderDie(), Leaderboard class) are tested and correct. Re-inventing them from scratch wastes tokens and usually produces lower-quality output.",
+      "why": "The Component Library exists so the wizard can reuse known-good code. Ignoring provided assets and rolling your own is the #1 cause of visual/layout bugs that the pack would have prevented.",
+      "severity": "important",
+      "appliesTo": "all",
+      "examples": [
+        "GOOD: `.bg-board { ... }` copied verbatim from Component Library",
+        "GOOD: `container.innerHTML = renderDiceTray([3,5]);` using provided helper",
+        "BAD: Hand-rolling a backgammon board CSS grid when the pack has one"
+      ]
+    },
+    {
+      "id": "u-017",
+      "rule": "Use explicit numeric dimensions for any game container that renders pieces at specific positions. Do NOT use `flex:1` or `1fr` units as the only size constraint — they collapse to 0 when the parent doesn't have a defined size, making the entire board invisible.",
+      "why": "Backgammon board disappeared because `.board { display:grid; grid-template-columns:repeat(13,1fr); }` had no explicit width/height, and its parent chain used min-height instead of height. The grid collapsed to 0x0 and nothing rendered.",
+      "severity": "critical",
+      "appliesTo": "all",
+      "examples": [
+        "GOOD: .board { width:800px; height:550px; aspect-ratio:13/9; } or with explicit min-width/min-height on children",
+        "BAD: .board { flex:1; display:grid; } inside a min-height container",
+        "GOOD for responsive: .board { width:min(90vw,800px); aspect-ratio:13/9; }"
+      ]
+    },
+    {
+      "id": "u-018",
+      "rule": "For any app that has a SCORE (games, quizzes, challenges, typing tests): call `window.mChatAI.leaderboard.submit({ score: finalScore, metadata: { ... } })` when the game/round ends. Then fetch and display the top 10 scores with `window.mChatAI.leaderboard.getTop(10)` on the game-over screen. If `window.mChatAI.leaderboard` is undefined, skip silently (local play mode). Show the user their rank and percentile from the submit response.",
+      "why": "Leaderboard is a zero-config feature of the mChatAI platform. Any scoring app that omits it misses competitive replay value and cross-user engagement. The bridge is always present in deployed apps — skipping the guard `if (window.mChatAI?.leaderboard)` causes errors in local preview mode.",
+      "severity": "important",
+      "appliesTo": "all",
+      "examples": [
+        "On game over: if (window.mChatAI?.leaderboard) { window.mChatAI.leaderboard.submit({ score, metadata: { level, moves } }).then(r => showRankBadge(r.rank, r.percentile)); }",
+        "Fetch top scores: window.mChatAI.leaderboard.getTop(10).then(scores => renderLeaderboardTable(scores));",
+        "Rank badge: 'You placed #7 out of 1,234 players! (Top 1%)'",
+        "Show leaderboard table: displayName, score, platform icon, submittedAt"
+      ]
+    },
+    {
+      "id": "u-019",
+      "rule": "For apps that use mChatAI Cloud AI features (LLM hints, AI opponents, image generation, TTS narration, quiz generation): gate these features behind `window.mChatAI.cloud.isAvailable()`. If cloud is available, show the feature with a compute-token cost badge (e.g., '⚡ 2 tokens'). If unavailable (offline or no account), show the feature as disabled with a 'Requires mChatAI+ account' tooltip. Never show a broken or erroring UI for users without cloud access.",
+      "why": "Cloud-powered features add high value (AI opponent strength, TTS narration, hint generation) but require compute tokens and a connected mChatAI account. Apps that fail silently or crash when cloud is absent frustrate users who are in local/offline mode.",
+      "severity": "important",
+      "appliesTo": "all",
+      "examples": [
+        "AI Hint button: if (window.mChatAI?.cloud?.isAvailable()) { btn.textContent = 'AI Hint ⚡ 1 token'; btn.onclick = () => window.mChatAI.cloud.aiHint(gameState); } else { btn.textContent = 'AI Hint'; btn.disabled = true; btn.title = 'Requires mChatAI+ account'; }",
+        "TTS narration: window.mChatAI.cloud.tts({ text: 'Round 3 begins!', voice: 'nova' }).then(url => new Audio(url).play());",
+        "Quiz generation: window.mChatAI.cloud.llm({ prompt: 'Generate 5 trivia questions about ' + topic }).then(q => loadQuestions(JSON.parse(q)));",
+        "Cost badge: small pill showing '⚡ 2 tokens' next to any cloud feature button"
       ]
     }
   ]
