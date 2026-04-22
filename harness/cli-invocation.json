@@ -107,7 +107,7 @@
       "notes": "Codex CLI uses subcommand `exec --json` for non-interactive JSONL output. Confirmed shape (probed 2026-04-21): thread.started → turn.started → item.completed (item.type=agent_message|file_change|...) → turn.completed. Auto-approval via --dangerously-bypass-approvals-and-sandbox flag (Codex's equivalent of Claude's --dangerously-skip-permissions). All payload-bearing events use type=item.completed, distinguished by item.type. The runner's awaitingApproval/toolUse/toolResult all share that same outer type — fine because Codex auto-approves with the bypass flag, the runner never needs to write y\\n for Codex."
     },
     "gemini": {
-      "invocationFlags": ["-p", "--output-format", "stream-json", "--yolo"],
+      "invocationFlags": ["--output-format", "stream-json", "--yolo"],
       "awaitingApproval": {
         "type": "tool_use",
         "requires": null,
@@ -135,7 +135,7 @@
         "requires": null,
         "textPath": null
       },
-      "notes": "Gemini CLI supports --output-format stream-json natively. Confirmed shape (probed 2026-04-21): init → message (role=user|assistant, content=string) → tool_use (tool_name, parameters) → tool_result (tool_id, status) → result (status=success). --yolo is the auto-approve flag (equivalent to Claude --dangerously-skip-permissions). assistantText extracts top-level `content` (Gemini stores text as a plain string, not nested blocks). User echoes also use type=message (role=user) so the assistantText extractor will pick up the user's prompt too if not filtered — acceptable for now since the legacy parser tolerates extra prefix text. The 'message' type also covers user messages but they're filtered out by role=user in the runner's text extraction (TODO: add `requires: \"role==assistant\"` once the runner honors `requires`)."
+      "notes": "Gemini CLI supports --output-format stream-json natively. Confirmed shape (probed 2026-04-21): init → message (role=user|assistant, content=string) → tool_use (tool_name, parameters) → tool_result (tool_id, status) → result (status=success). --yolo is the auto-approve flag (equivalent to Claude --dangerously-skip-permissions). assistantText extracts top-level `content` (Gemini stores text as a plain string, not nested blocks); requireField=role + requireValue=assistant scopes the extractor to assistant-only so user echo doesn't contaminate output. **WizardCLIRunner appends `goal` as the trailing positional argv** — Gemini accepts this via its `query` positional, so we DO NOT include `-p` in invocationFlags (`-p` consumes the IMMEDIATELY-following arg as its value, which collides with our trailing-positional convention and emits 'Not enough arguments following: p' + exit 1 with zero events). Probed 2026-04-22 after gemini-runner exit=1 canary failure."
     }
   },
 
