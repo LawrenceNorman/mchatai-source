@@ -3,8 +3,21 @@
   "version": 1,
   "displayName": "Arcade Game Guidelines",
   "description": "Quality rules for snake, breakout, platformers, and other arcade/action games.",
-  "categories": ["arcade"],
-  "keywords": ["snake", "breakout", "pong", "tetris", "space invaders", "pac-man", "arcade", "platformer", "shooter", "asteroid"],
+  "categories": [
+    "arcade"
+  ],
+  "keywords": [
+    "snake",
+    "breakout",
+    "pong",
+    "tetris",
+    "space invaders",
+    "pac-man",
+    "arcade",
+    "platformer",
+    "shooter",
+    "asteroid"
+  ],
   "guidelines": [
     {
       "id": "ag-001",
@@ -12,7 +25,10 @@
       "why": "Arcade games need instant responsive controls. Laggy or non-functional controls make the game unplayable.",
       "severity": "critical",
       "appliesTo": "arcade",
-      "examples": ["document.addEventListener('keydown', handleKey)", "preventDefault() on arrow keys to stop page scrolling"]
+      "examples": [
+        "document.addEventListener('keydown', handleKey)",
+        "preventDefault() on arrow keys to stop page scrolling"
+      ]
     },
     {
       "id": "ag-002",
@@ -20,7 +36,9 @@
       "why": "setInterval causes inconsistent frame rates and janky movement. rAF syncs with the display refresh.",
       "severity": "important",
       "appliesTo": "arcade",
-      "examples": ["function gameLoop(timestamp) { update(dt); render(); requestAnimationFrame(gameLoop); }"]
+      "examples": [
+        "function gameLoop(timestamp) { update(dt); render(); requestAnimationFrame(gameLoop); }"
+      ]
     },
     {
       "id": "ag-003",
@@ -28,7 +46,10 @@
       "why": "Players need constant feedback on their performance.",
       "severity": "important",
       "appliesTo": "arcade",
-      "examples": ["HUD at top: Score: 1250 | Lives: 3 | Level: 2", "Game Over overlay with 'Press Space to restart'"]
+      "examples": [
+        "HUD at top: Score: 1250 | Lives: 3 | Level: 2",
+        "Game Over overlay with 'Press Space to restart'"
+      ]
     },
     {
       "id": "ag-004",
@@ -36,7 +57,138 @@
       "why": "Bad collision detection — objects passing through each other or false collisions — ruins gameplay.",
       "severity": "critical",
       "appliesTo": "arcade",
-      "examples": ["AABB: if (a.x < b.x+b.w && a.x+a.w > b.x && a.y < b.y+b.h && a.y+a.h > b.y)"]
+      "examples": [
+        "AABB: if (a.x < b.x+b.w && a.x+a.w > b.x && a.y < b.y+b.h && a.y+a.h > b.y)"
+      ]
+    },
+    {
+      "id": "ag-005",
+      "rule": "Snake game MUST grow correctly when eating food, and MUST end when the snake hits a wall or its own body. The snake body segments MUST follow the head exactly — each segment moves to where the previous segment was. Food MUST appear at a random empty cell, never on the snake body.",
+      "why": "Common Snake bugs: snake passes through walls instead of dying, body segments don't follow correctly creating gaps, food spawns on snake body, score doesn't increase on eat.",
+      "severity": "critical",
+      "appliesTo": "arcade",
+      "examples": [
+        "Grow: on eat, push new tail segment instead of removing old tail",
+        "Self-collision: head position matches any body segment = game over",
+        "Food spawn: filter out cells occupied by snake body"
+      ]
+    },
+    {
+      "id": "ag-006",
+      "rule": "Minesweeper MUST implement: left-click to reveal a cell, right-click to toggle flag, flood-fill auto-reveal for empty cells (cells with 0 adjacent mines), correct mine count in adjacent cells (1-8), first-click safety (never a mine on the first click), win condition (all non-mine cells revealed).",
+      "why": "Minesweeper without flood-fill is essentially unplayable. First-click safety is essential — dying on move 1 is not fun.",
+      "severity": "critical",
+      "appliesTo": "arcade",
+      "examples": [
+        "Flood-fill: when revealing a 0-cell, recursively reveal all 8 neighbours",
+        "First-click: place mines AFTER first click, excluding clicked cell and its neighbours",
+        "Flag: right-click toggles 🚩, flagged cells cannot be revealed by left-click"
+      ]
+    },
+    {
+      "id": "ag-007",
+      "rule": "Connect Four MUST alternate turns between Red and Yellow, check for 4-in-a-row in all 4 directions (horizontal, vertical, diagonal ↗, diagonal ↘) after every move, highlight the winning 4 chips, and prevent moves into full columns.",
+      "why": "Games that don't check diagonals allow undetected wins. Overflowing a full column corrupts board state.",
+      "severity": "critical",
+      "appliesTo": "arcade",
+      "examples": [
+        "Check all 4 directions from last-placed chip",
+        "Highlight winning chips: add CSS class .win to the 4 winning cells",
+        "Column full: disable click on that column or show visual indicator"
+      ]
+    },
+    {
+      "id": "ag-008",
+      "rule": "Battleship MUST have a 10×10 grid for each player. Ship placement (5 ships: Carrier×5, Battleship×4, Cruiser×3, Submarine×3, Destroyer×2) must validate no overlaps and no out-of-bounds. AI opponent fires intelligently after a hit (target adjacent cells). Show hit/miss on the opponent's board with contrasting colors.",
+      "why": "Battleship without hit-targeting AI is trivially easy. Ship placement validation prevents impossible board states.",
+      "severity": "critical",
+      "appliesTo": "arcade",
+      "examples": [
+        "After AI hits, push adjacent cells into a target queue before reverting to random",
+        "Hit = red, Miss = white dot on dark, Sunk ship reveals all cells of that ship",
+        "Show both grids: 'Your Fleet' (ships visible) and 'Enemy Waters' (ships hidden)"
+      ]
+    },
+    {
+      "id": "ag-009",
+      "rule": "Simon Says / Memory sequence game MUST show the sequence with clear color flashes (each color lights up with a 400ms on / 200ms off pattern), play a distinct tone per color, accept user input ONLY after the sequence finishes playing, detect wrong input immediately and show game-over, increase sequence by 1 each successful round.",
+      "why": "Simon clones frequently play the sequence and accept input simultaneously, making it impossible to follow. Or they don't detect wrong input until the sequence ends.",
+      "severity": "critical",
+      "appliesTo": "arcade",
+      "examples": [
+        "Use AudioContext to play: 261Hz (green), 329Hz (red), 392Hz (yellow), 523Hz (blue)",
+        "Disable buttons while showing sequence: buttons.forEach(b => b.disabled = true)",
+        "Show current round: 'Round 5 — sequence of 5 colors'"
+      ]
+    },
+    {
+      "id": "ag-010",
+      "rule": "Arcade games MUST save high scores to localStorage AND submit to the global leaderboard on game-over using `window.mChatAI?.leaderboard?.submit({ score: finalScore, metadata: { level, lives_lost } })`. Show the user's global rank on the game-over screen. Render a top-10 leaderboard table with names and scores.",
+      "why": "Local high scores vanish on reinstall and provide no competitive incentive. Leaderboard turns 'I beat my score' into 'I beat everyone'. Zero-config with the mChatAI bridge — 3 lines of code.",
+      "severity": "important",
+      "appliesTo": "arcade",
+      "examples": [
+        "Game over: leaderboard.submit({ score, metadata: { level: currentLevel, waveReached: wave } }).then(r => showGameOver(r.rank, r.percentile));",
+        "Top-10 table: leaderboard.getTop(10).then(scores => { scores.forEach((s,i) => addRow(i+1, s.displayName, s.score)); });",
+        "localStorage fallback: always save to localStorage too, show local best even without account"
+      ]
+    },
+    {
+      "id": "ag-011",
+      "rule": "Atari/retro-style games MUST use a pixel-art aesthetic: chunky pixels rendered on a canvas using integer coordinates, a limited palette of 4-16 bold colors (no gradients or anti-aliasing), blocky sans-serif font (monospace or bitmap-style), and scanline or CRT overlay (optional but strongly recommended). The canvas should fill the viewport with `imageSmoothingEnabled = false`.",
+      "why": "Atari-style games that use modern smooth CSS gradients, rounded corners, or system fonts break the retro illusion completely. The pixelated aesthetic IS the product — without it the game feels like a bad clone rather than a loving tribute.",
+      "severity": "critical",
+      "appliesTo": "arcade",
+      "examples": [
+        "ctx.imageSmoothingEnabled = false; — must be set on every canvas resize",
+        "Canvas scale: draw at 320×240 internal resolution, CSS-scale up to fill the screen",
+        "Palette: use Atari 2600-style colors — black #000, white #FFF, orange #F77F00, cyan #00FFFF, green #00FF00, red #FF0000, purple #7700FF",
+        "Font: use 'Courier New' or embed a pixel font via @font-face",
+        "Scanlines: draw semi-transparent horizontal lines every 2px over the canvas for CRT effect",
+        "Sound: use AudioContext square-wave oscillators (type:'square') for authentic beeps, not sine waves"
+      ]
+    },
+    {
+      "id": "ag-012",
+      "rule": "Atari-style Space Invaders / Galaxian MUST: render the player ship as a pixel-art sprite at the bottom, alien grid of 5×11 marching left/right and descending, aliens shoot back at increasing rate as their count decreases, bunkers erode pixel-by-pixel when hit, UFO bonus target crosses top. Player has 3 lives shown as mini ship sprites.",
+      "why": "Space Invaders clones without alien return fire, descending movement, or bunker erosion miss the core tension. The game gets harder as you kill aliens — fewer aliens move faster — this is the key difficulty curve.",
+      "severity": "critical",
+      "appliesTo": "arcade",
+      "examples": [
+        "Alien march speed: baseSpeed * (totalAliens / startingAliens) — gets faster as aliens die",
+        "Alien descent: move down by alienHeight when hitting a wall",
+        "Bunkers: use a pixel buffer (ImageData) that removes individual pixels on bullet hit",
+        "3 alien types: top row = 30pts, middle rows = 20pts, bottom rows = 10pts",
+        "UFO: appears at top every 25-30 seconds, worth 50-300 random points"
+      ]
+    },
+    {
+      "id": "ag-013",
+      "rule": "Atari-style Asteroids MUST: render vector-style ship (triangle outline), implement screen wrapping (objects exit one side and enter the other), ship thrust with momentum/inertia (no instant stop), asteroids split into 2 smaller ones when shot (large→medium→small→destroyed), ship is invincible for 3 seconds after respawn, hyperspace (random teleport) as emergency escape.",
+      "why": "Asteroids without screen-wrapping and inertia feels completely wrong — these are the two defining physics properties of the game. Asteroids that disappear instead of splitting remove the core difficulty escalation.",
+      "severity": "critical",
+      "appliesTo": "arcade",
+      "examples": [
+        "Wrapping: if (x < 0) x = canvas.width; if (x > canvas.width) x = 0; (same for y)",
+        "Inertia: vx += Math.cos(angle) * thrust * dt; x += vx * dt; vx *= 0.99; (friction)",
+        "Split: large asteroid (r=40) → 2 medium (r=20); medium → 2 small (r=10); small → destroyed",
+        "Respawn: new ship at center, 3s invincibility shown by blinking"
+      ]
+    },
+    {
+      "id": "ag-014",
+      "rule": "Atari Adventure-style games MUST: implement a multi-room dungeon map (at least 20 rooms connected by doors), a player avatar (blocky square or arrow), items the player can pick up and carry (sword, key, bridge), enemies that chase the player with simple pathfinding, and a win condition (reach the chalice). Rooms must persist state (items stay where dropped). Include a map legend or mini-map.",
+      "why": "Adventure (Atari 2600) is the ancestor of all action-adventure games. Its defining features — inventory, multi-room exploration, key-locked doors — must all be present. Without them it's just a maze game.",
+      "severity": "critical",
+      "appliesTo": "arcade",
+      "examples": [
+        "Room connections: roomData[id].exits = { north: 5, south: 2, east: null, west: 8 }",
+        "Inventory: player can carry 1 item; picking up a new item drops the current one",
+        "Dragons: patrol a room, reverse direction at walls, chase player when visible",
+        "Sword: kills dragons on contact when player is holding it",
+        "Keys: unlock castle doors (colored door requires matching colored key)",
+        "Bridge: allows crossing walls (place it against a wall to pass through)"
+      ]
     }
   ]
 }

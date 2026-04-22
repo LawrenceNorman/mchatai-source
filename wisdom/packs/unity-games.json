@@ -1,0 +1,169 @@
+{
+  "packID": "unity-games",
+  "version": 1,
+  "displayName": "Unity C# Game Guidelines",
+  "description": "Quality rules for Unity 6 LTS C# game generation. Covers SceneSetup patterns, common MonoBehaviour pitfalls, per-genre requirements, and evaluation criteria.",
+  "categories": [
+    "unity-games",
+    "unity"
+  ],
+  "keywords": [
+    "unity",
+    "c#",
+    "csharp",
+    "monobehaviour",
+    "rigidbody",
+    "platformer",
+    "unity game",
+    "fps",
+    "top-down",
+    "unity project",
+    "scenesetup"
+  ],
+  "guidelines": [
+    {
+      "id": "ug-001",
+      "rule": "SceneSetup.cs MUST use [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)] and create ALL GameObjects, add ALL Components, and set ALL references in code. The user must hit Play in a blank scene and the game runs immediately — no manual editor configuration.",
+      "why": "Without SceneSetup.cs, the user faces a blank scene and has to manually create prefabs, assign components, and wire references — this defeats the purpose of AI generation and creates a broken first impression.",
+      "severity": "critical",
+      "appliesTo": "unity-games",
+      "examples": [
+        "[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)] static void Initialize() { CreatePlayer(); CreateCamera(); CreateUI(); CreateEnvironment(); }",
+        "var player = GameObject.CreatePrimitive(PrimitiveType.Capsule); player.name = 'Player'; player.AddComponent<PlayerController>();",
+        "Never use [RuntimeInitializeOnLoadMethod] without also doing: if (FindObjectOfType<GameManager>() == null) { ... } — prevents duplicate spawning on scene reload"
+      ]
+    },
+    {
+      "id": "ug-002",
+      "rule": "NEVER call GetComponent<T>() in Update(). Cache ALL component references in Awake() as private fields. Missing caches cause 60+ allocations/frame and severe GC pressure.",
+      "why": "GetComponent in Update is the single most common Unity performance mistake. It triggers a search through the GameObject's component list every frame at 60fps. This becomes visible as frame stutters in just a few seconds.",
+      "severity": "critical",
+      "appliesTo": "unity-games",
+      "examples": [
+        "CORRECT: private Rigidbody _rb; void Awake() { _rb = GetComponent<Rigidbody>(); }",
+        "WRONG: void Update() { GetComponent<Rigidbody>().velocity = ...; }",
+        "Cache Transform too: private Transform _transform; void Awake() { _transform = transform; }"
+      ]
+    },
+    {
+      "id": "ug-003",
+      "rule": "Use FixedUpdate() for ALL Rigidbody and Rigidbody2D physics operations (velocity, AddForce, MovePosition). Use Update() ONLY for reading input. Mixing physics in Update() causes jitter.",
+      "why": "FixedUpdate runs at a fixed 50Hz by default (configurable), decoupled from the render frame rate. Physics applied in Update() at variable frame rates causes objects to move at inconsistent speeds and clip through colliders.",
+      "severity": "critical",
+      "appliesTo": "unity-games",
+      "examples": [
+        "void FixedUpdate() { _rb.velocity = new Vector2(_input.x * speed, _rb.velocity.y); }",
+        "void Update() { _input = new Vector2(Input.GetAxisRaw('Horizontal'), 0); }",
+        "For CharacterController (FPS): Update() is OK because CharacterController.Move() uses Time.deltaTime internally"
+      ]
+    },
+    {
+      "id": "ug-004",
+      "rule": "2D Platformer: implement coyote time (0.1-0.15s grace window to jump after walking off a ledge) AND jump buffering (0.12s window to queue a jump before landing). Without these, the controls feel broken and unresponsive.",
+      "why": "Coyote time and jump buffering are industry-standard techniques that make jumps feel fair and responsive. Their absence is the #1 complaint about AI-generated platformers — players walk off a ledge and can't jump even though they pressed the button.",
+      "severity": "critical",
+      "appliesTo": "unity-games",
+      "examples": [
+        "Coyote time: private float _coyoteTimer; void Update() { if (IsGrounded()) _coyoteTimer = 0.12f; else _coyoteTimer -= Time.deltaTime; bool canJump = _coyoteTimer > 0; }",
+        "Jump buffer: private float _jumpBufferTimer; void Update() { if (Input.GetButtonDown('Jump')) _jumpBufferTimer = 0.12f; _jumpBufferTimer -= Time.deltaTime; }",
+        "Jump executes when: _jumpBufferTimer > 0 && canJump — reset both timers on execute"
+      ]
+    },
+    {
+      "id": "ug-005",
+      "rule": "Ground check for 2D platformers: use Physics2D.OverlapCircle at the player's feet, NOT OnCollisionStay2D. OnCollisionStay fires even when sliding down walls, causing the player to jump while airborne.",
+      "why": "OnCollisionStay is unreliable for ground detection — it triggers on any sustained contact, including wall slides, ceilings, and push-from-below. OverlapCircle with a ground layer mask is the correct approach.",
+      "severity": "important",
+      "appliesTo": "unity-games",
+      "examples": [
+        "private bool IsGrounded() { return Physics2D.OverlapCircle(_groundCheckPoint.position, 0.2f, _groundLayer); }",
+        "Create a child empty GameObject 'GroundCheck' at player's feet in SceneSetup.cs",
+        "Ground layer: assign platforms/floor to a dedicated 'Ground' layer (Layer 6)"
+      ]
+    },
+    {
+      "id": "ug-006",
+      "rule": "FPS games MUST lock and hide the cursor on start: Cursor.lockState = CursorLockMode.Locked; Cursor.visible = false; AND re-show it on pause/game-over. Mouse look MUST clamp vertical rotation to [-80, +80] degrees to prevent gimbal lock.",
+      "why": "Forgetting cursor lock makes FPS games unplayable — the cursor escapes the game window. Unclamped vertical rotation causes the camera to flip upside down at 90+ degrees.",
+      "severity": "critical",
+      "appliesTo": "unity-games",
+      "examples": [
+        "void Start() { Cursor.lockState = CursorLockMode.Locked; Cursor.visible = false; }",
+        "MouseLook: _xRotation -= mouseDelta.y * sensitivity; _xRotation = Mathf.Clamp(_xRotation, -80f, 80f); _camera.localRotation = Quaternion.Euler(_xRotation, 0f, 0f);",
+        "On pause: Cursor.lockState = CursorLockMode.None; Cursor.visible = true;"
+      ]
+    },
+    {
+      "id": "ug-007",
+      "rule": "NavMesh for 3D enemies: SceneSetup.cs must call NavMesh.AddNavMeshData() or use NavMeshSurface.BuildNavMesh() to bake the navmesh at runtime. Alternatively, use simple Vector3.MoveTowards for pathfinding if the level is flat/simple. Do NOT leave NavMeshAgent without a baked navmesh — it will log errors every frame.",
+      "why": "NavMeshAgent requires a pre-baked NavMesh. In generated projects there is no editor bake step, so the agent must either bake at runtime or use a simpler pathfinding approach.",
+      "severity": "important",
+      "appliesTo": "unity-games",
+      "examples": [
+        "Runtime bake: gameObject.AddComponent<NavMeshSurface>(); GetComponent<NavMeshSurface>().BuildNavMesh();",
+        "Simple alternative: transform.position = Vector3.MoveTowards(transform.position, target.position, speed * Time.deltaTime);",
+        "Check if NavMesh exists before using agent: if (NavMesh.SamplePosition(transform.position, out NavMeshHit hit, 1f, NavMesh.AllAreas)) { agent.SetDestination(target.position); }"
+      ]
+    },
+    {
+      "id": "ug-008",
+      "rule": "Card games: use UI Toolkit or uGUI Canvas for card display, NOT world-space 3D objects. Cards must be Screen Space — Overlay Canvas elements (RectTransform). Use TextMeshProUGUI for rank/suit text. Card deal and flip animations via coroutines (move RectTransform.anchoredPosition, scale RectTransform.localScale).",
+      "why": "3D card objects require camera positioning and depth management that LLM-generated code gets wrong consistently. UI Canvas elements are positioned in screen space — straightforward, reliable, and always readable.",
+      "severity": "important",
+      "appliesTo": "unity-games",
+      "examples": [
+        "Create cards: GameObject card = new GameObject('Card'); card.AddComponent<RectTransform>(); card.AddComponent<Image>();",
+        "Flip animation: IEnumerator FlipCard() { float t=0; while(t<0.15f) { t+=Time.deltaTime; rect.localScale = new Vector3(1-(t/0.15f),1,1); yield return null; } // swap face; while(t>0) { t-=Time.deltaTime; rect.localScale = new Vector3(1-(t/0.15f),1,1); yield return null; } }",
+        "Always parent card objects to a Canvas: canvas.renderMode = RenderMode.ScreenSpaceOverlay;"
+      ]
+    },
+    {
+      "id": "ug-009",
+      "rule": "GameManager.cs MUST be a singleton: public static GameManager Instance { get; private set; } with Awake() checking if Instance != null before assigning. Add DontDestroyOnLoad() ONLY if the manager needs to persist across scenes — for single-scene games, do NOT use DontDestroyOnLoad.",
+      "why": "Missing singleton pattern leads to multiple GameManager instances when the scene restarts. DontDestroyOnLoad in single-scene games causes ghost managers to accumulate across restarts, duplicating score events and win/lose triggers.",
+      "severity": "important",
+      "appliesTo": "unity-games",
+      "examples": [
+        "void Awake() { if (Instance != null && Instance != this) { Destroy(gameObject); return; } Instance = this; }",
+        "Single-scene: DO NOT call DontDestroyOnLoad — just let it be destroyed and recreated by SceneSetup.cs on restart",
+        "Reset game state in a public Reset() method called by SceneSetup on restart, not in a new Awake()"
+      ]
+    },
+    {
+      "id": "ug-010",
+      "rule": "Save high scores and player progress via PlayerPrefs. Key names must be deterministic strings (no GUIDs). Always check PlayerPrefs.HasKey() before reading. Show the all-time best score on the game-over screen.",
+      "why": "Persistent high scores are expected in every game. LLM-generated games frequently omit PlayerPrefs or use non-deterministic keys that make saves invisible between sessions.",
+      "severity": "important",
+      "appliesTo": "unity-games",
+      "examples": [
+        "Save: if (score > PlayerPrefs.GetInt('HighScore', 0)) PlayerPrefs.SetInt('HighScore', score);",
+        "Load: int best = PlayerPrefs.GetInt('HighScore', 0);",
+        "Show on game over: bestScoreText.text = $'Best: {PlayerPrefs.GetInt(\"HighScore\", 0)}';"
+      ]
+    },
+    {
+      "id": "ug-011",
+      "rule": "Match-3 puzzle: detect 3+ in a row in BOTH horizontal and vertical directions after EVERY swap, then process ALL matches simultaneously before applying gravity. Gravity must fill from top and repeat until no new matches. Missing this causes board states where obvious matches are not cleared.",
+      "why": "Match-3 games that only check horizontal OR only check after one direction of swap feel broken and unfair. The cascade chain (match → remove → gravity → new matches) is the entire core loop.",
+      "severity": "critical",
+      "appliesTo": "unity-games",
+      "examples": [
+        "After swap: List<Vector2Int> matches = FindHorizontalMatches(); matches.AddRange(FindVerticalMatches()); if (matches.Count > 0) { RemoveTiles(matches); ApplyGravity(); yield return StartCoroutine(FindAndClearCascade()); }",
+        "Gravity: for each column, compact non-null tiles downward, spawn new tiles at top",
+        "Swap validation: if no matches after swap, reverse the swap (invalid move)"
+      ]
+    },
+    {
+      "id": "ug-012",
+      "rule": "All generated Unity games MUST include a complete game loop: main menu (or at least a Start screen), playing state, pause (Escape key sets Time.timeScale = 0), game-over screen with final score and restart button. The restart must cleanly reset ALL game state without requiring a scene reload (call Reset() on all managers).",
+      "why": "Games without a start screen or restart flow feel like tech demos, not games. Scene reload for restart is fragile in generated code — resetting manager state directly is more reliable.",
+      "severity": "critical",
+      "appliesTo": "unity-games",
+      "examples": [
+        "GameState enum: MainMenu, Playing, Paused, GameOver",
+        "Pause: void TogglePause() { isPaused = !isPaused; Time.timeScale = isPaused ? 0f : 1f; pausePanel.SetActive(isPaused); }",
+        "Restart without scene reload: GameManager.Instance.Reset(); SpawnManager.Instance.Reset(); UIManager.Instance.Reset(); Time.timeScale = 1f; gameState = GameState.Playing;"
+      ]
+    }
+  ]
+}

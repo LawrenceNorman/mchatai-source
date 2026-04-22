@@ -3,8 +3,22 @@
   "version": 1,
   "displayName": "Board Game Guidelines",
   "description": "Quality rules for chess, checkers, tic-tac-toe, and other board/grid games.",
-  "categories": ["board-games"],
-  "keywords": ["chess", "checkers", "go", "board game", "dice", "tic-tac-toe", "othello", "reversi", "connect four", "mancala", "grid"],
+  "categories": [
+    "board-games"
+  ],
+  "keywords": [
+    "chess",
+    "checkers",
+    "go",
+    "board game",
+    "dice",
+    "tic-tac-toe",
+    "othello",
+    "reversi",
+    "connect four",
+    "mancala",
+    "grid"
+  ],
   "guidelines": [
     {
       "id": "bg-001",
@@ -12,7 +26,10 @@
       "why": "Same as card games — the #1 bug is auto-playing both players.",
       "severity": "critical",
       "appliesTo": "board-games",
-      "examples": ["Human clicks a square to place their piece", "AI responds after a brief delay (300-500ms)"]
+      "examples": [
+        "Human clicks a square to place their piece",
+        "AI responds after a brief delay (300-500ms)"
+      ]
     },
     {
       "id": "bg-002",
@@ -20,7 +37,10 @@
       "why": "Invalid moves break game state and confuse users.",
       "severity": "critical",
       "appliesTo": "board-games",
-      "examples": ["Highlight valid move squares on hover/select", "Show error message for invalid moves"]
+      "examples": [
+        "Highlight valid move squares on hover/select",
+        "Show error message for invalid moves"
+      ]
     },
     {
       "id": "bg-003",
@@ -28,7 +48,11 @@
       "why": "Games that don't detect when someone won leave the user confused about whether the game is still going.",
       "severity": "critical",
       "appliesTo": "board-games",
-      "examples": ["Check win after every move", "Show 'You Win!' / 'AI Wins' / 'Draw' overlay", "Highlight winning line/pieces"]
+      "examples": [
+        "Check win after every move",
+        "Show 'You Win!' / 'AI Wins' / 'Draw' overlay",
+        "Highlight winning line/pieces"
+      ]
     },
     {
       "id": "bg-004",
@@ -36,7 +60,46 @@
       "why": "A plain white grid with thin lines is hard to read. Alternating colors are the universal board game visual.",
       "severity": "recommended",
       "appliesTo": "board-games",
-      "examples": ["Chess: #f0d9b5 light, #b58863 dark", "Go: wood-colored board with black lines"]
+      "examples": [
+        "Chess: #f0d9b5 light, #b58863 dark",
+        "Go: wood-colored board with black lines"
+      ]
+    },
+    {
+      "id": "bg-005",
+      "rule": "If the game has a human player, there MUST be at least one AI/computer opponent to play against. Never generate a game where the user has to play both sides manually. The AI can use simple heuristics (random legal move, minimax, greedy) — it does not need to be strong, just present.",
+      "why": "Users ask for a 'playable' game expecting someone to play against. A board with no opponent forces the user to move pieces for both sides, which is not a game — it's a demo.",
+      "severity": "critical",
+      "appliesTo": "board-games",
+      "examples": [
+        "Chess: AI picks a random legal move after human moves",
+        "Checkers: simple greedy AI that captures when possible",
+        "Tic-tac-toe: minimax for perfect play or random for easy mode"
+      ]
+    },
+    {
+      "id": "bg-006",
+      "rule": "Board games with ELO or score tracking MUST submit final scores to the leaderboard using `window.mChatAI?.leaderboard?.submit({ score, metadata: { opponent, moves, duration_seconds } })`. Show a post-game rank card on the result screen. For chess/checkers/go: score is ELO delta or win=1/loss=0/draw=0.5 * 100.",
+      "why": "Board games have natural score moments (win/loss/ELO change). Wiring leaderboard at these moments costs 3 lines of code and converts a one-time play into a competitive experience.",
+      "severity": "important",
+      "appliesTo": "board-games",
+      "examples": [
+        "Chess win: leaderboard.submit({ score: 1, metadata: { opponent: 'AI-medium', moves: gameHistory.length } })",
+        "Rank card: 'You placed #3 this week with 12 wins!'",
+        "Show top 5 players table below the result overlay"
+      ]
+    },
+    {
+      "id": "bg-007",
+      "rule": "If `window.mChatAI?.cloud?.isAvailable()` is true, offer a 'Strong AI' difficulty toggle that calls `window.mChatAI.cloud.llm()` for move selection instead of the built-in heuristic. Label it '⚡ Strong AI' with a token cost badge. Fall back to built-in AI if the call fails or is not available.",
+      "why": "Cloud AI opponents dramatically improve the game experience for serious players. The local AI (random/minimax-depth-3) can be beaten easily. Cloud LLM move selection provides human-level challenge without bloating the app bundle.",
+      "severity": "recommended",
+      "appliesTo": "board-games",
+      "examples": [
+        "Difficulty selector: [Easy] [Medium] [⚡ Strong AI (1 token/game)]",
+        "Cloud move: window.mChatAI.cloud.llm({ prompt: 'You are a chess grandmaster. Board FEN: ' + fen + '. What is the best move? Respond with only the move in algebraic notation.' }).then(move => makeMove(move.trim()))",
+        "Fallback: if cloud call fails or times out >3s, use local AI and show toast 'Using local AI'"
+      ]
     }
   ]
 }

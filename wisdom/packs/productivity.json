@@ -3,8 +3,26 @@
   "version": 1,
   "displayName": "Productivity App Guidelines",
   "description": "Quality rules for trackers, timers, calculators, and other productivity tools.",
-  "categories": ["productivity"],
-  "keywords": ["dashboard", "tracker", "todo", "notes", "timer", "pomodoro", "habit", "expense", "budget", "calculator", "converter", "calendar", "planner", "flashcard", "quiz"],
+  "categories": [
+    "productivity"
+  ],
+  "keywords": [
+    "dashboard",
+    "tracker",
+    "todo",
+    "notes",
+    "timer",
+    "pomodoro",
+    "habit",
+    "expense",
+    "budget",
+    "calculator",
+    "converter",
+    "calendar",
+    "planner",
+    "flashcard",
+    "quiz"
+  ],
   "guidelines": [
     {
       "id": "pr-001",
@@ -12,7 +30,10 @@
       "why": "Users lose all their data when the page refreshes if you only store in JS variables.",
       "severity": "critical",
       "appliesTo": "productivity",
-      "examples": ["localStorage.setItem('todos', JSON.stringify(todos))", "Load on startup: JSON.parse(localStorage.getItem('todos')) || []"]
+      "examples": [
+        "localStorage.setItem('todos', JSON.stringify(todos))",
+        "Load on startup: JSON.parse(localStorage.getItem('todos')) || []"
+      ]
     },
     {
       "id": "pr-002",
@@ -20,7 +41,11 @@
       "why": "Users frequently report that they can add items but can't edit or delete them.",
       "severity": "important",
       "appliesTo": "productivity",
-      "examples": ["Edit button on each item", "Delete with confirmation", "Add via form or inline input"]
+      "examples": [
+        "Edit button on each item",
+        "Delete with confirmation",
+        "Add via form or inline input"
+      ]
     },
     {
       "id": "pr-003",
@@ -28,7 +53,58 @@
       "why": "A blank app with no instructions is confusing. Users don't know how to start.",
       "severity": "recommended",
       "appliesTo": "productivity",
-      "examples": ["'No habits tracked yet. Tap + to add your first habit.'", "Illustration + call-to-action button"]
+      "examples": [
+        "'No habits tracked yet. Tap + to add your first habit.'",
+        "Illustration + call-to-action button"
+      ]
+    },
+    {
+      "id": "pr-004",
+      "rule": "Expense/budget trackers MUST show a running total and a clear breakdown by category. Color-code categories. Show a balance (income minus expenses) prominently. Support adding both income and expense entries.",
+      "why": "An expense tracker that doesn't show totals or category breakdowns is just a list — it provides no value over a notes app.",
+      "severity": "critical",
+      "appliesTo": "productivity",
+      "examples": [
+        "Bar or donut chart for category breakdown",
+        "Running balance: Income $2400 − Expenses $1850 = +$550",
+        "Color: food=orange, transport=blue, entertainment=purple, income=green"
+      ]
+    },
+    {
+      "id": "pr-005",
+      "rule": "Flashcard / study apps MUST implement spaced repetition or at minimum show cards in random order with self-rated difficulty (Easy/Hard). Show progress: X of N cards reviewed. Include a flip animation (rotateY 0→180deg) to reveal the answer.",
+      "why": "Flashcard apps that just scroll through cards in order don't aid memorization. The flip is the defining UX of the genre.",
+      "severity": "critical",
+      "appliesTo": "productivity",
+      "examples": [
+        "Card flip: .card { transform-style: preserve-3d } .card.flipped { transform: rotateY(180deg) }",
+        "Front face: question. Back face: answer (rotateY 180deg initially)",
+        "After each flip: show 'Easy' and 'Hard' buttons — Hard cards requeue, Easy moves to next"
+      ]
+    },
+    {
+      "id": "pr-006",
+      "rule": "Habit streak trackers MUST show a visual streak calendar (month view with marked days), a current streak count, and a longest streak record. Marking today as complete must update all three immediately. Support multiple habits with different colors.",
+      "why": "A streak tracker with no visual history doesn't motivate. The calendar grid + streak count is the core reward loop.",
+      "severity": "critical",
+      "appliesTo": "productivity",
+      "examples": [
+        "Calendar grid: 7 columns (days of week), rows per week, filled circles for completed days",
+        "Streak: calculate consecutive days ending today",
+        "Longest: track max consecutive run in history"
+      ]
+    },
+    {
+      "id": "pr-007",
+      "rule": "Password strength checkers MUST evaluate: length (>=8, >=12, >=16), uppercase, lowercase, numbers, symbols. Show a colored strength bar (red→orange→yellow→green) and specific improvement tips. Never store or transmit the password.",
+      "why": "Checkers that only use a regex for 'has uppercase+number' miss the most important factor (length). Users need actionable feedback.",
+      "severity": "important",
+      "appliesTo": "productivity",
+      "examples": [
+        "Score: +1 len>=8, +1 len>=12, +1 len>=16, +1 uppercase, +1 lowercase, +1 digit, +1 symbol = 0-7",
+        "Bar: 0-2=red, 3-4=orange, 5=yellow, 6=green, 7=bright-green",
+        "Tip: 'Add symbols like !@#$%' shown only if symbols missing"
+      ]
     }
   ]
 }

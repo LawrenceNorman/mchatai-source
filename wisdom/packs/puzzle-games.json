@@ -1,0 +1,241 @@
+{
+  "packID": "puzzle-games",
+  "version": 1,
+  "displayName": "Puzzle Game Guidelines",
+  "description": "Quality rules for word search, crossword, sudoku, wordle, and other puzzle games.",
+  "categories": [
+    "puzzle-games"
+  ],
+  "keywords": [
+    "word search",
+    "wordsearch",
+    "crossword",
+    "sudoku",
+    "wordle",
+    "word grid",
+    "wordgrid",
+    "puzzle",
+    "word puzzle",
+    "letter grid",
+    "find the word",
+    "word finder",
+    "word scramble",
+    "jigsaw",
+    "nonogram",
+    "picross",
+    "kakuro",
+    "number puzzle",
+    "anagram",
+    "spelling",
+    "hangman",
+    "mastermind",
+    "15 puzzle",
+    "sliding puzzle",
+    "number slide",
+    "logic puzzle",
+    "code breaker",
+    "codebreaker"
+  ],
+  "guidelines": [
+    {
+      "id": "pg-001",
+      "rule": "NEVER reveal an answer or solution before the player earns it. Do NOT pre-highlight word locations in the grid, pre-fill blank puzzle cells, or expose hidden information during active gameplay. Hints must be opt-in (a button the player taps) and must not trivially solve the puzzle.",
+      "why": "The most common puzzle bug: showing where words are hidden, pre-filling answers, or making solutions obvious before the player engages. It destroys the satisfaction of finding things yourself.",
+      "severity": "critical",
+      "appliesTo": "puzzle-games",
+      "examples": [
+        "Word search: cells with hidden words are NOT highlighted, tinted, or marked — the grid shows only letters; only after the player correctly selects a word do those cells turn green",
+        "Crossword: blank squares stay blank until the player types a letter",
+        "Sudoku: only the given clue numbers are pre-filled; all other cells start empty",
+        "Wordle: only submitted guess rows are shown with color feedback",
+        "On game-over (time up, all lives lost): it IS acceptable to reveal unfound answers as a post-game debrief — but never during active play"
+      ]
+    },
+    {
+      "id": "pg-002",
+      "rule": "In a word search, ALWAYS show the full word list so the player knows what words to hunt for — this is CORRECT genre behavior, not a spoiler. Words in the list must be plain text (unfound) or struck-through/green (found). The word list must NOT show coordinates, directions, or any visual pointer toward where words are in the grid.",
+      "why": "Word search is defined by hunting for known words in an unknown grid. Hiding the word list from the player makes the game unplayable. Showing the word list is NOT showing the answer — the grid location IS the answer. A thematic category label (e.g. 'Food Items') is a great optional touch that adds context without spoiling grid positions.",
+      "severity": "critical",
+      "appliesTo": "puzzle-games",
+      "examples": [
+        "CORRECT: word list shows 'ELEPHANT' in plain text → player scans grid → on correct drag-selection, cells turn green and 'ELEPHANT' gets strikethrough",
+        "CORRECT: optional category header 'Animals' above the word list gives thematic context",
+        "WRONG: hiding the word list — player doesn't know what to look for",
+        "WRONG: highlighting word cells in the grid at any opacity before player finds them",
+        "WRONG: word list items have arrows, line-through, or color tint before being found"
+      ]
+    },
+    {
+      "id": "pg-003",
+      "rule": "For timed puzzles, the timer should COUNT DOWN visibly with clear color urgency cues (green → orange → red as time depletes). When time runs out, freeze the board and show the final score — do NOT reveal the remaining unfound answers automatically.",
+      "why": "Showing unfound answers at game-over is fine as a reveal (the game is over), but revealing answers while the game is still running eliminates tension. Also, the color progression helps players self-regulate pace without needing to read a number precisely.",
+      "severity": "important",
+      "appliesTo": "puzzle-games",
+      "examples": [
+        ">50% time remaining: timer in green",
+        "25-50%: timer in orange",
+        "<25%: timer in red, possibly pulsing",
+        "At 0: show 'Time's Up!' overlay, display score, offer 'See Answers' button separately"
+      ]
+    },
+    {
+      "id": "pg-004",
+      "rule": "Drag/swipe selection for word search MUST work in all 8 directions: horizontal (left/right), vertical (up/down), and all 4 diagonals. The selection highlight must follow the pointer in real time as the player drags.",
+      "why": "Word search games that only support horizontal/vertical miss half the puzzle. Diagonal words are a core feature of the genre. Missing directions means players literally cannot find correctly-placed words.",
+      "severity": "critical",
+      "appliesTo": "puzzle-games",
+      "examples": [
+        "8 directions: [0,1],[0,-1],[1,0],[-1,0],[1,1],[1,-1],[-1,1],[-1,-1]",
+        "Use pointermove to update selection highlight in real time",
+        "Accept both forward and reverse selection (dragging backward finds the same word)"
+      ]
+    },
+    {
+      "id": "pg-005",
+      "rule": "Puzzle difficulty levels MUST genuinely change the puzzle challenge — not just the visual size. Easy: smaller grid + common short words + longer time. Hard: larger grid + uncommon longer words + shorter time + more diagonal placements.",
+      "why": "A 'Hard' mode that only enlarges the grid but still uses the same simple word list feels fake to players. Genuine difficulty scaling is required for replayability.",
+      "severity": "important",
+      "appliesTo": "puzzle-games",
+      "examples": [
+        "Easy word search: 10x10, 4-6 letter words, more horizontals, 4 min timer",
+        "Hard word search: 15x15, 8-12 letter words, heavy diagonal use, 3 min timer",
+        "Sudoku easy: solve 45+ pre-filled cells; hard: solve 25 or fewer"
+      ]
+    },
+    {
+      "id": "pg-006",
+      "rule": "Puzzle boards MUST be solvable and valid. For word search: every word in the word list MUST actually be placed in the grid. For Sudoku: the puzzle MUST have exactly one solution. For crossword: all clues must have correct answers in the grid.",
+      "why": "Unsolvable puzzles (words not placed, Sudoku with no solution, crossword clue mismatch) are the most damaging bug a puzzle game can have — players waste time then feel cheated.",
+      "severity": "critical",
+      "appliesTo": "puzzle-games",
+      "examples": [
+        "Word search: log or assert that every word was successfully placed before rendering",
+        "If a word can't be placed after N attempts, reduce word list rather than show an unsolvable grid",
+        "Sudoku: use a backtracking solver to validate uniqueness before presenting the puzzle"
+      ]
+    },
+    {
+      "id": "pg-007",
+      "rule": "For Wordle-style games: each guess row must show per-letter color feedback (green = correct position, yellow = wrong position, gray = not in word) AND update the on-screen keyboard to reflect known letter states. The keyboard MUST be interactive — clicking letters fills the current guess row.",
+      "why": "Wordle clones frequently omit the keyboard state update, forcing players to mentally track which letters they've tried. This is a core mechanic of the genre.",
+      "severity": "critical",
+      "appliesTo": "puzzle-games",
+      "examples": [
+        "After submitting 'CRANE': C=gray, R=green, A=yellow, N=gray, E=gray",
+        "Keyboard updates: R key turns green, A key turns yellow, C/N/E keys turn gray",
+        "Only accept valid 5-letter words as guesses (validate against a word list)"
+      ]
+    },
+    {
+      "id": "pg-008",
+      "rule": "Score calculation MUST reward difficulty and speed. Base score for finding each item, plus a time bonus for finishing early. Show the score update with a brief animation (+10 pts) at the moment of each find — instant positive feedback is essential for engagement.",
+      "why": "Puzzle games without moment-to-moment score feedback feel flat. The '+10' pop-up or cell flash is what makes each find feel rewarding.",
+      "severity": "important",
+      "appliesTo": "puzzle-games",
+      "examples": [
+        "On word found: cells briefly pulse bright, '+15 pts' floats up and fades",
+        "Time bonus: remaining seconds × difficulty multiplier added on puzzle completion",
+        "Show running score in top bar throughout the game"
+      ]
+    },
+    {
+      "id": "pg-009",
+      "rule": "Wordle clones MUST paste the WORDLE_DICTIONARY (14854 words for guess validation) and WORDLE_ANSWERS (2314 curated daily-word options) snippets included below — VERBATIM, in full, no truncation, no '// …' shortcuts, no rewriting to a smaller list. Use WORDLE_DICTIONARY.includes(guess) to validate the player's guess. Use WORDLE_ANSWERS[daysSinceEpoch() % WORDLE_ANSWERS.length] to pick today's answer. Hard mode locks in confirmed letters — a letter marked green MUST appear in the same position on all subsequent guesses.",
+      "why": "Two recurring failures: (a) clones that accept any 5 random characters break the guessing loop entirely; (b) clones that include only 30-200 invented words reject obvious English words like 'START' and feel broken. Pasting the bundled snippets verbatim eliminates both failure modes. The dictionary is the canonical 14k-word Wordle guess set; the answers list is the curated 2314 from the original Wordle.",
+      "severity": "critical",
+      "appliesTo": "puzzle-games",
+      "bundledResources": [
+        "snippets/wordle-dictionary.js",
+        "snippets/wordle-answers.js"
+      ],
+      "examples": [
+        "Seed today's word: const idx = Math.floor(Date.now() / 86400000) % WORDLE_ANSWERS.length; const answer = WORDLE_ANSWERS[idx];",
+        "Guess validation: if (!WORDLE_DICTIONARY.includes(guess.toLowerCase())) showToast('Not in word list');",
+        "Hard mode: if letter at pos 2 is green 'R', every subsequent guess must have 'R' at pos 2",
+        "Share result: show colored squares emoji grid for easy sharing",
+        "DO NOT redefine these arrays with a smaller subset — paste the wisdom snippets in full"
+      ]
+    },
+    {
+      "id": "pg-010",
+      "rule": "WordScapes-style games MUST use a circular letter wheel at the bottom for input — NOT a keyboard. Tapping letters in the wheel spells the word; a central 'shuffle' button rearranges the wheel letters. The answer grid at the top shows blank tiles arranged by word length with underscores for unfound words and letters for found ones. Swipe input on the wheel must also work (drag from letter to letter to spell a word).",
+      "why": "WordScapes is a specific genre with iconic touch mechanics. Building it as a keyboard input game misses the whole point and looks nothing like the genre. The wheel is the core UX.",
+      "severity": "critical",
+      "appliesTo": "puzzle-games",
+      "examples": [
+        "Letter wheel: 5–7 letters arranged in a circle, 120px diameter circles around a center point",
+        "Current word display: shows letters as player taps them, clears on submit or backspace",
+        "Answer grid: grouped by word length, blank tiles show _ _ _ until word is found",
+        "Shuffle: rearranges wheel letters without changing which letters are available",
+        "Bonus words: words that can be spelled but aren't in the required list earn bonus points",
+        "SVG or canvas for the wheel + line-drawing between selected letters as player swipes"
+      ]
+    },
+    {
+      "id": "pg-011",
+      "rule": "Hangman MUST show: a drawing of the hangman that builds progressively (gallows → head → body → arms × 2 → legs × 2 = 6 wrong guesses before death), the word as blank dashes with correctly guessed letters filled in, a QWERTY keyboard where used letters are marked (green if in word, dark if not), and the number of guesses remaining.",
+      "why": "Hangman without the progressive drawing loses its visual tension. Keyboard must be interactive — clicking letters is the input method.",
+      "severity": "critical",
+      "appliesTo": "puzzle-games",
+      "examples": [
+        "Draw with SVG or Canvas — 7 stages: empty gallows, +head, +body, +left-arm, +right-arm, +left-leg, +right-leg",
+        "Word display: 'W _ R D' with spaces between letters",
+        "On win: reveal full word in green, show 'You won!' banner",
+        "On lose: reveal full word in red, show actual word",
+        "Word list: embed 200+ common English words, pick random on New Game"
+      ]
+    },
+    {
+      "id": "pg-012",
+      "rule": "Mastermind / Code Breaker MUST generate a secret 4-color code (from 6 colors, with repeats allowed), accept player guesses of 4 colors, and give per-guess feedback: BLACK pegs = correct color in correct position, WHITE pegs = correct color in wrong position. Show all previous guesses with their feedback. Max 10 guesses. Reveal code on loss.",
+      "why": "Mastermind feedback calculation is the most common bug — implementations often count a color's pegs incorrectly when it appears multiple times.",
+      "severity": "critical",
+      "appliesTo": "puzzle-games",
+      "examples": [
+        "Algorithm: count blacks first (exact match). Then for whites: count min(occurrences in secret, occurrences in guess) for each color, subtract blacks.",
+        "Color palette: 6 distinct colors as filled circles (red, blue, green, yellow, orange, purple)",
+        "Feedback row: show black pegs then white pegs as small colored dots",
+        "History: all past guesses scroll upward, newest at bottom"
+      ]
+    },
+    {
+      "id": "pg-014",
+      "rule": "Puzzle games with numeric scores (Wordle: guesses used, Sudoku: time, WordScapes: words found, Hangman: wrong guesses) MUST submit to the leaderboard on puzzle completion: `window.mChatAI?.leaderboard?.submit({ score, metadata: { puzzle_id, difficulty, time_seconds } })`. Show the user's rank and a mini leaderboard on the win/lose screen.",
+      "why": "Puzzle scores are natural competition moments. Submitting them to the leaderboard at puzzle-completion is trivial and creates daily engagement — users come back to beat others' Wordle streaks or Sudoku times.",
+      "severity": "important",
+      "appliesTo": "puzzle-games",
+      "examples": [
+        "Wordle: score = (7 - guessesUsed) * 100 (6 guesses = 100 pts, 1 guess = 600 pts, fail = 0)",
+        "Sudoku: score = Math.max(0, 3600 - timeSeconds) * difficultyMultiplier",
+        "15-Puzzle: score = Math.max(0, 500 - moveCount) + timeBonus",
+        "Show: 'You solved in 4 guesses! Global rank: #142 this week'"
+      ]
+    },
+    {
+      "id": "pg-015",
+      "rule": "For puzzle games that benefit from AI-generated content (quiz questions, word lists, crossword clues, riddles): check `window.mChatAI?.cloud?.isAvailable()` and offer a '⚡ AI Puzzle' mode that calls `window.mChatAI.cloud.llm()` to generate fresh content. Fall back to the embedded word list / question bank if cloud is unavailable. Label the mode with token cost.",
+      "why": "AI-generated puzzles have infinite variety vs. a static 200-word list. Cloud LLM can generate on-topic word sets, personalized quiz questions, or themed crossword grids. This is the killer feature that separates mChatAI puzzles from generic web games.",
+      "severity": "recommended",
+      "appliesTo": "puzzle-games",
+      "examples": [
+        "AI Trivia: window.mChatAI.cloud.llm({ prompt: 'Generate 10 trivia questions about ' + topic + '. Return JSON array: [{q, a, options:[...]}]' }).then(r => loadQuestions(JSON.parse(r)))",
+        "AI Word Set: window.mChatAI.cloud.llm({ prompt: 'Give me 10 words related to ' + theme + ' for a word search. Format: comma-separated uppercase.' }).then(r => buildGrid(r.split(',')))",
+        "Mode toggle: [Built-in Puzzles] [⚡ AI-Generated (2 tokens)]",
+        "Fallback: if (cloudError) { showToast('Using built-in puzzles'); loadBuiltinContent(); }"
+      ]
+    },
+    {
+      "id": "pg-013",
+      "rule": "15-Puzzle (sliding puzzle) MUST use a 4×4 grid with tiles 1-15 and one blank space. Clicking a tile adjacent to the blank slides it. The puzzle must be SOLVABLE — only half of random shuffles are solvable, so either: (a) start from solved state and apply N random valid moves, or (b) after shuffling, check parity and swap two tiles if needed. Show move counter.",
+      "why": "A randomly shuffled 15-puzzle has 50% chance of being unsolvable. Players will waste time on an impossible board.",
+      "severity": "critical",
+      "appliesTo": "puzzle-games",
+      "examples": [
+        "Safe shuffle: start solved, then make 100 random valid moves (avoids unsolvable states)",
+        "Win check: tiles in positions [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,0] = solved",
+        "Slide animation: CSS transition: transform 0.15s ease on tile movement",
+        "Show: 'Moves: 47' counter, and time elapsed"
+      ]
+    }
+  ]
+}
