@@ -1,9 +1,9 @@
 {
   "$schema": "https://mchatai.com/schemas/tunable-manifest-v1.json",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "artifactType": "macOSApp",
-  "_notes": "Phase DX.2 — tunable vocabulary for macOS SwiftUI apps. Smaller than web because SwiftUI has fewer idiomatic tuning points: tint, density spacing, window chrome. Bindings target `swiftui-environment` — the generator is expected (via wisdom rule) to emit SwiftUI code that reads from an `@Environment(\\.designTokens)` object. App-side live-reload is a TODO (DX.2 Swift scope); today dragging sliders here stores the values into session state and they take effect on the NEXT generation. Still useful because the planner gets them as hints for future passes.",
-  "liveUpdatesSupported": false,
+  "_notes": "Phase DX.2 + DX.2f — tunable vocabulary for macOS SwiftUI apps. Smaller than web because SwiftUI has fewer idiomatic tuning points: tint, density spacing, window chrome. Bindings target `swiftui-environment` — the generator embeds `wizard/snippets/macosapp/DesignTokenWatcher.swift` which sets up a DispatchSource file-watcher on /tmp/mchatai-design-tokens/{bundleID}.json. The mChatAI+ Design panel writes that file on every slider drag via DesignTokenSnapshotWriter. Result: live token updates flow into the generated SwiftUI app without a regen, same UX as the web preview. `sidebar-style` remains a partial-live knob — layout-level structural changes (switching NavigationSplitView → TabView) still require regen.",
+  "liveUpdatesSupported": true,
   "tunables": [
     {
       "id": "tint-hue",
