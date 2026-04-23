@@ -1,0 +1,57 @@
+{
+  "packID": "macos-app",
+  "version": 1,
+  "displayName": "macOS App Generation Wisdom",
+  "description": "Rules for generating executable macOS apps (SwiftUI / AppKit) via Swift Playground. Focused on making the generated binary actually appear as a visible, interactive window — not a headless background process.",
+  "categories": ["platform", "macos"],
+  "keywords": [
+    "macos app",
+    "macos application",
+    "swiftui macos",
+    "appkit",
+    "swift playground",
+    "swift package",
+    "package.swift",
+    "executable target",
+    "ns application",
+    "nsapp",
+    "windowgroup",
+    "desktop app"
+  ],
+  "artifactType": "macOSApp",
+  "guidelines": [
+    {
+      "id": "mac-001",
+      "rule": "Every SwiftUI @main macOS app MUST call NSApplication.shared.setActivationPolicy(.regular) AND NSApplication.shared.activate(ignoringOtherApps: true) in its init(). Import AppKit at the top of the file.",
+      "why": "When the binary is launched directly (e.g. `swift run` or `.build/.../MyApp`) instead of from a .app bundle, macOS treats it as a command-line tool. The default activation policy gives no Dock tile, no menu bar presence, and windows that stay hidden behind every other app with no way to bring them forward. Users repeatedly report 'the app ran but nothing showed up' because the window exists but is invisible. This is the SINGLE most common failure of generated macOS apps — and it wastes the whole point of generating them.",
+      "severity": "critical",
+      "appliesTo": "macOSApp",
+      "examples": [
+        "REQUIRED pattern: `@main struct MyApp: App { init() { NSApplication.shared.setActivationPolicy(.regular); NSApplication.shared.activate(ignoringOtherApps: true) }; var body: some Scene { WindowGroup { ContentView() } } }` — include `import AppKit` at the top",
+        "WRONG (window hidden forever): `@main struct MyApp: App { var body: some Scene { WindowGroup { ContentView() } } }`",
+        "Real incident 2026-04-23: Zombie Tower Defense built + launched (PID 33983, sleeping on GUI event loop), log empty, no errors — but no window visible on desktop. Missing activation-policy calls was the cause."
+      ]
+    },
+    {
+      "id": "mac-002",
+      "rule": "The root ContentView (or equivalent root SwiftUI view) MUST declare an explicit .frame(minWidth:, minHeight:) so the window opens at a usable size. Recommended minimum 600×400; games/dashboards usually want 800×600 or larger.",
+      "why": "SwiftUI on macOS opens windows at the intrinsic content size of the root view. A VStack of text has no intrinsic size, so the window can open at 50×50 pt in the top-left corner — easy to miss, easy to mistake for 'no window opened'. Pair with .windowResizability(.contentSize) on the Scene so the user can grow the window.",
+      "severity": "important",
+      "appliesTo": "macOSApp",
+      "examples": [
+        "struct ContentView: View { var body: some View { VStack { /* UI */ }.frame(minWidth: 800, minHeight: 600) } }",
+        "Scene pattern: `WindowGroup { ContentView() }.windowResizability(.contentSize)`"
+      ]
+    },
+    {
+      "id": "mac-003",
+      "rule": "Print a one-line launch confirmation to stdout from init() so the wizard's CLI runner and the user can both confirm the process reached its GUI event loop.",
+      "why": "Compiles-successfully ≠ window-appears. A stdout print from init() is a deterministic signal that the @main struct was actually instantiated (not just compiled), and gives the user visible confirmation in the terminal even while they alt-tab hunting for the window.",
+      "severity": "recommended",
+      "appliesTo": "macOSApp",
+      "examples": [
+        "init() { NSApplication.shared.setActivationPolicy(.regular); NSApplication.shared.activate(ignoringOtherApps: true); print(\"[MyApp] launched — window should be visible\") }"
+      ]
+    }
+  ]
+}
