@@ -1,0 +1,62 @@
+{
+  "_doc": "Configuration for EndProductPublishView.composeRequestFromProduct. Move-rule-from-Swift content. Iterate freely; takes effect on next refreshMchataisourceCache.",
+  "_version": 1,
+
+  "llm_picker": {
+    "_doc": "Backend ladder for the LLM symbol picker. Tried in order; first available wins. The user's CloudProvider.getActive() is auto-prepended at runtime so the user's chosen provider gets first dibs. 'foundation' is Apple Intelligence (always available on supported devices, free, on-device). Set llm_picker.enabled=false to bypass the LLM and use the deterministic fallback below.",
+    "enabled": true,
+    "fallback_ladder": ["foundation", "google", "anthropic", "openAI", "ollama", "mChatAICloud"],
+    "temperature": 0.2,
+    "timeout_seconds": 12,
+    "max_output_tokens": 200
+  },
+
+  "style_pools_by_category": {
+    "_doc": "Style preset pool per category. The picker selects one preset from the pool seeded by the app's name+summary so the same app always lands on the same preset.",
+    "miniApp":          ["gradient", "flat", "neon", "glass", "3d", "clay"],
+    "game":             ["neon", "pixel", "cyberpunk", "3d"],
+    "unityGame":        ["neon", "pixel", "cyberpunk", "3d"],
+    "extensionPackage": ["minimal", "flat", "gradient"],
+    "media":            ["vintage", "watercolor", "gradient"],
+    "website":          ["flat", "minimal", "gradient"],
+    "macOSApp":         ["3d", "glass", "gradient", "clay"],
+    "default":          ["gradient", "flat", "neon", "glass", "3d", "clay"]
+  },
+
+  "gradient_palette": [
+    {"start": "#FF6B6B", "end": "#4ECDC4", "label": "pastel red→teal"},
+    {"start": "#667EEA", "end": "#764BA2", "label": "blue→purple"},
+    {"start": "#F093FB", "end": "#F5576C", "label": "pink→coral"},
+    {"start": "#4FACFE", "end": "#00F2FE", "label": "sky→cyan"},
+    {"start": "#43E97B", "end": "#38F9D7", "label": "green→mint"},
+    {"start": "#FA709A", "end": "#FEE140", "label": "rose→yellow"},
+    {"start": "#30CFD0", "end": "#330867", "label": "teal→deep purple"},
+    {"start": "#A8EDEA", "end": "#FED6E3", "label": "mint→blush"},
+    {"start": "#FF9A8B", "end": "#FF6A88", "label": "peach→pink"},
+    {"start": "#08AEEA", "end": "#2AF598", "label": "cyan→lime"},
+    {"start": "#FEE140", "end": "#FA709A", "label": "yellow→rose"},
+    {"start": "#5EE7DF", "end": "#B490CA", "label": "aqua→lavender"}
+  ],
+
+  "deterministic_fallback": {
+    "_doc": "Used when llm_picker.enabled=false OR every backend in the ladder fails. Pure keyword match against name+summary, first hit wins. Generic apps fall through to a seeded random pick from generic_pool. Keep this list TINY — the LLM picker is the real solution; this is just a last-ditch safety net so the icon is never blank.",
+    "keyword_map": [
+      {"kw": "tic tac toe", "symbol": "grid_3x3"},
+      {"kw": "checkers", "symbol": "grid_on"},
+      {"kw": "weather", "symbol": "cloud"},
+      {"kw": "timer", "symbol": "timer"},
+      {"kw": "calendar", "symbol": "calendar_today"},
+      {"kw": "todo", "symbol": "check_circle"},
+      {"kw": "task", "symbol": "check_circle"},
+      {"kw": "music", "symbol": "music_note"},
+      {"kw": "photo", "symbol": "image"},
+      {"kw": "game", "symbol": "sports_esports"},
+      {"kw": "puzzle", "symbol": "extension"},
+      {"kw": "chat", "symbol": "chat_bubble"}
+    ],
+    "generic_pool": [
+      "apps", "widgets", "grid_view", "auto_awesome",
+      "rocket_launch", "flare", "stars", "lightbulb"
+    ]
+  }
+}
