@@ -52,6 +52,31 @@
       "examples": [
         "init() { NSApplication.shared.setActivationPolicy(.regular); NSApplication.shared.activate(ignoringOtherApps: true); print(\"[MyApp] launched — window should be visible\") }"
       ]
+    },
+    {
+      "id": "mac-005",
+      "rule": "The `@main` struct's containing target name MUST match the executableTarget name in Package.swift, AND the file containing `@main` MUST live at `Sources/<TargetName>/<anything>.swift`. Mismatches cause linker errors like `\"_<TargetName>_main\", referenced from: _main in command-line-aliases-file; ld: symbol(s) not found for architecture arm64`.",
+      "why": "Swift Package Manager generates `_<TargetName>_main` as the linkage symbol for executableTarget entries. If `Package.swift` declares `executableTarget(name: \"ZombieTD\", path: \"Sources/ZombieTD\")` but the actual `@main` struct is inside `Sources/Here/HereApp.swift`, or the executable target is named `Here` while the `@main` file lives in `Sources/ZombieTD/`, the linker looks for `_ZombieTD_main` and fails. This is not a Swift compile error — it's a link-time error, so auto-fix cycles that read Swift diagnostics don't catch it. Every generated macOS app must have (a) one executableTarget, (b) target name matches the `@main` struct's directory, (c) that directory contains exactly one `@main` annotation. Rename the target OR move the file — pick one and be consistent.",
+      "severity": "blocking",
+      "appliesTo": "macOSApp",
+      "examples": [
+        "CORRECT: Package.swift has `.executableTarget(name: \"ZombieTD\", path: \"Sources/ZombieTD\")` AND `Sources/ZombieTD/ZombieTDApp.swift` contains `@main struct ZombieTDApp: App { ... }`",
+        "WRONG (linker error): Package.swift says target name `Here` but `@main` struct lives in `Sources/ZombieTD/ZombieTDApp.swift` — linker looks for `_Here_main`, finds nothing. Fix: rename the target to `ZombieTD` in Package.swift (`name: \"ZombieTD\"`, `path: \"Sources/ZombieTD\"`) and keep the directory + filename in sync.",
+        "Rule of thumb: the directory name under `Sources/`, the `executableTarget.name` in Package.swift, and the file containing `@main` should all agree on the same concept (e.g., all say `ZombieTD` or all say `TowerDefense`). A single mismatch breaks the linker.",
+        "Real incident 2026-04-23: Zombie TD session failed repeatedly with `\"_Here_main\", referenced from: _main in command-line-aliases-file` because the Package target was named `Here` while the @main file was `ZombieTDApp.swift` under a `ZombieTD/` directory."
+      ]
+    },
+    {
+      "id": "mac-004",
+      "rule": "After a successful `swift build`, produce a proper `.app` bundle at `./build/<slug>-v<NNNN>.app` inside the working directory — NOT the bare executable at `.build/arm64-apple-macosx/debug/<binary>`. Use 4-digit zero-padded version numbers (v0001, v0002, …) and the kebab-case slug of the app name.",
+      "why": "mChatAI+ runs an FSEventStream watcher on the session's working folder. When it sees a `.app` appear at `./build/<slug>-v<NNNN>.app`, it auto-promotes that bundle into `MacOSAppManager` as a new numbered version and flips the session's UI to show an 'Open App' launcher. A bare executable at `.build/...` is invisible to users — they can't double-click to launch it, the window activation rules differ from a proper bundle, and the session sits in 'failed' state even though the build worked. Every macOS end-product type (mini-app, macOS app, future types) shares the `v%04d` filename scheme so directory listings sort correctly and users see a consistent naming convention.",
+      "severity": "critical",
+      "appliesTo": "macOSApp",
+      "examples": [
+        "After `swift build` succeeds, run:\n```bash\nmkdir -p build\nNEXT=$(ls build 2>/dev/null | grep -oE 'v[0-9]{4}' | sort | tail -1 | sed 's/v//')\nNEXT=$(printf 'v%04d' $((${NEXT:-0} + 1)))\nSLUG=$(basename \"$(pwd)\" | sed 's/[^a-z0-9-]/-/g')\nAPP_DIR=\"build/${SLUG}-${NEXT}.app\"\nmkdir -p \"$APP_DIR/Contents/MacOS\"\ncp .build/arm64-apple-macosx/debug/<BinaryName> \"$APP_DIR/Contents/MacOS/<BinaryName>\"\ncat > \"$APP_DIR/Contents/Info.plist\" <<'EOF'\n<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n<plist version=\"1.0\">\n<dict>\n  <key>CFBundleExecutable</key><string><BinaryName></string>\n  <key>CFBundleIdentifier</key><string>com.mchatai.generated.<slug></string>\n  <key>CFBundleName</key><string><DisplayName></string>\n  <key>CFBundlePackageType</key><string>APPL</string>\n  <key>CFBundleShortVersionString</key><string>1.0</string>\n  <key>LSMinimumSystemVersion</key><string>14.0</string>\n</dict>\n</plist>\nEOF\nopen \"$APP_DIR\"\n```",
+        "Bundle path format: `build/zombie-tower-defense-v0001.app`, next build → `build/zombie-tower-defense-v0002.app`, etc.",
+        "NEVER ship just `.build/arm64-apple-macosx/debug/BinaryName` as the end-product — that's a Swift Package build artifact, not a launchable macOS app."
+      ]
     }
   ]
 }
