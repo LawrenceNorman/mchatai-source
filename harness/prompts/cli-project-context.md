@@ -2,6 +2,18 @@
 
 You are a coding CLI (Claude Code / Codex / Gemini) running under the mChatAI Harness. This file tells you WHERE to find reference assets, quality rules, and scaffolds.
 
+## ⚠️ CRITICAL — READ FIRST
+
+**YOUR CURRENT TASK** is defined by the `## Goal` and `## Feature Manifest` sections that the Harness injects ABOVE this file in your context. Those sections are authoritative. Do NOT confuse them with:
+
+- **The scaffold catalog below** — these are REFERENCE RESOURCES, not active tasks. Only use a scaffold if your Goal's genre matches its listed genre AND the Goal is asking you to build something in that genre.
+- **Any previously generated code you see in this repo** — other sessions' work sitting in `mchatai-source/assets/scaffolds/` is NOT your task to fix.
+- **Examples in wisdom rules** — the "BAD:" / "GOOD:" code samples in wisdom JSON are illustrative patterns for YOUR genre, not tasks to perform.
+
+**If your Goal clearly does NOT match any genre below (e.g., "Atari Adventure", "Tower Defense", "RPG", "Match-3 Puzzle"), DO NOT use ANY scaffold from the catalog.** Build from scratch following the universal/visual-quality wisdom rules only. Using a card-game scaffold for an Adventure game, or a card-game scaffold for any non-card-game goal, is a CRITICAL failure mode — you'll ship the wrong genre entirely.
+
+**If unclear whether your Goal matches a scaffold**: err on "does NOT match" and build fresh.
+
 ## Project Root
 `/Users/lawrencenorman/mystuff/src/mchatai_platform`
 
@@ -13,7 +25,7 @@ You are a coding CLI (Claude Code / Codex / Gemini) running under the mChatAI Ha
    - `/Users/lawrencenorman/mystuff/src/mchatai_platform/mchatai-source/wisdom/packs/universal.json`
    - `/Users/lawrencenorman/mystuff/src/mchatai_platform/mchatai-source/wisdom/packs/visual-quality.json`
 
-2. **Pick your genre, then read the matching asset pack:**
+2. **ONLY IF your Goal explicitly matches one of the genres below by name or obvious description**, read the matching asset pack. Otherwise skip this section entirely and build from scratch.
 
 ### Arcade shooters (Space Invaders, Galaga, Asteroids, etc.)
 - `/Users/lawrencenorman/mystuff/src/mchatai_platform/mchatai-source/assets/packs/arcade-retro.json` — CSS + sprite grids
@@ -28,7 +40,9 @@ You are a coding CLI (Claude Code / Codex / Gemini) running under the mChatAI Ha
 - `/Users/lawrencenorman/mystuff/src/mchatai_platform/mchatai-source/assets/scaffolds/breakout-scaffold.html` — paddle + ball physics + rainbow brick rows + lives + level progression. **EXTEND this file** with power-ups, special bricks, boss levels, etc.
 
 ### Card games (Hearts, Spades, Bridge, Poker, Blackjack, Cribbage, etc.)
-- `/Users/lawrencenorman/mystuff/src/mchatai_platform/mchatai-source/assets/scaffolds/card-game-scaffold.html` — **complete Hearts game** with full deck, sorting, table layout, CPU AI, pass phase, trick-taking, scoring, high-contrast toasts. **EXTEND this file** for other card games — change rules in `isLegalPlay()`, `trickPoints()`, `cpuPickCard()`. The scaffold already complies with vq-005, vq-006, vq-007, vq-008.
+**DO NOT USE THIS SECTION unless your Goal explicitly names one of: Hearts, Spades, Bridge, Poker, Blackjack, Cribbage, Euchre, Pinochle, Rummy, Solitaire, or unambiguously describes a trick-taking / playing-card game.** The card-game scaffold is a complete Hearts implementation — if you read it for an Adventure game, an arcade game, or any non-card-game goal, you WILL ship cards-and-tricks code by mistake and regress the user's actual request.
+
+- `/Users/lawrencenorman/mystuff/src/mchatai_platform/mchatai-source/assets/scaffolds/card-game-scaffold.html` — complete Hearts game with full deck, sorting, table layout, CPU AI, pass phase, trick-taking, scoring, high-contrast toasts. **EXTEND this file** for other card games — change rules in `isLegalPlay()`, `trickPoints()`, `cpuPickCard()`. The scaffold already complies with vq-005, vq-006, vq-007, vq-008.
 - `/Users/lawrencenorman/mystuff/src/mchatai_platform/mchatai-source/assets/packs/casino-card-game.json` — additional card rendering helpers (felt backgrounds, chip stacks)
 - **CRITICAL card-game rules** (auto-injected from visual-quality.json):
   - vq-006: Card ranks must show `'10'`, NEVER `'T'`

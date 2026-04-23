@@ -34,7 +34,7 @@
     {
       "id": "u-003",
       "rule": "The app must have a clear visual indication of its current state. The user should always know what is happening and what they need to do next.",
-      "why": "Users get confused when the app state changes without feedback — they don't know if it's their turn, if something loaded, or if an error occurred.",
+      "why": "Users get confused when the app state changes without feedback \u2014 they don't know if it's their turn, if something loaded, or if an error occurred.",
       "severity": "important",
       "appliesTo": "all",
       "examples": [
@@ -83,53 +83,53 @@
       "severity": "important",
       "appliesTo": "all",
       "examples": [
-        "Use renderCard('A', '♠') for card faces, not plain text",
+        "Use renderCard('A', '\u2660') for card faces, not plain text",
         "Use the .chip CSS classes for chip displays",
         "Use the felt gradient CSS for the table background"
       ]
     },
     {
       "id": "u-009",
-      "rule": "When a framework scaffold is injected, copy its `swift-tools-version` comment and `platforms: [...]` line VERBATIM. Do NOT upgrade `// swift-tools-version:5.9` to `6.0`. Do NOT upgrade `.macOS(.v13)` to `.v14`, `.v15`, or `.v16`. Same rule for Node `engines`, Rust `edition`, Android `compileSdk` — use the scaffold's value.",
-      "why": "Toolchain/platform upgrades activate features (Swift 6 strict concurrency, newer SDK APIs) that break scaffold code written for the pinned target. Scaffolds are tested at their pinned targets — changing them is guaranteed to break. Observed 2026-04-14: LLMs repeatedly upgraded `.macOS(.v13)` to `.v15`, which triggered Swift 6 concurrency errors (`'self' used in property access before stored properties initialized`, `'shared' not concurrency-safe`, `onKeyPress` API mismatch) — all of which are not errors at the scaffold's pinned target.",
+      "rule": "When a framework scaffold is injected, copy its `swift-tools-version` comment and `platforms: [...]` line VERBATIM. Do NOT upgrade `// swift-tools-version:5.9` to `6.0`. Do NOT upgrade `.macOS(.v13)` to `.v14`, `.v15`, or `.v16`. Same rule for Node `engines`, Rust `edition`, Android `compileSdk` \u2014 use the scaffold's value.",
+      "why": "Toolchain/platform upgrades activate features (Swift 6 strict concurrency, newer SDK APIs) that break scaffold code written for the pinned target. Scaffolds are tested at their pinned targets \u2014 changing them is guaranteed to break. Observed 2026-04-14: LLMs repeatedly upgraded `.macOS(.v13)` to `.v15`, which triggered Swift 6 concurrency errors (`'self' used in property access before stored properties initialized`, `'shared' not concurrency-safe`, `onKeyPress` API mismatch) \u2014 all of which are not errors at the scaffold's pinned target.",
       "severity": "critical",
       "appliesTo": "all",
       "examples": [
-        "If scaffold first line is `// swift-tools-version:5.9`, your output's first line must be the same — not `// swift-tools-version: 6.0`",
-        "If scaffold has `platforms: [.macOS(.v13)]`, keep `.v13` — do not upgrade to `.v14`, `.v15`, `.v16`",
-        "If Cargo.toml has `edition = \"2021\"`, keep `2021` — do not bump to `2024`",
-        "If package.json has `\"engines\": { \"node\": \">=18\" }`, keep `>=18` — do not bump"
+        "If scaffold first line is `// swift-tools-version:5.9`, your output's first line must be the same \u2014 not `// swift-tools-version: 6.0`",
+        "If scaffold has `platforms: [.macOS(.v13)]`, keep `.v13` \u2014 do not upgrade to `.v14`, `.v15`, `.v16`",
+        "If Cargo.toml has `edition = \"2021\"`, keep `2021` \u2014 do not bump to `2024`",
+        "If package.json has `\"engines\": { \"node\": \">=18\" }`, keep `>=18` \u2014 do not bump"
       ]
     },
     {
       "id": "u-008",
       "rule": "When a framework scaffold is injected ('## Framework Scaffold:' section), the scaffold's package manifest (Package.swift / package.json / Cargo.toml / build.gradle) is CANONICAL. Count the dependencies and copy ALL of them with EXACT URLs, version strings, and platform target. Do not drop packages. Do not bump versions. Do not change platform.",
-      "why": "LLMs under pressure do two bad things: (1) invent non-existent versions (AudioKit 5.10.0 / 5.12.0 when latest is 5.7.2) — causing 'no versions match the requirement' errors; (2) drop 'less obvious' packages while keeping the one whose name matches the framework (keeping AudioKit but dropping AudioKitUI + SoundpipeAudioKit) — causing 'cannot find type X in scope' errors because those types live in the dropped packages. Both fail the build and waste auto-fix cycles.",
+      "why": "LLMs under pressure do two bad things: (1) invent non-existent versions (AudioKit 5.10.0 / 5.12.0 when latest is 5.7.2) \u2014 causing 'no versions match the requirement' errors; (2) drop 'less obvious' packages while keeping the one whose name matches the framework (keeping AudioKit but dropping AudioKitUI + SoundpipeAudioKit) \u2014 causing 'cannot find type X in scope' errors because those types live in the dropped packages. Both fail the build and waste auto-fix cycles.",
       "severity": "critical",
       "appliesTo": "all",
       "examples": [
-        "If the scaffold has 3 .package() entries, your output must have 3 .package() entries — do not consolidate, do not omit, do not substitute",
-        "If the scaffold has 3 .product() on the target dependencies, your output must have 3 .product() — they are all imported by scaffold code",
+        "If the scaffold has 3 .package() entries, your output must have 3 .package() entries \u2014 do not consolidate, do not omit, do not substitute",
+        "If the scaffold has 3 .product() on the target dependencies, your output must have 3 .product() \u2014 they are all imported by scaffold code",
         "If scaffold shows 'from: \"5.6.0\"', copy '5.6.0' exactly. Do NOT write '5.10.0', '^5.0.0', or bump the minor version",
-        "If scaffold declares platforms: [.macOS(.v13)], match .v13 exactly — not .v12, .v14, or .v15",
+        "If scaffold declares platforms: [.macOS(.v13)], match .v13 exactly \u2014 not .v12, .v14, or .v15",
         "Before emitting Package.swift, RECOUNT: did I keep all .package() entries? All .product() entries? Did I copy versions byte-for-byte?"
       ]
     },
     {
       "id": "u-020",
-      "rule": "When a published web mini-app needs to fetch data from an external HTTPS API (weather, geocoding, Wikipedia, currency rates, jokes, photos, Pokémon, etc.), it MUST route the call through the mChatAI proxy: `https://mchatai.com/proxy/fetch?url=<URL-encoded target>`. Direct cross-origin fetch() calls from a published site are blocked by Content-Security-Policy and will silently fail in production.",
-      "why": "Published mini-apps run under a strict CSP (`connect-src 'self' https://mchatai.com ...`). Direct calls to api.weather.gov, en.wikipedia.org, etc. work in the AIHarness preview but fail once published, which produces 'Could not retrieve data' errors users can't diagnose. The proxy keeps CSP locked down (no data exfil to attacker servers) while letting the curated allowlist of safe public APIs reach published code. The allowlist lives at https://github.com/LawrenceNorman/mchatai-source/blob/main/proxy/allowlist.json — adding a host is a git PR.",
+      "rule": "When a published web mini-app needs to fetch data from an external HTTPS API (weather, geocoding, Wikipedia, currency rates, jokes, photos, Pok\u00e9mon, etc.), it MUST route the call through the mChatAI proxy: `https://mchatai.com/proxy/fetch?url=<URL-encoded target>`. Direct cross-origin fetch() calls from a published site are blocked by Content-Security-Policy and will silently fail in production.",
+      "why": "Published mini-apps run under a strict CSP (`connect-src 'self' https://mchatai.com ...`). Direct calls to api.weather.gov, en.wikipedia.org, etc. work in the AIHarness preview but fail once published, which produces 'Could not retrieve data' errors users can't diagnose. The proxy keeps CSP locked down (no data exfil to attacker servers) while letting the curated allowlist of safe public APIs reach published code. The allowlist lives at https://github.com/LawrenceNorman/mchatai-source/blob/main/proxy/allowlist.json \u2014 adding a host is a git PR.",
       "severity": "critical",
       "appliesTo": "miniapp, webspa, website",
       "examples": [
-        "BAD: const r = await fetch('https://api.weather.gov/points/47.6,-122.3') — blocked by CSP in production, looks fine in preview",
+        "BAD: const r = await fetch('https://api.weather.gov/points/47.6,-122.3') \u2014 blocked by CSP in production, looks fine in preview",
         "GOOD: const proxied = 'https://mchatai.com/proxy/fetch?url=' + encodeURIComponent('https://api.weather.gov/points/47.6,-122.3'); const r = await fetch(proxied)",
-        "If the host you need is NOT on the proxy allowlist, the call will return HTTP 403 with a JSON body explaining how to add it. Tell the user — don't silently fall back to a third-party CORS proxy in production."
+        "If the host you need is NOT on the proxy allowlist, the call will return HTTP 403 with a JSON body explaining how to add it. Tell the user \u2014 don't silently fall back to a third-party CORS proxy in production."
       ]
     },
     {
       "id": "u-010",
-      "rule": "For ANY game with a human player: there MUST be at least one computer/AI opponent. Never make the user play both sides. The AI opponent does not need to be sophisticated — even random legal moves are acceptable — but it MUST exist so the user has someone to play against.",
+      "rule": "For ANY game with a human player: there MUST be at least one computer/AI opponent. Never make the user play both sides. The AI opponent does not need to be sophisticated \u2014 even random legal moves are acceptable \u2014 but it MUST exist so the user has someone to play against.",
       "why": "Users who ask for a 'playable game' expect an opponent. A game where you control both sides is a sandbox, not a game. This is the #2 most common complaint after auto-pilot.",
       "severity": "critical",
       "appliesTo": "all",
@@ -141,8 +141,8 @@
     },
     {
       "id": "u-011",
-      "rule": "NEVER use library stubs, shims, or abbreviated implementations. If the app needs a chess engine, game physics, or any complex logic — write it inline. Do NOT include a 'minified' library that is actually a stub returning empty values. Do NOT write comments like 'for brevity', 'abridged', 'for the sake of token limits', 'include full X in production'. Every line of code must be real, working logic.",
-      "why": "Models under token pressure produce fake 'minified' libraries that are actually stubs — e.g., a chess.js stub where every method returns null. This produces an app that looks correct on first glance but is completely non-functional. The Evaluator will flag any stub as an automatic failure.",
+      "rule": "NEVER use library stubs, shims, or abbreviated implementations. If the app needs a chess engine, game physics, or any complex logic \u2014 write it inline. Do NOT include a 'minified' library that is actually a stub returning empty values. Do NOT write comments like 'for brevity', 'abridged', 'for the sake of token limits', 'include full X in production'. Every line of code must be real, working logic.",
+      "why": "Models under token pressure produce fake 'minified' libraries that are actually stubs \u2014 e.g., a chess.js stub where every method returns null. This produces an app that looks correct on first glance but is completely non-functional. The Evaluator will flag any stub as an automatic failure.",
       "severity": "critical",
       "appliesTo": "all",
       "examples": [
@@ -153,7 +153,7 @@
     },
     {
       "id": "u-012",
-      "rule": "When using localStorage for game state (bankroll, score, progress), ALWAYS validate on load. If the saved value is missing, zero, negative, or corrupted, reset to the default starting value. Never trust localStorage blindly — it may have stale data from a previous session, be zero from a game-over state, or be absent on first load.",
+      "rule": "When using localStorage for game state (bankroll, score, progress), ALWAYS validate on load. If the saved value is missing, zero, negative, or corrupted, reset to the default starting value. Never trust localStorage blindly \u2014 it may have stale data from a previous session, be zero from a game-over state, or be absent on first load.",
       "why": "A Blackjack game that reads bankroll from localStorage showed $0 on first load because the key didn't exist yet and parseInt returned NaN which displayed as 0. The game was unplayable despite having zero console errors.",
       "severity": "critical",
       "appliesTo": "all",
@@ -166,12 +166,12 @@
     {
       "id": "u-013",
       "rule": "NEVER use clip-path, overflow:hidden, or mask on a container that holds interactive game pieces (checkers, cards, tokens, characters). The child elements will be clipped by the parent's shape and become partially hidden or unclickable. If you need a shaped background (like a triangle), use a ::before or ::after pseudo-element for the shape, leave the parent as a plain rectangle, and place the game pieces inside the parent with z-index higher than the pseudo-element.",
-      "why": "Backgammon mini-app used clip-path:polygon(...) on the .triangle parent holding the checker children. The checkers got clipped by the triangle shape — their round tops poked out above the triangle line and the bottoms were hidden, and they were unclickable outside the triangle bounds. Same problem would occur for chess squares with corner badges, hex boards with tokens, etc.",
+      "why": "Backgammon mini-app used clip-path:polygon(...) on the .triangle parent holding the checker children. The checkers got clipped by the triangle shape \u2014 their round tops poked out above the triangle line and the bottoms were hidden, and they were unclickable outside the triangle bounds. Same problem would occur for chess squares with corner badges, hex boards with tokens, etc.",
       "severity": "critical",
       "appliesTo": "all",
       "examples": [
         "GOOD: .triangle { position:relative; } .triangle::before { content:''; position:absolute; inset:0; clip-path:polygon(50% 0,100% 100%,0 100%); background:#c9a176; z-index:0; } .triangle > .checker { position:relative; z-index:1; }",
-        "BAD: .triangle { clip-path:polygon(50% 0,100% 100%,0 100%); } .triangle > .checker { ... } — checkers clipped by triangle",
+        "BAD: .triangle { clip-path:polygon(50% 0,100% 100%,0 100%); } .triangle > .checker { ... } \u2014 checkers clipped by triangle",
         "GOOD: For card stacks, use z-index layering (each card above the previous) with parent position:relative, children position:absolute, no overflow:hidden on parent"
       ]
     },
@@ -188,14 +188,14 @@
     },
     {
       "id": "u-015",
-      "rule": "For pieces that STACK vertically (checkers on a backgammon point, poker chips, cards in a pile): use position:absolute with computed top values, or use flexbox with negative margins (e.g. margin-top:-18px for 30px pieces = 40% overlap). Never stack them flat on top of each other — the user must be able to see the count visually.",
+      "rule": "For pieces that STACK vertically (checkers on a backgammon point, poker chips, cards in a pile): use position:absolute with computed top values, or use flexbox with negative margins (e.g. margin-top:-18px for 30px pieces = 40% overlap). Never stack them flat on top of each other \u2014 the user must be able to see the count visually.",
       "why": "Backgammon points can hold 5+ checkers which need to stack. Without proper stacking CSS they all render at the same position (looks like 1 piece), or they fall outside the point (looks broken).",
       "severity": "important",
       "appliesTo": "all",
       "examples": [
         "GOOD (flex): .stack { display:flex; flex-direction:column-reverse; align-items:center; } .stack > .checker { margin-bottom:-18px; } .stack > .checker:first-child { margin-bottom:0; }",
         "GOOD (absolute): pieces[i].style.top = (i * 20) + 'px'; parent is position:relative",
-        "BAD: All pieces at top:0 — only top piece visible"
+        "BAD: All pieces at top:0 \u2014 only top piece visible"
       ]
     },
     {
@@ -212,7 +212,7 @@
     },
     {
       "id": "u-017",
-      "rule": "Use explicit numeric dimensions for any game container that renders pieces at specific positions. Do NOT use `flex:1` or `1fr` units as the only size constraint — they collapse to 0 when the parent doesn't have a defined size, making the entire board invisible.",
+      "rule": "Use explicit numeric dimensions for any game container that renders pieces at specific positions. Do NOT use `flex:1` or `1fr` units as the only size constraint \u2014 they collapse to 0 when the parent doesn't have a defined size, making the entire board invisible.",
       "why": "Backgammon board disappeared because `.board { display:grid; grid-template-columns:repeat(13,1fr); }` had no explicit width/height, and its parent chain used min-height instead of height. The grid collapsed to 0x0 and nothing rendered.",
       "severity": "critical",
       "appliesTo": "all",
@@ -225,7 +225,7 @@
     {
       "id": "u-018",
       "rule": "For any app that has a SCORE (games, quizzes, challenges, typing tests): call `window.mChatAI.leaderboard.submit({ score: finalScore, metadata: { ... } })` when the game/round ends. Then fetch and display the top 10 scores with `window.mChatAI.leaderboard.getTop(10)` on the game-over screen. If `window.mChatAI.leaderboard` is undefined, skip silently (local play mode). Show the user their rank and percentile from the submit response.",
-      "why": "Leaderboard is a zero-config feature of the mChatAI platform. Any scoring app that omits it misses competitive replay value and cross-user engagement. The bridge is always present in deployed apps — skipping the guard `if (window.mChatAI?.leaderboard)` causes errors in local preview mode.",
+      "why": "Leaderboard is a zero-config feature of the mChatAI platform. Any scoring app that omits it misses competitive replay value and cross-user engagement. The bridge is always present in deployed apps \u2014 skipping the guard `if (window.mChatAI?.leaderboard)` causes errors in local preview mode.",
       "severity": "important",
       "appliesTo": "all",
       "examples": [
@@ -237,15 +237,55 @@
     },
     {
       "id": "u-019",
-      "rule": "For apps that use mChatAI Cloud AI features (LLM hints, AI opponents, image generation, TTS narration, quiz generation): gate these features behind `window.mChatAI.cloud.isAvailable()`. If cloud is available, show the feature with a compute-token cost badge (e.g., '⚡ 2 tokens'). If unavailable (offline or no account), show the feature as disabled with a 'Requires mChatAI+ account' tooltip. Never show a broken or erroring UI for users without cloud access.",
+      "rule": "For apps that use mChatAI Cloud AI features (LLM hints, AI opponents, image generation, TTS narration, quiz generation): gate these features behind `window.mChatAI.cloud.isAvailable()`. If cloud is available, show the feature with a compute-token cost badge (e.g., '\u26a1 2 tokens'). If unavailable (offline or no account), show the feature as disabled with a 'Requires mChatAI+ account' tooltip. Never show a broken or erroring UI for users without cloud access.",
       "why": "Cloud-powered features add high value (AI opponent strength, TTS narration, hint generation) but require compute tokens and a connected mChatAI account. Apps that fail silently or crash when cloud is absent frustrate users who are in local/offline mode.",
       "severity": "important",
       "appliesTo": "all",
       "examples": [
-        "AI Hint button: if (window.mChatAI?.cloud?.isAvailable()) { btn.textContent = 'AI Hint ⚡ 1 token'; btn.onclick = () => window.mChatAI.cloud.aiHint(gameState); } else { btn.textContent = 'AI Hint'; btn.disabled = true; btn.title = 'Requires mChatAI+ account'; }",
+        "AI Hint button: if (window.mChatAI?.cloud?.isAvailable()) { btn.textContent = 'AI Hint \u26a1 1 token'; btn.onclick = () => window.mChatAI.cloud.aiHint(gameState); } else { btn.textContent = 'AI Hint'; btn.disabled = true; btn.title = 'Requires mChatAI+ account'; }",
         "TTS narration: window.mChatAI.cloud.tts({ text: 'Round 3 begins!', voice: 'nova' }).then(url => new Audio(url).play());",
         "Quiz generation: window.mChatAI.cloud.llm({ prompt: 'Generate 5 trivia questions about ' + topic }).then(q => loadQuestions(JSON.parse(q)));",
-        "Cost badge: small pill showing '⚡ 2 tokens' next to any cloud feature button"
+        "Cost badge: small pill showing '\u26a1 2 tokens' next to any cloud feature button"
+      ]
+    },
+    {
+      "id": "u-021",
+      "rule": "NEVER write literal `\\n` (backslash+n, two characters) into JavaScript string literals that become visible text. Either use a real newline character (press Enter in the source), or use `<br>` tags in HTML, or use CSS `white-space: pre-line`. The JS `'\\n'` escape is fine INSIDE a JavaScript string \u2014 it compiles to a real newline. But if you write `.textContent = 'Line 1\\\\n\\\\nLine 2'` with a DOUBLE backslash, the two literal characters `\\n` render on the page as visible text, not a line break. Same goes for template literals: `` `Line 1${'\\n'}Line 2` `` is fine; `` `Line 1\\\\nLine 2` `` is wrong.",
+      "why": "Seen repeatedly 2026-04-22: Atari Adventure, Asteroids, and Hearts sessions all shipped with literal `\\n\\n\\n` visible on title/overlay screens instead of line breaks. Root cause: generator string-concatenated with double-backslash `\\\\n` thinking it was an escape, but in source code the double-backslash emits two literal characters. Users reported apps as 'blank' or 'showing raw text' \u2014 actually functional games with a cosmetic rendering bug.",
+      "severity": "important",
+      "appliesTo": "miniapp, webspa",
+      "examples": [
+        "BAD: `.textContent = 'Score: 0\\\\n\\\\nLives: 3'` \u2014 page shows literally 'Score: 0\\n\\nLives: 3'",
+        "GOOD: `.innerHTML = 'Score: 0<br><br>Lives: 3'` \u2014 real line breaks rendered",
+        "GOOD: `.textContent = 'Score: 0\\n\\nLives: 3'` with single backslash \u2014 compiles to real newlines, needs `white-space: pre-line` on the element",
+        "GOOD: template literal with embedded actual newlines: `` `Score: 0\\n\\nLives: 3` ``",
+        "BAD: template literal with escaped backslash: `` `Score: 0\\\\n\\\\nLives: 3` ``"
+      ]
+    },
+    {
+      "id": "u-022",
+      "rule": "Only use a scaffold file (e.g., `card-game-scaffold.html`, `space-invaders-scaffold.html`, `snake-scaffold.html`, `breakout-scaffold.html`) if the user's Goal EXPLICITLY matches the scaffold's genre. An 'Atari Adventure' goal is NOT a card game. A 'Tower Defense' goal is NOT a brick-breaker. A 'Word Puzzle' goal is NOT an arcade shooter. When the goal doesn't match any listed scaffold, build the artifact from scratch using only the universal + visual-quality wisdom rules. Reading a scaffold 'to see the structure' when the genres don't match is a direct path to shipping the wrong game entirely.",
+      "why": "Seen 3x across 2026-04-22/23: user requested Atari Adventure but the generator read `card-game-scaffold.html` (listed in cli-project-context.md under 'Card games') and shipped Hearts code under an Atari title. The evaluator then rubric-scored the output as 'a card game' because the CLAUDE.md scaffold reference was still in-context. Root cause: scaffold catalog is a reference CATALOG but CLI agents treat file-path mentions as read-me-now signals. Rule forces explicit genre match before any scaffold read.",
+      "severity": "critical",
+      "appliesTo": "all",
+      "examples": [
+        "GOAL: 'Atari Adventure with castles and dragons' \u2192 \u2713 no scaffold matches \u2192 build from scratch, no scaffold reads.",
+        "GOAL: 'Hearts card game' \u2192 \u2713 card-game-scaffold.html is correct; extend it.",
+        "GOAL: 'Tower Defense zombie game' \u2192 \u2713 no scaffold matches \u2192 build from scratch. Do NOT extend breakout-scaffold just because 'brick-breaker' shares 'game' in its name.",
+        "BAD: user asked for Asteroids; generator reads card-game-scaffold.html 'for reference' and ships with Hearts-shaped boilerplate.",
+        "BAD: evaluator rubric reports 'application is a card game \u2014 cards justified' because it read scaffold references in CLAUDE.md instead of the actual generated HTML."
+      ]
+    },
+    {
+      "id": "u-023",
+      "rule": "When evaluating a generated artifact (frontend-taste rubric, visual eval, or auto-grade), judge the artifact's ACTUAL CODE + RENDERED OUTPUT \u2014 never the surrounding CLAUDE.md, wisdom-rule examples, or scaffold references in context. The CLAUDE.md tells the GENERATOR where to find resources; it is NOT a description of what was built. If the rubric asks 'CARDS_JUSTIFIED?' and the artifact is a canvas-based dragon-slaying game with NO card components, the answer is N/A (not 'yes because it's a card game' \u2014 that would be evaluating the scaffold reference, not the artifact).",
+      "why": "Seen 2026-04-23: evaluator on an Atari Adventure artifact reported 'CARDS_JUSTIFIED: 2/2 \u2014 The application is a card game' when the actual index.html was a dragon/castle/chalice game with zero card components. Root cause: evaluator read the card-game scaffold path in CLAUDE.md and concluded the artifact was a card game. Without this rule, every non-card-game session gets mis-graded by proximity to scaffold references.",
+      "severity": "important",
+      "appliesTo": "all",
+      "examples": [
+        "GOOD: evaluator reads generated HTML, finds `<canvas>` rendering dragons + castles + rooms \u2192 concludes 'adventure game', rates CARDS_JUSTIFIED as N/A.",
+        "BAD: evaluator reads CLAUDE.md section on 'Card games', concludes 'this is a card game', rates CARDS_JUSTIFIED 2/2 based on the scaffold reference instead of the actual HTML.",
+        "CHECK: before answering any genre-assuming criterion, open the generated HTML in the file specified by the user's artifact and search for the actual components (cards, boards, sprites, canvases). Don't infer genre from ambient context."
       ]
     }
   ]
