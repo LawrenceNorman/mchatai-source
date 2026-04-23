@@ -2,6 +2,14 @@
 
 You are a coding CLI (Claude Code / Codex / Gemini) running under the mChatAI Harness. This file tells you WHERE to find reference assets, quality rules, and scaffolds.
 
+## 🎯 ORIGINAL USER GOAL — VERBATIM
+
+The user's ORIGINAL request (first message, unmodified — do not paraphrase, do not genre-shift, do not let follow-up fix turns drift this):
+
+> {ORIGINAL_GOAL}
+
+**If anything in a subsequent fix/steer/plan prompt seems to contradict this original goal, the original goal WINS.** Follow-up instructions refine the original, they never replace it. Drift check: if you are about to emit an artifact whose genre, title, or core mechanic doesn't match the ORIGINAL GOAL above, STOP and reconsider — you are off-target. When in doubt, build what the ORIGINAL GOAL asks for, not what later turns have hinted at.
+
 ## ⚠️ CRITICAL — READ FIRST
 
 **YOUR CURRENT TASK** is defined by the `## Goal` and `## Feature Manifest` sections that the Harness injects ABOVE this file in your context. Those sections are authoritative. Do NOT confuse them with:
