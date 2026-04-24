@@ -69,7 +69,9 @@ Rule of thumb when proposing a new entry: *"If I described this to a competent d
 | `pipeline_name` | string | Required when `dispatch: runPipeline`. |
 | `skill_id` | string | Required when `dispatch: runSkill`. |
 | `skill_config` | object | Optional when `dispatch: runSkill`. |
-| `notes` | string | Freeform — why this case is in the catalog. |
+| `notes` | string | Freeform — why this case is in the catalog, or why it's flaky. |
+| `flaky` | bool | **New 2026-04-24.** Marks entries that have failed repeatedly in batch runs. Rotation strategies should **deprioritize** flaky entries until reworked — don't burn compute on a known hard case. Flip to false once the entry has a clean run post-rework. |
+| `flaky_history` | array | **New 2026-04-24.** Append-only list of failure snapshots: `{run: "<ISO-stamp-slug>", tier: "L?", outcome: "<desc>", concurrency: N, note: "..."}`. Lets the coverage report + rotation picker see the failure pattern without scanning JSONL logs. |
 
 ## Non-negotiables
 

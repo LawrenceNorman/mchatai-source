@@ -1,14 +1,14 @@
 {
   "$schema_version": "1.0.0",
-  "catalog_version": "2026.04.23-b",
-  "last_updated": "2026-04-23",
+  "catalog_version": "2026.04.24-c",
+  "last_updated": "2026-04-24",
   "difficulty_definitions": {
     "L1": "Simple CRUD / single view / static content. <150 LOC target. One wizard turn.",
     "L2": "Non-trivial glue: state mgmt, 2+ screens, one external API or framework primitive. 1-2 turns.",
     "L3": "Framework-heavy or stateful: shaders, audio graphs, ECS, multi-agent, persistent storage, network sync, sensors. 3-4 turns."
   },
   "coverage_status": {
-    "miniApp": "v1 — 70/70 (23 L1 / 27 L2 / 20 L3). Deliberately steers AWAY from saturated ground (pomodoro/flashcards/snake/2048/wordle/blackjack/chess/roguelike — already have dozens of each installed). Aims at novel territory: data viz, DSP, creative coding, dev tools, science sims, accessibility, privacy, ling, music theory, procgen.",
+    "miniApp": "v1 — 70/70 (23 L1 / 27 L2 / 20 L3). 2 entries now tagged flaky=true after 2026-04-24 T1703 batch: mini-l1-utility-qr-gen-037 (L1 timeout), mini-l2-utility-cron-visualizer-043 (L2 overbudget). See per-entry `notes` + `flaky_history`. Deliberately steers AWAY from saturated ground (pomodoro/flashcards/snake/2048/wordle/blackjack/chess/roguelike — already have dozens of each installed). Aims at novel territory: data viz, DSP, creative coding, dev tools, science sims, accessibility, privacy, ling, music theory, procgen.",
     "webSPA": "pending",
     "unityGame": "pending",
     "pythonMicroservice": "pending",
@@ -411,7 +411,12 @@
       "category": "utility",
       "difficulty": "L1",
       "dispatch": "runWizard",
-      "expected_capabilities": ["canvas", "toDataURL"]
+      "expected_capabilities": ["canvas", "toDataURL"],
+      "flaky": true,
+      "flaky_history": [
+        {"run": "2026-04-24T1703", "tier": "L1", "outcome": "timeout@900s", "concurrency": 2}
+      ],
+      "notes": "L1 fast-path timed out 2026-04-24. Hypothesis: single-API-call budget isn't enough to inline a working QR encoder — Reed-Solomon + bitmatrix is too much for one shot. Candidate rework: split into (a) CDN-loaded qrcode.js variant (cheap) and (b) pure-JS variant (L2 or L3). Until reworked, rotation should deprioritize this entry."
     },
     {
       "id": "mini-l1-utility-base-converter-038",
@@ -466,7 +471,12 @@
       "category": "utility",
       "difficulty": "L2",
       "dispatch": "runWizard",
-      "expected_capabilities": ["Date", "grid"]
+      "expected_capabilities": ["Date", "grid"],
+      "flaky": true,
+      "flaky_history": [
+        {"run": "2026-04-24T1703", "tier": "L2", "outcome": "timeout@1500s", "concurrency": 2, "note": "exceeded 420s tier budget; harness kept retrying until hard cap"}
+      ],
+      "notes": "L2 CLI path overran budget. Hypothesis: cron-parsing ambiguity triggered autofix-loop. Candidate rework: narrow scope (drop calendar-heatmap — that's the complexity amplifier), OR promote to L3 with higher budget + deep planning. Evaluate both after next-rotation dry-run."
     },
 
     {
