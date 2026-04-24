@@ -9,38 +9,41 @@
       "skip_planner": true,
       "skip_cli_generator": true,
       "skip_evaluator_autofix": true,
+      "skip_visual_director": true,
       "run_evaluator_for_scoring": true,
       "prefer_single_api_call": true,
       "max_response_tokens": 6000,
       "max_duration_seconds": 120,
       "generator_template": "generator.l1.fast",
       "estimated_usd_per_run": 0.05,
-      "rationale": "Simple CRUD / single-view / static content. One LLM call, no planner, no CLI agentic session, no autofix. Evaluator still runs to feed the rubric ledger, but its result does not trigger a fix turn. Typical wall-clock 30-90s. SL.5: estimate baseline = $0.05/run (gpt-4o-mini single turn ~3k in + ~3k out)."
+      "rationale": "Simple CRUD / single-view / static content. One LLM call, no planner, no CLI agentic session, no autofix, NO Visual Director brief. Evaluator still runs to feed the rubric ledger, but its result does not trigger a fix turn. Typical wall-clock 30-90s. SL.5: estimate baseline = $0.05/run (gpt-4o-mini single turn ~3k in + ~3k out). VD note: skip_visual_director=true because the fast-path's single-call budget cannot absorb a VD preamble; L1 goals are simple enough that VD offers little uplift."
     },
     "L2": {
       "display_name": "Standard planner + generator",
       "skip_planner": false,
       "skip_cli_generator": false,
       "skip_evaluator_autofix": false,
+      "skip_visual_director": false,
       "run_evaluator_for_scoring": true,
       "prefer_single_api_call": false,
       "max_response_tokens": 16000,
       "max_duration_seconds": 420,
       "estimated_usd_per_run": 0.15,
-      "rationale": "Default tier. Planner scopes the spec, generator uses CLI-first with API fallback, evaluator critiques and triggers one autofix cycle. SL.5: estimate baseline = $0.15/run (planner + generator + evaluator + one fix cycle)."
+      "rationale": "Default tier. Planner scopes the spec, generator uses CLI-first with API fallback, evaluator critiques and triggers one autofix cycle. VD runs (brief preamble + mockup). SL.5: estimate baseline = $0.15/run (planner + generator + evaluator + one fix cycle)."
     },
     "L3": {
       "display_name": "Deep-plan multi-agent",
       "skip_planner": false,
       "skip_cli_generator": false,
       "skip_evaluator_autofix": false,
+      "skip_visual_director": false,
       "run_evaluator_for_scoring": true,
       "prefer_single_api_call": false,
       "max_response_tokens": 32000,
       "max_duration_seconds": 900,
       "enable_deep_planning": true,
       "estimated_usd_per_run": 0.40,
-      "rationale": "Framework-heavy or stateful goals. Deep planning runs ahead of the simple planner, generator gets extended budget, multiple autofix cycles allowed. SL.5: estimate baseline = $0.40/run (deep plan + generator 32k + evaluator + 2 fix cycles, higher variance)."
+      "rationale": "Framework-heavy or stateful goals. Deep planning runs ahead of the simple planner, generator gets extended budget, multiple autofix cycles allowed. VD runs with full budget (brief + mockup + iterations allowed). SL.5: estimate baseline = $0.40/run (deep plan + generator 32k + evaluator + 2 fix cycles, higher variance)."
     }
   },
 
