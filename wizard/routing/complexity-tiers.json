@@ -14,7 +14,8 @@
       "max_response_tokens": 6000,
       "max_duration_seconds": 120,
       "generator_template": "generator.l1.fast",
-      "rationale": "Simple CRUD / single-view / static content. One LLM call, no planner, no CLI agentic session, no autofix. Evaluator still runs to feed the rubric ledger, but its result does not trigger a fix turn. Typical wall-clock 30-90s."
+      "estimated_usd_per_run": 0.05,
+      "rationale": "Simple CRUD / single-view / static content. One LLM call, no planner, no CLI agentic session, no autofix. Evaluator still runs to feed the rubric ledger, but its result does not trigger a fix turn. Typical wall-clock 30-90s. SL.5: estimate baseline = $0.05/run (gpt-4o-mini single turn ~3k in + ~3k out)."
     },
     "L2": {
       "display_name": "Standard planner + generator",
@@ -25,7 +26,8 @@
       "prefer_single_api_call": false,
       "max_response_tokens": 16000,
       "max_duration_seconds": 420,
-      "rationale": "Default tier. Planner scopes the spec, generator uses CLI-first with API fallback, evaluator critiques and triggers one autofix cycle."
+      "estimated_usd_per_run": 0.15,
+      "rationale": "Default tier. Planner scopes the spec, generator uses CLI-first with API fallback, evaluator critiques and triggers one autofix cycle. SL.5: estimate baseline = $0.15/run (planner + generator + evaluator + one fix cycle)."
     },
     "L3": {
       "display_name": "Deep-plan multi-agent",
@@ -37,7 +39,8 @@
       "max_response_tokens": 32000,
       "max_duration_seconds": 900,
       "enable_deep_planning": true,
-      "rationale": "Framework-heavy or stateful goals. Deep planning runs ahead of the simple planner, generator gets extended budget, multiple autofix cycles allowed."
+      "estimated_usd_per_run": 0.40,
+      "rationale": "Framework-heavy or stateful goals. Deep planning runs ahead of the simple planner, generator gets extended budget, multiple autofix cycles allowed. SL.5: estimate baseline = $0.40/run (deep plan + generator 32k + evaluator + 2 fix cycles, higher variance)."
     }
   },
 
