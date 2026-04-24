@@ -1,6 +1,6 @@
 {
   "$schema_version": "1.0.0",
-  "catalog_version": "2026.04.24-c",
+  "catalog_version": "2026.04.24-d",
   "last_updated": "2026-04-24",
   "difficulty_definitions": {
     "L1": "Simple CRUD / single view / static content. <150 LOC target. One wizard turn.",
@@ -12,7 +12,7 @@
     "webSPA": "pending",
     "unityGame": "pending",
     "pythonMicroservice": "pending",
-    "macOSApp": "pending",
+    "macOSApp": "v1 — 5/5 L1 seed (2026-04-24). Menubar clock, quick-notes, color-contrast, ASCII-art, QR menubar. All L1, all exercise native SwiftUI/AppKit/CoreImage patterns. L2/L3 pending. Requested by macos-qa agent to unblock their publish-pipeline rotation.",
     "electronApp": "pending",
     "androidApp": "pending",
     "reactNativeApp": "pending",
@@ -755,6 +755,57 @@
       "difficulty": "L2",
       "dispatch": "runWizard",
       "expected_capabilities": ["Date", "Intl.DateTimeFormat"]
+    },
+
+    {
+      "id": "macos-l1-utility-menubar-clock-071",
+      "goal": "macOS menubar clock app. Native SwiftUI, Package.swift project, builds with `swift build`. Shows current time in big digits when popover opens. Click the menubar item to toggle. No preferences window needed.",
+      "artifact_type": "macOSApp",
+      "category": "utility",
+      "difficulty": "L1",
+      "dispatch": "runWizard",
+      "expected_capabilities": ["NSStatusItem", "Timer.publish", "@State"],
+      "notes": "Requested by macos-qa agent 2026-04-24. Menubar clock is a canonical macOS small-app — exercises NSStatusItem lifecycle + SwiftUI popover hosting."
+    },
+    {
+      "id": "macos-l1-productivity-quick-notes-072",
+      "goal": "macOS quick-notes app. Single window, TextEditor fills the window, autosaves to ~/Library/Application Support/QuickNotes/note.txt on every keystroke. Menu item: File → Open Containing Folder. No multiple notes — one canvas.",
+      "artifact_type": "macOSApp",
+      "category": "productivity",
+      "difficulty": "L1",
+      "dispatch": "runWizard",
+      "expected_capabilities": ["TextEditor", "FileManager", "applicationSupportDirectory"],
+      "notes": "Requested by macos-qa 2026-04-24. Exercises native file IO + autosave pattern. Deliberately simpler than a full multi-note editor."
+    },
+    {
+      "id": "macos-l1-utility-color-contrast-073",
+      "goal": "macOS color-contrast checker. Two ColorPicker wells (foreground + background), live WCAG contrast ratio displayed, AA/AAA badges for normal and large text. Native SwiftUI, no network.",
+      "artifact_type": "macOSApp",
+      "category": "utility",
+      "difficulty": "L1",
+      "dispatch": "runWizard",
+      "expected_capabilities": ["ColorPicker", "NSColor", "CGFloat"],
+      "notes": "Requested by macos-qa 2026-04-24. Novel twist on the 'macOS utility' genre — actually uses native ColorPicker (underused framework surface), and the WCAG math is a clean algo test. Avoids the saturated calculator/clock pattern."
+    },
+    {
+      "id": "macos-l1-creative-asciiart-074",
+      "goal": "macOS ASCII-art banner maker. TextField for input, Picker for style (block / shadow / double), render result in a monospaced Text view. Copy-to-clipboard button uses NSPasteboard.",
+      "artifact_type": "macOSApp",
+      "category": "creative",
+      "difficulty": "L1",
+      "dispatch": "runWizard",
+      "expected_capabilities": ["TextField", "Picker", "NSPasteboard"],
+      "notes": "Requested by macos-qa 2026-04-24. Native-clipboard exercise — NSPasteboard has Mac-specific ergonomics vs. UIKit."
+    },
+    {
+      "id": "macos-l1-utility-qr-menubar-075",
+      "goal": "macOS menubar QR generator. Click menubar icon → small popover with a TextField; as user types, render a live QR code below in an Image view. Uses CoreImage's CIFilter.qrCodeGenerator.",
+      "artifact_type": "macOSApp",
+      "category": "utility",
+      "difficulty": "L1",
+      "dispatch": "runWizard",
+      "expected_capabilities": ["CIFilter", "qrCodeGenerator", "NSStatusItem"],
+      "notes": "Requested by macos-qa 2026-04-24. CoreImage QR generator is a CLEAN API (unlike the miniApp version that needs a JS library — see flaky mini-l1-utility-qr-gen-037). Good test of whether wizard picks Apple-native path when available."
     }
   ]
 }
