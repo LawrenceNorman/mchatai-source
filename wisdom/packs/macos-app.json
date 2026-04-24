@@ -1,6 +1,6 @@
 {
   "packID": "macos-app",
-  "version": 1,
+  "version": 2,
   "displayName": "macOS App Generation Wisdom",
   "description": "Rules for generating executable macOS apps (SwiftUI / AppKit) via Swift Playground. Focused on making the generated binary actually appear as a visible, interactive window — not a headless background process.",
   "categories": ["platform", "macos"],
@@ -76,6 +76,18 @@
         "After `swift build` succeeds, run:\n```bash\nmkdir -p build\nNEXT=$(ls build 2>/dev/null | grep -oE 'v[0-9]{4}' | sort | tail -1 | sed 's/v//')\nNEXT=$(printf 'v%04d' $((${NEXT:-0} + 1)))\nSLUG=$(basename \"$(pwd)\" | sed 's/[^a-z0-9-]/-/g')\nAPP_DIR=\"build/${SLUG}-${NEXT}.app\"\nmkdir -p \"$APP_DIR/Contents/MacOS\"\ncp .build/arm64-apple-macosx/debug/<BinaryName> \"$APP_DIR/Contents/MacOS/<BinaryName>\"\ncat > \"$APP_DIR/Contents/Info.plist\" <<'EOF'\n<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n<plist version=\"1.0\">\n<dict>\n  <key>CFBundleExecutable</key><string><BinaryName></string>\n  <key>CFBundleIdentifier</key><string>com.mchatai.generated.<slug></string>\n  <key>CFBundleName</key><string><DisplayName></string>\n  <key>CFBundlePackageType</key><string>APPL</string>\n  <key>CFBundleShortVersionString</key><string>1.0</string>\n  <key>LSMinimumSystemVersion</key><string>14.0</string>\n</dict>\n</plist>\nEOF\nopen \"$APP_DIR\"\n```",
         "Bundle path format: `build/zombie-tower-defense-v0001.app`, next build → `build/zombie-tower-defense-v0002.app`, etc.",
         "NEVER ship just `.build/arm64-apple-macosx/debug/BinaryName` as the end-product — that's a Swift Package build artifact, not a launchable macOS app."
+      ]
+    },
+    {
+      "id": "mac-006",
+      "rule": "Use the canonical scaffold at `assets/scaffolds/macos-swiftpm-app/` as the starting structure for every macOSApp generation. Copy its Package.swift, Sources/<TargetName>/<TargetName>App.swift, ContentView.swift, build_app.sh, and Info.plist.template — substituting <TargetName>, <slug>, and <DisplayName> tokens — instead of authoring these files from scratch each time. Read the scaffold's CONTEXT.md before generating.",
+      "why": "Every macOS app session that has shipped successfully reproduces the same five files in the same shape: a Package.swift with one executableTarget, a `<TargetName>App.swift` with activation-policy + window-promotion in init(), a ContentView.swift with explicit minWidth/minHeight, a build_app.sh that wraps the binary into `build/<slug>-v<NNNN>.app`, and an Info.plist. Sessions that hand-roll these from scratch repeatedly hit the same failures: `_<TargetName>_main` linker errors (mac-005), invisible windows (mac-001), 50×50pt windows (mac-002), missing .app bundles (mac-004). The scaffold encodes every previous fix; using it is faster AND more reliable. The window-promotion `Timer.scheduledTimer` flip-to-floating-then-back trick in particular is non-obvious and hard to rediscover.",
+      "severity": "important",
+      "appliesTo": "macOSApp",
+      "examples": [
+        "First step of any macOSApp generation: `cat assets/scaffolds/macos-swiftpm-app/CONTEXT.md` (or read it via mchatai-source) to confirm the file layout and token-replacement rules.",
+        "Then copy the scaffold tree into the workDir — replacing `__TargetName__` directory + filename markers with the chosen PascalCase target name, and `<TargetName>` / `<slug>` / `<DisplayName>` string tokens inside file bodies.",
+        "Customize ContentView.swift with the actual app UI; leave Package.swift, <TargetName>App.swift's activation-policy block, and build_app.sh structurally untouched."
       ]
     }
   ]
