@@ -1,0 +1,61 @@
+{
+  "$schema_version": "1.0.0",
+  "last_updated": "2026-04-24",
+  "notes": "Strategies for picking entries_per_run entries from goal-catalog.json each night. The SelfLearnCoordinator consults its config's slice.rotation_strategy to pick an implementation; quotas in config.slice.rotation_overrides are enforced on top.",
+
+  "strategies": {
+    "weakest_first": {
+      "description": "Prioritize entries whose ledger rows show the lowest rubric mean, OR entries whose capability_match_rate is trending down in the last 14 days. This is the default — it directs compute where learning yields most.",
+      "signal_sources": [
+        "RubricLedger rows windowed 14 days, grouped by entry_id, sorted by mean(rubricScore) ascending",
+        "Per-criterion failRate >= 0.5 in the same window"
+      ],
+      "tie_break": "random",
+      "fallback_when_no_signal": "balanced_mix",
+      "notes": "Avoids the re-run-the-same-weak-entry-forever trap by allocating rotation_overrides.regressed_quota_per_run slots max. The balance comes from config."
+    },
+    "never_tested": {
+      "description": "Entries that have zero ledger rows. Ensures new catalog additions get exercised within one rotation cycle regardless of their weakness profile.",
+      "signal_sources": [
+        "RubricLedger scanned for entry_id absence",
+        "goal-catalog.json entries enumerated"
+      ],
+      "cap_per_run": "config.slice.rotation_overrides.never_tested_quota_per_run",
+      "notes": "This strategy is USUALLY applied as an override on top of whatever primary strategy is active — 3 slots of never-tested mixed into 9 slots of weakest_first."
+    },
+    "recently_regressed": {
+      "description": "Entries whose ledger shows a downward score trend in the last 7 days (mean of last 3 rows < mean of prior 3). Fast detection of wisdom-rule regressions from overnight proposer merges.",
+      "signal_sources": [
+        "RubricLedger windowed 7 days, entries with ≥6 rows, decreasing mean"
+      ],
+      "cap_per_run": "config.slice.rotation_overrides.regressed_quota_per_run",
+      "notes": "Complements weakest_first — the weak ones stay weak; the regressed ones surface recent bad patches. If a freshly merged proposal caused a regression, this strategy surfaces it within 1-2 nights, letting LEARN auto-revert."
+    },
+    "balanced_mix": {
+      "description": "Equal-ish distribution across category tags (productivity/education/games/creative/utility/finance/health/social). Used as a fallback when weakest_first has no signal yet (cold start).",
+      "signal_sources": ["goal-catalog.json entry.category"],
+      "tie_break": "round-robin across categories",
+      "notes": "Typical usage: week 1 cold-start cycles while the ledger fills, then switch to weakest_first once every entry has ≥3 rows."
+    },
+    "round_robin": {
+      "description": "Simple cursor through the catalog in stable order. Boring but predictable. Useful for smoke-testing the coordinator itself.",
+      "signal_sources": ["goal-catalog.json entry order + persisted cursor"],
+      "notes": "Primarily for testing SelfLearnCoordinator SL.2. Not recommended for production."
+    }
+  },
+
+  "composition": {
+    "note": "The coordinator ALWAYS runs a composed pick: primary strategy fills most slots, quota strategies fill named slots. Per-strategy quotas come from config.slice.rotation_overrides.",
+    "default_composition": [
+      {"strategy": "never_tested", "slots": "rotation_overrides.never_tested_quota_per_run"},
+      {"strategy": "recently_regressed", "slots": "rotation_overrides.regressed_quota_per_run"},
+      {"strategy": "@primary", "slots": "remainder", "where_primary_is": "config.slice.rotation_strategy"}
+    ]
+  },
+
+  "difficulty_mix_enforcement": {
+    "notes": "The strategy picks entry_ids; this secondary filter enforces the difficulty blend from config.slice.difficulty_mix. If the primary pick over-weighted L2 (say), the coordinator substitutes the weakest-ranked L1/L3 entries to hit the blend.",
+    "target_tolerance_per_tier": 0.10,
+    "override_policy": "substitute_lowest_ranked"
+  }
+}

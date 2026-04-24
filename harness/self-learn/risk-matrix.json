@@ -1,0 +1,105 @@
+{
+  "$schema_version": "1.0.0",
+  "last_updated": "2026-04-24",
+  "notes": "Maps proposal_kind -> risk tier -> auto-submit policy. Phase LEARN's RubricRuleProposer emits typed proposals (wisdom_rule_add, planner_template_edit, etc.); SelfLearnCoordinator uses this table to decide whether to open a draft PR automatically vs. park for human review. NEVER promotes to auto-merge — human review at the merge step is the last safety gate.",
+
+  "risk_tiers": {
+    "low": {
+      "description": "Additive, scoped, reversible by a one-line revert. Draft PR auto-submit allowed when confidence clears threshold AND sample size clears floor.",
+      "default_min_confidence": 0.75,
+      "default_min_samples": 8,
+      "auto_submit_if_gates_met": true,
+      "max_per_week": 10
+    },
+    "medium": {
+      "description": "Modifies existing content. May interact with other rules. Draft PR auto-submit allowed with stricter gates; conflict check against open PRs required.",
+      "default_min_confidence": 0.85,
+      "default_min_samples": 12,
+      "auto_submit_if_gates_met": true,
+      "block_if_open_prs_on_same_file": true,
+      "max_per_week": 5
+    },
+    "high": {
+      "description": "Touches routing, budgets, or orchestration flow. NEVER auto-submits — always parked for human review. Surfaced in morning digest instead.",
+      "default_min_confidence": 0.95,
+      "default_min_samples": 20,
+      "auto_submit_if_gates_met": false,
+      "always_park_for_human": true
+    },
+    "experimental": {
+      "description": "Novel proposal kinds not seen before. Parked for human AND used to extend this matrix once the kind's empirical behavior is known.",
+      "default_min_confidence": 1.01,
+      "default_min_samples": 999,
+      "auto_submit_if_gates_met": false,
+      "always_park_for_human": true
+    }
+  },
+
+  "proposal_kinds": {
+    "wisdom_rule_add": {
+      "risk_tier": "low",
+      "file_pattern": "wisdom/packs/*.json",
+      "rationale": "Adding a rule is additive — it only fires when its conditions match. Worst case is a rule that doesn't help; easy revert."
+    },
+    "wisdom_rule_modify": {
+      "risk_tier": "medium",
+      "file_pattern": "wisdom/packs/*.json",
+      "rationale": "Changing an existing rule's scope or body affects every generation that matches. Needs higher signal."
+    },
+    "wisdom_rule_remove": {
+      "risk_tier": "high",
+      "file_pattern": "wisdom/packs/*.json",
+      "rationale": "Removing a rule that's currently preventing a failure mode could regress silently. Human-review mandatory."
+    },
+    "planner_template_edit": {
+      "risk_tier": "high",
+      "file_pattern": "wizard/prompts/planner*.json",
+      "rationale": "Planner prompts shape every generation. Changes cascade through planner→generator→evaluator. Always human-review."
+    },
+    "generator_template_edit": {
+      "risk_tier": "high",
+      "file_pattern": "wizard/prompts/generator*.json",
+      "rationale": "Generator prompts produce the actual artifact. Edits can broadly regress output shape or fence marker."
+    },
+    "evaluator_template_edit": {
+      "risk_tier": "high",
+      "file_pattern": "wizard/prompts/evaluator*.json",
+      "rationale": "Evaluator drives the rubric. Changes bias the ledger that the proposer itself reads — meta-risky."
+    },
+    "context_recipe_edit": {
+      "risk_tier": "medium",
+      "file_pattern": "harness/context-recipes/*.json",
+      "rationale": "Recipes control what context gets injected. Scoped enough for medium tier."
+    },
+    "complexity_tier_config": {
+      "risk_tier": "high",
+      "file_pattern": "wizard/routing/complexity-tiers.json",
+      "rationale": "Tier config controls stage-skipping for entire difficulty levels. Budget changes have real cost impact."
+    },
+    "wizard_artifact_type_add": {
+      "risk_tier": "experimental",
+      "file_pattern": "wizard/artifact-types.json",
+      "rationale": "Adding a new artifact type is a product-scope decision, not a rubric-driven auto-patch."
+    },
+    "genre_catalog_add": {
+      "risk_tier": "low",
+      "file_pattern": "genres/**",
+      "rationale": "New genre entries just enable classification; they don't affect existing routing. Phase GC already auto-promotes some of these."
+    }
+  },
+
+  "overrides": {
+    "note": "Optional per-file tighter gates. An entry here overrides the proposal_kind defaults for that specific file. Useful for files with outsized blast radius.",
+    "wisdom/packs/universal.json": {
+      "min_confidence": 0.95,
+      "min_samples": 20,
+      "always_park_for_human": true,
+      "reason": "Universal rules apply to every artifact type. Too broad to auto-submit."
+    },
+    "wisdom/packs/visual-quality.json": {
+      "min_confidence": 0.90,
+      "min_samples": 15,
+      "reason": "Visual quality rules are frequently adjusted but widely applied."
+    }
+  }
+}

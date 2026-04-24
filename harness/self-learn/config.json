@@ -1,0 +1,87 @@
+{
+  "$schema_version": "1.0.0",
+  "last_updated": "2026-04-24",
+  "notes": "Drives the autonomous nightly QA Flywheel. SelfLearnCoordinator (mChatAI+ Swift, DEBUG-only during soak) reads this to decide when to run, which slice of the catalog to exercise, how much to spend, and which proposals auto-submit as draft PRs. All policy here — no Swift constants. Tunable via PR to mchatai-source + refreshMchataisourceCache, no rebuild.",
+
+  "enabled": false,
+  "enable_gate_flag": "selfLearnNightly",
+
+  "cadence": {
+    "cron": "0 2 * * *",
+    "timezone": "America/Los_Angeles",
+    "skip_if_machine_sleeping": true,
+    "min_battery_percent_on_laptop": 40,
+    "max_drift_minutes": 30
+  },
+
+  "slice": {
+    "artifact_types": ["miniApp"],
+    "difficulty_mix": {
+      "L1": 0.50,
+      "L2": 0.35,
+      "L3": 0.15
+    },
+    "entries_per_run": 12,
+    "rotation_strategy": "weakest_first",
+    "rotation_overrides": {
+      "never_tested_quota_per_run": 3,
+      "regressed_quota_per_run": 2
+    },
+    "max_minutes_per_run": 90,
+    "on_slice_exhausted": "wrap_to_next_strategy"
+  },
+
+  "budget": {
+    "daily_usd_cap": 5.00,
+    "per_entry_usd_cap": 0.50,
+    "on_cap_reached": "park_and_email",
+    "token_cost_model": "harness/provider-catalog.json",
+    "reserve_for_learn_proposer_usd": 0.50
+  },
+
+  "proposal_policy": {
+    "auto_submit_draft_pr": false,
+    "auto_merge": false,
+    "confidence_thresholds": {
+      "wisdom_rule_add": 0.75,
+      "wisdom_rule_modify": 0.85,
+      "wisdom_rule_remove": 0.95,
+      "planner_template_edit": 0.90,
+      "context_recipe_edit": 0.80,
+      "complexity_tier_config": 0.95
+    },
+    "sample_size_floor_per_criterion": 8,
+    "max_draft_prs_per_night": 3,
+    "park_if_conflicts_open": true
+  },
+
+  "reporting": {
+    "firestore_collection": "self_learn_nightly",
+    "local_jsonl": "mchatai_macOS/scripts/qaflywheel_runs/self_learn_{date}.jsonl",
+    "email_on_cap_reached": false,
+    "email_on_zero_completions": true,
+    "push_summary_to_harness_feed": true
+  },
+
+  "safety": {
+    "max_consecutive_failed_nights": 3,
+    "auto_disable_after_max_failures": true,
+    "max_consecutive_failed_entries_per_run": 3,
+    "skip_entry_after_failed_runs": 5,
+    "revert_watch_window_days": 7,
+    "auto_downgrade_confidence_on_revert": 0.1
+  },
+
+  "observability": {
+    "diag_command": "diagSelfLearn",
+    "log_namespace": "[SelfLearn]",
+    "session_metadata_tag": "selflearn-v1"
+  },
+
+  "phased_rollout": {
+    "week_1": "dry_run — auto_submit_draft_pr stays false, produce nightly reports only",
+    "week_2_3": "flip auto_submit_draft_pr true, observe merge cadence + revert rate",
+    "week_4_plus": "raise max_draft_prs_per_night to 5, extend to webSPA artifact type",
+    "future_phase": "cross-machine signal (≥2 machines concur before auto-submit)"
+  }
+}
