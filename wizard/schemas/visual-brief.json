@@ -1,0 +1,71 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DesignTokensJSON",
+  "description": "Structured design tokens produced by VisualDirectorService (Phase VD.1). Feeds both the planner preamble and the Visual Evaluator rubric. See mchatai_macOS/mChatAI/mChatAI/Harness/VisualBrief.swift for the Swift side of this contract.",
+  "type": "object",
+  "required": ["colors", "typography", "spacing", "radii", "componentHints", "schemaVersion"],
+  "additionalProperties": false,
+  "properties": {
+    "colors": {
+      "type": "object",
+      "required": ["primary", "secondary", "background", "surface", "text", "textMuted", "accent"],
+      "additionalProperties": false,
+      "properties": {
+        "primary":    { "$ref": "#/definitions/hexColor" },
+        "secondary":  { "$ref": "#/definitions/hexColor" },
+        "background": { "$ref": "#/definitions/hexColor" },
+        "surface":    { "$ref": "#/definitions/hexColor" },
+        "text":       { "$ref": "#/definitions/hexColor" },
+        "textMuted":  { "$ref": "#/definitions/hexColor" },
+        "accent":     { "$ref": "#/definitions/hexColor" }
+      }
+    },
+    "typography": {
+      "type": "object",
+      "required": ["fontFamily", "headingScale", "baseSize", "weight"],
+      "additionalProperties": false,
+      "properties": {
+        "fontFamily":   { "type": "string", "minLength": 1, "maxLength": 200 },
+        "headingScale": { "type": "string", "enum": ["1.125", "1.20", "1.25", "1.333", "1.33", "1.50"] },
+        "baseSize":     { "type": "integer", "minimum": 12, "maximum": 20 },
+        "weight":       { "type": "string", "enum": ["regular", "medium", "semibold", "bold"] }
+      }
+    },
+    "spacing": {
+      "type": "object",
+      "required": ["baseUnit", "density"],
+      "additionalProperties": false,
+      "properties": {
+        "baseUnit": { "type": "integer", "enum": [4, 6, 8] },
+        "density":  { "type": "string", "enum": ["compact", "comfortable", "spacious"] }
+      }
+    },
+    "radii": {
+      "type": "object",
+      "required": ["sm", "md", "lg"],
+      "additionalProperties": false,
+      "properties": {
+        "sm": { "type": "integer", "minimum": 0, "maximum": 16 },
+        "md": { "type": "integer", "minimum": 0, "maximum": 24 },
+        "lg": { "type": "integer", "minimum": 0, "maximum": 48 }
+      }
+    },
+    "componentHints": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 8,
+      "items": { "type": "string", "minLength": 2, "maxLength": 80 }
+    },
+    "schemaVersion": {
+      "type": "string",
+      "enum": ["1.0.0"]
+    }
+  },
+  "definitions": {
+    "hexColor": {
+      "type": "string",
+      "pattern": "^#[0-9A-Fa-f]{6}$",
+      "description": "6-digit hex color, e.g. #4F46E5"
+    }
+  }
+}
