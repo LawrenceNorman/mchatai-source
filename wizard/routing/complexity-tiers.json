@@ -1,0 +1,59 @@
+{
+  "$schema_version": "1.0.0",
+  "last_updated": "2026-04-24",
+  "notes": "Skeleton reads this to decide which wizard stages to run for a given goal. The 'difficulty' field on a catalog entry (or the tunnel runWizard payload) selects a tier. When not provided, auto_classify.defaults_to wins. Tuning this file is the LEARN-loop seam for performance vs. quality.",
+
+  "tiers": {
+    "L1": {
+      "display_name": "Fast single-call",
+      "skip_planner": true,
+      "skip_cli_generator": true,
+      "skip_evaluator_autofix": true,
+      "run_evaluator_for_scoring": true,
+      "prefer_single_api_call": true,
+      "max_response_tokens": 6000,
+      "max_duration_seconds": 120,
+      "generator_template": "generator.l1.fast",
+      "rationale": "Simple CRUD / single-view / static content. One LLM call, no planner, no CLI agentic session, no autofix. Evaluator still runs to feed the rubric ledger, but its result does not trigger a fix turn. Typical wall-clock 30-90s."
+    },
+    "L2": {
+      "display_name": "Standard planner + generator",
+      "skip_planner": false,
+      "skip_cli_generator": false,
+      "skip_evaluator_autofix": false,
+      "run_evaluator_for_scoring": true,
+      "prefer_single_api_call": false,
+      "max_response_tokens": 16000,
+      "max_duration_seconds": 420,
+      "rationale": "Default tier. Planner scopes the spec, generator uses CLI-first with API fallback, evaluator critiques and triggers one autofix cycle."
+    },
+    "L3": {
+      "display_name": "Deep-plan multi-agent",
+      "skip_planner": false,
+      "skip_cli_generator": false,
+      "skip_evaluator_autofix": false,
+      "run_evaluator_for_scoring": true,
+      "prefer_single_api_call": false,
+      "max_response_tokens": 32000,
+      "max_duration_seconds": 900,
+      "enable_deep_planning": true,
+      "rationale": "Framework-heavy or stateful goals. Deep planning runs ahead of the simple planner, generator gets extended budget, multiple autofix cycles allowed."
+    }
+  },
+
+  "auto_classify": {
+    "enabled": true,
+    "defaults_to": "L2",
+    "l1_keyword_signals": [
+      "simple", "tiny", "basic", "one-file", "single page",
+      "hello world", "counter", "list", "display", "show",
+      "calculator", "converter", "timer"
+    ],
+    "l3_keyword_signals": [
+      "3d", "shader", "webgl", "audio graph", "synthesizer", "polyphonic",
+      "game engine", "multi-agent", "real-time", "websocket",
+      "deep learning", "neural network", "ray tracing", "physics"
+    ],
+    "notes": "Used ONLY when the caller does not pass an explicit difficulty. Catalog-based flywheel runs always pass difficulty explicitly and bypass this."
+  }
+}
