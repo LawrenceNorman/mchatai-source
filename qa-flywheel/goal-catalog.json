@@ -1,0 +1,750 @@
+{
+  "$schema_version": "1.0.0",
+  "catalog_version": "2026.04.23-b",
+  "last_updated": "2026-04-23",
+  "difficulty_definitions": {
+    "L1": "Simple CRUD / single view / static content. <150 LOC target. One wizard turn.",
+    "L2": "Non-trivial glue: state mgmt, 2+ screens, one external API or framework primitive. 1-2 turns.",
+    "L3": "Framework-heavy or stateful: shaders, audio graphs, ECS, multi-agent, persistent storage, network sync, sensors. 3-4 turns."
+  },
+  "coverage_status": {
+    "miniApp": "v1 — 70/70 (23 L1 / 27 L2 / 20 L3). Deliberately steers AWAY from saturated ground (pomodoro/flashcards/snake/2048/wordle/blackjack/chess/roguelike — already have dozens of each installed). Aims at novel territory: data viz, DSP, creative coding, dev tools, science sims, accessibility, privacy, ling, music theory, procgen.",
+    "webSPA": "pending",
+    "unityGame": "pending",
+    "pythonMicroservice": "pending",
+    "macOSApp": "pending",
+    "electronApp": "pending",
+    "androidApp": "pending",
+    "reactNativeApp": "pending",
+    "generic": "pending",
+    "pipeline": "pending",
+    "agent": "pending",
+    "endproduct": "pending"
+  },
+  "avoid_list": {
+    "note": "These categories already have 3+ installed/shipped versions each. Only include a new entry in these areas if it pushes into genuinely new mechanics.",
+    "saturated": [
+      "pomodoro / countdown timers",
+      "flashcards (plain and spaced)",
+      "todo lists",
+      "snake / 2048 / memory-match / hangman / pong",
+      "blackjack / poker / hearts / solitaire / cribbage",
+      "wordle / boggle / scrabble / word-grid variants",
+      "chess / checkers / backgammon / go",
+      "roguelike dungeon crawlers",
+      "minesweeper / tetris / breakout",
+      "habit tracker / weather / BMI / unit converter",
+      "password strength / typing test / calculator",
+      "trivia / translator / writing coach"
+    ]
+  },
+  "entries": [
+    {
+      "id": "mini-l1-productivity-pomodoro-kitchen-001",
+      "goal": "Kitchen timer mini-app with multiple concurrent timers. Add any number of named timers (e.g. 'pasta 8min', 'eggs 6min'), all tick down simultaneously on the same screen, each plays a distinct chime when done.",
+      "artifact_type": "miniApp",
+      "category": "productivity",
+      "difficulty": "L1",
+      "dispatch": "runWizard",
+      "expected_capabilities": ["setInterval", "AudioContext"],
+      "notes": "Novel-mechanic cousin of pomodoro — many-concurrent-timers is the new element."
+    },
+    {
+      "id": "mini-l1-productivity-decision-maker-002",
+      "goal": "Decision maker / coin flip on steroids. Paste options, weight them (1-10), spin a wheel to pick. Keep last 5 decisions with timestamps.",
+      "artifact_type": "miniApp",
+      "category": "productivity",
+      "difficulty": "L1",
+      "dispatch": "runWizard",
+      "expected_capabilities": ["canvas", "Math.random"]
+    },
+    {
+      "id": "mini-l1-productivity-timezone-meeting-003",
+      "goal": "Meeting time finder across timezones. Add attendee cities, show a visual time-band from 6am-10pm per city, highlight the overlap where everyone is in working hours.",
+      "artifact_type": "miniApp",
+      "category": "productivity",
+      "difficulty": "L1",
+      "dispatch": "runWizard",
+      "expected_capabilities": ["Intl.DateTimeFormat"]
+    },
+
+    {
+      "id": "mini-l2-productivity-weekly-review-004",
+      "goal": "Guided weekly review. Structured prompts (3 wins / 3 lessons / 3 next-week commits / energy 1-10 / focus 1-10), save each review, browse history with a sparkline of energy+focus over weeks, export markdown bundle.",
+      "artifact_type": "miniApp",
+      "category": "productivity",
+      "difficulty": "L2",
+      "dispatch": "runWizard",
+      "expected_capabilities": ["localStorage", "Blob", "canvas"]
+    },
+    {
+      "id": "mini-l2-productivity-matrix-sort-005",
+      "goal": "Eisenhower matrix task sorter. 2x2 grid (urgent/not-urgent x important/not-important), drag-and-drop tasks between quadrants, color-code by quadrant, quick-add input, persistent.",
+      "artifact_type": "miniApp",
+      "category": "productivity",
+      "difficulty": "L2",
+      "dispatch": "runWizard",
+      "expected_capabilities": ["draggable", "localStorage"]
+    },
+    {
+      "id": "mini-l2-productivity-kanban-006",
+      "goal": "Kanban with WIP limits. 3 columns (backlog / doing / done), drag cards between, enforce a 'doing' WIP limit (editable per column), red-outline when over limit, cycle-time stat (median days card spent in 'doing').",
+      "artifact_type": "miniApp",
+      "category": "productivity",
+      "difficulty": "L2",
+      "dispatch": "runWizard",
+      "expected_capabilities": ["draggable", "localStorage"]
+    },
+
+    {
+      "id": "mini-l3-productivity-mindmap-007",
+      "goal": "Mind-map editor with radial layout. Central node, click to spawn child nodes, drag to reposition, edit labels inline, connect distant nodes with curves, zoom and pan with wheel+drag. Export as PNG and as a nested JSON.",
+      "artifact_type": "miniApp",
+      "category": "productivity",
+      "difficulty": "L3",
+      "dispatch": "runWizard",
+      "max_turns": 3,
+      "timeout_seconds": 420,
+      "expected_capabilities": ["canvas", "draggable", "wheel"]
+    },
+    {
+      "id": "mini-l3-productivity-outline-writer-008",
+      "goal": "Outliner like Workflowy. Infinite-depth bulleted list, Tab/Shift-Tab to indent, Enter for new item, drag to reorder, collapse/expand with click, zoom into a node (its children become the root), breadcrumb trail, full-text search.",
+      "artifact_type": "miniApp",
+      "category": "productivity",
+      "difficulty": "L3",
+      "dispatch": "runWizard",
+      "max_turns": 3,
+      "timeout_seconds": 420,
+      "expected_capabilities": ["contenteditable", "keydown", "localStorage"]
+    },
+
+    {
+      "id": "mini-l1-education-morse-009",
+      "goal": "Morse code translator + trainer. Type text, see/hear morse (WebAudio beeps at adjustable WPM), decode mode (type dots/dashes, see text). Training mode: hear letter, type it.",
+      "artifact_type": "miniApp",
+      "category": "education",
+      "difficulty": "L1",
+      "dispatch": "runWizard",
+      "expected_capabilities": ["AudioContext", "OscillatorNode"]
+    },
+    {
+      "id": "mini-l1-education-phonetic-alphabet-010",
+      "goal": "NATO phonetic alphabet trainer. Random letter shown, user types the codeword (Alpha, Bravo, Charlie...). Track accuracy over 20 rounds. Also a reverse mode.",
+      "artifact_type": "miniApp",
+      "category": "education",
+      "difficulty": "L1",
+      "dispatch": "runWizard",
+      "expected_capabilities": ["Math.random"]
+    },
+
+    {
+      "id": "mini-l2-education-periodic-explorer-011",
+      "goal": "Periodic table of elements. 18-column layout, click element to open a rich card (atomic number/mass/config, group/period, 3 interesting facts). Filter by category (alkali metal, halogen, noble gas...), search by name or symbol, color-code by category.",
+      "artifact_type": "miniApp",
+      "category": "education",
+      "difficulty": "L2",
+      "dispatch": "runWizard",
+      "expected_capabilities": ["grid", "input"]
+    },
+    {
+      "id": "mini-l2-education-music-ear-train-012",
+      "goal": "Ear training for intervals. Play two notes (WebAudio), user picks interval name from 8 options (minor 2nd through octave), streak counter, difficulty that introduces more intervals as you level up.",
+      "artifact_type": "miniApp",
+      "category": "education",
+      "difficulty": "L2",
+      "dispatch": "runWizard",
+      "expected_capabilities": ["AudioContext", "OscillatorNode"]
+    },
+    {
+      "id": "mini-l2-education-geo-quiz-013",
+      "goal": "Country/capital quiz with a map. Show an SVG world map (inline, simplified), highlight a random country, user picks capital from 4 options; flag-emoji hint on wrong answers.",
+      "artifact_type": "miniApp",
+      "category": "education",
+      "difficulty": "L2",
+      "dispatch": "runWizard",
+      "expected_capabilities": ["svg", "click"]
+    },
+    {
+      "id": "mini-l2-education-finger-spell-014",
+      "goal": "ASL fingerspelling trainer. Show letter A-Z as an SVG hand diagram, user types the letter on keyboard, track speed and accuracy, quick-drill mode (20 random letters).",
+      "artifact_type": "miniApp",
+      "category": "education",
+      "difficulty": "L2",
+      "dispatch": "runWizard",
+      "expected_capabilities": ["svg", "keydown"]
+    },
+
+    {
+      "id": "mini-l3-education-circuit-simulator-015",
+      "goal": "Simple DC circuit simulator. Drag-and-drop components (battery, resistor, LED, switch) onto a grid, connect with wires, run to compute currents with Kirchhoff's laws, light the LED if current > threshold. Reset and clear.",
+      "artifact_type": "miniApp",
+      "category": "education",
+      "difficulty": "L3",
+      "dispatch": "runWizard",
+      "max_turns": 4,
+      "timeout_seconds": 420,
+      "expected_capabilities": ["canvas", "draggable"]
+    },
+    {
+      "id": "mini-l3-education-math-plotter-016",
+      "goal": "Interactive function plotter. Input f(x) with sin/cos/log/exp, plot on canvas with axes and grid, drag to pan, wheel to zoom, plot up to 3 functions in distinct colors, show intersection markers.",
+      "artifact_type": "miniApp",
+      "category": "education",
+      "difficulty": "L3",
+      "dispatch": "runWizard",
+      "max_turns": 3,
+      "timeout_seconds": 360,
+      "expected_capabilities": ["canvas", "Math.sin", "wheel"]
+    },
+    {
+      "id": "mini-l3-education-genetics-punnett-017",
+      "goal": "Punnett square + inheritance simulator. Input two parent genotypes (up to 3 gene loci, e.g. AaBbCc), generate the full Punnett grid, show phenotype ratios, run a Monte-Carlo of 1000 offspring with a histogram.",
+      "artifact_type": "miniApp",
+      "category": "education",
+      "difficulty": "L3",
+      "dispatch": "runWizard",
+      "max_turns": 3,
+      "timeout_seconds": 360,
+      "expected_capabilities": ["grid", "Math.random"]
+    },
+
+    {
+      "id": "mini-l1-games-lights-out-018",
+      "goal": "Lights Out puzzle. 5x5 grid of buttons, clicking flips the button and its orthogonal neighbors, goal is all off. Move counter, randomize with a solvable preset.",
+      "artifact_type": "miniApp",
+      "category": "games",
+      "difficulty": "L1",
+      "dispatch": "runWizard",
+      "expected_capabilities": ["grid", "click"]
+    },
+    {
+      "id": "mini-l1-games-simon-019",
+      "goal": "Simon says memory game. 4 colored/toned quadrants, sequence grows each round, user repeats, fail = game over, best round saved.",
+      "artifact_type": "miniApp",
+      "category": "games",
+      "difficulty": "L1",
+      "dispatch": "runWizard",
+      "expected_capabilities": ["AudioContext", "localStorage"]
+    },
+
+    {
+      "id": "mini-l2-games-sokoban-020",
+      "goal": "Sokoban puzzle. 5 built-in levels, arrow keys move the pusher, push crates onto target tiles, can't pull, undo button, level complete when all crates on targets, move counter.",
+      "artifact_type": "miniApp",
+      "category": "games",
+      "difficulty": "L2",
+      "dispatch": "runWizard",
+      "expected_capabilities": ["canvas", "keydown"]
+    },
+    {
+      "id": "mini-l2-games-bubble-shooter-021",
+      "goal": "Bubble-shooter puzzle. Grid of colored bubbles at top, shooter at bottom aims by mouse, matching 3+ same-color pops and drops disconnected clusters. Score, next-bubble preview, game-over on reach-bottom.",
+      "artifact_type": "miniApp",
+      "category": "games",
+      "difficulty": "L2",
+      "dispatch": "runWizard",
+      "expected_capabilities": ["canvas", "requestAnimationFrame"]
+    },
+    {
+      "id": "mini-l2-games-tangram-022",
+      "goal": "Tangram puzzle. 7 classic pieces drawn as polygons, drag to move, click to rotate in 15° increments, target silhouette on the right. Snap-to-fit tolerance, 5 built-in silhouettes.",
+      "artifact_type": "miniApp",
+      "category": "games",
+      "difficulty": "L2",
+      "dispatch": "runWizard",
+      "expected_capabilities": ["svg", "draggable"]
+    },
+
+    {
+      "id": "mini-l3-games-physics-bridge-023",
+      "goal": "Bridge-building physics puzzle. Draw beams between fixed anchor points, click 'run' to drop a weight, beams stress-colored (green/yellow/red) and break under too much force. 3 levels, budget constraint on total beam length.",
+      "artifact_type": "miniApp",
+      "category": "games",
+      "difficulty": "L3",
+      "dispatch": "runWizard",
+      "max_turns": 4,
+      "timeout_seconds": 420,
+      "expected_capabilities": ["canvas", "requestAnimationFrame"]
+    },
+    {
+      "id": "mini-l3-games-tower-defense-024",
+      "goal": "Tower defense. Fixed path, 3 waves of 10 enemies, 3 tower types (cannon/archer/ice-slow) placeable on grid, money-per-kill, upgrade cost scales per level, base has 20HP. Keep everything in one HTML file.",
+      "artifact_type": "miniApp",
+      "category": "games",
+      "difficulty": "L3",
+      "dispatch": "runWizard",
+      "max_turns": 4,
+      "timeout_seconds": 420,
+      "expected_capabilities": ["canvas", "requestAnimationFrame"]
+    },
+    {
+      "id": "mini-l3-games-auto-battler-025",
+      "goal": "Auto-battler mini-game. Between rounds, buy units from a 5-slot shop (cost scales by tier), drag to your 4-slot lineup, combine three-of-a-kind into tier-up. Battle phase auto-resolves left-vs-right with simple HP/ATK, 8 rounds.",
+      "artifact_type": "miniApp",
+      "category": "games",
+      "difficulty": "L3",
+      "dispatch": "runWizard",
+      "max_turns": 4,
+      "timeout_seconds": 420,
+      "expected_capabilities": ["draggable", "localStorage"]
+    },
+    {
+      "id": "mini-l3-games-falling-sand-026",
+      "goal": "Falling-sand cellular automaton. Canvas with pixel-size grid, palette of materials (sand, water, stone, fire, plant, lava, oil), click-drag to paint, each frame runs the physics (sand falls, water flows, fire spreads, plant grows on dirt+water, etc.).",
+      "artifact_type": "miniApp",
+      "category": "games",
+      "difficulty": "L3",
+      "dispatch": "runWizard",
+      "max_turns": 3,
+      "timeout_seconds": 420,
+      "expected_capabilities": ["canvas", "requestAnimationFrame"]
+    },
+
+    {
+      "id": "mini-l1-creative-color-palette-027",
+      "goal": "Color palette generator. 5-swatch harmonious palettes (complementary / analogous / triadic toggle), click to copy hex, lock swatches that survive regeneration, export as CSS variables.",
+      "artifact_type": "miniApp",
+      "category": "creative",
+      "difficulty": "L1",
+      "dispatch": "runWizard",
+      "expected_capabilities": ["clipboard", "hsl"]
+    },
+    {
+      "id": "mini-l1-creative-haiku-counter-028",
+      "goal": "Haiku writer with live 5-7-5 syllable counter per line. Save haiku gallery to localStorage, export as a nicely-laid-out PNG card.",
+      "artifact_type": "miniApp",
+      "category": "creative",
+      "difficulty": "L1",
+      "dispatch": "runWizard",
+      "expected_capabilities": ["input", "localStorage", "canvas"]
+    },
+
+    {
+      "id": "mini-l2-creative-pixel-editor-029",
+      "goal": "Pixel-art editor. 32x32 canvas, pen/eraser/bucket-fill/eyedropper tools, 16-color palette, undo stack (20 steps), import-from-image (nearest-neighbor resize), export PNG at 1x and 8x scale.",
+      "artifact_type": "miniApp",
+      "category": "creative",
+      "difficulty": "L2",
+      "dispatch": "runWizard",
+      "expected_capabilities": ["canvas", "toDataURL", "File"]
+    },
+    {
+      "id": "mini-l2-creative-drum-machine-030",
+      "goal": "16-step drum machine. 4 tracks (kick/snare/hi-hat/clap) synthesized with WebAudio (no samples), tap steps to toggle, play/pause, tempo slider 60-200 BPM, swing slider. Save/load patterns to localStorage.",
+      "artifact_type": "miniApp",
+      "category": "creative",
+      "difficulty": "L2",
+      "dispatch": "runWizard",
+      "expected_capabilities": ["AudioContext", "localStorage"]
+    },
+    {
+      "id": "mini-l2-creative-spirograph-031",
+      "goal": "Spirograph drawing. Adjustable outer-radius / inner-radius / pen-offset sliders, rainbow-hue option, pen-width slider, export PNG, save gallery of drawings.",
+      "artifact_type": "miniApp",
+      "category": "creative",
+      "difficulty": "L2",
+      "dispatch": "runWizard",
+      "expected_capabilities": ["canvas", "toDataURL"]
+    },
+    {
+      "id": "mini-l2-creative-markdown-slides-032",
+      "goal": "Markdown-to-slides. Split the markdown on '---' lines to make slides, arrow keys to navigate, 'F' for fullscreen, code blocks syntax-highlighted, slide N of M indicator, progress bar.",
+      "artifact_type": "miniApp",
+      "category": "creative",
+      "difficulty": "L2",
+      "dispatch": "runWizard",
+      "expected_capabilities": ["keydown", "fullscreen"]
+    },
+
+    {
+      "id": "mini-l3-creative-synth-polyphonic-033",
+      "goal": "Polyphonic WebAudio synth. Click piano keys or A-L keyboard, 8-voice oscillator bank with saw/square/sine toggle, ADSR envelope sliders, low-pass filter with resonance, stereo delay, visual waveform scope.",
+      "artifact_type": "miniApp",
+      "category": "creative",
+      "difficulty": "L3",
+      "dispatch": "runWizard",
+      "max_turns": 3,
+      "timeout_seconds": 420,
+      "expected_capabilities": ["AudioContext", "OscillatorNode", "GainNode"]
+    },
+    {
+      "id": "mini-l3-creative-fluid-bg-034",
+      "goal": "Interactive fluid-dynamics background. Stable-fluids or Navier-Stokes lite on a grid, mouse push/pull, color field advects, 60fps at 512x512. Pure WebGL fragment shader preferred.",
+      "artifact_type": "miniApp",
+      "category": "creative",
+      "difficulty": "L3",
+      "dispatch": "runWizard",
+      "framework_hint": "webgl",
+      "max_turns": 3,
+      "timeout_seconds": 420,
+      "expected_capabilities": ["WebGL", "requestAnimationFrame", "shader"]
+    },
+    {
+      "id": "mini-l3-creative-3d-scene-035",
+      "goal": "Three.js mini-scene (loaded from CDN). Rotating model on a plane, orbit-controls camera, 3 lights (ambient + directional + point), shadow casting, material switcher (basic / lambert / phong / normal), background skybox.",
+      "artifact_type": "miniApp",
+      "category": "creative",
+      "difficulty": "L3",
+      "dispatch": "runWizard",
+      "framework_hint": "three.js",
+      "max_turns": 3,
+      "timeout_seconds": 420,
+      "expected_capabilities": ["THREE", "WebGL", "OrbitControls"]
+    },
+    {
+      "id": "mini-l3-creative-generative-poster-036",
+      "goal": "Generative poster tool. Pick a style (bauhaus / risograph / brutalist / wavy), seed number, generates an abstract poster with title text. Export high-res PNG (2400x3200). Regenerate button reseeds.",
+      "artifact_type": "miniApp",
+      "category": "creative",
+      "difficulty": "L3",
+      "dispatch": "runWizard",
+      "max_turns": 3,
+      "timeout_seconds": 360,
+      "expected_capabilities": ["canvas", "toDataURL"]
+    },
+
+    {
+      "id": "mini-l1-utility-qr-gen-037",
+      "goal": "QR-code generator. Type text or URL, see the QR live, adjustable error-correction level, download PNG. Pure client-side, no external service.",
+      "artifact_type": "miniApp",
+      "category": "utility",
+      "difficulty": "L1",
+      "dispatch": "runWizard",
+      "expected_capabilities": ["canvas", "toDataURL"]
+    },
+    {
+      "id": "mini-l1-utility-base-converter-038",
+      "goal": "Numeric base converter. Input in any of bin/oct/dec/hex, the other three update live. Bitwise operations (AND/OR/XOR/NOT/shift) row below with two inputs and a result.",
+      "artifact_type": "miniApp",
+      "category": "utility",
+      "difficulty": "L1",
+      "dispatch": "runWizard",
+      "expected_capabilities": ["parseInt", "Number.prototype.toString"]
+    },
+    {
+      "id": "mini-l1-utility-dice-roller-039",
+      "goal": "Tabletop dice roller. Roll notation input (e.g. '3d6+2', '1d20', '4d8-1'), parses and rolls, shows individual dice + total, history of last 20 rolls.",
+      "artifact_type": "miniApp",
+      "category": "utility",
+      "difficulty": "L1",
+      "dispatch": "runWizard",
+      "expected_capabilities": ["Math.random", "RegExp"]
+    },
+
+    {
+      "id": "mini-l2-utility-regex-tester-040",
+      "goal": "Regex playground. Pattern + flag toggles (g/i/m/s/u), test textarea with live-highlighted matches, capture-group table per match, common-pattern quick-pick (email/url/ipv4/uuid).",
+      "artifact_type": "miniApp",
+      "category": "utility",
+      "difficulty": "L2",
+      "dispatch": "runWizard",
+      "expected_capabilities": ["RegExp", "innerHTML"]
+    },
+    {
+      "id": "mini-l2-utility-json-diff-041",
+      "goal": "Side-by-side JSON diff viewer. Paste two JSON blobs, structurally diff (not textual), highlight added keys green / removed red / changed yellow / unchanged grey. Copy-the-diff-as-path-list button.",
+      "artifact_type": "miniApp",
+      "category": "utility",
+      "difficulty": "L2",
+      "dispatch": "runWizard",
+      "expected_capabilities": ["JSON.parse", "innerHTML"]
+    },
+    {
+      "id": "mini-l2-utility-color-contrast-042",
+      "goal": "WCAG contrast-ratio checker. Two color inputs (foreground + background with color pickers), live ratio number, AA/AAA pass/fail badges for normal and large text, color-blindness simulation preview (protanopia / deuteranopia / tritanopia).",
+      "artifact_type": "miniApp",
+      "category": "utility",
+      "difficulty": "L2",
+      "dispatch": "runWizard",
+      "expected_capabilities": ["input", "canvas"]
+    },
+    {
+      "id": "mini-l2-utility-cron-visualizer-043",
+      "goal": "Cron expression visualizer. Input a cron string, plain-English explanation, next-10-fires list as timestamps, calendar heatmap showing firing density over the next 30 days.",
+      "artifact_type": "miniApp",
+      "category": "utility",
+      "difficulty": "L2",
+      "dispatch": "runWizard",
+      "expected_capabilities": ["Date", "grid"]
+    },
+
+    {
+      "id": "mini-l3-utility-sql-sandbox-044",
+      "goal": "SQLite playground. Load sql.js from CDN, textarea for SQL, run button, results in a sortable table. Schema explorer panel (tables → columns → types). Preloaded with 3 sample tables (employees, orders, products). Save/load queries to localStorage.",
+      "artifact_type": "miniApp",
+      "category": "utility",
+      "difficulty": "L3",
+      "dispatch": "runWizard",
+      "framework_hint": "sql.js",
+      "max_turns": 3,
+      "timeout_seconds": 360,
+      "expected_capabilities": ["sql", "table", "SELECT"]
+    },
+    {
+      "id": "mini-l3-utility-markdown-editor-045",
+      "goal": "Markdown IDE mini-app. Multi-document sidebar, live preview with auto-generated table of contents, slash-commands (/todo, /code, /quote, /hr), auto-save per doc, export ZIP of all docs as .md files.",
+      "artifact_type": "miniApp",
+      "category": "utility",
+      "difficulty": "L3",
+      "dispatch": "runWizard",
+      "max_turns": 4,
+      "timeout_seconds": 420,
+      "expected_capabilities": ["localStorage", "Blob", "innerHTML"]
+    },
+    {
+      "id": "mini-l3-utility-api-explorer-046",
+      "goal": "REST API explorer. Input URL + method + headers + body, send through mchatai.com proxy, show status / headers / body (pretty-JSON or raw) / elapsed ms. History of last 20 requests, name-and-save-as-snippet, cURL-copy.",
+      "artifact_type": "miniApp",
+      "category": "utility",
+      "difficulty": "L3",
+      "dispatch": "runWizard",
+      "max_turns": 3,
+      "timeout_seconds": 360,
+      "expected_capabilities": ["fetch", "localStorage"],
+      "expected_wisdom_packs": ["universal"],
+      "notes": "Exercises u-020 proxy-fetch rule."
+    },
+
+    {
+      "id": "mini-l1-finance-tip-split-047",
+      "goal": "Fair-tip splitter. Each diner enters what they ordered (price), shared items can be split evenly or by weight. Configurable tip and tax, each person sees their personal total including fair share of shared items + prorated tip/tax.",
+      "artifact_type": "miniApp",
+      "category": "finance",
+      "difficulty": "L1",
+      "dispatch": "runWizard",
+      "expected_capabilities": ["input", "Number"],
+      "notes": "Twist on tip calc — per-person share allocation is novel."
+    },
+    {
+      "id": "mini-l1-finance-loan-amort-048",
+      "goal": "Loan amortization. Principal / APR / term-years inputs, show monthly payment, total interest, and a full amortization table (month / principal / interest / balance). 'Extra payment per month' slider that shows interest saved.",
+      "artifact_type": "miniApp",
+      "category": "finance",
+      "difficulty": "L1",
+      "dispatch": "runWizard",
+      "expected_capabilities": ["Math.pow", "toFixed"]
+    },
+
+    {
+      "id": "mini-l2-finance-envelope-budget-049",
+      "goal": "Envelope budgeting. Define monthly envelopes with allocations summing to income, log transactions against an envelope, show remaining per envelope with a progress bar (red when over), rollover unspent on month change.",
+      "artifact_type": "miniApp",
+      "category": "finance",
+      "difficulty": "L2",
+      "dispatch": "runWizard",
+      "expected_capabilities": ["localStorage", "progress"]
+    },
+    {
+      "id": "mini-l2-finance-portfolio-rebalance-050",
+      "goal": "Portfolio rebalance calculator. Enter current holdings (ticker / shares / price), target allocation percentages, the app tells you how many shares of each to buy/sell to reach targets with the minimum number of trades. Save portfolios locally.",
+      "artifact_type": "miniApp",
+      "category": "finance",
+      "difficulty": "L2",
+      "dispatch": "runWizard",
+      "expected_capabilities": ["localStorage"]
+    },
+    {
+      "id": "mini-l2-finance-fire-calc-051",
+      "goal": "FIRE (financial independence) calculator. Current savings, monthly contribution, expected return rate, annual spend, show years-to-retirement, visualize with a line chart of net worth over the years.",
+      "artifact_type": "miniApp",
+      "category": "finance",
+      "difficulty": "L2",
+      "dispatch": "runWizard",
+      "expected_capabilities": ["canvas", "Math.pow"]
+    },
+
+    {
+      "id": "mini-l3-finance-stock-watchlist-052",
+      "goal": "Stock watchlist. Add tickers, fetch quotes via mchatai.com proxy (free Stooq-style endpoint), show current price / day-change / 30-day sparkline per ticker, total portfolio value if you store share counts. Persist watchlist locally.",
+      "artifact_type": "miniApp",
+      "category": "finance",
+      "difficulty": "L3",
+      "dispatch": "runWizard",
+      "max_turns": 3,
+      "timeout_seconds": 360,
+      "expected_capabilities": ["fetch", "localStorage", "canvas"],
+      "expected_wisdom_packs": ["universal"],
+      "notes": "Proxy-fetch + real-data path."
+    },
+    {
+      "id": "mini-l3-finance-options-payoff-053",
+      "goal": "Options payoff diagram. Build a multi-leg strategy (buy/sell call/put with strike and premium), plot profit/loss vs underlying at expiry, greeks panel (delta / gamma / theta / vega at current spot), save/load strategies.",
+      "artifact_type": "miniApp",
+      "category": "finance",
+      "difficulty": "L3",
+      "dispatch": "runWizard",
+      "max_turns": 3,
+      "timeout_seconds": 360,
+      "expected_capabilities": ["canvas", "Math"]
+    },
+
+    {
+      "id": "mini-l1-health-water-streak-054",
+      "goal": "Water-intake tracker with streaks. Tap a glass icon +1, daily goal editable, 14-day streak grid (green if met / red if missed), gentle haptic-like pulse animation on tap.",
+      "artifact_type": "miniApp",
+      "category": "health",
+      "difficulty": "L1",
+      "dispatch": "runWizard",
+      "expected_capabilities": ["localStorage", "Date"]
+    },
+    {
+      "id": "mini-l1-health-breath-box-055",
+      "goal": "Box-breathing guide. Animated square that expands (4s inhale), pauses (4s hold), contracts (4s exhale), pauses (4s hold). Session-length 1/3/5/10 min, subtle WebAudio chime at phase changes.",
+      "artifact_type": "miniApp",
+      "category": "health",
+      "difficulty": "L1",
+      "dispatch": "runWizard",
+      "expected_capabilities": ["requestAnimationFrame", "AudioContext"]
+    },
+
+    {
+      "id": "mini-l2-health-sleep-log-056",
+      "goal": "Sleep journal. Log bedtime/wake-time per day, compute hours and sleep-debt vs 8h target, 30-day bar chart, average and stdev stats, note-field per night.",
+      "artifact_type": "miniApp",
+      "category": "health",
+      "difficulty": "L2",
+      "dispatch": "runWizard",
+      "expected_capabilities": ["localStorage", "canvas"]
+    },
+    {
+      "id": "mini-l2-health-posture-reminder-057",
+      "goal": "Posture-break timer. Configurable interval (30/45/60 min), when it fires show a 30-second stretch guide (cycle through 4 stretches with images or emoji). 'Done' button dismisses; 'snooze 5' postpones.",
+      "artifact_type": "miniApp",
+      "category": "health",
+      "difficulty": "L2",
+      "dispatch": "runWizard",
+      "expected_capabilities": ["setInterval", "Notification"]
+    },
+    {
+      "id": "mini-l2-health-food-log-058",
+      "goal": "Simple food log. Pick from a built-in DB of 80 common foods (kcal / protein / carbs / fat per 100g), log portion in grams, daily totals with a macro donut chart, configurable goal numbers.",
+      "artifact_type": "miniApp",
+      "category": "health",
+      "difficulty": "L2",
+      "dispatch": "runWizard",
+      "expected_capabilities": ["localStorage", "canvas"]
+    },
+
+    {
+      "id": "mini-l3-health-workout-1rm-059",
+      "goal": "Strength log with 1RM curves. Define exercises, log sets as reps×weight per session, compute 1RM estimate (Epley formula), chart 1RM over time per exercise, volume chart per week, exercise templates.",
+      "artifact_type": "miniApp",
+      "category": "health",
+      "difficulty": "L3",
+      "dispatch": "runWizard",
+      "max_turns": 3,
+      "timeout_seconds": 360,
+      "expected_capabilities": ["localStorage", "canvas"]
+    },
+
+    {
+      "id": "mini-l1-social-group-poll-060",
+      "goal": "Quick group poll. Enter question + 2-6 options, shareable URL that encodes poll in the hash, live bar-chart results updated on click (single-device, no backend).",
+      "artifact_type": "miniApp",
+      "category": "social",
+      "difficulty": "L1",
+      "dispatch": "runWizard",
+      "expected_capabilities": ["location.hash", "click"]
+    },
+    {
+      "id": "mini-l1-social-gratitude-061",
+      "goal": "Daily gratitude journal. Three prompts per day ('what went well', 'who helped you', 'what you're looking forward to'), browse history by calendar, gentle reminder at configurable time.",
+      "artifact_type": "miniApp",
+      "category": "social",
+      "difficulty": "L1",
+      "dispatch": "runWizard",
+      "expected_capabilities": ["localStorage", "Date"]
+    },
+
+    {
+      "id": "mini-l2-social-seating-planner-062",
+      "goal": "Wedding seating planner. Define tables (capacity), drag guests onto tables, maintain a 'do-not-seat-together' list that shows warnings, print-friendly export view.",
+      "artifact_type": "miniApp",
+      "category": "social",
+      "difficulty": "L2",
+      "dispatch": "runWizard",
+      "expected_capabilities": ["draggable", "localStorage"]
+    },
+    {
+      "id": "mini-l2-social-secret-santa-063",
+      "goal": "Secret Santa drawer. Enter participants and exclusions (e.g. couples can't draw each other), run the match algorithm, reveal each person's pick via a one-click private link they open alone.",
+      "artifact_type": "miniApp",
+      "category": "social",
+      "difficulty": "L2",
+      "dispatch": "runWizard",
+      "expected_capabilities": ["location.hash", "btoa"]
+    },
+    {
+      "id": "mini-l2-social-bracket-maker-064",
+      "goal": "Tournament bracket maker. Enter 4/8/16 competitors, single-elimination bracket rendered as a tree, tap a match to set the winner, auto-advance, export bracket as PNG.",
+      "artifact_type": "miniApp",
+      "category": "social",
+      "difficulty": "L2",
+      "dispatch": "runWizard",
+      "expected_capabilities": ["canvas", "svg"]
+    },
+
+    {
+      "id": "mini-l3-social-trip-splitter-065",
+      "goal": "Group-trip expense splitter. Add trip members, log expenses (who paid, who owes, equal or custom split), settle-up view computes minimum transactions to balance, shareable URL that encodes the trip state.",
+      "artifact_type": "miniApp",
+      "category": "social",
+      "difficulty": "L3",
+      "dispatch": "runWizard",
+      "max_turns": 3,
+      "timeout_seconds": 360,
+      "expected_capabilities": ["localStorage", "reduce", "location.hash"]
+    },
+
+    {
+      "id": "mini-l2-creative-ascii-camera-066",
+      "goal": "ASCII-art webcam. Request webcam permission, live video downsampled to a character grid using a luminance ramp (' .,:;xX$'). Adjustable character size and density, invert toggle, freeze-frame + copy-text.",
+      "artifact_type": "miniApp",
+      "category": "creative",
+      "difficulty": "L2",
+      "dispatch": "runWizard",
+      "expected_capabilities": ["getUserMedia", "canvas"]
+    },
+    {
+      "id": "mini-l3-utility-regex-visualize-067",
+      "goal": "Regex railroad-diagram visualizer. Parse a regex, render as a classic railroad diagram SVG, hover parts to see what they match. Support common JS regex features.",
+      "artifact_type": "miniApp",
+      "category": "utility",
+      "difficulty": "L3",
+      "dispatch": "runWizard",
+      "max_turns": 3,
+      "timeout_seconds": 360,
+      "expected_capabilities": ["svg", "RegExp"]
+    },
+    {
+      "id": "mini-l2-education-turing-machine-068",
+      "goal": "Turing machine visualizer. Tape with input, state-transition table editor, step/run/pause, highlight current cell and state, 3 built-in programs (increment / binary-to-unary / palindrome-check).",
+      "artifact_type": "miniApp",
+      "category": "education",
+      "difficulty": "L2",
+      "dispatch": "runWizard",
+      "expected_capabilities": ["canvas", "setInterval"]
+    },
+    {
+      "id": "mini-l3-creative-markov-poetry-069",
+      "goal": "Markov-chain text generator. Paste seed text, train an order-2 Markov model client-side, generate paragraphs in that style, adjust temperature and length, export outputs. Several preset corpuses (Shakespeare / Lovecraft / Hemingway opening).",
+      "artifact_type": "miniApp",
+      "category": "creative",
+      "difficulty": "L3",
+      "dispatch": "runWizard",
+      "max_turns": 3,
+      "timeout_seconds": 360,
+      "expected_capabilities": ["Math.random", "Map"]
+    },
+    {
+      "id": "mini-l2-utility-epoch-converter-070",
+      "goal": "Epoch/timezone converter. Input unix epoch (seconds or ms auto-detect) or ISO-8601, see converted to 6 timezones (UTC/NYC/LA/London/Tokyo/Sydney). Reverse: pick date + TZ, get epoch. Copy buttons per row.",
+      "artifact_type": "miniApp",
+      "category": "utility",
+      "difficulty": "L2",
+      "dispatch": "runWizard",
+      "expected_capabilities": ["Date", "Intl.DateTimeFormat"]
+    }
+  ]
+}

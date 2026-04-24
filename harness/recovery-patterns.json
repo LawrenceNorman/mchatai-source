@@ -28,7 +28,9 @@
         "swiftuiApp": []
       },
       "defaultTemplate": "swiftuiApp",
-      "notes": "macOS Swift project. Find all .swift + Package.swift, validate with Swift symbol presence."
+      "appBundleScanCommand": "find . -maxdepth 4 -type d -name '*.app' 2>/dev/null | head -5",
+      "appBundleSearchPaths": ["dist", "build", ".build/release", "Build/Products/Release"],
+      "notes": "macOS Swift project. Find all .swift + Package.swift, validate with Swift symbol presence. Phase WX-A 2026-04-23: appBundleScanCommand additionally locates a built .app bundle (typically under dist/ from the new build_app.sh scaffold). When found, the recovered macOSApp gets bundlePath set + the wizard surfaces a tappable 'Open App' link instead of just listing source files."
     },
     "unityGame": {
       "findCommand": "find . -maxdepth 5 -type f -name '*.cs' | head -40",
