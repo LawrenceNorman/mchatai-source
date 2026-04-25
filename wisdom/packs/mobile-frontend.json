@@ -170,6 +170,40 @@
         "// Call saveState() at: wave-start, score-change, lives-lost, level-clear, game-over",
         "// On load: const saved = localStorage.getItem(GAME_KEY); if (saved) showResumePrompt(JSON.parse(saved));"
       ]
+    },
+    {
+      "id": "mob-013",
+      "rule": "Lane-tap and rhythm games must use FORGIVING hit-detection: when the user taps a lane, hit the LOWEST visible tile in that lane regardless of its exact y position. Do NOT require the tile's bottom edge to have crossed into a narrow strike-zone band before the tap counts. Strict 'must be inside the band' detection feels broken on mobile (humans tap ~80-200ms early in anticipation; sub-pixel timing is impossible with finger input).",
+      "why": "Real incident 2026-04-25: Piano Tiles 097 used `if (!target || target.y + target.h < strikeTop) gameOver('You tapped white.')` — meaning a tile that was 99% on-screen but hadn't quite crossed the strike-zone top counted as 'white'. User reported 'I can barely hit a black tile 1 time out of 10.' The strict band-check assumes pixel-perfect human reflexes; real users tap with anticipation. Forgiving lane-mode (tap = hit lowest visible tile in that lane) is the canonical Piano Tiles / Beatstar / Tap Tap Revenge approach.",
+      "severity": "important",
+      "appliesTo": "miniApp",
+      "examples": [
+        "// CORRECT: forgiving lane-tap",
+        "function handleTap(x, y) {",
+        "  const lane = Math.floor(x / r.width * LANES);",
+        "  const target = lowestVisibleTileInLane(lane);  // ANY visible tile counts",
+        "  if (!target) { gameOver('You tapped empty lane.'); return; }",
+        "  hitTile(target);  // also: score by accuracy = 1 - abs(target.center - strikeCenter) / maxDist",
+        "}",
+        "// BAD: strict band-check",
+        "// if (target.y + target.h < strikeTop || target.y > strikeBot) gameOver('white');"
+      ]
+    },
+    {
+      "id": "mob-014",
+      "rule": "When a game's mechanic isn't immediately obvious from a single screenshot (Stack Tower's slide-and-drop, Pinball's plunger, Helix Jump's drag-to-rotate), include a TAP-TO-START overlay with: 1-line goal (`Stack as high as you can`), 1-line how (`Tap to drop the moving block`), 1-line outcome (`Misalign and you lose part of the block`). 3 lines max. The user shouldn't need a tutorial to learn the input.",
+      "why": "Real incident 2026-04-25: Stack Tower 103 had correct mechanics but user reported 'I kind of don't get it but it seems like the play mechanics are a bit odd.' Without an explicit goal/input/outcome explanation, novel mobile mechanics feel broken when they're working as designed. The cost of a 3-line overlay is ~30s of LLM time; the cost of confusion is total — user closes the game.",
+      "severity": "important",
+      "appliesTo": "miniApp",
+      "examples": [
+        "<div id='startOverlay' class='overlay'>",
+        "  <h1>STACK TOWER</h1>",
+        "  <p><b>Goal:</b> Stack blocks as high as you can.</p>",
+        "  <p><b>How:</b> Tap to drop the moving block when it lines up.</p>",
+        "  <p><b>Outcome:</b> Misalign and the overhang is lost — block shrinks each turn.</p>",
+        "  <button id='startBtn'>PLAY</button>",
+        "</div>"
+      ]
     }
   ]
 }
