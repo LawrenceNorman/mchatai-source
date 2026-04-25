@@ -1,6 +1,6 @@
 {
   "$schema_version": "1.0.0",
-  "catalog_version": "2026.04.25-i",
+  "catalog_version": "2026.04.25-j",
   "last_updated": "2026-04-25",
   "difficulty_definitions": {
     "L1": "Simple CRUD / single view / static content. <150 LOC target. One wizard turn.",
@@ -2739,6 +2739,22 @@
         "@State"
       ],
       "notes": "First QuickLookThumbnailing entry. Surfaces drag-IN (NSDraggingDestination via SwiftUI's .onDrop with .fileURL UTType) + a real macOS framework most LLMs know exists but rarely emit correctly. Native-mac angle: backing-scale-factor handling for retina output (LLM forgetting this gives a half-resolution PNG). Bonus mile: NSSavePanel with allowedContentTypes filter (UTType.png) is the modern path; old-school .allowedFileTypes is deprecated."
+    },
+    {
+      "id": "macos-l2-productivity-folder-watcher-126",
+      "goal": "macOS folder auto-organizer. Single 600x500 window, two-pane layout. Top: 'Watched folder' read-only path field + 'Choose\u2026' button (NSOpenPanel canChooseDirectories=true). Bottom: scrollable activity log. When the user picks a folder: start a DispatchSource.makeFileSystemObjectSource on the folder's open file descriptor, eventMask=[.write] (fires when contents change). On each event, list the folder's contents; for any new file (compared to the previous snapshot), classify by extension into subfolders: Images/ (.png .jpg .jpeg .gif .heic), Documents/ (.pdf .docx .txt .md .rtf), Archives/ (.zip .tar .gz .dmg), Audio/ (.mp3 .wav .m4a .aac), Video/ (.mp4 .mov .m4v), Other/ (anything else). Create the subfolder if missing, move the file via FileManager.moveItem. Log every move: '15:42:03  beach.jpg  \u2192  Images/'. Skip dotfiles and the subfolder names themselves. Stop watching button cleanly cancels the DispatchSource. Persist last-picked folder path in UserDefaults so the next launch auto-resumes.",
+      "artifact_type": "macOSApp",
+      "category": "productivity",
+      "difficulty": "L2",
+      "dispatch": "runWizard",
+      "expected_capabilities": [
+        "DispatchSource",
+        "FileManager",
+        "NSOpenPanel",
+        "UserDefaults",
+        "@StateObject"
+      ],
+      "notes": "First folder-watching entry. Native-mac surface = DispatchSource.makeFileSystemObjectSource (low-level kqueue wrapper) — the OS-level pattern for folder change detection without polling. Common LLM trap: forgetting to keep the file descriptor open for the source's lifetime, or forgetting to call .resume() after creating the source (it starts suspended). Also: the security-scoped URL from NSOpenPanel needs startAccessingSecurityScopedResource() if the app is sandboxed and the user-selected folder is outside the container. The goal explicitly says 'open file descriptor' to nudge the LLM toward Darwin.open() rather than a SwiftUI .fileImporter shortcut that doesn't expose the FD."
     }
   ]
 }
