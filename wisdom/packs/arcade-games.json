@@ -1,6 +1,6 @@
 {
   "packID": "arcade-games",
-  "version": 1,
+  "version": 2,
   "displayName": "Arcade Game Guidelines",
   "description": "Quality rules for snake, breakout, platformers, and other arcade/action games.",
   "categories": [
@@ -189,6 +189,22 @@
         "Keys: unlock castle doors (colored door requires matching colored key)",
         "Bridge: allows crossing walls (place it against a wall to pass through)"
       ]
+    },
+    {
+      "id": "ag-015",
+      "rule": "Wave-based / level-based shooters MUST implement a level-clear → next-wave transition. When all enemies on the current wave are destroyed, IMMEDIATELY advance to the next wave: respawn enemies (with increased difficulty: more enemies, faster spawn, or new behavior), bump a wave counter visible in the HUD, and reset the player's position if appropriate. The game cannot be 'won' on a single wave alone — there must be a sense of progression.",
+      "why": "Galaga + Centipede first-pass canaries 2026-04-25 both shipped with terminal-level-1 bugs: clearing all enemies on level 1 left an empty playfield with no progression. Players had nothing to do. The level-clear → next-wave loop is a defining property of arcade shooters; without it, they're not games, they're tech demos. Easy to overlook because LLMs render the FIRST wave and assume the loop is implicit.",
+      "severity": "critical",
+      "appliesTo": "arcade",
+      "examples": [
+        "Wave transition: function checkWaveClear() { if (enemies.length === 0 && bullets.length === 0) startNextWave(); }",
+        "Wave scaling: function startNextWave() { wave++; const enemyCount = 10 + wave * 2; const enemySpeed = baseSpeed * (1 + wave * 0.15); spawnEnemies(enemyCount, enemySpeed); }",
+        "HUD wave counter: <div id='wave-display'>Wave {wave}</div> updated every frame",
+        "Brief pause between waves: setTimeout(startNextWave, 1500) so player can breathe",
+        "Boss wave optional: every 5 waves, spawn 1 large boss with HP > 1"
+      ],
+      "appliesToGenres": ["arcade-games", "shooter"],
+      "originated": "2026-04-25 first-pass beta of galaga-079 + centipede-080 — both stuck on level 1"
     }
   ]
 }

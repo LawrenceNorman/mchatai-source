@@ -1,6 +1,6 @@
 {
   "$schema_version": "1.0.0",
-  "catalog_version": "2026.04.24-e",
+  "catalog_version": "2026.04.25-a",
   "last_updated": "2026-04-24",
   "difficulty_definitions": {
     "L1": "Simple CRUD / single view / static content. <150 LOC target. One wizard turn.",
@@ -810,6 +810,7 @@
 
     {
       "id": "mini-l3-games-defender-arcade-076",
+      "user_outcome": "GOOD first beta — 44KB artifact, all 6 mechanics wired (parallax/landers/mutants/bombers/rescue/radar/smart-bomb)",
       "goal": "Classic Defender-style side-scrolling arcade shooter. Horizontal-scrolling planet surface (parallax mountains on a canvas), player ship with thrust + fire + smart-bomb. Enemies: landers (try to abduct humans from the surface), mutants (faster, spawned when lander reaches top of screen carrying human), bombers (drop mines). Rescue mechanic: if you shoot a lander carrying a human, catch the human as it falls and carry it back to the surface. 5 waves, wave counter, score with multipliers, radar mini-map at top showing enemy + human positions on the full scrollable world (world is wider than viewport). All in one HTML file.",
       "artifact_type": "miniApp",
       "category": "games",
@@ -822,6 +823,7 @@
     },
     {
       "id": "mini-l3-games-asteroids-077",
+      "user_outcome": "GOOD first beta — 34KB artifact, plays. UFO + split-on-hit may be partial (run @ 236s, well under L3 budget, so room to refine).",
       "goal": "Asteroids arcade game. Triangle ship with rotation + thrust + wrap-around-screen + fire. Asteroids split into smaller ones when hit (large → 2 medium → 2 small → destroyed). UFO that appears periodically and shoots back. Score by asteroid size, extra life at 10000 points, 3 lives to start. Thrust leaves particle trail. All in one HTML file.",
       "artifact_type": "miniApp",
       "category": "games",
@@ -834,6 +836,10 @@
     },
     {
       "id": "mini-l2-games-missile-command-078",
+      "flaky_history": [
+        {"run": "2026-04-25T0223", "tier": "L2", "outcome": "harness-timeout-but-actually-OK@420s", "concurrency": 1, "note": "User-validated: 'surprisingly good'. Harness gave up at L2 ceiling but wizard kept running and produced a working artifact. Bump tier to L3 OR raise L2 timeout for game-class entries."}
+      ],
+      "user_outcome": "good — playable on first turn",
       "goal": "Missile Command arcade game. 6 cities at bottom of screen, 3 missile-launcher bases. ICBMs rain from top in an arc, player clicks to fire counter-missiles that explode in a radius, destroying ICBMs caught in blast. Lose a city when an ICBM reaches the bottom. Game over when all cities destroyed. Waves get harder (more ICBMs, faster descent). Score tracked.",
       "artifact_type": "miniApp",
       "category": "games",
@@ -846,6 +852,10 @@
     },
     {
       "id": "mini-l3-games-galaga-079",
+      "flaky_history": [
+        {"run": "2026-04-25T0231", "tier": "L3", "outcome": "playable-but-incomplete@540s", "concurrency": 1, "note": "User-validated: enemies got into formation but never flew dive-attacks. Also hard-stuck on level 1 (no win-condition / level-progression on clearing all enemies). Refine candidate: explicit 'when enemyCount==0, advance to next wave + respawn formation'."}
+      ],
+      "user_outcome": "incomplete — formation in place but no dive-attack AI, level 1 is terminal",
       "goal": "Galaga-style space shooter. Player ship at bottom with left/right + fire. Enemy formation of ~20 ships enters from top in patterns (swoop-in arcs), settles into a grid. Periodically individual enemies break formation and dive-attack the player. Boss Galaga can capture player ship (tractor beam); capturing a Galaga that has your ship gives you dual-ship bonus fire. Score tracked, wave progression.",
       "artifact_type": "miniApp",
       "category": "games",
@@ -858,6 +868,10 @@
     },
     {
       "id": "mini-l3-games-centipede-080",
+      "flaky_history": [
+        {"run": "2026-04-25T0240", "tier": "L3", "outcome": "playable-but-stuck-on-level-1@540s", "concurrency": 1, "note": "User-validated: same level-progression bug as Galaga. After clearing all enemies on level 1, no advance to level 2. Refine candidate: same fix as galaga-079 — wave/level transition on clear."}
+      ],
+      "user_outcome": "incomplete — level 1 is terminal, no level 2 transition",
       "goal": "Centipede arcade game. Mushroom-filled play field, player at bottom with 4-directional movement (constrained to bottom fifth of screen) and fire. Centipede enters from top, winds through mushrooms — when shot in the middle, splits into two centipedes. Spider periodically appears, destroys mushrooms, bonus when shot. Flea drops straight down leaving mushrooms behind. Lives + score + wave counter.",
       "artifact_type": "miniApp",
       "category": "games",
@@ -870,6 +884,10 @@
     },
     {
       "id": "mini-l3-games-tempest-081",
+      "flaky_history": [
+        {"run": "2026-04-25T0241", "tier": "L3", "outcome": "playable-with-art-quirk@540s", "concurrency": 1, "note": "User-validated: 3D-tube perspective rendered, gameplay works. Quirk: one level's tube shape was just a line (degenerate edge case in the procgen lane geometry). Acceptable on first beta — refine candidate: validate lane count >= 4 before accepting a generated level shape."}
+      ],
+      "user_outcome": "good — minor art quirk on one level shape (line-instead-of-tube)",
       "goal": "Tempest-style tube shooter. First-person perspective looking down a geometric tube (rendered as wireframe lanes in 3D perspective). Player moves between adjacent lanes on the rim of the tube with arrow keys + fires down the lane. Enemies crawl up lanes toward player: flippers (flip between lanes), tankers (carry smaller enemies), spikers (leave spike traces). Clear each level by destroying all enemies. Vector-graphics aesthetic (wireframe on black bg).",
       "artifact_type": "miniApp",
       "category": "games",
