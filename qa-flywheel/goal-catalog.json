@@ -1,6 +1,6 @@
 {
   "$schema_version": "1.0.0",
-  "catalog_version": "2026.04.24-d",
+  "catalog_version": "2026.04.24-e",
   "last_updated": "2026-04-24",
   "difficulty_definitions": {
     "L1": "Simple CRUD / single view / static content. <150 LOC target. One wizard turn.",
@@ -8,7 +8,7 @@
     "L3": "Framework-heavy or stateful: shaders, audio graphs, ECS, multi-agent, persistent storage, network sync, sensors. 3-4 turns."
   },
   "coverage_status": {
-    "miniApp": "v1 — 70/70 (23 L1 / 27 L2 / 20 L3). 2 entries now tagged flaky=true after 2026-04-24 T1703 batch: mini-l1-utility-qr-gen-037 (L1 timeout), mini-l2-utility-cron-visualizer-043 (L2 overbudget). See per-entry `notes` + `flaky_history`. Deliberately steers AWAY from saturated ground (pomodoro/flashcards/snake/2048/wordle/blackjack/chess/roguelike — already have dozens of each installed). Aims at novel territory: data viz, DSP, creative coding, dev tools, science sims, accessibility, privacy, ling, music theory, procgen.",
+    "miniApp": "v1 — 76/76 (+6 meaty arcade shooters added 2026-04-24-e: Defender, Asteroids, Missile Command, Galaga, Centipede, Tempest). 2 entries tagged flaky=true after 2026-04-24 T1703 batch. Arcade territory was 0 shooters before; now L2=1 + L3=5 for the meaty side. Still steers AWAY from saturated ground (pomodoro/flashcards/snake/2048/wordle/blackjack/chess/roguelike — already have dozens of each installed). Aims at novel territory: data viz, DSP, creative coding, dev tools, science sims, accessibility, privacy, ling, music theory, procgen, classic-arcade-shooters.",
     "webSPA": "pending",
     "unityGame": "pending",
     "pythonMicroservice": "pending",
@@ -806,6 +806,79 @@
       "dispatch": "runWizard",
       "expected_capabilities": ["CIFilter", "qrCodeGenerator", "NSStatusItem"],
       "notes": "Requested by macos-qa 2026-04-24. CoreImage QR generator is a CLEAN API (unlike the miniApp version that needs a JS library — see flaky mini-l1-utility-qr-gen-037). Good test of whether wizard picks Apple-native path when available."
+    },
+
+    {
+      "id": "mini-l3-games-defender-arcade-076",
+      "goal": "Classic Defender-style side-scrolling arcade shooter. Horizontal-scrolling planet surface (parallax mountains on a canvas), player ship with thrust + fire + smart-bomb. Enemies: landers (try to abduct humans from the surface), mutants (faster, spawned when lander reaches top of screen carrying human), bombers (drop mines). Rescue mechanic: if you shoot a lander carrying a human, catch the human as it falls and carry it back to the surface. 5 waves, wave counter, score with multipliers, radar mini-map at top showing enemy + human positions on the full scrollable world (world is wider than viewport). All in one HTML file.",
+      "artifact_type": "miniApp",
+      "category": "games",
+      "difficulty": "L3",
+      "dispatch": "runWizard",
+      "max_turns": 4,
+      "timeout_seconds": 540,
+      "expected_capabilities": ["canvas", "requestAnimationFrame", "keydown"],
+      "notes": "Requested 2026-04-24 — user wants meatier arcade territory. Defender is the canonical 'too-ambitious' arcade clone (parallax scrolling, world-larger-than-viewport, radar, rescue mechanic, AI states). Great stress-test for whether L3 can hold scope across 4 turns. Novel vs. existing catalog (no shooters yet)."
+    },
+    {
+      "id": "mini-l3-games-asteroids-077",
+      "goal": "Asteroids arcade game. Triangle ship with rotation + thrust + wrap-around-screen + fire. Asteroids split into smaller ones when hit (large → 2 medium → 2 small → destroyed). UFO that appears periodically and shoots back. Score by asteroid size, extra life at 10000 points, 3 lives to start. Thrust leaves particle trail. All in one HTML file.",
+      "artifact_type": "miniApp",
+      "category": "games",
+      "difficulty": "L3",
+      "dispatch": "runWizard",
+      "max_turns": 3,
+      "timeout_seconds": 420,
+      "expected_capabilities": ["canvas", "requestAnimationFrame", "keydown", "Math.cos", "Math.sin"],
+      "notes": "Classic shooter. Exercises vector math (rotation + thrust) and split-on-hit entity spawning. Not in current catalog."
+    },
+    {
+      "id": "mini-l2-games-missile-command-078",
+      "goal": "Missile Command arcade game. 6 cities at bottom of screen, 3 missile-launcher bases. ICBMs rain from top in an arc, player clicks to fire counter-missiles that explode in a radius, destroying ICBMs caught in blast. Lose a city when an ICBM reaches the bottom. Game over when all cities destroyed. Waves get harder (more ICBMs, faster descent). Score tracked.",
+      "artifact_type": "miniApp",
+      "category": "games",
+      "difficulty": "L2",
+      "dispatch": "runWizard",
+      "max_turns": 3,
+      "timeout_seconds": 420,
+      "expected_capabilities": ["canvas", "click", "requestAnimationFrame"],
+      "notes": "Click-to-aim + explosion-radius + wave scaling. Simpler than Defender but still meaty. Novel territory."
+    },
+    {
+      "id": "mini-l3-games-galaga-079",
+      "goal": "Galaga-style space shooter. Player ship at bottom with left/right + fire. Enemy formation of ~20 ships enters from top in patterns (swoop-in arcs), settles into a grid. Periodically individual enemies break formation and dive-attack the player. Boss Galaga can capture player ship (tractor beam); capturing a Galaga that has your ship gives you dual-ship bonus fire. Score tracked, wave progression.",
+      "artifact_type": "miniApp",
+      "category": "games",
+      "difficulty": "L3",
+      "dispatch": "runWizard",
+      "max_turns": 4,
+      "timeout_seconds": 540,
+      "expected_capabilities": ["canvas", "requestAnimationFrame", "keydown"],
+      "notes": "Formation AI + dive-attack pattern + capture mechanic. Very ambitious — candidate for later rework if it flakes. Tests whether L3 can handle multi-phase enemy AI."
+    },
+    {
+      "id": "mini-l3-games-centipede-080",
+      "goal": "Centipede arcade game. Mushroom-filled play field, player at bottom with 4-directional movement (constrained to bottom fifth of screen) and fire. Centipede enters from top, winds through mushrooms — when shot in the middle, splits into two centipedes. Spider periodically appears, destroys mushrooms, bonus when shot. Flea drops straight down leaving mushrooms behind. Lives + score + wave counter.",
+      "artifact_type": "miniApp",
+      "category": "games",
+      "difficulty": "L3",
+      "dispatch": "runWizard",
+      "max_turns": 4,
+      "timeout_seconds": 540,
+      "expected_capabilities": ["canvas", "requestAnimationFrame", "keydown"],
+      "notes": "Grid-of-obstacles + split-on-hit + multi-enemy-type. Similar-vibe to Defender but different mechanics."
+    },
+    {
+      "id": "mini-l3-games-tempest-081",
+      "goal": "Tempest-style tube shooter. First-person perspective looking down a geometric tube (rendered as wireframe lanes in 3D perspective). Player moves between adjacent lanes on the rim of the tube with arrow keys + fires down the lane. Enemies crawl up lanes toward player: flippers (flip between lanes), tankers (carry smaller enemies), spikers (leave spike traces). Clear each level by destroying all enemies. Vector-graphics aesthetic (wireframe on black bg).",
+      "artifact_type": "miniApp",
+      "category": "games",
+      "difficulty": "L3",
+      "dispatch": "runWizard",
+      "max_turns": 4,
+      "timeout_seconds": 540,
+      "expected_capabilities": ["canvas", "requestAnimationFrame", "keydown"],
+      "notes": "Most ambitious entry — 3D perspective tube rendered on 2D canvas + vector-graphics style + multi-enemy-type. Great test of whether wizard can hold vector-graphics aesthetic across a complex 3D-ish render loop."
     }
   ]
 }
