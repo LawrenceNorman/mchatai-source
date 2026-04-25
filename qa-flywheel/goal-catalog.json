@@ -1,6 +1,6 @@
 {
   "$schema_version": "1.0.0",
-  "catalog_version": "2026.04.25-g",
+  "catalog_version": "2026.04.25-h",
   "last_updated": "2026-04-25",
   "difficulty_definitions": {
     "L1": "Simple CRUD / single view / static content. <150 LOC target. One wizard turn.",
@@ -2708,6 +2708,21 @@
         "FileManager"
       ],
       "notes": "Second L3 macOSApp game. Native-mac angle: Cmd+1-5 quick-save slots via CommandGroup \u2014 Mac-native modifier+number shortcuts mapped to file-system slots. No third-party deps; all GameplayKit + SwiftUI. Bounded scope (8x8, 3 levels) to keep within L3 budget. ~1300 LOC target."
+    },
+    {
+      "id": "macos-l1-creative-soundboard-avfoundation-124",
+      "goal": "macOS soundboard app. Single 480x360 window with a 3x3 grid of pad buttons. Each button labeled with an emoji + sound name (e.g. \uD83E\uDD41 'Drum', \uD83D\uDD14 'Bell', \uD83D\uDC4F 'Clap', \uD83D\uDE83 'Train', \uD83D\uDC2E 'Cow', \uD83C\uDFB7 'Sax', \uD83D\uDDF2 'Magic', \uD83D\uDE82 'Whistle', \u26A1 'Zap'). Tapping a pad plays a short tone via AVAudioPlayer reading from sounds bundled in the SwiftPM resources directory (Sources/Soundboard/Resources/*.wav). Use AVAudioSession-free direct AVAudioPlayer init (macOS doesn't need AVAudioSession). 1-9 keyboard shortcuts trigger the matching pad. Visible \"Now playing\" footer text shows the most-recently-triggered pad name; clears after 1.5s. No mute/volume; just tap-and-play.",
+      "artifact_type": "macOSApp",
+      "category": "creative",
+      "difficulty": "L1",
+      "dispatch": "runWizard",
+      "expected_capabilities": [
+        "AVAudioPlayer",
+        "Bundle.module",
+        "KeyboardShortcut",
+        "@State"
+      ],
+      "notes": "First AVFoundation entry in macOSApp catalog. Native-mac surface = Bundle.module SwiftPM resource path (Package.swift `resources: [.copy(\"Resources\")]`) — common-but-trickier than embedding sounds as base64. The LLM is free to either ship 9 actual .wav files via the resources directory OR generate them inline with an AVAudioEngine sample-buffer write at first launch. Either is acceptable; the test is whether it knows AVAudioPlayer needs a file-on-disk URL on macOS, not a bundled stream."
     }
   ]
 }
