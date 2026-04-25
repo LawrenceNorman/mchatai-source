@@ -979,9 +979,9 @@
       "id": "mini-l1-games-mobile-clicker-087",
       "flaky": true,
       "flaky_history": [
-        {"run": "2026-04-25T2032", "tier": "L1", "outcome": "looks-terrible+failed-status", "concurrency": 1, "note": "User-validated 2026-04-25: visual quality bad (cookie clicker landing-page-style instead of touch-game-style). Wisdom rule may not have loaded for L1 fast-path generator template, OR the L1 generator.l1.fast template doesn't include mobile pack guidance. Refine candidate: explicit prompt that this is a TOUCH GAME with giant tap target, not a webpage."}
+        {"run": "2026-04-25T2032", "tier": "L1", "outcome": "tiny-artifact-4KB+failed-status", "concurrency": 1, "note": "User-validated 2026-04-25: BAD. Real root cause via session inspection 2026-04-25T2125: Phase GC research path tried to learn 'idle-clicker' genre, research timed out, fell back to 'building from scratch with LLM internal knowledge'. WITHOUT genre research, fewer wisdom packs load and the artifact came out at only 4KB (vs 10-40KB for genre-matched mobile entries). Mobile pack DID partially load (viewport-fit, pointerdown, navigator.vibrate, localStorage all present) but missing 100dvh + safe-area + tap-highlight-color. Real fix is Phase GC: research-unavailable fallback should still load keyword-matched wisdom packs (universal + arcade-games + mobile-frontend), NOT 'build from scratch' (== no rules)."}
       ],
-      "user_outcome": "BAD — looks terrible + failed status. Refine target.",
+      "user_outcome": "BAD — tiny 4KB artifact. Phase GC research-fallback bug, not L1-fast-path wisdom-pack-loading issue. Filed for refine + Phase GC investigation.",
       "goal": "Idle clicker, mobile portrait. Center: a giant tappable target (cookie/coin emoji or simple SVG circle), tapping it +1 to score. Below: an 'Auto-clickers' shop where score can be spent — Cursor (10 score = +1/sec), Grandma (100 = +5/sec), Factory (1000 = +20/sec). Score updates every 100ms from auto-clickers. Persist score + owned counts to localStorage. Haptic on each tap. Touch-only, portrait, no keyboard.",
       "artifact_type": "miniApp",
       "category": "games",
