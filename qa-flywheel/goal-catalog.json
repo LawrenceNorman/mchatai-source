@@ -1,6 +1,6 @@
 {
   "$schema_version": "1.0.0",
-  "catalog_version": "2026.04.25-n",
+  "catalog_version": "2026.04.25-o",
   "last_updated": "2026-04-25",
   "difficulty_definitions": {
     "L1": "Simple CRUD / single view / static content. <150 LOC target. One wizard turn.",
@@ -12,7 +12,7 @@
     "webSPA": "pending",
     "unityGame": "pending",
     "pythonMicroservice": "pending",
-    "macOSApp": "v1 \u2014 5/5 L1 seed (2026-04-24). Menubar clock, quick-notes, color-contrast, ASCII-art, QR menubar. All L1, all exercise native SwiftUI/AppKit/CoreImage patterns. L2/L3 pending. Requested by macos-qa agent to unblock their publish-pipeline rotation.",
+    "macOSApp": "v1 \u2014 5/5 L1 seed (2026-04-24). [2026-04-25-f: +8 entries (Pomodoro, UUID-clipboard, Battery-meter L1; Link-stash, Color-palette, Clipboard-history, Tip-calc L2; Markdown-scratchpad L3) + first 6 native-mac games (Mahjong, DeskPet L1; Comet-sweeper, Mole-whack L2; Dock-defender, Roguelike L3 \u2014 first SpriteKit / GameplayKit / GCController coverage).] [2026-04-25-h\u2192o: +8 entries pushing into distinct macOS-native frameworks not yet exercised: 124 soundboard (AVAudioPlayer + Bundle.module resources), 125 quicklook-thumbnailer (QLThumbnailGenerator + drag-IN), 126 folder-watcher (DispatchSource.makeFileSystemObjectSource), 127 image-resizer-droplet (ImageIO + multi-file drag), 128 drum-pad (AVAudioEngine + AVAudioSourceNode synth), 129 markdown-livepreview (WKWebView + NSSplitView), 130 touch-id-vault (LocalAuthentication + Keychain), 131 services-text-toolkit (NSServicesProvider). Total macOSApp entries 5\u219226. New-framework coverage: AVFoundation playback + synth, ImageIO, QuickLookThumbnailing, DispatchSource, WKWebView+SplitView, LocalAuthentication+Keychain, Services menu.]",
     "electronApp": "pending",
     "androidApp": "pending",
     "reactNativeApp": "pending",
@@ -2823,6 +2823,22 @@
         "@State"
       ],
       "notes": "First LocalAuthentication + Keychain entry. Native-mac surface: LAContext biometric policy on Touch-ID Macs (falls back to password on Macs without TID; the LLM must handle both via canEvaluatePolicy check). Keychain trap: kSecAttrService is the namespace, kSecAttrAccount is the per-secret key — common LLM mistake is using kSecAttrLabel which is just a UI hint, not an identity. SecItemCopyMatching needs kSecReturnData=true to actually return bytes; without it you only get attributes. Bootstrap demo secret avoids the empty-state black hole. NOTE: requires `com.apple.security.app-sandbox` + `keychain-access-groups` entitlement — flag in CONTEXT.md if the LLM ships an entitlements file."
+    },
+    {
+      "id": "macos-l2-utility-services-text-toolkit-131",
+      "goal": "macOS text-transform Services menu provider. App registers four Services-menu items via Info.plist NSServices array: 'Uppercase', 'Lowercase', 'Title Case', 'Reverse'. Each Service takes selected text from any app (via NSServicesProvider) and replaces it with the transformed result. Implementation: AppDelegate registers self as NSApp.servicesProvider; methods uppercaseText:userData:error:, lowercaseText:..., titleCaseText:..., reverseText:... pull NSStringPboardType from the pasteboard, transform, write back to .stringType. Main window 480x320 shows: status text 'Services registered \u2014 select text in any app and right-click \u2192 Services \u2192 mChatAI Text Toolkit \u2192 \u2026'. A 'Reload Services' button calls NSUpdateDynamicServices() so the user doesn't have to log out/in to see new menu items. Live counter at the bottom: 'Transforms run since launch: N'.",
+      "artifact_type": "macOSApp",
+      "category": "utility",
+      "difficulty": "L2",
+      "dispatch": "runWizard",
+      "expected_capabilities": [
+        "NSServicesProvider",
+        "NSPasteboard",
+        "NSUpdateDynamicServices",
+        "AppDelegate",
+        "Info.plist NSServices"
+      ],
+      "notes": "First Services-menu provider entry. Niche but high-leverage native-mac surface \u2014 the Services architecture is one of the oldest macOS-native ways to compose tools across apps. LLM traps are dense here: (1) NSServices entries in Info.plist need both `NSMessage` (= the method base name) and `NSPortName` (= app's bundle name), and the method signature MUST be exactly `func name(_ pboard: NSPasteboard, userData: String, error: AutoreleasingUnsafeMutablePointer<NSString>)` \u2014 any deviation and the Services subsystem silently ignores the registration. (2) NSApp.servicesProvider must be set in applicationDidFinishLaunching, not init. (3) NSUpdateDynamicServices() is the modern call (forces pbs to re-scan) \u2014 most LLMs reach for the deprecated `pbs -flush`. The 'select text in any app' path means the provider HAS to round-trip through the pasteboard with NSStringPboardType (Apple's compat name; UTType.plainText \u2018public.utf8-plain-text\u2019 also works and is what to ship)."
     }
   ]
 }
