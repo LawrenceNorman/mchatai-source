@@ -1,6 +1,6 @@
 {
   "$schema_version": "1.0.0",
-  "catalog_version": "2026.04.25-h",
+  "catalog_version": "2026.04.25-i",
   "last_updated": "2026-04-25",
   "difficulty_definitions": {
     "L1": "Simple CRUD / single view / static content. <150 LOC target. One wizard turn.",
@@ -2723,6 +2723,22 @@
         "@State"
       ],
       "notes": "First AVFoundation entry in macOSApp catalog. Native-mac surface = Bundle.module SwiftPM resource path (Package.swift `resources: [.copy(\"Resources\")]`) — common-but-trickier than embedding sounds as base64. The LLM is free to either ship 9 actual .wav files via the resources directory OR generate them inline with an AVAudioEngine sample-buffer write at first launch. Either is acceptable; the test is whether it knows AVAudioPlayer needs a file-on-disk URL on macOS, not a bundled stream."
+    },
+    {
+      "id": "macos-l1-utility-quicklook-thumbnailer-125",
+      "goal": "macOS QuickLook thumbnailer. 500x420 window, drag-target area at top showing 'Drop any file here' (NSDraggingDestination). Drop a file (PDF, image, video, doc — anything QuickLook handles) → app calls QLThumbnailGenerator.shared.generateBestRepresentation with size 256x256, scale = NSScreen.main.backingScaleFactor, type = .thumbnail. Result CGImage rendered in the lower half. Below it, a 'Save Thumbnail\u2026' button opens NSSavePanel filtered to .png and writes the rendered thumbnail as PNG via NSBitmapImageRep. Show source filename + 'Thumbnail generated in N ms' caption. Errors (e.g. encrypted file) replace caption with red error text. No sandbox entitlements needed beyond the dropped file's security-scoped URL.",
+      "artifact_type": "macOSApp",
+      "category": "utility",
+      "difficulty": "L1",
+      "dispatch": "runWizard",
+      "expected_capabilities": [
+        "QLThumbnailGenerator",
+        "NSDraggingDestination",
+        "NSSavePanel",
+        "NSBitmapImageRep",
+        "@State"
+      ],
+      "notes": "First QuickLookThumbnailing entry. Surfaces drag-IN (NSDraggingDestination via SwiftUI's .onDrop with .fileURL UTType) + a real macOS framework most LLMs know exists but rarely emit correctly. Native-mac angle: backing-scale-factor handling for retina output (LLM forgetting this gives a half-resolution PNG). Bonus mile: NSSavePanel with allowedContentTypes filter (UTType.png) is the modern path; old-school .allowedFileTypes is deprecated."
     }
   ]
 }
