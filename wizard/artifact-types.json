@@ -1,8 +1,8 @@
 {
   "$schema": "https://mchatai.com/schemas/artifact-types-v1.json",
   "version": "1.1.0",
-  "last_updated": "2026-04-20",
-  "_notes": "v1.1.0 (Phase DF): added optional preferred_reasoning_level per artifact type. HarnessRouter reads it as a soft hint per stage — backends that support reasoning-effort knobs (OpenAI Responses reasoning.effort, Anthropic thinking budgets, Gemini thinking-token budgets) honor it; others ignore. Gearshift per-session overrides always win. Seed values from OpenAI's delightful-frontends field guide: webSPA/miniApp default to medium (the post found low/medium reasoning often produces stronger frontend results); microservice/Unity stay high for correctness-heavy work; autofix stages bump to high across the board because the generator already took a pass.",
+  "last_updated": "2026-04-25",
+  "_notes": "v1.1.0 (Phase DF): added optional preferred_reasoning_level per artifact type. HarnessRouter reads it as a soft hint per stage \u2014 backends that support reasoning-effort knobs (OpenAI Responses reasoning.effort, Anthropic thinking budgets, Gemini thinking-token budgets) honor it; others ignore. Gearshift per-session overrides always win. Seed values from OpenAI's delightful-frontends field guide: webSPA/miniApp default to medium (the post found low/medium reasoning often produces stronger frontend results); microservice/Unity stay high for correctness-heavy work; autofix stages bump to high across the board because the generator already took a pass.",
   "artifact_types": {
     "miniApp": {
       "id": "miniApp",
@@ -29,7 +29,7 @@
       "icon_sf_symbol": "macwindow",
       "fence_marker": "```macosapp",
       "tunnel_id_field": "miniAppID",
-      "steering_hint": "Output the COMPLETE app in a ```macosapp JSON block with id, name, template, and files.",
+      "steering_hint": "CRITICAL \u2014 output a NATIVE macOS Swift app, NOT a web app. The app MUST use:\n  - SwiftUI or AppKit (NSApplication / NSWindow / NSStatusItem)\n  - Swift Package Manager (Package.swift declaring an executableTarget)\n  - File extensions: .swift, .plist (NEVER .html / .js / .css)\nOutput the COMPLETE app in a ```macosapp JSON block with: {\"id\": \"...\", \"name\": \"...\", \"template\": \"swiftuiApp|menuBarApp|documentApp\", \"files\": {\"Package.swift\": \"...\", \"Sources/<Name>App.swift\": \"...\", \"Sources/ContentView.swift\": \"...\"}}. Each file value is a string of Swift source code. If you find yourself writing <html> or <script> tags \u2014 STOP. The user asked for a macOS Swift app, not a mini-app. Multi-file is encouraged: split into Package.swift + Sources/*.swift files.",
       "prereq_env_profile": "app.native.macos",
       "description": "Native Swift macOS app (Package.swift project, compiled locally via mChatAIShell playground).",
       "preferred_reasoning_level": {
@@ -50,7 +50,7 @@
       "tunnel_id_field": "unityGameID",
       "steering_hint": "Output the COMPLETE Unity game in a ```unitygame JSON block with id, name, genre (arcade/platformer/topDown/puzzle/card/shooter), unityVersion, and files (Assets/Scripts/SceneSetup.cs plus gameplay scripts). Include a SceneSetup.cs bootstrapper that creates all scene objects from code (no .unity file). No prefab dependencies.",
       "prereq_env_profile": "app.native.unity",
-      "description": "Unity 6 LTS C# game project. No on-our-side compile — user opens files in Unity Hub.",
+      "description": "Unity 6 LTS C# game project. No on-our-side compile \u2014 user opens files in Unity Hub.",
       "preferred_reasoning_level": {
         "default": "high",
         "by_stage": {
@@ -67,7 +67,7 @@
       "icon_sf_symbol": "server.rack",
       "fence_marker": "```pythonservice",
       "tunnel_id_field": "pythonServiceID",
-      "steering_hint": "Output the COMPLETE Python microservice in a ```pythonservice JSON block with id, name, framework (fastapi/flask/django), pythonVersion, and files. Include a main.py entry point, requirements.txt with pinned versions, and a Dockerfile. No cloud-specific config — the service should run locally with `pip install -r requirements.txt && python main.py`.",
+      "steering_hint": "Output the COMPLETE Python microservice in a ```pythonservice JSON block with id, name, framework (fastapi/flask/django), pythonVersion, and files. Include a main.py entry point, requirements.txt with pinned versions, and a Dockerfile. No cloud-specific config \u2014 the service should run locally with `pip install -r requirements.txt && python main.py`.",
       "prereq_env_profile": "service.python",
       "description": "Python web microservice (FastAPI/Flask/Django). Delivered as files dict; user runs locally or deploys via their own Docker/Cloud Run pipeline.",
       "preferred_reasoning_level": {
@@ -86,7 +86,7 @@
       "icon_sf_symbol": "iphone",
       "fence_marker": "```reactnative",
       "tunnel_id_field": "reactNativeID",
-      "steering_hint": "Output the COMPLETE React Native app in a ```reactnative JSON block with id, name, expoVersion, and files (App.js, package.json, app.json). Self-contained — should run via `npx expo start`.",
+      "steering_hint": "Output the COMPLETE React Native app in a ```reactnative JSON block with id, name, expoVersion, and files (App.js, package.json, app.json). Self-contained \u2014 should run via `npx expo start`.",
       "prereq_env_profile": "app.native.reactnative",
       "description": "React Native / Expo mobile app. Cross-platform iOS + Android.",
       "preferred_reasoning_level": {
@@ -145,7 +145,7 @@
       "tunnel_id_field": "webSpaID",
       "steering_hint": "Output the COMPLETE web SPA in a ```webspa JSON block with id, name, framework (react/vue/svelte), and files (index.html, main.js, package.json). Should build via `npm install && npm run build`.",
       "prereq_env_profile": "app.web",
-      "description": "Web single-page application (React/Vue/Svelte). More structured than a miniApp — multi-file build pipeline.",
+      "description": "Web single-page application (React/Vue/Svelte). More structured than a miniApp \u2014 multi-file build pipeline.",
       "preferred_reasoning_level": {
         "default": "medium",
         "by_stage": {
