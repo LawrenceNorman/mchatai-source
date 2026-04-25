@@ -22,6 +22,45 @@ The user's ORIGINAL request (first message, unmodified — do not paraphrase, do
 
 **If unclear whether your Goal matches a scaffold**: err on "does NOT match" and build fresh.
 
+## 🟦 ARTIFACT TYPE — DECIDE FIRST
+
+Most of this file describes building **HTML mini-apps** (single-file `index.html` web apps). That is the DEFAULT, but **some Goals demand a native macOS Swift app instead**. Before reading anything else, decide which one:
+
+**You are building a NATIVE macOS Swift app (NOT an HTML mini-app) if the Goal contains ANY of these signals:**
+
+- The words "macOS app", "Mac app", "native macOS", "native Mac", "menubar app", "menu bar app", "status bar app", "Dock app"
+- Framework names: SwiftUI, AppKit, SpriteKit, GameplayKit, GameController.framework, AVFoundation, IOKit, NSStatusItem, NSPopover, NSWindow, NSSavePanel, NSOpenPanel
+- File-extension hints: `.swift`, `Package.swift`, "Swift Package", "SwiftPM", "executableTarget"
+- Output-format hints: ".app bundle", "macosapp JSON block"
+
+**If you matched any of those signals → SKIP the HTML scaffold catalog below.** Read instead:
+
+- `/Users/lawrencenorman/mystuff/src/mchatai_platform/mchatai-source/assets/scaffolds/macos-swiftpm-app/CONTEXT.md` — full reference scaffold (Package.swift, Sources/__TargetName__App.swift with the `promoteWindowWhenReady` trick, ContentView, build_app.sh, Info.plist.template). Copy this layout, replace `<TargetName>` / `<slug>` / `<DisplayName>` tokens.
+- `/Users/lawrencenorman/mystuff/src/mchatai_platform/mchatai-source/wisdom/packs/macos-app.json` — wisdom rules (mac-001..mac-006: activation policy, frame size, target/main alignment, build_app.sh, scaffold reuse).
+
+**Output format for native macOS apps** (NOT a `\`\`\`miniapp` block — that's for HTML mini-apps only):
+
+```macosapp
+{
+  "id": "com.mchatai.wizard.<kebab-slug>",
+  "name": "<DisplayName>",
+  "template": "swiftuiApp" | "menuBarApp" | "documentApp",
+  "files": {
+    "Package.swift": "// swift-tools-version: 5.9\nimport PackageDescription\n...",
+    "Sources/<TargetName>App.swift": "import SwiftUI\n@main\nstruct <TargetName>App: App { ... }",
+    "Sources/ContentView.swift": "import SwiftUI\nstruct ContentView: View { ... }"
+  }
+}
+```
+
+Each `files` value is **Swift source code as a string with real `\n` newlines** (the JSON encoder will escape them properly). NEVER include `<html>`, `<script>`, `<style>`, `.html`, `.js`, or `.css` files in a macOSApp build. If you find yourself writing those — STOP, you are off-target.
+
+**Multi-file is encouraged.** Split into `Package.swift` + `Sources/<Name>App.swift` + `Sources/ContentView.swift` + helpers. Single-file Swift apps are NOT idiomatic; the scaffold pattern is.
+
+**The CLI is running inside a Swift Playground sandbox** that builds via `swift build` and packages a `.app` bundle. Your `executableTarget` MUST match the `Sources/<TargetName>/` directory name (mac-005 wisdom rule).
+
+If your Goal does NOT match the native-macOS signals above, continue to the HTML scaffold catalog below.
+
 ## Project Root
 `/Users/lawrencenorman/mystuff/src/mchatai_platform`
 
@@ -92,14 +131,31 @@ The user's ORIGINAL request (first message, unmodified — do not paraphrase, do
     The proxy enforces an allowlist (`mchatai-source/proxy/allowlist.json`) — currently includes weather.gov, open-meteo, OpenStreetMap geocoding, Wikipedia, randomuser.me, dog.ceo, cat API, jokes, currency, Pokémon, spaceflight news, plus a few more. If you need a host that isn't on the list, the proxy returns HTTP 403 with `{ ok: false, howToAdd: "..." }` — surface that to the user; don't fall back to a third-party CORS proxy in production.
 
 ## Output
-Build a single-file `index.html`. Output the COMPLETE file content in a ```miniapp fenced JSON block. The JSON must have `id`, `name`, `manifest`, and `html` fields.
 
-## Fence example
+**If you decided you're building an HTML mini-app** (the default — and the case for almost every Goal): build a single-file `index.html`. Output the COMPLETE file content in a `\`\`\`miniapp` fenced JSON block. The JSON must have `id`, `name`, `manifest`, and `html` fields.
+
+**If you decided you're building a native macOS Swift app** (per the "🟦 ARTIFACT TYPE" section near the top): output a `\`\`\`macosapp` fenced JSON block instead, with `id`, `name`, `template`, and `files`. NEVER use the `miniapp` fence for a macOSApp — the wizard's parser routes on the fence marker, and a macOSApp inside a `miniapp` fence will be installed as an HTML mini-app.
+
+## Fence examples
+
 ```miniapp
 {
   "id": "com.mchatai.wizard.space-invaders",
   "name": "Space Invaders",
   "manifest": "Classic arcade shooter with pixel-art sprites",
   "html": "<!DOCTYPE html>..."
+}
+```
+
+```macosapp
+{
+  "id": "com.mchatai.wizard.menubar-clock",
+  "name": "Menubar Clock",
+  "template": "menuBarApp",
+  "files": {
+    "Package.swift": "// swift-tools-version: 5.9\nimport PackageDescription\n\nlet package = Package(\n    name: \"MenubarClock\",\n    platforms: [.macOS(.v13)],\n    targets: [.executableTarget(name: \"MenubarClock\", path: \"Sources\")]\n)\n",
+    "Sources/MenubarClockApp.swift": "import SwiftUI\nimport AppKit\n\n@main\nstruct MenubarClockApp: App {\n    @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate\n    var body: some Scene {\n        Settings { EmptyView() }\n    }\n}\n",
+    "Sources/ContentView.swift": "import SwiftUI\nstruct ContentView: View { var body: some View { Text(\"...\") } }\n"
+  }
 }
 ```
