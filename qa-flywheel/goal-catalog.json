@@ -1,6 +1,6 @@
 {
   "$schema_version": "1.0.0",
-  "catalog_version": "2026.04.25-k",
+  "catalog_version": "2026.04.25-l",
   "last_updated": "2026-04-25",
   "difficulty_definitions": {
     "L1": "Simple CRUD / single view / static content. <150 LOC target. One wizard turn.",
@@ -2772,6 +2772,23 @@
         "NSWorkspace"
       ],
       "notes": "First ImageIO + drag-IN-multifile entry. Native-mac surface: ImageIO is the canonical macOS resize path (better than NSImage + scale since it preserves color profiles + EXIF). Key=value the LLM must get right: kCGImageDestinationImageMaxPixelSize is the proper resize directive at write time \u2014 LLMs often emit a wrong NSImage.size assignment that doesn't actually resize the bitmap. JPEG quality via kCGImageDestinationLossyCompressionQuality=0.85. Bonus correctness check: NSWorkspace.activateFileViewerSelecting (singular file URL, not the deprecated selectFile-inFileViewerRootedAtPath which takes a string)."
+    },
+    {
+      "id": "macos-l2-creative-drum-pad-avaudio-128",
+      "goal": "macOS drum pad synth. 540x420 window, 4x2 grid of 8 large pad buttons (Kick, Snare, Hat, Clap, Tom, Crash, Cowbell, Rim). Each pad is bound to a keyboard key Q W E R / A S D F. Tapping a pad (or pressing its key) plays a synthesized drum hit using AVAudioEngine + AVAudioSourceNode: each drum is a short procedural waveform (Kick = 60Hz sine with exponential decay, Snare = white noise + 200Hz sine 50ms decay, Hat = high-pass filtered noise 30ms, Clap = noise burst with 4 pulses, etc). Engine starts on app launch, single output mixer. Use AVAudioFormat sampleRate 48000, 2-channel. Visible 'Last hit: <name> at <BPM-relative ms>' caption. Optional bonus row at the bottom: 8-step sequencer grid (toggle squares per pad). Press Space to start/stop a 120 BPM loop that plays whichever cells are toggled.",
+      "artifact_type": "macOSApp",
+      "category": "creative",
+      "difficulty": "L2",
+      "dispatch": "runWizard",
+      "expected_capabilities": [
+        "AVAudioEngine",
+        "AVAudioSourceNode",
+        "AVAudioFormat",
+        "AVAudioPCMBuffer",
+        "DispatchSourceTimer",
+        "KeyboardShortcut"
+      ],
+      "notes": "First AVAudioEngine *synthesis* entry (the soundboard at 124 just plays files). Native-mac surface = AVAudioSourceNode render block — the LLM must write samples directly into AudioBufferList pointers, not via AVAudioPCMBuffer (which is a CONSUMER-side construct). Common trap: forgetting to call engine.prepare() before engine.start(), or starting the engine before connecting nodes. Sequencer optional because the 8 procedural drum voices alone are L2-shape; bonus pushes it to L2-high. The LLM should pick AVAudioSourceNode over AVAudioPlayerNode \u2014 the latter requires pre-baked buffers, defeating the procedural-synth premise."
     }
   ]
 }
