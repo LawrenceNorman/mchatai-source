@@ -1,0 +1,61 @@
+{
+  "_phase_tt_note": "Phase TT.1 — decomposition prompts. When TT.0's failure classifier returns .needsDecomposition, the wizard fires one of these prompts to break the failed goal into ordered, independently-shippable sub-tasks. The Generator then runs each sub-task sequentially via continueWizard, with each step receiving the prior step's HTML as context.",
+
+  "decompose.miniApp": "You are a Decomposition Planner. A previous attempt to generate a mini-app failed because the goal was too large to complete in a single wizard turn. Your job: split this goal into 3-5 ORDERED, INDEPENDENTLY-SHIPPABLE sub-tasks, each implementable in 1-2 turns.\n\nReturn a JSON ARRAY ONLY. No prose. No code fences. No markdown. The very first character of your response must be `[` and the very last must be `]`.\n\nSchema per sub-task:\n  {\n    \"step\": 1,\n    \"title\": \"Short verb-led title, ≤40 chars\",\n    \"goal\": \"Make me a [specific narrow scope]. <2 sentence specification.\",\n    \"buildsOn\": null OR \"step N's HTML\",\n    \"validationHint\": \"What should the user see if this step worked?\"\n  }\n\nHard rules:\n- 3-5 steps total. Fewer is better. NEVER more than 5.\n- step 1 MUST be standalone (buildsOn=null) and PRODUCE A WORKING ARTIFACT — never just scaffolding. The user should be able to play step 1 and see something on-screen, even if it lacks features.\n- Each subsequent step builds on the prior step's HTML (buildsOn=\"step N's HTML\") and adds ONE coherent feature.\n- Order by dependency: foundational mechanics first (movement, render, input), then interactions, then polish (audio, particles, persistence).\n- Each step's goal text MUST start with \"Make me a\" / \"Build a\" / \"Add\" / \"Enhance\" — action verb anchoring so the L1/L2 fast-path detects it.\n- Goals must be CONCRETE. NEVER \"Add polish\" or \"Improve the game\". Each step has a measurable outcome.\n- The step descriptions must reference what the previous step produced (\"the existing player ship\", \"the lanes from step 1\") — the LLM gets continueWizard context, but explicit references reduce hallucination.\n\nFailed goal:\n{{originalGoal}}\n\nWhat the wizard produced before timing out (truncate to ~3KB if longer):\n{{partialArtifactSnippet}}\n\nKey signals from the failed run:\n- Turns used: {{turnsUsed}}\n- Output length: {{outputChars}} chars\n- Console errors: {{consoleErrors}}\n\nOutput the JSON array now.",
+
+  "decompose.macOSApp": "You are a Decomposition Planner. A previous attempt to generate a macOS SwiftUI app failed because the goal was too large for one wizard turn. Split into 3-5 ORDERED, INDEPENDENTLY-COMPILABLE sub-tasks.\n\nReturn a JSON ARRAY ONLY. No prose. No code fences. No markdown. First char `[`, last char `]`.\n\nSchema:\n  {\n    \"step\": 1,\n    \"title\": \"Short verb-led title, ≤40 chars\",\n    \"goal\": \"Action-verb-first goal text starting with Make/Build/Add\",\n    \"buildsOn\": null OR \"step N\",\n    \"validationHint\": \"What should xcodebuild produce + user see if step worked?\",\n    \"compileGate\": \"Sub-task must produce a binary that LAUNCHES — never leave the project broken between steps\"\n  }\n\nHard rules:\n- step 1 MUST produce a launchable .app (even if it's just a window with a label).\n- Each subsequent step adds one feature WITHOUT breaking the build.\n- Order: window/scene → core UI → state → persistence → polish.\n- 3-5 steps max.\n\nFailed goal:\n{{originalGoal}}\n\nPartial code (truncated to 3KB):\n{{partialArtifactSnippet}}\n\nKey signals:\n- Turns used: {{turnsUsed}}\n- Output length: {{outputChars}} chars\n\nOutput the JSON array now.",
+
+  "decompose.webSPA": "You are a Decomposition Planner for a web single-page app generation that timed out. Split into 3-5 ORDERED steps each implementable in 1-2 turns, where each step ships a working preview the user can hit refresh on.\n\nReturn a JSON ARRAY ONLY (no prose, no code fences). First char `[`, last char `]`.\n\nSchema (same as decompose.miniApp).\n\nHard rules:\n- step 1 ships a renderable index.html (even if it's a single hero section).\n- Each next step adds one route/component/feature.\n- Build dependency order: routing → data fetching → UI → state → polish.\n\nFailed goal:\n{{originalGoal}}\n\nPartial code (truncated to 3KB):\n{{partialArtifactSnippet}}\n\nKey signals:\n- Turns used: {{turnsUsed}}\n- Output length: {{outputChars}} chars\n\nOutput the JSON array now.",
+
+  "_routing": {
+    "byArtifactType": {
+      "miniApp": "decompose.miniApp",
+      "webSPA": "decompose.webSPA",
+      "macOSApp": "decompose.macOSApp",
+      "reactNativeApp": "decompose.miniApp",
+      "electronApp": "decompose.miniApp"
+    },
+    "_note": "When TT.0 returns .needsDecomposition, look up the prompt template by the failed session's artifactType. If no entry matches (pipelines, agents, skills, generic), TT.2 falls back to user-message decomposition guidance instead of automated chunking — those don't have a clear 'partial artifact' to extend."
+  },
+
+  "_examples_for_validation": {
+    "_note": "Example LLM outputs to use as fixtures when smoke-testing TT.1 manually. NOT consumed by code.",
+    "templeRunDecomposition": [
+      {
+        "step": 1,
+        "title": "Scrolling corridor",
+        "goal": "Make me a mobile endless runner with a 3-lane scrolling corridor. Just the floor + 3 lane markers + a stationary character in the center lane. No obstacles, no input — just continuous downward scrolling so it FEELS like running. Portrait full-bleed, mobile-frontend wisdom rules.",
+        "buildsOn": null,
+        "validationHint": "User sees a 3-lane corridor scrolling toward the camera with their character standing still."
+      },
+      {
+        "step": 2,
+        "title": "Lane-change swipes",
+        "goal": "Add swipe-left and swipe-right gestures to the existing 3-lane corridor. Pointerdown→pointerup horizontal vector triggers a smooth lane transition (200ms). Character can move between left/center/right lanes. Snap to lanes — no in-between positions.",
+        "buildsOn": "step 1's HTML",
+        "validationHint": "Swiping left or right slides the character cleanly between the 3 lanes."
+      },
+      {
+        "step": 3,
+        "title": "Jump and slide",
+        "goal": "Add swipe-up = jump and swipe-down = slide gestures to the existing scroller. Jump is a 600ms vertical hop (starts from current lane). Slide is a 500ms duck (character sprite shrinks vertically). Both are exclusive to lane changes during the gesture.",
+        "buildsOn": "step 2's HTML",
+        "validationHint": "Swipe up = vertical hop. Swipe down = brief slide. Lane changes still work."
+      },
+      {
+        "step": 4,
+        "title": "Obstacles + collision",
+        "goal": "Add randomly-spawned low obstacles (jump to clear) and high obstacles (slide to clear) that fly down the corridor toward the character. Collision = game over. Show a 'Game Over' overlay with retry button.",
+        "buildsOn": "step 3's HTML",
+        "validationHint": "Obstacles appear, you can clear them with the right gesture, hitting one ends the run."
+      },
+      {
+        "step": 5,
+        "title": "Coins + scoring + persistence",
+        "goal": "Add coins that the player collects by running through them (no gesture needed). Score increments per coin. Best-score persists to localStorage. Show running score top-right + best score on game-over screen.",
+        "buildsOn": "step 4's HTML",
+        "validationHint": "Coins increment a visible score. Best-score survives a refresh. Hitting an obstacle shows the best score."
+      }
+    ]
+  }
+}

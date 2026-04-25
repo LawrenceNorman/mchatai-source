@@ -1,0 +1,59 @@
+{
+  "$schema_version": "1.0.0",
+  "_phase_tt_note": "Phase TT.0 failure-classifier rules. Hot-reloadable. The Swift binary at WizardFailureClassifier.swift knows the SHAPE of categories (.needsDecomposition / .realBug / .promptMiss / .qualityFail / .ok); this file holds the CONTENT (thresholds + pattern strings). Updating these rules is a content PR — no rebuild required, picked up on next refreshMchataisourceCache.",
+
+  "version": 1,
+  "last_updated": "2026-04-25",
+
+  "thresholds": {
+    "minimalOutputBytes": 2000,
+    "substantialOutputBytes": 10000,
+    "_note_minimal": "Below this, output is judged 'no real work happened'. Tuned from the 32-second tap-target failure (≈600 bytes of conversational filler).",
+    "_note_substantial": "Above this, output suggests the wizard genuinely produced 60-80% of an artifact. Tuned from the 600s timeouts that emitted 30-50KB of partial code before giving up."
+  },
+
+  "promptMissPatterns": {
+    "_note": "Output prefixes that indicate the wizard didn't recognize this as a build request. Each is a substring match against the first ~500 chars of output. Add new patterns when you observe a new way the wizard's planner can derail into chat-mode.",
+    "patterns": [
+      "Lawrence, it sounds like",
+      "I found Mini App",
+      "Before I plan this — a couple quick design",
+      "What kind of thing are you looking to do?",
+      "I found ",
+      "Sure, let's plan",
+      "I'd be happy to help"
+    ]
+  },
+
+  "realBugPatterns": {
+    "_note": "Output prefixes that indicate wizard infrastructure failure (model error, parser failure, tunnel wedge). Decomposition won't help — these need human or agent attention.",
+    "patterns": [
+      "tunnel_send_capture timeout",
+      "Invalid request JSON",
+      "model unavailable",
+      "rate_limit_error",
+      "isBusy stuck",
+      "401 Unauthorized",
+      "403 Forbidden",
+      "500 Internal Server Error",
+      "503 Service Unavailable",
+      "Connection refused",
+      "DNS lookup failed",
+      "PARSER_ERROR:",
+      "Invalid JSON in artifact block"
+    ]
+  },
+
+  "_decision_tree_reference": [
+    "1. status=ok → .ok",
+    "2. realBug pattern match → .realBug",
+    "3. promptMiss pattern match → .promptMiss",
+    "4. timeout AND turns≥2 AND output≥substantialOutputBytes → .needsDecomposition",
+    "5. timeout AND output<minimalOutputBytes → .realBug",
+    "6. timeout AND turns≥1 AND output≥minimalOutputBytes → .needsDecomposition",
+    "7. autoFixCycles≥1 AND consoleErrors>0 → .qualityFail",
+    "8. phase=failed AND artifactInstalled → .qualityFail",
+    "9. error AND output<minimalOutputBytes → .promptMiss",
+    "10. fallthrough → .realBug"
+  ]
+}
