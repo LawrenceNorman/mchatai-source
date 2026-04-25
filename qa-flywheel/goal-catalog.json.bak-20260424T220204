@@ -1,0 +1,1832 @@
+{
+  "$schema_version": "1.0.0",
+  "catalog_version": "2026.04.25-c",
+  "last_updated": "2026-04-25",
+  "difficulty_definitions": {
+    "L1": "Simple CRUD / single view / static content. <150 LOC target. One wizard turn.",
+    "L2": "Non-trivial glue: state mgmt, 2+ screens, one external API or framework primitive. 1-2 turns.",
+    "L3": "Framework-heavy or stateful: shaders, audio graphs, ECS, multi-agent, persistent storage, network sync, sensors. 3-4 turns."
+  },
+  "coverage_status": {
+    "miniApp": "v1 \u2014 84/84 (+8 mobile-first added 2026-04-25-b: PvZ, Jetpack Joyride, Candy Crush, Flappy, Slot Machine, Idle Clicker, mobile tip calc, mobile pomodoro). 6 meaty arcade shooters from 2026-04-24-e. 2 entries tagged flaky=true after 2026-04-24 T1703 batch. Mobile slice ships alongside new wisdom pack `mobile-frontend.json` (12 rules covering touch ergonomics, viewport, no-keyboard, gestures, thumb-reach, state persistence). Arcade territory was 0 shooters before; now L2=1 + L3=5 for the meaty side. Still steers AWAY from saturated ground (pomodoro/flashcards/snake/2048/wordle/blackjack/chess/roguelike). Aims at novel territory: data viz, DSP, creative coding, dev tools, science sims, accessibility, privacy, ling, music theory, procgen, classic-arcade-shooters, **mobile-first touch games**. [2026-04-25-c: +20 mobile entries (090-109): 5\u00d7L1 + 10\u00d7L2 + 5\u00d7L3 spanning sensors (DeviceOrientation/Motion), audio-pad sequencer, swipe games (DoodleJump/CrossyRoad/Frogger/TempleRun/Bejeweled), creative (FingerPaint), and 4 mobile utilities. Total miniApp entries now 104.]",
+    "webSPA": "pending",
+    "unityGame": "pending",
+    "pythonMicroservice": "pending",
+    "macOSApp": "v1 \u2014 5/5 L1 seed (2026-04-24). Menubar clock, quick-notes, color-contrast, ASCII-art, QR menubar. All L1, all exercise native SwiftUI/AppKit/CoreImage patterns. L2/L3 pending. Requested by macos-qa agent to unblock their publish-pipeline rotation.",
+    "electronApp": "pending",
+    "androidApp": "pending",
+    "reactNativeApp": "pending",
+    "generic": "pending",
+    "pipeline": "pending",
+    "agent": "pending",
+    "endproduct": "pending"
+  },
+  "avoid_list": {
+    "note": "These categories already have 3+ installed/shipped versions each. Only include a new entry in these areas if it pushes into genuinely new mechanics.",
+    "saturated": [
+      "pomodoro / countdown timers",
+      "flashcards (plain and spaced)",
+      "todo lists",
+      "snake / 2048 / memory-match / hangman / pong",
+      "blackjack / poker / hearts / solitaire / cribbage",
+      "wordle / boggle / scrabble / word-grid variants",
+      "chess / checkers / backgammon / go",
+      "roguelike dungeon crawlers",
+      "minesweeper / tetris / breakout",
+      "habit tracker / weather / BMI / unit converter",
+      "password strength / typing test / calculator",
+      "trivia / translator / writing coach"
+    ]
+  },
+  "entries": [
+    {
+      "id": "mini-l1-productivity-pomodoro-kitchen-001",
+      "goal": "Kitchen timer mini-app with multiple concurrent timers. Add any number of named timers (e.g. 'pasta 8min', 'eggs 6min'), all tick down simultaneously on the same screen, each plays a distinct chime when done.",
+      "artifact_type": "miniApp",
+      "category": "productivity",
+      "difficulty": "L1",
+      "dispatch": "runWizard",
+      "expected_capabilities": [
+        "setInterval",
+        "AudioContext"
+      ],
+      "notes": "Novel-mechanic cousin of pomodoro \u2014 many-concurrent-timers is the new element."
+    },
+    {
+      "id": "mini-l1-productivity-decision-maker-002",
+      "goal": "Decision maker / coin flip on steroids. Paste options, weight them (1-10), spin a wheel to pick. Keep last 5 decisions with timestamps.",
+      "artifact_type": "miniApp",
+      "category": "productivity",
+      "difficulty": "L1",
+      "dispatch": "runWizard",
+      "expected_capabilities": [
+        "canvas",
+        "Math.random"
+      ]
+    },
+    {
+      "id": "mini-l1-productivity-timezone-meeting-003",
+      "goal": "Meeting time finder across timezones. Add attendee cities, show a visual time-band from 6am-10pm per city, highlight the overlap where everyone is in working hours.",
+      "artifact_type": "miniApp",
+      "category": "productivity",
+      "difficulty": "L1",
+      "dispatch": "runWizard",
+      "expected_capabilities": [
+        "Intl.DateTimeFormat"
+      ]
+    },
+    {
+      "id": "mini-l2-productivity-weekly-review-004",
+      "goal": "Guided weekly review. Structured prompts (3 wins / 3 lessons / 3 next-week commits / energy 1-10 / focus 1-10), save each review, browse history with a sparkline of energy+focus over weeks, export markdown bundle.",
+      "artifact_type": "miniApp",
+      "category": "productivity",
+      "difficulty": "L2",
+      "dispatch": "runWizard",
+      "expected_capabilities": [
+        "localStorage",
+        "Blob",
+        "canvas"
+      ]
+    },
+    {
+      "id": "mini-l2-productivity-matrix-sort-005",
+      "goal": "Eisenhower matrix task sorter. 2x2 grid (urgent/not-urgent x important/not-important), drag-and-drop tasks between quadrants, color-code by quadrant, quick-add input, persistent.",
+      "artifact_type": "miniApp",
+      "category": "productivity",
+      "difficulty": "L2",
+      "dispatch": "runWizard",
+      "expected_capabilities": [
+        "draggable",
+        "localStorage"
+      ]
+    },
+    {
+      "id": "mini-l2-productivity-kanban-006",
+      "goal": "Kanban with WIP limits. 3 columns (backlog / doing / done), drag cards between, enforce a 'doing' WIP limit (editable per column), red-outline when over limit, cycle-time stat (median days card spent in 'doing').",
+      "artifact_type": "miniApp",
+      "category": "productivity",
+      "difficulty": "L2",
+      "dispatch": "runWizard",
+      "expected_capabilities": [
+        "draggable",
+        "localStorage"
+      ]
+    },
+    {
+      "id": "mini-l3-productivity-mindmap-007",
+      "goal": "Mind-map editor with radial layout. Central node, click to spawn child nodes, drag to reposition, edit labels inline, connect distant nodes with curves, zoom and pan with wheel+drag. Export as PNG and as a nested JSON.",
+      "artifact_type": "miniApp",
+      "category": "productivity",
+      "difficulty": "L3",
+      "dispatch": "runWizard",
+      "max_turns": 3,
+      "timeout_seconds": 420,
+      "expected_capabilities": [
+        "canvas",
+        "draggable",
+        "wheel"
+      ]
+    },
+    {
+      "id": "mini-l3-productivity-outline-writer-008",
+      "goal": "Outliner like Workflowy. Infinite-depth bulleted list, Tab/Shift-Tab to indent, Enter for new item, drag to reorder, collapse/expand with click, zoom into a node (its children become the root), breadcrumb trail, full-text search.",
+      "artifact_type": "miniApp",
+      "category": "productivity",
+      "difficulty": "L3",
+      "dispatch": "runWizard",
+      "max_turns": 3,
+      "timeout_seconds": 420,
+      "expected_capabilities": [
+        "contenteditable",
+        "keydown",
+        "localStorage"
+      ]
+    },
+    {
+      "id": "mini-l1-education-morse-009",
+      "goal": "Morse code translator + trainer. Type text, see/hear morse (WebAudio beeps at adjustable WPM), decode mode (type dots/dashes, see text). Training mode: hear letter, type it.",
+      "artifact_type": "miniApp",
+      "category": "education",
+      "difficulty": "L1",
+      "dispatch": "runWizard",
+      "expected_capabilities": [
+        "AudioContext",
+        "OscillatorNode"
+      ]
+    },
+    {
+      "id": "mini-l1-education-phonetic-alphabet-010",
+      "goal": "NATO phonetic alphabet trainer. Random letter shown, user types the codeword (Alpha, Bravo, Charlie...). Track accuracy over 20 rounds. Also a reverse mode.",
+      "artifact_type": "miniApp",
+      "category": "education",
+      "difficulty": "L1",
+      "dispatch": "runWizard",
+      "expected_capabilities": [
+        "Math.random"
+      ]
+    },
+    {
+      "id": "mini-l2-education-periodic-explorer-011",
+      "goal": "Periodic table of elements. 18-column layout, click element to open a rich card (atomic number/mass/config, group/period, 3 interesting facts). Filter by category (alkali metal, halogen, noble gas...), search by name or symbol, color-code by category.",
+      "artifact_type": "miniApp",
+      "category": "education",
+      "difficulty": "L2",
+      "dispatch": "runWizard",
+      "expected_capabilities": [
+        "grid",
+        "input"
+      ]
+    },
+    {
+      "id": "mini-l2-education-music-ear-train-012",
+      "goal": "Ear training for intervals. Play two notes (WebAudio), user picks interval name from 8 options (minor 2nd through octave), streak counter, difficulty that introduces more intervals as you level up.",
+      "artifact_type": "miniApp",
+      "category": "education",
+      "difficulty": "L2",
+      "dispatch": "runWizard",
+      "expected_capabilities": [
+        "AudioContext",
+        "OscillatorNode"
+      ]
+    },
+    {
+      "id": "mini-l2-education-geo-quiz-013",
+      "goal": "Country/capital quiz with a map. Show an SVG world map (inline, simplified), highlight a random country, user picks capital from 4 options; flag-emoji hint on wrong answers.",
+      "artifact_type": "miniApp",
+      "category": "education",
+      "difficulty": "L2",
+      "dispatch": "runWizard",
+      "expected_capabilities": [
+        "svg",
+        "click"
+      ]
+    },
+    {
+      "id": "mini-l2-education-finger-spell-014",
+      "goal": "ASL fingerspelling trainer. Show letter A-Z as an SVG hand diagram, user types the letter on keyboard, track speed and accuracy, quick-drill mode (20 random letters).",
+      "artifact_type": "miniApp",
+      "category": "education",
+      "difficulty": "L2",
+      "dispatch": "runWizard",
+      "expected_capabilities": [
+        "svg",
+        "keydown"
+      ]
+    },
+    {
+      "id": "mini-l3-education-circuit-simulator-015",
+      "goal": "Simple DC circuit simulator. Drag-and-drop components (battery, resistor, LED, switch) onto a grid, connect with wires, run to compute currents with Kirchhoff's laws, light the LED if current > threshold. Reset and clear.",
+      "artifact_type": "miniApp",
+      "category": "education",
+      "difficulty": "L3",
+      "dispatch": "runWizard",
+      "max_turns": 4,
+      "timeout_seconds": 420,
+      "expected_capabilities": [
+        "canvas",
+        "draggable"
+      ]
+    },
+    {
+      "id": "mini-l3-education-math-plotter-016",
+      "goal": "Interactive function plotter. Input f(x) with sin/cos/log/exp, plot on canvas with axes and grid, drag to pan, wheel to zoom, plot up to 3 functions in distinct colors, show intersection markers.",
+      "artifact_type": "miniApp",
+      "category": "education",
+      "difficulty": "L3",
+      "dispatch": "runWizard",
+      "max_turns": 3,
+      "timeout_seconds": 360,
+      "expected_capabilities": [
+        "canvas",
+        "Math.sin",
+        "wheel"
+      ]
+    },
+    {
+      "id": "mini-l3-education-genetics-punnett-017",
+      "goal": "Punnett square + inheritance simulator. Input two parent genotypes (up to 3 gene loci, e.g. AaBbCc), generate the full Punnett grid, show phenotype ratios, run a Monte-Carlo of 1000 offspring with a histogram.",
+      "artifact_type": "miniApp",
+      "category": "education",
+      "difficulty": "L3",
+      "dispatch": "runWizard",
+      "max_turns": 3,
+      "timeout_seconds": 360,
+      "expected_capabilities": [
+        "grid",
+        "Math.random"
+      ]
+    },
+    {
+      "id": "mini-l1-games-lights-out-018",
+      "goal": "Lights Out puzzle. 5x5 grid of buttons, clicking flips the button and its orthogonal neighbors, goal is all off. Move counter, randomize with a solvable preset.",
+      "artifact_type": "miniApp",
+      "category": "games",
+      "difficulty": "L1",
+      "dispatch": "runWizard",
+      "expected_capabilities": [
+        "grid",
+        "click"
+      ]
+    },
+    {
+      "id": "mini-l1-games-simon-019",
+      "goal": "Simon says memory game. 4 colored/toned quadrants, sequence grows each round, user repeats, fail = game over, best round saved.",
+      "artifact_type": "miniApp",
+      "category": "games",
+      "difficulty": "L1",
+      "dispatch": "runWizard",
+      "expected_capabilities": [
+        "AudioContext",
+        "localStorage"
+      ]
+    },
+    {
+      "id": "mini-l2-games-sokoban-020",
+      "goal": "Sokoban puzzle. 5 built-in levels, arrow keys move the pusher, push crates onto target tiles, can't pull, undo button, level complete when all crates on targets, move counter.",
+      "artifact_type": "miniApp",
+      "category": "games",
+      "difficulty": "L2",
+      "dispatch": "runWizard",
+      "expected_capabilities": [
+        "canvas",
+        "keydown"
+      ]
+    },
+    {
+      "id": "mini-l2-games-bubble-shooter-021",
+      "goal": "Bubble-shooter puzzle. Grid of colored bubbles at top, shooter at bottom aims by mouse, matching 3+ same-color pops and drops disconnected clusters. Score, next-bubble preview, game-over on reach-bottom.",
+      "artifact_type": "miniApp",
+      "category": "games",
+      "difficulty": "L2",
+      "dispatch": "runWizard",
+      "expected_capabilities": [
+        "canvas",
+        "requestAnimationFrame"
+      ]
+    },
+    {
+      "id": "mini-l2-games-tangram-022",
+      "goal": "Tangram puzzle. 7 classic pieces drawn as polygons, drag to move, click to rotate in 15\u00b0 increments, target silhouette on the right. Snap-to-fit tolerance, 5 built-in silhouettes.",
+      "artifact_type": "miniApp",
+      "category": "games",
+      "difficulty": "L2",
+      "dispatch": "runWizard",
+      "expected_capabilities": [
+        "svg",
+        "draggable"
+      ]
+    },
+    {
+      "id": "mini-l3-games-physics-bridge-023",
+      "goal": "Bridge-building physics puzzle. Draw beams between fixed anchor points, click 'run' to drop a weight, beams stress-colored (green/yellow/red) and break under too much force. 3 levels, budget constraint on total beam length.",
+      "artifact_type": "miniApp",
+      "category": "games",
+      "difficulty": "L3",
+      "dispatch": "runWizard",
+      "max_turns": 4,
+      "timeout_seconds": 420,
+      "expected_capabilities": [
+        "canvas",
+        "requestAnimationFrame"
+      ]
+    },
+    {
+      "id": "mini-l3-games-tower-defense-024",
+      "goal": "Tower defense. Fixed path, 3 waves of 10 enemies, 3 tower types (cannon/archer/ice-slow) placeable on grid, money-per-kill, upgrade cost scales per level, base has 20HP. Keep everything in one HTML file.",
+      "artifact_type": "miniApp",
+      "category": "games",
+      "difficulty": "L3",
+      "dispatch": "runWizard",
+      "max_turns": 4,
+      "timeout_seconds": 420,
+      "expected_capabilities": [
+        "canvas",
+        "requestAnimationFrame"
+      ]
+    },
+    {
+      "id": "mini-l3-games-auto-battler-025",
+      "goal": "Auto-battler mini-game. Between rounds, buy units from a 5-slot shop (cost scales by tier), drag to your 4-slot lineup, combine three-of-a-kind into tier-up. Battle phase auto-resolves left-vs-right with simple HP/ATK, 8 rounds.",
+      "artifact_type": "miniApp",
+      "category": "games",
+      "difficulty": "L3",
+      "dispatch": "runWizard",
+      "max_turns": 4,
+      "timeout_seconds": 420,
+      "expected_capabilities": [
+        "draggable",
+        "localStorage"
+      ]
+    },
+    {
+      "id": "mini-l3-games-falling-sand-026",
+      "goal": "Falling-sand cellular automaton. Canvas with pixel-size grid, palette of materials (sand, water, stone, fire, plant, lava, oil), click-drag to paint, each frame runs the physics (sand falls, water flows, fire spreads, plant grows on dirt+water, etc.).",
+      "artifact_type": "miniApp",
+      "category": "games",
+      "difficulty": "L3",
+      "dispatch": "runWizard",
+      "max_turns": 3,
+      "timeout_seconds": 420,
+      "expected_capabilities": [
+        "canvas",
+        "requestAnimationFrame"
+      ]
+    },
+    {
+      "id": "mini-l1-creative-color-palette-027",
+      "goal": "Color palette generator. 5-swatch harmonious palettes (complementary / analogous / triadic toggle), click to copy hex, lock swatches that survive regeneration, export as CSS variables.",
+      "artifact_type": "miniApp",
+      "category": "creative",
+      "difficulty": "L1",
+      "dispatch": "runWizard",
+      "expected_capabilities": [
+        "clipboard",
+        "hsl"
+      ]
+    },
+    {
+      "id": "mini-l1-creative-haiku-counter-028",
+      "goal": "Haiku writer with live 5-7-5 syllable counter per line. Save haiku gallery to localStorage, export as a nicely-laid-out PNG card.",
+      "artifact_type": "miniApp",
+      "category": "creative",
+      "difficulty": "L1",
+      "dispatch": "runWizard",
+      "expected_capabilities": [
+        "input",
+        "localStorage",
+        "canvas"
+      ]
+    },
+    {
+      "id": "mini-l2-creative-pixel-editor-029",
+      "goal": "Pixel-art editor. 32x32 canvas, pen/eraser/bucket-fill/eyedropper tools, 16-color palette, undo stack (20 steps), import-from-image (nearest-neighbor resize), export PNG at 1x and 8x scale.",
+      "artifact_type": "miniApp",
+      "category": "creative",
+      "difficulty": "L2",
+      "dispatch": "runWizard",
+      "expected_capabilities": [
+        "canvas",
+        "toDataURL",
+        "File"
+      ]
+    },
+    {
+      "id": "mini-l2-creative-drum-machine-030",
+      "goal": "16-step drum machine. 4 tracks (kick/snare/hi-hat/clap) synthesized with WebAudio (no samples), tap steps to toggle, play/pause, tempo slider 60-200 BPM, swing slider. Save/load patterns to localStorage.",
+      "artifact_type": "miniApp",
+      "category": "creative",
+      "difficulty": "L2",
+      "dispatch": "runWizard",
+      "expected_capabilities": [
+        "AudioContext",
+        "localStorage"
+      ]
+    },
+    {
+      "id": "mini-l2-creative-spirograph-031",
+      "goal": "Spirograph drawing. Adjustable outer-radius / inner-radius / pen-offset sliders, rainbow-hue option, pen-width slider, export PNG, save gallery of drawings.",
+      "artifact_type": "miniApp",
+      "category": "creative",
+      "difficulty": "L2",
+      "dispatch": "runWizard",
+      "expected_capabilities": [
+        "canvas",
+        "toDataURL"
+      ]
+    },
+    {
+      "id": "mini-l2-creative-markdown-slides-032",
+      "goal": "Markdown-to-slides. Split the markdown on '---' lines to make slides, arrow keys to navigate, 'F' for fullscreen, code blocks syntax-highlighted, slide N of M indicator, progress bar.",
+      "artifact_type": "miniApp",
+      "category": "creative",
+      "difficulty": "L2",
+      "dispatch": "runWizard",
+      "expected_capabilities": [
+        "keydown",
+        "fullscreen"
+      ]
+    },
+    {
+      "id": "mini-l3-creative-synth-polyphonic-033",
+      "goal": "Polyphonic WebAudio synth. Click piano keys or A-L keyboard, 8-voice oscillator bank with saw/square/sine toggle, ADSR envelope sliders, low-pass filter with resonance, stereo delay, visual waveform scope.",
+      "artifact_type": "miniApp",
+      "category": "creative",
+      "difficulty": "L3",
+      "dispatch": "runWizard",
+      "max_turns": 3,
+      "timeout_seconds": 420,
+      "expected_capabilities": [
+        "AudioContext",
+        "OscillatorNode",
+        "GainNode"
+      ]
+    },
+    {
+      "id": "mini-l3-creative-fluid-bg-034",
+      "goal": "Interactive fluid-dynamics background. Stable-fluids or Navier-Stokes lite on a grid, mouse push/pull, color field advects, 60fps at 512x512. Pure WebGL fragment shader preferred.",
+      "artifact_type": "miniApp",
+      "category": "creative",
+      "difficulty": "L3",
+      "dispatch": "runWizard",
+      "framework_hint": "webgl",
+      "max_turns": 3,
+      "timeout_seconds": 420,
+      "expected_capabilities": [
+        "WebGL",
+        "requestAnimationFrame",
+        "shader"
+      ]
+    },
+    {
+      "id": "mini-l3-creative-3d-scene-035",
+      "goal": "Three.js mini-scene (loaded from CDN). Rotating model on a plane, orbit-controls camera, 3 lights (ambient + directional + point), shadow casting, material switcher (basic / lambert / phong / normal), background skybox.",
+      "artifact_type": "miniApp",
+      "category": "creative",
+      "difficulty": "L3",
+      "dispatch": "runWizard",
+      "framework_hint": "three.js",
+      "max_turns": 3,
+      "timeout_seconds": 420,
+      "expected_capabilities": [
+        "THREE",
+        "WebGL",
+        "OrbitControls"
+      ]
+    },
+    {
+      "id": "mini-l3-creative-generative-poster-036",
+      "goal": "Generative poster tool. Pick a style (bauhaus / risograph / brutalist / wavy), seed number, generates an abstract poster with title text. Export high-res PNG (2400x3200). Regenerate button reseeds.",
+      "artifact_type": "miniApp",
+      "category": "creative",
+      "difficulty": "L3",
+      "dispatch": "runWizard",
+      "max_turns": 3,
+      "timeout_seconds": 360,
+      "expected_capabilities": [
+        "canvas",
+        "toDataURL"
+      ]
+    },
+    {
+      "id": "mini-l1-utility-qr-gen-037",
+      "goal": "QR-code generator. Type text or URL, see the QR live, adjustable error-correction level, download PNG. Pure client-side, no external service.",
+      "artifact_type": "miniApp",
+      "category": "utility",
+      "difficulty": "L1",
+      "dispatch": "runWizard",
+      "expected_capabilities": [
+        "canvas",
+        "toDataURL"
+      ],
+      "flaky": true,
+      "flaky_history": [
+        {
+          "run": "2026-04-24T1703",
+          "tier": "L1",
+          "outcome": "timeout@900s",
+          "concurrency": 2
+        }
+      ],
+      "notes": "L1 fast-path timed out 2026-04-24. Hypothesis: single-API-call budget isn't enough to inline a working QR encoder \u2014 Reed-Solomon + bitmatrix is too much for one shot. Candidate rework: split into (a) CDN-loaded qrcode.js variant (cheap) and (b) pure-JS variant (L2 or L3). Until reworked, rotation should deprioritize this entry."
+    },
+    {
+      "id": "mini-l1-utility-base-converter-038",
+      "goal": "Numeric base converter. Input in any of bin/oct/dec/hex, the other three update live. Bitwise operations (AND/OR/XOR/NOT/shift) row below with two inputs and a result.",
+      "artifact_type": "miniApp",
+      "category": "utility",
+      "difficulty": "L1",
+      "dispatch": "runWizard",
+      "expected_capabilities": [
+        "parseInt",
+        "Number.prototype.toString"
+      ]
+    },
+    {
+      "id": "mini-l1-utility-dice-roller-039",
+      "goal": "Tabletop dice roller. Roll notation input (e.g. '3d6+2', '1d20', '4d8-1'), parses and rolls, shows individual dice + total, history of last 20 rolls.",
+      "artifact_type": "miniApp",
+      "category": "utility",
+      "difficulty": "L1",
+      "dispatch": "runWizard",
+      "expected_capabilities": [
+        "Math.random",
+        "RegExp"
+      ]
+    },
+    {
+      "id": "mini-l2-utility-regex-tester-040",
+      "goal": "Regex playground. Pattern + flag toggles (g/i/m/s/u), test textarea with live-highlighted matches, capture-group table per match, common-pattern quick-pick (email/url/ipv4/uuid).",
+      "artifact_type": "miniApp",
+      "category": "utility",
+      "difficulty": "L2",
+      "dispatch": "runWizard",
+      "expected_capabilities": [
+        "RegExp",
+        "innerHTML"
+      ]
+    },
+    {
+      "id": "mini-l2-utility-json-diff-041",
+      "goal": "Side-by-side JSON diff viewer. Paste two JSON blobs, structurally diff (not textual), highlight added keys green / removed red / changed yellow / unchanged grey. Copy-the-diff-as-path-list button.",
+      "artifact_type": "miniApp",
+      "category": "utility",
+      "difficulty": "L2",
+      "dispatch": "runWizard",
+      "expected_capabilities": [
+        "JSON.parse",
+        "innerHTML"
+      ]
+    },
+    {
+      "id": "mini-l2-utility-color-contrast-042",
+      "goal": "WCAG contrast-ratio checker. Two color inputs (foreground + background with color pickers), live ratio number, AA/AAA pass/fail badges for normal and large text, color-blindness simulation preview (protanopia / deuteranopia / tritanopia).",
+      "artifact_type": "miniApp",
+      "category": "utility",
+      "difficulty": "L2",
+      "dispatch": "runWizard",
+      "expected_capabilities": [
+        "input",
+        "canvas"
+      ]
+    },
+    {
+      "id": "mini-l2-utility-cron-visualizer-043",
+      "goal": "Cron expression visualizer. Input a cron string, plain-English explanation, next-10-fires list as timestamps, calendar heatmap showing firing density over the next 30 days.",
+      "artifact_type": "miniApp",
+      "category": "utility",
+      "difficulty": "L2",
+      "dispatch": "runWizard",
+      "expected_capabilities": [
+        "Date",
+        "grid"
+      ],
+      "flaky": true,
+      "flaky_history": [
+        {
+          "run": "2026-04-24T1703",
+          "tier": "L2",
+          "outcome": "timeout@1500s",
+          "concurrency": 2,
+          "note": "exceeded 420s tier budget; harness kept retrying until hard cap"
+        }
+      ],
+      "notes": "L2 CLI path overran budget. Hypothesis: cron-parsing ambiguity triggered autofix-loop. Candidate rework: narrow scope (drop calendar-heatmap \u2014 that's the complexity amplifier), OR promote to L3 with higher budget + deep planning. Evaluate both after next-rotation dry-run."
+    },
+    {
+      "id": "mini-l3-utility-sql-sandbox-044",
+      "goal": "SQLite playground. Load sql.js from CDN, textarea for SQL, run button, results in a sortable table. Schema explorer panel (tables \u2192 columns \u2192 types). Preloaded with 3 sample tables (employees, orders, products). Save/load queries to localStorage.",
+      "artifact_type": "miniApp",
+      "category": "utility",
+      "difficulty": "L3",
+      "dispatch": "runWizard",
+      "framework_hint": "sql.js",
+      "max_turns": 3,
+      "timeout_seconds": 360,
+      "expected_capabilities": [
+        "sql",
+        "table",
+        "SELECT"
+      ]
+    },
+    {
+      "id": "mini-l3-utility-markdown-editor-045",
+      "goal": "Markdown IDE mini-app. Multi-document sidebar, live preview with auto-generated table of contents, slash-commands (/todo, /code, /quote, /hr), auto-save per doc, export ZIP of all docs as .md files.",
+      "artifact_type": "miniApp",
+      "category": "utility",
+      "difficulty": "L3",
+      "dispatch": "runWizard",
+      "max_turns": 4,
+      "timeout_seconds": 420,
+      "expected_capabilities": [
+        "localStorage",
+        "Blob",
+        "innerHTML"
+      ]
+    },
+    {
+      "id": "mini-l3-utility-api-explorer-046",
+      "goal": "REST API explorer. Input URL + method + headers + body, send through mchatai.com proxy, show status / headers / body (pretty-JSON or raw) / elapsed ms. History of last 20 requests, name-and-save-as-snippet, cURL-copy.",
+      "artifact_type": "miniApp",
+      "category": "utility",
+      "difficulty": "L3",
+      "dispatch": "runWizard",
+      "max_turns": 3,
+      "timeout_seconds": 360,
+      "expected_capabilities": [
+        "fetch",
+        "localStorage"
+      ],
+      "expected_wisdom_packs": [
+        "universal"
+      ],
+      "notes": "Exercises u-020 proxy-fetch rule."
+    },
+    {
+      "id": "mini-l1-finance-tip-split-047",
+      "goal": "Fair-tip splitter. Each diner enters what they ordered (price), shared items can be split evenly or by weight. Configurable tip and tax, each person sees their personal total including fair share of shared items + prorated tip/tax.",
+      "artifact_type": "miniApp",
+      "category": "finance",
+      "difficulty": "L1",
+      "dispatch": "runWizard",
+      "expected_capabilities": [
+        "input",
+        "Number"
+      ],
+      "notes": "Twist on tip calc \u2014 per-person share allocation is novel."
+    },
+    {
+      "id": "mini-l1-finance-loan-amort-048",
+      "goal": "Loan amortization. Principal / APR / term-years inputs, show monthly payment, total interest, and a full amortization table (month / principal / interest / balance). 'Extra payment per month' slider that shows interest saved.",
+      "artifact_type": "miniApp",
+      "category": "finance",
+      "difficulty": "L1",
+      "dispatch": "runWizard",
+      "expected_capabilities": [
+        "Math.pow",
+        "toFixed"
+      ]
+    },
+    {
+      "id": "mini-l2-finance-envelope-budget-049",
+      "goal": "Envelope budgeting. Define monthly envelopes with allocations summing to income, log transactions against an envelope, show remaining per envelope with a progress bar (red when over), rollover unspent on month change.",
+      "artifact_type": "miniApp",
+      "category": "finance",
+      "difficulty": "L2",
+      "dispatch": "runWizard",
+      "expected_capabilities": [
+        "localStorage",
+        "progress"
+      ]
+    },
+    {
+      "id": "mini-l2-finance-portfolio-rebalance-050",
+      "goal": "Portfolio rebalance calculator. Enter current holdings (ticker / shares / price), target allocation percentages, the app tells you how many shares of each to buy/sell to reach targets with the minimum number of trades. Save portfolios locally.",
+      "artifact_type": "miniApp",
+      "category": "finance",
+      "difficulty": "L2",
+      "dispatch": "runWizard",
+      "expected_capabilities": [
+        "localStorage"
+      ]
+    },
+    {
+      "id": "mini-l2-finance-fire-calc-051",
+      "goal": "FIRE (financial independence) calculator. Current savings, monthly contribution, expected return rate, annual spend, show years-to-retirement, visualize with a line chart of net worth over the years.",
+      "artifact_type": "miniApp",
+      "category": "finance",
+      "difficulty": "L2",
+      "dispatch": "runWizard",
+      "expected_capabilities": [
+        "canvas",
+        "Math.pow"
+      ]
+    },
+    {
+      "id": "mini-l3-finance-stock-watchlist-052",
+      "goal": "Stock watchlist. Add tickers, fetch quotes via mchatai.com proxy (free Stooq-style endpoint), show current price / day-change / 30-day sparkline per ticker, total portfolio value if you store share counts. Persist watchlist locally.",
+      "artifact_type": "miniApp",
+      "category": "finance",
+      "difficulty": "L3",
+      "dispatch": "runWizard",
+      "max_turns": 3,
+      "timeout_seconds": 360,
+      "expected_capabilities": [
+        "fetch",
+        "localStorage",
+        "canvas"
+      ],
+      "expected_wisdom_packs": [
+        "universal"
+      ],
+      "notes": "Proxy-fetch + real-data path."
+    },
+    {
+      "id": "mini-l3-finance-options-payoff-053",
+      "goal": "Options payoff diagram. Build a multi-leg strategy (buy/sell call/put with strike and premium), plot profit/loss vs underlying at expiry, greeks panel (delta / gamma / theta / vega at current spot), save/load strategies.",
+      "artifact_type": "miniApp",
+      "category": "finance",
+      "difficulty": "L3",
+      "dispatch": "runWizard",
+      "max_turns": 3,
+      "timeout_seconds": 360,
+      "expected_capabilities": [
+        "canvas",
+        "Math"
+      ]
+    },
+    {
+      "id": "mini-l1-health-water-streak-054",
+      "goal": "Water-intake tracker with streaks. Tap a glass icon +1, daily goal editable, 14-day streak grid (green if met / red if missed), gentle haptic-like pulse animation on tap.",
+      "artifact_type": "miniApp",
+      "category": "health",
+      "difficulty": "L1",
+      "dispatch": "runWizard",
+      "expected_capabilities": [
+        "localStorage",
+        "Date"
+      ]
+    },
+    {
+      "id": "mini-l1-health-breath-box-055",
+      "goal": "Box-breathing guide. Animated square that expands (4s inhale), pauses (4s hold), contracts (4s exhale), pauses (4s hold). Session-length 1/3/5/10 min, subtle WebAudio chime at phase changes.",
+      "artifact_type": "miniApp",
+      "category": "health",
+      "difficulty": "L1",
+      "dispatch": "runWizard",
+      "expected_capabilities": [
+        "requestAnimationFrame",
+        "AudioContext"
+      ]
+    },
+    {
+      "id": "mini-l2-health-sleep-log-056",
+      "goal": "Sleep journal. Log bedtime/wake-time per day, compute hours and sleep-debt vs 8h target, 30-day bar chart, average and stdev stats, note-field per night.",
+      "artifact_type": "miniApp",
+      "category": "health",
+      "difficulty": "L2",
+      "dispatch": "runWizard",
+      "expected_capabilities": [
+        "localStorage",
+        "canvas"
+      ]
+    },
+    {
+      "id": "mini-l2-health-posture-reminder-057",
+      "goal": "Posture-break timer. Configurable interval (30/45/60 min), when it fires show a 30-second stretch guide (cycle through 4 stretches with images or emoji). 'Done' button dismisses; 'snooze 5' postpones.",
+      "artifact_type": "miniApp",
+      "category": "health",
+      "difficulty": "L2",
+      "dispatch": "runWizard",
+      "expected_capabilities": [
+        "setInterval",
+        "Notification"
+      ]
+    },
+    {
+      "id": "mini-l2-health-food-log-058",
+      "goal": "Simple food log. Pick from a built-in DB of 80 common foods (kcal / protein / carbs / fat per 100g), log portion in grams, daily totals with a macro donut chart, configurable goal numbers.",
+      "artifact_type": "miniApp",
+      "category": "health",
+      "difficulty": "L2",
+      "dispatch": "runWizard",
+      "expected_capabilities": [
+        "localStorage",
+        "canvas"
+      ]
+    },
+    {
+      "id": "mini-l3-health-workout-1rm-059",
+      "goal": "Strength log with 1RM curves. Define exercises, log sets as reps\u00d7weight per session, compute 1RM estimate (Epley formula), chart 1RM over time per exercise, volume chart per week, exercise templates.",
+      "artifact_type": "miniApp",
+      "category": "health",
+      "difficulty": "L3",
+      "dispatch": "runWizard",
+      "max_turns": 3,
+      "timeout_seconds": 360,
+      "expected_capabilities": [
+        "localStorage",
+        "canvas"
+      ]
+    },
+    {
+      "id": "mini-l1-social-group-poll-060",
+      "goal": "Quick group poll. Enter question + 2-6 options, shareable URL that encodes poll in the hash, live bar-chart results updated on click (single-device, no backend).",
+      "artifact_type": "miniApp",
+      "category": "social",
+      "difficulty": "L1",
+      "dispatch": "runWizard",
+      "expected_capabilities": [
+        "location.hash",
+        "click"
+      ]
+    },
+    {
+      "id": "mini-l1-social-gratitude-061",
+      "goal": "Daily gratitude journal. Three prompts per day ('what went well', 'who helped you', 'what you're looking forward to'), browse history by calendar, gentle reminder at configurable time.",
+      "artifact_type": "miniApp",
+      "category": "social",
+      "difficulty": "L1",
+      "dispatch": "runWizard",
+      "expected_capabilities": [
+        "localStorage",
+        "Date"
+      ]
+    },
+    {
+      "id": "mini-l2-social-seating-planner-062",
+      "goal": "Wedding seating planner. Define tables (capacity), drag guests onto tables, maintain a 'do-not-seat-together' list that shows warnings, print-friendly export view.",
+      "artifact_type": "miniApp",
+      "category": "social",
+      "difficulty": "L2",
+      "dispatch": "runWizard",
+      "expected_capabilities": [
+        "draggable",
+        "localStorage"
+      ]
+    },
+    {
+      "id": "mini-l2-social-secret-santa-063",
+      "goal": "Secret Santa drawer. Enter participants and exclusions (e.g. couples can't draw each other), run the match algorithm, reveal each person's pick via a one-click private link they open alone.",
+      "artifact_type": "miniApp",
+      "category": "social",
+      "difficulty": "L2",
+      "dispatch": "runWizard",
+      "expected_capabilities": [
+        "location.hash",
+        "btoa"
+      ]
+    },
+    {
+      "id": "mini-l2-social-bracket-maker-064",
+      "goal": "Tournament bracket maker. Enter 4/8/16 competitors, single-elimination bracket rendered as a tree, tap a match to set the winner, auto-advance, export bracket as PNG.",
+      "artifact_type": "miniApp",
+      "category": "social",
+      "difficulty": "L2",
+      "dispatch": "runWizard",
+      "expected_capabilities": [
+        "canvas",
+        "svg"
+      ]
+    },
+    {
+      "id": "mini-l3-social-trip-splitter-065",
+      "goal": "Group-trip expense splitter. Add trip members, log expenses (who paid, who owes, equal or custom split), settle-up view computes minimum transactions to balance, shareable URL that encodes the trip state.",
+      "artifact_type": "miniApp",
+      "category": "social",
+      "difficulty": "L3",
+      "dispatch": "runWizard",
+      "max_turns": 3,
+      "timeout_seconds": 360,
+      "expected_capabilities": [
+        "localStorage",
+        "reduce",
+        "location.hash"
+      ]
+    },
+    {
+      "id": "mini-l2-creative-ascii-camera-066",
+      "goal": "ASCII-art webcam. Request webcam permission, live video downsampled to a character grid using a luminance ramp (' .,:;xX$'). Adjustable character size and density, invert toggle, freeze-frame + copy-text.",
+      "artifact_type": "miniApp",
+      "category": "creative",
+      "difficulty": "L2",
+      "dispatch": "runWizard",
+      "expected_capabilities": [
+        "getUserMedia",
+        "canvas"
+      ]
+    },
+    {
+      "id": "mini-l3-utility-regex-visualize-067",
+      "goal": "Regex railroad-diagram visualizer. Parse a regex, render as a classic railroad diagram SVG, hover parts to see what they match. Support common JS regex features.",
+      "artifact_type": "miniApp",
+      "category": "utility",
+      "difficulty": "L3",
+      "dispatch": "runWizard",
+      "max_turns": 3,
+      "timeout_seconds": 360,
+      "expected_capabilities": [
+        "svg",
+        "RegExp"
+      ]
+    },
+    {
+      "id": "mini-l2-education-turing-machine-068",
+      "goal": "Turing machine visualizer. Tape with input, state-transition table editor, step/run/pause, highlight current cell and state, 3 built-in programs (increment / binary-to-unary / palindrome-check).",
+      "artifact_type": "miniApp",
+      "category": "education",
+      "difficulty": "L2",
+      "dispatch": "runWizard",
+      "expected_capabilities": [
+        "canvas",
+        "setInterval"
+      ]
+    },
+    {
+      "id": "mini-l3-creative-markov-poetry-069",
+      "goal": "Markov-chain text generator. Paste seed text, train an order-2 Markov model client-side, generate paragraphs in that style, adjust temperature and length, export outputs. Several preset corpuses (Shakespeare / Lovecraft / Hemingway opening).",
+      "artifact_type": "miniApp",
+      "category": "creative",
+      "difficulty": "L3",
+      "dispatch": "runWizard",
+      "max_turns": 3,
+      "timeout_seconds": 360,
+      "expected_capabilities": [
+        "Math.random",
+        "Map"
+      ]
+    },
+    {
+      "id": "mini-l2-utility-epoch-converter-070",
+      "goal": "Epoch/timezone converter. Input unix epoch (seconds or ms auto-detect) or ISO-8601, see converted to 6 timezones (UTC/NYC/LA/London/Tokyo/Sydney). Reverse: pick date + TZ, get epoch. Copy buttons per row.",
+      "artifact_type": "miniApp",
+      "category": "utility",
+      "difficulty": "L2",
+      "dispatch": "runWizard",
+      "expected_capabilities": [
+        "Date",
+        "Intl.DateTimeFormat"
+      ]
+    },
+    {
+      "id": "macos-l1-utility-menubar-clock-071",
+      "goal": "macOS menubar clock app. Native SwiftUI, Package.swift project, builds with `swift build`. Shows current time in big digits when popover opens. Click the menubar item to toggle. No preferences window needed.",
+      "artifact_type": "macOSApp",
+      "category": "utility",
+      "difficulty": "L1",
+      "dispatch": "runWizard",
+      "expected_capabilities": [
+        "NSStatusItem",
+        "Timer.publish",
+        "@State"
+      ],
+      "notes": "Requested by macos-qa agent 2026-04-24. Menubar clock is a canonical macOS small-app \u2014 exercises NSStatusItem lifecycle + SwiftUI popover hosting."
+    },
+    {
+      "id": "macos-l1-productivity-quick-notes-072",
+      "goal": "macOS quick-notes app. Single window, TextEditor fills the window, autosaves to ~/Library/Application Support/QuickNotes/note.txt on every keystroke. Menu item: File \u2192 Open Containing Folder. No multiple notes \u2014 one canvas.",
+      "artifact_type": "macOSApp",
+      "category": "productivity",
+      "difficulty": "L1",
+      "dispatch": "runWizard",
+      "expected_capabilities": [
+        "TextEditor",
+        "FileManager",
+        "applicationSupportDirectory"
+      ],
+      "notes": "Requested by macos-qa 2026-04-24. Exercises native file IO + autosave pattern. Deliberately simpler than a full multi-note editor."
+    },
+    {
+      "id": "macos-l1-utility-color-contrast-073",
+      "goal": "macOS color-contrast checker. Two ColorPicker wells (foreground + background), live WCAG contrast ratio displayed, AA/AAA badges for normal and large text. Native SwiftUI, no network.",
+      "artifact_type": "macOSApp",
+      "category": "utility",
+      "difficulty": "L1",
+      "dispatch": "runWizard",
+      "expected_capabilities": [
+        "ColorPicker",
+        "NSColor",
+        "CGFloat"
+      ],
+      "notes": "Requested by macos-qa 2026-04-24. Novel twist on the 'macOS utility' genre \u2014 actually uses native ColorPicker (underused framework surface), and the WCAG math is a clean algo test. Avoids the saturated calculator/clock pattern."
+    },
+    {
+      "id": "macos-l1-creative-asciiart-074",
+      "goal": "macOS ASCII-art banner maker. TextField for input, Picker for style (block / shadow / double), render result in a monospaced Text view. Copy-to-clipboard button uses NSPasteboard.",
+      "artifact_type": "macOSApp",
+      "category": "creative",
+      "difficulty": "L1",
+      "dispatch": "runWizard",
+      "expected_capabilities": [
+        "TextField",
+        "Picker",
+        "NSPasteboard"
+      ],
+      "notes": "Requested by macos-qa 2026-04-24. Native-clipboard exercise \u2014 NSPasteboard has Mac-specific ergonomics vs. UIKit."
+    },
+    {
+      "id": "macos-l1-utility-qr-menubar-075",
+      "goal": "macOS menubar QR generator. Click menubar icon \u2192 small popover with a TextField; as user types, render a live QR code below in an Image view. Uses CoreImage's CIFilter.qrCodeGenerator.",
+      "artifact_type": "macOSApp",
+      "category": "utility",
+      "difficulty": "L1",
+      "dispatch": "runWizard",
+      "expected_capabilities": [
+        "CIFilter",
+        "qrCodeGenerator",
+        "NSStatusItem"
+      ],
+      "notes": "Requested by macos-qa 2026-04-24. CoreImage QR generator is a CLEAN API (unlike the miniApp version that needs a JS library \u2014 see flaky mini-l1-utility-qr-gen-037). Good test of whether wizard picks Apple-native path when available."
+    },
+    {
+      "id": "mini-l3-games-defender-arcade-076",
+      "user_outcome": "GOOD first beta \u2014 44KB artifact, all 6 mechanics wired (parallax/landers/mutants/bombers/rescue/radar/smart-bomb)",
+      "goal": "Classic Defender-style side-scrolling arcade shooter. Horizontal-scrolling planet surface (parallax mountains on a canvas), player ship with thrust + fire + smart-bomb. Enemies: landers (try to abduct humans from the surface), mutants (faster, spawned when lander reaches top of screen carrying human), bombers (drop mines). Rescue mechanic: if you shoot a lander carrying a human, catch the human as it falls and carry it back to the surface. 5 waves, wave counter, score with multipliers, radar mini-map at top showing enemy + human positions on the full scrollable world (world is wider than viewport). All in one HTML file.",
+      "artifact_type": "miniApp",
+      "category": "games",
+      "difficulty": "L3",
+      "dispatch": "runWizard",
+      "max_turns": 4,
+      "timeout_seconds": 540,
+      "expected_capabilities": [
+        "canvas",
+        "requestAnimationFrame",
+        "keydown"
+      ],
+      "notes": "Requested 2026-04-24 \u2014 user wants meatier arcade territory. Defender is the canonical 'too-ambitious' arcade clone (parallax scrolling, world-larger-than-viewport, radar, rescue mechanic, AI states). Great stress-test for whether L3 can hold scope across 4 turns. Novel vs. existing catalog (no shooters yet)."
+    },
+    {
+      "id": "mini-l3-games-asteroids-077",
+      "user_outcome": "GOOD first beta \u2014 34KB artifact, plays. UFO + split-on-hit may be partial (run @ 236s, well under L3 budget, so room to refine).",
+      "goal": "Asteroids arcade game. Triangle ship with rotation + thrust + wrap-around-screen + fire. Asteroids split into smaller ones when hit (large \u2192 2 medium \u2192 2 small \u2192 destroyed). UFO that appears periodically and shoots back. Score by asteroid size, extra life at 10000 points, 3 lives to start. Thrust leaves particle trail. All in one HTML file.",
+      "artifact_type": "miniApp",
+      "category": "games",
+      "difficulty": "L3",
+      "dispatch": "runWizard",
+      "max_turns": 3,
+      "timeout_seconds": 420,
+      "expected_capabilities": [
+        "canvas",
+        "requestAnimationFrame",
+        "keydown",
+        "Math.cos",
+        "Math.sin"
+      ],
+      "notes": "Classic shooter. Exercises vector math (rotation + thrust) and split-on-hit entity spawning. Not in current catalog."
+    },
+    {
+      "id": "mini-l2-games-missile-command-078",
+      "flaky_history": [
+        {
+          "run": "2026-04-25T0223",
+          "tier": "L2",
+          "outcome": "harness-timeout-but-actually-OK@420s",
+          "concurrency": 1,
+          "note": "User-validated: 'surprisingly good'. Harness gave up at L2 ceiling but wizard kept running and produced a working artifact. Bump tier to L3 OR raise L2 timeout for game-class entries."
+        }
+      ],
+      "user_outcome": "good \u2014 playable on first turn",
+      "goal": "Missile Command arcade game. 6 cities at bottom of screen, 3 missile-launcher bases. ICBMs rain from top in an arc, player clicks to fire counter-missiles that explode in a radius, destroying ICBMs caught in blast. Lose a city when an ICBM reaches the bottom. Game over when all cities destroyed. Waves get harder (more ICBMs, faster descent). Score tracked.",
+      "artifact_type": "miniApp",
+      "category": "games",
+      "difficulty": "L2",
+      "dispatch": "runWizard",
+      "max_turns": 3,
+      "timeout_seconds": 420,
+      "expected_capabilities": [
+        "canvas",
+        "click",
+        "requestAnimationFrame"
+      ],
+      "notes": "Click-to-aim + explosion-radius + wave scaling. Simpler than Defender but still meaty. Novel territory."
+    },
+    {
+      "id": "mini-l3-games-galaga-079",
+      "flaky_history": [
+        {
+          "run": "2026-04-25T0231",
+          "tier": "L3",
+          "outcome": "playable-but-incomplete@540s",
+          "concurrency": 1,
+          "note": "User-validated: enemies got into formation but never flew dive-attacks. Also hard-stuck on level 1 (no win-condition / level-progression on clearing all enemies). Refine candidate: explicit 'when enemyCount==0, advance to next wave + respawn formation'."
+        }
+      ],
+      "user_outcome": "incomplete \u2014 formation in place but no dive-attack AI, level 1 is terminal",
+      "goal": "Galaga-style space shooter. Player ship at bottom with left/right + fire. Enemy formation of ~20 ships enters from top in patterns (swoop-in arcs), settles into a grid. Periodically individual enemies break formation and dive-attack the player. Boss Galaga can capture player ship (tractor beam); capturing a Galaga that has your ship gives you dual-ship bonus fire. Score tracked, wave progression.",
+      "artifact_type": "miniApp",
+      "category": "games",
+      "difficulty": "L3",
+      "dispatch": "runWizard",
+      "max_turns": 4,
+      "timeout_seconds": 540,
+      "expected_capabilities": [
+        "canvas",
+        "requestAnimationFrame",
+        "keydown"
+      ],
+      "notes": "Formation AI + dive-attack pattern + capture mechanic. Very ambitious \u2014 candidate for later rework if it flakes. Tests whether L3 can handle multi-phase enemy AI."
+    },
+    {
+      "id": "mini-l3-games-centipede-080",
+      "flaky_history": [
+        {
+          "run": "2026-04-25T0240",
+          "tier": "L3",
+          "outcome": "playable-but-stuck-on-level-1@540s",
+          "concurrency": 1,
+          "note": "User-validated: same level-progression bug as Galaga. After clearing all enemies on level 1, no advance to level 2. Refine candidate: same fix as galaga-079 \u2014 wave/level transition on clear."
+        }
+      ],
+      "user_outcome": "incomplete \u2014 level 1 is terminal, no level 2 transition",
+      "goal": "Centipede arcade game. Mushroom-filled play field, player at bottom with 4-directional movement (constrained to bottom fifth of screen) and fire. Centipede enters from top, winds through mushrooms \u2014 when shot in the middle, splits into two centipedes. Spider periodically appears, destroys mushrooms, bonus when shot. Flea drops straight down leaving mushrooms behind. Lives + score + wave counter.",
+      "artifact_type": "miniApp",
+      "category": "games",
+      "difficulty": "L3",
+      "dispatch": "runWizard",
+      "max_turns": 4,
+      "timeout_seconds": 540,
+      "expected_capabilities": [
+        "canvas",
+        "requestAnimationFrame",
+        "keydown"
+      ],
+      "notes": "Grid-of-obstacles + split-on-hit + multi-enemy-type. Similar-vibe to Defender but different mechanics."
+    },
+    {
+      "id": "mini-l3-games-tempest-081",
+      "flaky_history": [
+        {
+          "run": "2026-04-25T0241",
+          "tier": "L3",
+          "outcome": "playable-with-art-quirk@540s",
+          "concurrency": 1,
+          "note": "User-validated: 3D-tube perspective rendered, gameplay works. Quirk: one level's tube shape was just a line (degenerate edge case in the procgen lane geometry). Acceptable on first beta \u2014 refine candidate: validate lane count >= 4 before accepting a generated level shape."
+        }
+      ],
+      "user_outcome": "good \u2014 minor art quirk on one level shape (line-instead-of-tube)",
+      "goal": "Tempest-style tube shooter. First-person perspective looking down a geometric tube (rendered as wireframe lanes in 3D perspective). Player moves between adjacent lanes on the rim of the tube with arrow keys + fires down the lane. Enemies crawl up lanes toward player: flippers (flip between lanes), tankers (carry smaller enemies), spikers (leave spike traces). Clear each level by destroying all enemies. Vector-graphics aesthetic (wireframe on black bg).",
+      "artifact_type": "miniApp",
+      "category": "games",
+      "difficulty": "L3",
+      "dispatch": "runWizard",
+      "max_turns": 4,
+      "timeout_seconds": 540,
+      "expected_capabilities": [
+        "canvas",
+        "requestAnimationFrame",
+        "keydown"
+      ],
+      "notes": "Most ambitious entry \u2014 3D perspective tube rendered on 2D canvas + vector-graphics style + multi-enemy-type. Great test of whether wizard can hold vector-graphics aesthetic across a complex 3D-ish render loop."
+    },
+    {
+      "id": "mini-l3-games-mobile-pvz-082",
+      "goal": "Plants vs Zombies-lite. Mobile-portrait 5-row \u00d7 9-column lawn. Sun falls at intervals (tap to collect). Plant cards in a horizontal strip at the BOTTOM of the screen \u2014 DRAG a card onto a lawn cell to plant it. Plant types: Sunflower (generates sun every 8s, costs 50), Peashooter (fires at zombies in its row, costs 100), Wall-Nut (high HP block, costs 50). Zombies enter from the right edge, walk left toward the house at the left edge \u2014 eat plants in their path. Game over when any zombie reaches the leftmost column. 3 increasing waves of zombies. Touch-only \u2014 no keyboard. Persist score + best-wave to localStorage. Apply mobile-frontend wisdom rules (mob-001 through mob-012).",
+      "artifact_type": "miniApp",
+      "category": "games",
+      "difficulty": "L3",
+      "dispatch": "runWizard",
+      "max_turns": 4,
+      "timeout_seconds": 600,
+      "framework_hint": "mobile-touch",
+      "expected_capabilities": [
+        "pointerdown",
+        "setPointerCapture",
+        "100dvh",
+        "localStorage",
+        "canvas"
+      ],
+      "expected_wisdom_packs": [
+        "mobile-frontend",
+        "arcade-games",
+        "universal"
+      ],
+      "notes": "Mobile-first canonical tower-defense. Tests drag-mechanic via Pointer Events + setPointerCapture (mob-011), thumb-reach control strip (mob-004), portrait viewport (mob-007). Major LLM challenge: holding the lawn-grid + plant-cost economy + zombie pathfinding + drag-to-plant in a single L3 turn budget."
+    },
+    {
+      "id": "mini-l3-games-mobile-jetpack-083",
+      "flaky_history": [
+        {
+          "run": "2026-04-25T2049",
+          "tier": "L3",
+          "outcome": "looks-promising-but-Play-button-broken@540s",
+          "concurrency": 1,
+          "note": "User-validated 2026-04-25: visuals + layout look promising, BUT tapping the 'Play' button does nothing. Game-loop start is wired wrong OR the Play handler attaches before DOM is ready OR there's no transition from start screen to game state. Refine target."
+        }
+      ],
+      "user_outcome": "promising visuals but Play button doesn't start the game \u2014 refine candidate",
+      "goal": "Jetpack Joyride-style endless side-scroller, mobile portrait. The game world auto-scrolls horizontally; the player character is on the LEFT third of the screen. TAP-AND-HOLD anywhere on the screen makes the jetpack fire (ascend); release to fall. Avoid obstacles: stationary lasers (vertical bars), missiles (telegraphed by warning indicator at right edge for 1s, then fly across), zappers (rotating electrified bars). Collect coins arranged in arcs and lines. Distance counter at top, coin counter beside it. Game over on first collision. Persist best-distance + total-coins to localStorage. Touch-only, portrait. Apply mobile-frontend wisdom.",
+      "artifact_type": "miniApp",
+      "category": "games",
+      "difficulty": "L3",
+      "dispatch": "runWizard",
+      "max_turns": 3,
+      "timeout_seconds": 540,
+      "framework_hint": "mobile-touch",
+      "expected_capabilities": [
+        "pointerdown",
+        "pointerup",
+        "100dvh",
+        "localStorage",
+        "requestAnimationFrame"
+      ],
+      "expected_wisdom_packs": [
+        "mobile-frontend",
+        "arcade-games"
+      ],
+      "notes": "Tap-and-hold mechanic is the simplest mobile control \u2014 perfect L3 mobile entry. Tests viewport sizing (mob-001), tap-and-hold via pointerdown/up (mob-005), endless-scroll obstacle generator (procgen). Lower turn count than PvZ because the mechanic is simpler."
+    },
+    {
+      "id": "mini-l3-games-mobile-candycrush-084",
+      "goal": "Candy Crush Saga-style match-3, mobile portrait. 8\u00d78 grid of colored candies (5 colors). SWIPE a candy to swap it with an adjacent one \u2014 only legal if the swap creates a match-3 or longer in a row/column. Matches clear, candies above fall down, new candies fill from the top (gravity loop). Cascading matches multiply score. 30 moves per level \u2014 clear a target score in those moves to advance. 3 levels with increasing target. Special candies: 4-in-a-row makes a striped (clears whole row/col), 5-in-a-row makes a color-bomb (clears all of one color). Touch-only, portrait. Animation on swap, fall, and clear. Apply mobile-frontend wisdom.",
+      "artifact_type": "miniApp",
+      "category": "games",
+      "difficulty": "L3",
+      "dispatch": "runWizard",
+      "max_turns": 4,
+      "timeout_seconds": 600,
+      "framework_hint": "mobile-touch",
+      "expected_capabilities": [
+        "pointerdown",
+        "pointermove",
+        "100dvh",
+        "localStorage",
+        "transition"
+      ],
+      "expected_wisdom_packs": [
+        "mobile-frontend",
+        "puzzle-games"
+      ],
+      "notes": "Match-3 with gravity + cascade is hard. Wraps swipe-to-swap (Pointer Events, mob-011), grid math, animation timing, special-candy logic. Expect this one to need refines \u2014 flag if it ships with no cascade-detection or no special candies."
+    },
+    {
+      "id": "mini-l2-games-mobile-flappy-085",
+      "user_outcome": "PUBLISHED 2026-04-25 \u2014 solid first-pass, user shipped to production. (harness JSONL says timeout@300s but artifact was fully working \u2014 VER.Bug1 false-positive)",
+      "goal": "Flappy Bird-style mobile game. Portrait viewport. Tap anywhere to flap (small upward velocity impulse); gravity pulls the bird down constantly. Pipes scroll left at constant speed; player must fly through gaps. Each pipe cleared = +1 score. One collision = game over. Day/night cycle changes background every 10 pipes. Persist best-score to localStorage. Touch-only, portrait. Apply mobile-frontend wisdom.",
+      "artifact_type": "miniApp",
+      "category": "games",
+      "difficulty": "L2",
+      "dispatch": "runWizard",
+      "max_turns": 2,
+      "timeout_seconds": 300,
+      "framework_hint": "mobile-touch",
+      "expected_capabilities": [
+        "pointerdown",
+        "100dvh",
+        "localStorage",
+        "requestAnimationFrame"
+      ],
+      "expected_wisdom_packs": [
+        "mobile-frontend",
+        "arcade-games"
+      ],
+      "notes": "Simplest possible touch game. L2 because the pipe-procgen + collision is real but contained. Good baseline \u2014 if flappy-085 fails, the mobile-frontend pack itself is suspect."
+    },
+    {
+      "id": "mini-l2-games-mobile-slot-086",
+      "user_outcome": "PUBLISHED 2026-04-25 \u2014 solid, user shipped. (harness timeout@300s false-positive)",
+      "goal": "Slot machine, mobile portrait. 3 reels with 5 fruit symbols each (cherry, lemon, bell, bar, seven). Center 'SPIN' button takes 80% of screen width at the bottom (mob-004 thumb-reach). Tap SPIN: each reel shows a spinning blur for 1-3 seconds (each ending one after the other), then settles on a random symbol. 3 matching = win, payout based on symbol (cherry=2x, lemon=5x, bell=10x, bar=25x, seven=100x). Player starts with 100 credits, bets 1 per spin. Persist credits to localStorage. Haptic feedback on win. Touch-only.",
+      "artifact_type": "miniApp",
+      "category": "games",
+      "difficulty": "L2",
+      "dispatch": "runWizard",
+      "max_turns": 2,
+      "timeout_seconds": 300,
+      "framework_hint": "mobile-touch",
+      "expected_capabilities": [
+        "pointerdown",
+        "navigator.vibrate",
+        "localStorage",
+        "transition"
+      ],
+      "expected_wisdom_packs": [
+        "mobile-frontend"
+      ],
+      "notes": "Casual one-handed game. Tests haptic feedback (mob-009), thumb-reach control (mob-004), localStorage persistence (mob-012). Simpler than match-3 \u2014 should be a clean L2."
+    },
+    {
+      "id": "mini-l1-games-mobile-clicker-087",
+      "flaky": true,
+      "flaky_history": [
+        {
+          "run": "2026-04-25T2032",
+          "tier": "L1",
+          "outcome": "tiny-artifact-4KB+failed-status",
+          "concurrency": 1,
+          "note": "User-validated 2026-04-25: BAD. Real root cause via session inspection 2026-04-25T2125: Phase GC research path tried to learn 'idle-clicker' genre, research timed out, fell back to 'building from scratch with LLM internal knowledge'. WITHOUT genre research, fewer wisdom packs load and the artifact came out at only 4KB (vs 10-40KB for genre-matched mobile entries). Mobile pack DID partially load (viewport-fit, pointerdown, navigator.vibrate, localStorage all present) but missing 100dvh + safe-area + tap-highlight-color. Real fix is Phase GC: research-unavailable fallback should still load keyword-matched wisdom packs (universal + arcade-games + mobile-frontend), NOT 'build from scratch' (== no rules)."
+        }
+      ],
+      "user_outcome": "BAD \u2014 tiny 4KB artifact. Phase GC research-fallback bug, not L1-fast-path wisdom-pack-loading issue. Filed for refine + Phase GC investigation.",
+      "goal": "Idle clicker, mobile portrait. Center: a giant tappable target (cookie/coin emoji or simple SVG circle), tapping it +1 to score. Below: an 'Auto-clickers' shop where score can be spent \u2014 Cursor (10 score = +1/sec), Grandma (100 = +5/sec), Factory (1000 = +20/sec). Score updates every 100ms from auto-clickers. Persist score + owned counts to localStorage. Haptic on each tap. Touch-only, portrait, no keyboard.",
+      "artifact_type": "miniApp",
+      "category": "games",
+      "difficulty": "L1",
+      "dispatch": "runWizard",
+      "max_turns": 2,
+      "timeout_seconds": 240,
+      "framework_hint": "mobile-touch",
+      "expected_capabilities": [
+        "pointerdown",
+        "navigator.vibrate",
+        "localStorage",
+        "setInterval"
+      ],
+      "expected_wisdom_packs": [
+        "mobile-frontend"
+      ],
+      "notes": "Casual idle game. L1 \u2014 simplest possible mobile-game pattern. Validates the mobile wisdom pack at the L1 fast-path tier (single API call). If this can't ship clean, the wisdom rules need tuning."
+    },
+    {
+      "id": "mini-l1-utility-mobile-tip-088",
+      "user_outcome": "PUBLISHED 2026-04-25 \u2014 works fine. (Status said failed in some surface but artifact was good \u2014 separate UX bug worth investigating; flagged.)",
+      "goal": "Tip calculator, mobile-first. Single-screen portrait. Top: large bill amount input (number pad opens on tap). Middle: row of tip-percent quick-pick chips (10/15/18/20/custom). Bottom: split-by stepper (1-10 people). All inputs flow into 3 large-format result rows: tip total, grand total, per-person amount. Each result row has a tap-to-copy button. Use 100dvh + safe-area insets so the keyboard doesn't push results off-screen. Touch-first.",
+      "artifact_type": "miniApp",
+      "category": "finance",
+      "difficulty": "L1",
+      "dispatch": "runWizard",
+      "max_turns": 2,
+      "timeout_seconds": 240,
+      "framework_hint": "mobile-touch",
+      "expected_capabilities": [
+        "pointerdown",
+        "100dvh",
+        "input",
+        "navigator.clipboard"
+      ],
+      "expected_wisdom_packs": [
+        "mobile-frontend"
+      ],
+      "notes": "Mobile-first utility (not a game). Tests viewport sizing under iOS keyboard (mob-003), thumb-reach result placement (mob-004), tap-to-copy (mob-005). Variant of catalog's existing tip-calc but with explicit mobile constraints \u2014 direct comparison candidate to see if 'mobile-first' steering changes the artifact."
+    },
+    {
+      "id": "mini-l2-utility-mobile-pomodoro-089",
+      "user_outcome": "PUBLISHED 2026-04-25 \u2014 solid, user shipped. Mobile-first variant validated against desktop pomodoro \u2014 direct A/B win. (harness timeout@300s false-positive)",
+      "goal": "Pomodoro timer, mobile-first portrait. Top: massive countdown (font-size clamp 48-96px) showing MM:SS. Below: a single huge primary button (Start/Pause/Resume) \u2014 sized 80% screen-width so the user's thumb can't miss it. Below that: a smaller 'Skip' button. 25min work / 5min break cycle, automatic phase transition with strong haptic + audio chime. Cycle counter at top. Persist current phase + remaining seconds to localStorage so a tab-switch doesn't lose progress (mob-012). Phase color changes (work=red, break=green). Touch-only.",
+      "artifact_type": "miniApp",
+      "category": "productivity",
+      "difficulty": "L2",
+      "dispatch": "runWizard",
+      "max_turns": 2,
+      "timeout_seconds": 300,
+      "framework_hint": "mobile-touch",
+      "expected_capabilities": [
+        "pointerdown",
+        "100dvh",
+        "localStorage",
+        "setInterval",
+        "AudioContext",
+        "navigator.vibrate"
+      ],
+      "expected_wisdom_packs": [
+        "mobile-frontend",
+        "productivity"
+      ],
+      "notes": "Mobile-first productivity. Tests full mobile pack: viewport, thumb-reach, haptic+audio (audio gesture-unlock per mob-009), state-persist across tab-switch (mob-012). Variant of saturated 'pomodoro' theme but justified by mobile-specific constraints. Direct comparison candidate vs. desktop pomodoro generations."
+    },
+    {
+      "id": "mini-l1-utility-mobile-flashlight-090",
+      "goal": "Mobile flashlight + screen-color torch. Big tap-anywhere area toggles maximum-brightness white screen on/off. Long-press cycles colors (white, red, blue, green) for night-vision / signaling. Screen-wake-lock so it stays on. Bottom row: brightness slider (0-100%, applied via opacity overlay) + SOS-blink toggle (Morse pattern). Portrait, full-screen, no chrome. Apply mobile-frontend wisdom rules.",
+      "category": "utility",
+      "difficulty": "L1",
+      "max_turns": 1,
+      "timeout_seconds": 240,
+      "expected_capabilities": [
+        "pointerdown",
+        "100dvh",
+        "wakeLock"
+      ],
+      "notes": "Tests no-chrome full-bleed mobile UI + Wake Lock API. Single-screen utility.",
+      "artifact_type": "miniApp",
+      "dispatch": "runWizard",
+      "framework_hint": "mobile-touch",
+      "expected_wisdom_packs": [
+        "mobile-frontend",
+        "universal"
+      ]
+    },
+    {
+      "id": "mini-l1-utility-mobile-bubble-level-091",
+      "goal": "Bubble level for phone \u2014 uses DeviceOrientation API to read pitch/roll, draws a centered bubble that drifts based on tilt. Center crosshair + degree readout at top. Big calibrate button at bottom (zero current orientation as level). Vibrate when within \u00b10.5\u00b0 (mob-009). Portrait full-bleed. Apply mobile-frontend wisdom rules.",
+      "category": "utility",
+      "difficulty": "L1",
+      "max_turns": 1,
+      "timeout_seconds": 240,
+      "expected_capabilities": [
+        "DeviceOrientationEvent",
+        "navigator.vibrate",
+        "100dvh"
+      ],
+      "notes": "Tests sensor-driven UI (pitch/roll), haptic feedback, and live calibration zero-point.",
+      "artifact_type": "miniApp",
+      "dispatch": "runWizard",
+      "framework_hint": "mobile-touch",
+      "expected_wisdom_packs": [
+        "mobile-frontend",
+        "universal"
+      ]
+    },
+    {
+      "id": "mini-l1-utility-mobile-coin-flip-092",
+      "goal": "Coin flip with shake-to-flip. Big circular coin in center showing HEADS or TAILS. Tap or SHAKE the phone (DeviceMotion accel > 15 m/s\u00b2) to flip \u2014 coin spins CSS-3D for 800ms then settles. Vibrate on settle. Counter at top: H wins / T wins. Portrait, full-bleed. Apply mobile-frontend wisdom rules.",
+      "category": "utility",
+      "difficulty": "L1",
+      "max_turns": 1,
+      "timeout_seconds": 240,
+      "expected_capabilities": [
+        "DeviceMotionEvent",
+        "navigator.vibrate",
+        "pointerdown"
+      ],
+      "notes": "Shake-to-flip via DeviceMotion + 3D CSS rotate. Stretch: shake threshold tuning.",
+      "artifact_type": "miniApp",
+      "dispatch": "runWizard",
+      "framework_hint": "mobile-touch",
+      "expected_wisdom_packs": [
+        "mobile-frontend",
+        "universal"
+      ]
+    },
+    {
+      "id": "mini-l1-clicker-mobile-tap-target-093",
+      "goal": "Mobile reaction tester. Big START button. After random 1-3s delay, screen flashes green and a tap-target appears at random location \u2014 measure ms from flash to pointerdown. Show last + best reaction time. 'False start' if user taps during the wait period. Portrait, full-bleed. Apply mobile-frontend wisdom rules.",
+      "category": "games",
+      "difficulty": "L1",
+      "max_turns": 1,
+      "timeout_seconds": 240,
+      "expected_capabilities": [
+        "pointerdown",
+        "performance.now",
+        "localStorage"
+      ],
+      "notes": "Tests precise input timing via performance.now() \u2014 common reaction-test mechanic.",
+      "artifact_type": "miniApp",
+      "dispatch": "runWizard",
+      "framework_hint": "mobile-touch",
+      "expected_wisdom_packs": [
+        "mobile-frontend",
+        "universal"
+      ]
+    },
+    {
+      "id": "mini-l1-utility-mobile-stopwatch-094",
+      "goal": "Mobile stopwatch with lap times. Single big screen: huge MM:SS.mm readout (clamp font scaling). Two thumb-reachable buttons at the bottom: Start/Stop (left, primary action) + Lap/Reset (right). Lap button records current time to a scrollable list above the controls. Persist last 50 laps to localStorage. Portrait, full-bleed. Apply mobile-frontend wisdom rules.",
+      "category": "utility",
+      "difficulty": "L1",
+      "max_turns": 1,
+      "timeout_seconds": 240,
+      "expected_capabilities": [
+        "pointerdown",
+        "performance.now",
+        "localStorage",
+        "100dvh"
+      ],
+      "notes": "Standard stopwatch but emphasizes thumb-reach + clamp-scaled font + lap persistence.",
+      "artifact_type": "miniApp",
+      "dispatch": "runWizard",
+      "framework_hint": "mobile-touch",
+      "expected_wisdom_packs": [
+        "mobile-frontend",
+        "universal"
+      ]
+    },
+    {
+      "id": "mini-l2-games-mobile-fruit-ninja-095",
+      "goal": "Fruit Ninja-lite. Fruits (apple/orange/banana/watermelon emoji on circular sprites) toss up from the bottom in groups of 1-4 at random arcs. Drag-swipe across the screen to slice them \u2014 each slice plays a satisfying particle-burst (split halves fly apart with physics). Bombs occasionally toss up \u2014 slicing them ends the game. Combo multiplier for slicing 3+ fruits in one continuous swipe. 60s timer. Portrait, full-bleed. Persist best score. Apply mobile-frontend wisdom rules.",
+      "category": "games",
+      "difficulty": "L2",
+      "max_turns": 2,
+      "timeout_seconds": 360,
+      "expected_capabilities": [
+        "pointerdown",
+        "pointermove",
+        "setPointerCapture",
+        "100dvh",
+        "localStorage"
+      ],
+      "notes": "Tests continuous-pointermove drag with setPointerCapture, projectile physics, slice-detection geometry.",
+      "artifact_type": "miniApp",
+      "dispatch": "runWizard",
+      "framework_hint": "mobile-touch",
+      "expected_wisdom_packs": [
+        "mobile-frontend",
+        "universal"
+      ]
+    },
+    {
+      "id": "mini-l2-games-mobile-doodle-jump-096",
+      "goal": "Doodle Jump-lite. Character auto-bounces up between procedurally-generated platforms scrolling from top to bottom. TILT phone left/right to steer (DeviceOrientation gamma \u00b130\u00b0 = full speed) AND screen wraps horizontally (off left edge \u2192 reappears right). Game over if you fall below the screen. Distance-meter at top. Portrait full-bleed. Apply mobile-frontend wisdom rules.",
+      "category": "games",
+      "difficulty": "L2",
+      "max_turns": 2,
+      "timeout_seconds": 360,
+      "expected_capabilities": [
+        "DeviceOrientationEvent",
+        "100dvh",
+        "requestAnimationFrame",
+        "localStorage"
+      ],
+      "notes": "Tilt-only steering + wrap-around screen geometry + procedural platforms. Falls back to touch-drag if DeviceOrientation denied.",
+      "artifact_type": "miniApp",
+      "dispatch": "runWizard",
+      "framework_hint": "mobile-touch",
+      "expected_wisdom_packs": [
+        "mobile-frontend",
+        "universal"
+      ]
+    },
+    {
+      "id": "mini-l2-games-mobile-piano-tiles-097",
+      "goal": "Piano Tiles-lite. 4 vertical lanes, black tiles scroll downward at increasing speed, tap each tile when it reaches the bottom-strike-zone (44px-tall band). Missing or tapping a white tile = game over. WebAudio: each tile plays a short piano note from a C-major pentatonic. Combo + score top-of-screen. Tile speed accelerates every 10 taps. Persist best score. Portrait full-bleed. Apply mobile-frontend wisdom rules.",
+      "category": "games",
+      "difficulty": "L2",
+      "max_turns": 2,
+      "timeout_seconds": 360,
+      "expected_capabilities": [
+        "pointerdown",
+        "AudioContext",
+        "100dvh",
+        "requestAnimationFrame",
+        "localStorage"
+      ],
+      "notes": "Rhythm tap-game with strict 44px touch targets (mob-002) + WebAudio per-tile note + ramping difficulty.",
+      "artifact_type": "miniApp",
+      "dispatch": "runWizard",
+      "framework_hint": "mobile-touch",
+      "expected_wisdom_packs": [
+        "mobile-frontend",
+        "universal"
+      ]
+    },
+    {
+      "id": "mini-l2-games-mobile-2048-swipe-098",
+      "goal": "2048 mobile-touch. 4x4 grid, swipe in 4 directions to slide+merge tiles. SWIPE direction = pointerdown\u2192pointerup vector (no on-screen buttons). Animate tile slide + merge with CSS transitions. Show next-best-tile preview top-right. Persist best score + current board to localStorage. Portrait, full-bleed (bottom-edge insets respected). Apply mobile-frontend wisdom rules. NOTE: 2048 IS in the saturated list but mobile-swipe-only variant is novel.",
+      "category": "games",
+      "difficulty": "L2",
+      "max_turns": 2,
+      "timeout_seconds": 360,
+      "expected_capabilities": [
+        "pointerdown",
+        "pointerup",
+        "localStorage",
+        "100dvh",
+        "transition"
+      ],
+      "notes": "Pure-swipe 2048, no button chrome. Tests pointer-vector \u2192 direction inference + persistent state across reloads.",
+      "artifact_type": "miniApp",
+      "dispatch": "runWizard",
+      "framework_hint": "mobile-touch",
+      "expected_wisdom_packs": [
+        "mobile-frontend",
+        "universal"
+      ]
+    },
+    {
+      "id": "mini-l2-games-mobile-helix-jump-099",
+      "goal": "Helix Jump-lite. Vertical helix tower with rotating colored ring-platforms (some have gaps). Ball auto-falls \u2014 DRAG horizontally to rotate the entire tower and align the gap with the ball's column. Ball passes through gap = +1 level + camera pans down. Ball lands on a non-gap = bounce, OR on the same color twice = game over. 8+ levels with varying gap counts. Vibrate on level-clear. Portrait, full-bleed. Persist best level. Apply mobile-frontend wisdom rules.",
+      "category": "games",
+      "difficulty": "L2",
+      "max_turns": 2,
+      "timeout_seconds": 420,
+      "expected_capabilities": [
+        "pointermove",
+        "setPointerCapture",
+        "navigator.vibrate",
+        "100dvh",
+        "localStorage"
+      ],
+      "notes": "3D-feel via 2D rotation. Drag-to-rotate-world-not-character is a novel mobile gesture.",
+      "artifact_type": "miniApp",
+      "dispatch": "runWizard",
+      "framework_hint": "mobile-touch",
+      "expected_wisdom_packs": [
+        "mobile-frontend",
+        "universal"
+      ]
+    },
+    {
+      "id": "mini-l2-utility-mobile-quick-note-100",
+      "goal": "Mobile quick-note. Big bottom-thumb-zone textarea (autofocus, 60% screen height, 18px font). Above it: 6 most-recent notes as horizontally scrolling chip cards (200px wide, swipe to delete with red action sheet). Tap a chip to load it back into the textarea. Auto-save on every keystroke (debounced 300ms) to localStorage. Long-press a chip = pin to top. Search bar at very top (filters chips live). Portrait, full-bleed (with safe-area insets). Apply mobile-frontend wisdom rules.",
+      "category": "utility",
+      "difficulty": "L2",
+      "max_turns": 2,
+      "timeout_seconds": 360,
+      "expected_capabilities": [
+        "pointerdown",
+        "localStorage",
+        "100dvh",
+        "safe-area-inset"
+      ],
+      "notes": "Tests bottom-thumb-zone primary-input ergonomics + horizontal-scroll chip pattern + long-press contextual menu.",
+      "artifact_type": "miniApp",
+      "dispatch": "runWizard",
+      "framework_hint": "mobile-touch",
+      "expected_wisdom_packs": [
+        "mobile-frontend",
+        "universal"
+      ]
+    },
+    {
+      "id": "mini-l2-utility-mobile-grocery-list-101",
+      "goal": "Mobile grocery list with swipe-to-complete. Big add-input at the bottom (autofocus on item add). List items scroll above. SWIPE-LEFT on an item to mark it bought (slide-out animation, item moves to a collapsed 'bought' section at the bottom). SWIPE-RIGHT to delete (fade + remove). Tap item to edit inline. Categorize via emoji prefix (auto-suggest \ud83e\udd66 for veggies, \ud83e\udd69 for meat, \ud83e\udd5b for dairy from a small built-in dictionary). Persist to localStorage. Pull-down-to-add-from-recent-history (last 50 unique items as quick-tap chips). Portrait, full-bleed. Apply mobile-frontend wisdom rules.",
+      "category": "utility",
+      "difficulty": "L2",
+      "max_turns": 2,
+      "timeout_seconds": 420,
+      "expected_capabilities": [
+        "pointerdown",
+        "pointermove",
+        "localStorage",
+        "100dvh"
+      ],
+      "notes": "Swipe-left vs swipe-right disambiguation + emoji auto-categorize + pull-down-to-show-recents.",
+      "artifact_type": "miniApp",
+      "dispatch": "runWizard",
+      "framework_hint": "mobile-touch",
+      "expected_wisdom_packs": [
+        "mobile-frontend",
+        "universal"
+      ]
+    },
+    {
+      "id": "mini-l2-creative-mobile-finger-paint-102",
+      "goal": "Mobile finger-paint canvas. Full-screen canvas (100dvh, background white). Drag finger to paint with smooth bezier strokes (pointer interpolation between samples for smoothness at high velocities). Bottom strip: 8 color swatches (44px each, mob-002), brush-size slider (2-30px), undo button, clear button, save-to-photo button (uses canvas.toBlob \u2192 download .png). Pinch-to-zoom on canvas (two-finger pointers). Long-press a color = open hex-input modal. Portrait, full-bleed. Apply mobile-frontend wisdom rules.",
+      "category": "creative",
+      "difficulty": "L2",
+      "max_turns": 2,
+      "timeout_seconds": 420,
+      "expected_capabilities": [
+        "pointerdown",
+        "pointermove",
+        "setPointerCapture",
+        "canvas",
+        "100dvh"
+      ],
+      "notes": "Tests multi-pointer (pinch-zoom), bezier path smoothing, and toBlob download. Stretch: undo stack.",
+      "artifact_type": "miniApp",
+      "dispatch": "runWizard",
+      "framework_hint": "mobile-touch",
+      "expected_wisdom_packs": [
+        "mobile-frontend",
+        "universal"
+      ]
+    },
+    {
+      "id": "mini-l2-games-mobile-stack-tower-103",
+      "goal": "Stack-the-tower mobile game. A horizontal block slides back and forth across the screen at the top of the current tower. TAP to drop it \u2014 it lands on the existing top block. Any portion that hangs off the edge gets sliced off (the next block is narrower). Stack as high as you can before a block becomes too narrow to land. Camera pans up as tower grows. Color palette shifts hue per block. Vibrate on perfect stack (within 5px alignment = bonus + tower DOESN'T narrow). Portrait, full-bleed. Persist best height. Apply mobile-frontend wisdom rules.",
+      "category": "games",
+      "difficulty": "L2",
+      "max_turns": 2,
+      "timeout_seconds": 360,
+      "expected_capabilities": [
+        "pointerdown",
+        "navigator.vibrate",
+        "100dvh",
+        "requestAnimationFrame",
+        "localStorage"
+      ],
+      "notes": "Single-tap timing-game with perfect-stack reward mechanic + camera scrolling. Hue-shift palette is delightful detail.",
+      "artifact_type": "miniApp",
+      "dispatch": "runWizard",
+      "framework_hint": "mobile-touch",
+      "expected_wisdom_packs": [
+        "mobile-frontend",
+        "universal"
+      ]
+    },
+    {
+      "id": "mini-l2-games-mobile-color-switch-104",
+      "goal": "Color Switch-lite. A small ball auto-falls due to gravity. TAP anywhere to make the ball jump up (impulse). Below: a vertical sequence of rotating obstacles (rings, crosses, squares, half-circles), each split into 4 colored segments. The ball is always one of those 4 colors \u2014 only passes through obstacle segments matching its color. Color-switcher pickups change the ball's color. Camera pans up as you climb. Game over if ball falls off bottom. Portrait full-bleed. Persist best height. Apply mobile-frontend wisdom rules.",
+      "category": "games",
+      "difficulty": "L2",
+      "max_turns": 2,
+      "timeout_seconds": 420,
+      "expected_capabilities": [
+        "pointerdown",
+        "100dvh",
+        "requestAnimationFrame",
+        "localStorage"
+      ],
+      "notes": "Color-aware collision detection + rotating multi-color obstacles + 1-tap input. Major challenge: clean rotating-obstacle hit-testing.",
+      "artifact_type": "miniApp",
+      "dispatch": "runWizard",
+      "framework_hint": "mobile-touch",
+      "expected_wisdom_packs": [
+        "mobile-frontend",
+        "universal"
+      ]
+    },
+    {
+      "id": "mini-l3-games-mobile-temple-run-105",
+      "goal": "Temple Run-lite endless runner. Pseudo-3D corridor (perspective-skewed lanes, NOT actual WebGL \u2014 use scaled 2D layers). 3 lanes. Character auto-runs forward. SWIPE LEFT / RIGHT to change lane. SWIPE UP = jump (clears low obstacles). SWIPE DOWN = slide (clears high obstacles). Coins to collect, obstacles to dodge, distance counter, increasing speed. Game over on collision. Vibrate on coin grab + crash. Persist best distance + total coins. Portrait full-bleed. Apply mobile-frontend wisdom rules.",
+      "category": "games",
+      "difficulty": "L3",
+      "max_turns": 4,
+      "timeout_seconds": 600,
+      "expected_capabilities": [
+        "pointerdown",
+        "pointerup",
+        "navigator.vibrate",
+        "100dvh",
+        "localStorage"
+      ],
+      "notes": "4-direction swipe disambiguation + pseudo-3D rendering + endless procedural-spawn pattern. Hard L3.",
+      "artifact_type": "miniApp",
+      "dispatch": "runWizard",
+      "framework_hint": "mobile-touch",
+      "expected_wisdom_packs": [
+        "mobile-frontend",
+        "universal"
+      ]
+    },
+    {
+      "id": "mini-l3-games-mobile-crossy-road-106",
+      "goal": "Crossy Road-lite. Top-down chunky pixel character. SWIPE in 4 directions to hop ONE GRID CELL at a time. Cross alternating lanes: roads with cars (don't get hit), rivers with logs (must land on a log or you drown), grass (safe). Camera auto-scrolls upward \u2014 if you fall behind off the bottom edge, game over. Procedurally spawn lanes ahead. Score = highest row reached. Portrait full-bleed. Vibrate on death + every 25 rows. Persist best. Apply mobile-frontend wisdom rules.",
+      "category": "games",
+      "difficulty": "L3",
+      "max_turns": 4,
+      "timeout_seconds": 600,
+      "expected_capabilities": [
+        "pointerdown",
+        "pointerup",
+        "navigator.vibrate",
+        "100dvh",
+        "localStorage"
+      ],
+      "notes": "Discrete grid + 4-way swipe-hop + multi-rule lane types (cars/logs/safe) + auto-scroll death gate. L3 because of procedural lane gen + collision logic + log-riding edge cases.",
+      "artifact_type": "miniApp",
+      "dispatch": "runWizard",
+      "framework_hint": "mobile-touch",
+      "expected_wisdom_packs": [
+        "mobile-frontend",
+        "universal"
+      ]
+    },
+    {
+      "id": "mini-l3-games-mobile-frogger-107",
+      "goal": "Frogger mobile. Frog at bottom, must cross 5 lanes of traffic + a river with logs to reach the top safely. SWIPE to hop one cell in any direction. River requires landing on a log (rides with it). Off the screen with the log = drown. Frog spawns are placed at the top safe-zone (5 home slots \u2014 fill all 5 = bonus level). Timer per crossing. Portrait full-bleed. Vibrate on death. Persist best level + total frogs home. Apply mobile-frontend wisdom rules.",
+      "category": "games",
+      "difficulty": "L3",
+      "max_turns": 4,
+      "timeout_seconds": 600,
+      "expected_capabilities": [
+        "pointerdown",
+        "pointerup",
+        "navigator.vibrate",
+        "100dvh",
+        "localStorage"
+      ],
+      "notes": "Classic Frogger but mobile-touch + with home-slot fill mechanic. Tests 4-way swipe + log-rider physics + per-level timer.",
+      "artifact_type": "miniApp",
+      "dispatch": "runWizard",
+      "framework_hint": "mobile-touch",
+      "expected_wisdom_packs": [
+        "mobile-frontend",
+        "universal"
+      ]
+    },
+    {
+      "id": "mini-l3-games-mobile-bejeweled-108",
+      "goal": "Bejeweled-lite mobile match-3 (different from Candy Crush \u2014 emphasis on chains + power gems). 8x8 grid of gems (6 shapes). DRAG-swap two adjacent gems to make a 3+ match. 4-match \u2192 makes a flame gem (clears entire row/column on next match). 5-match \u2192 makes a hyper-cube (tap to clear all of one color). Cascades fall + auto-match. Score-based level progression (every 1500 pts = level up = faster spawn). Persist best score + level. Portrait full-bleed. Apply mobile-frontend wisdom rules.",
+      "category": "games",
+      "difficulty": "L3",
+      "max_turns": 4,
+      "timeout_seconds": 600,
+      "expected_capabilities": [
+        "pointerdown",
+        "pointermove",
+        "setPointerCapture",
+        "100dvh",
+        "localStorage"
+      ],
+      "notes": "Match-3 with power-gem creation + cascades. Different from CandyCrush (which was levels-based) \u2014 this is endless-mode classic Bejeweled.",
+      "artifact_type": "miniApp",
+      "dispatch": "runWizard",
+      "framework_hint": "mobile-touch",
+      "expected_wisdom_packs": [
+        "mobile-frontend",
+        "universal"
+      ]
+    },
+    {
+      "id": "mini-l3-creative-mobile-music-pad-109",
+      "goal": "Mobile music pad \u2014 4x4 grid of colored beat pads. TAP each pad to toggle a step in a 16-step sequencer (current row). 4 rows = 4 instruments (kick, snare, hat, perc). BPM slider at top (60-180). Play/Stop button + clear-row button. Pads light up as the playhead crosses them. WebAudio: programmatic drum sounds (simple oscillators + noise + envelopes). Save 4 pattern slots to localStorage. Portrait full-bleed. Apply mobile-frontend wisdom rules.",
+      "category": "creative",
+      "difficulty": "L3",
+      "max_turns": 4,
+      "timeout_seconds": 600,
+      "expected_capabilities": [
+        "pointerdown",
+        "AudioContext",
+        "OscillatorNode",
+        "100dvh",
+        "localStorage"
+      ],
+      "notes": "16-step grid sequencer + WebAudio synth. Tests mob-009 (resume AudioContext on first tap) + sample-accurate scheduling. Major LLM challenge: clean envelope shapes + low-CPU-overhead playback.",
+      "artifact_type": "miniApp",
+      "dispatch": "runWizard",
+      "framework_hint": "mobile-touch",
+      "expected_wisdom_packs": [
+        "mobile-frontend",
+        "universal"
+      ]
+    }
+  ]
+}
