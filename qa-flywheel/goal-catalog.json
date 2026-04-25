@@ -1,14 +1,14 @@
 {
   "$schema_version": "1.0.0",
   "catalog_version": "2026.04.25-d",
-  "last_updated": "2026-04-24",
+  "last_updated": "2026-04-25",
   "difficulty_definitions": {
     "L1": "Simple CRUD / single view / static content. <150 LOC target. One wizard turn.",
     "L2": "Non-trivial glue: state mgmt, 2+ screens, one external API or framework primitive. 1-2 turns.",
     "L3": "Framework-heavy or stateful: shaders, audio graphs, ECS, multi-agent, persistent storage, network sync, sensors. 3-4 turns."
   },
   "coverage_status": {
-    "miniApp": "v1 \u2014 84/84 (+8 mobile-first added 2026-04-25-b: PvZ, Jetpack Joyride, Candy Crush, Flappy, Slot Machine, Idle Clicker, mobile tip calc, mobile pomodoro). 6 meaty arcade shooters from 2026-04-24-e. 2 entries tagged flaky=true after 2026-04-24 T1703 batch. Mobile slice ships alongside new wisdom pack `mobile-frontend.json` (12 rules covering touch ergonomics, viewport, no-keyboard, gestures, thumb-reach, state persistence). Arcade territory was 0 shooters before; now L2=1 + L3=5 for the meaty side. Still steers AWAY from saturated ground (pomodoro/flashcards/snake/2048/wordle/blackjack/chess/roguelike). Aims at novel territory: data viz, DSP, creative coding, dev tools, science sims, accessibility, privacy, ling, music theory, procgen, classic-arcade-shooters, **mobile-first touch games**. [2026-04-25-c: +20 mobile entries (090-109): 5\u00d7L1 + 10\u00d7L2 + 5\u00d7L3 spanning sensors (DeviceOrientation/Motion), audio-pad sequencer, swipe games (DoodleJump/CrossyRoad/Frogger/TempleRun/Bejeweled), creative (FingerPaint), and 4 mobile utilities. Total miniApp entries now 104.]",
+    "miniApp": "v1 \u2014 84/84 (+8 mobile-first added 2026-04-25-b: PvZ, Jetpack Joyride, Candy Crush, Flappy, Slot Machine, Idle Clicker, mobile tip calc, mobile pomodoro). 6 meaty arcade shooters from 2026-04-24-e. 2 entries tagged flaky=true after 2026-04-24 T1703 batch. Mobile slice ships alongside new wisdom pack `mobile-frontend.json` (12 rules covering touch ergonomics, viewport, no-keyboard, gestures, thumb-reach, state persistence). Arcade territory was 0 shooters before; now L2=1 + L3=5 for the meaty side. Still steers AWAY from saturated ground (pomodoro/flashcards/snake/2048/wordle/blackjack/chess/roguelike). Aims at novel territory: data viz, DSP, creative coding, dev tools, science sims, accessibility, privacy, ling, music theory, procgen, classic-arcade-shooters, **mobile-first touch games**. [2026-04-25-c: +20 mobile entries (090-109): 5\u00d7L1 + 10\u00d7L2 + 5\u00d7L3 spanning sensors (DeviceOrientation/Motion), audio-pad sequencer, swipe games (DoodleJump/CrossyRoad/Frogger/TempleRun/Bejeweled), creative (FingerPaint), and 4 mobile utilities. Total miniApp entries now 104.] [2026-04-25-d: +30 entries (110-139): 20 mobile cross-translations of word/card/board/arcade/sports categories \u2014 anagram, hangman-touch, letter-blast, rhyme, mini-crossword, klondike, blackjack, uno, memory, deckbuilder, 4\u00d74 tic-tac-toe, dots-and-boxes, checkers, mancala, pacman, breakout, modern-snake, mini-golf, pinball, tower-defense + 10 mash-ups: candy-word (Candy\u00d7Wordle), pvz-chess (PvZ\u00d7Chess), 2048-flappy (2048\u00d7Flappy), jetpack-bejeweled (Jetpack\u00d7Bejeweled), tetris-snake (Tetris\u00d7Snake), pomodoro-rpg (Pomodoro\u00d7IdleRPG), doodlejump-2048 (DoodleJump\u00d72048), tipcalc-fitness (TipCalc\u00d7Fitness), templerun-typing (TempleRun\u00d7Typing), bejeweled-rhythm (Bejeweled\u00d7PianoTiles). Total miniApp entries now 134.]",
     "webSPA": "pending",
     "unityGame": "pending",
     "pythonMicroservice": "pending",
@@ -1951,6 +1951,675 @@
         "HSplitView"
       ],
       "notes": "First L3 macOSApp \u2014 tests CLI-agentic Meta.W path (planner + CLI generation). Multi-window via WindowGroup/DocumentGroup is the canonical macOS pattern that L1 fast-path can't reach. Phase WX-A's dist/*.app recovery should fire here."
+    },
+    {
+      "id": "mini-l2-games-mobile-anagram-shake-110",
+      "goal": "Mobile anagram word game. 6 letter tiles in a horizontal strip \u2014 DRAG-rearrange them to form a valid English word (3-6 letters). SHAKE phone (DeviceMotion) to randomize letter order. Tap-and-hold a letter to lock it in place. New 6-letter set every 60s; goal is to find as many words as possible. WordList is a small bundled JSON of common English words. Persist best score. Portrait full-bleed. Apply mobile-frontend wisdom rules.",
+      "category": "games",
+      "difficulty": "L2",
+      "max_turns": 2,
+      "timeout_seconds": 360,
+      "expected_capabilities": [
+        "pointerdown",
+        "pointermove",
+        "DeviceMotionEvent",
+        "100dvh",
+        "localStorage"
+      ],
+      "notes": "Drag-rearrange + shake-to-shuffle + tap-and-hold lock. Tests novel-input combinations on mobile.",
+      "artifact_type": "miniApp",
+      "dispatch": "runWizard",
+      "framework_hint": "mobile-touch",
+      "expected_wisdom_packs": [
+        "mobile-frontend",
+        "universal"
+      ]
+    },
+    {
+      "id": "mini-l2-games-mobile-hangman-touch-111",
+      "goal": "Mobile Hangman with on-screen keyboard. Hidden word at top (under blanks). Custom 7\u00d74 letter-keyboard at the bottom (in thumb-reach, 44px+ targets). Tap a letter \u2014 if in word, fills blanks; if not, draws next limb. 6 wrong guesses = game over. Categories: animals, foods, places, sports (chosen at start via 4-button modal). Persist win-streak + best-streak. Portrait full-bleed. Apply mobile-frontend wisdom rules. NOTE: hangman IS in saturated list but mobile-touch keyboard variant + category-pick is novel.",
+      "category": "games",
+      "difficulty": "L2",
+      "max_turns": 2,
+      "timeout_seconds": 360,
+      "expected_capabilities": [
+        "pointerdown",
+        "100dvh",
+        "localStorage"
+      ],
+      "notes": "Novel mobile UX for classic hangman \u2014 keyboard ergonomics is the bar.",
+      "artifact_type": "miniApp",
+      "dispatch": "runWizard",
+      "framework_hint": "mobile-touch",
+      "expected_wisdom_packs": [
+        "mobile-frontend",
+        "universal"
+      ]
+    },
+    {
+      "id": "mini-l3-games-mobile-letter-blast-112",
+      "goal": "Letter Blast \u2014 mobile word puzzle. 5x5 grid of letter tiles. Tap-and-DRAG a path through adjacent tiles (orthogonal+diagonal) to spell a word \u22653 letters. Path lights up as you drag; release to commit. Used letters refill from above with gravity. 90-second round, score = sum of (length\u00b2) per word. Bonus: 5+ letter words trigger 'BLAST' that clears 3-tile radius. Persist best round score. Portrait full-bleed. Apply mobile-frontend wisdom rules.",
+      "category": "games",
+      "difficulty": "L3",
+      "max_turns": 4,
+      "timeout_seconds": 600,
+      "expected_capabilities": [
+        "pointerdown",
+        "pointermove",
+        "setPointerCapture",
+        "100dvh",
+        "localStorage"
+      ],
+      "notes": "Boggle/Wordscapes hybrid \u2014 drag-path word selection + gravity refill + radius-blast bonus.",
+      "artifact_type": "miniApp",
+      "dispatch": "runWizard",
+      "framework_hint": "mobile-touch",
+      "expected_wisdom_packs": [
+        "mobile-frontend",
+        "universal"
+      ]
+    },
+    {
+      "id": "mini-l2-games-mobile-rhyme-time-113",
+      "goal": "Mobile rhyme race. Show 1 source word at top (e.g. 'CAT'). Below, 6 word-button options \u2014 tap any that rhyme. 60s round, +1 point per correct, -1 per wrong. New source word every 4s. Categories: 'easy 3-letter', 'medium 4-5 letter', 'hard 5+'. Use a small bundled rhyme-lookup JSON (curated 200 source words \u2192 rhyme arrays). Vibrate on correct. Portrait full-bleed. Apply mobile-frontend wisdom rules.",
+      "category": "education",
+      "difficulty": "L2",
+      "max_turns": 2,
+      "timeout_seconds": 360,
+      "expected_capabilities": [
+        "pointerdown",
+        "navigator.vibrate",
+        "100dvh",
+        "localStorage"
+      ],
+      "notes": "Quick-fire rhyming for kids/wordplay. Tests bundled-data lookup + tight per-tap timing.",
+      "artifact_type": "miniApp",
+      "dispatch": "runWizard",
+      "framework_hint": "mobile-touch",
+      "expected_wisdom_packs": [
+        "mobile-frontend",
+        "universal"
+      ]
+    },
+    {
+      "id": "mini-l3-games-mobile-crossword-mini-114",
+      "goal": "Mobile mini-crossword (5x5 daily). Standard crossword grid with black squares + numbered clues. Tap a cell to start typing \u2014 virtual keyboard slides up from bottom (custom, full-width, 44px+ keys). Auto-advance to next cell, auto-jump on word complete. Across/Down clue list scrollable above keyboard, current clue highlighted. Cell-by-cell auto-check (green=correct, red=wrong) toggleable. Persist current puzzle state + completion stats. Portrait full-bleed. Apply mobile-frontend wisdom rules.",
+      "category": "games",
+      "difficulty": "L3",
+      "max_turns": 4,
+      "timeout_seconds": 600,
+      "expected_capabilities": [
+        "pointerdown",
+        "100dvh",
+        "localStorage"
+      ],
+      "notes": "Crossword UX is a classic-mobile-design challenge: virtual keyboard + clue/grid layout in 375px-wide portrait. Single bundled puzzle as L3 demo.",
+      "artifact_type": "miniApp",
+      "dispatch": "runWizard",
+      "framework_hint": "mobile-touch",
+      "expected_wisdom_packs": [
+        "mobile-frontend",
+        "universal"
+      ]
+    },
+    {
+      "id": "mini-l2-games-mobile-solitaire-touch-115",
+      "goal": "Klondike Solitaire mobile. 7-tableau-column layout fits portrait via columns 1-7 in two rows (or compact horizontal scroll). Cards are small (45x65px) but tap-target \u226544px via overlay. DRAG card-or-card-stack from one column to another. Auto-flip top of column on uncover. Foundation piles top-right. Stock + waste top-left. Tap stock to deal 3. Persist current game + best-time + win-count. Portrait full-bleed. Apply mobile-frontend wisdom rules. NOTE: solitaire IS in saturated list but cards-on-portrait-mobile is non-trivial layout challenge.",
+      "category": "games",
+      "difficulty": "L2",
+      "max_turns": 3,
+      "timeout_seconds": 480,
+      "expected_capabilities": [
+        "pointerdown",
+        "pointermove",
+        "setPointerCapture",
+        "100dvh",
+        "localStorage"
+      ],
+      "notes": "Hard layout problem: 7 tableau columns at ~52px/card-width + drag-stacks. Tests setPointerCapture + portrait constraint creativity.",
+      "artifact_type": "miniApp",
+      "dispatch": "runWizard",
+      "framework_hint": "mobile-touch",
+      "expected_wisdom_packs": [
+        "mobile-frontend",
+        "universal"
+      ]
+    },
+    {
+      "id": "mini-l2-games-mobile-blackjack-touch-116",
+      "goal": "Blackjack mobile. Dealer hand top, player hand bottom. 4 huge thumb-zone buttons: HIT, STAND, DOUBLE, SPLIT (44+ px each, bottom 25% per mob-004). Card sliding-deal animation. Bet sizing: tap chip-stack to add ($5/$25/$100). Bankroll persists. Animations on win (golden flash + vibrate). Portrait full-bleed. Apply mobile-frontend wisdom rules. NOTE: blackjack IS saturated; this variant emphasizes mobile-touch ergonomics + bankroll-persistence.",
+      "category": "games",
+      "difficulty": "L2",
+      "max_turns": 2,
+      "timeout_seconds": 420,
+      "expected_capabilities": [
+        "pointerdown",
+        "navigator.vibrate",
+        "100dvh",
+        "localStorage"
+      ],
+      "notes": "Tests thumb-zone primary-action layout + bet-chip-stack interaction + bankroll-survival. mob-004 / mob-005 / mob-009.",
+      "artifact_type": "miniApp",
+      "dispatch": "runWizard",
+      "framework_hint": "mobile-touch",
+      "expected_wisdom_packs": [
+        "mobile-frontend",
+        "universal"
+      ]
+    },
+    {
+      "id": "mini-l3-games-mobile-uno-touch-117",
+      "goal": "Uno mobile (vs 3 AI). Bottom of screen: your 7-card fan, scrollable horizontally. Center: discard pile + draw deck. Top: 3 AI opponents with card-counts. Tap a card to play (if legal \u2014 match color/number/wild); if illegal, vibrate + flash red. SWIPE-up on a card to play it; SWIPE-down to draw. AI auto-plays in 1s intervals. Wild-card \u2192 modal with 4 color buttons. Persist win-rate. Portrait full-bleed. Apply mobile-frontend wisdom rules.",
+      "category": "games",
+      "difficulty": "L3",
+      "max_turns": 4,
+      "timeout_seconds": 600,
+      "expected_capabilities": [
+        "pointerdown",
+        "pointermove",
+        "navigator.vibrate",
+        "100dvh",
+        "localStorage"
+      ],
+      "notes": "Multi-card hand UI on portrait + swipe-play vs swipe-draw + simple AI. Hard L3 challenge: card legality engine + AI heuristics.",
+      "artifact_type": "miniApp",
+      "dispatch": "runWizard",
+      "framework_hint": "mobile-touch",
+      "expected_wisdom_packs": [
+        "mobile-frontend",
+        "universal"
+      ]
+    },
+    {
+      "id": "mini-l2-games-mobile-memory-cards-118",
+      "goal": "Memory match-pairs mobile. 4\u00d76 card grid (24 cards = 12 pairs). TAP card to flip. Match 2 = stays face-up; mismatch = both flip back after 1s. Timer + move-counter. Themes: emojis (animals/foods/sports/transport \u2014 pick at start). Vibrate on match. Confetti + win-time on full-clear. Persist best-time-per-theme. Portrait full-bleed. Apply mobile-frontend wisdom rules. NOTE: memory IS saturated; novel mobile addition is theme-pick + per-theme leaderboard.",
+      "category": "games",
+      "difficulty": "L2",
+      "max_turns": 2,
+      "timeout_seconds": 360,
+      "expected_capabilities": [
+        "pointerdown",
+        "navigator.vibrate",
+        "100dvh",
+        "localStorage"
+      ],
+      "notes": "4\u00d76 grid in portrait must be tested \u2014 80px cards. Mobile-pack should reinforce thumb-target sizing.",
+      "artifact_type": "miniApp",
+      "dispatch": "runWizard",
+      "framework_hint": "mobile-touch",
+      "expected_wisdom_packs": [
+        "mobile-frontend",
+        "universal"
+      ]
+    },
+    {
+      "id": "mini-l3-games-mobile-deckbuilder-119",
+      "goal": "Mobile mini-deckbuilder roguelike. 1-card-per-turn combat: bottom hand has 5 cards drawn from your deck (15 cards total, expandable). TAP to play; cards have cost (energy 0-3) + effect (attack/block/heal). Enemy at top has HP/intent indicator. After each fight, choose 1 of 3 reward cards to add to your deck. 5-fight run, then boss. Mid-run save. Portrait full-bleed. Apply mobile-frontend wisdom rules.",
+      "category": "games",
+      "difficulty": "L3",
+      "max_turns": 4,
+      "timeout_seconds": 600,
+      "expected_capabilities": [
+        "pointerdown",
+        "100dvh",
+        "localStorage"
+      ],
+      "notes": "Slay-the-Spire-mini. Tests turn-based state machine + persistent deck + simple enemy AI + portrait card-row layout.",
+      "artifact_type": "miniApp",
+      "dispatch": "runWizard",
+      "framework_hint": "mobile-touch",
+      "expected_wisdom_packs": [
+        "mobile-frontend",
+        "universal"
+      ]
+    },
+    {
+      "id": "mini-l2-games-mobile-tic-tac-toe-touch-120",
+      "goal": "Tic-Tac-Toe with twist: 4\u00d74 'connect-4-in-a-line' instead of 3\u00d73 (more interesting, fits portrait). Two-player local: tap to place X/O. Or vs-AI mode (minimax depth-3). Big cells (\u226580px). Win-line animates with golden trail. Vibrate on win. Persist W-L-D record + per-mode stats. Portrait full-bleed. Apply mobile-frontend wisdom rules.",
+      "category": "games",
+      "difficulty": "L2",
+      "max_turns": 2,
+      "timeout_seconds": 360,
+      "expected_capabilities": [
+        "pointerdown",
+        "navigator.vibrate",
+        "100dvh",
+        "localStorage"
+      ],
+      "notes": "Connect-4-in-line variant (4x4 grid, line=4) is significantly more strategic than 3x3 + works on portrait. Minimax AI as L2 stretch.",
+      "artifact_type": "miniApp",
+      "dispatch": "runWizard",
+      "framework_hint": "mobile-touch",
+      "expected_wisdom_packs": [
+        "mobile-frontend",
+        "universal"
+      ]
+    },
+    {
+      "id": "mini-l2-games-mobile-dots-and-boxes-121",
+      "goal": "Dots and Boxes mobile. 6\u00d76 dot grid. TAP between two adjacent dots to draw a line. When you complete the 4th side of a square, you claim it (filled with your color) and get another turn. Vs-AI greedy strategy. Score = boxes claimed. Vibrate on box-claim. Portrait full-bleed. Persist W-L-D. Apply mobile-frontend wisdom rules.",
+      "category": "games",
+      "difficulty": "L2",
+      "max_turns": 2,
+      "timeout_seconds": 360,
+      "expected_capabilities": [
+        "pointerdown",
+        "navigator.vibrate",
+        "100dvh",
+        "localStorage"
+      ],
+      "notes": "Pencil-and-paper classic. Tap between dots is a tight hit-zone challenge \u2014 44px overlay around each potential edge.",
+      "artifact_type": "miniApp",
+      "dispatch": "runWizard",
+      "framework_hint": "mobile-touch",
+      "expected_wisdom_packs": [
+        "mobile-frontend",
+        "universal"
+      ]
+    },
+    {
+      "id": "mini-l3-games-mobile-checkers-touch-122",
+      "goal": "Mobile Checkers (American Checkers / Draughts). 8\u00d78 board. TAP your piece to select; valid-move squares highlight green. TAP a green square to move. Captures auto-chained (multi-jump). King promotion on opponent's back row. Vs-AI alpha-beta depth-4. Portrait: board fills width, controls + score below. Persist record + best-streak. Apply mobile-frontend wisdom rules.",
+      "category": "games",
+      "difficulty": "L3",
+      "max_turns": 4,
+      "timeout_seconds": 600,
+      "expected_capabilities": [
+        "pointerdown",
+        "100dvh",
+        "localStorage"
+      ],
+      "notes": "Tap-select-then-tap-target is the standard board-game UX. Hard L3 because of valid-move highlighting + multi-jump chain + alpha-beta AI.",
+      "artifact_type": "miniApp",
+      "dispatch": "runWizard",
+      "framework_hint": "mobile-touch",
+      "expected_wisdom_packs": [
+        "mobile-frontend",
+        "universal"
+      ]
+    },
+    {
+      "id": "mini-l2-games-mobile-mancala-touch-123",
+      "goal": "Mancala mobile. 6 pits per side + 2 stores at the ends. TAP one of your pits to scoop & sow. End-store rules apply (sow into your own store but skip opponent's). Free-turn rule for landing in your store; capture rule for landing in your empty pit opposite a non-empty enemy pit. Vs-AI heuristic player. Score = stones in your store. Portrait full-bleed (board oriented vertically \u2014 pits on left/right columns, stores top/bottom). Persist record. Apply mobile-frontend wisdom rules.",
+      "category": "games",
+      "difficulty": "L2",
+      "max_turns": 3,
+      "timeout_seconds": 480,
+      "expected_capabilities": [
+        "pointerdown",
+        "100dvh",
+        "localStorage"
+      ],
+      "notes": "Vertical-board reorientation for portrait is the design challenge. Mancala rules are fiddly \u2014 tests rule-engine correctness.",
+      "artifact_type": "miniApp",
+      "dispatch": "runWizard",
+      "framework_hint": "mobile-touch",
+      "expected_wisdom_packs": [
+        "mobile-frontend",
+        "universal"
+      ]
+    },
+    {
+      "id": "mini-l3-games-mobile-pacman-touch-124",
+      "goal": "Pac-Man mobile. Top-down maze (12\u00d716 cells, fits portrait) with dots, power-pellets, 4 ghosts. SWIPE in 4 directions to set Pac-Man's next-move-direction (queued \u2014 moves at next intersection). Eat all dots = level clear. Power-pellet \u2192 ghosts edible (10s). Score + lives top-of-screen. Persist best score per level. Portrait full-bleed. Apply mobile-frontend wisdom rules.",
+      "category": "games",
+      "difficulty": "L3",
+      "max_turns": 4,
+      "timeout_seconds": 600,
+      "expected_capabilities": [
+        "pointerdown",
+        "pointerup",
+        "100dvh",
+        "requestAnimationFrame",
+        "localStorage"
+      ],
+      "notes": "Swipe-queue direction (not on-screen joystick) is the mobile innovation. Tests maze pathfinding + ghost AI states + portrait-fit maze geometry.",
+      "artifact_type": "miniApp",
+      "dispatch": "runWizard",
+      "framework_hint": "mobile-touch",
+      "expected_wisdom_packs": [
+        "mobile-frontend",
+        "universal"
+      ]
+    },
+    {
+      "id": "mini-l3-games-mobile-breakout-touch-125",
+      "goal": "Breakout/Arkanoid mobile. Bricks at top, paddle at bottom, ball bounces. DRAG horizontally on the bottom 30% of screen to move paddle (relative \u2014 finger position offset, not absolute). TAP anywhere = launch ball. Power-ups fall from broken bricks (multi-ball, wider paddle, lasers). 5+ levels. Persist high score. Portrait full-bleed (taller-than-wide = more bricks, longer fall). Apply mobile-frontend wisdom rules. NOTE: breakout IS saturated; mobile portrait + relative drag-paddle is novel.",
+      "category": "games",
+      "difficulty": "L3",
+      "max_turns": 4,
+      "timeout_seconds": 540,
+      "expected_capabilities": [
+        "pointerdown",
+        "pointermove",
+        "setPointerCapture",
+        "100dvh",
+        "localStorage"
+      ],
+      "notes": "Relative-position paddle drag (not absolute) is a critical mobile-touch UX choice. Tests setPointerCapture for paddle that can drift off-finger.",
+      "artifact_type": "miniApp",
+      "dispatch": "runWizard",
+      "framework_hint": "mobile-touch",
+      "expected_wisdom_packs": [
+        "mobile-frontend",
+        "universal"
+      ]
+    },
+    {
+      "id": "mini-l3-games-mobile-snake-modern-126",
+      "goal": "Modern Snake mobile. SWIPE in 4 directions to turn (queued at-grid-cell). Snake grows when eating food. Power-foods: golden (slow-mo for 5s), red (multi-grow), blue (ghost-mode pass through walls 3s). Walls wrap or kill (toggle). Endless mode + timed mode. Persist best length per mode. Portrait full-bleed (taller = more snake-length headroom). Apply mobile-frontend wisdom rules. NOTE: snake IS saturated; mobile + power-foods + mode-pick is the novel angle.",
+      "category": "games",
+      "difficulty": "L3",
+      "max_turns": 3,
+      "timeout_seconds": 480,
+      "expected_capabilities": [
+        "pointerdown",
+        "pointerup",
+        "100dvh",
+        "requestAnimationFrame",
+        "localStorage"
+      ],
+      "notes": "Swipe-queue directional input matches Pac-Man entry \u2014 pattern-tests are useful. Power-food state-machines are the L3 stretch.",
+      "artifact_type": "miniApp",
+      "dispatch": "runWizard",
+      "framework_hint": "mobile-touch",
+      "expected_wisdom_packs": [
+        "mobile-frontend",
+        "universal"
+      ]
+    },
+    {
+      "id": "mini-l2-games-mobile-mini-golf-127",
+      "goal": "Mini-golf mobile (top-down). 9 holes, each a single screen (no scrolling). Tap-and-DRAG from ball backwards = aim line + power (length of drag). Release = strike. Ball physics with friction + wall bounces. Obstacles: walls, sand (slows), water (death-reset). Scorecard tracks strokes per hole. Persist best per hole. Portrait full-bleed. Apply mobile-frontend wisdom rules.",
+      "category": "games",
+      "difficulty": "L2",
+      "max_turns": 3,
+      "timeout_seconds": 480,
+      "expected_capabilities": [
+        "pointerdown",
+        "pointermove",
+        "setPointerCapture",
+        "100dvh",
+        "localStorage"
+      ],
+      "notes": "Drag-back-to-aim is canonical mobile-golf UX. Tests vector-physics + collision + 9-level state.",
+      "artifact_type": "miniApp",
+      "dispatch": "runWizard",
+      "framework_hint": "mobile-touch",
+      "expected_wisdom_packs": [
+        "mobile-frontend",
+        "universal"
+      ]
+    },
+    {
+      "id": "mini-l2-games-mobile-pinball-128",
+      "goal": "Pinball mobile (one screen, portrait orientation). Two flippers at bottom \u2014 TAP LEFT half of screen = left flipper, TAP RIGHT half = right flipper. Ball physics. Bumpers + ramps + slingshots score points. Multi-ball power-up. Tilt-to-nudge via DeviceMotion (small impulse, but limit to 3 nudges/ball or game-over). Persist high score. Portrait full-bleed. Apply mobile-frontend wisdom rules.",
+      "category": "games",
+      "difficulty": "L2",
+      "max_turns": 3,
+      "timeout_seconds": 480,
+      "expected_capabilities": [
+        "pointerdown",
+        "DeviceMotionEvent",
+        "100dvh",
+        "requestAnimationFrame",
+        "localStorage"
+      ],
+      "notes": "Tap-screen-half for flippers + tilt-to-nudge with abuse-limit is mobile-faithful pinball UX. Tests ball physics + bumper-collision + tilt API.",
+      "artifact_type": "miniApp",
+      "dispatch": "runWizard",
+      "framework_hint": "mobile-touch",
+      "expected_wisdom_packs": [
+        "mobile-frontend",
+        "universal"
+      ]
+    },
+    {
+      "id": "mini-l3-games-mobile-tower-defense-129",
+      "goal": "Mobile tower defense (different from PvZ \u2014 more like Bloons-TD). Curving path through scenic level, enemies walk along it. DRAG towers from a bottom-strip onto the map (any non-path location). 4 tower types (single-target, AoE, slow, money-gen) each with 3 upgrade levels. Money earned per kill. 10 increasing waves of enemies (basic / fast / armored / boss). Persist best wave + currency. Portrait full-bleed. Apply mobile-frontend wisdom rules.",
+      "category": "games",
+      "difficulty": "L3",
+      "max_turns": 4,
+      "timeout_seconds": 600,
+      "expected_capabilities": [
+        "pointerdown",
+        "pointermove",
+        "setPointerCapture",
+        "100dvh",
+        "localStorage"
+      ],
+      "notes": "Path-based TD is structurally different from grid-based PvZ \u2014 tests path-following enemy AI + drag-place-tower-anywhere + tower-upgrade UI.",
+      "artifact_type": "miniApp",
+      "dispatch": "runWizard",
+      "framework_hint": "mobile-touch",
+      "expected_wisdom_packs": [
+        "mobile-frontend",
+        "universal"
+      ]
+    },
+    {
+      "id": "mini-l3-mashup-candy-word-130",
+      "goal": "MASH-UP: Candy Crush \u00d7 Wordle. 6\u00d76 grid of letter-tiles (frosted candy aesthetic). DRAG-swap two adjacent tiles to make a 3+ word horizontally OR vertically (must spell a real English word). Words clear + cascade with gravity. 5-letter word = makes a 'wild' wildcard tile. 6-letter = clears entire row. Score-based level progression. Bundled common-words JSON (~3000 entries). Persist best score + level. Portrait full-bleed. Apply mobile-frontend wisdom rules.",
+      "category": "games",
+      "difficulty": "L3",
+      "max_turns": 4,
+      "timeout_seconds": 720,
+      "expected_capabilities": [
+        "pointerdown",
+        "pointermove",
+        "setPointerCapture",
+        "100dvh",
+        "localStorage"
+      ],
+      "notes": "MASH-UP RATIONALE: Sweet Cascade (Candy Crush) scored 6/9 mobile tokens + user said 'is great!' Word-puzzle adds intellectual depth. Combines drag-swap mechanic + word-validity engine. Probably the most novel of the bunch.",
+      "artifact_type": "miniApp",
+      "dispatch": "runWizard",
+      "framework_hint": "mobile-touch",
+      "expected_wisdom_packs": [
+        "mobile-frontend",
+        "universal"
+      ]
+    },
+    {
+      "id": "mini-l3-mashup-pvz-chess-131",
+      "goal": "MASH-UP: Plants vs Zombies \u00d7 Chess. 8\u00d78 chess board. White = Plants (pawn=Sunflower, rook=Wallnut, bishop=Peashooter, knight=Cherry-bomb, queen=Cattail, king=House). Black = Zombies (mirrored \u2014 pawns are basics, etc). Standard chess movement BUT: capture happens via BOTH pieces fighting (HP-based instead of one-shot \u2014 peashooter fires till one dies in same turn). King = the House: zombies must reach + survive 1 turn. Drag-piece-to-square mobile UX. Vs-AI minimax depth-3. Persist W-L-D. Portrait full-bleed. Apply mobile-frontend wisdom rules.",
+      "category": "games",
+      "difficulty": "L3",
+      "max_turns": 4,
+      "timeout_seconds": 720,
+      "expected_capabilities": [
+        "pointerdown",
+        "pointermove",
+        "setPointerCapture",
+        "100dvh",
+        "localStorage"
+      ],
+      "notes": "MASH-UP RATIONALE: PvZ scored 9/9 mobile tokens (best). Chess strategic depth + PvZ characters is genuinely fresh. HP-based capture is the novel rule-twist that breaks chess monotony.",
+      "artifact_type": "miniApp",
+      "dispatch": "runWizard",
+      "framework_hint": "mobile-touch",
+      "expected_wisdom_packs": [
+        "mobile-frontend",
+        "universal"
+      ]
+    },
+    {
+      "id": "mini-l3-mashup-2048-flappy-132",
+      "goal": "MASH-UP: 2048 \u00d7 Flappy Bird. Side-scrolling endless. Bird auto-scrolls right; pipes have NUMBERED gaps (powers of 2: 2, 4, 8, 16). Bird shows current number. TAP to flap up. Pass through a pipe matching your number = number doubles + score. Wrong pipe = collision. Game over on hitting wall/floor/wrong-pipe. Persist best score. Portrait full-bleed. Apply mobile-frontend wisdom rules.",
+      "category": "games",
+      "difficulty": "L3",
+      "max_turns": 3,
+      "timeout_seconds": 540,
+      "expected_capabilities": [
+        "pointerdown",
+        "100dvh",
+        "requestAnimationFrame",
+        "localStorage"
+      ],
+      "notes": "MASH-UP RATIONALE: Flappy ('Solid!') + 2048 \u2014 the merge-doubling intellectual hook adds strategy to pure-twitch flappy. Choice of which pipe to aim for IS the gameplay.",
+      "artifact_type": "miniApp",
+      "dispatch": "runWizard",
+      "framework_hint": "mobile-touch",
+      "expected_wisdom_packs": [
+        "mobile-frontend",
+        "universal"
+      ]
+    },
+    {
+      "id": "mini-l3-mashup-jetpack-bejeweled-133",
+      "goal": "MASH-UP: Jetpack Joyride \u00d7 Bejeweled. Side-scroll endless runner BUT the world is a vertical 6-column gem-cascade. Jetpack character on the left edge auto-scrolls (no horizontal movement). HOLD to fly UP, RELEASE to fall, dodging gem-walls. Touching matching gems collects them \u2014 collect 3+ same-color in a row = combo. Periodic 'gem rain' levels are full match-3 puzzle screens (drag-swap to clear). Portrait full-bleed. Persist distance + total gems. Apply mobile-frontend wisdom rules.",
+      "category": "games",
+      "difficulty": "L3",
+      "max_turns": 4,
+      "timeout_seconds": 720,
+      "expected_capabilities": [
+        "pointerdown",
+        "pointermove",
+        "setPointerCapture",
+        "100dvh",
+        "localStorage"
+      ],
+      "notes": "MASH-UP RATIONALE: JetPack ('promising') + Bejeweled \u2014 adds collection-strategy to twitch-runner. Periodic puzzle-screens break up pure-physics flow.",
+      "artifact_type": "miniApp",
+      "dispatch": "runWizard",
+      "framework_hint": "mobile-touch",
+      "expected_wisdom_packs": [
+        "mobile-frontend",
+        "universal"
+      ]
+    },
+    {
+      "id": "mini-l2-mashup-tetris-snake-134",
+      "goal": "MASH-UP: Tetris \u00d7 Snake. Standard tetris well (10\u00d720). Tetrominos fall. CONTROL = a 'snake' that grows along the bottom \u2014 it can absorb dropped blocks into its body (instead of stacking) by slithering under them. Eating blocks = score; stacking blocks = lose like normal tetris. Snake DIES if rammed by stacked blocks. Persist best score. Portrait full-bleed. Apply mobile-frontend wisdom rules. NOTE: tetris IS saturated but the snake-absorbs-blocks twist is genuinely novel.",
+      "category": "games",
+      "difficulty": "L2",
+      "max_turns": 3,
+      "timeout_seconds": 540,
+      "expected_capabilities": [
+        "pointerdown",
+        "pointerup",
+        "100dvh",
+        "requestAnimationFrame",
+        "localStorage"
+      ],
+      "notes": "MASH-UP RATIONALE: Snake + Tetris \u2014 both 4-direction-input games, both grid-based. Snake-absorbs-tetrominos is fresh \u2014 turns enemy (falling block) into food.",
+      "artifact_type": "miniApp",
+      "dispatch": "runWizard",
+      "framework_hint": "mobile-touch",
+      "expected_wisdom_packs": [
+        "mobile-frontend",
+        "universal"
+      ]
+    },
+    {
+      "id": "mini-l3-mashup-pomodoro-rpg-135",
+      "goal": "MASH-UP: Pomodoro \u00d7 Idle RPG. Standard pomodoro (25min work, 5min break). Each completed work session = your character ATTACKS a fantasy monster (boss has HP scaled to expected hours). Each break = your character HEALS or shops. Defeat monster = level-up + new ability + harder monster. Stats: HP, ATK, gold. Inventory persists. Portrait full-bleed. Apply mobile-frontend wisdom rules.",
+      "category": "productivity",
+      "difficulty": "L3",
+      "max_turns": 4,
+      "timeout_seconds": 600,
+      "expected_capabilities": [
+        "pointerdown",
+        "navigator.vibrate",
+        "100dvh",
+        "localStorage"
+      ],
+      "notes": "MASH-UP RATIONALE: Pomodoro ('Solid!') + idle-RPG \u2014 gamifying work sessions with persistent character progression is a famous productivity hack (Habitica, Forest). Mobile fits \u2014 phone is where focus-trackers live.",
+      "artifact_type": "miniApp",
+      "dispatch": "runWizard",
+      "framework_hint": "mobile-touch",
+      "expected_wisdom_packs": [
+        "mobile-frontend",
+        "universal"
+      ]
+    },
+    {
+      "id": "mini-l3-mashup-doodle-jump-2048-136",
+      "goal": "MASH-UP: Doodle Jump \u00d7 2048. Vertical endless platformer \u2014 character auto-bounces. Platforms have NUMBERS (2, 4, 8, 16, 32...). When you land on a platform with same number as your character \u2192 both double (you absorb its number). Land on different \u2192 just bounce. Goal: highest single-number reached + total height. Tilt to steer (DeviceOrientation). Power-ups: number-doublers, halvers. Persist best. Portrait full-bleed. Apply mobile-frontend wisdom rules.",
+      "category": "games",
+      "difficulty": "L3",
+      "max_turns": 4,
+      "timeout_seconds": 660,
+      "expected_capabilities": [
+        "DeviceOrientationEvent",
+        "100dvh",
+        "requestAnimationFrame",
+        "localStorage"
+      ],
+      "notes": "MASH-UP RATIONALE: Doodle Jump (new entry, was good in design) + 2048 \u2014 bouncing-merge is more interactive than swipe-2048. Tilt steering is novel for puzzle-merge games.",
+      "artifact_type": "miniApp",
+      "dispatch": "runWizard",
+      "framework_hint": "mobile-touch",
+      "expected_wisdom_packs": [
+        "mobile-frontend",
+        "universal"
+      ]
+    },
+    {
+      "id": "mini-l2-mashup-tip-calc-fitness-137",
+      "goal": "MASH-UP: Tip Calculator \u00d7 Fitness Tracker. Restaurant bill calculator that ALSO computes calorie-burn-equivalent. Enter bill amount + cuisine type (8 cuisines mapped to avg cal-density). Calc tip + per-person split AS USUAL, but also show: 'This meal = X minutes of running / Y minutes of walking / Z burpees'. Saves last 30 meals to localStorage with timestamp + cal estimate. Portrait full-bleed. Apply mobile-frontend wisdom rules.",
+      "category": "health",
+      "difficulty": "L2",
+      "max_turns": 2,
+      "timeout_seconds": 360,
+      "expected_capabilities": [
+        "pointerdown",
+        "100dvh",
+        "localStorage"
+      ],
+      "notes": "MASH-UP RATIONALE: Tip-calc (4/9 mobile-tokens) + health-awareness. Goes from 'utility' to 'utility with surprising value-add.' Cuisine\u2192cal-density mapping is teaching-by-doing for users.",
+      "artifact_type": "miniApp",
+      "dispatch": "runWizard",
+      "framework_hint": "mobile-touch",
+      "expected_wisdom_packs": [
+        "mobile-frontend",
+        "universal"
+      ]
+    },
+    {
+      "id": "mini-l3-mashup-temple-run-typing-138",
+      "goal": "MASH-UP: Temple Run \u00d7 Typing Test. Runner auto-runs forward in pseudo-3D corridor. Obstacles ahead show WORDS \u2014 type the word (mobile soft-keyboard at bottom) before reaching obstacle to vault over it. Long words = bigger obstacles. Mistype = collision. Coins from successful types. Persist WPM + best distance. Portrait full-bleed (full-screen kbd takes bottom 40%). Apply mobile-frontend wisdom rules.",
+      "category": "education",
+      "difficulty": "L3",
+      "max_turns": 4,
+      "timeout_seconds": 660,
+      "expected_capabilities": [
+        "pointerdown",
+        "100dvh",
+        "requestAnimationFrame",
+        "localStorage"
+      ],
+      "notes": "MASH-UP RATIONALE: Temple Run (new) + typing-test (saturated). Endless-runner gives stakes to typing speed \u2014 the 'why' that pure typing tests lack.",
+      "artifact_type": "miniApp",
+      "dispatch": "runWizard",
+      "framework_hint": "mobile-touch",
+      "expected_wisdom_packs": [
+        "mobile-frontend",
+        "universal"
+      ]
+    },
+    {
+      "id": "mini-l3-mashup-bejeweled-rhythm-139",
+      "goal": "MASH-UP: Bejeweled \u00d7 Piano Tiles. Vertical 4-column piano grid scrolling DOWN with colored gem-tiles instead of black tiles. Tap each tile when in strike zone. Tap 3+ same-color gems consecutively = MELODY combo (extra score + WebAudio plays an arpeggio). Tap-and-hold a gem = 'sustain' note. Mistakes break combo. Increasing tempo. Persist best score per song. Portrait full-bleed. Apply mobile-frontend wisdom rules.",
+      "category": "creative",
+      "difficulty": "L3",
+      "max_turns": 4,
+      "timeout_seconds": 600,
+      "expected_capabilities": [
+        "pointerdown",
+        "pointerup",
+        "AudioContext",
+        "100dvh",
+        "localStorage"
+      ],
+      "notes": "MASH-UP RATIONALE: Bejeweled-color-matching + Piano Tiles rhythm-tapping. Color-combos create melodies \u2014 every successful play sounds musically pleasant. Tests WebAudio note scheduling + combo state machine.",
+      "artifact_type": "miniApp",
+      "dispatch": "runWizard",
+      "framework_hint": "mobile-touch",
+      "expected_wisdom_packs": [
+        "mobile-frontend",
+        "universal"
+      ]
     }
   ]
 }
