@@ -1,6 +1,6 @@
 {
   "$schema_version": "1.0.0",
-  "catalog_version": "2026.04.25-j",
+  "catalog_version": "2026.04.25-k",
   "last_updated": "2026-04-25",
   "difficulty_definitions": {
     "L1": "Simple CRUD / single view / static content. <150 LOC target. One wizard turn.",
@@ -2755,6 +2755,23 @@
         "@StateObject"
       ],
       "notes": "First folder-watching entry. Native-mac surface = DispatchSource.makeFileSystemObjectSource (low-level kqueue wrapper) — the OS-level pattern for folder change detection without polling. Common LLM trap: forgetting to keep the file descriptor open for the source's lifetime, or forgetting to call .resume() after creating the source (it starts suspended). Also: the security-scoped URL from NSOpenPanel needs startAccessingSecurityScopedResource() if the app is sandboxed and the user-selected folder is outside the container. The goal explicitly says 'open file descriptor' to nudge the LLM toward Darwin.open() rather than a SwiftUI .fileImporter shortcut that doesn't expose the FD."
+    },
+    {
+      "id": "macos-l2-utility-image-resizer-droplet-127",
+      "goal": "macOS image-resize droplet. Single 480x420 window. Top half: large drop zone (NSDraggingDestination, dashed border) saying 'Drop images here'. Below: a long-edge size control (Picker: 512 / 1024 / 2048 px) and an output-format Picker (PNG / JPEG q=0.85). Drop one or many image files (PNG, JPEG, HEIC, TIFF, GIF) \u2192 each resized to fit within the picked long edge using ImageIO (CGImageSourceCreateWithURL + CGImageDestinationAddImageAndMetadata with the kCGImageDestinationImageMaxPixelSize key for kCGImageDestinationLossyCompressionQuality on JPEG). Resized files written to a per-launch subfolder ~/Downloads/resized-2026-04-25-1620/{originalname}_resized.{png|jpg}. Show a per-file row with thumbnail (using QLThumbnailGenerator at 64px, async), filename, before-size \u2192 after-size dimensions, and a green checkmark or red error icon. Total of 'N resized in M ms' footer + 'Reveal in Finder' button (NSWorkspace.shared.activateFileViewerSelecting).",
+      "artifact_type": "macOSApp",
+      "category": "utility",
+      "difficulty": "L2",
+      "dispatch": "runWizard",
+      "expected_capabilities": [
+        "NSDraggingDestination",
+        "ImageIO",
+        "CGImageSource",
+        "CGImageDestination",
+        "QLThumbnailGenerator",
+        "NSWorkspace"
+      ],
+      "notes": "First ImageIO + drag-IN-multifile entry. Native-mac surface: ImageIO is the canonical macOS resize path (better than NSImage + scale since it preserves color profiles + EXIF). Key=value the LLM must get right: kCGImageDestinationImageMaxPixelSize is the proper resize directive at write time \u2014 LLMs often emit a wrong NSImage.size assignment that doesn't actually resize the bitmap. JPEG quality via kCGImageDestinationLossyCompressionQuality=0.85. Bonus correctness check: NSWorkspace.activateFileViewerSelecting (singular file URL, not the deprecated selectFile-inFileViewerRootedAtPath which takes a string)."
     }
   ]
 }
