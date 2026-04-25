@@ -1,6 +1,6 @@
 {
   "$schema_version": "1.0.0",
-  "catalog_version": "2026.04.25-l",
+  "catalog_version": "2026.04.25-m",
   "last_updated": "2026-04-25",
   "difficulty_definitions": {
     "L1": "Simple CRUD / single view / static content. <150 LOC target. One wizard turn.",
@@ -2789,6 +2789,23 @@
         "KeyboardShortcut"
       ],
       "notes": "First AVAudioEngine *synthesis* entry (the soundboard at 124 just plays files). Native-mac surface = AVAudioSourceNode render block — the LLM must write samples directly into AudioBufferList pointers, not via AVAudioPCMBuffer (which is a CONSUMER-side construct). Common trap: forgetting to call engine.prepare() before engine.start(), or starting the engine before connecting nodes. Sequencer optional because the 8 procedural drum voices alone are L2-shape; bonus pushes it to L2-high. The LLM should pick AVAudioSourceNode over AVAudioPlayerNode \u2014 the latter requires pre-baked buffers, defeating the procedural-synth premise."
+    },
+    {
+      "id": "macos-l2-productivity-markdown-livepreview-129",
+      "goal": "macOS markdown live-preview editor. Single window, NSSplitView with two panes: left = TextEditor (monospace, plain-text markdown source), right = WKWebView showing rendered HTML preview. Edits in the left pane re-render the right pane on every keystroke (debounced 200ms). Use SwiftMarkdown's built-in AttributedString markdown parsing OR ship a tiny self-contained markdown\u2192HTML transformer if the LLM prefers (regex-based for headings/bold/italic/code/links/lists is acceptable at L2 scope). Wrap rendered HTML in an inline `<style>` block with system-font + dark/light auto via @media(prefers-color-scheme:dark). Cmd+S writes the source to ~/Documents/markdown-{timestamp}.md AND a sibling .html with the rendered output. Cmd+Shift+E exports the rendered HTML to NSSavePanel-chosen path. Window restores with the last-edited file on relaunch (UserDefaults bookmark). Live word + character count in a footer.",
+      "artifact_type": "macOSApp",
+      "category": "productivity",
+      "difficulty": "L2",
+      "dispatch": "runWizard",
+      "expected_capabilities": [
+        "WKWebView",
+        "NSSplitView",
+        "TextEditor",
+        "AttributedString",
+        "NSSavePanel",
+        "@StateObject"
+      ],
+      "notes": "First WKWebView + NSSplitView entry. Native-mac surface = NSSplitView with draggable divider (preserved between launches via NSSplitView autosaveName). Modern path: SwiftUI HSplitView wrapping the editor + WKWebView in NSViewRepresentable. The LLM has two acceptable rendering strategies \u2014 AttributedString.init(markdown:) (Apple-native, fast, but limited to inline formatting; no code blocks or tables) OR a small regex transformer to HTML (more flexible but more code). Either is L2-OK. Common trap: the WKWebView body color won't auto-track macOS dark mode unless the inline CSS uses @media(prefers-color-scheme:dark) AND the WKWebView's `setValue(false, forKey: \"drawsBackground\")` is set so the page can be transparent over the SwiftUI background."
     }
   ]
 }
