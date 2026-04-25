@@ -1,6 +1,6 @@
 {
   "$schema_version": "1.0.0",
-  "catalog_version": "2026.04.25-a",
+  "catalog_version": "2026.04.25-b",
   "last_updated": "2026-04-24",
   "difficulty_definitions": {
     "L1": "Simple CRUD / single view / static content. <150 LOC target. One wizard turn.",
@@ -8,7 +8,7 @@
     "L3": "Framework-heavy or stateful: shaders, audio graphs, ECS, multi-agent, persistent storage, network sync, sensors. 3-4 turns."
   },
   "coverage_status": {
-    "miniApp": "v1 — 76/76 (+6 meaty arcade shooters added 2026-04-24-e: Defender, Asteroids, Missile Command, Galaga, Centipede, Tempest). 2 entries tagged flaky=true after 2026-04-24 T1703 batch. Arcade territory was 0 shooters before; now L2=1 + L3=5 for the meaty side. Still steers AWAY from saturated ground (pomodoro/flashcards/snake/2048/wordle/blackjack/chess/roguelike — already have dozens of each installed). Aims at novel territory: data viz, DSP, creative coding, dev tools, science sims, accessibility, privacy, ling, music theory, procgen, classic-arcade-shooters.",
+    "miniApp": "v1 — 84/84 (+8 mobile-first added 2026-04-25-b: PvZ, Jetpack Joyride, Candy Crush, Flappy, Slot Machine, Idle Clicker, mobile tip calc, mobile pomodoro). 6 meaty arcade shooters from 2026-04-24-e. 2 entries tagged flaky=true after 2026-04-24 T1703 batch. Mobile slice ships alongside new wisdom pack `mobile-frontend.json` (12 rules covering touch ergonomics, viewport, no-keyboard, gestures, thumb-reach, state persistence). Arcade territory was 0 shooters before; now L2=1 + L3=5 for the meaty side. Still steers AWAY from saturated ground (pomodoro/flashcards/snake/2048/wordle/blackjack/chess/roguelike). Aims at novel territory: data viz, DSP, creative coding, dev tools, science sims, accessibility, privacy, ling, music theory, procgen, classic-arcade-shooters, **mobile-first touch games**.",
     "webSPA": "pending",
     "unityGame": "pending",
     "pythonMicroservice": "pending",
@@ -897,6 +897,119 @@
       "timeout_seconds": 540,
       "expected_capabilities": ["canvas", "requestAnimationFrame", "keydown"],
       "notes": "Most ambitious entry — 3D perspective tube rendered on 2D canvas + vector-graphics style + multi-enemy-type. Great test of whether wizard can hold vector-graphics aesthetic across a complex 3D-ish render loop."
+    },
+
+    {
+      "id": "mini-l3-games-mobile-pvz-082",
+      "goal": "Plants vs Zombies-lite. Mobile-portrait 5-row × 9-column lawn. Sun falls at intervals (tap to collect). Plant cards in a horizontal strip at the BOTTOM of the screen — DRAG a card onto a lawn cell to plant it. Plant types: Sunflower (generates sun every 8s, costs 50), Peashooter (fires at zombies in its row, costs 100), Wall-Nut (high HP block, costs 50). Zombies enter from the right edge, walk left toward the house at the left edge — eat plants in their path. Game over when any zombie reaches the leftmost column. 3 increasing waves of zombies. Touch-only — no keyboard. Persist score + best-wave to localStorage. Apply mobile-frontend wisdom rules (mob-001 through mob-012).",
+      "artifact_type": "miniApp",
+      "category": "games",
+      "difficulty": "L3",
+      "dispatch": "runWizard",
+      "max_turns": 4,
+      "timeout_seconds": 600,
+      "framework_hint": "mobile-touch",
+      "expected_capabilities": ["pointerdown", "setPointerCapture", "100dvh", "localStorage", "canvas"],
+      "expected_wisdom_packs": ["mobile-frontend", "arcade-games", "universal"],
+      "notes": "Mobile-first canonical tower-defense. Tests drag-mechanic via Pointer Events + setPointerCapture (mob-011), thumb-reach control strip (mob-004), portrait viewport (mob-007). Major LLM challenge: holding the lawn-grid + plant-cost economy + zombie pathfinding + drag-to-plant in a single L3 turn budget."
+    },
+    {
+      "id": "mini-l3-games-mobile-jetpack-083",
+      "goal": "Jetpack Joyride-style endless side-scroller, mobile portrait. The game world auto-scrolls horizontally; the player character is on the LEFT third of the screen. TAP-AND-HOLD anywhere on the screen makes the jetpack fire (ascend); release to fall. Avoid obstacles: stationary lasers (vertical bars), missiles (telegraphed by warning indicator at right edge for 1s, then fly across), zappers (rotating electrified bars). Collect coins arranged in arcs and lines. Distance counter at top, coin counter beside it. Game over on first collision. Persist best-distance + total-coins to localStorage. Touch-only, portrait. Apply mobile-frontend wisdom.",
+      "artifact_type": "miniApp",
+      "category": "games",
+      "difficulty": "L3",
+      "dispatch": "runWizard",
+      "max_turns": 3,
+      "timeout_seconds": 540,
+      "framework_hint": "mobile-touch",
+      "expected_capabilities": ["pointerdown", "pointerup", "100dvh", "localStorage", "requestAnimationFrame"],
+      "expected_wisdom_packs": ["mobile-frontend", "arcade-games"],
+      "notes": "Tap-and-hold mechanic is the simplest mobile control — perfect L3 mobile entry. Tests viewport sizing (mob-001), tap-and-hold via pointerdown/up (mob-005), endless-scroll obstacle generator (procgen). Lower turn count than PvZ because the mechanic is simpler."
+    },
+    {
+      "id": "mini-l3-games-mobile-candycrush-084",
+      "goal": "Candy Crush Saga-style match-3, mobile portrait. 8×8 grid of colored candies (5 colors). SWIPE a candy to swap it with an adjacent one — only legal if the swap creates a match-3 or longer in a row/column. Matches clear, candies above fall down, new candies fill from the top (gravity loop). Cascading matches multiply score. 30 moves per level — clear a target score in those moves to advance. 3 levels with increasing target. Special candies: 4-in-a-row makes a striped (clears whole row/col), 5-in-a-row makes a color-bomb (clears all of one color). Touch-only, portrait. Animation on swap, fall, and clear. Apply mobile-frontend wisdom.",
+      "artifact_type": "miniApp",
+      "category": "games",
+      "difficulty": "L3",
+      "dispatch": "runWizard",
+      "max_turns": 4,
+      "timeout_seconds": 600,
+      "framework_hint": "mobile-touch",
+      "expected_capabilities": ["pointerdown", "pointermove", "100dvh", "localStorage", "transition"],
+      "expected_wisdom_packs": ["mobile-frontend", "puzzle-games"],
+      "notes": "Match-3 with gravity + cascade is hard. Wraps swipe-to-swap (Pointer Events, mob-011), grid math, animation timing, special-candy logic. Expect this one to need refines — flag if it ships with no cascade-detection or no special candies."
+    },
+    {
+      "id": "mini-l2-games-mobile-flappy-085",
+      "goal": "Flappy Bird-style mobile game. Portrait viewport. Tap anywhere to flap (small upward velocity impulse); gravity pulls the bird down constantly. Pipes scroll left at constant speed; player must fly through gaps. Each pipe cleared = +1 score. One collision = game over. Day/night cycle changes background every 10 pipes. Persist best-score to localStorage. Touch-only, portrait. Apply mobile-frontend wisdom.",
+      "artifact_type": "miniApp",
+      "category": "games",
+      "difficulty": "L2",
+      "dispatch": "runWizard",
+      "max_turns": 2,
+      "timeout_seconds": 300,
+      "framework_hint": "mobile-touch",
+      "expected_capabilities": ["pointerdown", "100dvh", "localStorage", "requestAnimationFrame"],
+      "expected_wisdom_packs": ["mobile-frontend", "arcade-games"],
+      "notes": "Simplest possible touch game. L2 because the pipe-procgen + collision is real but contained. Good baseline — if flappy-085 fails, the mobile-frontend pack itself is suspect."
+    },
+    {
+      "id": "mini-l2-games-mobile-slot-086",
+      "goal": "Slot machine, mobile portrait. 3 reels with 5 fruit symbols each (cherry, lemon, bell, bar, seven). Center 'SPIN' button takes 80% of screen width at the bottom (mob-004 thumb-reach). Tap SPIN: each reel shows a spinning blur for 1-3 seconds (each ending one after the other), then settles on a random symbol. 3 matching = win, payout based on symbol (cherry=2x, lemon=5x, bell=10x, bar=25x, seven=100x). Player starts with 100 credits, bets 1 per spin. Persist credits to localStorage. Haptic feedback on win. Touch-only.",
+      "artifact_type": "miniApp",
+      "category": "games",
+      "difficulty": "L2",
+      "dispatch": "runWizard",
+      "max_turns": 2,
+      "timeout_seconds": 300,
+      "framework_hint": "mobile-touch",
+      "expected_capabilities": ["pointerdown", "navigator.vibrate", "localStorage", "transition"],
+      "expected_wisdom_packs": ["mobile-frontend"],
+      "notes": "Casual one-handed game. Tests haptic feedback (mob-009), thumb-reach control (mob-004), localStorage persistence (mob-012). Simpler than match-3 — should be a clean L2."
+    },
+    {
+      "id": "mini-l1-games-mobile-clicker-087",
+      "goal": "Idle clicker, mobile portrait. Center: a giant tappable target (cookie/coin emoji or simple SVG circle), tapping it +1 to score. Below: an 'Auto-clickers' shop where score can be spent — Cursor (10 score = +1/sec), Grandma (100 = +5/sec), Factory (1000 = +20/sec). Score updates every 100ms from auto-clickers. Persist score + owned counts to localStorage. Haptic on each tap. Touch-only, portrait, no keyboard.",
+      "artifact_type": "miniApp",
+      "category": "games",
+      "difficulty": "L1",
+      "dispatch": "runWizard",
+      "max_turns": 2,
+      "timeout_seconds": 240,
+      "framework_hint": "mobile-touch",
+      "expected_capabilities": ["pointerdown", "navigator.vibrate", "localStorage", "setInterval"],
+      "expected_wisdom_packs": ["mobile-frontend"],
+      "notes": "Casual idle game. L1 — simplest possible mobile-game pattern. Validates the mobile wisdom pack at the L1 fast-path tier (single API call). If this can't ship clean, the wisdom rules need tuning."
+    },
+    {
+      "id": "mini-l1-utility-mobile-tip-088",
+      "goal": "Tip calculator, mobile-first. Single-screen portrait. Top: large bill amount input (number pad opens on tap). Middle: row of tip-percent quick-pick chips (10/15/18/20/custom). Bottom: split-by stepper (1-10 people). All inputs flow into 3 large-format result rows: tip total, grand total, per-person amount. Each result row has a tap-to-copy button. Use 100dvh + safe-area insets so the keyboard doesn't push results off-screen. Touch-first.",
+      "artifact_type": "miniApp",
+      "category": "finance",
+      "difficulty": "L1",
+      "dispatch": "runWizard",
+      "max_turns": 2,
+      "timeout_seconds": 240,
+      "framework_hint": "mobile-touch",
+      "expected_capabilities": ["pointerdown", "100dvh", "input", "navigator.clipboard"],
+      "expected_wisdom_packs": ["mobile-frontend"],
+      "notes": "Mobile-first utility (not a game). Tests viewport sizing under iOS keyboard (mob-003), thumb-reach result placement (mob-004), tap-to-copy (mob-005). Variant of catalog's existing tip-calc but with explicit mobile constraints — direct comparison candidate to see if 'mobile-first' steering changes the artifact."
+    },
+    {
+      "id": "mini-l2-utility-mobile-pomodoro-089",
+      "goal": "Pomodoro timer, mobile-first portrait. Top: massive countdown (font-size clamp 48-96px) showing MM:SS. Below: a single huge primary button (Start/Pause/Resume) — sized 80% screen-width so the user's thumb can't miss it. Below that: a smaller 'Skip' button. 25min work / 5min break cycle, automatic phase transition with strong haptic + audio chime. Cycle counter at top. Persist current phase + remaining seconds to localStorage so a tab-switch doesn't lose progress (mob-012). Phase color changes (work=red, break=green). Touch-only.",
+      "artifact_type": "miniApp",
+      "category": "productivity",
+      "difficulty": "L2",
+      "dispatch": "runWizard",
+      "max_turns": 2,
+      "timeout_seconds": 300,
+      "framework_hint": "mobile-touch",
+      "expected_capabilities": ["pointerdown", "100dvh", "localStorage", "setInterval", "AudioContext", "navigator.vibrate"],
+      "expected_wisdom_packs": ["mobile-frontend", "productivity"],
+      "notes": "Mobile-first productivity. Tests full mobile pack: viewport, thumb-reach, haptic+audio (audio gesture-unlock per mob-009), state-persist across tab-switch (mob-012). Variant of saturated 'pomodoro' theme but justified by mobile-specific constraints. Direct comparison candidate vs. desktop pomodoro generations."
     }
   ]
 }

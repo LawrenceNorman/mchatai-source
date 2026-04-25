@@ -1,0 +1,175 @@
+{
+  "packID": "mobile-frontend",
+  "version": 1,
+  "displayName": "Mobile-First Frontend Guidelines",
+  "description": "Quality rules for mini-apps designed primarily for phones (iOS / Android). Focus on touch ergonomics, viewport sizing, no-keyboard interaction, gesture handling, and thumb-reach UX. Apply when the goal mentions 'mobile', 'phone', 'iOS', 'Android', 'touch', or any classic mobile-game name (PvZ, Jetpack Joyride, Candy Crush, Flappy Bird, etc).",
+  "categories": [
+    "miniApp",
+    "mobile",
+    "touch"
+  ],
+  "keywords": [
+    "mobile",
+    "phone",
+    "iOS",
+    "Android",
+    "touch",
+    "swipe",
+    "tap",
+    "drag",
+    "thumb",
+    "portrait",
+    "candy crush",
+    "plants vs zombies",
+    "jetpack joyride",
+    "flappy bird",
+    "tower defense lite",
+    "slot machine",
+    "idle clicker",
+    "match-3",
+    "endless runner"
+  ],
+  "guidelines": [
+    {
+      "id": "mob-001",
+      "rule": "Use the `viewport` meta tag set for mobile fit: `<meta name=\"viewport\" content=\"width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover\">`. The `viewport-fit=cover` extends content under the iOS notch / dynamic island; `user-scalable=no` prevents accidental pinch-zoom during fast gameplay.",
+      "why": "Without this meta tag, mobile browsers default to a 980px desktop viewport scaled down — text microscopic, touch targets unreachable. Without `user-scalable=no`, double-tap on game canvas zooms instead of fires.",
+      "severity": "critical",
+      "appliesTo": "miniApp",
+      "examples": [
+        "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover\">"
+      ]
+    },
+    {
+      "id": "mob-002",
+      "rule": "Touch targets MUST be at least 44×44 logical pixels (Apple HIG) and ideally 48×48 (Material). Apply this to every button, draggable, and tap-zone — even 'small' icon-only buttons. Add invisible padding (`padding: 12px;` on a 24px icon) to grow the hit area without changing visual size.",
+      "why": "Sub-44px targets are painfully easy to miss with a finger. The visual element can be 16px but the interactive element needs to be 44px+ via padding or absolute-positioned hit zone overlay.",
+      "severity": "critical",
+      "appliesTo": "miniApp",
+      "examples": [
+        "button { min-width: 44px; min-height: 44px; padding: 12px; }",
+        "// hit-zone overlay pattern: a transparent <div> behind the icon, sized 44x44, with the same onclick"
+      ]
+    },
+    {
+      "id": "mob-003",
+      "rule": "Use `100dvh` (dynamic viewport height), NOT `100vh`, for full-screen layouts. Account for safe-area insets via `env(safe-area-inset-bottom)` etc. so controls aren't hidden behind the iOS home indicator or Android nav bar.",
+      "why": "100vh on iOS Safari includes the URL bar — content gets pushed below the fold or jumps when the bar collapses. dvh is the dynamic value; safe-area-inset prevents fixed-bottom controls from being half-hidden behind the home indicator.",
+      "severity": "critical",
+      "appliesTo": "miniApp",
+      "examples": [
+        ".game-container { height: 100dvh; }",
+        ".bottom-controls { padding-bottom: max(12px, env(safe-area-inset-bottom)); }",
+        "@supports not (height: 100dvh) { .game-container { height: 100vh; } } /* iOS < 16 fallback */"
+      ]
+    },
+    {
+      "id": "mob-004",
+      "rule": "Place primary action controls in the BOTTOM HALF of the screen (within thumb reach when holding a phone one-handed). Headers, scores, and read-only info go up top. Critical buttons (Fire, Tap-to-Jump, Plant, Spin) belong in the bottom 40-50% of the viewport, ideally bottom 25%.",
+      "why": "Top of phone screen is unreachable for a one-handed thumb. The reachable arc is the bottom hemisphere. Mobile games that put controls at the top fail one-handed play.",
+      "severity": "important",
+      "appliesTo": "miniApp",
+      "examples": [
+        "Top bar (header): score, lives, wave counter — read-only",
+        "Center: game canvas / playfield",
+        "Bottom 25%: primary action buttons (Fire, Jump, Plant Card)",
+        "For PvZ-style: plant cards in a ROW at the bottom, not a sidebar"
+      ]
+    },
+    {
+      "id": "mob-005",
+      "rule": "Use `pointerdown` events (not `click`), and call `event.preventDefault()` to suppress the 300ms tap-delay AND the synthetic mouse events. For gesture-heavy games (drag, swipe), use the Pointer Events API uniformly; don't mix touch + mouse handlers.",
+      "why": "click has a 300ms delay on mobile (waiting to see if it's a double-tap). pointerdown is instant. preventDefault stops the synthetic mousedown that fires after touchend, which would otherwise double-trigger handlers.",
+      "severity": "critical",
+      "appliesTo": "miniApp",
+      "examples": [
+        "btn.addEventListener('pointerdown', e => { e.preventDefault(); fire(); }, { passive: false })",
+        "Drag pattern: pointerdown sets `dragging = true`; pointermove updates position; pointerup clears.",
+        "For canvas: get coords via e.offsetX/Y or rect-relative — touch.clientX requires manual canvas-rect math."
+      ]
+    },
+    {
+      "id": "mob-006",
+      "rule": "Disable iOS text-selection on game canvas + buttons: `user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;`. Disable the iOS tap-highlight rectangle: `-webkit-tap-highlight-color: transparent;`. Apply globally on `body` + game elements.",
+      "why": "Long-press on a button shows an iOS text-selection menu OR copy/paste callout — both interrupt gameplay. The grey tap-highlight flashes on every tap, looks unprofessional in a polished game.",
+      "severity": "important",
+      "appliesTo": "miniApp",
+      "examples": [
+        "* { -webkit-tap-highlight-color: transparent; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }",
+        "Canvas: also touch-action: none; to suppress browser scroll/zoom gestures during gameplay"
+      ]
+    },
+    {
+      "id": "mob-007",
+      "rule": "PORTRAIT orientation by default for mobile mini-apps. Use a media query OR JavaScript orientation check to render an 'rotate phone' message if landscape is required and the user is portrait (or vice versa). Most casual mobile games are PORTRAIT — match user expectation.",
+      "why": "Phones are held in portrait 80%+ of the time. Landscape-only mobile games friction the casual player. PvZ, Candy Crush, Jetpack Joyride: all portrait. The exception is racing / shooters that need wide screen — those should explicitly prompt for landscape.",
+      "severity": "important",
+      "appliesTo": "miniApp",
+      "examples": [
+        "@media (orientation: landscape) { .rotate-prompt { display: block; } .game { display: none; } }",
+        "Default game container: max-width: 480px; height: 100dvh; (portrait phone aspect)",
+        "Layout in CSS grid rows: header / playfield / controls — vertically stacked, never sidebar columns"
+      ]
+    },
+    {
+      "id": "mob-008",
+      "rule": "Use `requestAnimationFrame` with delta-time for game loops. ALSO: pause/resume the loop on `visibilitychange` so battery doesn't drain when the user switches tabs. Save game state to localStorage on `pagehide` (more reliable than `beforeunload` on mobile).",
+      "why": "Mobile users tab away constantly (notifications, lock screen). Without visibilitychange handling, the game runs in the background draining battery. pagehide is the only event that fires reliably when iOS Safari kills a tab — beforeunload is unreliable.",
+      "severity": "important",
+      "appliesTo": "miniApp",
+      "examples": [
+        "document.addEventListener('visibilitychange', () => { if (document.hidden) pauseGame(); else resumeGame(); })",
+        "window.addEventListener('pagehide', () => localStorage.setItem('gameState', JSON.stringify(state)));",
+        "// Resume from saved state on load: const saved = localStorage.getItem('gameState'); if (saved) state = JSON.parse(saved);"
+      ]
+    },
+    {
+      "id": "mob-009",
+      "rule": "Haptic feedback on critical taps via `navigator.vibrate(20)` (Android) — feature-detect first; iOS Safari ignores it but doesn't error. Audio feedback short (<100ms) for taps; longer SFX for milestones (level clear, game over). Use Web Audio API with a single shared AudioContext that's RESUMED on first user gesture (iOS suspends audio until user interacts).",
+      "why": "Tactile + audio feedback is what makes mobile games feel responsive. iOS Safari blocks audio until first user gesture — your AudioContext.resume() must happen inside a tap handler, not in your init.",
+      "severity": "important",
+      "appliesTo": "miniApp",
+      "examples": [
+        "if (navigator.vibrate) navigator.vibrate(20);",
+        "let audioContext; function ensureAudio() { if (!audioContext) audioContext = new AudioContext(); if (audioContext.state === 'suspended') audioContext.resume(); }",
+        "// Wire ensureAudio() into your first tap handler — don't call from init."
+      ]
+    },
+    {
+      "id": "mob-010",
+      "rule": "Test that the entire game UI fits within a 375×667 viewport (iPhone SE — smallest current iPhone). All controls reachable, no horizontal scroll, no clipped text, no controls under the safe-area inset. If a level/screen needs more vertical room, scroll the playfield; never let critical buttons fall below the fold.",
+      "why": "iPhone SE / mini are still in active use. A game that 'works on iPhone 15 Pro' but is broken on SE has cut out 10% of the audience. Designing for the smallest mobile viewport forces good control density.",
+      "severity": "important",
+      "appliesTo": "miniApp",
+      "examples": [
+        "Body sizing test: open in DevTools at 375x667, no overflow",
+        "Card grid that adapts: grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));",
+        "Score text scales: font-size: clamp(16px, 4vw, 22px);"
+      ]
+    },
+    {
+      "id": "mob-011",
+      "rule": "For DRAG-mechanics games (PvZ plant placement, Candy Crush swipe, Jetpack tap-to-rise): use the Pointer Events API consistently. Capture the pointer with `setPointerCapture` so a finger that drags off the original element keeps firing pointermove on it. Critical for slow drags that exit the source element's bounds.",
+      "why": "Without setPointerCapture, dragging a card off its origin breaks the drag mid-gesture (no more pointermove fires). The user's finger left the original button's bounds, so the browser stops sending events to it.",
+      "severity": "important",
+      "appliesTo": "miniApp",
+      "examples": [
+        "card.addEventListener('pointerdown', e => { card.setPointerCapture(e.pointerId); dragStart(e); });",
+        "card.addEventListener('pointermove', e => { if (dragging) updateDragPosition(e); });",
+        "card.addEventListener('pointerup', e => { card.releasePointerCapture(e.pointerId); dropCard(e); });"
+      ]
+    },
+    {
+      "id": "mob-012",
+      "rule": "Preserve game state across orientation changes, app-switching, and refreshes. Use localStorage for the current state on every meaningful state change (round start, score change, level clear). On load, check for saved state and offer 'Resume' or 'New Game' prominently — don't auto-resume silently (user might want fresh start).",
+      "why": "Mobile users get interrupted constantly. A game that loses progress on tab-switch feels broken. localStorage save-every-meaningful-event is cheap (microseconds) and recovers from any interruption.",
+      "severity": "important",
+      "appliesTo": "miniApp",
+      "examples": [
+        "function saveState() { localStorage.setItem(GAME_KEY, JSON.stringify({wave, score, lives, plants})); }",
+        "// Call saveState() at: wave-start, score-change, lives-lost, level-clear, game-over",
+        "// On load: const saved = localStorage.getItem(GAME_KEY); if (saved) showResumePrompt(JSON.parse(saved));"
+      ]
+    }
+  ]
+}
