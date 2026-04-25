@@ -1,6 +1,6 @@
 {
   "$schema_version": "1.0.0",
-  "catalog_version": "2026.04.25-m",
+  "catalog_version": "2026.04.25-n",
   "last_updated": "2026-04-25",
   "difficulty_definitions": {
     "L1": "Simple CRUD / single view / static content. <150 LOC target. One wizard turn.",
@@ -2806,6 +2806,23 @@
         "@StateObject"
       ],
       "notes": "First WKWebView + NSSplitView entry. Native-mac surface = NSSplitView with draggable divider (preserved between launches via NSSplitView autosaveName). Modern path: SwiftUI HSplitView wrapping the editor + WKWebView in NSViewRepresentable. The LLM has two acceptable rendering strategies \u2014 AttributedString.init(markdown:) (Apple-native, fast, but limited to inline formatting; no code blocks or tables) OR a small regex transformer to HTML (more flexible but more code). Either is L2-OK. Common trap: the WKWebView body color won't auto-track macOS dark mode unless the inline CSS uses @media(prefers-color-scheme:dark) AND the WKWebView's `setValue(false, forKey: \"drawsBackground\")` is set so the page can be transparent over the SwiftUI background."
+    },
+    {
+      "id": "macos-l1-utility-touch-id-vault-130",
+      "goal": "macOS Touch ID secret vault. Single 460x440 window. List of saved secrets (label + masked value '\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022'). Each row has an 'Unlock' button \u2192 calls LAContext.evaluatePolicy(.deviceOwnerAuthenticationWithBiometrics) with reason='Reveal secret'; on success, fetch the value from Keychain (kSecClass=kSecClassGenericPassword, kSecAttrService='mchatai.vault', kSecAttrAccount=<label>) and reveal in plaintext for 5 seconds before re-masking. 'Add secret' shows a sheet with label + value text fields, 'Save' writes via SecItemAdd. 'Delete' (with Touch ID confirm) removes via SecItemDelete. Initial secret bootstrap on first launch: pre-populate with one demo entry 'Demo Note: hello-world-2026' so the Unlock UX is visible without first having to add. Maximum 5 secrets to keep UI bounded.",
+      "artifact_type": "macOSApp",
+      "category": "utility",
+      "difficulty": "L1",
+      "dispatch": "runWizard",
+      "expected_capabilities": [
+        "LAContext",
+        "LocalAuthentication",
+        "SecItemAdd",
+        "SecItemCopyMatching",
+        "SecItemDelete",
+        "@State"
+      ],
+      "notes": "First LocalAuthentication + Keychain entry. Native-mac surface: LAContext biometric policy on Touch-ID Macs (falls back to password on Macs without TID; the LLM must handle both via canEvaluatePolicy check). Keychain trap: kSecAttrService is the namespace, kSecAttrAccount is the per-secret key — common LLM mistake is using kSecAttrLabel which is just a UI hint, not an identity. SecItemCopyMatching needs kSecReturnData=true to actually return bytes; without it you only get attributes. Bootstrap demo secret avoids the empty-state black hole. NOTE: requires `com.apple.security.app-sandbox` + `keychain-access-groups` entitlement — flag in CONTEXT.md if the LLM ships an entitlements file."
     }
   ]
 }
