@@ -915,6 +915,10 @@
     },
     {
       "id": "mini-l3-games-mobile-jetpack-083",
+      "flaky_history": [
+        {"run": "2026-04-25T2049", "tier": "L3", "outcome": "looks-promising-but-Play-button-broken@540s", "concurrency": 1, "note": "User-validated 2026-04-25: visuals + layout look promising, BUT tapping the 'Play' button does nothing. Game-loop start is wired wrong OR the Play handler attaches before DOM is ready OR there's no transition from start screen to game state. Refine target."}
+      ],
+      "user_outcome": "promising visuals but Play button doesn't start the game — refine candidate",
       "goal": "Jetpack Joyride-style endless side-scroller, mobile portrait. The game world auto-scrolls horizontally; the player character is on the LEFT third of the screen. TAP-AND-HOLD anywhere on the screen makes the jetpack fire (ascend); release to fall. Avoid obstacles: stationary lasers (vertical bars), missiles (telegraphed by warning indicator at right edge for 1s, then fly across), zappers (rotating electrified bars). Collect coins arranged in arcs and lines. Distance counter at top, coin counter beside it. Game over on first collision. Persist best-distance + total-coins to localStorage. Touch-only, portrait. Apply mobile-frontend wisdom.",
       "artifact_type": "miniApp",
       "category": "games",
@@ -943,6 +947,7 @@
     },
     {
       "id": "mini-l2-games-mobile-flappy-085",
+      "user_outcome": "PUBLISHED 2026-04-25 — solid first-pass, user shipped to production. (harness JSONL says timeout@300s but artifact was fully working — VER.Bug1 false-positive)",
       "goal": "Flappy Bird-style mobile game. Portrait viewport. Tap anywhere to flap (small upward velocity impulse); gravity pulls the bird down constantly. Pipes scroll left at constant speed; player must fly through gaps. Each pipe cleared = +1 score. One collision = game over. Day/night cycle changes background every 10 pipes. Persist best-score to localStorage. Touch-only, portrait. Apply mobile-frontend wisdom.",
       "artifact_type": "miniApp",
       "category": "games",
@@ -957,6 +962,7 @@
     },
     {
       "id": "mini-l2-games-mobile-slot-086",
+      "user_outcome": "PUBLISHED 2026-04-25 — solid, user shipped. (harness timeout@300s false-positive)",
       "goal": "Slot machine, mobile portrait. 3 reels with 5 fruit symbols each (cherry, lemon, bell, bar, seven). Center 'SPIN' button takes 80% of screen width at the bottom (mob-004 thumb-reach). Tap SPIN: each reel shows a spinning blur for 1-3 seconds (each ending one after the other), then settles on a random symbol. 3 matching = win, payout based on symbol (cherry=2x, lemon=5x, bell=10x, bar=25x, seven=100x). Player starts with 100 credits, bets 1 per spin. Persist credits to localStorage. Haptic feedback on win. Touch-only.",
       "artifact_type": "miniApp",
       "category": "games",
@@ -971,6 +977,11 @@
     },
     {
       "id": "mini-l1-games-mobile-clicker-087",
+      "flaky": true,
+      "flaky_history": [
+        {"run": "2026-04-25T2032", "tier": "L1", "outcome": "looks-terrible+failed-status", "concurrency": 1, "note": "User-validated 2026-04-25: visual quality bad (cookie clicker landing-page-style instead of touch-game-style). Wisdom rule may not have loaded for L1 fast-path generator template, OR the L1 generator.l1.fast template doesn't include mobile pack guidance. Refine candidate: explicit prompt that this is a TOUCH GAME with giant tap target, not a webpage."}
+      ],
+      "user_outcome": "BAD — looks terrible + failed status. Refine target.",
       "goal": "Idle clicker, mobile portrait. Center: a giant tappable target (cookie/coin emoji or simple SVG circle), tapping it +1 to score. Below: an 'Auto-clickers' shop where score can be spent — Cursor (10 score = +1/sec), Grandma (100 = +5/sec), Factory (1000 = +20/sec). Score updates every 100ms from auto-clickers. Persist score + owned counts to localStorage. Haptic on each tap. Touch-only, portrait, no keyboard.",
       "artifact_type": "miniApp",
       "category": "games",
@@ -985,6 +996,7 @@
     },
     {
       "id": "mini-l1-utility-mobile-tip-088",
+      "user_outcome": "PUBLISHED 2026-04-25 — works fine. (Status said failed in some surface but artifact was good — separate UX bug worth investigating; flagged.)",
       "goal": "Tip calculator, mobile-first. Single-screen portrait. Top: large bill amount input (number pad opens on tap). Middle: row of tip-percent quick-pick chips (10/15/18/20/custom). Bottom: split-by stepper (1-10 people). All inputs flow into 3 large-format result rows: tip total, grand total, per-person amount. Each result row has a tap-to-copy button. Use 100dvh + safe-area insets so the keyboard doesn't push results off-screen. Touch-first.",
       "artifact_type": "miniApp",
       "category": "finance",
@@ -999,6 +1011,7 @@
     },
     {
       "id": "mini-l2-utility-mobile-pomodoro-089",
+      "user_outcome": "PUBLISHED 2026-04-25 — solid, user shipped. Mobile-first variant validated against desktop pomodoro — direct A/B win. (harness timeout@300s false-positive)",
       "goal": "Pomodoro timer, mobile-first portrait. Top: massive countdown (font-size clamp 48-96px) showing MM:SS. Below: a single huge primary button (Start/Pause/Resume) — sized 80% screen-width so the user's thumb can't miss it. Below that: a smaller 'Skip' button. 25min work / 5min break cycle, automatic phase transition with strong haptic + audio chime. Cycle counter at top. Persist current phase + remaining seconds to localStorage so a tab-switch doesn't lose progress (mob-012). Phase color changes (work=red, break=green). Touch-only.",
       "artifact_type": "miniApp",
       "category": "productivity",
