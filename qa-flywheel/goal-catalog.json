@@ -1,7 +1,7 @@
 {
   "$schema_version": "1.0.0",
-  "catalog_version": "2026.04.25-c",
-  "last_updated": "2026-04-25",
+  "catalog_version": "2026.04.25-d",
+  "last_updated": "2026-04-24",
   "difficulty_definitions": {
     "L1": "Simple CRUD / single view / static content. <150 LOC target. One wizard turn.",
     "L2": "Non-trivial glue: state mgmt, 2+ screens, one external API or framework primitive. 1-2 turns.",
@@ -1827,6 +1827,130 @@
         "mobile-frontend",
         "universal"
       ]
+    },
+    {
+      "id": "macos-l1-productivity-pomodoro-menubar-110",
+      "goal": "macOS menubar Pomodoro timer. Click the menubar icon \u2192 small popover with Start/Pause/Reset. Single 25-min cycle, tomato emoji countdown text in the menubar item itself. NO break cycle, NO settings \u2014 just one timer. Native SwiftUI + NSStatusItem.",
+      "artifact_type": "macOSApp",
+      "category": "productivity",
+      "difficulty": "L1",
+      "dispatch": "runWizard",
+      "expected_capabilities": [
+        "NSStatusItem",
+        "Timer",
+        "@State"
+      ],
+      "notes": "Avoids the saturated 'pomodoro' miniApp territory by being native + menubar-resident \u2014 exercises NSStatusItem button-text updates which menubar-clock-071 didn't (clock just opens a popover; this one mutates the bar item text every second)."
+    },
+    {
+      "id": "macos-l1-utility-uuid-clipboard-111",
+      "goal": "macOS one-shot UUID generator. Single 400\u00d7200 window. Big 'Generate UUID' button \u2192 creates a UUIDv4, displays it in a monospaced text field, copies to NSPasteboard automatically. History list of last 5 UUIDs below. No persistence between launches.",
+      "artifact_type": "macOSApp",
+      "category": "utility",
+      "difficulty": "L1",
+      "dispatch": "runWizard",
+      "expected_capabilities": [
+        "UUID",
+        "NSPasteboard",
+        "TextField"
+      ],
+      "notes": "Tests NSPasteboard auto-write (asciiart-074 tests it but on user click; this one fires automatically). Common dev-utility surface."
+    },
+    {
+      "id": "macos-l1-system-batterymeter-menubar-112",
+      "goal": "macOS battery percentage menubar app. Reads system battery level via IOPowerSources / IOPSCopyPowerSourcesInfo, shows percentage in the menubar item (e.g. '87%'). Click \u2192 popover with charging status + estimated time remaining. Updates every 60s.",
+      "artifact_type": "macOSApp",
+      "category": "utility",
+      "difficulty": "L1",
+      "dispatch": "runWizard",
+      "expected_capabilities": [
+        "IOPSCopyPowerSourcesInfo",
+        "NSStatusItem",
+        "Timer"
+      ],
+      "notes": "Tests system-info APIs (IOKit) which previous menubar entries don't. Fragile target for the LLM \u2014 IOPS C-API bridging is non-trivial."
+    },
+    {
+      "id": "macos-l2-productivity-link-stash-113",
+      "goal": "macOS link-stash app. Single-window list view of saved URLs with title + favicon (auto-fetched). Add via paste-button or paste-detect on launch. Persists to ~/Library/Application Support/LinkStash/links.json. Click row \u2192 opens in default browser via NSWorkspace. No tags, no folders, just a chronological stash.",
+      "artifact_type": "macOSApp",
+      "category": "productivity",
+      "difficulty": "L2",
+      "dispatch": "runWizard",
+      "expected_capabilities": [
+        "List",
+        "AsyncImage",
+        "FileManager",
+        "NSWorkspace",
+        "Codable"
+      ],
+      "notes": "First L2 macOSApp. Exercises persistence + URLSession (favicon fetch) + NSWorkspace.open. No reliance on third-party Swift packages."
+    },
+    {
+      "id": "macos-l2-creative-color-palette-builder-114",
+      "goal": "macOS color palette builder. Two-pane layout: left = list of saved palettes, right = active palette with up to 8 ColorPicker swatches. Add/remove swatches. Each palette has a name. Persists palettes to JSON in Application Support. Export current palette as a Swift `Color` array snippet to clipboard.",
+      "artifact_type": "macOSApp",
+      "category": "creative",
+      "difficulty": "L2",
+      "dispatch": "runWizard",
+      "expected_capabilities": [
+        "NavigationSplitView",
+        "ColorPicker",
+        "Codable",
+        "FileManager",
+        "NSPasteboard"
+      ],
+      "notes": "Tests NavigationSplitView (macOS-native two-pane) which color-contrast-073 doesn't. Exercises Codable round-trip on Color (via hex string conversion)."
+    },
+    {
+      "id": "macos-l2-utility-clipboard-history-115",
+      "goal": "macOS clipboard history menubar app. NSPasteboard polling every 1s; when a new string copy is detected, prepend to a 50-item ring buffer. Menubar popover shows the last 10. Click any row to copy back. Esc dismisses. Persists buffer across launches via UserDefaults JSON.",
+      "artifact_type": "macOSApp",
+      "category": "utility",
+      "difficulty": "L2",
+      "dispatch": "runWizard",
+      "expected_capabilities": [
+        "NSStatusItem",
+        "NSPasteboard",
+        "Timer",
+        "UserDefaults",
+        "Codable"
+      ],
+      "notes": "Common macOS power-user app. Polling NSPasteboard.changeCount is the canonical pattern; tests the LLM knows it instead of busy-reading the string each tick."
+    },
+    {
+      "id": "macos-l2-finance-tip-calculator-window-116",
+      "goal": "macOS tip calculator window app. Bill amount TextField (currency formatter), tip-percent slider (10-30%), party-size stepper. Live-updates show: tip total, per-person, grand total. Save the last-used percent + party size to UserDefaults so they persist across launches. Single 480\u00d7320 window.",
+      "artifact_type": "macOSApp",
+      "category": "finance",
+      "difficulty": "L2",
+      "dispatch": "runWizard",
+      "expected_capabilities": [
+        "TextField",
+        "Slider",
+        "Stepper",
+        "NumberFormatter",
+        "UserDefaults"
+      ],
+      "notes": "Common finance tutorial-app subject \u2014 exercises currency formatting + multi-input live binding. Saturated as miniApp but novel as native macOS window."
+    },
+    {
+      "id": "macos-l3-productivity-markdown-scratchpad-117",
+      "goal": "macOS multi-window markdown scratchpad. Each window = one note with a live-rendering preview pane (split view, drag to resize). File menu: New, Open .md, Save / Save As (NSSavePanel), Export as HTML. Notes auto-save to ~/Library/Application Support/Scratchpad/<uuid>.md every 2s. Dock-shown app, recent-files menu populated. Multiple windows simultaneously.",
+      "artifact_type": "macOSApp",
+      "category": "productivity",
+      "difficulty": "L3",
+      "dispatch": "runWizard",
+      "expected_capabilities": [
+        "WindowGroup",
+        "DocumentGroup",
+        "NSSavePanel",
+        "NSOpenPanel",
+        "FileDocument",
+        "AttributedString",
+        "HSplitView"
+      ],
+      "notes": "First L3 macOSApp \u2014 tests CLI-agentic Meta.W path (planner + CLI generation). Multi-window via WindowGroup/DocumentGroup is the canonical macOS pattern that L1 fast-path can't reach. Phase WX-A's dist/*.app recovery should fire here."
     }
   ]
 }
