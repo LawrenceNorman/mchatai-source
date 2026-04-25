@@ -1,7 +1,7 @@
 {
   "$schema_version": "1.0.0",
-  "catalog_version": "2026.04.25-e",
-  "last_updated": "2026-04-24",
+  "catalog_version": "2026.04.25-f",
+  "last_updated": "2026-04-25",
   "difficulty_definitions": {
     "L1": "Simple CRUD / single view / static content. <150 LOC target. One wizard turn.",
     "L2": "Non-trivial glue: state mgmt, 2+ screens, one external API or framework primitive. 1-2 turns.",
@@ -2612,11 +2612,11 @@
       ]
     },
     {
-      "id": "macos-l1-games-mahjong-solo-118",
+      "id": "macos-l2-games-mahjong-solo-118",
       "goal": "macOS Mahjong tile-match solo game. SwiftUI Canvas-rendered grid of 36 tiles in a 6x6 layout (subset of full mahjong). Click two tiles with matching glyphs (use SF Symbols like sun, moon, leaf, drop, flame, sparkles for the 6 tile types) to remove the pair. Match all 18 pairs to win. Single window 600x600. Cmd+S to save current layout to ~/Library/Application Support/Mahjong/layout.json via NSSavePanel; Cmd+O to load.",
       "artifact_type": "macOSApp",
       "category": "games",
-      "difficulty": "L1",
+      "difficulty": "L2",
       "dispatch": "runWizard",
       "expected_capabilities": [
         "Canvas",
@@ -2625,7 +2625,7 @@
         "NSOpenPanel",
         "@FocusedValue"
       ],
-      "notes": "First macOSApp game entry. Native-mac angle: actual Save/Open file panels exporting layouts as JSON. Mahjong solitaire is absent from the saturated miniApp list. ~150 LOC target."
+      "notes": "First macOSApp game entry. Native-mac angle: actual Save/Open file panels exporting layouts as JSON. Mahjong solitaire is absent from the saturated miniApp list. ~150 LOC target. Bumped L1\u2192L2 on 2026-04-25 after Mahjong L1 canary failed: NSSavePanel sequences need planner stage, which L1 fast-path skips. See gotchas_l1_macos_native_specifics.md."
     },
     {
       "id": "macos-l1-games-deskpet-menubar-119",
@@ -2672,7 +2672,7 @@
         "CommandMenu",
         "Codable"
       ],
-      "notes": "Native-mac angle: real file-system high score export via NSSavePanel \u2014 not a localStorage hack. Tests CommandMenu (macOS native menus) which no other entry covers. ~300 LOC."
+      "notes": "Native-mac angle: real file-system high score export via NSSavePanel \u2014 not a localStorage hack. Tests CommandMenu (macOS native menus) which no other entry covers. ~300 LOC. Confirmed L2 is the right tier \u2014 NSSavePanel call sequence needs planner stage."
     },
     {
       "id": "macos-l3-games-dock-defender-towerdefense-122",
