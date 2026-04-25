@@ -3,7 +3,7 @@ artifactID: genre.tower-defense
 kind: genre
 parent: games
 origin: learned
-lastUpdated: 2026-04-23
+lastUpdated: 2026-04-25
 ---
 
 # Tower Defense
@@ -22,4 +22,4 @@ Classifier keywords: tower defense, td, plants vs zombies, bloons, kingdom rush,
 
 ## Provenance
 
-Proposed by GenreReflectionService (Phase GC.P6) via (seeded) from session 336E36DD on 2026-04-23.
+Proposed by GenreReflectionService (Phase GC.P6) via (seeded) from session 59C206D5 on 2026-04-25.
