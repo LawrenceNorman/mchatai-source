@@ -1,0 +1,65 @@
+{
+  "$schema": "https://mchatai.com/schemas/artifact-type-chips-v1.json",
+  "version": "1.0.0",
+  "last_updated": "2026-04-26",
+  "_notes": "Phase AT — chip catalog for the explicit artifact-type picker. Rendered as turn-1 chips in AIHarness when the wizard cannot confidently auto-classify the user's goal. Intentionally short (7 chips) to fit on small windows in 2 rows max. The 'other' chip routes into a free-text follow-up. Order = display order in the UI.",
+  "chips": [
+    {
+      "id": "miniApp",
+      "emoji": "🌐",
+      "label": "Web mini-app",
+      "subtitle": "HTML/JS in a viewer or browser",
+      "examples": "habit tracker, drawing tool, simple game",
+      "fences_to_solution_type": "miniApp"
+    },
+    {
+      "id": "macOSApp",
+      "emoji": "🖥",
+      "label": "macOS app",
+      "subtitle": "Native Swift, runs in its own window",
+      "examples": "menubar utility, document editor, native game",
+      "fences_to_solution_type": "macOSApp"
+    },
+    {
+      "id": "pipeline",
+      "emoji": "🔁",
+      "label": "AI Pipeline",
+      "subtitle": "Chain of skill steps that produce a result",
+      "examples": "summarize the news, translate a book, generate a report",
+      "fences_to_solution_type": "pipeline"
+    },
+    {
+      "id": "agent",
+      "emoji": "🤖",
+      "label": "AI Agent",
+      "subtitle": "An LLM that uses tools to accomplish a task",
+      "examples": "research assistant, code reviewer, task triager",
+      "fences_to_solution_type": "agent"
+    },
+    {
+      "id": "unityGame",
+      "emoji": "🎮",
+      "label": "Unity game",
+      "subtitle": "C# project, opens in Unity Hub",
+      "examples": "platformer, top-down shooter, puzzle",
+      "fences_to_solution_type": "unityGame"
+    },
+    {
+      "id": "microservice",
+      "emoji": "🛠",
+      "label": "Microservice",
+      "subtitle": "Python REST endpoint",
+      "examples": "geocoding API, sentiment classifier, scraper",
+      "fences_to_solution_type": "microservice"
+    },
+    {
+      "id": "other",
+      "emoji": "💬",
+      "label": "Other / not sure",
+      "subtitle": "Tell me more — I'll figure it out",
+      "examples": "answer a question, do a one-shot task, something else",
+      "fences_to_solution_type": null
+    }
+  ],
+  "_routing_notes": "fences_to_solution_type maps the chip ID onto the AISolutionType enum value the wizard uses internally (AIHarness.swift). 'other' is special — taps open a free-text follow-up message that re-runs the LLM classifier with the extra context, then either picks one of the 6 concrete chips or flips the session into 'answer mode' (Layer 1 = answer-not-build)."
+}
