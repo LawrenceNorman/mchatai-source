@@ -287,6 +287,20 @@
         "BAD: evaluator reads CLAUDE.md section on 'Card games', concludes 'this is a card game', rates CARDS_JUSTIFIED 2/2 based on the scaffold reference instead of the actual HTML.",
         "CHECK: before answering any genre-assuming criterion, open the generated HTML in the file specified by the user's artifact and search for the actual components (cards, boards, sprites, canvases). Don't infer genre from ambient context."
       ]
+    },
+    {
+      "id": "u-024",
+      "rule": "If `visual-brief/tokens.json` exists in the working directory, you MUST read it and use those exact hex values + typography + spacing for the artifact's visual design. Do NOT invent your own palette. Map: tokens.colors.primary → primary CTA / hero color; tokens.colors.accent → highlights, hover, badges; tokens.colors.background → page/canvas background; tokens.colors.surface → cards, panels; tokens.colors.text + textMuted → body text. Use tokens.typography.fontFamily verbatim in CSS `font-family`. Use tokens.spacing.baseUnit (in px) as the base of all paddings/margins (multiples of it). Use tokens.radii.{sm,md,lg} for `border-radius`. Honor `tokens.componentHints` qualitatively (e.g. `glass-panels-with-blur` → `backdrop-filter: blur(...)`, `glowing-CTAs` → CSS `box-shadow` glow on accent). Also read `visual-brief/meta.json` for `referenceStyle` (e.g. `cinematic-dark`) — that's the user's chosen archetype name; align the overall mood to it.",
+      "why": "Phase VD.7.12 ships a Swatch Catalog: the user picks one of 5 pre-baked design swatches BEFORE generation begins, and the picked tokens are written to `visual-brief/tokens.json` in the workDir for the CLI generator to read. Without this rule, the LLM ignores the file and invents its own palette — defeating the entire pre-generation visual picker. Hit 2026-04-26 on a Cavern Descent run: user picked Cinematic Dark (purple #7C3AED + orange #FB923C + near-black bg + glass panels), tokens.json was staged correctly, but Claude CLI never read it and shipped a generic green-and-blue palette.",
+      "severity": "critical",
+      "appliesTo": "all",
+      "examples": [
+        "GOOD: tokens.json says primary=#7C3AED → CSS `:root { --primary: #7C3AED; }`, hero buttons use `var(--primary)`, hover state uses tokens.colors.accent.",
+        "GOOD: meta.json says referenceStyle=cinematic-dark + tokens.componentHints includes glass-panels-with-blur → cards get `background: rgba(28,28,32,0.6); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.08)`.",
+        "GOOD: tokens.spacing.baseUnit=8 → all paddings/margins use 8/16/24/32px (multiples of 8). tokens.radii.md=12 → cards `border-radius: 12px`.",
+        "BAD: tokens.json present but generator picks `#1abc9c` and `#3498db` from its own knowledge → palette is wrong, user-picked archetype is ignored, the entire VD.7 pre-pick UX is wasted.",
+        "CHECK: before writing any CSS color or font value, run `cat visual-brief/tokens.json` (or read the file via your tool). If the file exists, those values are mandatory inputs, not suggestions. If the file doesn't exist, fall back to taste — that means the user opted out via Skip and you have license to choose."
+      ]
     }
   ]
 }
