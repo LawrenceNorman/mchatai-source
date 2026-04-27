@@ -1,0 +1,76 @@
+{
+  "_meta": {
+    "purpose": "Phase ME (Modify Existing) tunables. Loaded at fire time by MEContextPlanner — every value here is hot-reloadable via refreshMchataisourceCache (zero rebuild). When iterating planner success rate, EDIT THIS FILE FIRST, not Swift.",
+    "version": "1.0.0",
+    "schema": "https://mchatai.com/schemas/wizard-me-config.v1.json"
+  },
+
+  "tree": {
+    "_doc": "Bounds for the working-folder file enumeration that gets handed to the LLM-locator.",
+    "maxFiles": 2000,
+    "_doc_maxFiles": "Soft cap on number of code files surfaced to the locator prompt. Bigger = more recall but more tokens. Cap was 200/800 — bumped to 2000 after diag found the iOS source dir was being truncated out of large monorepos. Keep in mind the prompt-budget hint below.",
+    "promptCharBudget": 60000,
+    "_doc_promptCharBudget": "Hard truncation applied to the tree text in the locator prompt. Was 16000 — bumped to 60000 to match maxFiles=2000 (avg 50 chars/path). Cheap-tier models (Haiku/Flash) handle ~100k input cleanly.",
+
+    "codeExtensions": [
+      "swift", "ts", "tsx", "js", "jsx", "py", "kt", "rs", "go",
+      "java", "html", "css", "json", "md"
+    ],
+    "_doc_codeExtensions": "File extensions the enumerator considers. Add 'rb' for Ruby projects, 'cs' for Unity, etc.",
+
+    "skipDirs": [
+      ".build", "build", "Pods", "node_modules", "DerivedData",
+      ".git", ".swiftpm", "Carthage", "vendor", "target", "out",
+      "dist", ".next", ".nuxt", "__pycache__",
+      "community-extensions"
+    ],
+    "_doc_skipDirs": "Exact-match directory names to prune entirely. mchatai-source/community-extensions/ is content, not platform code we'd modify.",
+
+    "skipDirSubstrings": [
+      "_shortlist", "_cache", "_archive", "_snapshot",
+      "iconmaker_", ".xcodeproj", ".xcworkspace"
+    ],
+    "_doc_skipDirSubstrings": "Substring patterns matched against each path component. Catches generated-artifact dirs like iconmaker_shortlist_3plus/ that frequently dominate large monorepos."
+  },
+
+  "locator": {
+    "_doc": "Stage-1.a — LLM-locator that picks 1-3 candidate files from the tree.",
+    "maxTokens": 600,
+    "_doc_maxTokens": "Output budget for the locator response. 600 is plenty for the JSON shape {files,confidence,reasoning}.",
+    "temperature": 0.0,
+    "maxFilesPicked": 3,
+    "_doc_maxFilesPicked": "Hard cap on files the locator can return. Validation drops anything beyond this.",
+    "promptKey": "me.locator.system",
+    "_doc_promptKey": "PromptTemplateService key for the locator system prompt. Edit me.locator.system.md to tune locator behavior — no rebuild needed."
+  },
+
+  "snippetExtractor": {
+    "_doc": "Stage-1.b — for each planned file over inlineBudgetLines, run an LLM call to pick the most-relevant 50-150 line region.",
+    "inlineBudgetLines": 400,
+    "_doc_inlineBudgetLines": "Files at or under this many lines bypass the picker — whole file is passed to the executor. Tune up if cheap-tier model handles bigger files; tune down to save cost.",
+    "fileDumpCharBudget": 16000,
+    "_doc_fileDumpCharBudget": "Hard truncation applied to the numbered file dump fed to the snippet picker. Larger files get a head-truncation marker.",
+    "regionMinLines": 50,
+    "regionMaxLines": 150,
+    "_doc_regionLines": "The picker is prompted to pick 50-150 lines. We clamp the LLM's output to this range — it sometimes drifts.",
+    "maxTokens": 200,
+    "temperature": 0.0,
+    "headFallbackLines": 200,
+    "tailFallbackLines": 100,
+    "_doc_fallback": "When the picker LLM call fails entirely, we fall back to head(N) + elision + tail(M). Better than dropping the file silently.",
+    "promptKey": "me.snippet-picker.system",
+    "_doc_promptKey": "PromptTemplateService key for the snippet-picker system prompt."
+  },
+
+  "executor": {
+    "_doc": "Stage-2 — turns the planner's polished context into a unified diff.",
+    "singleFileContentBudget": 20000,
+    "multiFileContentBudget": 32000,
+    "_doc_contentBudgets": "Char limits applied to the {{targetFileContent}} substitution before the executor LLM fires. Multi-file uses a bigger budget because each snippet ships with a header line.",
+    "maxTokens": 4000,
+    "temperature": 0.1,
+    "timeoutSeconds": 120,
+    "cliMaxTurns": 6,
+    "_doc_cliMaxTurns": "Max turns the Claude Code CLI executor can take. ME.0 is one-shot in spirit but Claude Code may need 2-3 reads + 1 emit, so 6 is safe."
+  }
+}
