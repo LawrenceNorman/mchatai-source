@@ -1,0 +1,48 @@
+{
+  "_meta": {
+    "purpose": "Stale-CLI-subprocess reaper tunables. Loaded by HarnessCLIConductor at fire time — every value here is hot-reloadable via refreshMchataisourceCache (zero rebuild). Reaps standalone PTY sessions that have been silent (no stream activity) longer than the threshold. Pinned (wizard-attached) sessions are NEVER reaped.",
+    "version": "1.0.0",
+    "schema": "https://mchatai.com/schemas/cli-reaper.v1.json",
+    "tuning_advice": "Default 60min idle gives a long-running generation 1h of headroom before the reaper considers it stuck. Bump higher for users running multi-hour autonomous CLI sessions; drop lower for tighter retail behavior. NEVER set < 5min — short-burst silence between tool calls is normal and you'd kill live sessions."
+  },
+
+  "enabled": true,
+  "_doc_enabled": "Master kill-switch. When false, the reaper is a no-op and stale processes accumulate. Useful as an emergency disable.",
+
+  "idleThresholdSeconds": 3600,
+  "_doc_idleThresholdSeconds": "A session must have NO stream activity (no output, no input) for at least this many seconds AND be unpinned to be reaped. 3600 = 60 min. Prior incident 2026-04-26: 9-day-old Codex zombie + 3-day-old Gemini zombies were running because nothing kills them.",
+
+  "reapOnLaunch": true,
+  "_doc_reapOnLaunch": "Run the reaper once on app launch (after ShellBridge is ready). Catches zombies that survived a previous app crash or normal-but-unclean exit.",
+
+  "reapOnForceRelease": true,
+  "_doc_reapOnForceRelease": "Run the reaper when the user clicks Force-Release. The yellow triangle is the user saying 'something is wrong, clean up' — reap stale standalones in the same gesture.",
+
+  "minIdleSecondsForLaunchReap": 300,
+  "_doc_minIdleSecondsForLaunchReap": "On launch, allow a lower threshold (5 min) since any session left over from a prior run is suspect. Force-Release uses the full idleThresholdSeconds so we don't accidentally kill a foreground user's long generation.",
+
+  "pgrepPatterns": [
+    {
+      "pattern": "claude --output-format stream-json",
+      "label": "Claude Code (CLI)",
+      "_doc": "VSCode-extension and homebrew Claude Code subprocesses run with these flags. Spawned by mChatAI+ via WizardCLIRunner OR by other tools (VSCode Anthropic extension); the conductor only tracks the former."
+    },
+    {
+      "pattern": "gemini --output-format stream-json",
+      "label": "Gemini CLI",
+      "_doc": "Homebrew gemini binary. Same shape as Claude Code — subprocess outlives parent on timeout/crash."
+    },
+    {
+      "pattern": "codex.*--output-format json",
+      "label": "Codex CLI",
+      "_doc": "Codex JSON-mode subprocesses. NOTE: 'codex app-server' is the OpenAI ChatGPT desktop app's runtime — explicitly NOT in this pattern so we don't kill the user's IDE. Pattern requires --output-format json which is wizard-spawned only."
+    }
+  ],
+  "_doc_pgrepPatterns": "Process-name patterns the broader reaper checks via pgrep -af. Each pattern matches the FULL command line (so 'codex.*--output-format json' matches the wizard-spawned variant but not 'codex app-server'). Patterns are regex-style. Add new entries when a new CLI backend is wired into WizardCLIRunner. To disable pgrep reaping entirely: set pgrepPatterns: [].",
+
+  "pgrepReapThresholdSeconds": 600,
+  "_doc_pgrepReapThresholdSeconds": "Process-age threshold for the pgrep reaper. Default 600 = 10min. Conservative — we don't want to interrupt a real wizard generation, and the conductor-side reaper (idleThresholdSeconds=3600) already handles the long-tail cases. The pgrep reaper is the safety net for processes the conductor doesn't see at all (e.g. VSCode-extension Claude Code).",
+
+  "pgrepProtectCurrentSession": true,
+  "_doc_pgrepProtectCurrentSession": "When true, never kill a process that shares the current Claude Code session ID (--resume <uuid>). Without this, a Claude Code agent running inside a Claude Code agent would suicide on launch reap. Reads $CLAUDE_PROJECT_KEY or matching --resume token to identify self."
+}

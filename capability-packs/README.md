@@ -13,6 +13,12 @@ load when they need specialized knowledge or tools.
 
 - `macos-app-builder`: native SwiftUI/AppKit macOS app generation, build, QA,
   and packaging guidance.
+- `miniapp-builder`: single-file HTML/CSS/JS mini-app generation, preview, QA,
+  and publish-readiness guidance.
+- `pipeline-builder`: AI Automation pipeline and DAG pipeline composition,
+  validation, run, and output-quality guidance.
+- `webspa-builder`: deployable multi-file web SPA generation, build, preview,
+  responsive QA, and package guidance.
 
 ## Planned Pack Families
 
@@ -24,4 +30,3 @@ load when they need specialized knowledge or tools.
   speech, icon/image generation, documents, presentations, spreadsheets.
 - Product-domain packs: Vault/document intelligence, MapGuide/spatial,
   calendar/productivity, music/audio, game design, community publish.
-

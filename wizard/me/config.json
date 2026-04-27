@@ -7,10 +7,10 @@
 
   "tree": {
     "_doc": "Bounds for the working-folder file enumeration that gets handed to the LLM-locator.",
-    "maxFiles": 2000,
-    "_doc_maxFiles": "Soft cap on number of code files surfaced to the locator prompt. Bigger = more recall but more tokens. Cap was 200/800 — bumped to 2000 after diag found the iOS source dir was being truncated out of large monorepos. Keep in mind the prompt-budget hint below.",
-    "promptCharBudget": 60000,
-    "_doc_promptCharBudget": "Hard truncation applied to the tree text in the locator prompt. Was 16000 — bumped to 60000 to match maxFiles=2000 (avg 50 chars/path). Cheap-tier models (Haiku/Flash) handle ~100k input cleanly.",
+    "maxFiles": 8000,
+    "_doc_maxFiles": "Soft cap on number of code files surfaced to the locator prompt. Bigger = more recall but more tokens. Cap was 200/800/2000 — bumped to 8000 after diag found iOS source dir (~448 Swift files in mchatai/) was being truncated out of mchatai_platform monorepo at 2000 cap (macOS=1280 alone). Keep in mind the prompt-budget hint below.",
+    "promptCharBudget": 200000,
+    "_doc_promptCharBudget": "Hard truncation applied to the tree text in the locator prompt. Was 16000/60000 — bumped to 200000 to match maxFiles=8000 (avg 50 chars/path). Cheap-tier models (Haiku/Flash/4o-mini) all handle 200k input cleanly. If a goal targets a smaller repo this is a no-op anyway — only large monorepos need the headroom.",
 
     "codeExtensions": [
       "swift", "ts", "tsx", "js", "jsx", "py", "kt", "rs", "go",

@@ -1,8 +1,17 @@
 {
-  "version": 1,
+  "version": 2,
   "surface": "pipeline-step",
-  "description": "Minimal context recipe for pipeline LLM-generate steps. The pipeline step's own system prompt drives behavior; the harness only contributes the goal and (optionally) wisdom guardrails. No history layer — pipeline steps are stateless from the LLM's perspective.",
+  "description": "Minimal context recipe for pipeline LLM-generate steps. The pipeline step's own system prompt drives behavior; the harness contributes pipeline-builder guidance, the goal, and wisdom guardrails. No history layer — pipeline steps are stateless from the LLM's perspective.",
   "layers": [
+    {
+      "id": "pipeline-builder-pack",
+      "loader": "capability-pack",
+      "priority": 90,
+      "maxTokens": 3500,
+      "options": {
+        "packID": "pipeline-builder"
+      }
+    },
     {
       "id": "wisdom-universal",
       "loader": "wisdom-universal",
