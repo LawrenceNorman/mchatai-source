@@ -1,0 +1,38 @@
+{
+  "_meta": {
+    "purpose": "Phase ME (Modify Existing) intent detector heuristic. Determines whether a goal text + working folder routes the wizard through the ME pipeline (vs. the new-artifact pipeline). Loaded by HarnessTaskRouter.detectModifyExistingSignals — fully content-driven, hot-reloadable.",
+    "version": "1.0.0",
+    "schema": "https://mchatai.com/schemas/wizard-me-detector.v1.json",
+    "tuning_advice": "When ME mode mis-fires on a real goal: ADD a phrase to affirmativeSignals. When it fires on a clearly-new-artifact goal: ADD a phrase to newArtifactSignals. The detector is OR-of-affirmatives AND-NOT-of-rejections, modulo working-folder check upstream."
+  },
+
+  "newArtifactSignals": [
+    "build a ", "build an ",
+    "create a ", "create an ",
+    "make a ", "make an ",
+    "implement a ", "implement an ",
+    "design a ", "design an ",
+    "from scratch", "new app",
+    "new mini app", "new mini-app", "new project"
+  ],
+
+  "fileExtensions": [
+    ".swift", ".ts", ".tsx", ".js", ".jsx",
+    ".py", ".kt", ".rs", ".go", ".java",
+    ".html", ".css", ".json", ".md"
+  ],
+
+  "existingCodePhrases": [
+    "fix the ", "fix this ", "fix a bug", "fix bug", "fix that ",
+    "the bug ", "this bug ",
+    "in the ", "in this ", "in my ", "in our ",
+    " view ", " screen ", " applet ", " controller ", " module ",
+    "this view", "this screen", "the screen ", "the view ",
+    "stop button", "start button", "save button",
+    "i can ", "i have a ", "i have an ", "i'm seeing ",
+    "doesn't work", "not working", "isn't working",
+    "should pop up", "should show", "should navigate",
+    "after i hit", "when i hit", "when i tap", "when i click",
+    "as you can see", "as shown", "in the screen shot", "in the screenshot"
+  ]
+}
