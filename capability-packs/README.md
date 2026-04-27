@@ -9,7 +9,7 @@ Pipelines remain executable workflows. Capability Packs are reusable domain
 substrates that AIWizard, Pipeline Builder, Agent Studio, and Dev Agents can
 load when they need specialized knowledge or tools.
 
-## Current Pack
+## Current Packs
 
 - `macos-app-builder`: native SwiftUI/AppKit macOS app generation, build, QA,
   and packaging guidance.
@@ -19,6 +19,10 @@ load when they need specialized knowledge or tools.
   validation, run, and output-quality guidance.
 - `webspa-builder`: deployable multi-file web SPA generation, build, preview,
   responsive QA, and package guidance.
+- `browser-qa`: browser preview, console, interaction, viewport, screenshot,
+  and accessibility smoke-test guidance for generated frontend artifacts.
+- `visual-design-rubric`: visual hierarchy, layout stability, typography,
+  color, responsive, and accessibility review guidance.
 
 ## Planned Pack Families
 
