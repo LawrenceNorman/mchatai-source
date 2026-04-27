@@ -1,6 +1,6 @@
 {
   "packID": "mobile-frontend",
-  "version": 1,
+  "version": 2,
   "displayName": "Mobile-First Frontend Guidelines",
   "description": "Quality rules for mini-apps designed primarily for phones (iOS / Android). Focus on touch ergonomics, viewport sizing, no-keyboard interaction, gesture handling, and thumb-reach UX. Apply when the goal mentions 'mobile', 'phone', 'iOS', 'Android', 'touch', or any classic mobile-game name (PvZ, Jetpack Joyride, Candy Crush, Flappy Bird, etc).",
   "categories": [
@@ -203,6 +203,47 @@
         "  <p><b>Outcome:</b> Misalign and the overhang is lost — block shrinks each turn.</p>",
         "  <button id='startBtn'>PLAY</button>",
         "</div>"
+      ]
+    },
+    {
+      "id": "mob-015",
+      "rule": "Direction controls (left/right/up/down) MUST use ARROW GLYPHS (◀ ▶ ▲ ▼ or unicode ← → ↑ ↓ or SVG triangles), NEVER text labels like 'Left' / 'Right' / 'Up' / 'Down'. Action buttons (Punch, Fire, Jump, Plant, Spin) MAY use a single short verb but should prefer an icon + verb together (🥊 PUNCH, ▶ PLAY, ⚡ FIRE). Localizing buttons via text breaks for non-English players AND eats horizontal space that's already scarce on mobile.",
+      "why": "Real incident 2026-04-27: Atari Boxing canary 140 shipped with 3 text-labeled buttons 'Move Left | Punch | Move Right' on a portrait phone. The 'Move' prefix is redundant noise; arrows would be instantly recognizable in any language. Text buttons also force wider hit areas which compete for the bottom-strip real estate where actions need to live. Genre convention (every classic mobile fighter, runner, shmup) uses glyphs not labels.",
+      "severity": "important",
+      "appliesTo": "miniApp",
+      "examples": [
+        "// CORRECT",
+        "<button class='dpad-left' aria-label='Move left'>◀</button>",
+        "<button class='dpad-right' aria-label='Move right'>▶</button>",
+        "<button class='action-punch' aria-label='Punch'>🥊</button>",
+        "// BAD",
+        "// <button>Move Left</button> <button>Punch</button> <button>Move Right</button>"
+      ]
+    },
+    {
+      "id": "mob-016",
+      "rule": "Mobile control LAYOUT must group related controls together using thumb-arc geometry: directional/movement controls form a CLUSTER on one side (D-pad shape OR a single drag-pad zone covering bottom-left ~40% of viewport), action buttons form a CLUSTER on the other side (bottom-right ~30%, stacked or arc-arranged). NEVER scatter movement and action buttons in a single horizontal row across the bottom — players cannot reach the far button with the same thumb that's currently pressing the near one, AND a 'left | action | right' linear strip puts the action button BETWEEN the two direction buttons, blocking thumb travel between them.",
+      "why": "Real incident 2026-04-27: Boxing canary 140 placed Move Left / Punch / Move Right in a single horizontal row at the bottom. Players holding the phone two-handed had to alternate left+right thumbs awkwardly because the action button (Punch) sat in the middle, separating the directional pair. Two-zone touch interaction (left-half = movement, right-half = action) is the canonical mobile fighting/runner layout. PvZ, Jetpack Joyride, Temple Run, Mortal Kombat Mobile, every Atari Boxing port — all use cluster-by-thumb geometry.",
+      "severity": "important",
+      "appliesTo": "miniApp",
+      "examples": [
+        "// CORRECT — cluster geometry",
+        "<div class='controls'>",
+        "  <div class='dpad bottom-left'>  <!-- movement cluster -->",
+        "    <button class='up'>▲</button>",
+        "    <button class='left'>◀</button>",
+        "    <button class='right'>▶</button>",
+        "    <button class='down'>▼</button>",
+        "  </div>",
+        "  <div class='actions bottom-right'>  <!-- action cluster -->",
+        "    <button class='action-jab'>🥊</button>",
+        "    <button class='action-power'>💥</button>",
+        "  </div>",
+        "</div>",
+        "// BETTER for fighting / racing — TWO-ZONE TOUCH (no buttons at all)",
+        "// canvas.addEventListener('pointerdown', e => { if (e.clientX < window.innerWidth/2) startMove(e); else startAction(e); });",
+        "// BAD — linear strip splits direction pair with action between",
+        "// <div><button>◀</button><button>🥊</button><button>▶</button></div>"
       ]
     }
   ]
