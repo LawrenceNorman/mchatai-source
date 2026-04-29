@@ -1,0 +1,43 @@
+{
+  "version": 1,
+  "lastUpdated": "2026-04-29",
+  "_source_of_truth": true,
+  "_comment": "Lowest Cost retry-with-decomposition policy. When the Generator stage fails on Ollama, this controls how many times we re-plan smaller and retry on Ollama (NEVER escalating to CLI/API). When the budget exhausts (or diminishing returns triggers early), the wizard appends a stuck-step pause to the session with the configured chip options. See docs/LOWEST_COST_RETRY_POLICY.md for the full spec. Edit + git push + (relaunch OR refreshMchataisourceCache) ships changes with no Swift rebuild.",
+
+  "decomposeRetryBudget": 8,
+  "consecutiveSameClassFailureThreshold": 3,
+
+  "errorClasses": [
+    "parse-error",
+    "stub-detected",
+    "evaluator-fail",
+    "compile-error",
+    "console-error"
+  ],
+
+  "hailMaryEnabled": true,
+  "_hailMaryComment": "When user picks 'Try a different approach' on a stuck-step pause, allow ONE more decomposition cycle with an explicit 'try a fundamentally different strategy' nudge in the planner prompt. After that one cycle, the chip is removed from the next pause (only escalate/skip/end remain).",
+
+  "lockedProvider": "ollama",
+  "_lockedProviderComment": "The provider used for ALL retry attempts. Even if Ollama becomes briefly unreachable, the policy waits + retries — does NOT escalate to CLI/API silently. Only the user's explicit 'escalate-this-step' chip choice can change the provider for a step.",
+
+  "ollamaUnreachable": {
+    "_comment": "Behavior when Ollama daemon stops responding mid-retry. The retry waits (no decomposition cost charged) and re-probes. After N consecutive unreachable polls, the wizard surfaces an inline 'start the daemon' message instead of a stuck-step pause.",
+    "consecutiveUnreachablePollsBeforeMessage": 3,
+    "pollIntervalSeconds": 5
+  },
+
+  "stuckStepChips": [
+    { "id": "try-different-approach", "label": "🔄 Try a different approach", "kind": "retry-different",
+      "_note": "Hail-Mary: one more decomposition cycle with explicit 'try a fundamentally different strategy' nudge. Suppressed if hailMaryEnabled is false or if a hail-mary already happened for this step." },
+    { "id": "escalate-this-step", "label": "⚡ Escalate this step to CLI", "kind": "escalate-step",
+      "_note": "Routes JUST this step through the CLI dispatch path (Claude Code → Codex → Gemini CLI). Surrounding plan stays Ollama. User-consented; no silent escalation." },
+    { "id": "skip-this-step", "label": "⏭ Skip this step", "kind": "skip-step",
+      "_note": "Generator continues with the next step; failed step gets a stub. Suppressed when no completed steps exist (skipping the first step usually means the wizard produced nothing useful)." },
+    { "id": "end-session", "label": "🛑 End the session", "kind": "end-session",
+      "_note": "Clean shutdown; partial work is saved. Always available." }
+  ],
+
+  "headlessAutoSelectChip": "end-session",
+  "_headlessComment": "When a tunnel canary or other headless caller hits a stuck-step pause (no UI present to tap a chip), auto-pick this kind. 'end-session' lets QAFlywheel record stuck-step-no-resolution as a clean terminal state."
+}
