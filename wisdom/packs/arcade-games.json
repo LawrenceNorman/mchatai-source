@@ -1,6 +1,6 @@
 {
   "packID": "arcade-games",
-  "version": 4,
+  "version": 5,
   "displayName": "Arcade Game Guidelines",
   "description": "Quality rules for arcade-style action games — sprite anatomy (ag-016), attack animations (ag-017), keyboard input, rAF loop, collision, off-screen spawn (ag-018). Covers named-game canaries: Frogger, Pac-Man, Joust, Defender, Galaxian, Asteroids, Centipede, Q*bert, Kaboom, BurgerTime, Lode Runner, Spy Hunter, Pole Position, Skee-Ball, Pinball, Tempest, Adventure, Boxing, Snake, Breakout, Pong, Tetris.",
   "categories": [
@@ -229,7 +229,10 @@
         "Brief pause between waves: setTimeout(startNextWave, 1500) so player can breathe",
         "Boss wave optional: every 5 waves, spawn 1 large boss with HP > 1"
       ],
-      "appliesToGenres": ["arcade-games", "shooter"],
+      "appliesToGenres": [
+        "arcade-games",
+        "shooter"
+      ],
       "originated": "2026-04-25 first-pass beta of galaga-079 + centipede-080 — both stuck on level 1"
     },
     {
@@ -253,7 +256,9 @@
         "// const player = { x, y, w: 30, h: 30, color: 'green' };  ctx.fillRect(...)",
         "// (a green rectangle is not Frogger. A red rectangle is not a boxer.)"
       ],
-      "appliesToGenres": ["arcade-games"],
+      "appliesToGenres": [
+        "arcade-games"
+      ],
       "originated": "2026-04-27 boxing-140 canary — turn-1 was two solid-fill squares with no anatomy; turn-2 self-corrected to stick figures (proving capability), but the default should be anatomy-from-the-start"
     },
     {
@@ -287,7 +292,9 @@
         "// BAD: invisible punch — score ticks but nothing visible happens",
         "// if (button === 'punch') { opponent.score--; }"
       ],
-      "appliesToGenres": ["arcade-games"],
+      "appliesToGenres": [
+        "arcade-games"
+      ],
       "originated": "2026-04-27 boxing-140 — punch was state-toggle with score change, no visible attack on first pass"
     },
     {
@@ -315,8 +322,72 @@
         "// CORRECT: spawn cadence (Poisson-like) decoupled from spawn position",
         "if (lane.spawnTimer <= 0) { spawnCar(lane); lane.spawnTimer = lane.spawnInterval + (Math.random() - 0.5) * lane.spawnJitter; }"
       ],
-      "appliesToGenres": ["arcade-games"],
+      "appliesToGenres": [
+        "arcade-games"
+      ],
       "originated": "2026-04-27 frogger-132 — cars + logs spawned at random visible X instead of off-screen; player can't react"
+    },
+    {
+      "id": "ag-019",
+      "title": "Forced-perspective sports games: screen Y is DEPTH, not HEIGHT — no gravity along screen-Y",
+      "rule": "When a game shows a forced-perspective top-down lane (Skee-Ball, bowling, shuffleboard, curling, basketball-at-hoop, mini-golf-putt, billiards-cue-end, beer-pong, ring-toss, darts-from-line), the screen Y-axis represents WORLD DEPTH (distance into the lane), NOT vertical height. The ball/disc rolls horizontally on a flat plane and gravity acts perpendicular to the screen — which means **gravity does NOT pull the ball back toward the player along screen-Y**. The ONLY deceleration is rolling friction. NEVER write `vy += GRAVITY` against screen-Y in this class of game.",
+      "why": "Real incident 2026-04-28 Skee-Ball canary: LLM modeled the lane as a 2D platformer, set `GRAVITY=0.14` on screen-vy, and wrote `ball.vy += GRAVITY`. Result: when the player flicks UP (vy negative, ball moves toward target rings at top of screen), gravity decelerates the ball, brings it to rest, then accelerates it BACK toward the player. The ball never reaches the rings no matter how hard the player flicks — it 'rises and falls' as if thrown straight up under gravity. This is a category error: in a forced-perspective top-down view, screen-Y is a projection of world-depth (Z in 3D), not world-Y (height). World gravity points along world-Y which is OUT OF the screen, so it has zero component along screen-Y. The bug is easy to write because 'ball + arc + gravity' is the LLM's strongest physics pattern and forced-perspective is rarer training data. The fix is structural: model the ball as moving on a 2D top-down plane where vy is depth-velocity, vx is lateral-velocity, and the only deceleration is friction (vy *= friction; vx *= friction).",
+      "severity": "critical",
+      "appliesTo": "arcade",
+      "examples": [
+        "// BAD: 2D-platformer physics applied to a forced-perspective top-down lane",
+        "// var GRAVITY = 0.14;",
+        "// ball.vy += GRAVITY;  // ← pulls ball back toward player; ball NEVER reaches target",
+        "// ball.x += ball.vx; ball.y += ball.vy;",
+        "",
+        "// CORRECT: top-down rolling physics — gravity is perpendicular to screen, only friction decelerates",
+        "var ROLL_FRICTION = 0.985;  // tune so a strong flick reaches the far end in ~1.2-1.8s",
+        "function stepBall(ball) {",
+        "  ball.vx *= ROLL_FRICTION;",
+        "  ball.vy *= ROLL_FRICTION;  // depth-velocity decays from rolling friction ONLY",
+        "  ball.x += ball.vx;",
+        "  ball.y += ball.vy;       // NOTE: no `ball.vy += GRAVITY` — there is no gravity along screen-Y",
+        "  if (Math.hypot(ball.vx, ball.vy) < 0.3) settleAndScore(ball);",
+        "}",
+        "",
+        "// If you want the ball to APPEAR to rise off the lane into the target ring (like real Skee-Ball's",
+        "// lip), use a SEPARATE perceived-Z that fakes the arc visually but doesn't affect lane physics:",
+        "// ballScreenY = ballLaneY - perceivedHeight(ballLaneY);  // perceivedHeight() arcs only near the lip",
+        "// Lane physics still operates on (vx, vy) with friction-only decel."
+      ],
+      "appliesToGenres": [
+        "arcade-games"
+      ],
+      "originated": "2026-04-28 skee-ball-152 — LLM applied 2D-platformer gravity to screen-vy; ball flicked UP rises, slows, falls back to start. User: 'instead of going INTO the screen and landing in the holes, ball rises up vertically and then falls back to the ground back to the bottom of the screen'."
+    },
+    {
+      "id": "ag-020",
+      "title": "Forced-perspective targets: hit-test in WORLD coordinates, not screen pixels",
+      "rule": "When the target (Skee-Ball rings, dart board, basketball hoop, bowling pins, curling button) is drawn at the perspective-far end of the lane, the visible pixel size is SMALLER than the world hit-radius because of foreshortening. Hit-test against the WORLD radius at the ball's depth, not against the rendered ring's screen radius. Rule of thumb: at lane-far (small screen-y), the world target radius corresponds to a LARGER hit-tolerance in pixels than the rendered ring suggests; at lane-near it's smaller. Without this, players who 'visually' land in the 100-ring score 0 because their pixel-distance to the ring center is larger than the rendered-ring radius.",
+      "why": "Companion rule to ag-019. After fixing the gravity model, the next pitfall is scoring: the rendered rings are drawn small (perspective-far), but the actual tolerance for 'this ball hit the 100' should be the ball's lane footprint vs. the world ring. Naive `dist = hypot(ball.x - ringCx, ball.y - ringCy); if (dist < ring.r) score = ring.pts;` works when ring.r is in world units but fails when ring.r is the small RENDERED radius. Either render rings at world-size (bigger pixels at the lane-far end, which looks weird in forced-perspective) OR keep two radii: `ring.renderR` (for drawing) and `ring.worldR` (for hit-test, larger).",
+      "severity": "important",
+      "appliesTo": "arcade",
+      "examples": [
+        "// CORRECT: separate render-radius from hit-radius",
+        "var RINGS = [",
+        "  { worldR: 22, renderR: 18, pts: 100 },  // hit-test forgiving; render small for perspective",
+        "  { worldR: 38, renderR: 32, pts: 50 },",
+        "  { worldR: 56, renderR: 48, pts: 30 },",
+        "  { worldR: 78, renderR: 68, pts: 20 },",
+        "  { worldR: 100, renderR: 88, pts: 10 }",
+        "];",
+        "function score(ball) {",
+        "  var d = Math.hypot(ball.x - RING_CX, ball.y - RING_CY);",
+        "  for (var r of RINGS) if (d <= r.worldR) return r.pts;  // hit-test on worldR",
+        "  return 0;",
+        "}",
+        "// Rendering uses renderR for the visible perspective look:",
+        "// ctx.arc(RING_CX, RING_CY, ring.renderR, 0, Math.PI * 2);"
+      ],
+      "appliesToGenres": [
+        "arcade-games"
+      ],
+      "originated": "2026-04-28 skee-ball-152 followup — even after fixing gravity, naive radius hit-test against perspective-shrunk render-radius produces 'visually in the ring but scored 0' frustration."
     }
   ]
 }
