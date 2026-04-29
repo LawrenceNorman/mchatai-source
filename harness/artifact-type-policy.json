@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "lastUpdated": "2026-04-28",
+  "_source_of_truth": true,
+  "_comment": "Policy for ArtifactTypeClassifier — decides which chips the wizard treats as 'heavyweight' (always require chip-strip confirmation regardless of LLM confidence; tunnel canaries auto-downgrade to miniApp for safety). Heavyweight = the chip represents a real cost commitment: Unity Editor session (~4 GB workdir, license), native macOS toolchain build, microservice deployment infra. The LLM classifier sometimes hallucinates these from thin signals (e.g. 'donkey kong clone' → unityGame at 0.95 confidence because of 'clone' + 'robot'); we'd rather burn one tap than minutes of generation time. Edit + git push + (relaunch OR refreshMchataisourceCache) ships changes with no Swift rebuild.",
+
+  "heavyweightChips": [
+    "unityGame",
+    "macOSApp",
+    "microservice"
+  ],
+
+  "_chipReasons": {
+    "_comment": "Documentation only — not parsed by Swift. Captures the rationale for each entry so future reviewers can decide whether to add/remove chips.",
+    "unityGame": "Unity Editor is ~4 GB on disk + needs a Unity Personal license. Building a 3D game requires the user to have committed to that.",
+    "macOSApp": "Native macOS app generation invokes xcodebuild + scaffolds a real Xcode project; user should explicitly choose this over a webSPA / miniApp.",
+    "microservice": "Microservice generation creates a new mchatai-source/microservices/<id>/ directory with deployment infra; not what the user wants for a casual ask."
+  },
+
+  "_lightweightChips": ["miniApp", "pipeline", "agent", "other"]
+}

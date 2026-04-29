@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "lastUpdated": "2026-04-28",
+  "_source_of_truth": true,
+  "_comment": "Policy for OllamaCapabilityPicker.bestInstalledModel(for:mode:). Maps each TaskCategory to required/preferred Ollama capability tags (per harness/ollama-catalog.json), and dictates how the size-tier dial behaves under each routing mode. Read at picker-call time. Edit + git push + (relaunch OR refreshMchataisourceCache) ships changes with no Swift rebuild. Built-in fallback in OllamaCapabilityPicker.swift mirrors this file for offline first-launch.",
+
+  "categories": {
+    "_comment": "required = hard filter (model MUST have all these caps to be considered). preferred = soft signal — more matches gets bonus rank. Cap names match the OllamaCatalogModel.Capability enum: chat, code, vision, reasoning, multilingual, embedding, tools.",
+
+    "coding":   { "required": ["code"],      "preferred": ["tools", "reasoning"] },
+    "planning": { "required": ["reasoning"], "preferred": ["tools", "chat"] },
+    "analysis": { "required": ["reasoning"], "preferred": ["chat"] },
+    "research": { "required": ["chat"],      "preferred": ["reasoning"] },
+    "creative": { "required": ["chat"],      "preferred": [] },
+    "simple":   { "required": ["chat"],      "preferred": [] }
+  },
+
+  "sizePolicy": {
+    "_comment": "Size dial per (mode, category). Three behaviors: (1) `simpleSmallestFirst`: for .simple, pick the smallest chat-capable installed model — fast intent classification doesn't need a big model. (2) `lowestCostMinSizeGB`: in Lowest Cost mode, when category isn't quality-critical, gate models below this size out (avoids picking a tiny chat model that produces poor output). (3) `qualityCriticalCategories`: even in Lowest Cost, these categories prefer bigger-is-better — capability matters more than the small cost-saving from a smaller model.",
+    "simpleSmallestFirst": true,
+    "lowestCostMinSizeGB": 4.0,
+    "qualityCriticalCategories": ["coding", "planning", "analysis"]
+  },
+
+  "simpleNonVisionPreference": {
+    "_comment": "For .simple (intent classification, routing decisions) prefer text-focused models. Vision-tuned models load a big image encoder that's wasted weight on text-only inputs. When the user has BOTH vision and non-vision chat-capable models installed (e.g. {qwen3-vl:8b, gpt-oss:20b}), pick the non-vision one. Falls back to vision if it's the only chat-capable option.",
+    "deprioritizeVisionForSimple": true
+  }
+}
