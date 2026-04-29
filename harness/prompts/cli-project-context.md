@@ -12,6 +12,32 @@ The user's ORIGINAL request (first message, unmodified — do not paraphrase, do
 
 ## ⚠️ CRITICAL — READ FIRST
 
+### 🚨 OUTPUT-FORMAT NON-NEGOTIABLE — DO THIS OR YOUR WORK IS DROPPED
+
+The Harness has ALREADY DECIDED the output format for this run. You will see a line like this in the context above this file:
+
+> `CLI output format: type=miniApp fence=\`\`\`miniapp`
+
+That line tells you the EXACT fence marker to use for your final artifact. **You MUST emit a fenced JSON block with that fence as the LAST thing in your output.** Examples:
+
+- `type=miniApp` → emit `\`\`\`miniapp\n{ "id": ..., "name": ..., "manifest": ..., "html": ... }\n\`\`\``
+- `type=macOSApp` → emit `\`\`\`macosapp\n{ "id": ..., "name": ..., "template": ..., "files": { ... } }\n\`\`\``
+- `type=webSPA` → emit `\`\`\`webspa\n{ ... }\n\`\`\``
+
+**NEVER emit any of these instead — they are CLI session-management noise, not artifact output. The wizard's parser drops your work if it sees only these:**
+
+- `Session saved as draft skill: ...`
+- `Session archived for continuity (...)`
+- A free-form description of what you built without a closing fenced JSON block
+- Multiple non-fenced "I'll now do X" turns followed by a stall
+- A summary of next steps you plan to take "in a follow-up turn"
+
+If you finish writing code but didn't emit the required fenced block, GO BACK and emit it before finishing the turn. This is the literal contract — without the fence, the user gets nothing.
+
+**Anti-pattern hit 2026-04-29 (Touch Football canary):** generated 6840 chars of solid game code, then ended the turn with `Session saved as draft skill:` and `Session archived for continuity` instead of a `\`\`\`miniapp` fenced JSON. Wizard saw no parseable artifact + dropped the entire turn on the floor. Don't repeat.
+
+---
+
 **YOUR CURRENT TASK** is defined by the `## Goal` and `## Feature Manifest` sections that the Harness injects ABOVE this file in your context. Those sections are authoritative. Do NOT confuse them with:
 
 - **The scaffold catalog below** — these are REFERENCE RESOURCES, not active tasks. Only use a scaffold if your Goal's genre matches its listed genre AND the Goal is asking you to build something in that genre.
