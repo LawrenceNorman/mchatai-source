@@ -1,11 +1,19 @@
 {
   "id": "official.gmail-manager",
   "name": "Gmail Manager",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "type": "microservice",
   "runtime": "python3",
-  "description": "Gmail Manager microservice for mChatAIShell",
+  "description": "Gmail Manager microservice for mChatAIShell — owns Google OAuth lifecycle (auth/login/status/logout) plus email read/trash. mChatAI+ delegates here so the sandboxed app never holds Google tokens directly.",
   "author": "mchatai-labs",
   "license": "MIT",
-  "platforms": ["mchatai-shell"]
+  "platforms": ["mchatai-shell"],
+  "endpoints": [
+    {"path": "/auth/status", "method": "GET"},
+    {"path": "/auth/login", "method": "POST"},
+    {"path": "/auth/logout", "method": "POST"},
+    {"path": "/emails/unread", "method": "GET"},
+    {"path": "/emails/search", "method": "GET"},
+    {"path": "/emails/trash", "method": "POST"}
+  ]
 }
