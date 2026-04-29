@@ -1,6 +1,6 @@
 {
-  "version": 1,
-  "lastUpdated": "2026-04-28",
+  "version": 2,
+  "lastUpdated": "2026-04-29",
   "_source_of_truth": true,
   "_comment": "Policy for ArtifactTypeClassifier — decides which chips the wizard treats as 'heavyweight' (always require chip-strip confirmation regardless of LLM confidence; tunnel canaries auto-downgrade to miniApp for safety). Heavyweight = the chip represents a real cost commitment: Unity Editor session (~4 GB workdir, license), native macOS toolchain build, microservice deployment infra. The LLM classifier sometimes hallucinates these from thin signals (e.g. 'donkey kong clone' → unityGame at 0.95 confidence because of 'clone' + 'robot'); we'd rather burn one tap than minutes of generation time. Edit + git push + (relaunch OR refreshMchataisourceCache) ships changes with no Swift rebuild.",
 
@@ -9,6 +9,13 @@
     "macOSApp",
     "microservice"
   ],
+
+  "heavyweightReason": {
+    "_comment": "Used by AIHarness when the classifier was CONFIDENT on a heavyweight chip but policy forced the result to .ambiguous (Bug B 2026-04-29). Without this map the chat message defaults to a 'I'm 95% sure ...' line that refers to the rejected pick — confusing because the user actually sees a chip strip with miniApp/macOSApp/etc. Each value is a one-sentence explanation of why this chip is gated and what the user should consider before picking it. Phrase as a continuation of 'This sounds like ___, but ___'.",
+    "unityGame": "Unity Editor is heavyweight (~4 GB on disk + needs a Unity Personal license). If a 2D mini-app would do, pick miniApp instead.",
+    "macOSApp": "native macOS apps need Xcode toolchain and produce a signed executable. If a web-based version would work, pick miniApp.",
+    "microservice": "microservices spin up a Python sidecar with deployment infra. If you just need a one-off skill, pick agent or skill instead."
+  },
 
   "_chipReasons": {
     "_comment": "Documentation only — not parsed by Swift. Captures the rationale for each entry so future reviewers can decide whether to add/remove chips.",
