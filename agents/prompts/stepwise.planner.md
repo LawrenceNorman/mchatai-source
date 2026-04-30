@@ -28,11 +28,13 @@ HAIL_MARY_MODE: {{HAIL_MARY_MODE}}
 
 ## Failure-class-specific guidance
 
-- **`parse-error`** — the model produced output but the parser couldn't extract a fenced block / JSON / required structure. Push for **stricter format constraints**: shorter expected output, exact fenced-block tag, smaller scope.
-- **`stub-detected`** — the model produced placeholder code (`// TODO`, empty function bodies, lorem-ipsum). Decompose into **smaller chunks the model can produce concretely** rather than abstract scaffolding it then stubs out.
-- **`evaluator-fail`** — generator output exists but failed quality rubric. Identify the specific rubric dimension that failed (visual hierarchy? logic? completeness?) and reshape the step around that dimension.
-- **`compile-error`** — syntax broke. Decompose into smaller code units, each independently compilable. Strongly prefer a different output FORMAT (e.g. inline single-file instead of multi-file project) when the model keeps mixing file boundaries.
-- **`console-error`** — runtime error in auto-play. Surface the specific error to a setup or initialization sub-step that's verifiable on its own.
+> **CRITICAL** — the wizard's Generator stage USES THE FIRST SUB-STEP ONLY to refocus the next attempt. Don't over-decompose: the generator must still produce the COMPLETE artifact, not a fragment. Sub-step #1 should be **"produce the complete artifact in the expected fenced format with [specific failure-aware tweaks]"** — NOT "create index.html" or "add an h1 tag" (those mislead the generator into outputting partial work that fails the parser AGAIN).
+
+- **`parse-error`** — the model produced output but the parser couldn't extract a fenced block. The fix is NOT "decompose" — it's "tighten format compliance." First sub-step: "Re-emit the complete artifact, this time with a STRICT \`\`\`miniapp / \`\`\`macosapp / \`\`\`fullstackapp fenced block at the top of the response. NO prose before the fence." Only add subsequent sub-steps for genuinely-too-large artifacts.
+- **`stub-detected`** — the model produced placeholder code (`// TODO`, empty function bodies, lorem-ipsum). First sub-step: "Re-emit the complete artifact with EVERY function body fully implemented — NO TODO markers, NO `pass`/empty bodies, NO placeholder strings." Subsequent sub-steps may break out a specific function the model keeps stubbing.
+- **`evaluator-fail`** — output exists, parses, but rubric flagged it. First sub-step: "Re-emit the complete artifact addressing [the specific rubric dimension that failed]." If the rubric dimension is visual hierarchy / logic completeness / accessibility, name it explicitly in the success criteria.
+- **`compile-error`** — syntax broke. First sub-step: "Re-emit the complete artifact, single file, syntactically valid." Strongly prefer collapsing multi-file output to inline single-file when the model keeps mixing file boundaries.
+- **`console-error`** — runtime error in auto-play. First sub-step: "Re-emit the complete artifact with [the specific runtime error] fixed." Quote the error text in the success criteria.
 
 ## Hail-Mary mode
 
@@ -64,8 +66,9 @@ Strict JSON, no prose, no fence:
 ## Hard rules
 
 - Output ONLY the JSON object. No markdown fences. No prose before or after.
+- **Sub-step #1 MUST produce the complete artifact** — not a fragment. The wizard's Generator only consumes the first sub-step's guidance. If you make sub-step #1 "create-index-html" or "add-h1-tag", the generator emits partial work that fails the parser, and the loop spins. Frame sub-step #1 as: "Re-emit the COMPLETE artifact with [failure-class-specific tweak]."
 - Each `subSteps[i].successCriteria` must be **mechanically checkable** — the verifier doesn't get to use an LLM, only string/regex/structural checks.
-- Maximum 5 sub-steps. If you can't decompose into ≤5, the step is fundamentally too hard for this model and you should produce a single sub-step that says so explicitly with `successCriteria: "(none — escalation candidate)"` so the policy can surface a stuck-step pause earlier.
+- Maximum 5 sub-steps. Sub-steps #2-5 may decompose further (specific function, specific feature) for downstream verifier checks, but #1 always covers the full artifact emission.
 - Never reference a different LLM provider. The plan executes on the same local Ollama model that just failed.
 - When the failure detail includes specific error text, **quote it back** in your rationale so the next Generator attempt has the failure context.
 
