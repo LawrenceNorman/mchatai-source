@@ -1,6 +1,7 @@
 """Gmail Manager — mChatAI microservice wrapping gws CLI (v0.22+)."""
 
 import json
+import os
 import shutil
 import subprocess
 from typing import Any, Dict, List, Optional, Tuple
@@ -42,16 +43,36 @@ class AuthLoginInput(BaseModel):
 # ── Helpers ──
 
 def gws_path() -> Optional[str]:
-    """Resolve the gws binary on PATH, returning None if not installed."""
-    return shutil.which("gws")
+    """Resolve the gws binary, returning an absolute path or None.
+
+    Falls back to common install locations because GUI-app subprocesses inherit
+    launchd's minimal PATH, which usually omits Homebrew dirs.
+    """
+    found = shutil.which("gws")
+    if found:
+        return found
+    for candidate in ("/opt/homebrew/bin/gws", "/usr/local/bin/gws", "/usr/bin/gws"):
+        if os.access(candidate, os.X_OK):
+            return candidate
+    return None
 
 
 def run_gws_raw(args: List[str], timeout: int = 30) -> Tuple[int, str, str]:
     """Run a gws CLI command and return (returncode, stdout, stderr).
 
     Raises FileNotFoundError if gws is missing — callers decide how to surface that.
+
+    `--format=json` is appended for commands that accept it. The `auth`
+    subcommand family (status/login/logout/setup/export) does NOT accept it
+    in gws v0.22+ — they return JSON natively, and adding the flag errors with
+    "unexpected argument '--format' found".
     """
-    cmd = ["gws"] + args + ["--format=json"]
+    binary = gws_path()
+    if binary is None:
+        raise FileNotFoundError("gws CLI not on PATH or in known install locations")
+    cmd = [binary] + list(args)
+    if not args or args[0] != "auth":
+        cmd.append("--format=json")
     result = subprocess.run(cmd, capture_output=True, text=True, check=False, timeout=timeout)
     return result.returncode, result.stdout.strip(), result.stderr.strip()
 
@@ -112,6 +133,12 @@ async def auth_status():
 
     Never raises 503 for missing gws — callers need this endpoint to drive
     setup UX, so install state is data, not an error.
+
+    Maps gws v0.22's `auth status` JSON shape onto our AuthStatus model:
+    `auth_method != "none"` AND `credential_source != "none"` => authenticated.
+    `client_config_exists == false` => OAuth client not configured (a separate
+    setup step user has to do via `gws auth setup` or by dropping a
+    `client_secret.json` into ~/.config/gws/).
     """
     if gws_path() is None:
         return AuthStatus(gws_installed=False, authenticated=False, error="gws CLI not installed")
@@ -124,7 +151,6 @@ async def auth_status():
         return AuthStatus(gws_installed=True, authenticated=False, error="gws auth status timed out")
 
     if rc != 0:
-        # gws is installed but no session (or other error). Treat as not authenticated.
         msg = (stderr or stdout)[:300]
         return AuthStatus(gws_installed=True, authenticated=False, error=msg or None)
 
@@ -136,15 +162,27 @@ async def auth_status():
     except json.JSONDecodeError:
         return AuthStatus(gws_installed=True, authenticated=False, error="Could not parse gws auth status output")
 
-    token_valid = bool(parsed.get("token_valid", False))
-    account = parsed.get("account")
-    services = parsed.get("services", []) or []
+    auth_method = str(parsed.get("auth_method", "none"))
+    cred_source = str(parsed.get("credential_source", "none"))
+    client_configured = bool(parsed.get("client_config_exists", False))
+    authenticated = auth_method != "none" and cred_source != "none"
+    account = parsed.get("account") or parsed.get("user_email")
+
+    err: Optional[str] = None
+    if not authenticated and not client_configured:
+        # Pre-OAuth setup step the user can't skip on a vanilla gws install.
+        err = (
+            "OAuth client not configured. Run `gws auth setup` (needs gcloud) or "
+            "save a client_secret.json to ~/.config/gws/."
+        )
+
     return AuthStatus(
         gws_installed=True,
-        authenticated=token_valid and bool(account),
+        authenticated=authenticated,
         account=account,
-        token_valid=token_valid,
-        services=services if isinstance(services, list) else [],
+        token_valid=authenticated,
+        services=[],
+        error=err,
     )
 
 
@@ -178,6 +216,42 @@ async def auth_login(body: Optional[AuthLoginInput] = None):
     return await auth_status()
 
 
+def _find_installer(name: str) -> Optional[str]:
+    """Locate `npm`/`brew` even when the calling process inherited launchd's
+    minimal PATH (the typical case for subprocesses spawned by a GUI macOS app
+    like mChatAIShell). Falls back to common Homebrew + system locations.
+    """
+    found = shutil.which(name)
+    if found:
+        return found
+    candidates = [
+        f"/opt/homebrew/bin/{name}",      # Apple Silicon Homebrew
+        f"/usr/local/bin/{name}",         # Intel Homebrew
+        f"/opt/homebrew/sbin/{name}",
+        f"/usr/local/sbin/{name}",
+    ]
+    for p in candidates:
+        if os.access(p, os.X_OK):
+            return p
+    return None
+
+
+def _augmented_path_env() -> Dict[str, str]:
+    """Return a copy of os.environ with Homebrew bin dirs prepended to PATH.
+
+    Required for `npm install -g` (and `brew install`) to find their own
+    helper binaries (node, perl, etc.) when invoked from a launchd-spawned
+    subprocess that has only `/usr/bin:/bin:/usr/sbin:/sbin` on PATH.
+    """
+    env = os.environ.copy()
+    extras = ["/opt/homebrew/bin", "/opt/homebrew/sbin", "/usr/local/bin", "/usr/local/sbin"]
+    current = env.get("PATH", "")
+    parts = [p for p in extras if p not in current]
+    if parts:
+        env["PATH"] = ":".join(parts + ([current] if current else []))
+    return env
+
+
 @router.post("/install/gws", response_model=OperationOutput)
 async def install_gws():
     """Install the gws CLI via npm (preferred) or Homebrew. Long-running (≤5 min).
@@ -188,20 +262,36 @@ async def install_gws():
     if gws_path() is not None:
         return OperationOutput(success=True, message="gws already installed")
 
-    if shutil.which("npm") is not None:
-        cmd = ["npm", "install", "-g", "@googleworkspace/cli"]
-        method = "npm"
-    elif shutil.which("brew") is not None:
-        cmd = ["brew", "install", "googleworkspace-cli"]
+    npm_bin = _find_installer("npm")
+    brew_bin = _find_installer("brew")
+    # Brew is preferred over npm here because the gws CLI is a self-contained
+    # Rust binary on Brew, so it doesn't need `node` on PATH at install time.
+    # When this microservice runs as a child of a launchd-spawned GUI app
+    # (mChatAIShell), the inherited PATH usually doesn't include the user's
+    # version-managed Node install (proto, nvm, fnm, asdf), so an `npm install
+    # -g` would die with "env: node: No such file or directory" even though
+    # `npm` itself is callable.
+    if brew_bin is not None:
+        cmd = [brew_bin, "install", "googleworkspace-cli"]
         method = "brew"
+    elif npm_bin is not None:
+        cmd = [npm_bin, "install", "-g", "@googleworkspace/cli"]
+        method = "npm"
     else:
         raise HTTPException(
             status_code=412,
-            detail="Neither npm nor Homebrew is available. Install one from https://brew.sh or https://nodejs.org and try again.",
+            detail="Neither Homebrew nor npm is available on this machine. Install Homebrew from https://brew.sh and try again.",
         )
 
     try:
-        result = subprocess.run(cmd, capture_output=True, text=True, check=False, timeout=300)
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=300,
+            env=_augmented_path_env(),
+        )
     except subprocess.TimeoutExpired:
         raise HTTPException(status_code=504, detail=f"{method} install timed out after 5 minutes")
 
