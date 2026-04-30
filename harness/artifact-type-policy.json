@@ -1,5 +1,5 @@
 {
-  "version": 2,
+  "version": 3,
   "lastUpdated": "2026-04-29",
   "_source_of_truth": true,
   "_comment": "Policy for ArtifactTypeClassifier — decides which chips the wizard treats as 'heavyweight' (always require chip-strip confirmation regardless of LLM confidence; tunnel canaries auto-downgrade to miniApp for safety). Heavyweight = the chip represents a real cost commitment: Unity Editor session (~4 GB workdir, license), native macOS toolchain build, microservice deployment infra. The LLM classifier sometimes hallucinates these from thin signals (e.g. 'donkey kong clone' → unityGame at 0.95 confidence because of 'clone' + 'robot'); we'd rather burn one tap than minutes of generation time. Edit + git push + (relaunch OR refreshMchataisourceCache) ships changes with no Swift rebuild.",
@@ -15,6 +15,15 @@
     "unityGame": "Unity Editor is heavyweight (~4 GB on disk + needs a Unity Personal license). If a 2D mini-app would do, pick miniApp instead.",
     "macOSApp": "native macOS apps need Xcode toolchain and produce a signed executable. If a web-based version would work, pick miniApp.",
     "microservice": "microservices spin up a Python sidecar with deployment infra. If you just need a one-off skill, pick agent or skill instead."
+  },
+
+  "explicitKeywordsRequired": {
+    "_comment": "v3 (2026-04-29): heavyweight chips are SUGGESTED by the classifier only when the user prompt contains at least one explicit keyword. Without this gate, generic prompts like 'make me an arcade boxing game' got Unity suggestions because the LLM picked up 'arcade game' as a Unity signal — even though almost always the user wanted a 2D mini-app. With the gate, only goals that explicitly say 'unity', 'unity engine', etc. get a Unity suggestion. The chip-strip itself still includes Unity so the user can opt UP if they want; we just don't default to it. Chips not listed here behave as before (no keyword gate). Keywords are case-insensitive substring matches.",
+    "downgradeTarget": "miniApp",
+    "_downgradeTargetComment": "When the gate fires, the suggested chip is rewritten to this value before .ambiguous is returned. Default 'miniApp' covers ~95% of game / app / tool prompts. To downgrade to a different default, change this string.",
+    "unityGame":    ["unity", "unity engine", "unity hub", "unity 3d", "unity 6"],
+    "macOSApp":     ["macos app", "mac os app", "native mac", "xcode app", "menubar app", "menu bar app", "swiftui app", "appkit"],
+    "microservice": ["microservice", "fastapi", "python service", "python api", "sidecar service", "rest api server"]
   },
 
   "_chipReasons": {
