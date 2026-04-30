@@ -1,0 +1,69 @@
+{
+  "version": 1,
+  "lastUpdated": "2026-04-30",
+  "_source_of_truth": true,
+  "_comment": "Maps QAFlywheel failure modes to (a) human-readable description, (b) the routing layer's recommended response when this mode dominates a (artifact, difficulty, category) bucket. The Mac app's Picker can read this at goal-classification time: classify the goal → bucket → look up dominant failure mode in success-rates.json → consult this taxonomy for action. Future Phase: Swift integration in OllamaCapabilityPicker.shouldEscalateOrSimplify(goal:). For now, this is documentation + Cloud Function consumption.",
+
+  "causes": {
+    "success": {
+      "description": "The wizard produced a parseable artifact that satisfies the catalog entry's success criteria (capabilities found).",
+      "isFailure": false,
+      "routingResponse": "use-default-pipeline-and-model"
+    },
+
+    "wizard-budget-exhausted": {
+      "description": "QAFlywheel script gave up at its 14-min budget (default). Wizard was still grinding through StepwiseRetry attempts. Common when each retry takes 2-3 min and budget=4: total=12 min, plus planner+verifier overhead → fits, but adds JSON-mode planner+verifier round-trips and the budget elapses. Indicates the model isn't converging on this goal complexity within the budget; either the goal is too big for this size class, the prompt is too complex for the model to follow on retry, or both.",
+      "isFailure": true,
+      "routingResponse": "consider-larger-model-or-reduce-scope",
+      "_actions": [
+        "Try gpt-oss:20b instead of qwen3-coder:30b (better instruction-following on multi-stage prompts)",
+        "Reduce decomposeRetryBudget for this bucket (each attempt takes 2-3 min; 4 attempts may exceed 14-min wall budget)",
+        "Lower reasoning level / output token cap so generator finishes faster",
+        "If catalog entry's expected capabilities are too rich for the size class, downgrade prompt OR upgrade to a bigger model tier"
+      ]
+    },
+
+    "stuck-step-no-resolution": {
+      "description": "Wizard hit StepwiseRetry decomposeRetryBudget OR diminishing-returns threshold, surfaced stuck-step-pause to the user (or auto-picked endSession in headless mode). The model literally couldn't produce parseable output across the retry attempts.",
+      "isFailure": true,
+      "routingResponse": "model-cannot-handle-this-prompt-shape",
+      "_actions": [
+        "Switch to a different Ollama family (qwen3-coder:30b → gpt-oss:20b — different training data may break the boilerplate fixation)",
+        "Increase artifact-spec rigor in the planner prompt (concrete in-domain example matters)",
+        "If bucket's ok rate is <30%, route the wizard's main system prompt at this category to a heavier reasoning model"
+      ]
+    },
+
+    "wizard-error-other": {
+      "description": "Wizard returned a session in 'failed' phase for reasons other than StepwiseRetry exhaustion — Ollama daemon unreachable, parse-and-recover failed, dependency error, etc.",
+      "isFailure": true,
+      "routingResponse": "investigate-error-detail",
+      "_actions": [
+        "Check Ollama daemon status / restart",
+        "Look at session.lastFailureReason for specifics",
+        "If recurring, file a bug — this is unexpected"
+      ]
+    },
+
+    "skipped-dry-run": {
+      "description": "Catalog entry was scheduled in dry-run mode (no actual wizard call). Reserved for catalog validation.",
+      "isFailure": false,
+      "routingResponse": "n/a"
+    },
+
+    "unknown": {
+      "description": "Status field couldn't be classified — probably a script regression or new outcome state. Investigate.",
+      "isFailure": true,
+      "routingResponse": "investigate-script-regression"
+    }
+  },
+
+  "_routingHints": {
+    "_comment": "When the picker classifies a new user goal into a bucket and looks up success-rates.json for that bucket, these hints apply. Future routing layer can consume directly via MchataisourceCacheService.",
+
+    "highOkRate>=0.7": "Use Lowest Cost defaults (qwen3-coder:30b for coding, gpt-oss:20b for planning). Budget=4 retry attempts.",
+    "moderateOkRate>=0.3": "Bias toward gpt-oss:20b even for coding tasks (better instruction-following). Consider increasing decomposeRetryBudget to 6 if user is willing to wait. Surface a 'this prompt is in a hard category — generation may take 10-15 min' hint to the user.",
+    "lowOkRate<0.3": "Auto-route to Best Quality mode (Claude Sonnet 4.6 via Anthropic API) UNLESS user explicitly opted into Lowest Cost. If Lowest Cost forced, surface a 'this prompt class has historically failed in Lowest Cost mode' warning + offer to escalate. Or suggest the user simplify the prompt.",
+    "noSamples": "Brand-new bucket — use Lowest Cost defaults but log the run with extra diagnostics for the next aggregator pass."
+  }
+}
