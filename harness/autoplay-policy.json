@@ -1,0 +1,40 @@
+{
+  "version": 1,
+  "lastUpdated": "2026-04-30",
+  "_source_of_truth": true,
+  "_comment": "Auto-play (interactive screenshot test) policy. Controls how many click steps the auto-play test runs, per-trigger. Phase 0d.20 (2026-04-30) extracted from hardcoded Swift constants per CLAUDE.md RULE #1. Edit + push + (relaunch OR refreshMchataisourceCache) ships changes with no Swift rebuild.",
+
+  "maxStepsByTrigger": {
+    "evaluatorRun": 4,
+    "_evaluatorRunComment": "When the user explicitly clicks Evaluate. Bumped from 2 → 4: the original 2 only clicked 2 buttons, missing bugs in the 3rd-Nth interaction (e.g. 'Add 3 timers, then click Reset' fails on click 4). 4 covers the typical 'add some items, then trigger an action' workflow.",
+
+    "postGenerationAuto": 4,
+    "_postGenerationAutoComment": "Fired automatically after generation completes. Same as evaluatorRun: enough to exercise add-then-action sequences.",
+
+    "postFixCycle": 3,
+    "_postFixCycleComment": "After an auto-fix re-generation. Lower because we just fixed something specific; if fix is good it'll show in 3 clicks."
+  },
+
+  "screenshotIntervalMs": 800,
+  "_screenshotIntervalComment": "Wait between click and afterScreenshot capture. Lets DOM update fire (setInterval/setTimeout-based timers, animations) before we judge if the screen 'changed'. 800ms is a good middle: long enough for transitions, short enough to keep total auto-play time bounded.",
+
+  "consoleErrorPolicy": {
+    "_comment": "Phase 0d.21 — console.error / window.onerror captured during auto-play. Surfaces JS bugs invisible to screenshot.",
+    "captureEnabled": true,
+    "failOnAnyError": true,
+    "_failOnAnyErrorComment": "When true: any uncaught error during auto-play step → mark step FAIL with the error message. When false: errors are reported but don't fail the step (use during initial rollout to gather data).",
+    "ignorePatterns": [
+      "ResizeObserver loop limit exceeded",
+      "Non-Error promise rejection captured"
+    ],
+    "_ignorePatternsComment": "Substring matches; harmless errors that fire on unrelated browser internals. Keep this list short."
+  },
+
+  "autoFixPolicy": {
+    "_comment": "When auto-play finds bugs, what to do. Phase 0d.18 dropped the skipAutoFix gate; this is the policy for the autofix that fires.",
+    "maxAutoFixCycles": 2,
+    "_maxAutoFixCyclesComment": "How many fix-and-retest rounds. After this we surface to the user as 'auto-test still finds issues' rather than looping forever.",
+    "fixPromptVariant": "anchor-on-original-goal",
+    "_fixPromptVariantComment": "Tells the autofix LLM to anchor on the ORIGINAL_GOAL so a 'fix the New Game button' prompt doesn't drift the app into a card game (real-incident 2026-04-29)."
+  }
+}
