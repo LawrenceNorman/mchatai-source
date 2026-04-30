@@ -59,4 +59,5 @@ Strict JSON, no prose, no fence:
 - `errorClass` MUST be null when `verdict: "pass"`.
 - `errorClass` MUST be one of the four classes above when `verdict: "fail"`.
 - Don't waste tokens. This is a cheap pass — keep `detail` to ≤120 characters.
-- If the success criterion is ambiguous and you genuinely can't tell, return `verdict: "pass"` (let the heavier Evaluator stage catch it). False-pass costs one Evaluator call; false-fail costs a retry decomposition cycle. Lean toward pass under uncertainty.
+- **STRONGLY lean toward "pass" under uncertainty.** False-pass costs one Evaluator call; false-fail costs a 2-3 minute retry decomposition cycle on Ollama. Empirically, false-fails compound badly: the loop spins through 4 attempts before bailing to user-pause. Default to PASS unless you can point to a CONCRETE mechanical violation (parse-error, missing-required-element-by-regex, length-below-threshold). DO NOT fail on subjective quality — that's not your job.
+- If the GENERATOR_OUTPUT contains a fenced JSON block matching the artifact type (\`\`\`miniapp / \`\`\`macosapp / \`\`\`fullstackapp) AND the JSON is parseable AND the artifact is non-trivial in size (>500 chars), return `verdict: "pass"` even if you'd personally tweak the design. The wizard's Evaluator stage handles design-quality concerns; you only catch mechanical failures.
