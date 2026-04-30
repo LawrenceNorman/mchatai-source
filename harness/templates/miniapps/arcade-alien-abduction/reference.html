@@ -1,0 +1,2319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Stellar Defender</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --primary: #10B981;
+    --accent: #FB923C;
+    --secondary: #F472B6;
+    --bg: #0F172A;
+    --surface: #1E293B;
+    --text: #F1F5F9;
+    --muted: #94A3B8;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    width: 100%; height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Press Start 2P', 'Courier New', monospace;
+    overflow: hidden;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: none;
+  }
+  body {
+    display: flex; flex-direction: column; align-items: center;
+    padding: 6px;
+    min-height: 100vh;
+    background:
+      radial-gradient(ellipse at 50% 0%, rgba(16,185,129,0.08), transparent 60%),
+      radial-gradient(ellipse at 50% 100%, rgba(251,146,60,0.06), transparent 60%),
+      var(--bg);
+  }
+  .hud {
+    width: 100%; max-width: 960px;
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 10px;
+    padding: 6px 10px;
+    color: var(--text);
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .hud .cell {
+    background: var(--surface);
+    border: 2px solid #334155;
+    padding: 6px 10px;
+    box-shadow: 0 2px 0 #0a0e1a;
+    min-width: 84px;
+    text-align: center;
+  }
+  .hud .label { color: var(--muted); font-size: 8px; display: block; margin-bottom: 4px; }
+  .hud .val { color: var(--text); font-size: 11px; }
+  .hud .cell.score .val { color: var(--primary); }
+  .hud .cell.best .val { color: var(--accent); }
+  .hud .cell.lives .val { color: var(--secondary); }
+  .hud .cell.wave .val { color: var(--text); }
+  .stage {
+    position: relative;
+    width: 100%;
+    max-width: 960px;
+    aspect-ratio: 16 / 9;
+    background: #000;
+    border: 3px solid var(--primary);
+    box-shadow:
+      0 0 0 2px var(--bg),
+      0 0 24px rgba(16,185,129,0.35),
+      inset 0 0 80px rgba(0,0,0,0.6);
+    overflow: hidden;
+  }
+  canvas {
+    width: 100%; height: 100%;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+    display: block;
+  }
+  .scanlines {
+    position: absolute; inset: 0;
+    background: repeating-linear-gradient(0deg, rgba(0,0,0,0.18) 0 1px, transparent 1px 3px);
+    pointer-events: none;
+    z-index: 4;
+    mix-blend-mode: multiply;
+  }
+  .vignette {
+    position: absolute; inset: 0;
+    pointer-events: none;
+    background: radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,0.55) 100%);
+    z-index: 4;
+  }
+  .fire-btn {
+    position: absolute;
+    top: 12px; right: 12px;
+    width: 84px; height: 84px;
+    background: var(--accent);
+    color: #0F172A;
+    border: 4px solid #fff;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: bold;
+    cursor: pointer;
+    z-index: 6;
+    box-shadow: 0 4px 0 #c2410c, 0 0 24px rgba(251,146,60,0.55);
+    transition: transform 0.05s, box-shadow 0.05s, background 0.05s;
+    letter-spacing: 1px;
+  }
+  .fire-btn:active, .fire-btn.pressed {
+    transform: translateY(4px);
+    box-shadow: 0 0 0 #c2410c, 0 0 32px rgba(251,146,60,0.95);
+    background: #fbbf24;
+  }
+  .dpad {
+    position: absolute;
+    bottom: 12px; left: 12px;
+    display: grid;
+    grid-template-columns: 56px 56px 56px;
+    grid-template-rows: 56px 56px 56px;
+    gap: 4px;
+    z-index: 6;
+  }
+  .dpad button {
+    background: var(--surface);
+    color: var(--text);
+    border: 3px solid var(--primary);
+    font-family: inherit;
+    font-size: 18px;
+    cursor: pointer;
+    box-shadow: 0 3px 0 #0a0f1c;
+    transition: transform 0.05s, box-shadow 0.05s, background 0.05s;
+  }
+  .dpad button:active, .dpad button.pressed {
+    transform: translateY(2px);
+    box-shadow: 0 1px 0 #0a0f1c;
+    background: var(--primary);
+    color: #0F172A;
+  }
+  .dpad .up { grid-column: 2; grid-row: 1; }
+  .dpad .left { grid-column: 1; grid-row: 2; }
+  .dpad .rev {
+    grid-column: 2; grid-row: 2;
+    background: var(--accent);
+    color: #0F172A;
+    border-color: #fff;
+    font-size: 9px;
+    box-shadow: 0 3px 0 #7c2d12;
+  }
+  .dpad .rev:active, .dpad .rev.pressed {
+    background: #fbbf24;
+    box-shadow: 0 1px 0 #7c2d12;
+  }
+  .dpad .right { grid-column: 3; grid-row: 2; }
+  .dpad .down { grid-column: 2; grid-row: 3; }
+
+  .overlay {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    background: rgba(15,23,42,0.94);
+    color: var(--text);
+    text-align: center;
+    z-index: 10;
+    padding: 24px;
+    gap: 14px;
+  }
+  .overlay.hidden { display: none; }
+  .overlay h1 {
+    color: var(--primary);
+    font-size: clamp(18px, 4vw, 28px);
+    text-shadow: 0 0 12px var(--primary), 0 4px 0 #0F172A;
+    line-height: 1.4;
+    letter-spacing: 2px;
+  }
+  .overlay h2 {
+    color: var(--accent);
+    font-size: clamp(12px, 3vw, 16px);
+    text-shadow: 0 0 10px var(--accent);
+  }
+  .overlay p {
+    font-size: clamp(8px, 1.6vw, 10px);
+    color: var(--text);
+    line-height: 1.7;
+    max-width: 480px;
+  }
+  .overlay .key { color: var(--accent); }
+  .overlay .pink { color: var(--secondary); }
+  .overlay .start-btn {
+    background: var(--primary);
+    color: #0F172A;
+    border: 4px solid #fff;
+    padding: 16px 32px;
+    font-family: inherit;
+    font-size: 12px;
+    cursor: pointer;
+    box-shadow: 0 4px 0 #047857;
+    letter-spacing: 1px;
+    margin-top: 8px;
+  }
+  .overlay .start-btn:active {
+    transform: translateY(4px);
+    box-shadow: 0 0 0 #047857;
+  }
+  .overlay .legend {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 6px 12px;
+    font-size: 8px;
+    text-align: left;
+    background: rgba(30,41,59,0.6);
+    border: 2px solid #334155;
+    padding: 10px 14px;
+    color: var(--text);
+  }
+  .overlay .legend b { color: var(--accent); }
+  .leaderboard {
+    background: rgba(30,41,59,0.7);
+    border: 2px solid var(--primary);
+    padding: 8px 12px;
+    font-size: 8px;
+    color: var(--text);
+    margin-top: 6px;
+    min-width: 240px;
+  }
+  .leaderboard .row { display: flex; justify-content: space-between; padding: 2px 0; }
+  .leaderboard .row.you { color: var(--accent); }
+  .leaderboard .title { color: var(--primary); margin-bottom: 4px; text-align: center; }
+
+  @media (max-width: 520px) {
+    .fire-btn { width: 64px; height: 64px; font-size: 11px; top: 8px; right: 8px; }
+    .dpad { grid-template-columns: 46px 46px 46px; grid-template-rows: 46px 46px 46px; bottom: 8px; left: 8px; }
+    .dpad button { font-size: 14px; }
+    .dpad .rev { font-size: 8px; }
+    .hud .cell { min-width: 64px; padding: 4px 6px; }
+    .hud .val { font-size: 10px; }
+  }
+  @media (max-height: 480px) {
+    body { padding: 2px; }
+    .hud { padding: 2px 6px; font-size: 8px; }
+    .hud .cell { padding: 3px 6px; min-width: 56px; }
+  }
+</style>
+</head>
+<body>
+  <div class="hud">
+    <div class="cell score"><span class="label">SCORE</span><span class="val" id="score">0</span></div>
+    <div class="cell best"><span class="label">BEST</span><span class="val" id="best">0</span></div>
+    <div class="cell lives"><span class="label">SHIPS</span><span class="val" id="lives">3</span></div>
+    <div class="cell wave"><span class="label">WAVE</span><span class="val" id="wave">1</span></div>
+  </div>
+  <div class="stage" id="stage">
+    <canvas id="canvas" width="640" height="360"></canvas>
+    <div class="scanlines"></div>
+    <div class="vignette"></div>
+    <button class="fire-btn" id="fireBtn" type="button" aria-label="Fire">FIRE</button>
+    <div class="dpad" aria-label="Movement">
+      <button class="up" type="button" data-dir="up" aria-label="Up">&#9650;</button>
+      <button class="left" type="button" data-dir="left" aria-label="Left">&#9664;</button>
+      <button class="rev" type="button" data-dir="rev" aria-label="Reverse">REV</button>
+      <button class="right" type="button" data-dir="right" aria-label="Right">&#9654;</button>
+      <button class="down" type="button" data-dir="down" aria-label="Down">&#9660;</button>
+    </div>
+    <div class="overlay" id="overlay">
+      <h1>STELLAR<br>DEFENDER</h1>
+      <p>Aliens descend to abduct your <span class="pink">humans</span>. Intercept landers before they reach the top &mdash; or shoot them down and <b>catch the falling human</b> before they hit the ground.</p>
+      <div class="legend">
+        <b>MOVE</b><span>Arrow keys / D-pad</span>
+        <b>REVERSE</b><span>R / REV button (flip ship)</span>
+        <b>FIRE</b><span>Space / FIRE button</span>
+        <b>SCORE</b><span>+50 alien &middot; +500 saved human</span>
+      </div>
+      <button class="start-btn" id="startBtn" type="button">START GAME</button>
+    </div>
+  </div>
+<script>
+(function(){
+  'use strict';
+
+  // ---------- Canvas / constants ----------
+  const canvas = document.getElementById('canvas');
+  const ctx = canvas.getContext('2d');
+  ctx.imageSmoothingEnabled = false;
+
+  const W = canvas.width;
+  const H = canvas.height;
+  const WORLD_W = 2400;
+  const GROUND_Y = 320;
+  const SKY_TOP = 32;
+  const MAP_TOP = 4;
+  const MAP_H = 22;
+  const FIRE_CD = 180;
+  const HUMAN_INITIAL = 10;
+
+  // ---------- Helpers ----------
+  function wrapX(x) { x %= WORLD_W; if (x < 0) x += WORLD_W; return x; }
+  function wrapDX(a, b) {
+    let d = a - b;
+    if (d > WORLD_W/2) d -= WORLD_W;
+    if (d < -WORLD_W/2) d += WORLD_W;
+    return d;
+  }
+  function distX(a, b) { return Math.abs(wrapDX(a,b)); }
+  function rand(a, b) { return a + Math.random()*(b-a); }
+
+  // ---------- Game state ----------
+  let state = 'title';   // title | playing | planetExplode | gameover | idle
+  let score = 0;
+  let best = 0;
+  try { best = parseInt(localStorage.getItem('defender_best'), 10) || 0; } catch(e){}
+  if (!best || best < 0) best = 0;
+  let lives = 3;
+  let wave = 1;
+  let hardMultiplier = 1;
+  let lastSpawn = 0;
+  let spawnInterval = 2400;
+  let cameraX = 0;
+  let shake = 0;
+  let toastTimer = 0;
+  let toastMsg = '';
+  let toastColor = '#FB923C';
+  let stars = [];
+  let mountainsFar = [];
+  let mountainsMid = [];
+  let mountainsNear = [];
+  let groundDetail = [];
+  let explodeTimer = 0;
+
+  let player = null;
+  let bullets = [];
+  let aliens = [];
+  let alienBullets = [];
+  let humans = [];
+  let particles = [];
+
+  const keys = {};
+  const touchDir = { up:false, down:false, left:false, right:false };
+  let firePressed = false;
+
+  // ---------- Persist ----------
+  function saveBest() {
+    if (score > best) {
+      best = score;
+      try { localStorage.setItem('defender_best', String(best)); } catch(e){}
+    }
+  }
+
+  // ---------- Toast ----------
+  function showToast(msg, color, dur) {
+    toastMsg = msg;
+    toastColor = color || '#FB923C';
+    toastTimer = dur || 1400;
+  }
+
+  // ---------- World gen ----------
+  function genWorld() {
+    stars = [];
+    for (let i=0; i<160; i++) {
+      stars.push({
+        x: Math.random() * WORLD_W,
+        y: SKY_TOP + Math.random() * (GROUND_Y - SKY_TOP - 40),
+        b: Math.random() < 0.25 ? 2 : 1,
+        twinkle: Math.random() * Math.PI * 2,
+        speed: Math.random()*0.001 + 0.0005,
+      });
+    }
+    mountainsFar = genMountains(70, GROUND_Y - 38, 1.0);
+    mountainsMid = genMountains(54, GROUND_Y - 22, 0.8);
+    mountainsNear = genMountains(38, GROUND_Y - 6, 0.6);
+    groundDetail = [];
+    for (let i = 0; i < 80; i++) {
+      groundDetail.push({
+        x: Math.random() * WORLD_W,
+        y: GROUND_Y + 4 + Math.random()*20,
+        size: 1 + Math.floor(Math.random()*2),
+      });
+    }
+  }
+  function genMountains(peakAvg, baseY, jitter) {
+    const points = [];
+    let x = 0;
+    while (x < WORLD_W) {
+      const peakX = x + 30 + Math.random() * 50;
+      const peakY = baseY - peakAvg * (0.5 + Math.random() * jitter);
+      points.push({ x: peakX, y: peakY });
+      x = peakX + 8;
+    }
+    return points;
+  }
+
+  // ---------- Init ----------
+  function initLevel(resetHumans) {
+    player = {
+      x: WORLD_W * 0.25,
+      y: H * 0.5,
+      vx: 0, vy: 0,
+      facing: 1,
+      alive: true,
+      cooldown: 0,
+      thrust: 0,
+      dead: 0,
+      flashUntil: 0,
+    };
+    cameraX = wrapX(player.x - W/2);
+    bullets = [];
+    aliens = [];
+    alienBullets = [];
+    particles = [];
+    if (resetHumans) {
+      humans = [];
+      for (let i = 0; i < HUMAN_INITIAL; i++) {
+        humans.push({
+          x: (i + 0.5) * (WORLD_W / HUMAN_INITIAL) + rand(-30, 30),
+          y: GROUND_Y - 6,
+          state: 'walk',
+          vx: (Math.random() < 0.5 ? -1 : 1) * rand(0.15, 0.35),
+          vy: 0,
+          alpha: 1,
+          frame: Math.floor(Math.random()*60),
+          carrier: null,
+        });
+      }
+    }
+  }
+
+  // ---------- Spawning ----------
+  function spawnAlien() {
+    const r = Math.random();
+    let t;
+    if (r < 0.65) t = 'lander';
+    else if (r < 0.92) t = 'bomber';
+    else t = 'mutant';
+
+    const offset = (Math.random() < 0.5 ? -1 : 1) * (W/2 + 60 + Math.random()*120);
+    const x = wrapX(cameraX + W/2 + offset);
+    const y = SKY_TOP + 14 + Math.random() * 60;
+    const dir = Math.random() < 0.5 ? -1 : 1;
+    const a = {
+      type: t,
+      x, y,
+      vx: 0, vy: 0,
+      hp: t === 'bomber' ? 1 : 1,
+      dir,
+      mode: 'hunt',
+      target: null,
+      cooldown: 600 + Math.random()*1400,
+      timer: Math.random()*1000,
+    };
+    if (t === 'mutant') { a.vx = dir * 1.4; a.cooldown = 1500; }
+    else if (t === 'bomber') { a.vx = dir * 0.9; a.cooldown = 1100; }
+    else { a.vx = dir * 0.4; }
+    aliens.push(a);
+  }
+
+  // ---------- Drawing: entities ----------
+  function drawPlayer(p, sx) {
+    ctx.save();
+    ctx.translate(sx, Math.round(p.y));
+    ctx.scale(p.facing, 1);
+    if (p.flashUntil > performance.now() && Math.floor(performance.now()/60) % 2 === 0) {
+      ctx.globalAlpha = 0.5;
+    }
+    if (p.thrust > 0) {
+      const fl = 8 + Math.random()*6;
+      ctx.fillStyle = '#FB923C';
+      ctx.fillRect(-14 - fl, -2, fl, 4);
+      ctx.fillStyle = '#fef08a';
+      ctx.fillRect(-14 - fl/2, -1, fl/2, 2);
+    }
+    // hull
+    ctx.fillStyle = '#10B981';
+    ctx.fillRect(-14, -3, 22, 6);
+    ctx.fillRect(-4, -6, 14, 3);
+    ctx.fillRect(-4, 3, 14, 3);
+    // nose
+    ctx.fillStyle = '#FB923C';
+    ctx.fillRect(10, -2, 6, 4);
+    // wing tips
+    ctx.fillStyle = '#34d399';
+    ctx.fillRect(-14, -4, 3, 1);
+    ctx.fillRect(-14, 3, 3, 1);
+    // cockpit
+    ctx.fillStyle = '#F1F5F9';
+    ctx.fillRect(0, -2, 4, 2);
+    ctx.fillStyle = '#0F172A';
+    ctx.fillRect(1, -1, 2, 1);
+    ctx.restore();
+  }
+
+  function drawLander(a, sx) {
+    const bob = Math.sin(a.timer * 0.01) * 1;
+    ctx.save();
+    ctx.translate(sx, Math.round(a.y + bob));
+    // dome
+    ctx.fillStyle = '#FB923C';
+    ctx.fillRect(-7, -8, 14, 4);
+    ctx.fillRect(-9, -4, 18, 4);
+    // ribs
+    ctx.fillStyle = '#fbbf24';
+    ctx.fillRect(-9, -2, 18, 1);
+    // eye
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(-2, -7, 4, 2);
+    ctx.fillStyle = '#dc2626';
+    ctx.fillRect(-1, -6, 2, 1);
+    // grippers
+    ctx.fillStyle = '#F472B6';
+    ctx.fillRect(-7, 0, 2, 6);
+    ctx.fillRect(5, 0, 2, 6);
+    ctx.fillRect(-1, 1, 2, 5);
+    ctx.fillStyle = '#be185d';
+    ctx.fillRect(-7, 6, 2, 1);
+    ctx.fillRect(5, 6, 2, 1);
+    ctx.restore();
+  }
+
+  function drawBomber(a, sx) {
+    ctx.save();
+    ctx.translate(sx, Math.round(a.y));
+    // hull
+    ctx.fillStyle = '#94A3B8';
+    ctx.fillRect(-12, -4, 24, 4);
+    ctx.fillStyle = '#cbd5e1';
+    ctx.fillRect(-12, -4, 24, 1);
+    ctx.fillStyle = '#475569';
+    ctx.fillRect(-12, 0, 24, 2);
+    // turret
+    ctx.fillStyle = '#475569';
+    ctx.fillRect(-3, -7, 6, 3);
+    ctx.fillRect(-1, -9, 2, 2);
+    // mines
+    ctx.fillStyle = '#FB923C';
+    ctx.fillRect(-9, 4, 3, 3);
+    ctx.fillRect(6, 4, 3, 3);
+    ctx.fillStyle = '#fef08a';
+    ctx.fillRect(-8, 4, 1, 1);
+    ctx.fillRect(7, 4, 1, 1);
+    // light
+    ctx.fillStyle = (Math.floor(a.timer/200)%2) ? '#dc2626' : '#7f1d1d';
+    ctx.fillRect(-1, -1, 2, 2);
+    ctx.restore();
+  }
+
+  function drawMutant(a, sx) {
+    const t = a.timer * 0.02;
+    const pulse = Math.sin(t) * 0.25 + 0.75;
+    ctx.save();
+    ctx.translate(sx, Math.round(a.y));
+    // glow
+    ctx.fillStyle = '#F472B6';
+    ctx.globalAlpha = 0.4 * pulse;
+    ctx.fillRect(-9, -9, 18, 18);
+    ctx.globalAlpha = 1;
+    // body
+    ctx.fillStyle = '#F472B6';
+    ctx.fillRect(-6, -6, 12, 12);
+    ctx.fillStyle = '#be185d';
+    ctx.fillRect(-6, -6, 12, 2);
+    ctx.fillRect(-6, 4, 12, 2);
+    // core
+    ctx.fillStyle = '#fef08a';
+    ctx.fillRect(-2, -2, 4, 4);
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(-1, -1, 2, 2);
+    // tendrils
+    ctx.fillStyle = '#F472B6';
+    for (let i = 0; i < 4; i++) {
+      const ang = t + i * Math.PI/2;
+      const dx = Math.round(Math.cos(ang)*8);
+      const dy = Math.round(Math.sin(ang)*8);
+      ctx.fillRect(dx, dy, 2, 2);
+    }
+    ctx.restore();
+  }
+
+  function drawAlien(a, sx) {
+    if (a.type === 'lander') drawLander(a, sx);
+    else if (a.type === 'bomber') drawBomber(a, sx);
+    else drawMutant(a, sx);
+  }
+
+  function drawHuman(h, sx) {
+    ctx.save();
+    ctx.translate(sx, Math.round(h.y));
+    ctx.globalAlpha = h.alpha;
+    // head
+    ctx.fillStyle = '#fef08a';
+    ctx.fillRect(-2, -8, 4, 3);
+    // body
+    ctx.fillStyle = '#F472B6';
+    ctx.fillRect(-1, -5, 2, 4);
+    // legs
+    ctx.fillStyle = '#F472B6';
+    if (h.state === 'walk') {
+      const step = Math.floor(h.frame/8) % 2;
+      if (step) {
+        ctx.fillRect(-2, -1, 1, 3);
+        ctx.fillRect(1, -1, 1, 3);
+      } else {
+        ctx.fillRect(-3, -1, 1, 3);
+        ctx.fillRect(2, -1, 1, 3);
+      }
+    } else if (h.state === 'grabbed') {
+      ctx.fillRect(-2, -1, 1, 4);
+      ctx.fillRect(1, -1, 1, 4);
+      // arms up (waving for help)
+      ctx.fillRect(-3, -6, 1, 2);
+      ctx.fillRect(2, -6, 1, 2);
+    } else if (h.state === 'falling') {
+      ctx.fillRect(-2, 0, 1, 3);
+      ctx.fillRect(1, 0, 1, 3);
+      ctx.fillRect(-4, -4, 1, 2);
+      ctx.fillRect(3, -4, 1, 2);
+    } else {
+      ctx.fillRect(-2, -1, 1, 3);
+      ctx.fillRect(1, -1, 1, 3);
+    }
+    ctx.globalAlpha = 1;
+    ctx.restore();
+  }
+
+  function drawBullet(b, sx) {
+    ctx.fillStyle = '#fef08a';
+    ctx.fillRect(sx - 3, b.y - 1, 8, 2);
+    ctx.fillStyle = '#FB923C';
+    ctx.fillRect(sx - 6, b.y - 1, 3, 2);
+    ctx.fillStyle = 'rgba(254,240,138,0.4)';
+    ctx.fillRect(sx - 9, b.y, 3, 1);
+  }
+  function drawAlienBullet(b, sx) {
+    ctx.fillStyle = '#F472B6';
+    ctx.fillRect(sx - 1, b.y - 2, 3, 4);
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(sx, b.y - 1, 1, 2);
+  }
+
+  function drawParticle(p, sx) {
+    ctx.globalAlpha = Math.max(0, p.life / p.maxLife);
+    ctx.fillStyle = p.color;
+    ctx.fillRect(sx, Math.round(p.y), p.size, p.size);
+    ctx.globalAlpha = 1;
+  }
+
+  function spawnExplosion(x, y, color, n) {
+    n = n || 14;
+    for (let i = 0; i < n; i++) {
+      const ang = Math.random() * Math.PI * 2;
+      const sp = 0.4 + Math.random() * 2.6;
+      particles.push({
+        x: x, y: y,
+        vx: Math.cos(ang)*sp,
+        vy: Math.sin(ang)*sp,
+        size: 1 + Math.floor(Math.random()*2),
+        life: 30 + Math.random()*25,
+        maxLife: 50,
+        color: color || (Math.random()<0.5 ? '#FB923C' : '#fef08a'),
+      });
+    }
+  }
+
+  function drawWrapped(worldX, fn) {
+    for (let off of [-WORLD_W, 0, WORLD_W]) {
+      const sx = worldX - cameraX + off;
+      if (sx > -40 && sx < W + 40) fn(Math.round(sx));
+    }
+  }
+
+  // ---------- Background ----------
+  function drawBackground() {
+    // sky
+    const grd = ctx.createLinearGradient(0, SKY_TOP, 0, GROUND_Y);
+    grd.addColorStop(0, '#0F172A');
+    grd.addColorStop(0.5, '#1e1b4b');
+    grd.addColorStop(1, '#4338ca');
+    ctx.fillStyle = grd;
+    ctx.fillRect(0, SKY_TOP, W, GROUND_Y - SKY_TOP);
+
+    // stars
+    const now = performance.now();
+    for (let s of stars) {
+      const sx = s.x - cameraX*0.2;
+      for (let off of [-WORLD_W, 0, WORLD_W]) {
+        const dx = sx + off;
+        if (dx > -4 && dx < W + 4) {
+          const a = 0.4 + Math.sin(s.twinkle + now*s.speed) * 0.5;
+          ctx.globalAlpha = Math.max(0.2, a);
+          ctx.fillStyle = '#F1F5F9';
+          ctx.fillRect(Math.round(dx), s.y, s.b, s.b);
+        }
+      }
+    }
+    ctx.globalAlpha = 1;
+
+    drawMountains(mountainsFar, '#1e1b4b', 0.3, GROUND_Y);
+    drawMountains(mountainsMid, '#312e81', 0.55, GROUND_Y);
+    drawMountains(mountainsNear, '#4338ca', 0.85, GROUND_Y);
+
+    // ground
+    ctx.fillStyle = '#0a0e1a';
+    ctx.fillRect(0, GROUND_Y, W, H - GROUND_Y);
+    // ground edge glow line
+    ctx.fillStyle = '#10B981';
+    ctx.fillRect(0, GROUND_Y, W, 1);
+    ctx.fillStyle = 'rgba(16,185,129,0.3)';
+    ctx.fillRect(0, GROUND_Y + 1, W, 1);
+    // ground detail
+    for (let g of groundDetail) {
+      drawWrapped(g.x, sx => {
+        ctx.fillStyle = '#1E293B';
+        ctx.fillRect(sx, g.y, g.size + 1, g.size);
+      });
+    }
+  }
+
+  function drawMountains(pts, color, parallax, baseY) {
+    if (!pts.length) return;
+    ctx.fillStyle = color;
+    const camOffset = cameraX * parallax;
+    for (let tile = -1; tile <= 1; tile++) {
+      const baseX = tile * WORLD_W - camOffset;
+      if (baseX > W || baseX + WORLD_W < 0) continue;
+      ctx.beginPath();
+      ctx.moveTo(baseX + pts[0].x, baseY + 4);
+      for (let p of pts) ctx.lineTo(baseX + p.x, p.y);
+      ctx.lineTo(baseX + pts[pts.length-1].x, baseY + 4);
+      ctx.closePath();
+      ctx.fill();
+    }
+  }
+
+  // ---------- Mini-map ----------
+  function drawMiniMap() {
+    ctx.fillStyle = 'rgba(15,23,42,0.92)';
+    ctx.fillRect(0, MAP_TOP, W, MAP_H);
+    ctx.fillStyle = '#10B981';
+    ctx.fillRect(0, MAP_TOP, W, 1);
+    ctx.fillRect(0, MAP_TOP + MAP_H - 1, W, 1);
+
+    const sx = (x) => Math.round((x / WORLD_W) * W);
+    const my = (y) => MAP_TOP + 2 + (y / GROUND_Y) * (MAP_H - 4);
+
+    // viewport indicator
+    const vL = sx(cameraX);
+    const vR = sx(wrapX(cameraX + W));
+    ctx.fillStyle = 'rgba(16,185,129,0.18)';
+    if (vR > vL) ctx.fillRect(vL, MAP_TOP + 1, vR - vL, MAP_H - 2);
+    else { ctx.fillRect(vL, MAP_TOP + 1, W - vL, MAP_H - 2); ctx.fillRect(0, MAP_TOP + 1, vR, MAP_H - 2); }
+    ctx.strokeStyle = 'rgba(16,185,129,0.6)';
+    ctx.lineWidth = 1;
+    if (vR > vL) ctx.strokeRect(vL + 0.5, MAP_TOP + 1.5, vR - vL - 1, MAP_H - 3);
+
+    // ground line on map
+    ctx.fillStyle = 'rgba(16,185,129,0.4)';
+    ctx.fillRect(0, MAP_TOP + MAP_H - 3, W, 1);
+
+    // humans
+    for (let h of humans) {
+      if (h.state === 'dead') continue;
+      ctx.fillStyle = h.state === 'grabbed' ? '#fbbf24' : '#F472B6';
+      ctx.fillRect(sx(h.x) - 1, Math.round(my(h.y)), 2, 2);
+    }
+    // aliens
+    for (let a of aliens) {
+      ctx.fillStyle = a.type === 'mutant' ? '#F472B6' : (a.type === 'bomber' ? '#94A3B8' : '#FB923C');
+      ctx.fillRect(sx(a.x) - 1, Math.round(my(a.y)), 2, 2);
+    }
+    // player
+    if (player && player.alive) {
+      const px = sx(player.x), py = Math.round(my(player.y));
+      ctx.fillStyle = '#10B981';
+      ctx.fillRect(px - 2, py, 5, 1);
+      ctx.fillRect(px, py - 2, 1, 5);
+    }
+  }
+
+  // ---------- Update ----------
+  function killPlayer() {
+    if (!player.alive) return;
+    spawnExplosion(player.x, player.y, '#10B981', 24);
+    spawnExplosion(player.x, player.y, '#FB923C', 16);
+    spawnExplosion(player.x, player.y, '#fef08a', 8);
+    shake = 18;
+    player.alive = false;
+    player.dead = 1500;
+    lives -= 1;
+    playBeep(80, 0.5, 'sawtooth');
+    showToast('SHIP DOWN', '#dc2626');
+    document.getElementById('lives').textContent = lives;
+  }
+
+  function update(dt) {
+    // Player input + physics
+    if (player && player.alive) {
+      const accel = 0.32 * (state === 'playing' ? 1 : 1);
+      let ax = 0, ay = 0;
+      if (keys['ArrowLeft'] || keys['a'] || keys['A'] || touchDir.left) ax -= 1;
+      if (keys['ArrowRight'] || keys['d'] || keys['D'] || touchDir.right) ax += 1;
+      if (keys['ArrowUp'] || keys['w'] || keys['W'] || touchDir.up) ay -= 1;
+      if (keys['ArrowDown'] || keys['s'] || keys['S'] || touchDir.down) ay += 1;
+      player.vx += ax * accel;
+      player.vy += ay * accel;
+      player.thrust = (ax !== 0 || ay !== 0) ? 6 : Math.max(0, player.thrust - 0.4);
+      // friction
+      player.vx *= 0.93;
+      player.vy *= 0.86;
+      // clamp
+      player.vx = Math.max(-5, Math.min(5, player.vx));
+      player.vy = Math.max(-3.5, Math.min(3.5, player.vy));
+
+      player.x = wrapX(player.x + player.vx);
+      player.y = Math.max(SKY_TOP + 12, Math.min(GROUND_Y - 8, player.y + player.vy));
+
+      // fire
+      if (player.cooldown > 0) player.cooldown -= dt;
+      if (firePressed && player.cooldown <= 0) {
+        bullets.push({
+          x: wrapX(player.x + player.facing * 16),
+          y: player.y,
+          vx: player.facing * 9,
+          life: 700,
+        });
+        player.cooldown = FIRE_CD;
+        playBeep(880, 0.05, 'square');
+      }
+
+      // catch falling humans
+      for (let h of humans) {
+        if (h.state === 'falling') {
+          if (distX(h.x, player.x) < 14 && Math.abs(h.y - player.y) < 16) {
+            h.state = 'walk';
+            h.y = GROUND_Y - 6;
+            h.vy = 0;
+            h.vx = (Math.random()<0.5?-1:1) * 0.25;
+            score += 500;
+            saveBest();
+            showToast('+500 RESCUED!', '#10B981');
+            playBeep(1320, 0.15, 'square');
+            spawnExplosion(player.x, player.y, '#10B981', 12);
+          }
+        }
+      }
+
+      // collision with aliens
+      if (player.flashUntil < performance.now()) {
+        for (let i = aliens.length - 1; i >= 0; i--) {
+          const a = aliens[i];
+          if (distX(a.x, player.x) < 14 && Math.abs(a.y - player.y) < 12) {
+            spawnExplosion(a.x, a.y, '#FB923C', 18);
+            // if it was carrying, drop human
+            if (a.target && a.target.state === 'grabbed' && a.target.carrier === a) {
+              a.target.state = 'falling';
+              a.target.carrier = null;
+              a.target.vy = 0.3;
+            }
+            aliens.splice(i, 1);
+            killPlayer();
+            break;
+          }
+        }
+        // alien bullets
+        for (let i = alienBullets.length - 1; i >= 0; i--) {
+          const b = alienBullets[i];
+          if (distX(b.x, player.x) < 8 && Math.abs(b.y - player.y) < 7) {
+            alienBullets.splice(i, 1);
+            killPlayer();
+            break;
+          }
+        }
+      }
+    } else if (player && !player.alive) {
+      player.dead -= dt;
+      if (player.dead <= 0) {
+        if (lives > 0) {
+          player.alive = true;
+          player.x = wrapX(cameraX + W/2);
+          player.y = H/2;
+          player.vx = 0;
+          player.vy = 0;
+          player.cooldown = 600;
+          player.flashUntil = performance.now() + 1400;
+        } else {
+          state = 'gameover';
+          saveBest();
+          submitLeaderboard();
+        }
+      }
+    }
+
+    // Camera follow with look-ahead
+    if (player) {
+      const lookahead = player.facing * 110;
+      const targetCam = wrapX(player.x - W/2 + lookahead);
+      const diff = wrapDX(targetCam, cameraX);
+      cameraX = wrapX(cameraX + diff * 0.08);
+    }
+
+    // bullets
+    for (let i = bullets.length - 1; i >= 0; i--) {
+      const b = bullets[i];
+      b.x = wrapX(b.x + b.vx);
+      b.life -= dt;
+      if (b.life <= 0) { bullets.splice(i, 1); continue; }
+
+      let hit = false;
+      for (let j = aliens.length - 1; j >= 0; j--) {
+        const a = aliens[j];
+        if (distX(a.x, b.x) < 12 && Math.abs(a.y - b.y) < 10) {
+          aliens.splice(j, 1);
+          bullets.splice(i, 1);
+          let s = 50;
+          if (a.type === 'mutant') s = 150;
+          else if (a.type === 'bomber') s = 100;
+          score += s;
+          saveBest();
+          spawnExplosion(a.x, a.y, '#FB923C', 18);
+          spawnExplosion(a.x, a.y, '#fef08a', 6);
+          shake = Math.max(shake, 6);
+          playBeep(220, 0.1, 'sawtooth');
+          // drop carried human
+          if (a.target && a.target.state === 'grabbed' && a.target.carrier === a) {
+            a.target.state = 'falling';
+            a.target.carrier = null;
+            a.target.vy = 0.4;
+            showToast('CATCH HIM!', '#FB923C', 900);
+          }
+          hit = true;
+          break;
+        }
+      }
+      if (hit) continue;
+    }
+
+    // alien bullets
+    for (let i = alienBullets.length - 1; i >= 0; i--) {
+      const b = alienBullets[i];
+      b.x = wrapX(b.x + b.vx);
+      b.y += b.vy;
+      b.life -= dt;
+      if (b.life <= 0 || b.y > GROUND_Y - 2 || b.y < SKY_TOP) {
+        alienBullets.splice(i, 1);
+      }
+    }
+
+    // aliens AI
+    for (let a of aliens) {
+      a.timer += dt;
+
+      if (a.type === 'lander') {
+        if (a.mode === 'hunt') {
+          // re-target if lost
+          if (!a.target || a.target.state !== 'walk') {
+            let bestH = null, bd = Infinity;
+            for (let h of humans) {
+              if (h.state !== 'walk') continue;
+              const d = distX(h.x, a.x);
+              if (d < bd) { bd = d; bestH = h; }
+            }
+            a.target = bestH;
+          }
+          if (a.target) {
+            const dx = wrapDX(a.target.x, a.x);
+            a.vx = Math.sign(dx) * Math.min(0.7, Math.abs(dx) * 0.05);
+            // descend if reasonably above target
+            if (Math.abs(dx) < 80) a.vy = 0.55;
+            else a.vy = 0.25;
+            // grab condition
+            if (Math.abs(dx) < 6 && a.y >= GROUND_Y - 16) {
+              a.target.state = 'grabbed';
+              a.target.carrier = a;
+              a.mode = 'ascend';
+              showToast('ABDUCTION!', '#dc2626', 700);
+              playBeep(160, 0.2, 'sawtooth');
+            }
+          } else {
+            a.vx = a.dir * 0.4;
+            a.vy = Math.sin(a.timer*0.005) * 0.3;
+          }
+        } else if (a.mode === 'ascend') {
+          a.vy = -0.7;
+          a.vx *= 0.94;
+          if (a.target && a.target.carrier === a) {
+            a.target.x = a.x;
+            a.target.y = a.y + 8;
+          }
+          if (a.y < SKY_TOP + 8) {
+            // mutate
+            if (a.target && a.target.carrier === a) {
+              a.target.state = 'dead';
+              a.target = null;
+            }
+            spawnExplosion(a.x, a.y, '#F472B6', 14);
+            a.type = 'mutant';
+            a.mode = 'mutant';
+            a.y = SKY_TOP + 18;
+            a.vy = 0;
+            a.vx = a.dir * 1.4;
+            showToast('MUTANT BORN!', '#F472B6', 1100);
+            playBeep(280, 0.3, 'sawtooth');
+          }
+        }
+        // shoot
+        a.cooldown -= dt;
+        if (a.cooldown <= 0 && player && player.alive && Math.abs(wrapDX(player.x, a.x)) < W*0.55) {
+          a.cooldown = 1500 + Math.random()*1500;
+          const dx = wrapDX(player.x, a.x);
+          const dy = player.y - a.y;
+          const m = Math.hypot(dx, dy) || 1;
+          alienBullets.push({
+            x: a.x, y: a.y,
+            vx: (dx/m) * 2.6,
+            vy: (dy/m) * 2.6,
+            life: 1800,
+          });
+        }
+      } else if (a.type === 'bomber') {
+        a.vx = a.dir * 0.9;
+        a.vy = Math.sin(a.timer * 0.003) * 0.45;
+        a.cooldown -= dt;
+        if (a.cooldown <= 0 && player && player.alive && Math.abs(wrapDX(player.x, a.x)) < W*0.6) {
+          a.cooldown = 900 + Math.random()*600;
+          alienBullets.push({
+            x: a.x, y: a.y + 4,
+            vx: a.dir * 0.4,
+            vy: 1.4,
+            life: 4000,
+          });
+        }
+      } else if (a.type === 'mutant') {
+        if (player && player.alive) {
+          const dx = wrapDX(player.x, a.x);
+          const dy = player.y - a.y;
+          const m = Math.hypot(dx, dy) || 1;
+          a.vx = (dx/m) * 1.6;
+          a.vy = (dy/m) * 1.4;
+        } else {
+          a.vx = a.dir * 1.0;
+        }
+        // shoot rarely
+        a.cooldown -= dt;
+        if (a.cooldown <= 0 && player && player.alive) {
+          a.cooldown = 1200 + Math.random()*1500;
+          const dx = wrapDX(player.x, a.x);
+          const dy = player.y - a.y;
+          const m = Math.hypot(dx, dy) || 1;
+          alienBullets.push({
+            x: a.x, y: a.y,
+            vx: (dx/m) * 3.2,
+            vy: (dy/m) * 3.2,
+            life: 1400,
+          });
+        }
+      }
+
+      a.x = wrapX(a.x + a.vx * hardMultiplier);
+      a.y += a.vy * hardMultiplier;
+      a.y = Math.max(SKY_TOP + 8, Math.min(GROUND_Y - 8, a.y));
+    }
+
+    // humans
+    for (let h of humans) {
+      if (h.state === 'walk') {
+        h.x = wrapX(h.x + h.vx * 0.45);
+        h.frame += 1;
+        if (Math.random() < 0.004) h.vx = (Math.random()<0.5?-1:1) * rand(0.15, 0.35);
+      } else if (h.state === 'falling') {
+        h.vy += 0.06;
+        h.y += h.vy;
+        if (h.y >= GROUND_Y - 6) {
+          h.state = 'dead';
+          spawnExplosion(h.x, GROUND_Y - 6, '#F472B6', 10);
+          showToast('HUMAN LOST!', '#dc2626');
+          playBeep(110, 0.4, 'sawtooth');
+        }
+      }
+    }
+
+    // particles
+    for (let i = particles.length - 1; i >= 0; i--) {
+      const p = particles[i];
+      p.x = wrapX(p.x + p.vx);
+      p.y += p.vy;
+      p.vy += 0.05;
+      p.life -= dt * 0.06;
+      if (p.life <= 0) particles.splice(i, 1);
+    }
+
+    // spawn
+    lastSpawn += dt;
+    const spawnCap = 3 + Math.min(8, wave + 2);
+    if (lastSpawn > spawnInterval && aliens.length < spawnCap) {
+      lastSpawn = 0;
+      spawnAlien();
+    }
+
+    // wipe check
+    const aliveHumans = humans.filter(h => h.state !== 'dead').length;
+    if (aliveHumans === 0 && state === 'playing') {
+      state = 'planetExplode';
+      explodeTimer = 2600;
+      planetExplode();
+    }
+
+    // shake decay
+    if (shake > 0) shake = Math.max(0, shake - dt * 0.04);
+
+    // toast
+    if (toastTimer > 0) toastTimer -= dt;
+  }
+
+  function planetExplode() {
+    for (let i = 0; i < 60; i++) {
+      const x = wrapX(cameraX - W*0.3 + Math.random() * W*1.6);
+      spawnExplosion(x, GROUND_Y - 4 + Math.random()*8, Math.random()<0.5?'#FB923C':'#dc2626', 10);
+    }
+    shake = 30;
+    showToast('PLANET DESTROYED', '#dc2626', 2400);
+    playBeep(60, 1.4, 'sawtooth');
+  }
+
+  // ---------- Render ----------
+  function render() {
+    ctx.save();
+    if (shake > 0) {
+      ctx.translate((Math.random()-0.5)*shake, (Math.random()-0.5)*shake);
+    }
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, W, H);
+
+    drawBackground();
+
+    // humans
+    for (let h of humans) {
+      if (h.state === 'dead') continue;
+      drawWrapped(h.x, sx => drawHuman(h, sx));
+    }
+
+    // aliens
+    for (let a of aliens) {
+      drawWrapped(a.x, sx => drawAlien(a, sx));
+    }
+
+    // bullets
+    for (let b of bullets) drawWrapped(b.x, sx => drawBullet(b, sx));
+    for (let b of alienBullets) drawWrapped(b.x, sx => drawAlienBullet(b, sx));
+
+    // player
+    if (player && player.alive) {
+      drawWrapped(player.x, sx => drawPlayer(player, sx));
+    }
+
+    // particles
+    for (let p of particles) drawWrapped(p.x, sx => drawParticle(p, sx));
+
+    drawMiniMap();
+
+    // toast
+    if (toastTimer > 0 && toastMsg) {
+      ctx.font = "bold 10px 'Press Start 2P', monospace";
+      ctx.textAlign = 'center';
+      const tw = ctx.measureText(toastMsg).width + 20;
+      ctx.fillStyle = 'rgba(15,23,42,0.94)';
+      ctx.fillRect(W/2 - tw/2, H/2 - 14, tw, 24);
+      ctx.fillStyle = toastColor;
+      ctx.fillRect(W/2 - tw/2, H/2 - 14, tw, 2);
+      ctx.fillRect(W/2 - tw/2, H/2 + 8, tw, 2);
+      ctx.fillStyle = toastColor;
+      ctx.fillText(toastMsg, W/2, H/2 + 1);
+    }
+
+    // game over banner
+    if (state === 'planetExplode') {
+      ctx.fillStyle = 'rgba(220,38,38,0.18)';
+      ctx.fillRect(0, 0, W, H);
+    }
+
+    ctx.restore();
+
+    // HUD
+    document.getElementById('score').textContent = score;
+    document.getElementById('best').textContent = best;
+    document.getElementById('lives').textContent = Math.max(0, lives);
+    document.getElementById('wave').textContent = wave;
+  }
+
+  // ---------- Audio ----------
+  let audioCtx = null;
+  function ensureAudio() {
+    if (!audioCtx) {
+      try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+      catch(e) { audioCtx = null; }
+    }
+    if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+  }
+  function playBeep(freq, dur, type) {
+    if (!audioCtx) return;
+    try {
+      const o = audioCtx.createOscillator();
+      const g = audioCtx.createGain();
+      o.type = type || 'square';
+      o.frequency.value = freq;
+      g.gain.value = 0.05;
+      o.connect(g);
+      g.connect(audioCtx.destination);
+      o.start();
+      g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + dur);
+      o.stop(audioCtx.currentTime + dur);
+    } catch(e){}
+  }
+
+  // ---------- Main loop ----------
+  let lastTime = 0;
+  function loop(t) {
+    const dt = Math.min(50, t - (lastTime || t));
+    lastTime = t;
+
+    if (state === 'playing') {
+      update(dt);
+    } else if (state === 'planetExplode') {
+      // continue particles + camera
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.x = wrapX(p.x + p.vx);
+        p.y += p.vy;
+        p.vy += 0.05;
+        p.life -= dt * 0.06;
+        if (p.life <= 0) particles.splice(i, 1);
+      }
+      if (shake > 0) shake = Math.max(0, shake - dt * 0.04);
+      if (toastTimer > 0) toastTimer -= dt;
+      // periodic burst
+      if (Math.random() < 0.3) {
+        spawnExplosion(wrapX(cameraX + Math.random()*W), GROUND_Y - 4 + Math.random()*10, '#FB923C', 6);
+      }
+      explodeTimer -= dt;
+      if (explodeTimer <= 0) {
+        // 5x harder restart
+        wave += 1;
+        hardMultiplier = 5;
+        spawnInterval = 600;
+        humans = [];
+        const HC = 8;
+        for (let i = 0; i < HC; i++) {
+          humans.push({
+            x: (i + 0.5) * (WORLD_W / HC) + rand(-20, 20),
+            y: GROUND_Y - 6,
+            state: 'walk',
+            vx: (Math.random()<0.5?-1:1) * 0.25,
+            vy: 0, alpha: 1, frame: 0, carrier: null,
+          });
+        }
+        aliens = [];
+        bullets = [];
+        alienBullets = [];
+        particles = [];
+        showToast('WAVE ' + wave + ' - 5X HARDER', '#dc2626', 2000);
+        state = 'playing';
+      }
+    } else if (state === 'gameover') {
+      state = 'idle';
+      showGameOver();
+    }
+    render();
+    requestAnimationFrame(loop);
+  }
+
+  // ---------- Inputs ----------
+  function bindInputs() {
+    window.addEventListener('keydown', e => {
+      if (['ArrowLeft','ArrowRight','ArrowUp','ArrowDown',' '].includes(e.key)) e.preventDefault();
+      keys[e.key] = true;
+      if (e.key === ' ') firePressed = true;
+      if (e.key === 'r' || e.key === 'R') reverseFacing();
+      ensureAudio();
+    }, { passive: false });
+    window.addEventListener('keyup', e => {
+      keys[e.key] = false;
+      if (e.key === ' ') firePressed = false;
+    });
+
+    const fireBtn = document.getElementById('fireBtn');
+    const firePress = (e) => { e.preventDefault(); firePressed = true; fireBtn.classList.add('pressed'); ensureAudio(); };
+    const fireRel = (e) => { e.preventDefault(); firePressed = false; fireBtn.classList.remove('pressed'); };
+    fireBtn.addEventListener('touchstart', firePress, { passive: false });
+    fireBtn.addEventListener('touchend', fireRel);
+    fireBtn.addEventListener('touchcancel', fireRel);
+    fireBtn.addEventListener('mousedown', firePress);
+    fireBtn.addEventListener('mouseup', fireRel);
+    fireBtn.addEventListener('mouseleave', fireRel);
+
+    document.querySelectorAll('.dpad button').forEach(btn => {
+      const dir = btn.dataset.dir;
+      const press = (e) => {
+        e.preventDefault();
+        if (dir === 'rev') reverseFacing();
+        else touchDir[dir] = true;
+        btn.classList.add('pressed');
+        ensureAudio();
+      };
+      const rel = (e) => {
+        e.preventDefault();
+        if (dir !== 'rev') touchDir[dir] = false;
+        btn.classList.remove('pressed');
+      };
+      btn.addEventListener('touchstart', press, { passive: false });
+      btn.addEventListener('touchend', rel);
+      btn.addEventListener('touchcancel', rel);
+      btn.addEventListener('mousedown', press);
+      btn.addEventListener('mouseup', rel);
+      btn.addEventListener('mouseleave', rel);
+      btn.addEventListener('contextmenu', e => e.preventDefault());
+    });
+
+    document.getElementById('startBtn').addEventListener('click', startGame);
+  }
+
+  function reverseFacing() {
+    if (player && player.alive) {
+      player.facing = -player.facing;
+      playBeep(440, 0.05, 'square');
+    }
+  }
+
+  function startGame() {
+    document.getElementById('overlay').classList.add('hidden');
+    state = 'playing';
+    score = 0;
+    lives = 3;
+    wave = 1;
+    hardMultiplier = 1;
+    spawnInterval = 2400;
+    initLevel(true);
+    ensureAudio();
+  }
+
+  function showGameOver() {
+    const o = document.getElementById('overlay');
+    o.innerHTML = '';
+    const h1 = document.createElement('h1');
+    h1.textContent = 'GAME OVER';
+    h1.style.color = '#dc2626';
+    h1.style.textShadow = '0 0 12px #dc2626, 0 4px 0 #0F172A';
+    const h2 = document.createElement('h2');
+    h2.textContent = 'SCORE: ' + score;
+    const pBest = document.createElement('p');
+    pBest.innerHTML = 'BEST: <span class="key">' + best + '</span> &nbsp; WAVE: <span class="pink">' + wave + '</span>';
+    o.appendChild(h1);
+    o.appendChild(h2);
+    o.appendChild(pBest);
+
+    // leaderboard placeholder
+    const lb = document.createElement('div');
+    lb.className = 'leaderboard';
+    lb.innerHTML = '<div class="title">LEADERBOARD</div><div class="row"><span>Local Best</span><span>' + best + '</span></div>';
+    o.appendChild(lb);
+
+    const btn = document.createElement('button');
+    btn.className = 'start-btn';
+    btn.type = 'button';
+    btn.textContent = 'PLAY AGAIN';
+    btn.addEventListener('click', () => {
+      o.classList.add('hidden');
+      startGame();
+    });
+    o.appendChild(btn);
+    o.classList.remove('hidden');
+
+    // try cloud leaderboard
+    if (window.mChatAI && window.mChatAI.leaderboard) {
+      try {
+        window.mChatAI.leaderboard.getTop(10).then(rows => {
+          if (!rows || !rows.length) return;
+          const html = ['<div class="title">TOP 10</div>'];
+          rows.forEach((r, i) => {
+            html.push('<div class="row"><span>#' + (i+1) + ' ' + (r.displayName||'??') + '</span><span>' + r.score + '</span></div>');
+          });
+          lb.innerHTML = html.join('');
+        }).catch(()=>{});
+      } catch(e){}
+    }
+  }
+
+  function submitLeaderboard() {
+    if (window.mChatAI && window.mChatAI.leaderboard) {
+      try {
+        window.mChatAI.leaderboard.submit({
+          score: score,
+          metadata: { wave: wave, lives: lives }
+        }).then(r => {
+          if (r && r.rank) showToast('RANK #' + r.rank, '#10B981', 2000);
+        }).catch(()=>{});
+      } catch(e){}
+    }
+  }
+
+  // ---------- Boot ----------
+  genWorld();
+  initLevel(true);
+  bindInputs();
+  document.getElementById('best').textContent = best;
+  requestAnimationFrame(loop);
+})();
+</script>
+<script>
+(function () {
+  if (window.__MCHATAI_FEEDBACK_WIDGET__) return;
+  window.__MCHATAI_FEEDBACK_WIDGET__ = true;
+
+  // Bail out entirely when embedded inside a native host that has its own
+  // feedback UI. iOS/Android WKWebView/WebView appends ?embed=ios or embed=android
+  // (or sets window.__MCHATAI_NATIVE_HOST__) before loading. In that case the
+  // native toolbar owns the feedback flow and we must not inject any pills,
+  // panels, or capture-phase event listeners (they would fight the native UI
+  // and block the soft-keyboard bridge).
+  try {
+    var params = new URLSearchParams(window.location.search);
+    var embed = params.get('embed');
+    if (embed === 'ios' || embed === 'android' || window.__MCHATAI_NATIVE_HOST__) {
+      return;
+    }
+  } catch (e) {
+    // If URL parsing somehow fails, fall through and render the widget.
+  }
+
+  // ── Config ───────────────────────────────────────────────────────────────
+  // Firebase web API key for the mchatai-2367e project. Public-safe — every web
+  // client has this in its bundle. Used for anonymous auth when submitting a
+  // screenshot (text-only feedback stays anonymous; screenshots require an
+  // anon token so we can rate-limit per-browser without real sign-in UX).
+  var FIREBASE_WEB_API_KEY = 'AIzaSyCp2lvjTqAmv60ktspDwYbPeIhi8nlKbwA';
+
+  // ── Console error capture ─────────────────────────────────────────────────
+  // Wrap console.error so the widget can attach the most recent failures to
+  // any submitted feedback. Bounded ring so a chatty page can't OOM the widget.
+  var __consoleErrors = [];
+  var origError = console.error;
+  console.error = function () {
+    try {
+      var msg = Array.prototype.map.call(arguments, function (a) {
+        if (a && a.stack) return String(a.stack).slice(0, 400);
+        if (typeof a === 'object') { try { return JSON.stringify(a).slice(0, 400); } catch (e) { return '[Object]'; } }
+        return String(a).slice(0, 400);
+      }).join(' ');
+      __consoleErrors.push(msg);
+      if (__consoleErrors.length > 8) __consoleErrors.shift();
+    } catch (e) { /* never break the host */ }
+    return origError.apply(console, arguments);
+  };
+  // Same for uncaught errors
+  window.addEventListener('error', function (e) {
+    try {
+      __consoleErrors.push('Uncaught: ' + (e.message || 'unknown') + ' @ ' + (e.filename || '?') + ':' + (e.lineno || '?'));
+      if (__consoleErrors.length > 8) __consoleErrors.shift();
+    } catch (_) {}
+  });
+
+  // ── Slug from URL ────────────────────────────────────────────────────────
+  // mchatai.com/u/{shortUid}/{slug}/ — pull both pieces for the API.
+  var pathParts = location.pathname.replace(/^\/u\//, '').split('/').filter(Boolean);
+  var shortUid = pathParts[0] || '';
+  var slug = pathParts[1] || '';
+
+  var API_BASE = 'https://web-api-1099075912386.us-central1.run.app';
+
+  // ── Styles ───────────────────────────────────────────────────────────────
+  var style = document.createElement('style');
+  style.id = 'mchatai-feedback-widget-style';
+  style.textContent = [
+    '#mchatai-fb-pill, #mchatai-fb-panel {',
+    '  position: fixed; right: 18px; bottom: 18px; z-index: 2147483646;',
+    '  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;',
+    '}',
+    '#mchatai-fb-pill {',
+    '  display: flex; align-items: center; gap: 6px;',
+    '  padding: 8px 14px; border-radius: 999px;',
+    '  background: rgba(40,40,46,0.92); color: #fff;',
+    '  font-size: 13px; font-weight: 500; cursor: pointer;',
+    '  border: 1px solid rgba(255,255,255,0.12);',
+    '  box-shadow: 0 2px 8px rgba(0,0,0,0.25);',
+    '  transition: opacity 0.4s ease, transform 0.15s ease;',
+    '  opacity: 1; user-select: none;',
+    '}',
+    '#mchatai-fb-pill.idle { opacity: 0.2; }',
+    '#mchatai-fb-pill:hover { opacity: 1 !important; transform: translateY(-1px); }',
+    /* Phase RT.2 follow-up: back-to-/play pill is anchored next to the
+       Feedback pill (bottom-right) because the top-left position made it
+       easy to miss on white-background games. Same z-index, same idle-fade,
+       sits just above the Feedback pill. */
+    '#mchatai-back-pill {',
+    '  position: fixed; right: 18px; bottom: 58px; z-index: 2147483646;',
+    '  display: flex; align-items: center; gap: 6px;',
+    '  padding: 6px 12px 6px 10px; border-radius: 999px;',
+    '  background: rgba(40,40,46,0.92); color: #fff;',
+    '  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;',
+    '  font-size: 12px; font-weight: 500; cursor: pointer;',
+    '  border: 1px solid rgba(255,255,255,0.12);',
+    '  box-shadow: 0 2px 8px rgba(0,0,0,0.25);',
+    '  transition: opacity 0.4s ease, transform 0.15s ease;',
+    '  opacity: 1; text-decoration: none; user-select: none;',
+    '}',
+    '#mchatai-back-pill.idle { opacity: 0.2; }',
+    '#mchatai-back-pill:hover { opacity: 1 !important; transform: translateX(-1px); }',
+    '#mchatai-back-pill svg { width: 14px; height: 14px; display: block; }',
+    '#mchatai-fb-panel {',
+    /* Phase RT.2 follow-up: panel now vertically-sized to fit its contents
+       and caps at 85vh so a screenshot preview + textarea + actions never
+       push Send below the viewport. Overflow moved from hidden → auto so
+       the panel itself scrolls if contents exceed the cap (belt-and-braces
+       for anything unexpected). */
+    '  display: none; width: 320px; max-height: 85vh;',
+    '  background: #1f2025; color: #f2f2f5; border-radius: 12px;',
+    '  border: 1px solid rgba(255,255,255,0.12);',
+    '  box-shadow: 0 8px 24px rgba(0,0,0,0.45);',
+    '  overflow-y: auto; overflow-x: hidden; flex-direction: column;',
+    '}',
+    '#mchatai-fb-panel.open { display: flex; }',
+    '#mchatai-fb-panel header {',
+    '  display: flex; justify-content: space-between; align-items: center;',
+    '  padding: 10px 12px; background: #25262c; font-size: 13px; font-weight: 600;',
+    '  border-bottom: 1px solid rgba(255,255,255,0.06);',
+    '}',
+    '#mchatai-fb-close {',
+    '  background: none; border: none; color: #b8b8be; font-size: 18px;',
+    '  cursor: pointer; line-height: 1; padding: 0 4px;',
+    '}',
+    /* Phase RT.2 follow-up: user identity chip. Shows current sign-in state
+       so users know (a) whether their submission is anonymous, (b) whose
+       Google account is attached when it isn't, (c) that screenshots unlock
+       after signing in. Lives in the header row between title and close. */
+    '#mchatai-fb-user { display: flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 500; color: #b8b8be; cursor: pointer; background: none; border: none; padding: 0; max-width: 140px; }',
+    '#mchatai-fb-user:hover { color: #f2f2f5; }',
+    '#mchatai-fb-user.signed-in { color: #8dd19a; }',
+    '#mchatai-fb-user img, #mchatai-fb-user .mchatai-fb-user-avatar-fallback { width: 16px; height: 16px; border-radius: 50%; flex-shrink: 0; }',
+    '#mchatai-fb-user .mchatai-fb-user-avatar-fallback { background: #3a3b40; color: #f2f2f5; font-size: 9px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; }',
+    '#mchatai-fb-user .mchatai-fb-user-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }',
+    '#mchatai-fb-types { display: flex; gap: 4px; padding: 8px 10px 6px; }',
+    '.mchatai-fb-type {',
+    '  flex: 1; padding: 6px 0; border-radius: 6px; cursor: pointer;',
+    '  background: transparent; color: #b8b8be; border: 1px solid rgba(255,255,255,0.10);',
+    '  font-size: 11px; text-align: center; transition: background 0.12s, color 0.12s;',
+    '}',
+    '.mchatai-fb-type.active { background: #4a8eff; color: #fff; border-color: #4a8eff; }',
+    /* Phase RT.1: 5-star rating control. Optional — users can submit text-only
+       feedback without setting a rating. Hover previews a provisional fill so
+       clicking feels obvious. Clicking the currently-selected star clears. */
+    '#mchatai-fb-rating { display: flex; align-items: center; gap: 4px; padding: 4px 10px 0; font-size: 11px; color: #b8b8be; }',
+    '#mchatai-fb-rating-label { margin-right: 6px; }',
+    '#mchatai-fb-rating .mchatai-fb-star {',
+    '  background: none; border: none; color: #55565c; cursor: pointer;',
+    '  font-size: 18px; padding: 0 2px; line-height: 1;',
+    '  transition: color 0.12s, transform 0.08s;',
+    '}',
+    '#mchatai-fb-rating .mchatai-fb-star:hover { transform: scale(1.12); }',
+    '#mchatai-fb-rating .mchatai-fb-star.filled { color: #ffc940; }',
+    '#mchatai-fb-rating .mchatai-fb-star.preview { color: #e6b73a; opacity: 0.75; }',
+    '#mchatai-fb-rating-clear {',
+    '  background: none; border: none; color: #707078; cursor: pointer;',
+    '  font-size: 11px; margin-left: auto; padding: 0 2px;',
+    '}',
+    '#mchatai-fb-rating-clear:hover { color: #d0d0d6; }',
+    '#mchatai-fb-rating-clear[hidden] { display: none !important; }',
+    '#mchatai-fb-text {',
+    '  margin: 4px 10px; padding: 8px; border-radius: 6px;',
+    '  background: #15161a; color: #f2f2f5; border: 1px solid rgba(255,255,255,0.10);',
+    '  font-size: 13px; font-family: inherit; resize: vertical;',
+    '  min-height: 90px; max-height: 200px; outline: none;',
+    '}',
+    '#mchatai-fb-text:focus { border-color: #4a8eff; }',
+    '#mchatai-fb-actions {',
+    /* Phase RT.2 follow-up: actions row sticks to the bottom of the panel
+       even if the content scrolls. Without this, a large screenshot preview
+       pushed the Send button below the viewport and users could not submit. */
+    '  display: flex; justify-content: space-between; align-items: center;',
+    '  padding: 8px 10px 10px; gap: 8px;',
+    '  position: sticky; bottom: 0; background: #1f2025;',
+    '  border-top: 1px solid rgba(255,255,255,0.06);',
+    '  flex-shrink: 0;',
+    '}',
+    '#mchatai-fb-meta { font-size: 10px; color: #707078; }',
+    '#mchatai-fb-send {',
+    '  padding: 6px 14px; border-radius: 6px; border: none; background: #4a8eff;',
+    '  color: #fff; font-size: 12px; font-weight: 600; cursor: pointer;',
+    '  transition: opacity 0.12s;',
+    '}',
+    '#mchatai-fb-send:disabled { opacity: 0.4; cursor: not-allowed; }',
+    '#mchatai-fb-status { font-size: 11px; padding: 0 12px 8px; min-height: 14px; color: #4a8eff; }',
+    /* Screenshot attachment row: only visible if the product opted in via feedbackAutomation.acceptScreenshots = true. */
+    '#mchatai-fb-shot-btn {',
+    '  width: 100%; padding: 7px 10px; margin: 6px 0 2px;',
+    '  background: #2e2f35; color: #d0d0d6; border: 1px dashed rgba(255,255,255,0.16);',
+    '  border-radius: 6px; cursor: pointer; font-size: 12px;',
+    '  transition: background 0.12s;',
+    '}',
+    '#mchatai-fb-shot-btn:hover { background: #35363d; }',
+    '#mchatai-fb-shot-btn:disabled { opacity: 0.5; cursor: default; }',
+    '#mchatai-fb-shot-preview-wrap {',
+    /* Phase RT.2 follow-up: explicit height on the wrap so the img inside
+       inherits the constrained box. Without this the img renders at its
+       natural aspect ratio and max-height alone doesn't clip (depends on
+       the browser's interpretation of intrinsic sizing). 120px matches the
+       earlier intent — small preview so the Send button stays visible. */
+    '  position: relative; margin: 6px 0 2px;',
+    '  height: 120px; max-height: 120px; overflow: hidden;',
+    '  border-radius: 6px;',
+    '  border: 1px solid rgba(255,255,255,0.10);',
+    '  background: #0d0e12;',
+    '  flex-shrink: 0;',
+    '}',
+    '#mchatai-fb-shot-preview { display:block; width: 100%; height: 100%; object-fit: contain; object-position: center; }',
+    '#mchatai-fb-shot-remove {',
+    '  position: absolute; top: 4px; right: 4px;',
+    '  width: 22px; height: 22px; border-radius: 50%;',
+    '  background: rgba(0,0,0,0.7); color: #fff; border: none;',
+    '  cursor: pointer; font-size: 14px; line-height: 1;',
+    '}',
+  ].join('\n');
+  document.head.appendChild(style);
+
+  // ── DOM ──────────────────────────────────────────────────────────────────
+  var pill = document.createElement('div');
+  pill.id = 'mchatai-fb-pill';
+  pill.innerHTML = '<span aria-hidden="true">💬</span><span>Feedback</span>';
+  pill.title = 'Send feedback about this game';
+  pill.setAttribute('role', 'button');
+  pill.setAttribute('aria-label', 'Send feedback');
+
+  var panel = document.createElement('div');
+  panel.id = 'mchatai-fb-panel';
+  panel.innerHTML = [
+    '<header>',
+    '  <span>Send feedback</span>',
+    '  <div style="display:flex;align-items:center;gap:10px;">',
+    '    <button id="mchatai-fb-user" type="button" title="Sign in to enable screenshots"><span aria-hidden="true">👤</span><span class="mchatai-fb-user-name">anonymous</span></button>',
+    '    <button id="mchatai-fb-close" aria-label="Close feedback panel">×</button>',
+    '  </div>',
+    '</header>',
+    '<div id="mchatai-fb-types">',
+    '  <button class="mchatai-fb-type active" data-type="bug">🐞 Bug</button>',
+    '  <button class="mchatai-fb-type" data-type="feature">✨ Idea</button>',
+    '  <button class="mchatai-fb-type" data-type="other">💬 Other</button>',
+    '</div>',
+    '<div id="mchatai-fb-rating" role="radiogroup" aria-label="Rate this product">',
+    '  <span id="mchatai-fb-rating-label">Rating:</span>',
+    '  <button type="button" class="mchatai-fb-star" data-value="1" role="radio" aria-label="1 star" aria-checked="false">☆</button>',
+    '  <button type="button" class="mchatai-fb-star" data-value="2" role="radio" aria-label="2 stars" aria-checked="false">☆</button>',
+    '  <button type="button" class="mchatai-fb-star" data-value="3" role="radio" aria-label="3 stars" aria-checked="false">☆</button>',
+    '  <button type="button" class="mchatai-fb-star" data-value="4" role="radio" aria-label="4 stars" aria-checked="false">☆</button>',
+    '  <button type="button" class="mchatai-fb-star" data-value="5" role="radio" aria-label="5 stars" aria-checked="false">☆</button>',
+    '  <button type="button" id="mchatai-fb-rating-clear" hidden>clear</button>',
+    '</div>',
+    '<textarea id="mchatai-fb-text" placeholder="What happened? What did you expect?" maxlength="2000"></textarea>',
+    '<div id="mchatai-fb-screenshot-row" style="display:none;padding:0 10px;">',
+    '  <button id="mchatai-fb-shot-btn" type="button">📸 Attach screenshot</button>',
+    '  <div id="mchatai-fb-shot-preview-wrap" style="display:none;"><img id="mchatai-fb-shot-preview" alt="screenshot preview" /><button id="mchatai-fb-shot-remove" type="button" aria-label="Remove screenshot">×</button></div>',
+    '</div>',
+    '<div id="mchatai-fb-status" aria-live="polite"></div>',
+    '<div id="mchatai-fb-actions">',
+    '  <span id="mchatai-fb-meta"></span>',
+    '  <button id="mchatai-fb-send" disabled>Send</button>',
+    '</div>',
+  ].join('');
+
+  // Back-to-hub pill. The hub houses mini-apps, games, agents, skills, pipelines —
+  // "Hub" is the right word. Icon is a house, not an arrow, since it's a home
+  // button, not a linear back button. Rendered as an <a> so right-click → new tab works.
+  var backPill = document.createElement('a');
+  backPill.id = 'mchatai-back-pill';
+  backPill.href = 'https://mchatai.com/hub';
+  backPill.title = 'Back to Hub';
+  backPill.setAttribute('aria-label', 'Back to Hub');
+  backPill.innerHTML = [
+    '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">',
+    '  <path d="M2 7l6-5 6 5v7a1 1 0 0 1-1 1h-3v-5H6v5H3a1 1 0 0 1-1-1V7z"/>',
+    '</svg>',
+    '<span>Hub</span>'
+  ].join('');
+
+  document.body.appendChild(backPill);
+  document.body.appendChild(pill);
+  document.body.appendChild(panel);
+
+  // ── Idle fade ────────────────────────────────────────────────────────────
+  var idleTimer = null;
+  function bumpActivity() {
+    pill.classList.remove('idle');
+    backPill.classList.remove('idle');
+    if (idleTimer) clearTimeout(idleTimer);
+    idleTimer = setTimeout(function () {
+      pill.classList.add('idle');
+      backPill.classList.add('idle');
+    }, 3000);
+  }
+  ['mousemove', 'keydown', 'touchstart', 'scroll'].forEach(function (ev) {
+    window.addEventListener(ev, bumpActivity, { passive: true });
+  });
+  bumpActivity();
+
+  // ── Open / close ─────────────────────────────────────────────────────────
+  async function openPanel() {
+    panel.classList.add('open');
+    pill.style.display = 'none';
+    var meta = document.getElementById('mchatai-fb-meta');
+    meta.textContent = slug ? slug : 'feedback';
+    setTimeout(function () { document.getElementById('mchatai-fb-text').focus(); }, 50);
+    // Phase RT.2 follow-up: refresh the user chip in case the token expired
+    // or the user signed in a different tab between panel opens.
+    updateUserChip();
+    // Silent refresh: if no cached token but Firebase still has a session on
+    // mchatai.com, this pulls a fresh token via a hidden iframe so the user
+    // does not have to click Sign in every single time. Idempotent + bounded
+    // by a 3s timeout so there is no visible delay if they have never signed
+    // in.
+    if (!cachedIdToken) {
+      silentlyRefreshToken().then(function (tok) {
+        if (tok) updateUserChip();
+      });
+    }
+
+    // Async probe for the product's screenshot opt-in flag. Runs concurrently
+    // with the user reading/typing — if it comes back true, the screenshot
+    // row fades into view.
+    console.log('[feedback-widget] probing screenshot opt-in for slug:', slug);
+    checkScreenshotOptIn().then(function (allowed) {
+      console.log('[feedback-widget] screenshotAllowed =', allowed);
+      screenshotAllowed = allowed;
+      updateScreenshotRow();
+      // Defensive: ALSO directly reveal the row in case updateScreenshotRow
+      // runs before some dependency is wired up. Belt-and-suspenders.
+      if (allowed) {
+        var row = document.getElementById('mchatai-fb-screenshot-row');
+        if (row) {
+          row.style.display = 'block';
+          console.log('[feedback-widget] screenshot row revealed');
+        } else {
+          console.warn('[feedback-widget] screenshot row element not found!');
+        }
+      }
+    }).catch(function (err) {
+      console.warn('[feedback-widget] probe failed:', err);
+    });
+  }
+  function closePanel() {
+    panel.classList.remove('open');
+    pill.style.display = 'flex';
+    bumpActivity();
+  }
+  pill.addEventListener('click', openPanel);
+  panel.querySelector('#mchatai-fb-close').addEventListener('click', closePanel);
+
+  // ── Type picker ──────────────────────────────────────────────────────────
+  var selectedType = 'bug';
+  panel.querySelectorAll('.mchatai-fb-type').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      panel.querySelectorAll('.mchatai-fb-type').forEach(function (b) { b.classList.remove('active'); });
+      btn.classList.add('active');
+      selectedType = btn.getAttribute('data-type');
+    });
+  });
+
+  // ── Rating picker (Phase RT.1) ───────────────────────────────────────────
+  // Optional 1-5 stars. Rating is its own signal — users can send text
+  // without a rating, or send a rating without text (any rating auto-enables
+  // the Send button even if the textarea is empty, so a "5 stars, no words"
+  // submission is a valid vote).
+  var selectedRating = null;     // null | 1..5
+  var ratingStars = panel.querySelectorAll('.mchatai-fb-star');
+  var ratingClear = panel.querySelector('#mchatai-fb-rating-clear');
+  function paintStars(previewValue) {
+    var effective = previewValue != null ? previewValue : (selectedRating || 0);
+    ratingStars.forEach(function (s) {
+      var v = parseInt(s.getAttribute('data-value'), 10);
+      s.classList.remove('filled', 'preview');
+      s.textContent = v <= effective ? '★' : '☆';
+      if (previewValue != null && v <= previewValue && v > (selectedRating || 0)) {
+        s.classList.add('preview');
+      } else if (v <= (selectedRating || 0)) {
+        s.classList.add('filled');
+      }
+      s.setAttribute('aria-checked', String(v === selectedRating));
+    });
+    ratingClear.hidden = selectedRating == null;
+  }
+  ratingStars.forEach(function (s) {
+    var v = parseInt(s.getAttribute('data-value'), 10);
+    s.addEventListener('mouseenter', function () { paintStars(v); });
+    s.addEventListener('mouseleave', function () { paintStars(null); });
+    s.addEventListener('click', function () {
+      // Click on currently-selected star → clear. Click elsewhere → set.
+      selectedRating = (selectedRating === v) ? null : v;
+      paintStars(null);
+      updateSendState();
+    });
+  });
+  ratingClear.addEventListener('click', function () {
+    selectedRating = null;
+    paintStars(null);
+    updateSendState();
+  });
+
+  // ── Send button gating + submission ──────────────────────────────────────
+  var textArea = panel.querySelector('#mchatai-fb-text');
+  var sendBtn = panel.querySelector('#mchatai-fb-send');
+  var statusEl = panel.querySelector('#mchatai-fb-status');
+  var shotRow = panel.querySelector('#mchatai-fb-screenshot-row');
+  var shotBtn = panel.querySelector('#mchatai-fb-shot-btn');
+  var shotPreviewWrap = panel.querySelector('#mchatai-fb-shot-preview-wrap');
+  var shotPreview = panel.querySelector('#mchatai-fb-shot-preview');
+  var shotRemove = panel.querySelector('#mchatai-fb-shot-remove');
+
+  // Phase RT.1: either a rating OR a text comment (≥4 chars) is enough to send.
+  // Lets users drop-in a 5-star vote without writing a novel.
+  function updateSendState() {
+    var hasText = textArea.value.trim().length >= 4;
+    var hasRating = selectedRating != null;
+    sendBtn.disabled = !(hasText || hasRating);
+  }
+  textArea.addEventListener('input', updateSendState);
+
+  // Phase RT.2 follow-up: isolate typing inside the feedback panel from the
+  // underlying game. Many games install keyboard listeners on window and
+  // document — when the user types a space into the textarea, the event
+  // bubbles up and the game also receives it (e.g. battleship-vs-ai toggles
+  // ship orientation on any spacebar press). Capture-phase listeners on
+  // window fire BEFORE the game's bubble-phase listeners — we stop
+  // propagation + stop immediate propagation on any keyboard event whose
+  // target is inside our panel. The panel input itself still gets the event
+  // because stopPropagation at capture phase does not prevent the target
+  // from receiving it, only the ancestors.
+  function isInsideFeedbackPanel(el) {
+    while (el && el !== document) {
+      if (el === panel || el === pill || el === backPill) return true;
+      el = el.parentNode;
+    }
+    return false;
+  }
+  // IMPORTANT: only keyboard events get intercepted. Previously I also blocked
+  // pointer/click/mousedown at capture phase, which broke every button inside
+  // the panel (sign-in, send, star rating, attach screenshot) because
+  // stopImmediatePropagation at capture prevents ALL listeners — including
+  // the panel's own click handlers registered via addEventListener('click').
+  // Keyboard-only is the right scope: games listen for arrow keys / space /
+  // letters on window, but they listen for pointer events on their canvas
+  // element — not on window — so click events never bubbled to them anyway.
+  ['keydown', 'keyup', 'keypress'].forEach(function (evName) {
+    window.addEventListener(evName, function (e) {
+      if (!panel.classList.contains('open')) return;
+      if (!isInsideFeedbackPanel(e.target)) return;
+      // stopPropagation (not stopImmediatePropagation) — the panel's own
+      // listeners already ran on the target; we only need to prevent the
+      // event from reaching ancestor window/document listeners the game
+      // installed. Using stopImmediatePropagation here would kill the
+      // textarea's native input handling in some edge cases.
+      e.stopPropagation();
+    }, true); // capture phase fires before the game's bubble-phase listener
+  });
+
+  // ── Screenshot attachment (opt-in per product) ──────────────────────────
+  // The row itself is hidden by default. It only reveals after we confirm the
+  // product has opted in (feedbackAutomation.acceptScreenshots=true on the
+  // Firestore endProduct doc). We query once per panel open via an endpoint
+  // that returns just the opt-in flag — no auth needed, cheap boolean.
+  var capturedScreenshot = null;   // { dataURL: "data:image/jpeg;base64,..." , width, height, bytes }
+  var screenshotAllowed = false;
+
+  async function checkScreenshotOptIn() {
+    if (!slug) return false;
+    try {
+      var resp = await fetch(API_BASE + '/v1/endproducts/feedback-config?slug=' + encodeURIComponent(slug), {
+        method: 'GET',
+      });
+      if (!resp.ok) return false;
+      var body = await resp.json();
+      return !!body.acceptScreenshots;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  async function captureScreenshot() {
+    // Gate: require real sign-in before capturing. Attributable + rate-limitable.
+    shotBtn.disabled = true;
+    shotBtn.textContent = '🔑 Signing in…';
+    statusEl.textContent = '';
+    try {
+      try {
+        await ensureSignedIn();
+      } catch (authErr) {
+        throw new Error('Sign-in required for screenshots: ' + authErr.message);
+      }
+      shotBtn.textContent = '📸 Select the tab to share…';
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
+        throw new Error('Screen capture not supported on this browser');
+      }
+      var stream = await navigator.mediaDevices.getDisplayMedia({
+        video: { displaySurface: 'browser' },
+        audio: false,
+        preferCurrentTab: true,
+      });
+      var track = stream.getVideoTracks()[0];
+
+      // Grab one frame via ImageCapture if available, else via a video element.
+      var bitmap;
+      if (window.ImageCapture) {
+        var capture = new ImageCapture(track);
+        bitmap = await capture.grabFrame();
+      } else {
+        var video = document.createElement('video');
+        video.srcObject = stream;
+        video.muted = true;
+        await video.play();
+        bitmap = {
+          width: video.videoWidth,
+          height: video.videoHeight,
+          _video: video,
+        };
+      }
+
+      // Resize to max 800×600 (fit, keep aspect) and JPEG 0.7 to stay under
+      // the 200KB server cap. Typical output is 30-80KB.
+      var MAX_W = 800, MAX_H = 600;
+      var scale = Math.min(MAX_W / bitmap.width, MAX_H / bitmap.height, 1);
+      var outW = Math.round(bitmap.width * scale);
+      var outH = Math.round(bitmap.height * scale);
+      var canvas = document.createElement('canvas');
+      canvas.width = outW;
+      canvas.height = outH;
+      var ctx = canvas.getContext('2d');
+      if (bitmap._video) {
+        ctx.drawImage(bitmap._video, 0, 0, outW, outH);
+      } else {
+        ctx.drawImage(bitmap, 0, 0, outW, outH);
+      }
+      track.stop();
+
+      var dataURL = canvas.toDataURL('image/jpeg', 0.7);
+      // base64 portion length * 0.75 ≈ byte count
+      var bytes = Math.round((dataURL.length - 'data:image/jpeg;base64,'.length) * 0.75);
+      if (bytes > 200 * 1024) {
+        throw new Error('Screenshot too large after compression (' + Math.round(bytes/1024) + 'KB, max 200KB)');
+      }
+
+      capturedScreenshot = { dataURL: dataURL, width: outW, height: outH, bytes: bytes };
+      shotPreview.src = dataURL;
+      shotPreviewWrap.style.display = 'block';
+      shotBtn.style.display = 'none';
+      shotBtn.disabled = false;
+      shotBtn.textContent = '📸 Attach screenshot';
+    } catch (err) {
+      shotBtn.disabled = false;
+      shotBtn.textContent = '📸 Attach screenshot';
+      statusEl.style.color = '#e26766';
+      statusEl.textContent = err.message || 'Screenshot capture failed';
+    }
+  }
+
+  function removeScreenshot() {
+    capturedScreenshot = null;
+    shotPreview.src = '';
+    shotPreviewWrap.style.display = 'none';
+    shotBtn.style.display = 'block';
+  }
+
+  shotBtn.addEventListener('click', captureScreenshot);
+  shotRemove.addEventListener('click', removeScreenshot);
+
+  // Phase RT.2 follow-up: user chip click — sign-in when signed-out,
+  // sign-out when signed-in.
+  var userChip = panel.querySelector('#mchatai-fb-user');
+  if (userChip) {
+    userChip.addEventListener('click', async function () {
+      if (cachedIdToken) {
+        if (confirm('Sign out? Future submissions will be anonymous until you sign back in.')) {
+          clearToken();
+        }
+        return;
+      }
+      try {
+        await ensureSignedIn();
+      } catch (e) {
+        // Don't block the panel — user might just have dismissed the popup.
+        console.warn('[feedback] sign-in skipped:', e.message);
+      }
+    });
+  }
+  // Render initial state.
+  updateUserChip();
+
+  // ── Real auth for screenshot uploads ───────────────────────────────────
+  // Text-only feedback posts anonymously to /v1/feedback. Screenshots require
+  // real Google sign-in (not anonymous) so:
+  //   1. Abuse is attributable to a real account we can disable
+  //   2. Bot operators can't programmatically create sign-in accounts
+  //   3. The server rate-limits per UID with a hard ceiling that survives
+  //      tab-closes / incognito resets (anon tokens would rotate every session)
+  //
+  // Sign-in flow: if user clicks "Attach screenshot" without a cached token, we
+  // open an Identity Toolkit OAuth popup for Google. Token cached in session
+  // storage so repeated submissions don't re-prompt. Cleared on Remove or when
+  // the server reports the UID was abuse-disabled (403 reason=disabled).
+  // Phase RT.2 follow-up: token persistence moved from sessionStorage to
+  // localStorage. sessionStorage dies on tab close AND is isolated per tab,
+  // so users had to re-sign-in constantly when hopping between products.
+  // localStorage is shared across tabs and persists across browser restarts,
+  // matching the "you are signed in" mental model. Firebase ID tokens expire
+  // after ~1h; we detect expiry in updateUserChip (decoded .exp claim) and
+  // auto-clear the token when it is stale, which triggers a silent re-check
+  // via the /feedback-signin iframe (see silentlyRefreshToken below) so
+  // long-lived users do not keep seeing sign-in prompts as tokens age.
+  var TOKEN_KEY = 'mchatai_fb_idtoken';
+  // Migration: if an older session put a token in sessionStorage, promote it
+  // to localStorage so the user does not lose their sign-in on this refresh.
+  (function migrateOldToken() {
+    try {
+      if (!localStorage.getItem(TOKEN_KEY) && sessionStorage.getItem(TOKEN_KEY)) {
+        localStorage.setItem(TOKEN_KEY, sessionStorage.getItem(TOKEN_KEY));
+      }
+      sessionStorage.removeItem(TOKEN_KEY);
+    } catch (e) {}
+  })();
+  var cachedIdToken = (function () {
+    try { return localStorage.getItem(TOKEN_KEY) || null; } catch (e) { return null; }
+  })();
+
+  function storeToken(tok) {
+    cachedIdToken = tok;
+    try { localStorage.setItem(TOKEN_KEY, tok); } catch (e) {}
+    updateUserChip();
+  }
+
+  function clearToken() {
+    cachedIdToken = null;
+    try { localStorage.removeItem(TOKEN_KEY); } catch (e) {}
+    updateUserChip();
+  }
+
+  // Silent-refresh: when the cached token is missing or expired, try to pull
+  // a fresh one from /feedback-signin.html via a hidden iframe. The signin
+  // page runs Firebase Web SDK which persists auth in IndexedDB — if the
+  // user signed in on any mchatai.com page at any point, Firebase still has
+  // the session and onAuthStateChanged fires with the user, which posts a
+  // fresh ID token back to the widget via postMessage. No visible popup,
+  // no user action required — the sign-in just "carries over."
+  function silentlyRefreshToken() {
+    return new Promise(function (resolve) {
+      var iframe = document.createElement('iframe');
+      iframe.style.cssText = 'position:fixed;left:-9999px;top:-9999px;width:1px;height:1px;border:0;';
+      iframe.src = 'https://mchatai.com/feedback-signin.html?silent=1';
+      var done = false;
+      var finish = function (token) {
+        if (done) return;
+        done = true;
+        window.removeEventListener('message', handler);
+        try { document.body.removeChild(iframe); } catch (e) {}
+        if (token) storeToken(token);
+        resolve(token || null);
+      };
+      var handler = function (ev) {
+        if (ev.origin !== 'https://mchatai.com') return;
+        if (!ev.data || ev.data.type !== 'mchatai-fb-signin') return;
+        finish(ev.data.idToken || null);
+      };
+      window.addEventListener('message', handler);
+      document.body.appendChild(iframe);
+      // 3s timeout — if Firebase has no cached session the iframe just sits
+      // idle at the button prompt. Give up silently.
+      setTimeout(function () { finish(null); }, 3000);
+    });
+  }
+
+  /* Phase RT.2 follow-up: decode a Firebase ID token's payload (the middle
+     JWT segment — base64url-encoded JSON). We only need name/email/picture,
+     so we do NOT verify the signature here (server revalidates on every
+     request). Returns null on any decode failure. */
+  function decodeIdToken(token) {
+    if (!token) return null;
+    try {
+      var parts = token.split('.');
+      if (parts.length < 2) return null;
+      var b64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+      while (b64.length % 4) b64 += '=';
+      return JSON.parse(atob(b64));
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function updateUserChip() {
+    var chip = document.getElementById('mchatai-fb-user');
+    if (!chip) return;
+    var claims = decodeIdToken(cachedIdToken);
+    if (claims && claims.exp && claims.exp * 1000 < Date.now()) {
+      // Token expired — treat as signed-out so the chip prompts sign-in again.
+      claims = null;
+      try { sessionStorage.removeItem('mchatai_fb_idtoken'); } catch (e) {}
+      cachedIdToken = null;
+    }
+    // Build the chip contents via DOM APIs rather than innerHTML with nested
+    // quotes — the IIFE string gets concatenated into an HTML response, and
+    // any backslash-escaped quote here breaks the whole widget at parse time
+    // in the browser. Lost an entire deploy to this — don't regress.
+    while (chip.firstChild) chip.removeChild(chip.firstChild);
+    if (claims) {
+      chip.classList.add('signed-in');
+      chip.title = 'Signed in as ' + (claims.email || claims.name || 'you') + ' — click to sign out';
+      var displayName = claims.name || (claims.email ? claims.email.split('@')[0] : 'you');
+      var shortName = displayName.length > 14 ? displayName.slice(0, 13) + '…' : displayName;
+      var initial = displayName.charAt(0).toUpperCase();
+      // Try avatar image first; fall back to initial-letter span on error.
+      if (claims.picture) {
+        var img = document.createElement('img');
+        img.src = claims.picture;
+        img.alt = '';
+        img.referrerPolicy = 'no-referrer';
+        img.addEventListener('error', function () {
+          var fallback = document.createElement('span');
+          fallback.className = 'mchatai-fb-user-avatar-fallback';
+          fallback.textContent = initial;
+          if (img.parentNode) img.parentNode.replaceChild(fallback, img);
+        });
+        chip.appendChild(img);
+      } else {
+        var fallbackSpan = document.createElement('span');
+        fallbackSpan.className = 'mchatai-fb-user-avatar-fallback';
+        fallbackSpan.textContent = initial;
+        chip.appendChild(fallbackSpan);
+      }
+      var nameSpan = document.createElement('span');
+      nameSpan.className = 'mchatai-fb-user-name';
+      nameSpan.textContent = shortName;
+      chip.appendChild(nameSpan);
+    } else {
+      chip.classList.remove('signed-in');
+      chip.title = 'Sign in to enable screenshots';
+      var icon = document.createElement('span');
+      icon.setAttribute('aria-hidden', 'true');
+      icon.textContent = '👤';
+      var label = document.createElement('span');
+      label.className = 'mchatai-fb-user-name';
+      label.textContent = 'Sign in';
+      chip.appendChild(icon);
+      chip.appendChild(label);
+    }
+    // Also refresh the screenshot row so the "Sign in first" CTA flips to
+    // "Attach screenshot" once signed-in (or vice versa).
+    updateScreenshotRow();
+  }
+
+  /* Phase RT.2 follow-up: keep the screenshot button's label + disabled state
+     in sync with sign-in state so users understand why they can't click it. */
+  function updateScreenshotRow() {
+    var row = document.getElementById('mchatai-fb-screenshot-row');
+    var btn = document.getElementById('mchatai-fb-shot-btn');
+    if (!row || !btn) return;
+    if (!screenshotAllowed) {
+      row.style.display = 'none';
+      return;
+    }
+    row.style.display = 'block';
+    if (cachedIdToken) {
+      btn.textContent = '📸 Attach screenshot';
+      btn.disabled = false;
+    } else {
+      btn.textContent = '🔒 Sign in to attach screenshot';
+      btn.disabled = false;  // clickable — click triggers sign-in popup
+    }
+  }
+
+  async function ensureSignedIn() {
+    if (cachedIdToken) return cachedIdToken;
+    // Use Firebase's identitytoolkit OAuth popup flow. We use the
+    // createAuthUri + verifyAssertion pattern via a popup. Keep it minimal —
+    // the user gets a Google chooser and a standard OAuth consent screen.
+    return new Promise(function (resolve, reject) {
+      var popupW = 500, popupH = 600;
+      var left = (screen.width - popupW) / 2;
+      var top = (screen.height - popupH) / 2;
+      // Firebase Hosting has a stock sign-in handler at __/auth/handler. We'll
+      // send the user to a small sign-in page we host at /feedback-signin that
+      // runs Firebase JS SDK, does signInWithPopup(Google), and posts the
+      // idToken back to the opener via postMessage.
+      var popup = window.open(
+        'https://mchatai.com/feedback-signin.html?return=' + encodeURIComponent(location.href),
+        'mchatai-fb-signin',
+        'width=' + popupW + ',height=' + popupH + ',left=' + left + ',top=' + top
+      );
+      if (!popup) {
+        reject(new Error('Sign-in popup blocked. Allow popups and try again.'));
+        return;
+      }
+      var handler = function (ev) {
+        if (ev.origin !== 'https://mchatai.com') return;
+        if (!ev.data || ev.data.type !== 'mchatai-fb-signin') return;
+        window.removeEventListener('message', handler);
+        try { popup.close(); } catch (e) {}
+        if (ev.data.idToken) {
+          storeToken(ev.data.idToken);
+          resolve(ev.data.idToken);
+        } else {
+          reject(new Error(ev.data.error || 'Sign-in canceled'));
+        }
+      };
+      window.addEventListener('message', handler);
+      // Watchdog — if the popup closes without posting, reject after 5 min.
+      var watch = setInterval(function () {
+        if (popup.closed) {
+          clearInterval(watch);
+          window.removeEventListener('message', handler);
+          reject(new Error('Sign-in window closed'));
+        }
+      }, 500);
+    });
+  }
+
+  sendBtn.addEventListener('click', async function () {
+    var text = textArea.value.trim();
+    // Phase RT.1: allow rating-only submissions. Require at least one signal.
+    if (text.length < 4 && selectedRating == null) return;
+
+    sendBtn.disabled = true;
+    sendBtn.textContent = 'Sending…';
+    statusEl.textContent = '';
+
+    // Phase RT.1: resolve a rating context version so iterations don't pool
+    // their ratings across builds. Prefer a meta tag the product set at publish
+    // time; fall back to the HTML's Last-Modified (set by serveUserProject) or
+    // today's date. The server also records server-side createdAt, so this is
+    // only a hint for cross-build grouping.
+    var ratingContextVersion = null;
+    var versionMeta = document.querySelector('meta[name="mchatai-version"]');
+    if (versionMeta && versionMeta.content) {
+      ratingContextVersion = versionMeta.content;
+    } else {
+      ratingContextVersion = new Date().toISOString().slice(0, 10); // YYYY-MM-DD bucket
+    }
+
+    // When only a rating (no text), synthesize a short description so the
+    // ticket still has searchable content in the review queue.
+    var effectiveText = text;
+    if (effectiveText.length < 4 && selectedRating != null) {
+      effectiveText = selectedRating + '-star rating (no comment)';
+    }
+
+    var payload = {
+      title: effectiveText.split('\n')[0].slice(0, 80),
+      description: effectiveText,
+      type: selectedType,
+      severity: selectedType === 'bug' ? 'medium' : 'low',
+      rating: selectedRating,
+      ratingContextVersion: ratingContextVersion,
+      endProductSlug: slug,
+      previewURL: location.href,
+      source: 'web.user-project-widget',
+      metadata: {
+        consoleErrors: __consoleErrors.slice(),
+        userAgent: navigator.userAgent,
+        viewport: window.innerWidth + 'x' + window.innerHeight,
+        shortUid: shortUid,
+      },
+    };
+
+    // Screenshot attached → attach base64 + dimensions. Server will decode,
+    // verify size, upload to GCS, and embed the URL on the ticket.
+    if (capturedScreenshot) {
+      payload.screenshot = {
+        dataURL: capturedScreenshot.dataURL,
+        width: capturedScreenshot.width,
+        height: capturedScreenshot.height,
+      };
+    }
+
+    try {
+      var headers = { 'Content-Type': 'application/json' };
+      // Include auth only if we have a token; screenshot submissions require it
+      // but we let the server reject rather than blocking client-side — cheaper
+      // to handle edge cases (stale token, abuse-disabled account) in one place.
+      if (cachedIdToken) headers['Authorization'] = 'Bearer ' + cachedIdToken;
+
+      var resp = await fetch(API_BASE + '/v1/feedback', {
+        method: 'POST',
+        headers: headers,
+        body: JSON.stringify(payload),
+      });
+      var body = await resp.json().catch(function () { return {}; });
+
+      // Server telling us the user is abuse-disabled → clear token so the next
+      // attempt forces a fresh sign-in. The abuse-disable lives on the UID in
+      // Firestore so a re-sign-in with the same account will re-reject; only
+      // recovery is to sign in with a different account or contact support.
+      if (resp.status === 403 && body && body.reason === 'user-disabled') {
+        clearToken();
+        removeScreenshot();
+      }
+
+      if (resp.ok && body.ok) {
+        statusEl.style.color = '#5db77a';
+        statusEl.textContent = selectedRating != null
+          ? 'Thanks! Your ' + selectedRating + '-star rating was logged.'
+          : 'Thanks! Your feedback was logged.';
+        textArea.value = '';
+        selectedRating = null;
+        paintStars(null);
+        removeScreenshot();
+        setTimeout(closePanel, 1400);
+      } else {
+        statusEl.style.color = '#e26766';
+        statusEl.textContent = body.error || ('Error ' + resp.status);
+      }
+    } catch (err) {
+      statusEl.style.color = '#e26766';
+      statusEl.textContent = 'Network error — try again.';
+    } finally {
+      sendBtn.textContent = 'Send';
+      updateSendState();
+    }
+  });
+})();
+</script></body>
+</html>
