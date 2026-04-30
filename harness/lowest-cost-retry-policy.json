@@ -4,10 +4,10 @@
   "_source_of_truth": true,
   "_comment": "Lowest Cost retry-with-decomposition policy. When the Generator stage fails on Ollama, this controls how many times we re-plan smaller and retry on Ollama (NEVER escalating to CLI/API). When the budget exhausts (or diminishing returns triggers early), the wizard appends a stuck-step pause to the session with the configured chip options. See docs/LOWEST_COST_RETRY_POLICY.md for the full spec. Edit + git push + (relaunch OR refreshMchataisourceCache) ships changes with no Swift rebuild.",
 
-  "decomposeRetryBudget": 2,
-  "_decomposeRetryBudgetTunedFrom8To2": "Tuned 8 → 4 → 2 across 2026-04-29 iteration. QAFlywheel runs 2026-04-30T00-35-59Z and 00-57-52Z both showed: same model output keeps failing parser/verifier across 4 attempts, model isn't going to magically produce fenced JSON on attempt 4 if it didn't on attempt 1. Drop to 2 — fast surface to user-pause where they can pick 'Try a different approach' (Hail-Mary) or 'Escalate this step to CLI' or 'End the session'. Total grind: ~6 min worst case before chips surface.",
-  "consecutiveSameClassFailureThreshold": 2,
-  "_thresholdTunedFrom3": "Lowered from 3 → 2 same-class failures triggers diminishing-returns exit. Same logic as budget reduction: if 2 consecutive attempts fail at the same error class, attempt 3 isn't going to magically succeed. Faster surface to user-pause.",
+  "decomposeRetryBudget": 4,
+  "_decomposeRetryBudgetTunedFrom8To4Restored": "Tuning history 2026-04-29 → 2026-04-30: 8 (initial) → 4 → 2 → 4 (back here, the sweet spot). Lawrence's Kitchen Timer success at 2026-04-30T01:19Z converged at attempt 4 with budget=4 (error history: parse-error, evaluator-fail, parse-error, evaluator-fail → succeeded). QAFlywheel canary at 2026-04-30T01-18-56Z with budget=2 hit clean exit at 627s but never landed an artifact — too few attempts. 4 keeps the retry useful for fixable parse-fail loops while bailing to user-pause within ~12 min. Tune by-hand if downstream telemetry shows a better cluster.",
+  "consecutiveSameClassFailureThreshold": 3,
+  "_thresholdTunedFrom2Back3": "Reverted 2 → 3 alongside budget restore. With budget=4 we want 3 same-class failures before bailing — gives the retry one more shot at a different class on attempt 4 if 1-2-3 all hit the same wall.",
 
   "errorClasses": [
     "parse-error",
