@@ -1,0 +1,2197 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover" />
+<meta name="theme-color" content="#3b1361" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
+<title>Sweet Cascade — Match 3</title>
+<style>
+  *,*::before,*::after{box-sizing:border-box}
+  html,body{margin:0;padding:0;height:100%;overflow:hidden;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;touch-action:manipulation;overscroll-behavior:none}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,sans-serif;
+    color:#fff;
+    background:
+      radial-gradient(140% 90% at 50% -10%, #6f2bb0 0%, #3b1361 35%, #1a0838 75%, #0b0220 100%);
+    min-height:100vh;min-height:100dvh;
+    display:flex;flex-direction:column;align-items:stretch;
+    padding-top:env(safe-area-inset-top);
+    padding-bottom:env(safe-area-inset-bottom);
+  }
+  /* candy stripes pattern in background */
+  body::before{
+    content:"";position:fixed;inset:0;pointer-events:none;
+    background-image:
+      radial-gradient(circle at 12% 18%, rgba(255,180,255,.08) 0 2px, transparent 3px),
+      radial-gradient(circle at 78% 32%, rgba(180,255,255,.08) 0 2px, transparent 3px),
+      radial-gradient(circle at 32% 78%, rgba(255,255,180,.07) 0 2px, transparent 3px),
+      radial-gradient(circle at 88% 88%, rgba(255,200,150,.07) 0 2px, transparent 3px);
+    background-size:160px 160px, 220px 220px, 180px 180px, 240px 240px;
+    z-index:0;
+  }
+  .app{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;width:100%;flex:1;min-height:0;padding:8px 10px 14px}
+  /* ==== Top HUD ==== */
+  .hud{
+    width:100%;max-width:480px;
+    display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center;
+    padding:8px 10px;border-radius:18px;
+    background:linear-gradient(180deg,rgba(255,255,255,.12),rgba(255,255,255,.04));
+    border:1px solid rgba(255,255,255,.18);
+    box-shadow:0 6px 18px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.25);
+    backdrop-filter:blur(8px);
+  }
+  .badge{
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    min-width:64px;padding:6px 10px;border-radius:12px;
+    background:linear-gradient(180deg,#2a0e4d,#160626);
+    border:1px solid rgba(255,255,255,.18);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.18), 0 2px 6px rgba(0,0,0,.35);
+  }
+  .badge .lbl{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#f7c7ff;opacity:.95}
+  .badge .val{font-size:20px;font-weight:800;color:#fff;line-height:1.05;text-shadow:0 1px 0 rgba(0,0,0,.4)}
+  .progress-wrap{display:flex;flex-direction:column;gap:6px;padding:0 4px}
+  .progress-top{display:flex;justify-content:space-between;align-items:baseline;font-size:12px;color:#ffe6ff}
+  .progress-top b{font-size:13px;color:#fff;font-weight:800;letter-spacing:.02em}
+  .bar{position:relative;height:14px;border-radius:999px;background:rgba(0,0,0,.35);overflow:hidden;border:1px solid rgba(255,255,255,.15);box-shadow:inset 0 2px 4px rgba(0,0,0,.5)}
+  .bar > .fill{
+    position:absolute;inset:0;width:0%;
+    background:linear-gradient(90deg,#ff5fa2 0%,#ffb454 50%,#7ce0ff 100%);
+    box-shadow:0 0 10px rgba(255,180,255,.6);
+    transition:width .35s cubic-bezier(.2,.8,.2,1);
+  }
+  .bar > .fill::after{
+    content:"";position:absolute;inset:0;
+    background:linear-gradient(180deg,rgba(255,255,255,.5),transparent 60%);
+    border-radius:inherit;
+  }
+  .stars{display:flex;gap:2px;margin-top:2px;font-size:11px}
+  .stars .star{opacity:.35;transition:opacity .25s, transform .25s}
+  .stars .star.on{opacity:1;transform:scale(1.05);text-shadow:0 0 8px #ffd766}
+  .level-pill{
+    display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;
+    background:linear-gradient(180deg,#ff5fa2,#a8266b);
+    border:1px solid rgba(255,255,255,.35);
+    font-weight:800;font-size:12px;letter-spacing:.1em;text-transform:uppercase;
+    box-shadow:0 4px 10px rgba(255,90,160,.45), inset 0 1px 0 rgba(255,255,255,.5);
+  }
+
+  /* ==== Board ==== */
+  .stage{
+    margin-top:12px;width:100%;max-width:480px;
+    display:flex;justify-content:center;
+  }
+  .board-wrap{
+    position:relative;width:min(96vw, 480px);
+    aspect-ratio:1/1;
+    border-radius:24px;
+    padding:10px;
+    background:
+      radial-gradient(120% 120% at 50% 0%, #5a1f8e 0%, #2a0c52 60%, #170632 100%);
+    border:1px solid rgba(255,255,255,.18);
+    box-shadow:
+      0 18px 40px rgba(0,0,0,.55),
+      inset 0 2px 0 rgba(255,255,255,.18),
+      inset 0 -3px 0 rgba(0,0,0,.35);
+  }
+  .board{
+    position:relative;width:100%;height:100%;
+    border-radius:16px;
+    background:
+      linear-gradient(180deg, rgba(0,0,0,.35), rgba(0,0,0,.15)),
+      repeating-linear-gradient(45deg, rgba(255,255,255,.04) 0 8px, rgba(255,255,255,0) 8px 16px);
+    box-shadow:inset 0 4px 10px rgba(0,0,0,.5);
+    overflow:hidden;
+    touch-action:none;
+  }
+  .cell{
+    position:absolute;
+    display:flex;align-items:center;justify-content:center;
+    transition: left .22s cubic-bezier(.2,.8,.2,1), top .28s cubic-bezier(.2,.8,.2,1), transform .18s ease;
+    will-change:transform,left,top;
+  }
+  .cell.dropping{ transition: top .42s cubic-bezier(.34,1.56,.64,1); }
+  .cell.swapping{ transition: left .18s ease, top .18s ease; }
+  .cell.selected .candy{
+    transform:scale(1.08);
+    filter:drop-shadow(0 0 10px #fff) drop-shadow(0 0 18px rgba(255,255,255,.6));
+  }
+  .cell.hint .candy{ animation: hintPulse 1.1s ease-in-out infinite; }
+  @keyframes hintPulse {
+    0%,100%{ transform:scale(1); filter:drop-shadow(0 2px 3px rgba(0,0,0,.5)); }
+    50%   { transform:scale(1.12); filter:drop-shadow(0 0 10px #fff) drop-shadow(0 0 16px #fff); }
+  }
+  .candy{
+    width:88%;height:88%;
+    display:block;pointer-events:none;
+    filter:drop-shadow(0 3px 3px rgba(0,0,0,.55));
+    transition: transform .15s ease;
+  }
+  .candy.spawn{ animation: spawnPop .35s cubic-bezier(.34,1.56,.64,1) both; }
+  @keyframes spawnPop {
+    0% { transform:scale(.2); opacity:0; }
+    60%{ transform:scale(1.12); opacity:1; }
+    100%{ transform:scale(1); opacity:1; }
+  }
+  .candy.popping{ animation: candyPop .26s ease-in forwards; }
+  @keyframes candyPop {
+    0% { transform:scale(1) rotate(0); opacity:1; }
+    50%{ transform:scale(1.35) rotate(8deg); opacity:.95; filter:drop-shadow(0 0 12px #fff) brightness(1.4); }
+    100%{ transform:scale(0); rotate:18deg; opacity:0; }
+  }
+  .pop-fx{
+    position:absolute;pointer-events:none;width:100%;height:100%;
+    display:flex;align-items:center;justify-content:center;
+    animation: popBurst .5s ease-out forwards;
+  }
+  @keyframes popBurst {
+    0% { transform:scale(.4); opacity:.95; }
+    100%{ transform:scale(1.8); opacity:0; }
+  }
+  .pop-fx::before{
+    content:"";width:60%;height:60%;border-radius:50%;
+    background:radial-gradient(circle, #fff 0%, #ffec99 25%, rgba(255,200,80,.7) 45%, rgba(255,90,180,0) 70%);
+    filter:blur(2px);
+  }
+  .score-popup{
+    position:absolute;pointer-events:none;
+    font-weight:900;font-size:14px;color:#fff;
+    text-shadow:0 0 8px #ff7eb6, 0 1px 0 #000;
+    animation: scoreRise .9s ease-out forwards;
+    z-index:30;
+  }
+  @keyframes scoreRise {
+    0% { transform:translate(-50%,0) scale(.6); opacity:0; }
+    20%{ transform:translate(-50%,-6px) scale(1.1); opacity:1; }
+    100%{ transform:translate(-50%,-46px) scale(1); opacity:0; }
+  }
+  .board.shake{ animation: shake .35s ease; }
+  @keyframes shake {
+    0%,100%{transform:translate(0,0)}
+    20%{transform:translate(-4px,2px)}
+    40%{transform:translate(5px,-1px)}
+    60%{transform:translate(-3px,2px)}
+    80%{transform:translate(3px,0)}
+  }
+
+  /* striped & bomb visual extras */
+  .candy.stripe-h{ filter:drop-shadow(0 0 6px #fff) drop-shadow(0 3px 3px rgba(0,0,0,.55)); }
+  .candy.stripe-v{ filter:drop-shadow(0 0 6px #fff) drop-shadow(0 3px 3px rgba(0,0,0,.55)); }
+  .candy.bomb    { filter:drop-shadow(0 0 12px #fff) drop-shadow(0 3px 3px rgba(0,0,0,.55)); animation: bombSpin 4s linear infinite; }
+  @keyframes bombSpin { from{transform:rotate(0)} to{transform:rotate(360deg)} }
+
+  /* line-clear flash overlay */
+  .line-flash{
+    position:absolute;background:linear-gradient(90deg, transparent, #fff, transparent);
+    pointer-events:none;animation: lineFlash .5s ease-out forwards;mix-blend-mode:screen;
+    z-index:20;
+  }
+  .line-flash.vert{ background:linear-gradient(180deg, transparent, #fff, transparent); }
+  @keyframes lineFlash {
+    0%{opacity:0;transform:scale(.2,1)}
+    20%{opacity:1}
+    100%{opacity:0;transform:scale(1.2,1)}
+  }
+  .line-flash.vert{ animation-name: lineFlashV; }
+  @keyframes lineFlashV {
+    0%{opacity:0;transform:scale(1,.2)}
+    20%{opacity:1}
+    100%{opacity:0;transform:scale(1,1.2)}
+  }
+
+  .combo-tag{
+    position:absolute;left:50%;top:18%;transform:translate(-50%,0);
+    pointer-events:none;
+    padding:6px 14px;border-radius:999px;
+    background:linear-gradient(180deg,#ff5fa2,#a8266b);
+    color:#fff;font-weight:800;letter-spacing:.06em;font-size:14px;
+    border:1px solid rgba(255,255,255,.4);
+    box-shadow:0 6px 14px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.4);
+    animation: comboPop .9s cubic-bezier(.2,.8,.2,1) forwards;
+    z-index:25;text-shadow:0 1px 0 rgba(0,0,0,.4);
+  }
+  @keyframes comboPop {
+    0%{ transform:translate(-50%,10px) scale(.6); opacity:0; }
+    20%{ transform:translate(-50%,-4px) scale(1.1); opacity:1; }
+    80%{ transform:translate(-50%,-12px) scale(1); opacity:1; }
+    100%{ transform:translate(-50%,-30px) scale(.95); opacity:0; }
+  }
+
+  /* ==== Footer ==== */
+  .foot{
+    margin-top:10px;width:100%;max-width:480px;
+    display:flex;gap:8px;justify-content:space-between;align-items:center;
+    padding:8px 10px;border-radius:14px;
+    background:linear-gradient(180deg,rgba(255,255,255,.10),rgba(255,255,255,.03));
+    border:1px solid rgba(255,255,255,.15);
+    box-shadow:0 4px 10px rgba(0,0,0,.3);
+  }
+  .ghost-btn{
+    appearance:none;border:0;cursor:pointer;
+    padding:10px 14px;border-radius:12px;
+    font-weight:800;font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:#fff;
+    background:linear-gradient(180deg,#7c2bb0,#451265);
+    border:1px solid rgba(255,255,255,.25);
+    box-shadow:0 3px 6px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.3);
+    min-height:44px;min-width:44px;
+  }
+  .ghost-btn:active{ transform:translateY(1px); filter:brightness(.9); }
+  .hint-text{font-size:12px;color:#f7c7ff;letter-spacing:.04em;flex:1;text-align:center;padding:0 6px}
+
+  /* ==== Overlay (intro / level-end) ==== */
+  .overlay{
+    position:fixed;inset:0;z-index:50;
+    background:radial-gradient(120% 90% at 50% 0%, rgba(80,12,140,.85), rgba(10,2,40,.92) 70%, rgba(0,0,0,.95) 100%);
+    display:flex;align-items:center;justify-content:center;
+    padding:20px;
+    animation: fadeIn .25s ease;
+  }
+  @keyframes fadeIn { from{opacity:0} to{opacity:1} }
+  .panel{
+    width:min(420px, 92vw);
+    background:linear-gradient(180deg, #4a1683 0%, #2a0e4d 100%);
+    border-radius:22px;padding:22px 20px 18px;
+    border:1px solid rgba(255,255,255,.25);
+    box-shadow:
+      0 20px 50px rgba(0,0,0,.6),
+      inset 0 1px 0 rgba(255,255,255,.35),
+      inset 0 -3px 0 rgba(0,0,0,.35);
+    text-align:center;
+    animation: panelIn .35s cubic-bezier(.2,.8,.2,1) both;
+  }
+  @keyframes panelIn { from{transform:scale(.9);opacity:0} to{transform:scale(1);opacity:1} }
+  .panel h1{
+    margin:0 0 6px;font-size:30px;font-weight:900;letter-spacing:.02em;
+    background:linear-gradient(180deg,#fff 0%, #ffd0ee 60%, #ff85c7 100%);
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+    text-shadow:0 2px 0 rgba(255,90,160,.25);
+  }
+  .panel h2{margin:0 0 6px;font-size:22px;font-weight:900;color:#fff}
+  .panel p{margin:6px 0 12px;color:#ffe6ff;font-size:14px;line-height:1.45}
+  .panel .lvl-row{display:flex;justify-content:space-around;margin:14px 0;gap:8px}
+  .panel .lvl-cell{
+    flex:1;padding:10px 6px;border-radius:14px;
+    background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.18);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.15);
+  }
+  .panel .lvl-cell .v{font-size:22px;font-weight:900;color:#fff}
+  .panel .lvl-cell .l{font-size:11px;letter-spacing:.12em;color:#f7c7ff;text-transform:uppercase;margin-top:2px}
+  .big-btn{
+    appearance:none;border:0;cursor:pointer;width:100%;
+    margin-top:10px;padding:14px;border-radius:14px;
+    font-weight:900;font-size:16px;letter-spacing:.08em;text-transform:uppercase;color:#fff;
+    background:linear-gradient(180deg,#ff8ec8,#d83a85 60%,#a01863);
+    border:1px solid rgba(255,255,255,.4);
+    box-shadow:0 8px 18px rgba(255,80,150,.45), inset 0 1px 0 rgba(255,255,255,.55), inset 0 -3px 0 rgba(0,0,0,.25);
+    min-height:48px;
+  }
+  .big-btn:active{ transform:translateY(1px); filter:brightness(.95); }
+  .stars-big{display:flex;justify-content:center;gap:8px;margin:6px 0 4px;font-size:34px}
+  .stars-big .star{opacity:.3;transition:transform .35s, opacity .35s, text-shadow .35s}
+  .stars-big .star.on{opacity:1;transform:scale(1.1);text-shadow:0 0 14px #ffd766, 0 0 22px #ffae3a;}
+  .candy-row{display:flex;justify-content:center;gap:10px;margin:10px 0 6px}
+  .candy-row svg{width:42px;height:42px;animation: float 2.5s ease-in-out infinite;filter:drop-shadow(0 4px 4px rgba(0,0,0,.5))}
+  .candy-row svg:nth-child(2){animation-delay:.2s}
+  .candy-row svg:nth-child(3){animation-delay:.4s}
+  .candy-row svg:nth-child(4){animation-delay:.6s}
+  .candy-row svg:nth-child(5){animation-delay:.8s}
+  @keyframes float { 0%,100%{transform:translateY(0) rotate(-3deg)} 50%{transform:translateY(-6px) rotate(3deg)} }
+
+  /* fail state */
+  .panel.fail h1{
+    background:linear-gradient(180deg,#fff 0%, #ffd1d1 60%, #ff7c7c 100%);
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+  }
+
+  /* responsive minimum sizing for narrow screens */
+  @media (max-height: 640px){
+    .badge .val{font-size:18px}
+    .candy-row svg{width:34px;height:34px}
+    .panel h1{font-size:24px}
+  }
+</style>
+</head>
+<body>
+
+<!-- shared SVG defs (gradients & filters) -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <radialGradient id="shineRed" cx="35%" cy="30%" r="70%">
+      <stop offset="0%" stop-color="#ffe9ec"/>
+      <stop offset="35%" stop-color="#ff5b6e"/>
+      <stop offset="100%" stop-color="#8e1226"/>
+    </radialGradient>
+    <radialGradient id="shineOrange" cx="35%" cy="30%" r="70%">
+      <stop offset="0%" stop-color="#fff2d6"/>
+      <stop offset="35%" stop-color="#ff9c2e"/>
+      <stop offset="100%" stop-color="#a04a02"/>
+    </radialGradient>
+    <radialGradient id="shineYellow" cx="35%" cy="30%" r="75%">
+      <stop offset="0%" stop-color="#fffbd8"/>
+      <stop offset="40%" stop-color="#ffd83a"/>
+      <stop offset="100%" stop-color="#a07000"/>
+    </radialGradient>
+    <radialGradient id="shineGreen" cx="35%" cy="30%" r="70%">
+      <stop offset="0%" stop-color="#e8ffd6"/>
+      <stop offset="40%" stop-color="#5fd24c"/>
+      <stop offset="100%" stop-color="#1a6f17"/>
+    </radialGradient>
+    <radialGradient id="shineBlue" cx="35%" cy="30%" r="70%">
+      <stop offset="0%" stop-color="#dbf2ff"/>
+      <stop offset="40%" stop-color="#3aa9ff"/>
+      <stop offset="100%" stop-color="#0c3f80"/>
+    </radialGradient>
+
+    <radialGradient id="bombGrad" cx="35%" cy="30%" r="80%">
+      <stop offset="0%" stop-color="#fff"/>
+      <stop offset="20%" stop-color="#ffe16e"/>
+      <stop offset="55%" stop-color="#ff62b6"/>
+      <stop offset="100%" stop-color="#3b0f5c"/>
+    </radialGradient>
+
+    <linearGradient id="stripeShine" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="rgba(255,255,255,.85)"/>
+      <stop offset="100%" stop-color="rgba(255,255,255,0)"/>
+    </linearGradient>
+  </defs>
+</svg>
+
+<div class="app">
+  <div class="hud" role="region" aria-label="Status">
+    <div class="badge" aria-label="Score">
+      <div class="lbl">Score</div>
+      <div class="val" id="scoreVal">0</div>
+    </div>
+    <div class="progress-wrap">
+      <div class="progress-top">
+        <span class="level-pill" id="levelPill">Level 1</span>
+        <span>Target <b id="targetVal">1500</b></span>
+      </div>
+      <div class="bar"><div class="fill" id="progFill"></div></div>
+      <div class="stars" id="starsRow" aria-label="Stars">
+        <span class="star">★</span><span class="star">★</span><span class="star">★</span>
+      </div>
+    </div>
+    <div class="badge" aria-label="Moves remaining">
+      <div class="lbl">Moves</div>
+      <div class="val" id="movesVal">30</div>
+    </div>
+  </div>
+
+  <div class="stage">
+    <div class="board-wrap">
+      <div id="board" class="board" aria-label="Match-3 board"></div>
+    </div>
+  </div>
+
+  <div class="foot">
+    <button class="ghost-btn" id="restartBtn" aria-label="Restart level">Restart</button>
+    <div class="hint-text" id="hintText">Swipe a candy to swap with a neighbor</div>
+    <button class="ghost-btn" id="hintBtn" aria-label="Hint">Hint</button>
+  </div>
+</div>
+
+<div class="overlay" id="overlay" role="dialog" aria-modal="true">
+  <div class="panel" id="panel">
+    <div class="candy-row" id="introCandies"></div>
+    <h1 id="ovTitle">Sweet Cascade</h1>
+    <p id="ovBody">Match three or more candies in a row or column. Reach the target score before you run out of moves!</p>
+    <div class="stars-big" id="ovStars" style="display:none">
+      <span class="star">★</span><span class="star">★</span><span class="star">★</span>
+    </div>
+    <div class="lvl-row" id="ovStats" style="display:none">
+      <div class="lvl-cell"><div class="v" id="ovScore">0</div><div class="l">Score</div></div>
+      <div class="lvl-cell"><div class="v" id="ovTarget">0</div><div class="l">Target</div></div>
+      <div class="lvl-cell"><div class="v" id="ovMoves">0</div><div class="l">Moves Left</div></div>
+    </div>
+    <button class="big-btn" id="ovBtn">Play</button>
+  </div>
+</div>
+
+<script>
+(() => {
+  // ============================================================
+  // Sweet Cascade — match-3, single-file, touch-only, portrait.
+  // ============================================================
+
+  const SIZE = 8;                       // 8x8
+  const COLORS = 5;                     // 5 candy colors
+  const COLOR_NAMES = ['red','orange','yellow','green','blue'];
+  const SHINE_IDS = ['shineRed','shineOrange','shineYellow','shineGreen','shineBlue'];
+  const SUIT_FILL  = ['#ff5b6e','#ff9c2e','#ffd83a','#5fd24c','#3aa9ff'];
+
+  const LEVELS = [
+    { target: 1500, moves: 30 },
+    { target: 3000, moves: 30 },
+    { target: 5000, moves: 30 },
+  ];
+  const STAR_PCTS = [1.0, 1.4, 1.8];   // 1, 1.4x, 1.8x of target
+
+  // Special candy types: 0..4 = colored; specials encoded with extras
+  // cell shape: { color: 0..4, kind: 'normal' | 'striped-h' | 'striped-v' | 'bomb', id }
+  let board = [];
+  let cellEls = [];                     // 2D matrix of DOM elements
+  let nextId = 1;
+
+  const boardEl = document.getElementById('board');
+  const scoreVal = document.getElementById('scoreVal');
+  const movesVal = document.getElementById('movesVal');
+  const targetVal = document.getElementById('targetVal');
+  const progFill = document.getElementById('progFill');
+  const levelPill = document.getElementById('levelPill');
+  const starsRow = document.getElementById('starsRow');
+  const hintText = document.getElementById('hintText');
+
+  const overlay = document.getElementById('overlay');
+  const ovTitle = document.getElementById('ovTitle');
+  const ovBody  = document.getElementById('ovBody');
+  const ovBtn   = document.getElementById('ovBtn');
+  const ovStars = document.getElementById('ovStars');
+  const ovStats = document.getElementById('ovStats');
+  const ovScore = document.getElementById('ovScore');
+  const ovTarget= document.getElementById('ovTarget');
+  const ovMoves = document.getElementById('ovMoves');
+  const panel   = document.getElementById('panel');
+  const introCandies = document.getElementById('introCandies');
+
+  let level = 0;
+  let score = 0;
+  let movesLeft = 0;
+  let busy = false;        // input lock during animations
+  let cellPx = 0;          // computed cell size
+  let hintTimer = null;
+  let hintCells = [];
+
+  // Pre-render decorative candies on intro
+  function fillIntroCandies(){
+    introCandies.innerHTML = '';
+    for (let i=0;i<5;i++){
+      introCandies.insertAdjacentHTML('beforeend', candyMarkup(i,'normal',1));
+    }
+  }
+
+  // ---------- Candy SVG markup ----------
+  // Each color has a distinct shape per vq-002.
+  function candyMarkup(color, kind, scale=1){
+    const grad = `url(#${SHINE_IDS[color]})`;
+    const stroke = '#1a0833';
+    const sw = 1.6;
+    let inner = '';
+    switch(color){
+      case 0: // red — round lozenge
+        inner = `
+          <ellipse cx="20" cy="20" rx="15" ry="12" fill="${grad}" stroke="${stroke}" stroke-width="${sw}"/>
+          <path d="M5 20 Q 0 14 4 10 Q 6 16 7 20 Q 6 24 4 30 Q 0 26 5 20 Z" fill="${grad}" stroke="${stroke}" stroke-width="${sw}" stroke-linejoin="round"/>
+          <path d="M35 20 Q 40 14 36 10 Q 34 16 33 20 Q 34 24 36 30 Q 40 26 35 20 Z" fill="${grad}" stroke="${stroke}" stroke-width="${sw}" stroke-linejoin="round"/>
+          <ellipse cx="14" cy="14" rx="5" ry="3" fill="rgba(255,255,255,.55)"/>
+        `;
+        break;
+      case 1: // orange — hexagon "fizzer"
+        inner = `
+          <polygon points="20,4 34,12 34,28 20,36 6,28 6,12" fill="${grad}" stroke="${stroke}" stroke-width="${sw}" stroke-linejoin="round"/>
+          <polygon points="20,9 30,15 30,25 20,31 10,25 10,15" fill="none" stroke="rgba(255,255,255,.35)" stroke-width="1"/>
+          <ellipse cx="14" cy="13" rx="5" ry="3" fill="rgba(255,255,255,.55)"/>
+        `;
+        break;
+      case 2: // yellow — 5-point star
+        inner = `
+          <polygon points="20,3 25,15 38,16 28,24 31,37 20,30 9,37 12,24 2,16 15,15"
+                   fill="${grad}" stroke="${stroke}" stroke-width="${sw}" stroke-linejoin="round"/>
+          <circle cx="16" cy="14" r="3" fill="rgba(255,255,255,.6)"/>
+        `;
+        break;
+      case 3: // green — soft chiclet square
+        inner = `
+          <rect x="5" y="5" width="30" height="30" rx="8" ry="8"
+                fill="${grad}" stroke="${stroke}" stroke-width="${sw}"/>
+          <rect x="9" y="9" width="22" height="22" rx="6" ry="6"
+                fill="none" stroke="rgba(255,255,255,.4)" stroke-width="1"/>
+          <ellipse cx="14" cy="13" rx="5" ry="3" fill="rgba(255,255,255,.55)"/>
+        `;
+        break;
+      case 4: // blue — circle "gem"
+        inner = `
+          <circle cx="20" cy="20" r="15" fill="${grad}" stroke="${stroke}" stroke-width="${sw}"/>
+          <path d="M9 16 Q 20 8 31 16 L 28 19 Q 20 13 12 19 Z" fill="rgba(255,255,255,.5)"/>
+          <circle cx="14" cy="13" r="3" fill="rgba(255,255,255,.7)"/>
+        `;
+        break;
+    }
+    let extra = '';
+    let extraClass = '';
+    if (kind === 'striped-h'){
+      extraClass = 'stripe-h';
+      extra = `
+        <g opacity=".95">
+          <rect x="2" y="14"  width="36" height="3" fill="rgba(255,255,255,.85)" rx="1"/>
+          <rect x="2" y="19"  width="36" height="2" fill="rgba(255,255,255,.6)" rx="1"/>
+          <rect x="2" y="23"  width="36" height="3" fill="rgba(255,255,255,.85)" rx="1"/>
+        </g>`;
+    } else if (kind === 'striped-v'){
+      extraClass = 'stripe-v';
+      extra = `
+        <g opacity=".95">
+          <rect x="14" y="2"  width="3" height="36" fill="rgba(255,255,255,.85)" rx="1"/>
+          <rect x="19" y="2"  width="2" height="36" fill="rgba(255,255,255,.6)" rx="1"/>
+          <rect x="23" y="2"  width="3" height="36" fill="rgba(255,255,255,.85)" rx="1"/>
+        </g>`;
+    }
+    if (kind === 'bomb'){
+      // override with rainbow ball
+      return `<svg class="candy bomb" viewBox="0 0 40 40">
+        <circle cx="20" cy="20" r="15" fill="url(#bombGrad)" stroke="#1a0833" stroke-width="1.6"/>
+        <g stroke="rgba(255,255,255,.9)" stroke-width="1.4" fill="none">
+          <path d="M6 20 Q 20 6 34 20"/>
+          <path d="M6 20 Q 20 34 34 20"/>
+          <path d="M20 5 Q 6 20 20 35"/>
+          <path d="M20 5 Q 34 20 20 35"/>
+        </g>
+        <circle cx="14" cy="13" r="3.5" fill="rgba(255,255,255,.85)"/>
+      </svg>`;
+    }
+    return `<svg class="candy ${extraClass}" viewBox="0 0 40 40">${inner}${extra}</svg>`;
+  }
+
+  // ---------- Board model ----------
+  function makeCell(color, kind='normal'){
+    return { color, kind, id: nextId++ };
+  }
+  function freshGrid(){
+    // Fill avoiding starting matches.
+    const g = Array.from({length:SIZE},()=>Array(SIZE).fill(null));
+    for (let r=0;r<SIZE;r++){
+      for (let c=0;c<SIZE;c++){
+        let tries = 0, color;
+        do {
+          color = Math.floor(Math.random()*COLORS);
+          tries++;
+        } while (
+          tries < 20 && (
+            (c>=2 && g[r][c-1].color===color && g[r][c-2].color===color) ||
+            (r>=2 && g[r-1][c].color===color && g[r-2][c].color===color)
+          )
+        );
+        g[r][c] = makeCell(color);
+      }
+    }
+    // Ensure at least one move exists; if not, reshuffle.
+    if (!findAnyMove(g)) return freshGrid();
+    return g;
+  }
+
+  function inBounds(r,c){ return r>=0 && r<SIZE && c>=0 && c<SIZE; }
+
+  function cloneGrid(g){
+    return g.map(row=>row.map(cell=>cell?{...cell}:null));
+  }
+
+  // Find all matches in grid; return { positions:Set, runs: [{cells,len,dir,color}] }
+  function findMatches(g){
+    const positions = new Set();
+    const runs = [];
+    // horizontal
+    for (let r=0;r<SIZE;r++){
+      let c=0;
+      while (c<SIZE){
+        const a = g[r][c];
+        if (!a){ c++; continue; }
+        let len=1;
+        while (c+len<SIZE && g[r][c+len] && g[r][c+len].color===a.color){ len++; }
+        if (len>=3){
+          const cells=[];
+          for (let k=0;k<len;k++){ cells.push([r,c+k]); positions.add((r)*SIZE+(c+k)); }
+          runs.push({cells,len,dir:'h',color:a.color});
+        }
+        c += Math.max(1,len);
+      }
+    }
+    // vertical
+    for (let c=0;c<SIZE;c++){
+      let r=0;
+      while (r<SIZE){
+        const a = g[r][c];
+        if (!a){ r++; continue; }
+        let len=1;
+        while (r+len<SIZE && g[r+len][c] && g[r+len][c].color===a.color){ len++; }
+        if (len>=3){
+          const cells=[];
+          for (let k=0;k<len;k++){ cells.push([r+k,c]); positions.add((r+k)*SIZE+c); }
+          runs.push({cells,len,dir:'v',color:a.color});
+        }
+        r += Math.max(1,len);
+      }
+    }
+    return { positions, runs };
+  }
+
+  function hasMatchAfterSwap(g, r1,c1, r2,c2){
+    const t = cloneGrid(g);
+    [t[r1][c1], t[r2][c2]] = [t[r2][c2], t[r1][c1]];
+    return findMatches(t).positions.size > 0;
+  }
+
+  // Find any legal swap; return [[r,c],[r2,c2]] or null
+  function findAnyMove(g){
+    for (let r=0;r<SIZE;r++){
+      for (let c=0;c<SIZE;c++){
+        // bombs/specials always legal as a swap target if adjacent
+        const here = g[r][c];
+        if (here && here.kind === 'bomb') {
+          if (c+1<SIZE && g[r][c+1]) return [[r,c],[r,c+1]];
+          if (r+1<SIZE && g[r+1][c]) return [[r,c],[r+1,c]];
+        }
+        if (c+1<SIZE && hasMatchAfterSwap(g,r,c,r,c+1)) return [[r,c],[r,c+1]];
+        if (r+1<SIZE && hasMatchAfterSwap(g,r,c,r+1,c)) return [[r,c],[r+1,c]];
+        // also legal if either side is bomb
+        if (c+1<SIZE && (g[r][c]?.kind==='bomb' || g[r][c+1]?.kind==='bomb')) return [[r,c],[r,c+1]];
+        if (r+1<SIZE && (g[r][c]?.kind==='bomb' || g[r+1][c]?.kind==='bomb')) return [[r,c],[r+1,c]];
+      }
+    }
+    return null;
+  }
+
+  // ---------- Rendering ----------
+  function computeCellPx(){
+    const rect = boardEl.getBoundingClientRect();
+    cellPx = rect.width / SIZE;
+  }
+
+  function renderInitial(){
+    boardEl.innerHTML = '';
+    cellEls = Array.from({length:SIZE},()=>Array(SIZE).fill(null));
+    computeCellPx();
+    for (let r=0;r<SIZE;r++){
+      for (let c=0;c<SIZE;c++){
+        const cell = board[r][c];
+        const el = createCellEl(cell, r, c);
+        boardEl.appendChild(el);
+        cellEls[r][c] = el;
+      }
+    }
+  }
+
+  function createCellEl(cell, r, c){
+    const el = document.createElement('div');
+    el.className = 'cell';
+    el.dataset.id = cell.id;
+    el.style.width = cellPx+'px';
+    el.style.height = cellPx+'px';
+    el.style.left = (c*cellPx)+'px';
+    el.style.top  = (r*cellPx)+'px';
+    el.innerHTML = candyMarkup(cell.color, cell.kind);
+    if (cell.kind !== 'bomb' && cell.kind !== 'normal'){
+      // already has class via markup
+    }
+    return el;
+  }
+
+  function repositionAll(){
+    for (let r=0;r<SIZE;r++){
+      for (let c=0;c<SIZE;c++){
+        const el = cellEls[r][c];
+        if (!el) continue;
+        el.style.width = cellPx+'px';
+        el.style.height = cellPx+'px';
+        el.style.left = (c*cellPx)+'px';
+        el.style.top  = (r*cellPx)+'px';
+      }
+    }
+  }
+
+  function setCellEl(r,c,el){
+    cellEls[r][c] = el;
+    if (!el) return;
+    el.style.left = (c*cellPx)+'px';
+    el.style.top  = (r*cellPx)+'px';
+  }
+
+  // ---------- Touch / swipe input ----------
+  let touchStart = null; // {x,y,r,c,id}
+  let touchedEl = null;
+
+  function getCellFromPoint(x, y){
+    const rect = boardEl.getBoundingClientRect();
+    const c = Math.floor((x - rect.left) / cellPx);
+    const r = Math.floor((y - rect.top)  / cellPx);
+    if (!inBounds(r,c)) return null;
+    return {r, c};
+  }
+
+  boardEl.addEventListener('touchstart', onPointerDown, {passive:false});
+  boardEl.addEventListener('touchmove',  onPointerMove, {passive:false});
+  boardEl.addEventListener('touchend',   onPointerUp,   {passive:false});
+  boardEl.addEventListener('touchcancel',onPointerUp,   {passive:false});
+  // also support desktop drag for testing
+  boardEl.addEventListener('mousedown', e => onPointerDown(e, true));
+  window.addEventListener('mousemove',  e => onPointerMove(e, true));
+  window.addEventListener('mouseup',    e => onPointerUp(e,   true));
+
+  function getPoint(e, isMouse){
+    if (isMouse) return {x:e.clientX, y:e.clientY};
+    const t = e.touches[0] || e.changedTouches[0];
+    return {x:t.clientX, y:t.clientY};
+  }
+
+  function onPointerDown(e, isMouse){
+    if (busy) return;
+    e.preventDefault();
+    cancelHint();
+    const p = getPoint(e, isMouse);
+    const rc = getCellFromPoint(p.x, p.y);
+    if (!rc) return;
+    touchStart = { x:p.x, y:p.y, r:rc.r, c:rc.c };
+    touchedEl = cellEls[rc.r][rc.c];
+    if (touchedEl) touchedEl.classList.add('selected');
+  }
+  function onPointerMove(e, isMouse){
+    if (!touchStart) return;
+    e.preventDefault();
+    const p = getPoint(e, isMouse);
+    const dx = p.x - touchStart.x;
+    const dy = p.y - touchStart.y;
+    if (Math.abs(dx) < cellPx*0.35 && Math.abs(dy) < cellPx*0.35) return;
+    // determine direction
+    let dr = 0, dc = 0;
+    if (Math.abs(dx) > Math.abs(dy)) dc = dx > 0 ? 1 : -1;
+    else dr = dy > 0 ? 1 : -1;
+    const r2 = touchStart.r + dr, c2 = touchStart.c + dc;
+    const r1 = touchStart.r,      c1 = touchStart.c;
+    touchStart = null;
+    if (touchedEl) touchedEl.classList.remove('selected');
+    touchedEl = null;
+    if (!inBounds(r2,c2)) return;
+    attemptSwap(r1,c1,r2,c2);
+  }
+  function onPointerUp(e, isMouse){
+    if (!touchStart) return;
+    if (touchedEl) touchedEl.classList.remove('selected');
+    touchStart = null;
+    touchedEl = null;
+  }
+
+  // ---------- Swap & resolve loop ----------
+  async function attemptSwap(r1,c1,r2,c2){
+    if (busy) return;
+    busy = true;
+    cancelHint();
+    // visual swap
+    swapVisual(r1,c1,r2,c2);
+    // model swap
+    const a = board[r1][c1], b = board[r2][c2];
+    board[r1][c1] = b; board[r2][c2] = a;
+    await sleep(190);
+
+    // bomb-special handling: bomb swapped with colored => clear that color
+    let bombClear = null;
+    if (a && a.kind === 'bomb' && b && b.kind !== 'bomb'){
+      bombClear = { bombAt:[r2,c2], color: b.color, killAt:[r1,c1] };
+    } else if (b && b.kind === 'bomb' && a && a.kind !== 'bomb'){
+      bombClear = { bombAt:[r1,c1], color: a.color, killAt:[r2,c2] };
+    } else if (a && b && a.kind === 'bomb' && b.kind === 'bomb'){
+      bombClear = { bombAt:[r2,c2], color: -1, killAt:[r1,c1] }; // clear all
+    }
+
+    if (bombClear){
+      await detonateBombSwap(bombClear);
+      await resolveCascades(2);
+      consumeMove();
+      busy = false;
+      return;
+    }
+
+    // normal swap: must produce a match else swap back
+    const m = findMatches(board);
+    if (m.positions.size === 0){
+      // illegal — swap back
+      await sleep(80);
+      swapVisual(r2,c2,r1,c1);
+      const tmp = board[r1][c1]; board[r1][c1]=board[r2][c2]; board[r2][c2]=tmp;
+      await sleep(190);
+      busy = false;
+      shake();
+      return;
+    }
+    // resolve with cascade
+    await resolveCascades(1, {swapPositions:[[r1,c1],[r2,c2]]});
+    consumeMove();
+    busy = false;
+  }
+
+  function swapVisual(r1,c1,r2,c2){
+    const a = cellEls[r1][c1], b = cellEls[r2][c2];
+    if (!a || !b) return;
+    a.classList.add('swapping');
+    b.classList.add('swapping');
+    a.style.left = (c2*cellPx)+'px';
+    a.style.top  = (r2*cellPx)+'px';
+    b.style.left = (c1*cellPx)+'px';
+    b.style.top  = (r1*cellPx)+'px';
+    cellEls[r1][c1] = b;
+    cellEls[r2][c2] = a;
+    setTimeout(()=>{ a.classList.remove('swapping'); b.classList.remove('swapping'); }, 200);
+  }
+
+  async function detonateBombSwap({bombAt, color, killAt}){
+    const cleared = new Set();
+    if (color === -1){
+      // both bombs: clear everything
+      for (let r=0;r<SIZE;r++) for (let c=0;c<SIZE;c++) cleared.add(r*SIZE+c);
+    } else {
+      for (let r=0;r<SIZE;r++) for (let c=0;c<SIZE;c++){
+        if (board[r][c] && board[r][c].color === color) cleared.add(r*SIZE+c);
+      }
+      cleared.add(bombAt[0]*SIZE+bombAt[1]);
+      cleared.add(killAt[0]*SIZE+killAt[1]);
+    }
+    flash('all');
+    addScore(cleared.size * 60);
+    showCombo('Color Bomb!');
+    await clearAndCollapse(cleared);
+  }
+
+  // resolveCascades: keep clearing matches until none, multiplying score
+  async function resolveCascades(startMul = 1, opts = {}){
+    let cascade = 0;
+    while (true){
+      const m = findMatches(board);
+      if (m.positions.size === 0) break;
+      cascade++;
+      const mult = Math.max(1, startMul + cascade - 1);
+
+      // Determine special candies created by runs of len 4 / 5+
+      // For each run, if any of the swap-positions is in that run, create special there;
+      // otherwise create at the first cell of the run.
+      const createAt = [];
+      const swapPos = (opts.swapPositions || []).map(p => p[0]*SIZE+p[1]);
+      for (const run of m.runs){
+        if (run.len < 4) continue;
+        let pickIdx = 0;
+        for (let i=0;i<run.cells.length;i++){
+          const id = run.cells[i][0]*SIZE+run.cells[i][1];
+          if (swapPos.includes(id)){ pickIdx = i; break; }
+        }
+        const [pr,pc] = run.cells[pickIdx];
+        if (run.len >= 5){
+          createAt.push({r:pr, c:pc, color:run.color, kind:'bomb'});
+        } else {
+          // 4-in-a-row: striped; horizontal run -> stripe-h or stripe-v?
+          // In Candy Crush: matching 4 horizontally creates a vertical-striped that clears its column.
+          // We'll do: horizontal run -> striped-v (clears column), vertical run -> striped-h (clears row).
+          const kind = run.dir === 'h' ? 'striped-v' : 'striped-h';
+          createAt.push({r:pr, c:pc, color:run.color, kind});
+        }
+      }
+      const createKeys = new Set(createAt.map(x => x.r*SIZE+x.c));
+      // remove createAt positions from cleared set so they survive (replaced with special)
+      const cleared = new Set(m.positions);
+      for (const k of createKeys) cleared.delete(k);
+
+      // Trigger special candies that are caught in cleared cells (chain-detonation)
+      const detonated = expandSpecials(cleared);
+      // award score
+      let baseScore = 0;
+      for (const run of m.runs){
+        baseScore += scoreForRun(run.len);
+      }
+      baseScore += (detonated - m.positions.size) * 30; // bonus for chained specials
+      addScore(Math.round(baseScore * mult));
+
+      if (cascade >= 2){
+        showCombo(`x${cascade} Cascade!`);
+      }
+
+      // visual: pop animations + line flashes
+      for (const run of m.runs){
+        if (run.len >= 4){
+          flashRun(run);
+        }
+      }
+      await clearAndCollapse(cleared, createAt);
+    }
+    // After resolution, if no moves available, reshuffle.
+    if (!findAnyMove(board)){
+      await reshuffle();
+    }
+  }
+
+  function expandSpecials(clearedSet){
+    let added;
+    do {
+      added = 0;
+      const snap = Array.from(clearedSet);
+      for (const k of snap){
+        const r = Math.floor(k/SIZE), c = k%SIZE;
+        const cell = board[r][c];
+        if (!cell) continue;
+        if (cell.kind === 'striped-h'){
+          for (let cc=0; cc<SIZE; cc++){
+            const id = r*SIZE+cc;
+            if (!clearedSet.has(id)){ clearedSet.add(id); added++; }
+          }
+          flashLine(r, null);
+        } else if (cell.kind === 'striped-v'){
+          for (let rr=0; rr<SIZE; rr++){
+            const id = rr*SIZE+c;
+            if (!clearedSet.has(id)){ clearedSet.add(id); added++; }
+          }
+          flashLine(null, c);
+        } else if (cell.kind === 'bomb'){
+          // detonating bomb in a match clears its color
+          const tgtColor = cell.color;
+          for (let rr=0;rr<SIZE;rr++) for (let cc=0;cc<SIZE;cc++){
+            const cc2 = board[rr][cc];
+            if (cc2 && cc2.color === tgtColor){
+              const id = rr*SIZE+cc;
+              if (!clearedSet.has(id)){ clearedSet.add(id); added++; }
+            }
+          }
+          flash('all');
+        }
+      }
+    } while (added > 0);
+    return clearedSet.size;
+  }
+
+  function scoreForRun(len){
+    // 3 -> 60, 4 -> 120, 5+ -> 200 + 50*(len-5)
+    if (len === 3) return 60;
+    if (len === 4) return 120;
+    return 200 + 50*(len-5);
+  }
+
+  // Animate clears, then drop existing cells, then spawn new ones from top
+  async function clearAndCollapse(clearedSet, createAt = []){
+    // 1. play pop animations + score popups
+    for (const k of clearedSet){
+      const r = Math.floor(k/SIZE), c = k%SIZE;
+      const el = cellEls[r][c];
+      if (el){
+        const svg = el.querySelector('svg');
+        if (svg) svg.classList.add('popping');
+        spawnPopFx(el);
+      }
+    }
+    spawnSomeScorePopups(clearedSet);
+    await sleep(260);
+
+    // 2. remove cleared cells
+    for (const k of clearedSet){
+      const r = Math.floor(k/SIZE), c = k%SIZE;
+      const el = cellEls[r][c];
+      if (el) el.remove();
+      cellEls[r][c] = null;
+      board[r][c] = null;
+    }
+
+    // 3. place specials at createAt positions (if those positions are still null)
+    for (const sp of createAt){
+      if (board[sp.r][sp.c]) continue; // shouldn't happen
+      const cell = makeCell(sp.color, sp.kind);
+      board[sp.r][sp.c] = cell;
+      const el = createCellEl(cell, sp.r, sp.c);
+      el.querySelector('svg')?.classList.add('spawn');
+      boardEl.appendChild(el);
+      cellEls[sp.r][sp.c] = el;
+    }
+
+    // 4. gravity: for each column, compact downward
+    for (let c=0;c<SIZE;c++){
+      let writeRow = SIZE - 1;
+      for (let r=SIZE-1;r>=0;r--){
+        if (board[r][c]){
+          if (r !== writeRow){
+            board[writeRow][c] = board[r][c];
+            board[r][c] = null;
+            const el = cellEls[r][c];
+            cellEls[writeRow][c] = el;
+            cellEls[r][c] = null;
+            if (el){
+              el.classList.add('dropping');
+              el.style.top = (writeRow*cellPx)+'px';
+              setTimeout(()=> el.classList.remove('dropping'), 460);
+            }
+          }
+          writeRow--;
+        }
+      }
+      // 5. spawn new candies above and drop them in
+      let spawnY = -1;
+      for (let r=writeRow; r>=0; r--){
+        const color = pickSpawnColor();
+        const cell = makeCell(color);
+        board[r][c] = cell;
+        const el = createCellEl(cell, r, c);
+        // start above board, then drop to row r
+        el.style.top = (spawnY*cellPx)+'px';
+        spawnY--;
+        boardEl.appendChild(el);
+        cellEls[r][c] = el;
+        // force reflow then animate
+        // eslint-disable-next-line no-unused-expressions
+        el.offsetHeight;
+        el.classList.add('dropping');
+        el.style.top = (r*cellPx)+'px';
+        el.querySelector('svg')?.classList.add('spawn');
+        setTimeout(()=> el.classList.remove('dropping'), 480);
+      }
+    }
+    await sleep(440);
+  }
+
+  function pickSpawnColor(){
+    return Math.floor(Math.random()*COLORS);
+  }
+
+  // ---------- Visual FX ----------
+  function spawnPopFx(parentEl){
+    const fx = document.createElement('div');
+    fx.className = 'pop-fx';
+    parentEl.appendChild(fx);
+    setTimeout(()=>fx.remove(), 500);
+  }
+
+  function spawnSomeScorePopups(clearedSet){
+    // group clears into runs/clusters and pop a score on the centroid
+    if (clearedSet.size === 0) return;
+    let sumR=0, sumC=0;
+    for (const k of clearedSet){ sumR += Math.floor(k/SIZE); sumC += k%SIZE; }
+    const cr = sumR/clearedSet.size, cc = sumC/clearedSet.size;
+    const popup = document.createElement('div');
+    popup.className = 'score-popup';
+    popup.textContent = '+'+clearedSet.size*60;
+    popup.style.left = ((cc+0.5)*cellPx)+'px';
+    popup.style.top  = ((cr)*cellPx)+'px';
+    boardEl.appendChild(popup);
+    setTimeout(()=>popup.remove(), 950);
+  }
+
+  function flashLine(row, col){
+    const el = document.createElement('div');
+    el.className = 'line-flash' + (row===null?' vert':'');
+    if (row!==null){
+      el.style.left = '0px';
+      el.style.top  = (row*cellPx)+'px';
+      el.style.width = (SIZE*cellPx)+'px';
+      el.style.height = cellPx+'px';
+    } else {
+      el.style.top = '0px';
+      el.style.left = (col*cellPx)+'px';
+      el.style.height = (SIZE*cellPx)+'px';
+      el.style.width = cellPx+'px';
+    }
+    boardEl.appendChild(el);
+    setTimeout(()=>el.remove(), 520);
+  }
+  function flashRun(run){
+    if (run.dir === 'h'){ flashLine(run.cells[0][0], null); }
+    else { flashLine(null, run.cells[0][1]); }
+  }
+  function flash(kind){
+    // global board flash
+    const el = document.createElement('div');
+    el.className = 'line-flash';
+    el.style.left='0';el.style.top='0';
+    el.style.width=(SIZE*cellPx)+'px';el.style.height=(SIZE*cellPx)+'px';
+    el.style.background='radial-gradient(circle, rgba(255,255,255,.85), rgba(255,180,255,.0) 70%)';
+    el.style.animationDuration='.6s';
+    boardEl.appendChild(el);
+    setTimeout(()=>el.remove(), 620);
+  }
+  function shake(){
+    boardEl.classList.add('shake');
+    setTimeout(()=>boardEl.classList.remove('shake'), 360);
+  }
+  function showCombo(text){
+    const tag = document.createElement('div');
+    tag.className = 'combo-tag';
+    tag.textContent = text;
+    boardEl.appendChild(tag);
+    setTimeout(()=>tag.remove(), 950);
+  }
+
+  // ---------- Score / moves / level state ----------
+  function addScore(n){
+    if (!n) return;
+    score += n;
+    scoreVal.textContent = score.toLocaleString();
+    const target = LEVELS[level].target;
+    const pct = Math.min(100, (score/target)*100);
+    progFill.style.width = pct+'%';
+    updateStars();
+  }
+  function updateStars(){
+    const target = LEVELS[level].target;
+    const stars = starsRow.querySelectorAll('.star');
+    const ratio = score / target;
+    stars.forEach((s,i)=>{
+      s.classList.toggle('on', ratio >= STAR_PCTS[i]);
+    });
+  }
+  function consumeMove(){
+    movesLeft--;
+    movesVal.textContent = movesLeft;
+    if (score >= LEVELS[level].target){
+      // award completion immediately on threshold reached if moves left, but allow remaining moves to add score? Candy Crush style: end on success at moves end.
+      // We'll allow more moves only if user still wants — but conventionally game ends when moves run out OR when target reached.
+      // We'll end now on hit-target for satisfying flow.
+      setTimeout(()=>endLevel(true), 300);
+      return;
+    }
+    if (movesLeft <= 0){
+      setTimeout(()=>endLevel(score >= LEVELS[level].target), 300);
+    }
+    scheduleHint();
+  }
+
+  // ---------- Hint system ----------
+  function scheduleHint(){
+    cancelHint();
+    hintTimer = setTimeout(()=>{
+      const m = findAnyMove(board);
+      if (!m) return;
+      hintCells = m;
+      m.forEach(([r,c])=> cellEls[r][c]?.classList.add('hint'));
+    }, 6000);
+  }
+  function cancelHint(){
+    clearTimeout(hintTimer); hintTimer = null;
+    hintCells.forEach(([r,c])=> cellEls[r]?.[c]?.classList.remove('hint'));
+    hintCells = [];
+  }
+  document.getElementById('hintBtn').addEventListener('click', ()=>{
+    if (busy) return;
+    cancelHint();
+    const m = findAnyMove(board);
+    if (m){
+      hintCells = m;
+      m.forEach(([r,c])=> cellEls[r][c]?.classList.add('hint'));
+      setTimeout(cancelHint, 2400);
+    }
+  });
+  document.getElementById('restartBtn').addEventListener('click', ()=>{
+    if (busy) return;
+    if (confirm('Restart this level?')) startLevel(level);
+  });
+
+  // ---------- Reshuffle when no moves ----------
+  async function reshuffle(){
+    showCombo('Reshuffling…');
+    await sleep(250);
+    // pop everything visually
+    for (let r=0;r<SIZE;r++) for (let c=0;c<SIZE;c++){
+      const el = cellEls[r][c]; if (el) el.querySelector('svg')?.classList.add('popping');
+    }
+    await sleep(200);
+    for (let r=0;r<SIZE;r++) for (let c=0;c<SIZE;c++){
+      cellEls[r][c]?.remove(); cellEls[r][c] = null;
+    }
+    board = freshGrid();
+    renderInitial();
+  }
+
+  // ---------- Level flow / overlay ----------
+  function startLevel(idx){
+    level = idx;
+    score = 0;
+    movesLeft = LEVELS[idx].moves;
+    scoreVal.textContent = '0';
+    movesVal.textContent = movesLeft;
+    targetVal.textContent = LEVELS[idx].target.toLocaleString();
+    levelPill.textContent = `Level ${idx+1}`;
+    progFill.style.width = '0%';
+    starsRow.querySelectorAll('.star').forEach(s=>s.classList.remove('on'));
+    board = freshGrid();
+    busy = true;
+    renderInitial();
+    overlay.style.display = 'none';
+    setTimeout(()=>{ busy = false; scheduleHint(); }, 350);
+  }
+
+  function endLevel(passed){
+    busy = true;
+    cancelHint();
+    const target = LEVELS[level].target;
+    const reached = score;
+    let starsCount = 0;
+    if (passed){
+      starsCount = 1;
+      if (reached >= target * STAR_PCTS[1]) starsCount = 2;
+      if (reached >= target * STAR_PCTS[2]) starsCount = 3;
+    }
+    panel.classList.toggle('fail', !passed);
+    if (passed){
+      const last = level === LEVELS.length - 1;
+      ovTitle.textContent = last ? 'Sweet Victory!' : 'Level Complete!';
+      ovBody.textContent = last ? 'You cleared every level — pure sugar mastery.' : 'Tasty work. Ready for the next level?';
+      ovBtn.textContent = last ? 'Play Again' : 'Next Level';
+      ovBtn.onclick = () => startLevel(last ? 0 : level+1);
+      ovStars.style.display = '';
+      ovStats.style.display = '';
+      const stars = ovStars.querySelectorAll('.star');
+      stars.forEach((s,i)=> s.classList.toggle('on', i<starsCount));
+    } else {
+      ovTitle.textContent = 'Out of Moves';
+      ovBody.textContent = `You needed ${target.toLocaleString()} but reached ${reached.toLocaleString()}. Try again?`;
+      ovBtn.textContent = 'Retry Level';
+      ovBtn.onclick = () => startLevel(level);
+      ovStars.style.display = 'none';
+      ovStats.style.display = '';
+    }
+    ovScore.textContent = reached.toLocaleString();
+    ovTarget.textContent = target.toLocaleString();
+    ovMoves.textContent = Math.max(0, movesLeft);
+    overlay.style.display = '';
+  }
+
+  // intro screen
+  function showIntro(){
+    fillIntroCandies();
+    panel.classList.remove('fail');
+    ovTitle.textContent = 'Sweet Cascade';
+    ovBody.innerHTML = 'Swipe a candy to swap with a neighbor — only swaps that make a match of 3+ are legal.<br><br>Match 4 → striped (clears row/col). Match 5 → color bomb (clears all of one color). Reach the target before moves run out!';
+    ovBtn.textContent = 'Play';
+    ovStars.style.display = 'none';
+    ovStats.style.display = 'none';
+    ovBtn.onclick = () => startLevel(0);
+    overlay.style.display = '';
+  }
+
+  // ---------- Resize handling ----------
+  let resizeRAF = 0;
+  function onResize(){
+    cancelAnimationFrame(resizeRAF);
+    resizeRAF = requestAnimationFrame(()=>{
+      computeCellPx();
+      repositionAll();
+    });
+  }
+  window.addEventListener('resize', onResize);
+  window.addEventListener('orientationchange', onResize);
+
+  // ---------- Utilities ----------
+  function sleep(ms){ return new Promise(res=>setTimeout(res,ms)); }
+
+  // ---------- Boot ----------
+  // Wait for layout to settle so cellPx is correct
+  requestAnimationFrame(()=>{
+    computeCellPx();
+    showIntro();
+  });
+})();
+</script>
+<script>
+(function () {
+  if (window.__MCHATAI_FEEDBACK_WIDGET__) return;
+  window.__MCHATAI_FEEDBACK_WIDGET__ = true;
+
+  // Bail out entirely when embedded inside a native host that has its own
+  // feedback UI. iOS/Android WKWebView/WebView appends ?embed=ios or embed=android
+  // (or sets window.__MCHATAI_NATIVE_HOST__) before loading. In that case the
+  // native toolbar owns the feedback flow and we must not inject any pills,
+  // panels, or capture-phase event listeners (they would fight the native UI
+  // and block the soft-keyboard bridge).
+  try {
+    var params = new URLSearchParams(window.location.search);
+    var embed = params.get('embed');
+    if (embed === 'ios' || embed === 'android' || window.__MCHATAI_NATIVE_HOST__) {
+      return;
+    }
+  } catch (e) {
+    // If URL parsing somehow fails, fall through and render the widget.
+  }
+
+  // ── Config ───────────────────────────────────────────────────────────────
+  // Firebase web API key for the mchatai-2367e project. Public-safe — every web
+  // client has this in its bundle. Used for anonymous auth when submitting a
+  // screenshot (text-only feedback stays anonymous; screenshots require an
+  // anon token so we can rate-limit per-browser without real sign-in UX).
+  var FIREBASE_WEB_API_KEY = 'AIzaSyCp2lvjTqAmv60ktspDwYbPeIhi8nlKbwA';
+
+  // ── Console error capture ─────────────────────────────────────────────────
+  // Wrap console.error so the widget can attach the most recent failures to
+  // any submitted feedback. Bounded ring so a chatty page can't OOM the widget.
+  var __consoleErrors = [];
+  var origError = console.error;
+  console.error = function () {
+    try {
+      var msg = Array.prototype.map.call(arguments, function (a) {
+        if (a && a.stack) return String(a.stack).slice(0, 400);
+        if (typeof a === 'object') { try { return JSON.stringify(a).slice(0, 400); } catch (e) { return '[Object]'; } }
+        return String(a).slice(0, 400);
+      }).join(' ');
+      __consoleErrors.push(msg);
+      if (__consoleErrors.length > 8) __consoleErrors.shift();
+    } catch (e) { /* never break the host */ }
+    return origError.apply(console, arguments);
+  };
+  // Same for uncaught errors
+  window.addEventListener('error', function (e) {
+    try {
+      __consoleErrors.push('Uncaught: ' + (e.message || 'unknown') + ' @ ' + (e.filename || '?') + ':' + (e.lineno || '?'));
+      if (__consoleErrors.length > 8) __consoleErrors.shift();
+    } catch (_) {}
+  });
+
+  // ── Slug from URL ────────────────────────────────────────────────────────
+  // mchatai.com/u/{shortUid}/{slug}/ — pull both pieces for the API.
+  var pathParts = location.pathname.replace(/^\/u\//, '').split('/').filter(Boolean);
+  var shortUid = pathParts[0] || '';
+  var slug = pathParts[1] || '';
+
+  var API_BASE = 'https://web-api-1099075912386.us-central1.run.app';
+
+  // ── Styles ───────────────────────────────────────────────────────────────
+  var style = document.createElement('style');
+  style.id = 'mchatai-feedback-widget-style';
+  style.textContent = [
+    '#mchatai-fb-pill, #mchatai-fb-panel {',
+    '  position: fixed; right: 18px; bottom: 18px; z-index: 2147483646;',
+    '  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;',
+    '}',
+    '#mchatai-fb-pill {',
+    '  display: flex; align-items: center; gap: 6px;',
+    '  padding: 8px 14px; border-radius: 999px;',
+    '  background: rgba(40,40,46,0.92); color: #fff;',
+    '  font-size: 13px; font-weight: 500; cursor: pointer;',
+    '  border: 1px solid rgba(255,255,255,0.12);',
+    '  box-shadow: 0 2px 8px rgba(0,0,0,0.25);',
+    '  transition: opacity 0.4s ease, transform 0.15s ease;',
+    '  opacity: 1; user-select: none;',
+    '}',
+    '#mchatai-fb-pill.idle { opacity: 0.2; }',
+    '#mchatai-fb-pill:hover { opacity: 1 !important; transform: translateY(-1px); }',
+    /* Phase RT.2 follow-up: back-to-/play pill is anchored next to the
+       Feedback pill (bottom-right) because the top-left position made it
+       easy to miss on white-background games. Same z-index, same idle-fade,
+       sits just above the Feedback pill. */
+    '#mchatai-back-pill {',
+    '  position: fixed; right: 18px; bottom: 58px; z-index: 2147483646;',
+    '  display: flex; align-items: center; gap: 6px;',
+    '  padding: 6px 12px 6px 10px; border-radius: 999px;',
+    '  background: rgba(40,40,46,0.92); color: #fff;',
+    '  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;',
+    '  font-size: 12px; font-weight: 500; cursor: pointer;',
+    '  border: 1px solid rgba(255,255,255,0.12);',
+    '  box-shadow: 0 2px 8px rgba(0,0,0,0.25);',
+    '  transition: opacity 0.4s ease, transform 0.15s ease;',
+    '  opacity: 1; text-decoration: none; user-select: none;',
+    '}',
+    '#mchatai-back-pill.idle { opacity: 0.2; }',
+    '#mchatai-back-pill:hover { opacity: 1 !important; transform: translateX(-1px); }',
+    '#mchatai-back-pill svg { width: 14px; height: 14px; display: block; }',
+    '#mchatai-fb-panel {',
+    /* Phase RT.2 follow-up: panel now vertically-sized to fit its contents
+       and caps at 85vh so a screenshot preview + textarea + actions never
+       push Send below the viewport. Overflow moved from hidden → auto so
+       the panel itself scrolls if contents exceed the cap (belt-and-braces
+       for anything unexpected). */
+    '  display: none; width: 320px; max-height: 85vh;',
+    '  background: #1f2025; color: #f2f2f5; border-radius: 12px;',
+    '  border: 1px solid rgba(255,255,255,0.12);',
+    '  box-shadow: 0 8px 24px rgba(0,0,0,0.45);',
+    '  overflow-y: auto; overflow-x: hidden; flex-direction: column;',
+    '}',
+    '#mchatai-fb-panel.open { display: flex; }',
+    '#mchatai-fb-panel header {',
+    '  display: flex; justify-content: space-between; align-items: center;',
+    '  padding: 10px 12px; background: #25262c; font-size: 13px; font-weight: 600;',
+    '  border-bottom: 1px solid rgba(255,255,255,0.06);',
+    '}',
+    '#mchatai-fb-close {',
+    '  background: none; border: none; color: #b8b8be; font-size: 18px;',
+    '  cursor: pointer; line-height: 1; padding: 0 4px;',
+    '}',
+    /* Phase RT.2 follow-up: user identity chip. Shows current sign-in state
+       so users know (a) whether their submission is anonymous, (b) whose
+       Google account is attached when it isn't, (c) that screenshots unlock
+       after signing in. Lives in the header row between title and close. */
+    '#mchatai-fb-user { display: flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 500; color: #b8b8be; cursor: pointer; background: none; border: none; padding: 0; max-width: 140px; }',
+    '#mchatai-fb-user:hover { color: #f2f2f5; }',
+    '#mchatai-fb-user.signed-in { color: #8dd19a; }',
+    '#mchatai-fb-user img, #mchatai-fb-user .mchatai-fb-user-avatar-fallback { width: 16px; height: 16px; border-radius: 50%; flex-shrink: 0; }',
+    '#mchatai-fb-user .mchatai-fb-user-avatar-fallback { background: #3a3b40; color: #f2f2f5; font-size: 9px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; }',
+    '#mchatai-fb-user .mchatai-fb-user-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }',
+    '#mchatai-fb-types { display: flex; gap: 4px; padding: 8px 10px 6px; }',
+    '.mchatai-fb-type {',
+    '  flex: 1; padding: 6px 0; border-radius: 6px; cursor: pointer;',
+    '  background: transparent; color: #b8b8be; border: 1px solid rgba(255,255,255,0.10);',
+    '  font-size: 11px; text-align: center; transition: background 0.12s, color 0.12s;',
+    '}',
+    '.mchatai-fb-type.active { background: #4a8eff; color: #fff; border-color: #4a8eff; }',
+    /* Phase RT.1: 5-star rating control. Optional — users can submit text-only
+       feedback without setting a rating. Hover previews a provisional fill so
+       clicking feels obvious. Clicking the currently-selected star clears. */
+    '#mchatai-fb-rating { display: flex; align-items: center; gap: 4px; padding: 4px 10px 0; font-size: 11px; color: #b8b8be; }',
+    '#mchatai-fb-rating-label { margin-right: 6px; }',
+    '#mchatai-fb-rating .mchatai-fb-star {',
+    '  background: none; border: none; color: #55565c; cursor: pointer;',
+    '  font-size: 18px; padding: 0 2px; line-height: 1;',
+    '  transition: color 0.12s, transform 0.08s;',
+    '}',
+    '#mchatai-fb-rating .mchatai-fb-star:hover { transform: scale(1.12); }',
+    '#mchatai-fb-rating .mchatai-fb-star.filled { color: #ffc940; }',
+    '#mchatai-fb-rating .mchatai-fb-star.preview { color: #e6b73a; opacity: 0.75; }',
+    '#mchatai-fb-rating-clear {',
+    '  background: none; border: none; color: #707078; cursor: pointer;',
+    '  font-size: 11px; margin-left: auto; padding: 0 2px;',
+    '}',
+    '#mchatai-fb-rating-clear:hover { color: #d0d0d6; }',
+    '#mchatai-fb-rating-clear[hidden] { display: none !important; }',
+    '#mchatai-fb-text {',
+    '  margin: 4px 10px; padding: 8px; border-radius: 6px;',
+    '  background: #15161a; color: #f2f2f5; border: 1px solid rgba(255,255,255,0.10);',
+    '  font-size: 13px; font-family: inherit; resize: vertical;',
+    '  min-height: 90px; max-height: 200px; outline: none;',
+    '}',
+    '#mchatai-fb-text:focus { border-color: #4a8eff; }',
+    '#mchatai-fb-actions {',
+    /* Phase RT.2 follow-up: actions row sticks to the bottom of the panel
+       even if the content scrolls. Without this, a large screenshot preview
+       pushed the Send button below the viewport and users could not submit. */
+    '  display: flex; justify-content: space-between; align-items: center;',
+    '  padding: 8px 10px 10px; gap: 8px;',
+    '  position: sticky; bottom: 0; background: #1f2025;',
+    '  border-top: 1px solid rgba(255,255,255,0.06);',
+    '  flex-shrink: 0;',
+    '}',
+    '#mchatai-fb-meta { font-size: 10px; color: #707078; }',
+    '#mchatai-fb-send {',
+    '  padding: 6px 14px; border-radius: 6px; border: none; background: #4a8eff;',
+    '  color: #fff; font-size: 12px; font-weight: 600; cursor: pointer;',
+    '  transition: opacity 0.12s;',
+    '}',
+    '#mchatai-fb-send:disabled { opacity: 0.4; cursor: not-allowed; }',
+    '#mchatai-fb-status { font-size: 11px; padding: 0 12px 8px; min-height: 14px; color: #4a8eff; }',
+    /* Screenshot attachment row: only visible if the product opted in via feedbackAutomation.acceptScreenshots = true. */
+    '#mchatai-fb-shot-btn {',
+    '  width: 100%; padding: 7px 10px; margin: 6px 0 2px;',
+    '  background: #2e2f35; color: #d0d0d6; border: 1px dashed rgba(255,255,255,0.16);',
+    '  border-radius: 6px; cursor: pointer; font-size: 12px;',
+    '  transition: background 0.12s;',
+    '}',
+    '#mchatai-fb-shot-btn:hover { background: #35363d; }',
+    '#mchatai-fb-shot-btn:disabled { opacity: 0.5; cursor: default; }',
+    '#mchatai-fb-shot-preview-wrap {',
+    /* Phase RT.2 follow-up: explicit height on the wrap so the img inside
+       inherits the constrained box. Without this the img renders at its
+       natural aspect ratio and max-height alone doesn't clip (depends on
+       the browser's interpretation of intrinsic sizing). 120px matches the
+       earlier intent — small preview so the Send button stays visible. */
+    '  position: relative; margin: 6px 0 2px;',
+    '  height: 120px; max-height: 120px; overflow: hidden;',
+    '  border-radius: 6px;',
+    '  border: 1px solid rgba(255,255,255,0.10);',
+    '  background: #0d0e12;',
+    '  flex-shrink: 0;',
+    '}',
+    '#mchatai-fb-shot-preview { display:block; width: 100%; height: 100%; object-fit: contain; object-position: center; }',
+    '#mchatai-fb-shot-remove {',
+    '  position: absolute; top: 4px; right: 4px;',
+    '  width: 22px; height: 22px; border-radius: 50%;',
+    '  background: rgba(0,0,0,0.7); color: #fff; border: none;',
+    '  cursor: pointer; font-size: 14px; line-height: 1;',
+    '}',
+  ].join('\n');
+  document.head.appendChild(style);
+
+  // ── DOM ──────────────────────────────────────────────────────────────────
+  var pill = document.createElement('div');
+  pill.id = 'mchatai-fb-pill';
+  pill.innerHTML = '<span aria-hidden="true">💬</span><span>Feedback</span>';
+  pill.title = 'Send feedback about this game';
+  pill.setAttribute('role', 'button');
+  pill.setAttribute('aria-label', 'Send feedback');
+
+  var panel = document.createElement('div');
+  panel.id = 'mchatai-fb-panel';
+  panel.innerHTML = [
+    '<header>',
+    '  <span>Send feedback</span>',
+    '  <div style="display:flex;align-items:center;gap:10px;">',
+    '    <button id="mchatai-fb-user" type="button" title="Sign in to enable screenshots"><span aria-hidden="true">👤</span><span class="mchatai-fb-user-name">anonymous</span></button>',
+    '    <button id="mchatai-fb-close" aria-label="Close feedback panel">×</button>',
+    '  </div>',
+    '</header>',
+    '<div id="mchatai-fb-types">',
+    '  <button class="mchatai-fb-type active" data-type="bug">🐞 Bug</button>',
+    '  <button class="mchatai-fb-type" data-type="feature">✨ Idea</button>',
+    '  <button class="mchatai-fb-type" data-type="other">💬 Other</button>',
+    '</div>',
+    '<div id="mchatai-fb-rating" role="radiogroup" aria-label="Rate this product">',
+    '  <span id="mchatai-fb-rating-label">Rating:</span>',
+    '  <button type="button" class="mchatai-fb-star" data-value="1" role="radio" aria-label="1 star" aria-checked="false">☆</button>',
+    '  <button type="button" class="mchatai-fb-star" data-value="2" role="radio" aria-label="2 stars" aria-checked="false">☆</button>',
+    '  <button type="button" class="mchatai-fb-star" data-value="3" role="radio" aria-label="3 stars" aria-checked="false">☆</button>',
+    '  <button type="button" class="mchatai-fb-star" data-value="4" role="radio" aria-label="4 stars" aria-checked="false">☆</button>',
+    '  <button type="button" class="mchatai-fb-star" data-value="5" role="radio" aria-label="5 stars" aria-checked="false">☆</button>',
+    '  <button type="button" id="mchatai-fb-rating-clear" hidden>clear</button>',
+    '</div>',
+    '<textarea id="mchatai-fb-text" placeholder="What happened? What did you expect?" maxlength="2000"></textarea>',
+    '<div id="mchatai-fb-screenshot-row" style="display:none;padding:0 10px;">',
+    '  <button id="mchatai-fb-shot-btn" type="button">📸 Attach screenshot</button>',
+    '  <div id="mchatai-fb-shot-preview-wrap" style="display:none;"><img id="mchatai-fb-shot-preview" alt="screenshot preview" /><button id="mchatai-fb-shot-remove" type="button" aria-label="Remove screenshot">×</button></div>',
+    '</div>',
+    '<div id="mchatai-fb-status" aria-live="polite"></div>',
+    '<div id="mchatai-fb-actions">',
+    '  <span id="mchatai-fb-meta"></span>',
+    '  <button id="mchatai-fb-send" disabled>Send</button>',
+    '</div>',
+  ].join('');
+
+  // Back-to-hub pill. The hub houses mini-apps, games, agents, skills, pipelines —
+  // "Hub" is the right word. Icon is a house, not an arrow, since it's a home
+  // button, not a linear back button. Rendered as an <a> so right-click → new tab works.
+  var backPill = document.createElement('a');
+  backPill.id = 'mchatai-back-pill';
+  backPill.href = 'https://mchatai.com/hub';
+  backPill.title = 'Back to Hub';
+  backPill.setAttribute('aria-label', 'Back to Hub');
+  backPill.innerHTML = [
+    '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">',
+    '  <path d="M2 7l6-5 6 5v7a1 1 0 0 1-1 1h-3v-5H6v5H3a1 1 0 0 1-1-1V7z"/>',
+    '</svg>',
+    '<span>Hub</span>'
+  ].join('');
+
+  document.body.appendChild(backPill);
+  document.body.appendChild(pill);
+  document.body.appendChild(panel);
+
+  // ── Idle fade ────────────────────────────────────────────────────────────
+  var idleTimer = null;
+  function bumpActivity() {
+    pill.classList.remove('idle');
+    backPill.classList.remove('idle');
+    if (idleTimer) clearTimeout(idleTimer);
+    idleTimer = setTimeout(function () {
+      pill.classList.add('idle');
+      backPill.classList.add('idle');
+    }, 3000);
+  }
+  ['mousemove', 'keydown', 'touchstart', 'scroll'].forEach(function (ev) {
+    window.addEventListener(ev, bumpActivity, { passive: true });
+  });
+  bumpActivity();
+
+  // ── Open / close ─────────────────────────────────────────────────────────
+  async function openPanel() {
+    panel.classList.add('open');
+    pill.style.display = 'none';
+    var meta = document.getElementById('mchatai-fb-meta');
+    meta.textContent = slug ? slug : 'feedback';
+    setTimeout(function () { document.getElementById('mchatai-fb-text').focus(); }, 50);
+    // Phase RT.2 follow-up: refresh the user chip in case the token expired
+    // or the user signed in a different tab between panel opens.
+    updateUserChip();
+    // Silent refresh: if no cached token but Firebase still has a session on
+    // mchatai.com, this pulls a fresh token via a hidden iframe so the user
+    // does not have to click Sign in every single time. Idempotent + bounded
+    // by a 3s timeout so there is no visible delay if they have never signed
+    // in.
+    if (!cachedIdToken) {
+      silentlyRefreshToken().then(function (tok) {
+        if (tok) updateUserChip();
+      });
+    }
+
+    // Async probe for the product's screenshot opt-in flag. Runs concurrently
+    // with the user reading/typing — if it comes back true, the screenshot
+    // row fades into view.
+    console.log('[feedback-widget] probing screenshot opt-in for slug:', slug);
+    checkScreenshotOptIn().then(function (allowed) {
+      console.log('[feedback-widget] screenshotAllowed =', allowed);
+      screenshotAllowed = allowed;
+      updateScreenshotRow();
+      // Defensive: ALSO directly reveal the row in case updateScreenshotRow
+      // runs before some dependency is wired up. Belt-and-suspenders.
+      if (allowed) {
+        var row = document.getElementById('mchatai-fb-screenshot-row');
+        if (row) {
+          row.style.display = 'block';
+          console.log('[feedback-widget] screenshot row revealed');
+        } else {
+          console.warn('[feedback-widget] screenshot row element not found!');
+        }
+      }
+    }).catch(function (err) {
+      console.warn('[feedback-widget] probe failed:', err);
+    });
+  }
+  function closePanel() {
+    panel.classList.remove('open');
+    pill.style.display = 'flex';
+    bumpActivity();
+  }
+  pill.addEventListener('click', openPanel);
+  panel.querySelector('#mchatai-fb-close').addEventListener('click', closePanel);
+
+  // ── Type picker ──────────────────────────────────────────────────────────
+  var selectedType = 'bug';
+  panel.querySelectorAll('.mchatai-fb-type').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      panel.querySelectorAll('.mchatai-fb-type').forEach(function (b) { b.classList.remove('active'); });
+      btn.classList.add('active');
+      selectedType = btn.getAttribute('data-type');
+    });
+  });
+
+  // ── Rating picker (Phase RT.1) ───────────────────────────────────────────
+  // Optional 1-5 stars. Rating is its own signal — users can send text
+  // without a rating, or send a rating without text (any rating auto-enables
+  // the Send button even if the textarea is empty, so a "5 stars, no words"
+  // submission is a valid vote).
+  var selectedRating = null;     // null | 1..5
+  var ratingStars = panel.querySelectorAll('.mchatai-fb-star');
+  var ratingClear = panel.querySelector('#mchatai-fb-rating-clear');
+  function paintStars(previewValue) {
+    var effective = previewValue != null ? previewValue : (selectedRating || 0);
+    ratingStars.forEach(function (s) {
+      var v = parseInt(s.getAttribute('data-value'), 10);
+      s.classList.remove('filled', 'preview');
+      s.textContent = v <= effective ? '★' : '☆';
+      if (previewValue != null && v <= previewValue && v > (selectedRating || 0)) {
+        s.classList.add('preview');
+      } else if (v <= (selectedRating || 0)) {
+        s.classList.add('filled');
+      }
+      s.setAttribute('aria-checked', String(v === selectedRating));
+    });
+    ratingClear.hidden = selectedRating == null;
+  }
+  ratingStars.forEach(function (s) {
+    var v = parseInt(s.getAttribute('data-value'), 10);
+    s.addEventListener('mouseenter', function () { paintStars(v); });
+    s.addEventListener('mouseleave', function () { paintStars(null); });
+    s.addEventListener('click', function () {
+      // Click on currently-selected star → clear. Click elsewhere → set.
+      selectedRating = (selectedRating === v) ? null : v;
+      paintStars(null);
+      updateSendState();
+    });
+  });
+  ratingClear.addEventListener('click', function () {
+    selectedRating = null;
+    paintStars(null);
+    updateSendState();
+  });
+
+  // ── Send button gating + submission ──────────────────────────────────────
+  var textArea = panel.querySelector('#mchatai-fb-text');
+  var sendBtn = panel.querySelector('#mchatai-fb-send');
+  var statusEl = panel.querySelector('#mchatai-fb-status');
+  var shotRow = panel.querySelector('#mchatai-fb-screenshot-row');
+  var shotBtn = panel.querySelector('#mchatai-fb-shot-btn');
+  var shotPreviewWrap = panel.querySelector('#mchatai-fb-shot-preview-wrap');
+  var shotPreview = panel.querySelector('#mchatai-fb-shot-preview');
+  var shotRemove = panel.querySelector('#mchatai-fb-shot-remove');
+
+  // Phase RT.1: either a rating OR a text comment (≥4 chars) is enough to send.
+  // Lets users drop-in a 5-star vote without writing a novel.
+  function updateSendState() {
+    var hasText = textArea.value.trim().length >= 4;
+    var hasRating = selectedRating != null;
+    sendBtn.disabled = !(hasText || hasRating);
+  }
+  textArea.addEventListener('input', updateSendState);
+
+  // Phase RT.2 follow-up: isolate typing inside the feedback panel from the
+  // underlying game. Many games install keyboard listeners on window and
+  // document — when the user types a space into the textarea, the event
+  // bubbles up and the game also receives it (e.g. battleship-vs-ai toggles
+  // ship orientation on any spacebar press). Capture-phase listeners on
+  // window fire BEFORE the game's bubble-phase listeners — we stop
+  // propagation + stop immediate propagation on any keyboard event whose
+  // target is inside our panel. The panel input itself still gets the event
+  // because stopPropagation at capture phase does not prevent the target
+  // from receiving it, only the ancestors.
+  function isInsideFeedbackPanel(el) {
+    while (el && el !== document) {
+      if (el === panel || el === pill || el === backPill) return true;
+      el = el.parentNode;
+    }
+    return false;
+  }
+  // IMPORTANT: only keyboard events get intercepted. Previously I also blocked
+  // pointer/click/mousedown at capture phase, which broke every button inside
+  // the panel (sign-in, send, star rating, attach screenshot) because
+  // stopImmediatePropagation at capture prevents ALL listeners — including
+  // the panel's own click handlers registered via addEventListener('click').
+  // Keyboard-only is the right scope: games listen for arrow keys / space /
+  // letters on window, but they listen for pointer events on their canvas
+  // element — not on window — so click events never bubbled to them anyway.
+  ['keydown', 'keyup', 'keypress'].forEach(function (evName) {
+    window.addEventListener(evName, function (e) {
+      if (!panel.classList.contains('open')) return;
+      if (!isInsideFeedbackPanel(e.target)) return;
+      // stopPropagation (not stopImmediatePropagation) — the panel's own
+      // listeners already ran on the target; we only need to prevent the
+      // event from reaching ancestor window/document listeners the game
+      // installed. Using stopImmediatePropagation here would kill the
+      // textarea's native input handling in some edge cases.
+      e.stopPropagation();
+    }, true); // capture phase fires before the game's bubble-phase listener
+  });
+
+  // ── Screenshot attachment (opt-in per product) ──────────────────────────
+  // The row itself is hidden by default. It only reveals after we confirm the
+  // product has opted in (feedbackAutomation.acceptScreenshots=true on the
+  // Firestore endProduct doc). We query once per panel open via an endpoint
+  // that returns just the opt-in flag — no auth needed, cheap boolean.
+  var capturedScreenshot = null;   // { dataURL: "data:image/jpeg;base64,..." , width, height, bytes }
+  var screenshotAllowed = false;
+
+  async function checkScreenshotOptIn() {
+    if (!slug) return false;
+    try {
+      var resp = await fetch(API_BASE + '/v1/endproducts/feedback-config?slug=' + encodeURIComponent(slug), {
+        method: 'GET',
+      });
+      if (!resp.ok) return false;
+      var body = await resp.json();
+      return !!body.acceptScreenshots;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  async function captureScreenshot() {
+    // Gate: require real sign-in before capturing. Attributable + rate-limitable.
+    shotBtn.disabled = true;
+    shotBtn.textContent = '🔑 Signing in…';
+    statusEl.textContent = '';
+    try {
+      try {
+        await ensureSignedIn();
+      } catch (authErr) {
+        throw new Error('Sign-in required for screenshots: ' + authErr.message);
+      }
+      shotBtn.textContent = '📸 Select the tab to share…';
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
+        throw new Error('Screen capture not supported on this browser');
+      }
+      var stream = await navigator.mediaDevices.getDisplayMedia({
+        video: { displaySurface: 'browser' },
+        audio: false,
+        preferCurrentTab: true,
+      });
+      var track = stream.getVideoTracks()[0];
+
+      // Grab one frame via ImageCapture if available, else via a video element.
+      var bitmap;
+      if (window.ImageCapture) {
+        var capture = new ImageCapture(track);
+        bitmap = await capture.grabFrame();
+      } else {
+        var video = document.createElement('video');
+        video.srcObject = stream;
+        video.muted = true;
+        await video.play();
+        bitmap = {
+          width: video.videoWidth,
+          height: video.videoHeight,
+          _video: video,
+        };
+      }
+
+      // Resize to max 800×600 (fit, keep aspect) and JPEG 0.7 to stay under
+      // the 200KB server cap. Typical output is 30-80KB.
+      var MAX_W = 800, MAX_H = 600;
+      var scale = Math.min(MAX_W / bitmap.width, MAX_H / bitmap.height, 1);
+      var outW = Math.round(bitmap.width * scale);
+      var outH = Math.round(bitmap.height * scale);
+      var canvas = document.createElement('canvas');
+      canvas.width = outW;
+      canvas.height = outH;
+      var ctx = canvas.getContext('2d');
+      if (bitmap._video) {
+        ctx.drawImage(bitmap._video, 0, 0, outW, outH);
+      } else {
+        ctx.drawImage(bitmap, 0, 0, outW, outH);
+      }
+      track.stop();
+
+      var dataURL = canvas.toDataURL('image/jpeg', 0.7);
+      // base64 portion length * 0.75 ≈ byte count
+      var bytes = Math.round((dataURL.length - 'data:image/jpeg;base64,'.length) * 0.75);
+      if (bytes > 200 * 1024) {
+        throw new Error('Screenshot too large after compression (' + Math.round(bytes/1024) + 'KB, max 200KB)');
+      }
+
+      capturedScreenshot = { dataURL: dataURL, width: outW, height: outH, bytes: bytes };
+      shotPreview.src = dataURL;
+      shotPreviewWrap.style.display = 'block';
+      shotBtn.style.display = 'none';
+      shotBtn.disabled = false;
+      shotBtn.textContent = '📸 Attach screenshot';
+    } catch (err) {
+      shotBtn.disabled = false;
+      shotBtn.textContent = '📸 Attach screenshot';
+      statusEl.style.color = '#e26766';
+      statusEl.textContent = err.message || 'Screenshot capture failed';
+    }
+  }
+
+  function removeScreenshot() {
+    capturedScreenshot = null;
+    shotPreview.src = '';
+    shotPreviewWrap.style.display = 'none';
+    shotBtn.style.display = 'block';
+  }
+
+  shotBtn.addEventListener('click', captureScreenshot);
+  shotRemove.addEventListener('click', removeScreenshot);
+
+  // Phase RT.2 follow-up: user chip click — sign-in when signed-out,
+  // sign-out when signed-in.
+  var userChip = panel.querySelector('#mchatai-fb-user');
+  if (userChip) {
+    userChip.addEventListener('click', async function () {
+      if (cachedIdToken) {
+        if (confirm('Sign out? Future submissions will be anonymous until you sign back in.')) {
+          clearToken();
+        }
+        return;
+      }
+      try {
+        await ensureSignedIn();
+      } catch (e) {
+        // Don't block the panel — user might just have dismissed the popup.
+        console.warn('[feedback] sign-in skipped:', e.message);
+      }
+    });
+  }
+  // Render initial state.
+  updateUserChip();
+
+  // ── Real auth for screenshot uploads ───────────────────────────────────
+  // Text-only feedback posts anonymously to /v1/feedback. Screenshots require
+  // real Google sign-in (not anonymous) so:
+  //   1. Abuse is attributable to a real account we can disable
+  //   2. Bot operators can't programmatically create sign-in accounts
+  //   3. The server rate-limits per UID with a hard ceiling that survives
+  //      tab-closes / incognito resets (anon tokens would rotate every session)
+  //
+  // Sign-in flow: if user clicks "Attach screenshot" without a cached token, we
+  // open an Identity Toolkit OAuth popup for Google. Token cached in session
+  // storage so repeated submissions don't re-prompt. Cleared on Remove or when
+  // the server reports the UID was abuse-disabled (403 reason=disabled).
+  // Phase RT.2 follow-up: token persistence moved from sessionStorage to
+  // localStorage. sessionStorage dies on tab close AND is isolated per tab,
+  // so users had to re-sign-in constantly when hopping between products.
+  // localStorage is shared across tabs and persists across browser restarts,
+  // matching the "you are signed in" mental model. Firebase ID tokens expire
+  // after ~1h; we detect expiry in updateUserChip (decoded .exp claim) and
+  // auto-clear the token when it is stale, which triggers a silent re-check
+  // via the /feedback-signin iframe (see silentlyRefreshToken below) so
+  // long-lived users do not keep seeing sign-in prompts as tokens age.
+  var TOKEN_KEY = 'mchatai_fb_idtoken';
+  // Migration: if an older session put a token in sessionStorage, promote it
+  // to localStorage so the user does not lose their sign-in on this refresh.
+  (function migrateOldToken() {
+    try {
+      if (!localStorage.getItem(TOKEN_KEY) && sessionStorage.getItem(TOKEN_KEY)) {
+        localStorage.setItem(TOKEN_KEY, sessionStorage.getItem(TOKEN_KEY));
+      }
+      sessionStorage.removeItem(TOKEN_KEY);
+    } catch (e) {}
+  })();
+  var cachedIdToken = (function () {
+    try { return localStorage.getItem(TOKEN_KEY) || null; } catch (e) { return null; }
+  })();
+
+  function storeToken(tok) {
+    cachedIdToken = tok;
+    try { localStorage.setItem(TOKEN_KEY, tok); } catch (e) {}
+    updateUserChip();
+  }
+
+  function clearToken() {
+    cachedIdToken = null;
+    try { localStorage.removeItem(TOKEN_KEY); } catch (e) {}
+    updateUserChip();
+  }
+
+  // Silent-refresh: when the cached token is missing or expired, try to pull
+  // a fresh one from /feedback-signin.html via a hidden iframe. The signin
+  // page runs Firebase Web SDK which persists auth in IndexedDB — if the
+  // user signed in on any mchatai.com page at any point, Firebase still has
+  // the session and onAuthStateChanged fires with the user, which posts a
+  // fresh ID token back to the widget via postMessage. No visible popup,
+  // no user action required — the sign-in just "carries over."
+  function silentlyRefreshToken() {
+    return new Promise(function (resolve) {
+      var iframe = document.createElement('iframe');
+      iframe.style.cssText = 'position:fixed;left:-9999px;top:-9999px;width:1px;height:1px;border:0;';
+      iframe.src = 'https://mchatai.com/feedback-signin.html?silent=1';
+      var done = false;
+      var finish = function (token) {
+        if (done) return;
+        done = true;
+        window.removeEventListener('message', handler);
+        try { document.body.removeChild(iframe); } catch (e) {}
+        if (token) storeToken(token);
+        resolve(token || null);
+      };
+      var handler = function (ev) {
+        if (ev.origin !== 'https://mchatai.com') return;
+        if (!ev.data || ev.data.type !== 'mchatai-fb-signin') return;
+        finish(ev.data.idToken || null);
+      };
+      window.addEventListener('message', handler);
+      document.body.appendChild(iframe);
+      // 3s timeout — if Firebase has no cached session the iframe just sits
+      // idle at the button prompt. Give up silently.
+      setTimeout(function () { finish(null); }, 3000);
+    });
+  }
+
+  /* Phase RT.2 follow-up: decode a Firebase ID token's payload (the middle
+     JWT segment — base64url-encoded JSON). We only need name/email/picture,
+     so we do NOT verify the signature here (server revalidates on every
+     request). Returns null on any decode failure. */
+  function decodeIdToken(token) {
+    if (!token) return null;
+    try {
+      var parts = token.split('.');
+      if (parts.length < 2) return null;
+      var b64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+      while (b64.length % 4) b64 += '=';
+      return JSON.parse(atob(b64));
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function updateUserChip() {
+    var chip = document.getElementById('mchatai-fb-user');
+    if (!chip) return;
+    var claims = decodeIdToken(cachedIdToken);
+    if (claims && claims.exp && claims.exp * 1000 < Date.now()) {
+      // Token expired — treat as signed-out so the chip prompts sign-in again.
+      claims = null;
+      try { sessionStorage.removeItem('mchatai_fb_idtoken'); } catch (e) {}
+      cachedIdToken = null;
+    }
+    // Build the chip contents via DOM APIs rather than innerHTML with nested
+    // quotes — the IIFE string gets concatenated into an HTML response, and
+    // any backslash-escaped quote here breaks the whole widget at parse time
+    // in the browser. Lost an entire deploy to this — don't regress.
+    while (chip.firstChild) chip.removeChild(chip.firstChild);
+    if (claims) {
+      chip.classList.add('signed-in');
+      chip.title = 'Signed in as ' + (claims.email || claims.name || 'you') + ' — click to sign out';
+      var displayName = claims.name || (claims.email ? claims.email.split('@')[0] : 'you');
+      var shortName = displayName.length > 14 ? displayName.slice(0, 13) + '…' : displayName;
+      var initial = displayName.charAt(0).toUpperCase();
+      // Try avatar image first; fall back to initial-letter span on error.
+      if (claims.picture) {
+        var img = document.createElement('img');
+        img.src = claims.picture;
+        img.alt = '';
+        img.referrerPolicy = 'no-referrer';
+        img.addEventListener('error', function () {
+          var fallback = document.createElement('span');
+          fallback.className = 'mchatai-fb-user-avatar-fallback';
+          fallback.textContent = initial;
+          if (img.parentNode) img.parentNode.replaceChild(fallback, img);
+        });
+        chip.appendChild(img);
+      } else {
+        var fallbackSpan = document.createElement('span');
+        fallbackSpan.className = 'mchatai-fb-user-avatar-fallback';
+        fallbackSpan.textContent = initial;
+        chip.appendChild(fallbackSpan);
+      }
+      var nameSpan = document.createElement('span');
+      nameSpan.className = 'mchatai-fb-user-name';
+      nameSpan.textContent = shortName;
+      chip.appendChild(nameSpan);
+    } else {
+      chip.classList.remove('signed-in');
+      chip.title = 'Sign in to enable screenshots';
+      var icon = document.createElement('span');
+      icon.setAttribute('aria-hidden', 'true');
+      icon.textContent = '👤';
+      var label = document.createElement('span');
+      label.className = 'mchatai-fb-user-name';
+      label.textContent = 'Sign in';
+      chip.appendChild(icon);
+      chip.appendChild(label);
+    }
+    // Also refresh the screenshot row so the "Sign in first" CTA flips to
+    // "Attach screenshot" once signed-in (or vice versa).
+    updateScreenshotRow();
+  }
+
+  /* Phase RT.2 follow-up: keep the screenshot button's label + disabled state
+     in sync with sign-in state so users understand why they can't click it. */
+  function updateScreenshotRow() {
+    var row = document.getElementById('mchatai-fb-screenshot-row');
+    var btn = document.getElementById('mchatai-fb-shot-btn');
+    if (!row || !btn) return;
+    if (!screenshotAllowed) {
+      row.style.display = 'none';
+      return;
+    }
+    row.style.display = 'block';
+    if (cachedIdToken) {
+      btn.textContent = '📸 Attach screenshot';
+      btn.disabled = false;
+    } else {
+      btn.textContent = '🔒 Sign in to attach screenshot';
+      btn.disabled = false;  // clickable — click triggers sign-in popup
+    }
+  }
+
+  async function ensureSignedIn() {
+    if (cachedIdToken) return cachedIdToken;
+    // Use Firebase's identitytoolkit OAuth popup flow. We use the
+    // createAuthUri + verifyAssertion pattern via a popup. Keep it minimal —
+    // the user gets a Google chooser and a standard OAuth consent screen.
+    return new Promise(function (resolve, reject) {
+      var popupW = 500, popupH = 600;
+      var left = (screen.width - popupW) / 2;
+      var top = (screen.height - popupH) / 2;
+      // Firebase Hosting has a stock sign-in handler at __/auth/handler. We'll
+      // send the user to a small sign-in page we host at /feedback-signin that
+      // runs Firebase JS SDK, does signInWithPopup(Google), and posts the
+      // idToken back to the opener via postMessage.
+      var popup = window.open(
+        'https://mchatai.com/feedback-signin.html?return=' + encodeURIComponent(location.href),
+        'mchatai-fb-signin',
+        'width=' + popupW + ',height=' + popupH + ',left=' + left + ',top=' + top
+      );
+      if (!popup) {
+        reject(new Error('Sign-in popup blocked. Allow popups and try again.'));
+        return;
+      }
+      var handler = function (ev) {
+        if (ev.origin !== 'https://mchatai.com') return;
+        if (!ev.data || ev.data.type !== 'mchatai-fb-signin') return;
+        window.removeEventListener('message', handler);
+        try { popup.close(); } catch (e) {}
+        if (ev.data.idToken) {
+          storeToken(ev.data.idToken);
+          resolve(ev.data.idToken);
+        } else {
+          reject(new Error(ev.data.error || 'Sign-in canceled'));
+        }
+      };
+      window.addEventListener('message', handler);
+      // Watchdog — if the popup closes without posting, reject after 5 min.
+      var watch = setInterval(function () {
+        if (popup.closed) {
+          clearInterval(watch);
+          window.removeEventListener('message', handler);
+          reject(new Error('Sign-in window closed'));
+        }
+      }, 500);
+    });
+  }
+
+  sendBtn.addEventListener('click', async function () {
+    var text = textArea.value.trim();
+    // Phase RT.1: allow rating-only submissions. Require at least one signal.
+    if (text.length < 4 && selectedRating == null) return;
+
+    sendBtn.disabled = true;
+    sendBtn.textContent = 'Sending…';
+    statusEl.textContent = '';
+
+    // Phase RT.1: resolve a rating context version so iterations don't pool
+    // their ratings across builds. Prefer a meta tag the product set at publish
+    // time; fall back to the HTML's Last-Modified (set by serveUserProject) or
+    // today's date. The server also records server-side createdAt, so this is
+    // only a hint for cross-build grouping.
+    var ratingContextVersion = null;
+    var versionMeta = document.querySelector('meta[name="mchatai-version"]');
+    if (versionMeta && versionMeta.content) {
+      ratingContextVersion = versionMeta.content;
+    } else {
+      ratingContextVersion = new Date().toISOString().slice(0, 10); // YYYY-MM-DD bucket
+    }
+
+    // When only a rating (no text), synthesize a short description so the
+    // ticket still has searchable content in the review queue.
+    var effectiveText = text;
+    if (effectiveText.length < 4 && selectedRating != null) {
+      effectiveText = selectedRating + '-star rating (no comment)';
+    }
+
+    var payload = {
+      title: effectiveText.split('\n')[0].slice(0, 80),
+      description: effectiveText,
+      type: selectedType,
+      severity: selectedType === 'bug' ? 'medium' : 'low',
+      rating: selectedRating,
+      ratingContextVersion: ratingContextVersion,
+      endProductSlug: slug,
+      previewURL: location.href,
+      source: 'web.user-project-widget',
+      metadata: {
+        consoleErrors: __consoleErrors.slice(),
+        userAgent: navigator.userAgent,
+        viewport: window.innerWidth + 'x' + window.innerHeight,
+        shortUid: shortUid,
+      },
+    };
+
+    // Screenshot attached → attach base64 + dimensions. Server will decode,
+    // verify size, upload to GCS, and embed the URL on the ticket.
+    if (capturedScreenshot) {
+      payload.screenshot = {
+        dataURL: capturedScreenshot.dataURL,
+        width: capturedScreenshot.width,
+        height: capturedScreenshot.height,
+      };
+    }
+
+    try {
+      var headers = { 'Content-Type': 'application/json' };
+      // Include auth only if we have a token; screenshot submissions require it
+      // but we let the server reject rather than blocking client-side — cheaper
+      // to handle edge cases (stale token, abuse-disabled account) in one place.
+      if (cachedIdToken) headers['Authorization'] = 'Bearer ' + cachedIdToken;
+
+      var resp = await fetch(API_BASE + '/v1/feedback', {
+        method: 'POST',
+        headers: headers,
+        body: JSON.stringify(payload),
+      });
+      var body = await resp.json().catch(function () { return {}; });
+
+      // Server telling us the user is abuse-disabled → clear token so the next
+      // attempt forces a fresh sign-in. The abuse-disable lives on the UID in
+      // Firestore so a re-sign-in with the same account will re-reject; only
+      // recovery is to sign in with a different account or contact support.
+      if (resp.status === 403 && body && body.reason === 'user-disabled') {
+        clearToken();
+        removeScreenshot();
+      }
+
+      if (resp.ok && body.ok) {
+        statusEl.style.color = '#5db77a';
+        statusEl.textContent = selectedRating != null
+          ? 'Thanks! Your ' + selectedRating + '-star rating was logged.'
+          : 'Thanks! Your feedback was logged.';
+        textArea.value = '';
+        selectedRating = null;
+        paintStars(null);
+        removeScreenshot();
+        setTimeout(closePanel, 1400);
+      } else {
+        statusEl.style.color = '#e26766';
+        statusEl.textContent = body.error || ('Error ' + resp.status);
+      }
+    } catch (err) {
+      statusEl.style.color = '#e26766';
+      statusEl.textContent = 'Network error — try again.';
+    } finally {
+      sendBtn.textContent = 'Send';
+      updateSendState();
+    }
+  });
+})();
+</script></body>
+</html>
