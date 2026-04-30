@@ -46,16 +46,35 @@ When `HAIL_MARY_MODE: true`, the user has opted into one more attempt after the 
 
 ## Output
 
-Strict JSON, no prose, no fence:
+Strict JSON, no prose, no fence. **Sub-step #1 must reference the actual FAILED_STEP — DO NOT emit boilerplate like "create-index-html" / "Hello World" / "centered H1". The wizard will execute sub-step #1's instructions verbatim against the original goal; if your sub-step #1 says "Hello World", the model will literally produce "Hello World" and the user gets nothing useful.**
+
+### Concrete example — for a FAILED_STEP "Generate miniApp artifact for: kitchen timer with multiple concurrent timers" with FAILURE_CLASS "parse-error":
 
 ```json
 {
   "subSteps": [
     {
-      "title": "Short imperative description",
-      "rationale": "Why this sub-step exists, in one sentence",
-      "successCriteria": "Mechanical check the stepVerifier can apply (e.g. 'output contains a <canvas> tag', 'function game_loop() exists and is called once'). Be concrete.",
-      "expectedOutputFormat": "html-fenced | js-only | json-fenced | plain-text — match the wizard's parser expectations"
+      "title": "Re-emit the complete kitchen-timer miniApp inside a ```miniapp fenced JSON block",
+      "rationale": "Previous attempt failed parser — output didn't include the ```miniapp fence the wizard's parser looks for. Quote it back: parser couldn't extract miniapp block.",
+      "successCriteria": "Output contains ```miniapp fenced block; JSON inside parses with required keys: id, name, manifest, html. html field contains <input> for timer name, multiple <button> for start/pause/reset, setInterval-driven countdown.",
+      "expectedOutputFormat": "miniapp-fenced"
+    }
+  ],
+  "approachChange": "Restate fence requirement explicitly so the generator emits ```miniapp at the start of its response, not prose.",
+  "expectedAttemptsRemaining": 2
+}
+```
+
+### Schema:
+
+```json
+{
+  "subSteps": [
+    {
+      "title": "Short imperative description that NAMES the actual failed step (e.g. 'Re-emit the kitchen-timer miniApp', not 'create-index-html')",
+      "rationale": "Why this sub-step exists, in one sentence. Reference specific failure detail from FAILURE_DETAIL when given.",
+      "successCriteria": "Mechanical check the stepVerifier can apply (e.g. 'output contains a <canvas> tag', 'function game_loop() exists and is called once'). Be concrete and reference the actual artifact's domain.",
+      "expectedOutputFormat": "miniapp-fenced | macosapp-fenced | fullstackapp-fenced | unitygame-fenced | widget-fenced — match the wizard's parser expectations"
     }
   ],
   "approachChange": "Optional: one-sentence summary of HOW this differs from the previous attempt (use 'none' if the only change is finer slicing)",
