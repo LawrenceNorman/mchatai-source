@@ -1,0 +1,48 @@
+{
+  "packID": "sound-library",
+  "version": 1,
+  "displayName": "Sound Effects Library",
+  "description": "Web Audio API synthesis recipes for common sounds — chimes, beeps, alarms, success tones, error buzzers. Use these instead of embedding base64 audio data (which the model often hallucinates incorrectly, producing thousands of bytes of garbage). Web Audio API generates clean tones in real time with ~10 lines of JS.",
+  "categories": ["sound", "audio", "music"],
+  "keywords": [
+    "timer", "alarm", "chime", "ding", "beep", "sound", "audio",
+    "buzzer", "bell", "music", "tone", "alert", "notification",
+    "kitchen", "pomodoro", "countdown", "ringer", "buzz", "buzzer",
+    "success", "error", "click", "tap", "pop"
+  ],
+  "promptInjection": "Use the Web Audio API for ALL sound effects. DO NOT embed base64-encoded audio (`data:audio/mpeg;base64,...`) — it produces thousands of bytes of unreliable hallucinated data. The Web Audio API synthesizes clean tones in real time with ~10 lines of JS, plays instantly without download, and works offline.\n\n**SHARED AUDIO CONTEXT** (init lazily on first user interaction — required by browser autoplay policy):\n```javascript\nlet _audioCtx = null;\nfunction getAudioCtx() {\n  if (!_audioCtx) _audioCtx = new (window.AudioContext || window.webkitAudioContext)();\n  return _audioCtx;\n}\n```\n\n**BEEP / TICK** (short blip — useful for clicks, ticks, button feedback):\n```javascript\nfunction playBeep({freq = 800, duration = 100, volume = 0.3, type = 'sine'} = {}) {\n  const ctx = getAudioCtx();\n  const osc = ctx.createOscillator();\n  const gain = ctx.createGain();\n  osc.type = type; // 'sine' | 'square' | 'triangle' | 'sawtooth'\n  osc.frequency.setValueAtTime(freq, ctx.currentTime);\n  gain.gain.setValueAtTime(volume, ctx.currentTime);\n  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration / 1000);\n  osc.connect(gain).connect(ctx.destination);\n  osc.start(ctx.currentTime);\n  osc.stop(ctx.currentTime + duration / 1000);\n}\n```\n\n**CHIME / DING** (3-note pleasant ding — kitchen timer done, task complete):\n```javascript\nfunction playChime() {\n  const ctx = getAudioCtx();\n  const notes = [523.25, 659.25, 783.99]; // C5, E5, G5 — major triad\n  notes.forEach((freq, i) => {\n    const osc = ctx.createOscillator();\n    const gain = ctx.createGain();\n    osc.type = 'sine';\n    osc.frequency.setValueAtTime(freq, ctx.currentTime + i * 0.12);\n    gain.gain.setValueAtTime(0, ctx.currentTime + i * 0.12);\n    gain.gain.linearRampToValueAtTime(0.4, ctx.currentTime + i * 0.12 + 0.01);\n    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.12 + 0.6);\n    osc.connect(gain).connect(ctx.destination);\n    osc.start(ctx.currentTime + i * 0.12);\n    osc.stop(ctx.currentTime + i * 0.12 + 0.6);\n  });\n}\n```\n\n**ALARM / BUZZER** (urgent repeating low tone — wake-up alarm, error):\n```javascript\nfunction playAlarm({beats = 5, freq = 440} = {}) {\n  const ctx = getAudioCtx();\n  for (let i = 0; i < beats; i++) {\n    const osc = ctx.createOscillator();\n    const gain = ctx.createGain();\n    osc.type = 'square';\n    osc.frequency.setValueAtTime(freq, ctx.currentTime + i * 0.4);\n    gain.gain.setValueAtTime(0.3, ctx.currentTime + i * 0.4);\n    gain.gain.setValueAtTime(0.3, ctx.currentTime + i * 0.4 + 0.2);\n    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.4 + 0.25);\n    osc.connect(gain).connect(ctx.destination);\n    osc.start(ctx.currentTime + i * 0.4);\n    osc.stop(ctx.currentTime + i * 0.4 + 0.25);\n  }\n}\n```\n\n**SUCCESS** (rising 2-note ping — task completed successfully):\n```javascript\nfunction playSuccess() {\n  const ctx = getAudioCtx();\n  [659.25, 987.77].forEach((freq, i) => { // E5 → B5\n    const osc = ctx.createOscillator();\n    const gain = ctx.createGain();\n    osc.type = 'sine';\n    osc.frequency.setValueAtTime(freq, ctx.currentTime + i * 0.08);\n    gain.gain.setValueAtTime(0, ctx.currentTime + i * 0.08);\n    gain.gain.linearRampToValueAtTime(0.35, ctx.currentTime + i * 0.08 + 0.01);\n    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.08 + 0.3);\n    osc.connect(gain).connect(ctx.destination);\n    osc.start(ctx.currentTime + i * 0.08);\n    osc.stop(ctx.currentTime + i * 0.08 + 0.3);\n  });\n}\n```\n\n**ERROR** (descending 2-note buzz — invalid input, error):\n```javascript\nfunction playError() {\n  const ctx = getAudioCtx();\n  [400, 200].forEach((freq, i) => {\n    const osc = ctx.createOscillator();\n    const gain = ctx.createGain();\n    osc.type = 'square';\n    osc.frequency.setValueAtTime(freq, ctx.currentTime + i * 0.1);\n    gain.gain.setValueAtTime(0.25, ctx.currentTime + i * 0.1);\n    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.1 + 0.15);\n    osc.connect(gain).connect(ctx.destination);\n    osc.start(ctx.currentTime + i * 0.1);\n    osc.stop(ctx.currentTime + i * 0.1 + 0.15);\n  });\n}\n```\n\n**MULTI-TIMER DISTINCT CHIMES** (different frequencies per timer — kitchen-timer style 'distinct chime per timer'):\n```javascript\n// Use the timer index modulo notes-array length to assign each timer a different note.\nconst CHIME_NOTES = [523.25, 587.33, 659.25, 698.46, 783.99, 880.00, 987.77]; // C5..B5\nfunction playTimerChime(timerIndex) {\n  const freq = CHIME_NOTES[timerIndex % CHIME_NOTES.length];\n  const ctx = getAudioCtx();\n  // Sustained 0.8s chime with envelope\n  const osc = ctx.createOscillator();\n  const gain = ctx.createGain();\n  osc.type = 'sine';\n  osc.frequency.setValueAtTime(freq, ctx.currentTime);\n  gain.gain.setValueAtTime(0, ctx.currentTime);\n  gain.gain.linearRampToValueAtTime(0.5, ctx.currentTime + 0.02);\n  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.8);\n  osc.connect(gain).connect(ctx.destination);\n  osc.start(ctx.currentTime);\n  osc.stop(ctx.currentTime + 0.8);\n}\n```\n\n**IMPORTANT RULES:**\n- ALWAYS define `getAudioCtx()` once and reuse — creating a new AudioContext per sound leaks resources.\n- Trigger first sound from a user gesture (click/tap) — browsers block autoplay otherwise. The user clicking 'Start Timer' or 'Test Sound' counts as a gesture, so subsequent timer-end chimes work.\n- DO NOT use `<audio src=\"data:audio/mpeg;base64,...\">` — that's where models hallucinate massive blobs of fake base64 that won't decode. Web Audio API is the correct path.\n- DO NOT use `new Audio('foo.mp3')` referring to external files — they won't exist in the rendered miniApp sandbox.",
+  "synthesis": {
+    "audioContext": {
+      "type": "infrastructure",
+      "description": "Lazy-init shared AudioContext (required by browser autoplay policy)",
+      "code": "let _audioCtx = null; function getAudioCtx() { if (!_audioCtx) _audioCtx = new (window.AudioContext || window.webkitAudioContext)(); return _audioCtx; }"
+    },
+    "playBeep": {
+      "type": "sound",
+      "description": "Short tonal blip — clicks, ticks, button feedback",
+      "params": {"freq": "Hz (default 800)", "duration": "ms (default 100)", "volume": "0-1 (default 0.3)", "type": "sine|square|triangle|sawtooth"}
+    },
+    "playChime": {
+      "type": "sound",
+      "description": "Three-note pleasant ding (C5-E5-G5 major triad) — kitchen timer done, task complete"
+    },
+    "playAlarm": {
+      "type": "sound",
+      "description": "Repeating square-wave low tone — urgent wake-up alarm",
+      "params": {"beats": "number of repetitions (default 5)", "freq": "Hz (default 440)"}
+    },
+    "playSuccess": {
+      "type": "sound",
+      "description": "Rising 2-note ping (E5 → B5) — task succeeded"
+    },
+    "playError": {
+      "type": "sound",
+      "description": "Descending 2-note buzz (400Hz → 200Hz) — invalid input, error"
+    },
+    "playTimerChime": {
+      "type": "sound",
+      "description": "Per-timer distinct chime indexed by timer number — for multi-timer apps where each timer should sound different",
+      "params": {"timerIndex": "integer — modulo 7 across C5-B5 major scale notes"}
+    }
+  }
+}
