@@ -1,0 +1,2244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=360, initial-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0F172A">
+<title>Pixel Plumber</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+* { box-sizing:border-box; margin:0; padding:0; }
+html, body {
+  width:100%; height:100%;
+  background:#000;
+  overflow:hidden;
+  font-family: 'Press Start 2P', 'Courier New', monospace;
+  color:#F1F5F9;
+  -webkit-user-select:none; user-select:none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: none;
+  -webkit-touch-callout: none;
+}
+body { display:flex; align-items:center; justify-content:center; min-height:100dvh; }
+
+#app {
+  width:360px; height:640px;
+  position:relative;
+  background:#0F172A;
+  overflow:hidden;
+  image-rendering: pixelated;
+  box-shadow: 0 0 0 2px #1E293B, 0 0 32px rgba(16,185,129,0.15);
+}
+
+#hud {
+  position:absolute; top:0; left:0;
+  width:360px; height:40px;
+  background:#0F172A;
+  border-bottom:2px solid #1E293B;
+  display:flex; align-items:center; justify-content:space-between;
+  color:#F1F5F9;
+  font-size:8px;
+  padding:0 8px;
+  z-index:10;
+  letter-spacing:1px;
+}
+.stat { display:flex; align-items:center; gap:4px; line-height:1; }
+.stat .ico { font-size:10px; }
+.lives .ico { color:#dc2626; }
+.coins .ico { color:#fbbf24; }
+.level .ico { color:#FB923C; }
+.best .ico { color:#F472B6; }
+
+canvas#game {
+  position:absolute;
+  top:40px; left:0;
+  width:360px; height:416px;
+  display:block;
+  background:#1E293B;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+#controls {
+  position:absolute; bottom:0; left:0;
+  width:360px; height:184px;
+  background:linear-gradient(180deg, #0F172A 0%, #020617 100%);
+  border-top:2px solid #1E293B;
+  display:flex; align-items:center; justify-content:space-between;
+  padding:0 20px;
+  z-index:10;
+}
+#dpad {
+  display:flex; gap:14px;
+}
+.dbtn {
+  width:72px; height:72px;
+  background:#1E293B;
+  border:3px solid #334155;
+  color:#F1F5F9;
+  font-family: inherit;
+  font-size:22px;
+  border-radius:4px;
+  display:flex; align-items:center; justify-content:center;
+  user-select:none;
+  touch-action:none;
+  font-weight:bold;
+  transition: transform 0.05s, background 0.05s;
+}
+.dbtn.pressed {
+  background:#10B981;
+  border-color:#059669;
+  transform: translateY(2px);
+  color:#fff;
+}
+#btn-jump {
+  width:96px; height:96px;
+  background:#FB923C;
+  border:3px solid #c2410c;
+  color:#fff;
+  font-family: inherit;
+  font-size:11px;
+  border-radius:4px;
+  user-select:none;
+  touch-action:none;
+  letter-spacing:1px;
+  transition: transform 0.05s, background 0.05s;
+  box-shadow: 0 4px 0 #7c2d12;
+}
+#btn-jump.pressed {
+  background:#ea580c;
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 #7c2d12;
+}
+
+#overlay {
+  position:absolute;
+  top:40px; left:0;
+  width:360px; height:416px;
+  background: rgba(2,6,23,0.92);
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  text-align:center;
+  z-index:20;
+  padding:24px;
+  gap:8px;
+}
+#overlay.hidden { display:none; }
+#overlay h1 {
+  font-size:20px;
+  color:#FB923C;
+  margin-bottom:8px;
+  line-height:1.4;
+  text-shadow: 2px 2px 0 #7c2d12;
+}
+#overlay h2 {
+  font-size:14px;
+  color:#10B981;
+  margin-bottom:8px;
+  line-height:1.4;
+  text-shadow: 2px 2px 0 #064e3b;
+}
+#overlay p {
+  font-size:9px;
+  line-height:1.7;
+  color:#F1F5F9;
+  margin-bottom:4px;
+}
+#overlay .mute {
+  color:#94A3B8;
+  font-size:7px;
+  line-height:1.6;
+}
+#overlay .start-btn {
+  margin-top:18px;
+  background:#10B981;
+  color:#fff;
+  border:3px solid #059669;
+  padding:12px 18px;
+  font-family:inherit;
+  font-size:10px;
+  cursor:pointer;
+  border-radius:4px;
+  letter-spacing:1px;
+  box-shadow: 0 4px 0 #064e3b;
+  transition: transform 0.05s;
+}
+#overlay .start-btn:active {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 #064e3b;
+}
+
+#banner {
+  position:absolute;
+  top:180px; left:0;
+  width:360px;
+  text-align:center;
+  font-size:18px;
+  color:#FB923C;
+  text-shadow: 2px 2px 0 #7c2d12, -1px -1px 0 #fde047;
+  z-index:15;
+  pointer-events:none;
+  letter-spacing:2px;
+  animation: bannerPop 0.4s ease-out;
+}
+#banner.hidden { display:none; }
+@keyframes bannerPop {
+  0% { transform: scale(0.5); opacity:0; }
+  60% { transform: scale(1.15); opacity:1; }
+  100% { transform: scale(1); opacity:1; }
+}
+
+#app::after {
+  content:'';
+  position:absolute;
+  top:0; left:0; right:0; bottom:0;
+  pointer-events:none;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0px,
+    transparent 2px,
+    rgba(0,0,0,0.10) 2px,
+    rgba(0,0,0,0.10) 3px
+  );
+  z-index:50;
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="hud">
+    <div class="stat lives"><span class="ico">♥</span><span id="hud-lives">x3</span></div>
+    <div class="stat coins"><span class="ico">◉</span><span id="hud-coins">x00</span></div>
+    <div class="stat level"><span class="ico">▶</span><span id="hud-level">L1/3</span></div>
+    <div class="stat best"><span class="ico">★</span><span id="hud-best">B1</span></div>
+  </div>
+  <canvas id="game" width="360" height="416"></canvas>
+  <div id="banner" class="hidden"></div>
+  <div id="overlay">
+    <h1>PIXEL<br>PLUMBER</h1>
+    <p>Run, jump, stomp.</p>
+    <p class="mute">Tap LEFT / RIGHT to move.<br>Hold JUMP higher to jump higher.<br>Stomp goombas. Bonk ?-blocks.<br>Reach the orange flag.</p>
+    <p class="mute" id="overlay-best">BEST: LEVEL 1</p>
+    <button class="start-btn" id="start-btn">TAP TO START</button>
+  </div>
+  <div id="controls">
+    <div id="dpad">
+      <button class="dbtn" id="btn-left">◀</button>
+      <button class="dbtn" id="btn-right">▶</button>
+    </div>
+    <button id="btn-jump">JUMP</button>
+  </div>
+</div>
+<script>
+(function(){
+  'use strict';
+
+  // ===== Constants =====
+  const TILE = 32;
+  const CW = 360, CH = 416;
+  const ROWS = 13;
+  const GRAVITY = 0.5;
+  const MAX_FALL = 12;
+  const JUMP_VEL = -8.6;
+  const JUMP_BOOST = -0.42;
+  const MAX_JUMP_FRAMES = 13;
+  const MOVE_SPEED = 2.6;
+  const STOMP_BOUNCE = -7.0;
+  const SOLID = '=#B?MpU';
+
+  // ===== State =====
+  const state = {
+    level: 1,
+    lives: 3,
+    coins: 0,
+    bestLevel: 1,
+    mode: 'title',
+    timer: 0
+  };
+  let player = null;
+  let world = null;
+  const camera = { x: 0 };
+  let frame = 0;
+
+  try {
+    const b = parseInt(localStorage.getItem('pp_best_level'), 10);
+    if (b && b >= 1 && b <= 3) state.bestLevel = b;
+  } catch (e) {}
+
+  // ===== Input =====
+  const input = { left:false, right:false };
+  let jumpHeld = false;
+  let jumpQueued = false;
+  function jumpDown(){ if (!jumpHeld) jumpQueued = true; jumpHeld = true; }
+  function jumpUp(){ jumpHeld = false; }
+
+  function bindBtn(el, onDown, onUp) {
+    const dn = (e) => { e.preventDefault(); el.classList.add('pressed'); onDown(); };
+    const up = (e) => { e.preventDefault(); el.classList.remove('pressed'); onUp(); };
+    el.addEventListener('pointerdown', dn);
+    el.addEventListener('pointerup', up);
+    el.addEventListener('pointercancel', up);
+    el.addEventListener('pointerleave', up);
+    el.addEventListener('contextmenu', e => e.preventDefault());
+  }
+
+  bindBtn(document.getElementById('btn-left'),
+    () => { input.left = true; },
+    () => { input.left = false; });
+  bindBtn(document.getElementById('btn-right'),
+    () => { input.right = true; },
+    () => { input.right = false; });
+  bindBtn(document.getElementById('btn-jump'),
+    () => { jumpDown(); },
+    () => { jumpUp(); });
+
+  addEventListener('keydown', (e) => {
+    if (e.repeat) return;
+    if (e.code === 'ArrowLeft' || e.code === 'KeyA') { input.left = true; e.preventDefault(); }
+    else if (e.code === 'ArrowRight' || e.code === 'KeyD') { input.right = true; e.preventDefault(); }
+    else if (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW' || e.code === 'KeyZ') {
+      jumpDown(); e.preventDefault();
+    }
+  });
+  addEventListener('keyup', (e) => {
+    if (e.code === 'ArrowLeft' || e.code === 'KeyA') input.left = false;
+    else if (e.code === 'ArrowRight' || e.code === 'KeyD') input.right = false;
+    else if (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW' || e.code === 'KeyZ') jumpUp();
+  });
+
+  // ===== Levels =====
+  function buildLevel(num) {
+    const W = 84;
+    const grid = [];
+    for (let r=0; r<ROWS; r++) grid.push(new Array(W).fill('.'));
+
+    function gnd(c1, c2) {
+      for (let c=c1; c<=c2; c++) { grid[11][c] = '='; grid[12][c] = '#'; }
+    }
+    function pipe(c, h) {
+      const top = 11 - h;
+      for (let r=top; r<=10; r++) { grid[r][c] = 'p'; grid[r][c+1] = 'p'; }
+    }
+    function brick(r, c) { grid[r][c] = 'B'; }
+    function q(r, c, m) { grid[r][c] = m ? 'M' : '?'; }
+    function coin(r, c) { grid[r][c] = 'c'; }
+    function gmb(c, r) { grid[(r==null?10:r)][c] = 'g'; }
+    let flagX = 0;
+    function flg(c) { flagX = c; grid[10][c] = '_'; }
+
+    if (num === 1) {
+      gnd(0, 16); gnd(19, 36); gnd(39, 56); gnd(59, 83);
+      q(7, 6);
+      brick(7, 13); q(7, 14); brick(7, 15); q(7, 16, true); brick(7, 17);
+      pipe(22, 2);
+      pipe(28, 3);
+      brick(7, 32); brick(7, 33); brick(7, 34);
+      q(7, 41);
+      pipe(46, 2);
+      brick(8, 60); brick(8, 61);
+      brick(7, 63); brick(7, 64);
+      brick(6, 66); brick(6, 67); q(6, 68, true);
+      coin(5, 13); coin(5, 14); coin(5, 17);
+      coin(5, 22); coin(4, 28); coin(4, 29);
+      coin(5, 32); coin(5, 33); coin(5, 34);
+      coin(4, 41); coin(5, 50);
+      coin(4, 60); coin(4, 61);
+      gmb(8); gmb(20); gmb(31); gmb(42); gmb(52); gmb(70);
+      flg(78);
+    } else if (num === 2) {
+      gnd(0, 9); gnd(11, 14); gnd(16, 26); gnd(28, 38); gnd(41, 53); gnd(56, 66); gnd(68, 83);
+      q(7, 4); brick(7, 5); q(7, 6, true);
+      brick(7, 12); brick(7, 13);
+      pipe(18, 2);
+      pipe(23, 3);
+      q(7, 30); brick(7, 31); brick(7, 32); q(7, 33); brick(7, 34); brick(7, 35); q(7, 36, true);
+      brick(10, 43); brick(10, 44); brick(9, 44); brick(10, 45); brick(9, 45); brick(8, 45);
+      pipe(48, 4);
+      brick(7, 57); brick(7, 58); brick(7, 59); brick(6, 58);
+      q(7, 60);
+      pipe(72, 2);
+      coin(5, 4); coin(5, 6); coin(4, 18); coin(4, 23); coin(3, 23);
+      coin(6, 30); coin(6, 33); coin(6, 36);
+      coin(5, 50); coin(5, 51); coin(5, 52);
+      coin(4, 65); coin(5, 75);
+      gmb(7); gmb(13); gmb(20); gmb(25); gmb(32); gmb(46); gmb(50); gmb(62); gmb(75);
+      flg(80);
+    } else {
+      gnd(0, 12); gnd(14, 17); gnd(19, 22); gnd(24, 32); gnd(35, 38); gnd(40, 50); gnd(53, 60); gnd(63, 83);
+      q(7, 4, true); brick(7, 5); q(7, 6); brick(7, 7); q(7, 8);
+      pipe(15, 2);
+      pipe(20, 3);
+      brick(8, 26); brick(8, 27); brick(8, 28); brick(7, 27); q(7, 28);
+      pipe(30, 4);
+      brick(7, 36); brick(7, 37); q(7, 38, true);
+      brick(10, 45); brick(10, 46); brick(9, 46); brick(10, 47); brick(9, 47); brick(8, 47);
+      brick(10, 48); brick(9, 48); brick(8, 48); brick(7, 48);
+      pipe(56, 3);
+      q(7, 65); brick(7, 66); brick(7, 67); q(7, 68);
+      pipe(70, 2);
+      brick(5, 73); brick(5, 74); brick(5, 75); q(5, 76, true);
+      coin(5, 4); coin(4, 4); coin(5, 6); coin(5, 8);
+      coin(4, 26); coin(4, 27); coin(4, 28);
+      coin(6, 36); coin(6, 38);
+      coin(4, 73); coin(4, 75);
+      coin(3, 67);
+      gmb(8); gmb(11); gmb(16); gmb(21); gmb(28); gmb(31); gmb(42); gmb(45); gmb(46); gmb(54); gmb(58); gmb(67);
+      flg(80);
+    }
+    return { grid, width: W, flagX };
+  }
+
+  // ===== Level start =====
+  function startLevel(num) {
+    const wasBig = player ? player.big : false;
+    state.level = num;
+    if (num > state.bestLevel) {
+      state.bestLevel = num;
+      try { localStorage.setItem('pp_best_level', String(state.bestLevel)); } catch(e){}
+    }
+    const lvl = buildLevel(num);
+    world = {
+      grid: lvl.grid,
+      width: lvl.width,
+      flagX: lvl.flagX * TILE + 6,
+      entities: [],
+      particles: [],
+      coins: []
+    };
+    for (let r=0; r<ROWS; r++) {
+      for (let c=0; c<lvl.width; c++) {
+        const t = world.grid[r][c];
+        if (t === 'g') {
+          world.entities.push({
+            type:'goomba',
+            x: c*TILE + 2, y: r*TILE + 4,
+            vx:0, vy:0, w:28, h:28,
+            dir:-1, alive:true, deadFrames:0,
+            walkFrame:0, onGround:false
+          });
+          world.grid[r][c] = '.';
+        } else if (t === 'c') {
+          world.coins.push({ x: c*TILE+8, y: r*TILE+8, w:16, h:16, taken:false, bobOffset: (c+r) % 30 });
+          world.grid[r][c] = '.';
+        } else if (t === '_') {
+          world.grid[r][c] = '.';
+        }
+      }
+    }
+    player = {
+      x: 64, y: 10*TILE - 28,
+      vx: 0, vy: 0,
+      w: 24, h: 28,
+      big: false,
+      onGround: false,
+      jumping: false,
+      jumpFrames: 0,
+      facing: 1,
+      invuln: 0,
+      walkFrame: 0
+    };
+    if (wasBig) {
+      player.big = true; player.h = 52; player.y = 10*TILE - 52;
+    }
+    camera.x = 0;
+    state.mode = 'playing';
+    state.timer = 0;
+    hideOverlay();
+    hideBanner();
+    updateHUD();
+  }
+
+  function isSolidTile(c, r) {
+    if (r < 0 || r >= ROWS) return false;
+    if (c < 0) return true;
+    if (c >= world.width) return false;
+    return SOLID.indexOf(world.grid[r][c]) >= 0;
+  }
+
+  function aabb(a, b) {
+    return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+  }
+
+  // ===== Physics =====
+  function moveX(e) {
+    e.x += e.vx;
+    const cMin = Math.floor(e.x / TILE);
+    const cMax = Math.floor((e.x + e.w - 1) / TILE);
+    const rMin = Math.floor(e.y / TILE);
+    const rMax = Math.floor((e.y + e.h - 1) / TILE);
+    let collided = false;
+    for (let r=rMin; r<=rMax; r++) {
+      for (let c=cMin; c<=cMax; c++) {
+        if (isSolidTile(c, r)) {
+          if (e.vx > 0) e.x = c*TILE - e.w - 0.01;
+          else if (e.vx < 0) e.x = (c+1)*TILE + 0.01;
+          e.vx = 0;
+          collided = true;
+          break;
+        }
+      }
+      if (collided) break;
+    }
+    return collided;
+  }
+
+  function moveY(e, isPlayer) {
+    e.y += e.vy;
+    const cMin = Math.floor(e.x / TILE);
+    const cMax = Math.floor((e.x + e.w - 1) / TILE);
+    const rMin = Math.floor(e.y / TILE);
+    const rMax = Math.floor((e.y + e.h - 1) / TILE);
+    e.onGround = false;
+    let collided = false;
+    for (let r=rMin; r<=rMax; r++) {
+      for (let c=cMin; c<=cMax; c++) {
+        if (isSolidTile(c, r)) {
+          if (e.vy > 0) {
+            e.y = r*TILE - e.h - 0.01;
+            e.onGround = true;
+          } else if (e.vy < 0) {
+            e.y = (r+1)*TILE + 0.01;
+            if (isPlayer) bonkBlock(c, r);
+          }
+          e.vy = 0;
+          collided = true;
+          break;
+        }
+      }
+      if (collided) break;
+    }
+    return collided;
+  }
+
+  function bonkBlock(c, r) {
+    const t = world.grid[r][c];
+    if (t === '?') {
+      world.grid[r][c] = 'U';
+      state.coins++;
+      world.particles.push({ type:'coinpop', x:c*TILE+8, y:r*TILE-4, vy:-4, t:0 });
+      world.particles.push({ type:'bumpY', tileC:c, tileR:r, t:0 });
+      updateHUD();
+    } else if (t === 'M') {
+      world.grid[r][c] = 'U';
+      world.entities.push({
+        type:'mushroom',
+        x: c*TILE + 4, y: r*TILE,
+        vx: 0.7, vy:0, w:24, h:24,
+        emerging: 16, onGround:false
+      });
+      world.particles.push({ type:'bumpY', tileC:c, tileR:r, t:0 });
+    } else if (t === 'B') {
+      if (player.big) {
+        world.grid[r][c] = '.';
+        for (let i=0; i<4; i++) {
+          world.particles.push({
+            type:'shard',
+            x: c*TILE+8 + (i%2)*8, y: r*TILE+8 + Math.floor(i/2)*8,
+            vx: (i%2?1:-1) * (1.5 + Math.random()),
+            vy: -3 - Math.random()*2,
+            t:0
+          });
+        }
+      } else {
+        world.particles.push({ type:'bumpY', tileC:c, tileR:r, t:0 });
+      }
+    }
+  }
+
+  // ===== Update =====
+  function updatePlayer() {
+    if (input.left && !input.right) { player.vx = -MOVE_SPEED; player.facing = -1; }
+    else if (input.right && !input.left) { player.vx = MOVE_SPEED; player.facing = 1; }
+    else player.vx = 0;
+
+    if (jumpQueued && player.onGround) {
+      player.vy = JUMP_VEL;
+      player.jumping = true;
+      player.jumpFrames = 0;
+    }
+    jumpQueued = false;
+    if (player.jumping && jumpHeld && player.jumpFrames < MAX_JUMP_FRAMES && player.vy < 0) {
+      player.vy += JUMP_BOOST;
+      player.jumpFrames++;
+    }
+    if (!jumpHeld || player.vy >= 0) player.jumping = false;
+
+    player.vy = Math.min(player.vy + GRAVITY, MAX_FALL);
+    if (player.x + player.vx < 0) { player.x = 0; player.vx = 0; }
+    moveX(player);
+    moveY(player, true);
+
+    if (Math.abs(player.vx) > 0.1) player.walkFrame += 0.18;
+    if (player.invuln > 0) player.invuln--;
+
+    if (player.y > CH + 80) {
+      die();
+      return;
+    }
+    camera.x = Math.max(0, Math.min(world.width*TILE - CW, player.x - CW/2 + player.w/2));
+    if (player.x + player.w >= world.flagX) levelComplete();
+  }
+
+  function updateGoomba(g) {
+    if (!g.alive) {
+      g.deadFrames++;
+      return;
+    }
+    g.vx = g.dir * 0.55;
+    g.vy = Math.min(g.vy + GRAVITY, MAX_FALL);
+    const wallHit = moveX(g);
+    moveY(g, false);
+    if (wallHit) g.dir = -g.dir;
+    if (g.onGround) {
+      const frontX = g.dir > 0 ? g.x + g.w + 1 : g.x - 1;
+      const frontC = Math.floor(frontX / TILE);
+      const footR = Math.floor((g.y + g.h + 1) / TILE);
+      if (!isSolidTile(frontC, footR)) g.dir = -g.dir;
+    }
+    g.walkFrame += 0.1;
+    if (g.y > CH + 100) g.dead = true;
+
+    if (player.invuln === 0 && aabb(g, player)) {
+      const playerFeet = player.y + player.h;
+      const stomp = player.vy > 0 && playerFeet - player.vy <= g.y + 8;
+      if (stomp) {
+        g.alive = false;
+        g.h = 12;
+        g.y += 16;
+        player.vy = STOMP_BOUNCE;
+        if (jumpHeld) player.vy = STOMP_BOUNCE - 1.5;
+        state.coins += 1;
+        updateHUD();
+      } else {
+        damagePlayer();
+      }
+    }
+  }
+
+  function updateMushroom(m) {
+    if (m.emerging > 0) {
+      m.emerging--;
+      m.y -= 1;
+      return;
+    }
+    m.vy = Math.min(m.vy + GRAVITY, MAX_FALL);
+    const wallHit = moveX(m);
+    moveY(m, false);
+    if (wallHit) m.vx = -m.vx;
+    if (m.y > CH + 100) m.dead = true;
+
+    if (aabb(m, player)) {
+      if (!player.big) {
+        player.big = true;
+        const oldBottom = player.y + player.h;
+        player.h = 52;
+        player.y = oldBottom - player.h;
+        player.invuln = 30;
+      }
+      state.coins += 2;
+      updateHUD();
+      m.dead = true;
+      world.particles.push({ type:'sparkle', x: player.x+12, y: player.y+12, t:0 });
+    }
+  }
+
+  function damagePlayer() {
+    if (player.big) {
+      player.big = false;
+      const oldBottom = player.y + player.h;
+      player.h = 28;
+      player.y = oldBottom - player.h;
+      player.invuln = 80;
+    } else {
+      die();
+    }
+  }
+
+  function die() {
+    if (state.mode !== 'playing') return;
+    state.mode = 'dying';
+    state.timer = 0;
+    state.lives--;
+    player.vy = -10;
+    player.vx = 0;
+    updateHUD();
+  }
+
+  function levelComplete() {
+    if (state.mode !== 'playing') return;
+    state.mode = 'levelComplete';
+    state.timer = 0;
+    showBanner('LEVEL ' + state.level + ' CLEAR!');
+  }
+
+  // ===== Coin pickups =====
+  function checkCoins() {
+    for (const co of world.coins) {
+      if (co.taken) continue;
+      if (aabb(co, player)) {
+        co.taken = true;
+        state.coins++;
+        updateHUD();
+        world.particles.push({ type:'coinpop', x: co.x, y: co.y - 4, vy:-3, t:0 });
+      }
+    }
+  }
+
+  // ===== HUD =====
+  function updateHUD() {
+    document.getElementById('hud-lives').textContent = 'x' + Math.max(0, state.lives);
+    document.getElementById('hud-coins').textContent = 'x' + String(state.coins).padStart(2, '0');
+    document.getElementById('hud-level').textContent = 'L' + state.level + '/3';
+    document.getElementById('hud-best').textContent = 'B' + state.bestLevel;
+  }
+
+  // ===== Overlay =====
+  function showOverlay(html) {
+    const ov = document.getElementById('overlay');
+    ov.innerHTML = html;
+    ov.classList.remove('hidden');
+    const btn = ov.querySelector('.start-btn');
+    if (btn) {
+      btn.addEventListener('click', onOverlayBtn);
+      btn.addEventListener('pointerdown', e => e.stopPropagation());
+    }
+  }
+  function hideOverlay() { document.getElementById('overlay').classList.add('hidden'); }
+  function onOverlayBtn() {
+    if (state.mode === 'title' || state.mode === 'gameOver' || state.mode === 'win') {
+      state.lives = 3;
+      state.coins = 0;
+      player = null;
+      startLevel(1);
+    }
+  }
+
+  function showBanner(text) {
+    const b = document.getElementById('banner');
+    b.textContent = text;
+    b.classList.remove('hidden');
+    b.style.animation = 'none';
+    void b.offsetWidth;
+    b.style.animation = 'bannerPop 0.4s ease-out';
+  }
+  function hideBanner() { document.getElementById('banner').classList.add('hidden'); }
+
+  // ===== Render =====
+  const canvas = document.getElementById('game');
+  const ctx = canvas.getContext('2d');
+  ctx.imageSmoothingEnabled = false;
+
+  function render() {
+    drawBackground();
+    if (!world) return;
+    ctx.save();
+    ctx.translate(-Math.floor(camera.x), 0);
+    drawTiles();
+    drawCoins();
+    drawFlag();
+    drawEntities();
+    drawParticles();
+    if (player && state.mode !== 'gameOver') drawMario(player);
+    ctx.restore();
+  }
+
+  function drawBackground() {
+    const grad = ctx.createLinearGradient(0, 0, 0, CH);
+    grad.addColorStop(0, '#0F172A');
+    grad.addColorStop(0.6, '#1E293B');
+    grad.addColorStop(1, '#334155');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, CW, CH);
+    // stars (parallax slow)
+    ctx.fillStyle = '#F1F5F9';
+    const starOff = camera.x * 0.15;
+    for (let i=0; i<28; i++) {
+      const sx = ((i * 47 - starOff) % (CW + 100) + CW + 100) % (CW + 100) - 50;
+      const sy = (i * 23) % 220;
+      const sz = (i % 3 === 0) ? 2 : 1;
+      ctx.fillRect(sx | 0, sy, sz, sz);
+    }
+    // distant hills (mid parallax)
+    const hillOff = camera.x * 0.4;
+    ctx.fillStyle = '#1e3a8a';
+    for (let i=-1; i<8; i++) {
+      const hx = i * 110 - (hillOff % 110);
+      ctx.beginPath();
+      ctx.moveTo(hx, 320);
+      ctx.lineTo(hx + 55, 240);
+      ctx.lineTo(hx + 110, 320);
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.fillStyle = '#312e81';
+    for (let i=-1; i<6; i++) {
+      const hx = i * 160 - ((camera.x * 0.55) % 160);
+      ctx.beginPath();
+      ctx.moveTo(hx, 350);
+      ctx.lineTo(hx + 80, 270);
+      ctx.lineTo(hx + 160, 350);
+      ctx.closePath();
+      ctx.fill();
+    }
+    // clouds
+    ctx.fillStyle = '#94A3B8';
+    const cloudOff = camera.x * 0.25;
+    for (let i=0; i<6; i++) {
+      const cx = ((i * 130 - cloudOff) % 700 + 700) % 700 - 60;
+      const cy = 50 + (i % 3) * 35;
+      drawCloud(cx, cy);
+    }
+  }
+
+  function drawCloud(x, y) {
+    ctx.fillStyle = 'rgba(241,245,249,0.4)';
+    ctx.fillRect(x+4, y, 24, 6);
+    ctx.fillRect(x, y+6, 32, 6);
+    ctx.fillRect(x+8, y-4, 8, 4);
+    ctx.fillRect(x+18, y-2, 6, 2);
+  }
+
+  function drawTiles() {
+    const cStart = Math.max(0, Math.floor(camera.x / TILE) - 1);
+    const cEnd = Math.min(world.width - 1, Math.floor((camera.x + CW) / TILE) + 1);
+    for (let r=0; r<ROWS; r++) {
+      for (let c=cStart; c<=cEnd; c++) {
+        const t = world.grid[r][c];
+        if (t === '.') continue;
+        const x = c*TILE, y = r*TILE;
+        if (t === '=') drawGrass(x, y);
+        else if (t === '#') drawDirt(x, y);
+        else if (t === 'B') drawBrick(x, y);
+        else if (t === '?') drawQ(x, y);
+        else if (t === 'M') drawQ(x, y);
+        else if (t === 'U') drawUsed(x, y);
+        else if (t === 'p') drawPipe(x, y, c, r);
+      }
+    }
+  }
+
+  function drawGrass(x, y) {
+    ctx.fillStyle = '#10B981';
+    ctx.fillRect(x, y, TILE, 8);
+    ctx.fillStyle = '#059669';
+    ctx.fillRect(x, y+8, TILE, 4);
+    ctx.fillStyle = '#92400e';
+    ctx.fillRect(x, y+12, TILE, 20);
+    ctx.fillStyle = '#78350f';
+    ctx.fillRect(x, y+12, TILE, 2);
+    ctx.fillStyle = '#451a03';
+    ctx.fillRect(x+15, y+12, 2, 20);
+    ctx.fillStyle = '#a16207';
+    ctx.fillRect(x+5, y+18, 3, 3);
+    ctx.fillRect(x+22, y+24, 3, 3);
+    // grass blade tufts
+    ctx.fillStyle = '#34d399';
+    ctx.fillRect(x+4, y-2, 2, 4);
+    ctx.fillRect(x+14, y-3, 2, 5);
+    ctx.fillRect(x+24, y-2, 2, 4);
+  }
+
+  function drawDirt(x, y) {
+    ctx.fillStyle = '#92400e';
+    ctx.fillRect(x, y, TILE, TILE);
+    ctx.fillStyle = '#78350f';
+    ctx.fillRect(x, y+10, TILE, 1);
+    ctx.fillRect(x, y+22, TILE, 1);
+    ctx.fillStyle = '#451a03';
+    ctx.fillRect(x+15, y, 2, TILE);
+    ctx.fillStyle = '#a16207';
+    ctx.fillRect(x+6, y+4, 2, 2);
+    ctx.fillRect(x+24, y+14, 2, 2);
+    ctx.fillRect(x+8, y+26, 2, 2);
+  }
+
+  function drawBrick(x, y) {
+    ctx.fillStyle = '#c2410c';
+    ctx.fillRect(x, y, TILE, TILE);
+    ctx.fillStyle = '#7c2d12';
+    ctx.fillRect(x, y, TILE, 2);
+    ctx.fillRect(x, y+15, TILE, 2);
+    ctx.fillRect(x, y+30, TILE, 2);
+    ctx.fillRect(x, y, 2, TILE);
+    ctx.fillRect(x+15, y+2, 2, 13);
+    ctx.fillRect(x+30, y, 2, TILE);
+    ctx.fillRect(x+7, y+17, 2, 13);
+    ctx.fillRect(x+22, y+17, 2, 13);
+    ctx.fillStyle = '#ea580c';
+    ctx.fillRect(x+3, y+4, 10, 2);
+    ctx.fillRect(x+18, y+4, 10, 2);
+    ctx.fillRect(x+10, y+19, 10, 2);
+  }
+
+  function drawQ(x, y) {
+    const pulse = Math.floor(frame / 14) % 4;
+    const colors = ['#fbbf24', '#fcd34d', '#fbbf24', '#f59e0b'];
+    ctx.fillStyle = colors[pulse];
+    ctx.fillRect(x, y, TILE, TILE);
+    ctx.fillStyle = '#92400e';
+    ctx.fillRect(x, y, TILE, 2);
+    ctx.fillRect(x, y+30, TILE, 2);
+    ctx.fillRect(x, y, 2, TILE);
+    ctx.fillRect(x+30, y, 2, TILE);
+    ctx.fillRect(x+3, y+3, 3, 3);
+    ctx.fillRect(x+26, y+3, 3, 3);
+    ctx.fillRect(x+3, y+26, 3, 3);
+    ctx.fillRect(x+26, y+26, 3, 3);
+    // ? shape
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(x+12, y+8, 8, 3);
+    ctx.fillRect(x+19, y+11, 3, 4);
+    ctx.fillRect(x+14, y+14, 5, 3);
+    ctx.fillRect(x+14, y+17, 3, 3);
+    ctx.fillRect(x+14, y+22, 3, 3);
+    ctx.fillStyle = '#7c2d12';
+    ctx.fillRect(x+12, y+8, 8, 1);
+    ctx.fillRect(x+13, y+25, 4, 1);
+  }
+
+  function drawUsed(x, y) {
+    ctx.fillStyle = '#92400e';
+    ctx.fillRect(x, y, TILE, TILE);
+    ctx.fillStyle = '#451a03';
+    ctx.fillRect(x, y, TILE, 2);
+    ctx.fillRect(x, y+30, TILE, 2);
+    ctx.fillRect(x, y, 2, TILE);
+    ctx.fillRect(x+30, y, 2, TILE);
+    ctx.fillStyle = '#7c2d12';
+    ctx.fillRect(x+3, y+3, 3, 3);
+    ctx.fillRect(x+26, y+3, 3, 3);
+    ctx.fillRect(x+3, y+26, 3, 3);
+    ctx.fillRect(x+26, y+26, 3, 3);
+  }
+
+  function drawPipe(x, y, c, r) {
+    const above = r > 0 ? world.grid[r-1][c] : '.';
+    const isTop = above !== 'p';
+    const left = c > 0 ? world.grid[r][c-1] : '.';
+    const right = c < world.width-1 ? world.grid[r][c+1] : '.';
+    const isLeft = right === 'p' && left !== 'p';
+    const isRight = left === 'p' && right !== 'p';
+    ctx.fillStyle = '#16a34a';
+    ctx.fillRect(x, y, TILE, TILE);
+    if (isTop) {
+      // wider lip
+      const lipX = isLeft ? x - 3 : x;
+      const lipW = isLeft ? TILE + 3 : (isRight ? TILE + 3 : TILE);
+      const xx = isRight ? x : lipX;
+      const ww = lipW;
+      ctx.fillStyle = '#15803d';
+      ctx.fillRect(xx, y, ww, 10);
+      ctx.fillStyle = '#22c55e';
+      ctx.fillRect(xx + 2, y + 2, ww - 4, 4);
+      ctx.fillStyle = '#15803d';
+      ctx.fillRect(xx, y + 8, ww, 2);
+    }
+    // body
+    const bodyY = isTop ? y + 10 : y;
+    const bodyH = isTop ? TILE - 10 : TILE;
+    ctx.fillStyle = '#16a34a';
+    ctx.fillRect(x, bodyY, TILE, bodyH);
+    if (isLeft) {
+      ctx.fillStyle = '#22c55e';
+      ctx.fillRect(x + 4, bodyY, 4, bodyH);
+      ctx.fillStyle = '#166534';
+      ctx.fillRect(x + 28, bodyY, 4, bodyH);
+    } else if (isRight) {
+      ctx.fillStyle = '#22c55e';
+      ctx.fillRect(x, bodyY, 4, bodyH);
+      ctx.fillStyle = '#166534';
+      ctx.fillRect(x + 24, bodyY, 4, bodyH);
+    } else {
+      ctx.fillStyle = '#22c55e';
+      ctx.fillRect(x + 4, bodyY, 3, bodyH);
+    }
+  }
+
+  function drawCoins() {
+    const t = frame * 0.12;
+    for (const co of world.coins) {
+      if (co.taken) continue;
+      if (co.x + 16 < camera.x || co.x > camera.x + CW) continue;
+      const bob = Math.sin(t + co.bobOffset) * 2;
+      drawCoinSprite(co.x, co.y + bob, t + co.bobOffset);
+    }
+  }
+
+  function drawCoinSprite(x, y, t) {
+    const spin = Math.abs(Math.sin(t));
+    const w = Math.max(4, 14 * spin);
+    const cx = x + 8 - w/2;
+    ctx.fillStyle = '#fbbf24';
+    ctx.fillRect(cx, y + 1, w, 14);
+    ctx.fillStyle = '#fde047';
+    ctx.fillRect(cx + 1, y + 3, Math.max(2, w - 4), 10);
+    ctx.fillStyle = '#a16207';
+    ctx.fillRect(cx + Math.floor(w/2) - 1, y + 5, 2, 6);
+  }
+
+  function drawFlag() {
+    const fx = world.flagX;
+    if (fx + 30 < camera.x || fx - 30 > camera.x + CW) return;
+    const baseY = 11 * TILE;
+    // base block
+    ctx.fillStyle = '#94A3B8';
+    ctx.fillRect(fx - 8, baseY - 4, 16, 4);
+    ctx.fillStyle = '#64748b';
+    ctx.fillRect(fx - 8, baseY - 2, 16, 2);
+    // pole
+    ctx.fillStyle = '#94A3B8';
+    ctx.fillRect(fx - 1, 80, 3, baseY - 80 - 4);
+    ctx.fillStyle = '#cbd5e1';
+    ctx.fillRect(fx - 1, 80, 1, baseY - 80 - 4);
+    // ball top
+    ctx.fillStyle = '#FB923C';
+    ctx.fillRect(fx - 4, 76, 9, 6);
+    ctx.fillStyle = '#fde047';
+    ctx.fillRect(fx - 3, 77, 4, 2);
+    // flag (waving)
+    const wave = Math.sin(frame * 0.18) * 3;
+    ctx.fillStyle = '#FB923C';
+    ctx.fillRect(fx + 2, 88, 22 + wave, 16);
+    ctx.fillStyle = '#ea580c';
+    ctx.fillRect(fx + 22 + wave - 2, 88, 2, 16);
+    ctx.fillStyle = '#fde047';
+    ctx.fillRect(fx + 6, 92, 4, 4);
+    ctx.fillRect(fx + 12, 96, 4, 4);
+  }
+
+  function drawEntities() {
+    for (const e of world.entities) {
+      if (e.dead) continue;
+      if (e.x + e.w < camera.x - 32 || e.x > camera.x + CW + 32) continue;
+      if (e.type === 'goomba') drawGoomba(e);
+      else if (e.type === 'mushroom') drawMushroom(e);
+    }
+  }
+
+  function drawGoomba(g) {
+    const x = g.x, y = g.y;
+    if (!g.alive) {
+      // squashed
+      ctx.fillStyle = '#7c2d12';
+      ctx.fillRect(x + 2, y + 4, 24, 8);
+      ctx.fillStyle = '#92400e';
+      ctx.fillRect(x + 4, y + 2, 20, 4);
+      ctx.fillStyle = '#000';
+      ctx.fillRect(x + 8, y + 6, 2, 2);
+      ctx.fillRect(x + 18, y + 6, 2, 2);
+      return;
+    }
+    // body
+    ctx.fillStyle = '#92400e';
+    ctx.fillRect(x + 4, y + 2, 20, 4);
+    ctx.fillRect(x + 2, y + 6, 24, 12);
+    ctx.fillStyle = '#7c2d12';
+    ctx.fillRect(x + 4, y + 16, 20, 2);
+    // eye whites
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(x + 6, y + 8, 6, 5);
+    ctx.fillRect(x + 16, y + 8, 6, 5);
+    // pupils
+    ctx.fillStyle = '#000';
+    ctx.fillRect(x + 8, y + 9, 3, 4);
+    ctx.fillRect(x + 18, y + 9, 3, 4);
+    // angry brows
+    ctx.fillStyle = '#451a03';
+    ctx.fillRect(x + 5, y + 7, 6, 1);
+    ctx.fillRect(x + 17, y + 7, 6, 1);
+    // mouth
+    ctx.fillStyle = '#000';
+    ctx.fillRect(x + 10, y + 16, 8, 1);
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(x + 11, y + 14, 2, 2);
+    ctx.fillRect(x + 15, y + 14, 2, 2);
+    // feet (alternate)
+    const footFrame = Math.floor(g.walkFrame || 0) % 2;
+    ctx.fillStyle = '#451a03';
+    if (footFrame === 0) {
+      ctx.fillRect(x + 0, y + 18, 12, 8);
+      ctx.fillRect(x + 16, y + 20, 12, 6);
+    } else {
+      ctx.fillRect(x + 0, y + 20, 12, 6);
+      ctx.fillRect(x + 16, y + 18, 12, 8);
+    }
+  }
+
+  function drawMushroom(m) {
+    const x = m.x, y = m.y;
+    // cap
+    ctx.fillStyle = '#dc2626';
+    ctx.fillRect(x + 4, y, 16, 4);
+    ctx.fillRect(x + 2, y + 4, 20, 4);
+    ctx.fillRect(x, y + 8, 24, 6);
+    ctx.fillStyle = '#991b1b';
+    ctx.fillRect(x, y + 12, 24, 2);
+    // white spots
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(x + 4, y + 4, 4, 4);
+    ctx.fillRect(x + 16, y + 4, 4, 4);
+    ctx.fillRect(x + 10, y + 8, 4, 4);
+    // stem
+    ctx.fillStyle = '#fef3c7';
+    ctx.fillRect(x + 2, y + 14, 20, 10);
+    ctx.fillStyle = '#fcd34d';
+    ctx.fillRect(x + 2, y + 14, 20, 2);
+    // eyes
+    ctx.fillStyle = '#000';
+    ctx.fillRect(x + 6, y + 18, 2, 4);
+    ctx.fillRect(x + 16, y + 18, 2, 4);
+  }
+
+  function drawParticles() {
+    for (const p of world.particles) {
+      if (p.type === 'coinpop') {
+        const cy = p.y + p.t * p.vy + 0.2 * p.t * p.t;
+        ctx.fillStyle = '#fbbf24';
+        ctx.fillRect(p.x, cy, 14, 14);
+        ctx.fillStyle = '#fde047';
+        ctx.fillRect(p.x + 2, cy + 2, 10, 10);
+      } else if (p.type === 'shard') {
+        ctx.fillStyle = '#c2410c';
+        ctx.fillRect(p.x | 0, p.y | 0, 6, 6);
+        ctx.fillStyle = '#7c2d12';
+        ctx.fillRect((p.x | 0) + 1, (p.y | 0) + 1, 4, 4);
+      } else if (p.type === 'sparkle') {
+        const r = 4 + p.t;
+        ctx.fillStyle = '#fde047';
+        ctx.fillRect(p.x - r, p.y, r*2, 2);
+        ctx.fillRect(p.x, p.y - r, 2, r*2);
+      }
+    }
+  }
+
+  function drawMario(m) {
+    let drawY = m.y;
+    if (m.invuln > 0 && Math.floor(m.invuln / 4) % 2) ctx.globalAlpha = 0.45;
+    ctx.save();
+    if (m.facing === -1) {
+      ctx.translate(m.x + m.w, drawY);
+      ctx.scale(-1, 1);
+    } else {
+      ctx.translate(m.x, drawY);
+    }
+    if (m.big) drawMarioBig(m);
+    else drawMarioSmall(m);
+    ctx.restore();
+    ctx.globalAlpha = 1;
+  }
+
+  function drawMarioSmall(m) {
+    // 24x28
+    // hat
+    ctx.fillStyle = '#dc2626';
+    ctx.fillRect(6, 0, 12, 4);
+    ctx.fillRect(4, 4, 16, 2);
+    ctx.fillRect(2, 4, 2, 2);
+    // hat brim
+    ctx.fillStyle = '#7c2d12';
+    ctx.fillRect(2, 6, 18, 2);
+    // face
+    ctx.fillStyle = '#fcd34d';
+    ctx.fillRect(6, 8, 12, 6);
+    // hair sideburn
+    ctx.fillStyle = '#7c2d12';
+    ctx.fillRect(6, 8, 2, 4);
+    // eye
+    ctx.fillStyle = '#000';
+    ctx.fillRect(14, 8, 2, 4);
+    // mustache
+    ctx.fillRect(10, 12, 8, 2);
+    // body / overalls
+    ctx.fillStyle = '#1d4ed8';
+    ctx.fillRect(6, 14, 12, 8);
+    // sleeves
+    ctx.fillStyle = '#dc2626';
+    ctx.fillRect(4, 14, 2, 4);
+    ctx.fillRect(18, 14, 2, 4);
+    // hands
+    ctx.fillStyle = '#fcd34d';
+    ctx.fillRect(2, 16, 2, 4);
+    ctx.fillRect(20, 16, 2, 4);
+    // buttons
+    ctx.fillStyle = '#fde047';
+    ctx.fillRect(8, 16, 2, 2);
+    ctx.fillRect(14, 16, 2, 2);
+    // legs / shoes
+    const lf = Math.floor(m.walkFrame || 0) % 2;
+    ctx.fillStyle = '#451a03';
+    if (!m.onGround) {
+      ctx.fillRect(4, 22, 8, 6);
+      ctx.fillRect(13, 22, 7, 6);
+    } else if (Math.abs(m.vx) > 0.1) {
+      if (lf === 0) {
+        ctx.fillRect(4, 22, 7, 6);
+        ctx.fillRect(13, 22, 9, 6);
+      } else {
+        ctx.fillRect(2, 22, 9, 6);
+        ctx.fillRect(13, 22, 7, 6);
+      }
+    } else {
+      ctx.fillRect(4, 22, 7, 6);
+      ctx.fillRect(13, 22, 7, 6);
+    }
+  }
+
+  function drawMarioBig(m) {
+    // 24x52
+    ctx.fillStyle = '#dc2626';
+    ctx.fillRect(6, 0, 12, 4);
+    ctx.fillRect(4, 4, 16, 2);
+    ctx.fillRect(2, 4, 2, 2);
+    ctx.fillStyle = '#7c2d12';
+    ctx.fillRect(2, 6, 18, 2);
+    ctx.fillStyle = '#fcd34d';
+    ctx.fillRect(6, 8, 12, 8);
+    ctx.fillStyle = '#7c2d12';
+    ctx.fillRect(6, 8, 2, 6);
+    ctx.fillStyle = '#000';
+    ctx.fillRect(14, 8, 2, 4);
+    ctx.fillRect(10, 14, 8, 2);
+    // shirt (red)
+    ctx.fillStyle = '#dc2626';
+    ctx.fillRect(4, 16, 16, 8);
+    // hands
+    ctx.fillStyle = '#fcd34d';
+    ctx.fillRect(2, 18, 2, 6);
+    ctx.fillRect(20, 18, 2, 6);
+    // overalls (blue)
+    ctx.fillStyle = '#1d4ed8';
+    ctx.fillRect(4, 24, 16, 16);
+    // straps
+    ctx.fillRect(8, 16, 2, 8);
+    ctx.fillRect(14, 16, 2, 8);
+    // buttons
+    ctx.fillStyle = '#fde047';
+    ctx.fillRect(8, 26, 2, 2);
+    ctx.fillRect(14, 26, 2, 2);
+    // legs / shoes
+    const lf = Math.floor(m.walkFrame || 0) % 2;
+    ctx.fillStyle = '#1d4ed8';
+    ctx.fillRect(4, 40, 7, 6);
+    ctx.fillRect(13, 40, 7, 6);
+    ctx.fillStyle = '#451a03';
+    if (!m.onGround) {
+      ctx.fillRect(2, 46, 10, 6);
+      ctx.fillRect(12, 46, 10, 6);
+    } else if (Math.abs(m.vx) > 0.1) {
+      if (lf === 0) {
+        ctx.fillRect(2, 46, 9, 6);
+        ctx.fillRect(13, 46, 9, 6);
+      } else {
+        ctx.fillRect(4, 46, 9, 6);
+        ctx.fillRect(11, 46, 9, 6);
+      }
+    } else {
+      ctx.fillRect(2, 46, 9, 6);
+      ctx.fillRect(13, 46, 9, 6);
+    }
+  }
+
+  // ===== Main update =====
+  function update() {
+    frame++;
+    if (state.mode === 'playing') {
+      updatePlayer();
+      for (const e of world.entities) {
+        if (e.dead) continue;
+        if (e.type === 'goomba') updateGoomba(e);
+        else if (e.type === 'mushroom') updateMushroom(e);
+      }
+      world.entities = world.entities.filter(e => !e.dead && !(e.type === 'goomba' && !e.alive && e.deadFrames > 30));
+      checkCoins();
+      // particles
+      for (const p of world.particles) {
+        p.t++;
+        if (p.type === 'shard') {
+          p.vy += 0.4;
+          p.x += p.vx;
+          p.y += p.vy;
+          if (p.t > 40) p.dead = true;
+        } else if (p.type === 'coinpop') {
+          if (p.t > 22) p.dead = true;
+        } else if (p.type === 'sparkle') {
+          if (p.t > 12) p.dead = true;
+        } else if (p.type === 'bumpY') {
+          if (p.t > 8) p.dead = true;
+        }
+      }
+      world.particles = world.particles.filter(p => !p.dead);
+    } else if (state.mode === 'dying') {
+      state.timer++;
+      player.vy = Math.min(player.vy + GRAVITY, MAX_FALL);
+      player.y += player.vy;
+      if (state.timer > 80) {
+        if (state.lives < 0) {
+          state.mode = 'gameOver';
+          showOverlay(
+            '<h1>GAME<br>OVER</h1>' +
+            '<p>Coins collected: ' + state.coins + '</p>' +
+            '<p class="mute">Best level: ' + state.bestLevel + '</p>' +
+            '<button class="start-btn">TAP TO RESTART</button>'
+          );
+        } else {
+          // restart current level
+          state.coins = 0;
+          player = null;
+          startLevel(state.level);
+        }
+      }
+    } else if (state.mode === 'levelComplete') {
+      state.timer++;
+      if (state.timer > 100) {
+        hideBanner();
+        if (state.level >= 3) {
+          state.mode = 'win';
+          showOverlay(
+            '<h1>YOU<br>WIN!</h1>' +
+            '<h2>ALL CLEAR</h2>' +
+            '<p>Coins collected: ' + state.coins + '</p>' +
+            '<p>Lives remaining: ' + state.lives + '</p>' +
+            '<p class="mute">3 of 3 levels conquered.</p>' +
+            '<button class="start-btn">PLAY AGAIN</button>'
+          );
+        } else {
+          startLevel(state.level + 1);
+        }
+      }
+    }
+  }
+
+  // ===== Loop =====
+  function loop() {
+    update();
+    render();
+    requestAnimationFrame(loop);
+  }
+
+  // ===== Init =====
+  document.getElementById('overlay-best').textContent = 'BEST: LEVEL ' + state.bestLevel;
+  const startBtn = document.getElementById('start-btn');
+  startBtn.addEventListener('click', onOverlayBtn);
+  // Re-bind dynamic buttons via event delegation as overlay re-renders
+  document.getElementById('overlay').addEventListener('click', function(e){
+    if (e.target && e.target.classList && e.target.classList.contains('start-btn')) onOverlayBtn();
+  });
+
+  updateHUD();
+  requestAnimationFrame(loop);
+})();
+</script>
+<script>
+(function () {
+  if (window.__MCHATAI_FEEDBACK_WIDGET__) return;
+  window.__MCHATAI_FEEDBACK_WIDGET__ = true;
+
+  // Bail out entirely when embedded inside a native host that has its own
+  // feedback UI. iOS/Android WKWebView/WebView appends ?embed=ios or embed=android
+  // (or sets window.__MCHATAI_NATIVE_HOST__) before loading. In that case the
+  // native toolbar owns the feedback flow and we must not inject any pills,
+  // panels, or capture-phase event listeners (they would fight the native UI
+  // and block the soft-keyboard bridge).
+  try {
+    var params = new URLSearchParams(window.location.search);
+    var embed = params.get('embed');
+    if (embed === 'ios' || embed === 'android' || window.__MCHATAI_NATIVE_HOST__) {
+      return;
+    }
+  } catch (e) {
+    // If URL parsing somehow fails, fall through and render the widget.
+  }
+
+  // ── Config ───────────────────────────────────────────────────────────────
+  // Firebase web API key for the mchatai-2367e project. Public-safe — every web
+  // client has this in its bundle. Used for anonymous auth when submitting a
+  // screenshot (text-only feedback stays anonymous; screenshots require an
+  // anon token so we can rate-limit per-browser without real sign-in UX).
+  var FIREBASE_WEB_API_KEY = 'AIzaSyCp2lvjTqAmv60ktspDwYbPeIhi8nlKbwA';
+
+  // ── Console error capture ─────────────────────────────────────────────────
+  // Wrap console.error so the widget can attach the most recent failures to
+  // any submitted feedback. Bounded ring so a chatty page can't OOM the widget.
+  var __consoleErrors = [];
+  var origError = console.error;
+  console.error = function () {
+    try {
+      var msg = Array.prototype.map.call(arguments, function (a) {
+        if (a && a.stack) return String(a.stack).slice(0, 400);
+        if (typeof a === 'object') { try { return JSON.stringify(a).slice(0, 400); } catch (e) { return '[Object]'; } }
+        return String(a).slice(0, 400);
+      }).join(' ');
+      __consoleErrors.push(msg);
+      if (__consoleErrors.length > 8) __consoleErrors.shift();
+    } catch (e) { /* never break the host */ }
+    return origError.apply(console, arguments);
+  };
+  // Same for uncaught errors
+  window.addEventListener('error', function (e) {
+    try {
+      __consoleErrors.push('Uncaught: ' + (e.message || 'unknown') + ' @ ' + (e.filename || '?') + ':' + (e.lineno || '?'));
+      if (__consoleErrors.length > 8) __consoleErrors.shift();
+    } catch (_) {}
+  });
+
+  // ── Slug from URL ────────────────────────────────────────────────────────
+  // mchatai.com/u/{shortUid}/{slug}/ — pull both pieces for the API.
+  var pathParts = location.pathname.replace(/^\/u\//, '').split('/').filter(Boolean);
+  var shortUid = pathParts[0] || '';
+  var slug = pathParts[1] || '';
+
+  var API_BASE = 'https://web-api-1099075912386.us-central1.run.app';
+
+  // ── Styles ───────────────────────────────────────────────────────────────
+  var style = document.createElement('style');
+  style.id = 'mchatai-feedback-widget-style';
+  style.textContent = [
+    '#mchatai-fb-pill, #mchatai-fb-panel {',
+    '  position: fixed; right: 18px; bottom: 18px; z-index: 2147483646;',
+    '  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;',
+    '}',
+    '#mchatai-fb-pill {',
+    '  display: flex; align-items: center; gap: 6px;',
+    '  padding: 8px 14px; border-radius: 999px;',
+    '  background: rgba(40,40,46,0.92); color: #fff;',
+    '  font-size: 13px; font-weight: 500; cursor: pointer;',
+    '  border: 1px solid rgba(255,255,255,0.12);',
+    '  box-shadow: 0 2px 8px rgba(0,0,0,0.25);',
+    '  transition: opacity 0.4s ease, transform 0.15s ease;',
+    '  opacity: 1; user-select: none;',
+    '}',
+    '#mchatai-fb-pill.idle { opacity: 0.2; }',
+    '#mchatai-fb-pill:hover { opacity: 1 !important; transform: translateY(-1px); }',
+    /* Phase RT.2 follow-up: back-to-/play pill is anchored next to the
+       Feedback pill (bottom-right) because the top-left position made it
+       easy to miss on white-background games. Same z-index, same idle-fade,
+       sits just above the Feedback pill. */
+    '#mchatai-back-pill {',
+    '  position: fixed; right: 18px; bottom: 58px; z-index: 2147483646;',
+    '  display: flex; align-items: center; gap: 6px;',
+    '  padding: 6px 12px 6px 10px; border-radius: 999px;',
+    '  background: rgba(40,40,46,0.92); color: #fff;',
+    '  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;',
+    '  font-size: 12px; font-weight: 500; cursor: pointer;',
+    '  border: 1px solid rgba(255,255,255,0.12);',
+    '  box-shadow: 0 2px 8px rgba(0,0,0,0.25);',
+    '  transition: opacity 0.4s ease, transform 0.15s ease;',
+    '  opacity: 1; text-decoration: none; user-select: none;',
+    '}',
+    '#mchatai-back-pill.idle { opacity: 0.2; }',
+    '#mchatai-back-pill:hover { opacity: 1 !important; transform: translateX(-1px); }',
+    '#mchatai-back-pill svg { width: 14px; height: 14px; display: block; }',
+    '#mchatai-fb-panel {',
+    /* Phase RT.2 follow-up: panel now vertically-sized to fit its contents
+       and caps at 85vh so a screenshot preview + textarea + actions never
+       push Send below the viewport. Overflow moved from hidden → auto so
+       the panel itself scrolls if contents exceed the cap (belt-and-braces
+       for anything unexpected). */
+    '  display: none; width: 320px; max-height: 85vh;',
+    '  background: #1f2025; color: #f2f2f5; border-radius: 12px;',
+    '  border: 1px solid rgba(255,255,255,0.12);',
+    '  box-shadow: 0 8px 24px rgba(0,0,0,0.45);',
+    '  overflow-y: auto; overflow-x: hidden; flex-direction: column;',
+    '}',
+    '#mchatai-fb-panel.open { display: flex; }',
+    '#mchatai-fb-panel header {',
+    '  display: flex; justify-content: space-between; align-items: center;',
+    '  padding: 10px 12px; background: #25262c; font-size: 13px; font-weight: 600;',
+    '  border-bottom: 1px solid rgba(255,255,255,0.06);',
+    '}',
+    '#mchatai-fb-close {',
+    '  background: none; border: none; color: #b8b8be; font-size: 18px;',
+    '  cursor: pointer; line-height: 1; padding: 0 4px;',
+    '}',
+    /* Phase RT.2 follow-up: user identity chip. Shows current sign-in state
+       so users know (a) whether their submission is anonymous, (b) whose
+       Google account is attached when it isn't, (c) that screenshots unlock
+       after signing in. Lives in the header row between title and close. */
+    '#mchatai-fb-user { display: flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 500; color: #b8b8be; cursor: pointer; background: none; border: none; padding: 0; max-width: 140px; }',
+    '#mchatai-fb-user:hover { color: #f2f2f5; }',
+    '#mchatai-fb-user.signed-in { color: #8dd19a; }',
+    '#mchatai-fb-user img, #mchatai-fb-user .mchatai-fb-user-avatar-fallback { width: 16px; height: 16px; border-radius: 50%; flex-shrink: 0; }',
+    '#mchatai-fb-user .mchatai-fb-user-avatar-fallback { background: #3a3b40; color: #f2f2f5; font-size: 9px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; }',
+    '#mchatai-fb-user .mchatai-fb-user-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }',
+    '#mchatai-fb-types { display: flex; gap: 4px; padding: 8px 10px 6px; }',
+    '.mchatai-fb-type {',
+    '  flex: 1; padding: 6px 0; border-radius: 6px; cursor: pointer;',
+    '  background: transparent; color: #b8b8be; border: 1px solid rgba(255,255,255,0.10);',
+    '  font-size: 11px; text-align: center; transition: background 0.12s, color 0.12s;',
+    '}',
+    '.mchatai-fb-type.active { background: #4a8eff; color: #fff; border-color: #4a8eff; }',
+    /* Phase RT.1: 5-star rating control. Optional — users can submit text-only
+       feedback without setting a rating. Hover previews a provisional fill so
+       clicking feels obvious. Clicking the currently-selected star clears. */
+    '#mchatai-fb-rating { display: flex; align-items: center; gap: 4px; padding: 4px 10px 0; font-size: 11px; color: #b8b8be; }',
+    '#mchatai-fb-rating-label { margin-right: 6px; }',
+    '#mchatai-fb-rating .mchatai-fb-star {',
+    '  background: none; border: none; color: #55565c; cursor: pointer;',
+    '  font-size: 18px; padding: 0 2px; line-height: 1;',
+    '  transition: color 0.12s, transform 0.08s;',
+    '}',
+    '#mchatai-fb-rating .mchatai-fb-star:hover { transform: scale(1.12); }',
+    '#mchatai-fb-rating .mchatai-fb-star.filled { color: #ffc940; }',
+    '#mchatai-fb-rating .mchatai-fb-star.preview { color: #e6b73a; opacity: 0.75; }',
+    '#mchatai-fb-rating-clear {',
+    '  background: none; border: none; color: #707078; cursor: pointer;',
+    '  font-size: 11px; margin-left: auto; padding: 0 2px;',
+    '}',
+    '#mchatai-fb-rating-clear:hover { color: #d0d0d6; }',
+    '#mchatai-fb-rating-clear[hidden] { display: none !important; }',
+    '#mchatai-fb-text {',
+    '  margin: 4px 10px; padding: 8px; border-radius: 6px;',
+    '  background: #15161a; color: #f2f2f5; border: 1px solid rgba(255,255,255,0.10);',
+    '  font-size: 13px; font-family: inherit; resize: vertical;',
+    '  min-height: 90px; max-height: 200px; outline: none;',
+    '}',
+    '#mchatai-fb-text:focus { border-color: #4a8eff; }',
+    '#mchatai-fb-actions {',
+    /* Phase RT.2 follow-up: actions row sticks to the bottom of the panel
+       even if the content scrolls. Without this, a large screenshot preview
+       pushed the Send button below the viewport and users could not submit. */
+    '  display: flex; justify-content: space-between; align-items: center;',
+    '  padding: 8px 10px 10px; gap: 8px;',
+    '  position: sticky; bottom: 0; background: #1f2025;',
+    '  border-top: 1px solid rgba(255,255,255,0.06);',
+    '  flex-shrink: 0;',
+    '}',
+    '#mchatai-fb-meta { font-size: 10px; color: #707078; }',
+    '#mchatai-fb-send {',
+    '  padding: 6px 14px; border-radius: 6px; border: none; background: #4a8eff;',
+    '  color: #fff; font-size: 12px; font-weight: 600; cursor: pointer;',
+    '  transition: opacity 0.12s;',
+    '}',
+    '#mchatai-fb-send:disabled { opacity: 0.4; cursor: not-allowed; }',
+    '#mchatai-fb-status { font-size: 11px; padding: 0 12px 8px; min-height: 14px; color: #4a8eff; }',
+    /* Screenshot attachment row: only visible if the product opted in via feedbackAutomation.acceptScreenshots = true. */
+    '#mchatai-fb-shot-btn {',
+    '  width: 100%; padding: 7px 10px; margin: 6px 0 2px;',
+    '  background: #2e2f35; color: #d0d0d6; border: 1px dashed rgba(255,255,255,0.16);',
+    '  border-radius: 6px; cursor: pointer; font-size: 12px;',
+    '  transition: background 0.12s;',
+    '}',
+    '#mchatai-fb-shot-btn:hover { background: #35363d; }',
+    '#mchatai-fb-shot-btn:disabled { opacity: 0.5; cursor: default; }',
+    '#mchatai-fb-shot-preview-wrap {',
+    /* Phase RT.2 follow-up: explicit height on the wrap so the img inside
+       inherits the constrained box. Without this the img renders at its
+       natural aspect ratio and max-height alone doesn't clip (depends on
+       the browser's interpretation of intrinsic sizing). 120px matches the
+       earlier intent — small preview so the Send button stays visible. */
+    '  position: relative; margin: 6px 0 2px;',
+    '  height: 120px; max-height: 120px; overflow: hidden;',
+    '  border-radius: 6px;',
+    '  border: 1px solid rgba(255,255,255,0.10);',
+    '  background: #0d0e12;',
+    '  flex-shrink: 0;',
+    '}',
+    '#mchatai-fb-shot-preview { display:block; width: 100%; height: 100%; object-fit: contain; object-position: center; }',
+    '#mchatai-fb-shot-remove {',
+    '  position: absolute; top: 4px; right: 4px;',
+    '  width: 22px; height: 22px; border-radius: 50%;',
+    '  background: rgba(0,0,0,0.7); color: #fff; border: none;',
+    '  cursor: pointer; font-size: 14px; line-height: 1;',
+    '}',
+  ].join('\n');
+  document.head.appendChild(style);
+
+  // ── DOM ──────────────────────────────────────────────────────────────────
+  var pill = document.createElement('div');
+  pill.id = 'mchatai-fb-pill';
+  pill.innerHTML = '<span aria-hidden="true">💬</span><span>Feedback</span>';
+  pill.title = 'Send feedback about this game';
+  pill.setAttribute('role', 'button');
+  pill.setAttribute('aria-label', 'Send feedback');
+
+  var panel = document.createElement('div');
+  panel.id = 'mchatai-fb-panel';
+  panel.innerHTML = [
+    '<header>',
+    '  <span>Send feedback</span>',
+    '  <div style="display:flex;align-items:center;gap:10px;">',
+    '    <button id="mchatai-fb-user" type="button" title="Sign in to enable screenshots"><span aria-hidden="true">👤</span><span class="mchatai-fb-user-name">anonymous</span></button>',
+    '    <button id="mchatai-fb-close" aria-label="Close feedback panel">×</button>',
+    '  </div>',
+    '</header>',
+    '<div id="mchatai-fb-types">',
+    '  <button class="mchatai-fb-type active" data-type="bug">🐞 Bug</button>',
+    '  <button class="mchatai-fb-type" data-type="feature">✨ Idea</button>',
+    '  <button class="mchatai-fb-type" data-type="other">💬 Other</button>',
+    '</div>',
+    '<div id="mchatai-fb-rating" role="radiogroup" aria-label="Rate this product">',
+    '  <span id="mchatai-fb-rating-label">Rating:</span>',
+    '  <button type="button" class="mchatai-fb-star" data-value="1" role="radio" aria-label="1 star" aria-checked="false">☆</button>',
+    '  <button type="button" class="mchatai-fb-star" data-value="2" role="radio" aria-label="2 stars" aria-checked="false">☆</button>',
+    '  <button type="button" class="mchatai-fb-star" data-value="3" role="radio" aria-label="3 stars" aria-checked="false">☆</button>',
+    '  <button type="button" class="mchatai-fb-star" data-value="4" role="radio" aria-label="4 stars" aria-checked="false">☆</button>',
+    '  <button type="button" class="mchatai-fb-star" data-value="5" role="radio" aria-label="5 stars" aria-checked="false">☆</button>',
+    '  <button type="button" id="mchatai-fb-rating-clear" hidden>clear</button>',
+    '</div>',
+    '<textarea id="mchatai-fb-text" placeholder="What happened? What did you expect?" maxlength="2000"></textarea>',
+    '<div id="mchatai-fb-screenshot-row" style="display:none;padding:0 10px;">',
+    '  <button id="mchatai-fb-shot-btn" type="button">📸 Attach screenshot</button>',
+    '  <div id="mchatai-fb-shot-preview-wrap" style="display:none;"><img id="mchatai-fb-shot-preview" alt="screenshot preview" /><button id="mchatai-fb-shot-remove" type="button" aria-label="Remove screenshot">×</button></div>',
+    '</div>',
+    '<div id="mchatai-fb-status" aria-live="polite"></div>',
+    '<div id="mchatai-fb-actions">',
+    '  <span id="mchatai-fb-meta"></span>',
+    '  <button id="mchatai-fb-send" disabled>Send</button>',
+    '</div>',
+  ].join('');
+
+  // Back-to-hub pill. The hub houses mini-apps, games, agents, skills, pipelines —
+  // "Hub" is the right word. Icon is a house, not an arrow, since it's a home
+  // button, not a linear back button. Rendered as an <a> so right-click → new tab works.
+  var backPill = document.createElement('a');
+  backPill.id = 'mchatai-back-pill';
+  backPill.href = 'https://mchatai.com/hub';
+  backPill.title = 'Back to Hub';
+  backPill.setAttribute('aria-label', 'Back to Hub');
+  backPill.innerHTML = [
+    '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">',
+    '  <path d="M2 7l6-5 6 5v7a1 1 0 0 1-1 1h-3v-5H6v5H3a1 1 0 0 1-1-1V7z"/>',
+    '</svg>',
+    '<span>Hub</span>'
+  ].join('');
+
+  document.body.appendChild(backPill);
+  document.body.appendChild(pill);
+  document.body.appendChild(panel);
+
+  // ── Idle fade ────────────────────────────────────────────────────────────
+  var idleTimer = null;
+  function bumpActivity() {
+    pill.classList.remove('idle');
+    backPill.classList.remove('idle');
+    if (idleTimer) clearTimeout(idleTimer);
+    idleTimer = setTimeout(function () {
+      pill.classList.add('idle');
+      backPill.classList.add('idle');
+    }, 3000);
+  }
+  ['mousemove', 'keydown', 'touchstart', 'scroll'].forEach(function (ev) {
+    window.addEventListener(ev, bumpActivity, { passive: true });
+  });
+  bumpActivity();
+
+  // ── Open / close ─────────────────────────────────────────────────────────
+  async function openPanel() {
+    panel.classList.add('open');
+    pill.style.display = 'none';
+    var meta = document.getElementById('mchatai-fb-meta');
+    meta.textContent = slug ? slug : 'feedback';
+    setTimeout(function () { document.getElementById('mchatai-fb-text').focus(); }, 50);
+    // Phase RT.2 follow-up: refresh the user chip in case the token expired
+    // or the user signed in a different tab between panel opens.
+    updateUserChip();
+    // Silent refresh: if no cached token but Firebase still has a session on
+    // mchatai.com, this pulls a fresh token via a hidden iframe so the user
+    // does not have to click Sign in every single time. Idempotent + bounded
+    // by a 3s timeout so there is no visible delay if they have never signed
+    // in.
+    if (!cachedIdToken) {
+      silentlyRefreshToken().then(function (tok) {
+        if (tok) updateUserChip();
+      });
+    }
+
+    // Async probe for the product's screenshot opt-in flag. Runs concurrently
+    // with the user reading/typing — if it comes back true, the screenshot
+    // row fades into view.
+    console.log('[feedback-widget] probing screenshot opt-in for slug:', slug);
+    checkScreenshotOptIn().then(function (allowed) {
+      console.log('[feedback-widget] screenshotAllowed =', allowed);
+      screenshotAllowed = allowed;
+      updateScreenshotRow();
+      // Defensive: ALSO directly reveal the row in case updateScreenshotRow
+      // runs before some dependency is wired up. Belt-and-suspenders.
+      if (allowed) {
+        var row = document.getElementById('mchatai-fb-screenshot-row');
+        if (row) {
+          row.style.display = 'block';
+          console.log('[feedback-widget] screenshot row revealed');
+        } else {
+          console.warn('[feedback-widget] screenshot row element not found!');
+        }
+      }
+    }).catch(function (err) {
+      console.warn('[feedback-widget] probe failed:', err);
+    });
+  }
+  function closePanel() {
+    panel.classList.remove('open');
+    pill.style.display = 'flex';
+    bumpActivity();
+  }
+  pill.addEventListener('click', openPanel);
+  panel.querySelector('#mchatai-fb-close').addEventListener('click', closePanel);
+
+  // ── Type picker ──────────────────────────────────────────────────────────
+  var selectedType = 'bug';
+  panel.querySelectorAll('.mchatai-fb-type').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      panel.querySelectorAll('.mchatai-fb-type').forEach(function (b) { b.classList.remove('active'); });
+      btn.classList.add('active');
+      selectedType = btn.getAttribute('data-type');
+    });
+  });
+
+  // ── Rating picker (Phase RT.1) ───────────────────────────────────────────
+  // Optional 1-5 stars. Rating is its own signal — users can send text
+  // without a rating, or send a rating without text (any rating auto-enables
+  // the Send button even if the textarea is empty, so a "5 stars, no words"
+  // submission is a valid vote).
+  var selectedRating = null;     // null | 1..5
+  var ratingStars = panel.querySelectorAll('.mchatai-fb-star');
+  var ratingClear = panel.querySelector('#mchatai-fb-rating-clear');
+  function paintStars(previewValue) {
+    var effective = previewValue != null ? previewValue : (selectedRating || 0);
+    ratingStars.forEach(function (s) {
+      var v = parseInt(s.getAttribute('data-value'), 10);
+      s.classList.remove('filled', 'preview');
+      s.textContent = v <= effective ? '★' : '☆';
+      if (previewValue != null && v <= previewValue && v > (selectedRating || 0)) {
+        s.classList.add('preview');
+      } else if (v <= (selectedRating || 0)) {
+        s.classList.add('filled');
+      }
+      s.setAttribute('aria-checked', String(v === selectedRating));
+    });
+    ratingClear.hidden = selectedRating == null;
+  }
+  ratingStars.forEach(function (s) {
+    var v = parseInt(s.getAttribute('data-value'), 10);
+    s.addEventListener('mouseenter', function () { paintStars(v); });
+    s.addEventListener('mouseleave', function () { paintStars(null); });
+    s.addEventListener('click', function () {
+      // Click on currently-selected star → clear. Click elsewhere → set.
+      selectedRating = (selectedRating === v) ? null : v;
+      paintStars(null);
+      updateSendState();
+    });
+  });
+  ratingClear.addEventListener('click', function () {
+    selectedRating = null;
+    paintStars(null);
+    updateSendState();
+  });
+
+  // ── Send button gating + submission ──────────────────────────────────────
+  var textArea = panel.querySelector('#mchatai-fb-text');
+  var sendBtn = panel.querySelector('#mchatai-fb-send');
+  var statusEl = panel.querySelector('#mchatai-fb-status');
+  var shotRow = panel.querySelector('#mchatai-fb-screenshot-row');
+  var shotBtn = panel.querySelector('#mchatai-fb-shot-btn');
+  var shotPreviewWrap = panel.querySelector('#mchatai-fb-shot-preview-wrap');
+  var shotPreview = panel.querySelector('#mchatai-fb-shot-preview');
+  var shotRemove = panel.querySelector('#mchatai-fb-shot-remove');
+
+  // Phase RT.1: either a rating OR a text comment (≥4 chars) is enough to send.
+  // Lets users drop-in a 5-star vote without writing a novel.
+  function updateSendState() {
+    var hasText = textArea.value.trim().length >= 4;
+    var hasRating = selectedRating != null;
+    sendBtn.disabled = !(hasText || hasRating);
+  }
+  textArea.addEventListener('input', updateSendState);
+
+  // Phase RT.2 follow-up: isolate typing inside the feedback panel from the
+  // underlying game. Many games install keyboard listeners on window and
+  // document — when the user types a space into the textarea, the event
+  // bubbles up and the game also receives it (e.g. battleship-vs-ai toggles
+  // ship orientation on any spacebar press). Capture-phase listeners on
+  // window fire BEFORE the game's bubble-phase listeners — we stop
+  // propagation + stop immediate propagation on any keyboard event whose
+  // target is inside our panel. The panel input itself still gets the event
+  // because stopPropagation at capture phase does not prevent the target
+  // from receiving it, only the ancestors.
+  function isInsideFeedbackPanel(el) {
+    while (el && el !== document) {
+      if (el === panel || el === pill || el === backPill) return true;
+      el = el.parentNode;
+    }
+    return false;
+  }
+  // IMPORTANT: only keyboard events get intercepted. Previously I also blocked
+  // pointer/click/mousedown at capture phase, which broke every button inside
+  // the panel (sign-in, send, star rating, attach screenshot) because
+  // stopImmediatePropagation at capture prevents ALL listeners — including
+  // the panel's own click handlers registered via addEventListener('click').
+  // Keyboard-only is the right scope: games listen for arrow keys / space /
+  // letters on window, but they listen for pointer events on their canvas
+  // element — not on window — so click events never bubbled to them anyway.
+  ['keydown', 'keyup', 'keypress'].forEach(function (evName) {
+    window.addEventListener(evName, function (e) {
+      if (!panel.classList.contains('open')) return;
+      if (!isInsideFeedbackPanel(e.target)) return;
+      // stopPropagation (not stopImmediatePropagation) — the panel's own
+      // listeners already ran on the target; we only need to prevent the
+      // event from reaching ancestor window/document listeners the game
+      // installed. Using stopImmediatePropagation here would kill the
+      // textarea's native input handling in some edge cases.
+      e.stopPropagation();
+    }, true); // capture phase fires before the game's bubble-phase listener
+  });
+
+  // ── Screenshot attachment (opt-in per product) ──────────────────────────
+  // The row itself is hidden by default. It only reveals after we confirm the
+  // product has opted in (feedbackAutomation.acceptScreenshots=true on the
+  // Firestore endProduct doc). We query once per panel open via an endpoint
+  // that returns just the opt-in flag — no auth needed, cheap boolean.
+  var capturedScreenshot = null;   // { dataURL: "data:image/jpeg;base64,..." , width, height, bytes }
+  var screenshotAllowed = false;
+
+  async function checkScreenshotOptIn() {
+    if (!slug) return false;
+    try {
+      var resp = await fetch(API_BASE + '/v1/endproducts/feedback-config?slug=' + encodeURIComponent(slug), {
+        method: 'GET',
+      });
+      if (!resp.ok) return false;
+      var body = await resp.json();
+      return !!body.acceptScreenshots;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  async function captureScreenshot() {
+    // Gate: require real sign-in before capturing. Attributable + rate-limitable.
+    shotBtn.disabled = true;
+    shotBtn.textContent = '🔑 Signing in…';
+    statusEl.textContent = '';
+    try {
+      try {
+        await ensureSignedIn();
+      } catch (authErr) {
+        throw new Error('Sign-in required for screenshots: ' + authErr.message);
+      }
+      shotBtn.textContent = '📸 Select the tab to share…';
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
+        throw new Error('Screen capture not supported on this browser');
+      }
+      var stream = await navigator.mediaDevices.getDisplayMedia({
+        video: { displaySurface: 'browser' },
+        audio: false,
+        preferCurrentTab: true,
+      });
+      var track = stream.getVideoTracks()[0];
+
+      // Grab one frame via ImageCapture if available, else via a video element.
+      var bitmap;
+      if (window.ImageCapture) {
+        var capture = new ImageCapture(track);
+        bitmap = await capture.grabFrame();
+      } else {
+        var video = document.createElement('video');
+        video.srcObject = stream;
+        video.muted = true;
+        await video.play();
+        bitmap = {
+          width: video.videoWidth,
+          height: video.videoHeight,
+          _video: video,
+        };
+      }
+
+      // Resize to max 800×600 (fit, keep aspect) and JPEG 0.7 to stay under
+      // the 200KB server cap. Typical output is 30-80KB.
+      var MAX_W = 800, MAX_H = 600;
+      var scale = Math.min(MAX_W / bitmap.width, MAX_H / bitmap.height, 1);
+      var outW = Math.round(bitmap.width * scale);
+      var outH = Math.round(bitmap.height * scale);
+      var canvas = document.createElement('canvas');
+      canvas.width = outW;
+      canvas.height = outH;
+      var ctx = canvas.getContext('2d');
+      if (bitmap._video) {
+        ctx.drawImage(bitmap._video, 0, 0, outW, outH);
+      } else {
+        ctx.drawImage(bitmap, 0, 0, outW, outH);
+      }
+      track.stop();
+
+      var dataURL = canvas.toDataURL('image/jpeg', 0.7);
+      // base64 portion length * 0.75 ≈ byte count
+      var bytes = Math.round((dataURL.length - 'data:image/jpeg;base64,'.length) * 0.75);
+      if (bytes > 200 * 1024) {
+        throw new Error('Screenshot too large after compression (' + Math.round(bytes/1024) + 'KB, max 200KB)');
+      }
+
+      capturedScreenshot = { dataURL: dataURL, width: outW, height: outH, bytes: bytes };
+      shotPreview.src = dataURL;
+      shotPreviewWrap.style.display = 'block';
+      shotBtn.style.display = 'none';
+      shotBtn.disabled = false;
+      shotBtn.textContent = '📸 Attach screenshot';
+    } catch (err) {
+      shotBtn.disabled = false;
+      shotBtn.textContent = '📸 Attach screenshot';
+      statusEl.style.color = '#e26766';
+      statusEl.textContent = err.message || 'Screenshot capture failed';
+    }
+  }
+
+  function removeScreenshot() {
+    capturedScreenshot = null;
+    shotPreview.src = '';
+    shotPreviewWrap.style.display = 'none';
+    shotBtn.style.display = 'block';
+  }
+
+  shotBtn.addEventListener('click', captureScreenshot);
+  shotRemove.addEventListener('click', removeScreenshot);
+
+  // Phase RT.2 follow-up: user chip click — sign-in when signed-out,
+  // sign-out when signed-in.
+  var userChip = panel.querySelector('#mchatai-fb-user');
+  if (userChip) {
+    userChip.addEventListener('click', async function () {
+      if (cachedIdToken) {
+        if (confirm('Sign out? Future submissions will be anonymous until you sign back in.')) {
+          clearToken();
+        }
+        return;
+      }
+      try {
+        await ensureSignedIn();
+      } catch (e) {
+        // Don't block the panel — user might just have dismissed the popup.
+        console.warn('[feedback] sign-in skipped:', e.message);
+      }
+    });
+  }
+  // Render initial state.
+  updateUserChip();
+
+  // ── Real auth for screenshot uploads ───────────────────────────────────
+  // Text-only feedback posts anonymously to /v1/feedback. Screenshots require
+  // real Google sign-in (not anonymous) so:
+  //   1. Abuse is attributable to a real account we can disable
+  //   2. Bot operators can't programmatically create sign-in accounts
+  //   3. The server rate-limits per UID with a hard ceiling that survives
+  //      tab-closes / incognito resets (anon tokens would rotate every session)
+  //
+  // Sign-in flow: if user clicks "Attach screenshot" without a cached token, we
+  // open an Identity Toolkit OAuth popup for Google. Token cached in session
+  // storage so repeated submissions don't re-prompt. Cleared on Remove or when
+  // the server reports the UID was abuse-disabled (403 reason=disabled).
+  // Phase RT.2 follow-up: token persistence moved from sessionStorage to
+  // localStorage. sessionStorage dies on tab close AND is isolated per tab,
+  // so users had to re-sign-in constantly when hopping between products.
+  // localStorage is shared across tabs and persists across browser restarts,
+  // matching the "you are signed in" mental model. Firebase ID tokens expire
+  // after ~1h; we detect expiry in updateUserChip (decoded .exp claim) and
+  // auto-clear the token when it is stale, which triggers a silent re-check
+  // via the /feedback-signin iframe (see silentlyRefreshToken below) so
+  // long-lived users do not keep seeing sign-in prompts as tokens age.
+  var TOKEN_KEY = 'mchatai_fb_idtoken';
+  // Migration: if an older session put a token in sessionStorage, promote it
+  // to localStorage so the user does not lose their sign-in on this refresh.
+  (function migrateOldToken() {
+    try {
+      if (!localStorage.getItem(TOKEN_KEY) && sessionStorage.getItem(TOKEN_KEY)) {
+        localStorage.setItem(TOKEN_KEY, sessionStorage.getItem(TOKEN_KEY));
+      }
+      sessionStorage.removeItem(TOKEN_KEY);
+    } catch (e) {}
+  })();
+  var cachedIdToken = (function () {
+    try { return localStorage.getItem(TOKEN_KEY) || null; } catch (e) { return null; }
+  })();
+
+  function storeToken(tok) {
+    cachedIdToken = tok;
+    try { localStorage.setItem(TOKEN_KEY, tok); } catch (e) {}
+    updateUserChip();
+  }
+
+  function clearToken() {
+    cachedIdToken = null;
+    try { localStorage.removeItem(TOKEN_KEY); } catch (e) {}
+    updateUserChip();
+  }
+
+  // Silent-refresh: when the cached token is missing or expired, try to pull
+  // a fresh one from /feedback-signin.html via a hidden iframe. The signin
+  // page runs Firebase Web SDK which persists auth in IndexedDB — if the
+  // user signed in on any mchatai.com page at any point, Firebase still has
+  // the session and onAuthStateChanged fires with the user, which posts a
+  // fresh ID token back to the widget via postMessage. No visible popup,
+  // no user action required — the sign-in just "carries over."
+  function silentlyRefreshToken() {
+    return new Promise(function (resolve) {
+      var iframe = document.createElement('iframe');
+      iframe.style.cssText = 'position:fixed;left:-9999px;top:-9999px;width:1px;height:1px;border:0;';
+      iframe.src = 'https://mchatai.com/feedback-signin.html?silent=1';
+      var done = false;
+      var finish = function (token) {
+        if (done) return;
+        done = true;
+        window.removeEventListener('message', handler);
+        try { document.body.removeChild(iframe); } catch (e) {}
+        if (token) storeToken(token);
+        resolve(token || null);
+      };
+      var handler = function (ev) {
+        if (ev.origin !== 'https://mchatai.com') return;
+        if (!ev.data || ev.data.type !== 'mchatai-fb-signin') return;
+        finish(ev.data.idToken || null);
+      };
+      window.addEventListener('message', handler);
+      document.body.appendChild(iframe);
+      // 3s timeout — if Firebase has no cached session the iframe just sits
+      // idle at the button prompt. Give up silently.
+      setTimeout(function () { finish(null); }, 3000);
+    });
+  }
+
+  /* Phase RT.2 follow-up: decode a Firebase ID token's payload (the middle
+     JWT segment — base64url-encoded JSON). We only need name/email/picture,
+     so we do NOT verify the signature here (server revalidates on every
+     request). Returns null on any decode failure. */
+  function decodeIdToken(token) {
+    if (!token) return null;
+    try {
+      var parts = token.split('.');
+      if (parts.length < 2) return null;
+      var b64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+      while (b64.length % 4) b64 += '=';
+      return JSON.parse(atob(b64));
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function updateUserChip() {
+    var chip = document.getElementById('mchatai-fb-user');
+    if (!chip) return;
+    var claims = decodeIdToken(cachedIdToken);
+    if (claims && claims.exp && claims.exp * 1000 < Date.now()) {
+      // Token expired — treat as signed-out so the chip prompts sign-in again.
+      claims = null;
+      try { sessionStorage.removeItem('mchatai_fb_idtoken'); } catch (e) {}
+      cachedIdToken = null;
+    }
+    // Build the chip contents via DOM APIs rather than innerHTML with nested
+    // quotes — the IIFE string gets concatenated into an HTML response, and
+    // any backslash-escaped quote here breaks the whole widget at parse time
+    // in the browser. Lost an entire deploy to this — don't regress.
+    while (chip.firstChild) chip.removeChild(chip.firstChild);
+    if (claims) {
+      chip.classList.add('signed-in');
+      chip.title = 'Signed in as ' + (claims.email || claims.name || 'you') + ' — click to sign out';
+      var displayName = claims.name || (claims.email ? claims.email.split('@')[0] : 'you');
+      var shortName = displayName.length > 14 ? displayName.slice(0, 13) + '…' : displayName;
+      var initial = displayName.charAt(0).toUpperCase();
+      // Try avatar image first; fall back to initial-letter span on error.
+      if (claims.picture) {
+        var img = document.createElement('img');
+        img.src = claims.picture;
+        img.alt = '';
+        img.referrerPolicy = 'no-referrer';
+        img.addEventListener('error', function () {
+          var fallback = document.createElement('span');
+          fallback.className = 'mchatai-fb-user-avatar-fallback';
+          fallback.textContent = initial;
+          if (img.parentNode) img.parentNode.replaceChild(fallback, img);
+        });
+        chip.appendChild(img);
+      } else {
+        var fallbackSpan = document.createElement('span');
+        fallbackSpan.className = 'mchatai-fb-user-avatar-fallback';
+        fallbackSpan.textContent = initial;
+        chip.appendChild(fallbackSpan);
+      }
+      var nameSpan = document.createElement('span');
+      nameSpan.className = 'mchatai-fb-user-name';
+      nameSpan.textContent = shortName;
+      chip.appendChild(nameSpan);
+    } else {
+      chip.classList.remove('signed-in');
+      chip.title = 'Sign in to enable screenshots';
+      var icon = document.createElement('span');
+      icon.setAttribute('aria-hidden', 'true');
+      icon.textContent = '👤';
+      var label = document.createElement('span');
+      label.className = 'mchatai-fb-user-name';
+      label.textContent = 'Sign in';
+      chip.appendChild(icon);
+      chip.appendChild(label);
+    }
+    // Also refresh the screenshot row so the "Sign in first" CTA flips to
+    // "Attach screenshot" once signed-in (or vice versa).
+    updateScreenshotRow();
+  }
+
+  /* Phase RT.2 follow-up: keep the screenshot button's label + disabled state
+     in sync with sign-in state so users understand why they can't click it. */
+  function updateScreenshotRow() {
+    var row = document.getElementById('mchatai-fb-screenshot-row');
+    var btn = document.getElementById('mchatai-fb-shot-btn');
+    if (!row || !btn) return;
+    if (!screenshotAllowed) {
+      row.style.display = 'none';
+      return;
+    }
+    row.style.display = 'block';
+    if (cachedIdToken) {
+      btn.textContent = '📸 Attach screenshot';
+      btn.disabled = false;
+    } else {
+      btn.textContent = '🔒 Sign in to attach screenshot';
+      btn.disabled = false;  // clickable — click triggers sign-in popup
+    }
+  }
+
+  async function ensureSignedIn() {
+    if (cachedIdToken) return cachedIdToken;
+    // Use Firebase's identitytoolkit OAuth popup flow. We use the
+    // createAuthUri + verifyAssertion pattern via a popup. Keep it minimal —
+    // the user gets a Google chooser and a standard OAuth consent screen.
+    return new Promise(function (resolve, reject) {
+      var popupW = 500, popupH = 600;
+      var left = (screen.width - popupW) / 2;
+      var top = (screen.height - popupH) / 2;
+      // Firebase Hosting has a stock sign-in handler at __/auth/handler. We'll
+      // send the user to a small sign-in page we host at /feedback-signin that
+      // runs Firebase JS SDK, does signInWithPopup(Google), and posts the
+      // idToken back to the opener via postMessage.
+      var popup = window.open(
+        'https://mchatai.com/feedback-signin.html?return=' + encodeURIComponent(location.href),
+        'mchatai-fb-signin',
+        'width=' + popupW + ',height=' + popupH + ',left=' + left + ',top=' + top
+      );
+      if (!popup) {
+        reject(new Error('Sign-in popup blocked. Allow popups and try again.'));
+        return;
+      }
+      var handler = function (ev) {
+        if (ev.origin !== 'https://mchatai.com') return;
+        if (!ev.data || ev.data.type !== 'mchatai-fb-signin') return;
+        window.removeEventListener('message', handler);
+        try { popup.close(); } catch (e) {}
+        if (ev.data.idToken) {
+          storeToken(ev.data.idToken);
+          resolve(ev.data.idToken);
+        } else {
+          reject(new Error(ev.data.error || 'Sign-in canceled'));
+        }
+      };
+      window.addEventListener('message', handler);
+      // Watchdog — if the popup closes without posting, reject after 5 min.
+      var watch = setInterval(function () {
+        if (popup.closed) {
+          clearInterval(watch);
+          window.removeEventListener('message', handler);
+          reject(new Error('Sign-in window closed'));
+        }
+      }, 500);
+    });
+  }
+
+  sendBtn.addEventListener('click', async function () {
+    var text = textArea.value.trim();
+    // Phase RT.1: allow rating-only submissions. Require at least one signal.
+    if (text.length < 4 && selectedRating == null) return;
+
+    sendBtn.disabled = true;
+    sendBtn.textContent = 'Sending…';
+    statusEl.textContent = '';
+
+    // Phase RT.1: resolve a rating context version so iterations don't pool
+    // their ratings across builds. Prefer a meta tag the product set at publish
+    // time; fall back to the HTML's Last-Modified (set by serveUserProject) or
+    // today's date. The server also records server-side createdAt, so this is
+    // only a hint for cross-build grouping.
+    var ratingContextVersion = null;
+    var versionMeta = document.querySelector('meta[name="mchatai-version"]');
+    if (versionMeta && versionMeta.content) {
+      ratingContextVersion = versionMeta.content;
+    } else {
+      ratingContextVersion = new Date().toISOString().slice(0, 10); // YYYY-MM-DD bucket
+    }
+
+    // When only a rating (no text), synthesize a short description so the
+    // ticket still has searchable content in the review queue.
+    var effectiveText = text;
+    if (effectiveText.length < 4 && selectedRating != null) {
+      effectiveText = selectedRating + '-star rating (no comment)';
+    }
+
+    var payload = {
+      title: effectiveText.split('\n')[0].slice(0, 80),
+      description: effectiveText,
+      type: selectedType,
+      severity: selectedType === 'bug' ? 'medium' : 'low',
+      rating: selectedRating,
+      ratingContextVersion: ratingContextVersion,
+      endProductSlug: slug,
+      previewURL: location.href,
+      source: 'web.user-project-widget',
+      metadata: {
+        consoleErrors: __consoleErrors.slice(),
+        userAgent: navigator.userAgent,
+        viewport: window.innerWidth + 'x' + window.innerHeight,
+        shortUid: shortUid,
+      },
+    };
+
+    // Screenshot attached → attach base64 + dimensions. Server will decode,
+    // verify size, upload to GCS, and embed the URL on the ticket.
+    if (capturedScreenshot) {
+      payload.screenshot = {
+        dataURL: capturedScreenshot.dataURL,
+        width: capturedScreenshot.width,
+        height: capturedScreenshot.height,
+      };
+    }
+
+    try {
+      var headers = { 'Content-Type': 'application/json' };
+      // Include auth only if we have a token; screenshot submissions require it
+      // but we let the server reject rather than blocking client-side — cheaper
+      // to handle edge cases (stale token, abuse-disabled account) in one place.
+      if (cachedIdToken) headers['Authorization'] = 'Bearer ' + cachedIdToken;
+
+      var resp = await fetch(API_BASE + '/v1/feedback', {
+        method: 'POST',
+        headers: headers,
+        body: JSON.stringify(payload),
+      });
+      var body = await resp.json().catch(function () { return {}; });
+
+      // Server telling us the user is abuse-disabled → clear token so the next
+      // attempt forces a fresh sign-in. The abuse-disable lives on the UID in
+      // Firestore so a re-sign-in with the same account will re-reject; only
+      // recovery is to sign in with a different account or contact support.
+      if (resp.status === 403 && body && body.reason === 'user-disabled') {
+        clearToken();
+        removeScreenshot();
+      }
+
+      if (resp.ok && body.ok) {
+        statusEl.style.color = '#5db77a';
+        statusEl.textContent = selectedRating != null
+          ? 'Thanks! Your ' + selectedRating + '-star rating was logged.'
+          : 'Thanks! Your feedback was logged.';
+        textArea.value = '';
+        selectedRating = null;
+        paintStars(null);
+        removeScreenshot();
+        setTimeout(closePanel, 1400);
+      } else {
+        statusEl.style.color = '#e26766';
+        statusEl.textContent = body.error || ('Error ' + resp.status);
+      }
+    } catch (err) {
+      statusEl.style.color = '#e26766';
+      statusEl.textContent = 'Network error — try again.';
+    } finally {
+      sendBtn.textContent = 'Send';
+      updateSendState();
+    }
+  });
+})();
+</script></body>
+</html>
