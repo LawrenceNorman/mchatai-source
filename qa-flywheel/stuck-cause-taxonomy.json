@@ -65,5 +65,12 @@
     "moderateOkRate>=0.3": "Bias toward gpt-oss:20b even for coding tasks (better instruction-following). Consider increasing decomposeRetryBudget to 6 if user is willing to wait. Surface a 'this prompt is in a hard category — generation may take 10-15 min' hint to the user.",
     "lowOkRate<0.3": "Auto-route to Best Quality mode (Claude Sonnet 4.6 via Anthropic API) UNLESS user explicitly opted into Lowest Cost. If Lowest Cost forced, surface a 'this prompt class has historically failed in Lowest Cost mode' warning + offer to escalate. Or suggest the user simplify the prompt.",
     "noSamples": "Brand-new bucket — use Lowest Cost defaults but log the run with extra diagnostics for the next aggregator pass."
+  },
+
+  "_keyEmpiricalFinding20260430": {
+    "_comment": "Multi-canary observation 2026-04-30: with maxTurns=1, first-turn baseline success rate on miniApp L1 productivity AND L1 games is ~0% — qwen3-coder:30b consistently hits stuck-step-no-resolution within the StepwiseRetry budget. BUT Lawrence's manual Kitchen Timer succeeded on the user-facing flow (maxTurns=2) at retry attempt 4 of turn 2. The 'auto-steer turn 2' path is where convergence actually happens.",
+    "implication": "Per-model success curves from QAFlywheel runs are FIRST-TURN BASELINE, not user-facing-flow performance. The user-facing flow with maxTurns=2 has a higher effective success rate because it gets a second chance after stuck-pause. Don't compare canary numbers to user-experience numbers directly.",
+    "_actionForRouting": "When a goal classifies into a low-first-turn-baseline bucket but the user is on the production path (maxTurns=2 default), DON'T auto-route to Best Quality — give the auto-steer turn 2 path a chance first. Only escalate if turn 2 also fails.",
+    "_actionForFlywheel": "QAFlywheel canaries should report TWO success rates: first-turn-baseline (maxTurns=1) and full-flow (maxTurns=2). The latter matches user experience; the former is faster to evaluate."
   }
 }
