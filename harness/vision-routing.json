@@ -1,0 +1,65 @@
+{
+  "version": 1,
+  "lastUpdated": "2026-04-30",
+  "_source_of_truth": true,
+  "_comment": "Vision-LLM routing for the wizard's auto-play and visual-evaluator paths. Per CLAUDE.md RULE #1, the priority list of preferred Ollama vision models lives here so we can retune without a Swift rebuild. Loader: AutoPlayPolicyContent.swift (Phase 0d.24/0d.26). Edit + git push + (relaunch OR refreshMchataisourceCache) ships changes.",
+
+  "ollamaVisionModelPriority": [
+    "qwen2.5-vl:32b",
+    "qwen3-vl",
+    "qwen2.5-vl",
+    "llama3.2-vision:90b",
+    "llama3.2-vision:11b",
+    "llava-llama3",
+    "llava:13b",
+    "llava:7b",
+    "llava",
+    "moondream",
+    "minicpm-v",
+    "bakllava"
+  ],
+  "_priorityRationale": "Newest/strongest at structured visual reasoning first, then fallbacks. Match is by substring (case-insensitive) so version suffixes (`:8b`, `:latest`) hit the same priority entry. The first installed match wins.",
+
+  "preferOllamaOverCloud": true,
+  "_preferOllamaOverCloudComment": "When true: Ollama vision (if any model installed) runs FIRST in the cascade, cloud (Google/OpenAI/Anthropic) is fallback. When false: cloud first (legacy behavior). Default true so cheap-routing users get free local inference.",
+
+  "fallbackToCloud": true,
+  "_fallbackToCloudComment": "If Ollama vision fails (model crashed, daemon unreachable mid-call, output unparseable), cascade to cloud APIs that have keys configured. When false: hard-fail with the local error so the user knows local broke. Default true for resilience.",
+
+  "hardwareTierRecommendations": {
+    "_comment": "Suggested model per Mac RAM tier — surfaced in the no-vision-model-installed error message so users get a copy-pasteable command. Not used at runtime (auto-detection picks whichever is installed); pure UX guidance.",
+    "8gb": {
+      "primary": "moondream",
+      "diskGB": 2,
+      "ramGB": 3,
+      "pullCommand": "ollama pull moondream",
+      "rationale": "Fast, lightweight, specifically tuned for screenshots/UI. Comfortable on 8GB even with other apps."
+    },
+    "16gb": {
+      "primary": "moondream",
+      "diskGB": 2,
+      "ramGB": 3,
+      "pullCommand": "ollama pull moondream",
+      "alsoConsider": "qwen3-vl:8b (tight at ~7GB loaded)",
+      "rationale": "moondream is the safe default. qwen3-vl:8b works but leaves <3GB headroom on 16GB once macOS + Slack + browser are running."
+    },
+    "32gb": {
+      "primary": "qwen3-vl:8b",
+      "diskGB": 5,
+      "ramGB": 7,
+      "pullCommand": "ollama pull qwen3-vl:8b",
+      "rationale": "Best balance of quality + speed for typical Mac. Strong at structured visual reasoning."
+    },
+    "64gb_plus": {
+      "primary": "qwen2.5-vl:32b",
+      "diskGB": 20,
+      "ramGB": 25,
+      "pullCommand": "ollama pull qwen2.5-vl:32b",
+      "alsoConsider": "qwen3-vl:8b for faster iteration",
+      "rationale": "Top quality. Fits alongside qwen3-coder:30b in 64GB with room to spare."
+    }
+  },
+
+  "visionModelCacheTTLSeconds": 60,
+  "_visionModelCacheTTLComment": "How long the auto-detect caches the picked vision model. Re-probing Ollama /api/tags every vision call adds ~50ms; 60s strikes a balance for picking up newly-pulled models without spamming the daemon."
+}
