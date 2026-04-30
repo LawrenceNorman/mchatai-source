@@ -1,0 +1,1970 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Asteroids</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{width:100%;height:100%;background:#000;overflow:hidden;font-family:'Courier New','Lucida Console',monospace;color:#fff}
+  #wrap{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:radial-gradient(ellipse at center,#050810 0%,#000 80%)}
+  canvas{display:block;background:#000;box-shadow:0 0 60px rgba(80,180,255,.18),inset 0 0 80px rgba(0,0,0,.9);image-rendering:pixelated;border:1px solid #0a1a2a}
+  #hud{position:fixed;top:0;left:0;right:0;display:flex;justify-content:space-between;padding:14px 22px;font-size:20px;letter-spacing:3px;text-shadow:0 0 8px #00e0ff,0 0 2px #fff;pointer-events:none;z-index:10;font-weight:bold}
+  #hud .col{display:flex;align-items:center;gap:18px}
+  #lives{display:inline-flex;gap:6px;align-items:center}
+  #lives svg{filter:drop-shadow(0 0 4px #00e0ff)}
+  #msg{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);text-align:center;pointer-events:none;z-index:11;text-shadow:0 0 14px #00ffff,0 0 4px #fff}
+  #msg .title{font-size:64px;letter-spacing:14px;font-weight:bold;margin-bottom:18px;color:#fff}
+  #msg .sub{font-size:20px;letter-spacing:4px;color:#9ee7ff;line-height:1.8}
+  #msg .small{font-size:14px;letter-spacing:2px;color:#7aa8c4;margin-top:22px;line-height:1.7}
+  #toast{position:fixed;left:50%;top:90px;transform:translateX(-50%);background:#1e293b;color:#fff;padding:10px 22px;border-radius:6px;font-size:15px;letter-spacing:2px;border:1px solid #00e0ff;box-shadow:0 0 20px rgba(0,224,255,.4);z-index:20;opacity:0;transition:opacity .25s;pointer-events:none}
+  #toast.show{opacity:1}
+  .blink{animation:blink 1s steps(2,end) infinite}
+  @keyframes blink{50%{opacity:.25}}
+  .pulse{animation:pulse 1.6s ease-in-out infinite}
+  @keyframes pulse{0%,100%{transform:translate(-50%,-50%) scale(1)}50%{transform:translate(-50%,-50%) scale(1.04)}}
+  #ctrls{position:fixed;bottom:14px;left:50%;transform:translateX(-50%);font-size:12px;letter-spacing:2px;color:#5a7a90;text-align:center;z-index:10;pointer-events:none}
+  #ctrls b{color:#9ee7ff}
+  /* Touch controls */
+  #touch{position:fixed;inset:0;z-index:5;pointer-events:none;display:none}
+  @media(pointer:coarse),(max-width:760px){#touch{display:block}#ctrls{display:none}}
+  .tbtn{position:absolute;width:74px;height:74px;border-radius:50%;background:rgba(20,40,60,.55);border:2px solid rgba(0,224,255,.5);color:#9ee7ff;font-size:26px;display:flex;align-items:center;justify-content:center;pointer-events:auto;user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent;touch-action:none;font-weight:bold}
+  .tbtn:active{background:rgba(0,224,255,.3)}
+  #t-left{bottom:30px;left:20px}
+  #t-right{bottom:30px;left:110px}
+  #t-thrust{bottom:120px;right:110px}
+  #t-fire{bottom:30px;right:20px;width:90px;height:90px;background:rgba(60,20,40,.6);border-color:rgba(255,80,140,.6);color:#ffb0c8}
+  #t-hyper{bottom:30px;right:120px;width:60px;height:60px;font-size:14px}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <canvas id="game" width="900" height="640"></canvas>
+</div>
+
+<div id="hud">
+  <div class="col"><span>SCORE</span><span id="score">0</span></div>
+  <div class="col"><span id="hi-label">HI</span><span id="hiscore">0</span></div>
+  <div class="col"><span id="lives"></span><span id="wave-lbl">WAVE</span><span id="wave">1</span></div>
+</div>
+
+<div id="msg"></div>
+<div id="toast"></div>
+<div id="ctrls">
+  <b>&larr;</b> / <b>&rarr;</b> ROTATE &nbsp;&middot;&nbsp; <b>&uarr;</b> THRUST &nbsp;&middot;&nbsp; <b>SPACE</b> FIRE &nbsp;&middot;&nbsp; <b>SHIFT</b> HYPERSPACE &nbsp;&middot;&nbsp; <b>P</b> PAUSE
+</div>
+
+<div id="touch">
+  <div class="tbtn" id="t-left">&#9664;</div>
+  <div class="tbtn" id="t-right">&#9654;</div>
+  <div class="tbtn" id="t-thrust">&#9650;</div>
+  <div class="tbtn" id="t-hyper">HYP</div>
+  <div class="tbtn" id="t-fire">FIRE</div>
+</div>
+
+<script>
+(() => {
+'use strict';
+
+// ============================================================
+//  Setup
+// ============================================================
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+const msgEl = document.getElementById('msg');
+const toastEl = document.getElementById('toast');
+const scoreEl = document.getElementById('score');
+const hiEl = document.getElementById('hiscore');
+const livesEl = document.getElementById('lives');
+const waveEl = document.getElementById('wave');
+
+let W = canvas.width, H = canvas.height;
+
+function fitCanvas() {
+  const ar = 900/640;
+  const availW = window.innerWidth - 16;
+  const availH = window.innerHeight - 16;
+  let cssW, cssH;
+  if (availW / availH > ar) { cssH = availH; cssW = cssH * ar; }
+  else { cssW = availW; cssH = cssW / ar; }
+  canvas.style.width = cssW + 'px';
+  canvas.style.height = cssH + 'px';
+  ctx.imageSmoothingEnabled = false;
+}
+window.addEventListener('resize', fitCanvas);
+fitCanvas();
+
+// ============================================================
+//  Audio (Web Audio square waves — authentic arcade beeps)
+// ============================================================
+let audioCtx = null;
+function ensureAudio() {
+  if (!audioCtx) {
+    try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {}
+  }
+  if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+}
+function beep(freq, dur, type='square', vol=0.08, slide=0) {
+  if (!audioCtx) return;
+  const t0 = audioCtx.currentTime;
+  const osc = audioCtx.createOscillator();
+  const g = audioCtx.createGain();
+  osc.type = type;
+  osc.frequency.setValueAtTime(freq, t0);
+  if (slide) osc.frequency.exponentialRampToValueAtTime(Math.max(40, freq + slide), t0 + dur);
+  g.gain.setValueAtTime(vol, t0);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  osc.connect(g); g.connect(audioCtx.destination);
+  osc.start(t0); osc.stop(t0 + dur + 0.02);
+}
+function noise(dur, vol=0.15, filterFreq=800) {
+  if (!audioCtx) return;
+  const t0 = audioCtx.currentTime;
+  const buf = audioCtx.createBuffer(1, audioCtx.sampleRate * dur, audioCtx.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < d.length; i++) d[i] = (Math.random()*2-1) * (1 - i/d.length);
+  const src = audioCtx.createBufferSource();
+  src.buffer = buf;
+  const filt = audioCtx.createBiquadFilter();
+  filt.type = 'lowpass'; filt.frequency.value = filterFreq;
+  const g = audioCtx.createGain();
+  g.gain.setValueAtTime(vol, t0);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  src.connect(filt); filt.connect(g); g.connect(audioCtx.destination);
+  src.start(t0);
+}
+const SFX = {
+  fire:    () => beep(880, 0.08, 'square', 0.06, -400),
+  bangL:   () => noise(0.45, 0.22, 600),
+  bangM:   () => noise(0.30, 0.18, 800),
+  bangS:   () => noise(0.18, 0.14, 1200),
+  thrust:  () => noise(0.06, 0.04, 400),
+  ufoLow:  () => beep(180, 0.18, 'sawtooth', 0.06, 60),
+  ufoHigh: () => beep(320, 0.14, 'sawtooth', 0.06, -60),
+  ufoFire: () => beep(540, 0.12, 'square', 0.07, 200),
+  death:   () => { noise(0.6, 0.28, 500); setTimeout(()=>beep(120,0.4,'sawtooth',0.1,-80),60); },
+  extra:   () => { [880,1175,1568].forEach((f,i)=>setTimeout(()=>beep(f,0.12,'square',0.08),i*90)); },
+  hyper:   () => beep(1500, 0.25, 'sine', 0.08, -1300),
+  newWave: () => { [440,587,784].forEach((f,i)=>setTimeout(()=>beep(f,0.1,'square',0.07),i*70)); }
+};
+
+// ============================================================
+//  Game State
+// ============================================================
+const state = {
+  ship: null,
+  bullets: [],
+  asteroids: [],
+  particles: [],
+  ufo: null,
+  ufoBullets: [],
+  score: 0,
+  hiscore: 0,
+  lives: 3,
+  wave: 1,
+  nextLifeAt: 10000,
+  ufoTimer: 0,
+  paused: false,
+  mode: 'title', // 'title' | 'play' | 'gameover' | 'wavebreak'
+  waveBreakTimer: 0,
+  shake: 0,
+  flash: 0,
+  starfield: []
+};
+
+// Persist hi-score
+try { state.hiscore = parseInt(localStorage.getItem('asteroids_hi')) || 0; } catch(e) {}
+if (!state.hiscore || state.hiscore < 0) state.hiscore = 0;
+
+// Build starfield (parallax background)
+for (let i = 0; i < 90; i++) {
+  state.starfield.push({
+    x: Math.random()*W,
+    y: Math.random()*H,
+    z: Math.random()*0.7 + 0.3, // depth (also brightness)
+    tw: Math.random()*Math.PI*2 // twinkle phase
+  });
+}
+
+// ============================================================
+//  Constants
+// ============================================================
+const SHIP_RADIUS = 12;
+const SHIP_THRUST = 280;        // px/s^2
+const SHIP_FRICTION = 0.992;    // per frame at 60fps -> applied per dt
+const SHIP_TURN = 4.6;          // rad/s
+const BULLET_SPEED = 520;
+const BULLET_LIFE = 0.95;       // seconds
+const FIRE_COOLDOWN = 0.18;
+const MAX_BULLETS = 5;
+const RESPAWN_INVULN = 3.0;
+const ASTEROID_SPEEDS = { 3: [40, 80], 2: [60, 110], 1: [90, 160] };
+const ASTEROID_RADII = { 3: 42, 2: 22, 1: 12 };
+const ASTEROID_SCORE = { 3: 20, 2: 50, 1: 100 };
+const UFO_SCORE = { big: 200, small: 1000 };
+const UFO_SPEED = 90;
+const UFO_FIRE_INTERVAL = 1.4;
+const UFO_BULLET_SPEED = 320;
+const UFO_BULLET_LIFE = 1.6;
+const UFO_SPAWN_MIN = 18;       // seconds
+const UFO_SPAWN_MAX = 32;
+
+// ============================================================
+//  Helpers
+// ============================================================
+function wrap(o) {
+  if (o.x < 0) o.x += W;
+  else if (o.x > W) o.x -= W;
+  if (o.y < 0) o.y += H;
+  else if (o.y > H) o.y -= H;
+}
+function dist2(a, b) { const dx=a.x-b.x, dy=a.y-b.y; return dx*dx+dy*dy; }
+function rand(min, max) { return min + Math.random()*(max-min); }
+function randInt(min, max) { return Math.floor(rand(min, max+1)); }
+function pick(arr) { return arr[Math.floor(Math.random()*arr.length)]; }
+
+function showToast(text, dur=1800) {
+  toastEl.textContent = text;
+  toastEl.classList.add('show');
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(() => toastEl.classList.remove('show'), dur);
+}
+
+function setMessage(html) { msgEl.innerHTML = html; }
+function clearMessage() { msgEl.innerHTML = ''; }
+
+function updateHUD() {
+  scoreEl.textContent = state.score;
+  hiEl.textContent = state.hiscore;
+  waveEl.textContent = state.wave;
+  // Lives as small ship icons
+  let svg = '';
+  for (let i = 0; i < state.lives; i++) {
+    svg += '<svg width="16" height="20" viewBox="-12 -12 24 24" style="margin-right:2px"><polygon points="0,-10 8,8 -8,8" fill="none" stroke="#9ee7ff" stroke-width="1.6" stroke-linejoin="round"/></svg>';
+  }
+  livesEl.innerHTML = svg;
+}
+
+// ============================================================
+//  Entities
+// ============================================================
+function makeShip() {
+  return {
+    x: W/2, y: H/2,
+    vx: 0, vy: 0,
+    angle: -Math.PI/2,           // pointing up
+    radius: SHIP_RADIUS,
+    thrusting: false,
+    cooldown: 0,
+    invuln: RESPAWN_INVULN,
+    alive: true,
+    respawnIn: 0
+  };
+}
+
+// Asteroid shapes are jagged polygons, generated once
+function makeAsteroid(size, x, y, vx, vy) {
+  const r = ASTEROID_RADII[size];
+  const verts = randInt(8, 13);
+  const shape = [];
+  for (let i = 0; i < verts; i++) {
+    const a = (i/verts) * Math.PI*2;
+    const jag = rand(0.65, 1.15);
+    shape.push({ a, r: r * jag });
+  }
+  if (vx == null) {
+    const speed = rand(...ASTEROID_SPEEDS[size]);
+    const dir = rand(0, Math.PI*2);
+    vx = Math.cos(dir)*speed; vy = Math.sin(dir)*speed;
+  }
+  return {
+    size, radius: r,
+    x: x ?? rand(0, W),
+    y: y ?? rand(0, H),
+    vx, vy,
+    angle: rand(0, Math.PI*2),
+    spin: rand(-1.4, 1.4),
+    shape
+  };
+}
+
+function spawnWave(n) {
+  state.asteroids = [];
+  for (let i = 0; i < n; i++) {
+    // Spawn away from ship
+    let x, y, tries = 0;
+    do {
+      x = rand(0, W); y = rand(0, H);
+      tries++;
+    } while (tries < 30 && state.ship && Math.hypot(x - state.ship.x, y - state.ship.y) < 180);
+    state.asteroids.push(makeAsteroid(3, x, y));
+  }
+}
+
+function makeUFO(size) {
+  // size: 'big' (slow, dumb shooter) or 'small' (fast, accurate)
+  const fromLeft = Math.random() < 0.5;
+  const y = rand(H*0.15, H*0.85);
+  return {
+    size,
+    x: fromLeft ? -30 : W + 30,
+    y,
+    vx: (fromLeft ? 1 : -1) * UFO_SPEED * (size === 'small' ? 1.4 : 1),
+    vy: 0,
+    radius: size === 'big' ? 18 : 12,
+    fireTimer: 0.6,
+    dirTimer: 0,
+    soundTimer: 0,
+    soundToggle: false,
+    alive: true
+  };
+}
+
+function spawnUFO() {
+  // Small UFO becomes more likely as score grows
+  const smallChance = Math.min(0.7, state.score / 25000 + 0.1);
+  state.ufo = makeUFO(Math.random() < smallChance ? 'small' : 'big');
+  showToast(state.ufo.size === 'small' ? 'SMALL UFO INCOMING' : 'UFO INCOMING');
+}
+
+function scheduleNextUFO() {
+  state.ufoTimer = rand(UFO_SPAWN_MIN, UFO_SPAWN_MAX);
+}
+
+// ============================================================
+//  Particles & Effects
+// ============================================================
+function addParticles(x, y, count, opts={}) {
+  const speed = opts.speed || 90;
+  const life = opts.life || 0.7;
+  const color = opts.color || '#ffffff';
+  for (let i = 0; i < count; i++) {
+    const a = rand(0, Math.PI*2);
+    const s = rand(speed*0.3, speed);
+    state.particles.push({
+      x, y,
+      vx: Math.cos(a)*s + (opts.vx||0)*0.4,
+      vy: Math.sin(a)*s + (opts.vy||0)*0.4,
+      life: rand(life*0.5, life),
+      maxLife: life,
+      color,
+      size: opts.size || rand(1, 2.5)
+    });
+  }
+}
+function addThrustParticle(ship) {
+  // Particles emit from rear of ship, opposite to facing
+  const back = ship.angle + Math.PI;
+  const px = ship.x + Math.cos(back) * (ship.radius + 1);
+  const py = ship.y + Math.sin(back) * (ship.radius + 1);
+  const spread = rand(-0.45, 0.45);
+  const v = rand(120, 220);
+  const dir = back + spread;
+  const colors = ['#ffd24a','#ff9a2a','#ff5018','#ffffff'];
+  state.particles.push({
+    x: px, y: py,
+    vx: Math.cos(dir)*v + ship.vx*0.4,
+    vy: Math.sin(dir)*v + ship.vy*0.4,
+    life: rand(0.25, 0.55),
+    maxLife: 0.55,
+    color: pick(colors),
+    size: rand(1.4, 2.6)
+  });
+}
+
+// ============================================================
+//  Input
+// ============================================================
+const keys = { left:false, right:false, up:false, fire:false };
+let firePressed = false, hyperPressed = false;
+
+window.addEventListener('keydown', e => {
+  if (['ArrowLeft','ArrowRight','ArrowUp','ArrowDown',' ','Space','Shift','ShiftLeft','ShiftRight'].includes(e.key) || e.code === 'Space') {
+    e.preventDefault();
+  }
+  ensureAudio();
+  if (state.mode === 'title' && (e.code === 'Space' || e.key === 'Enter')) {
+    startGame(); return;
+  }
+  if (state.mode === 'gameover' && (e.code === 'Space' || e.key === 'Enter')) {
+    startGame(); return;
+  }
+  if (e.key === 'p' || e.key === 'P') {
+    if (state.mode === 'play') togglePause();
+    return;
+  }
+  if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') keys.left = true;
+  if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') keys.right = true;
+  if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') keys.up = true;
+  if (e.code === 'Space') { keys.fire = true; firePressed = true; }
+  if (e.key === 'Shift') hyperPressed = true;
+}, { passive: false });
+
+window.addEventListener('keyup', e => {
+  if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') keys.left = false;
+  if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') keys.right = false;
+  if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') keys.up = false;
+  if (e.code === 'Space') keys.fire = false;
+});
+
+// Touch controls
+function bindTouch(id, on, off) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const start = e => { e.preventDefault(); ensureAudio(); on(); };
+  const end   = e => { e.preventDefault(); off && off(); };
+  el.addEventListener('touchstart', start, { passive: false });
+  el.addEventListener('touchend', end, { passive: false });
+  el.addEventListener('touchcancel', end, { passive: false });
+  el.addEventListener('mousedown', start);
+  el.addEventListener('mouseup', end);
+  el.addEventListener('mouseleave', end);
+}
+bindTouch('t-left', () => keys.left = true, () => keys.left = false);
+bindTouch('t-right', () => keys.right = true, () => keys.right = false);
+bindTouch('t-thrust', () => keys.up = true, () => keys.up = false);
+bindTouch('t-fire', () => { keys.fire = true; firePressed = true; }, () => keys.fire = false);
+bindTouch('t-hyper', () => { hyperPressed = true; });
+
+// Tap canvas to start when at title or game-over
+canvas.addEventListener('pointerdown', () => {
+  ensureAudio();
+  if (state.mode === 'title' || state.mode === 'gameover') startGame();
+});
+
+// ============================================================
+//  Game flow
+// ============================================================
+function startGame() {
+  state.score = 0;
+  state.lives = 3;
+  state.wave = 1;
+  state.nextLifeAt = 10000;
+  state.bullets = [];
+  state.ufoBullets = [];
+  state.particles = [];
+  state.ufo = null;
+  state.ship = makeShip();
+  state.mode = 'play';
+  state.paused = false;
+  spawnWave(4);
+  scheduleNextUFO();
+  clearMessage();
+  updateHUD();
+  showToast('WAVE 1');
+  SFX.newWave();
+}
+
+function showTitle() {
+  setMessage(
+    '<div class="title">ASTEROIDS</div>' +
+    '<div class="sub blink">PRESS SPACE TO PLAY</div>' +
+    '<div class="small">' +
+      'ROTATE &larr; / &rarr; &nbsp;&middot;&nbsp; THRUST &uarr; &nbsp;&middot;&nbsp; FIRE [SPACE]<br>' +
+      'HYPERSPACE [SHIFT] &nbsp;&middot;&nbsp; PAUSE [P]<br><br>' +
+      'Asteroid scores: LARGE 20 &middot; MEDIUM 50 &middot; SMALL 100<br>' +
+      'UFO: BIG 200 &middot; SMALL 1000 &nbsp;&middot;&nbsp; EXTRA LIFE EVERY 10000 PTS' +
+    '</div>'
+  );
+}
+
+function gameOver() {
+  state.mode = 'gameover';
+  if (state.score > state.hiscore) {
+    state.hiscore = state.score;
+    try { localStorage.setItem('asteroids_hi', String(state.hiscore)); } catch(e) {}
+    updateHUD();
+  }
+  setMessage(
+    '<div class="title">GAME OVER</div>' +
+    '<div class="sub">FINAL SCORE&nbsp;&nbsp;' + state.score + '</div>' +
+    '<div class="sub blink" style="margin-top:18px">PRESS SPACE TO PLAY AGAIN</div>'
+  );
+  // Submit to leaderboard if available
+  if (window.mChatAI && window.mChatAI.leaderboard) {
+    try {
+      window.mChatAI.leaderboard.submit({
+        score: state.score,
+        metadata: { wave: state.wave, lives_lost: 3 }
+      }).then(r => {
+        if (r && r.rank) showToast('GLOBAL RANK #' + r.rank, 4000);
+      }).catch(()=>{});
+    } catch(e) {}
+  }
+}
+
+function togglePause() {
+  if (state.mode !== 'play') return;
+  state.paused = !state.paused;
+  if (state.paused) {
+    setMessage('<div class="title">PAUSED</div><div class="sub blink">PRESS P TO RESUME</div>');
+  } else {
+    clearMessage();
+  }
+}
+
+function loseLife() {
+  state.lives--;
+  updateHUD();
+  // Big explosion of ship debris
+  addParticles(state.ship.x, state.ship.y, 40, { speed: 220, life: 1.2, color: '#ffffff', size: 2 });
+  addParticles(state.ship.x, state.ship.y, 14, { speed: 80, life: 1.4, color: '#ff7a3a', size: 2.4 });
+  state.shake = 18;
+  state.flash = 0.35;
+  SFX.death();
+  if (state.lives <= 0) {
+    state.ship.alive = false;
+    state.ship.respawnIn = 1.6;
+    setTimeout(gameOver, 1600);
+  } else {
+    state.ship.alive = false;
+    state.ship.respawnIn = 1.5;
+  }
+}
+
+function respawnShip() {
+  // Wait until centre of screen is reasonably clear
+  const cx = W/2, cy = H/2;
+  let safe = true;
+  for (const a of state.asteroids) {
+    if (Math.hypot(a.x-cx, a.y-cy) < a.radius + 80) { safe = false; break; }
+  }
+  if (state.ufo && Math.hypot(state.ufo.x-cx, state.ufo.y-cy) < 120) safe = false;
+  if (!safe) { state.ship.respawnIn = 0.4; return; }
+  state.ship = makeShip();
+}
+
+function checkExtraLife() {
+  while (state.score >= state.nextLifeAt) {
+    state.lives++;
+    state.nextLifeAt += 10000;
+    SFX.extra();
+    showToast('EXTRA LIFE!');
+    updateHUD();
+  }
+}
+
+function checkWaveComplete() {
+  if (state.asteroids.length === 0 && state.mode === 'play' && state.waveBreakTimer <= 0) {
+    state.waveBreakTimer = 2.4;
+  }
+}
+
+function nextWave() {
+  state.wave++;
+  const count = Math.min(11, 4 + state.wave - 1);
+  spawnWave(count);
+  showToast('WAVE ' + state.wave);
+  SFX.newWave();
+  scheduleNextUFO();
+}
+
+function hyperspace() {
+  if (!state.ship || !state.ship.alive) return;
+  // 12% chance of catastrophic re-entry
+  state.ship.x = rand(40, W-40);
+  state.ship.y = rand(40, H-40);
+  state.ship.vx = 0; state.ship.vy = 0;
+  state.ship.invuln = 0.4;
+  SFX.hyper();
+  addParticles(state.ship.x, state.ship.y, 18, { speed: 140, life: 0.6, color: '#9ee7ff', size: 2 });
+  if (Math.random() < 0.12) {
+    setTimeout(() => { if (state.ship && state.ship.alive) { state.ship.invuln = 0; loseLife(); } }, 200);
+  }
+}
+
+// ============================================================
+//  Update
+// ============================================================
+function updateShip(dt) {
+  const s = state.ship;
+  if (!s) return;
+  if (!s.alive) {
+    s.respawnIn -= dt;
+    if (s.respawnIn <= 0 && state.lives > 0) respawnShip();
+    return;
+  }
+  if (keys.left) s.angle -= SHIP_TURN * dt;
+  if (keys.right) s.angle += SHIP_TURN * dt;
+  s.thrusting = keys.up;
+  if (s.thrusting) {
+    s.vx += Math.cos(s.angle) * SHIP_THRUST * dt;
+    s.vy += Math.sin(s.angle) * SHIP_THRUST * dt;
+    addThrustParticle(s);
+    if (Math.random() < 0.35) SFX.thrust();
+  }
+  // friction (frame-rate independent)
+  const f = Math.pow(SHIP_FRICTION, dt * 60);
+  s.vx *= f; s.vy *= f;
+  // Cap velocity
+  const maxV = 460;
+  const sp = Math.hypot(s.vx, s.vy);
+  if (sp > maxV) { s.vx = s.vx / sp * maxV; s.vy = s.vy / sp * maxV; }
+  s.x += s.vx * dt; s.y += s.vy * dt;
+  wrap(s);
+  s.cooldown -= dt;
+  if (s.invuln > 0) s.invuln -= dt;
+
+  if (firePressed && s.cooldown <= 0 && state.bullets.length < MAX_BULLETS) {
+    fireBullet();
+    s.cooldown = FIRE_COOLDOWN;
+  }
+  if (hyperPressed) hyperspace();
+}
+
+function fireBullet() {
+  const s = state.ship;
+  const bx = s.x + Math.cos(s.angle) * (s.radius + 2);
+  const by = s.y + Math.sin(s.angle) * (s.radius + 2);
+  state.bullets.push({
+    x: bx, y: by,
+    vx: Math.cos(s.angle) * BULLET_SPEED + s.vx * 0.5,
+    vy: Math.sin(s.angle) * BULLET_SPEED + s.vy * 0.5,
+    life: BULLET_LIFE
+  });
+  SFX.fire();
+}
+
+function updateBullets(dt) {
+  for (let i = state.bullets.length - 1; i >= 0; i--) {
+    const b = state.bullets[i];
+    b.x += b.vx * dt; b.y += b.vy * dt; b.life -= dt;
+    wrap(b);
+    if (b.life <= 0) state.bullets.splice(i, 1);
+  }
+  for (let i = state.ufoBullets.length - 1; i >= 0; i--) {
+    const b = state.ufoBullets[i];
+    b.x += b.vx * dt; b.y += b.vy * dt; b.life -= dt;
+    wrap(b);
+    if (b.life <= 0) state.ufoBullets.splice(i, 1);
+  }
+}
+
+function updateAsteroids(dt) {
+  for (const a of state.asteroids) {
+    a.x += a.vx * dt;
+    a.y += a.vy * dt;
+    a.angle += a.spin * dt;
+    wrap(a);
+  }
+}
+
+function updateUFO(dt) {
+  // Spawn timer
+  if (state.mode === 'play' && !state.ufo) {
+    state.ufoTimer -= dt;
+    if (state.ufoTimer <= 0) {
+      spawnUFO();
+    }
+  }
+  if (!state.ufo) return;
+  const u = state.ufo;
+  u.dirTimer -= dt;
+  if (u.dirTimer <= 0) {
+    u.dirTimer = rand(1.4, 2.8);
+    // Occasionally change vertical direction
+    u.vy = pick([-1, 0, 1]) * 60;
+  }
+  u.x += u.vx * dt;
+  u.y += u.vy * dt;
+  if (u.y < 30) u.y = 30, u.vy = Math.abs(u.vy);
+  if (u.y > H-30) u.y = H-30, u.vy = -Math.abs(u.vy);
+  // UFO leaves when off-screen on far side
+  if ((u.vx > 0 && u.x > W + 40) || (u.vx < 0 && u.x < -40)) {
+    state.ufo = null;
+    scheduleNextUFO();
+    return;
+  }
+  // Sound throb
+  u.soundTimer -= dt;
+  if (u.soundTimer <= 0) {
+    u.soundTimer = 0.55;
+    if (u.soundToggle) SFX.ufoLow(); else SFX.ufoHigh();
+    u.soundToggle = !u.soundToggle;
+  }
+  // Fire at player
+  u.fireTimer -= dt;
+  if (u.fireTimer <= 0 && state.ship && state.ship.alive) {
+    u.fireTimer = UFO_FIRE_INTERVAL * (u.size === 'small' ? 0.85 : 1.1);
+    let angle;
+    if (u.size === 'small') {
+      // Lead the player a bit; accuracy drops by score so it doesn't become impossible
+      const accuracy = Math.max(0.06, 0.4 - state.score / 80000);
+      angle = Math.atan2(state.ship.y - u.y, state.ship.x - u.x) + rand(-accuracy, accuracy);
+    } else {
+      angle = rand(0, Math.PI*2);
+    }
+    state.ufoBullets.push({
+      x: u.x, y: u.y,
+      vx: Math.cos(angle) * UFO_BULLET_SPEED,
+      vy: Math.sin(angle) * UFO_BULLET_SPEED,
+      life: UFO_BULLET_LIFE
+    });
+    SFX.ufoFire();
+  }
+}
+
+function updateParticles(dt) {
+  for (let i = state.particles.length - 1; i >= 0; i--) {
+    const p = state.particles[i];
+    p.x += p.vx * dt;
+    p.y += p.vy * dt;
+    p.vx *= 0.98; p.vy *= 0.98;
+    p.life -= dt;
+    if (p.life <= 0) state.particles.splice(i, 1);
+  }
+}
+
+function destroyAsteroid(idx, fromX, fromY) {
+  const a = state.asteroids[idx];
+  state.score += ASTEROID_SCORE[a.size];
+  // Spawn smaller children
+  if (a.size > 1) {
+    for (let k = 0; k < 2; k++) {
+      const baseAngle = Math.atan2(a.vy, a.vx);
+      const ang = baseAngle + rand(-1.0, 1.0) + (k === 0 ? 0.5 : -0.5);
+      const sp = rand(...ASTEROID_SPEEDS[a.size - 1]);
+      const child = makeAsteroid(a.size - 1, a.x, a.y, Math.cos(ang)*sp, Math.sin(ang)*sp);
+      state.asteroids.push(child);
+    }
+  }
+  // Particles
+  const colors = ['#cfd6df','#9aa6b2','#ffffff'];
+  addParticles(a.x, a.y, a.size === 3 ? 26 : a.size === 2 ? 18 : 12, {
+    speed: 140, life: 0.75, color: pick(colors), size: rand(1.2, 2.4)
+  });
+  if (a.size === 3) SFX.bangL();
+  else if (a.size === 2) SFX.bangM();
+  else SFX.bangS();
+  state.shake = Math.max(state.shake, a.size * 3);
+  state.asteroids.splice(idx, 1);
+  updateHUD();
+  checkExtraLife();
+  checkWaveComplete();
+}
+
+function destroyUFO() {
+  const u = state.ufo;
+  state.score += UFO_SCORE[u.size];
+  addParticles(u.x, u.y, 28, { speed: 220, life: 0.9, color: '#ff5cae', size: 2 });
+  addParticles(u.x, u.y, 18, { speed: 120, life: 1.0, color: '#ffd24a', size: 2.4 });
+  state.shake = 12; state.flash = 0.18;
+  SFX.bangL();
+  showToast('+' + UFO_SCORE[u.size]);
+  state.ufo = null;
+  scheduleNextUFO();
+  updateHUD();
+  checkExtraLife();
+}
+
+// ============================================================
+//  Collision detection
+// ============================================================
+function collisions() {
+  // Bullets vs asteroids
+  for (let i = state.bullets.length - 1; i >= 0; i--) {
+    const b = state.bullets[i];
+    let hit = false;
+    for (let j = state.asteroids.length - 1; j >= 0; j--) {
+      const a = state.asteroids[j];
+      if (dist2(b, a) < a.radius * a.radius) {
+        destroyAsteroid(j, b.x, b.y);
+        hit = true;
+        break;
+      }
+    }
+    if (hit) { state.bullets.splice(i, 1); continue; }
+    // Bullets vs UFO
+    if (state.ufo && dist2(b, state.ufo) < state.ufo.radius * state.ufo.radius) {
+      destroyUFO();
+      state.bullets.splice(i, 1);
+    }
+  }
+
+  // Ship collisions
+  const s = state.ship;
+  if (s && s.alive && s.invuln <= 0) {
+    // vs asteroids
+    for (let i = 0; i < state.asteroids.length; i++) {
+      const a = state.asteroids[i];
+      const r = s.radius + a.radius - 4;
+      if (dist2(s, a) < r * r) {
+        destroyAsteroid(i, s.x, s.y);
+        loseLife();
+        return;
+      }
+    }
+    // vs UFO body
+    if (state.ufo && dist2(s, state.ufo) < (s.radius + state.ufo.radius) ** 2) {
+      destroyUFO();
+      loseLife();
+      return;
+    }
+    // vs UFO bullets
+    for (let i = state.ufoBullets.length - 1; i >= 0; i--) {
+      const b = state.ufoBullets[i];
+      if (dist2(s, b) < (s.radius - 1) ** 2) {
+        state.ufoBullets.splice(i, 1);
+        loseLife();
+        return;
+      }
+    }
+  }
+
+  // UFO bullets can also break asteroids (mild)
+  for (let i = state.ufoBullets.length - 1; i >= 0; i--) {
+    const b = state.ufoBullets[i];
+    for (let j = state.asteroids.length - 1; j >= 0; j--) {
+      const a = state.asteroids[j];
+      if (dist2(b, a) < a.radius * a.radius) {
+        destroyAsteroid(j, b.x, b.y);
+        state.ufoBullets.splice(i, 1);
+        break;
+      }
+    }
+  }
+}
+
+// ============================================================
+//  Render
+// ============================================================
+function drawStars(dt, t) {
+  for (const s of state.starfield) {
+    s.tw += dt * (1 + s.z);
+    const tw = 0.55 + 0.45 * Math.sin(s.tw);
+    ctx.fillStyle = `rgba(${180+Math.floor(70*s.z)},${200+Math.floor(50*s.z)},255,${(0.25 + 0.55 * s.z) * tw})`;
+    const sz = s.z > 0.7 ? 2 : 1;
+    ctx.fillRect(s.x|0, s.y|0, sz, sz);
+  }
+}
+
+function drawShip() {
+  const s = state.ship;
+  if (!s || !s.alive) return;
+  // Invuln blink
+  if (s.invuln > 0 && Math.floor(s.invuln*10) % 2 === 0) return;
+  ctx.save();
+  ctx.translate(s.x, s.y);
+  ctx.rotate(s.angle);
+  // Ship body — classic vector triangle, nose pointing right (0 rad)
+  ctx.strokeStyle = '#e4f4ff';
+  ctx.lineWidth = 2;
+  ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
+  ctx.shadowColor = '#9ee7ff';
+  ctx.shadowBlur = 8;
+  ctx.beginPath();
+  ctx.moveTo(14, 0);
+  ctx.lineTo(-10, 9);
+  ctx.lineTo(-6, 0);
+  ctx.lineTo(-10, -9);
+  ctx.closePath();
+  ctx.stroke();
+  // Thrust flame (only every other frame for flicker)
+  if (s.thrusting && Math.random() < 0.7) {
+    ctx.shadowColor = '#ff9a2a';
+    ctx.shadowBlur = 10;
+    ctx.strokeStyle = '#ffb649';
+    ctx.beginPath();
+    ctx.moveTo(-6, 4);
+    ctx.lineTo(-14 - Math.random()*4, 0);
+    ctx.lineTo(-6, -4);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawAsteroids() {
+  ctx.lineWidth = 2;
+  ctx.lineJoin = 'round';
+  ctx.shadowColor = '#7aa8c4';
+  ctx.shadowBlur = 6;
+  for (const a of state.asteroids) {
+    ctx.save();
+    ctx.translate(a.x, a.y);
+    ctx.rotate(a.angle);
+    ctx.strokeStyle = a.size === 3 ? '#cad6e3' : a.size === 2 ? '#b6c2d0' : '#a3b1c0';
+    ctx.beginPath();
+    for (let i = 0; i < a.shape.length; i++) {
+      const v = a.shape[i];
+      const x = Math.cos(v.a) * v.r;
+      const y = Math.sin(v.a) * v.r;
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+    ctx.stroke();
+    // a couple of inner crater scratches for texture
+    if (a.size >= 2) {
+      ctx.strokeStyle = 'rgba(180,200,220,0.5)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      const cr = a.radius * 0.35;
+      ctx.moveTo(-cr*0.6, -cr*0.4);
+      ctx.lineTo(cr*0.2, cr*0.1);
+      ctx.stroke();
+      ctx.lineWidth = 2;
+    }
+    ctx.restore();
+  }
+  ctx.shadowBlur = 0;
+}
+
+function drawUFO() {
+  if (!state.ufo) return;
+  const u = state.ufo;
+  const scale = u.size === 'small' ? 0.7 : 1.0;
+  ctx.save();
+  ctx.translate(u.x, u.y);
+  ctx.scale(scale, scale);
+  ctx.strokeStyle = '#ff6cc1';
+  ctx.fillStyle = 'rgba(120,30,90,0.35)';
+  ctx.lineWidth = 2;
+  ctx.lineJoin = 'round';
+  ctx.shadowColor = '#ff5cae';
+  ctx.shadowBlur = 10;
+  // Lower hull (wide hexagon-ish disc)
+  ctx.beginPath();
+  ctx.moveTo(-22, 0);
+  ctx.lineTo(-12, 7);
+  ctx.lineTo(12, 7);
+  ctx.lineTo(22, 0);
+  ctx.lineTo(12, -4);
+  ctx.lineTo(-12, -4);
+  ctx.closePath();
+  ctx.fill(); ctx.stroke();
+  // Dome
+  ctx.beginPath();
+  ctx.moveTo(-10, -4);
+  ctx.bezierCurveTo(-10, -14, 10, -14, 10, -4);
+  ctx.stroke();
+  // Center line
+  ctx.beginPath();
+  ctx.moveTo(-22, 0); ctx.lineTo(22, 0);
+  ctx.stroke();
+  // Lights
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = '#fff97a';
+  for (const x of [-14, -4, 6, 14]) {
+    ctx.beginPath(); ctx.arc(x, 4, 1.4, 0, Math.PI*2); ctx.fill();
+  }
+  ctx.restore();
+}
+
+function drawBullets() {
+  for (const b of state.bullets) {
+    ctx.fillStyle = '#ffffff';
+    ctx.shadowColor = '#9ee7ff';
+    ctx.shadowBlur = 8;
+    ctx.beginPath(); ctx.arc(b.x, b.y, 2.2, 0, Math.PI*2); ctx.fill();
+  }
+  for (const b of state.ufoBullets) {
+    ctx.fillStyle = '#ff6cc1';
+    ctx.shadowColor = '#ff6cc1';
+    ctx.shadowBlur = 10;
+    ctx.beginPath(); ctx.arc(b.x, b.y, 2.4, 0, Math.PI*2); ctx.fill();
+  }
+  ctx.shadowBlur = 0;
+}
+
+function drawParticles() {
+  for (const p of state.particles) {
+    const a = Math.max(0, Math.min(1, p.life / p.maxLife));
+    ctx.globalAlpha = a;
+    ctx.fillStyle = p.color;
+    ctx.fillRect(p.x - p.size/2, p.y - p.size/2, p.size, p.size);
+  }
+  ctx.globalAlpha = 1;
+}
+
+function render(dt, t) {
+  // Clear with slight trail effect
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, W, H);
+
+  // Camera shake
+  let sx = 0, sy = 0;
+  if (state.shake > 0) {
+    sx = (Math.random()-0.5) * state.shake;
+    sy = (Math.random()-0.5) * state.shake;
+    state.shake = Math.max(0, state.shake - 60 * dt);
+  }
+  ctx.save();
+  ctx.translate(sx, sy);
+
+  drawStars(dt, t);
+  drawAsteroids();
+  drawUFO();
+  drawShip();
+  drawBullets();
+  drawParticles();
+
+  // Hit flash
+  if (state.flash > 0) {
+    ctx.fillStyle = `rgba(255,255,255,${state.flash})`;
+    ctx.fillRect(-sx, -sy, W, H);
+    state.flash = Math.max(0, state.flash - 1.6 * dt);
+  }
+  ctx.restore();
+}
+
+// ============================================================
+//  Main loop
+// ============================================================
+let last = performance.now();
+function frame(now) {
+  let dt = (now - last) / 1000;
+  if (dt > 0.066) dt = 0.066; // clamp big jumps
+  last = now;
+  const t = now / 1000;
+
+  if (state.mode === 'play' && !state.paused) {
+    updateShip(dt);
+    updateBullets(dt);
+    updateAsteroids(dt);
+    updateUFO(dt);
+    updateParticles(dt);
+    collisions();
+    if (state.waveBreakTimer > 0) {
+      state.waveBreakTimer -= dt;
+      if (state.waveBreakTimer <= 0) nextWave();
+    }
+  } else {
+    // In title/gameover: still tick particles + asteroids for atmosphere
+    updateAsteroids(dt);
+    updateParticles(dt);
+  }
+
+  // Reset edge-trigger flags at end of frame
+  firePressed = false;
+  hyperPressed = false;
+
+  render(dt, t);
+  requestAnimationFrame(frame);
+}
+
+// ============================================================
+//  Start
+// ============================================================
+// Demo asteroids on title screen for atmosphere
+spawnWave(5);
+showTitle();
+updateHUD();
+requestAnimationFrame(now => { last = now; frame(now); });
+
+})();
+</script>
+<script>
+(function () {
+  if (window.__MCHATAI_FEEDBACK_WIDGET__) return;
+  window.__MCHATAI_FEEDBACK_WIDGET__ = true;
+
+  // Bail out entirely when embedded inside a native host that has its own
+  // feedback UI. iOS/Android WKWebView/WebView appends ?embed=ios or embed=android
+  // (or sets window.__MCHATAI_NATIVE_HOST__) before loading. In that case the
+  // native toolbar owns the feedback flow and we must not inject any pills,
+  // panels, or capture-phase event listeners (they would fight the native UI
+  // and block the soft-keyboard bridge).
+  try {
+    var params = new URLSearchParams(window.location.search);
+    var embed = params.get('embed');
+    if (embed === 'ios' || embed === 'android' || window.__MCHATAI_NATIVE_HOST__) {
+      return;
+    }
+  } catch (e) {
+    // If URL parsing somehow fails, fall through and render the widget.
+  }
+
+  // ── Config ───────────────────────────────────────────────────────────────
+  // Firebase web API key for the mchatai-2367e project. Public-safe — every web
+  // client has this in its bundle. Used for anonymous auth when submitting a
+  // screenshot (text-only feedback stays anonymous; screenshots require an
+  // anon token so we can rate-limit per-browser without real sign-in UX).
+  var FIREBASE_WEB_API_KEY = 'AIzaSyCp2lvjTqAmv60ktspDwYbPeIhi8nlKbwA';
+
+  // ── Console error capture ─────────────────────────────────────────────────
+  // Wrap console.error so the widget can attach the most recent failures to
+  // any submitted feedback. Bounded ring so a chatty page can't OOM the widget.
+  var __consoleErrors = [];
+  var origError = console.error;
+  console.error = function () {
+    try {
+      var msg = Array.prototype.map.call(arguments, function (a) {
+        if (a && a.stack) return String(a.stack).slice(0, 400);
+        if (typeof a === 'object') { try { return JSON.stringify(a).slice(0, 400); } catch (e) { return '[Object]'; } }
+        return String(a).slice(0, 400);
+      }).join(' ');
+      __consoleErrors.push(msg);
+      if (__consoleErrors.length > 8) __consoleErrors.shift();
+    } catch (e) { /* never break the host */ }
+    return origError.apply(console, arguments);
+  };
+  // Same for uncaught errors
+  window.addEventListener('error', function (e) {
+    try {
+      __consoleErrors.push('Uncaught: ' + (e.message || 'unknown') + ' @ ' + (e.filename || '?') + ':' + (e.lineno || '?'));
+      if (__consoleErrors.length > 8) __consoleErrors.shift();
+    } catch (_) {}
+  });
+
+  // ── Slug from URL ────────────────────────────────────────────────────────
+  // mchatai.com/u/{shortUid}/{slug}/ — pull both pieces for the API.
+  var pathParts = location.pathname.replace(/^\/u\//, '').split('/').filter(Boolean);
+  var shortUid = pathParts[0] || '';
+  var slug = pathParts[1] || '';
+
+  var API_BASE = 'https://web-api-1099075912386.us-central1.run.app';
+
+  // ── Styles ───────────────────────────────────────────────────────────────
+  var style = document.createElement('style');
+  style.id = 'mchatai-feedback-widget-style';
+  style.textContent = [
+    '#mchatai-fb-pill, #mchatai-fb-panel {',
+    '  position: fixed; right: 18px; bottom: 18px; z-index: 2147483646;',
+    '  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;',
+    '}',
+    '#mchatai-fb-pill {',
+    '  display: flex; align-items: center; gap: 6px;',
+    '  padding: 8px 14px; border-radius: 999px;',
+    '  background: rgba(40,40,46,0.92); color: #fff;',
+    '  font-size: 13px; font-weight: 500; cursor: pointer;',
+    '  border: 1px solid rgba(255,255,255,0.12);',
+    '  box-shadow: 0 2px 8px rgba(0,0,0,0.25);',
+    '  transition: opacity 0.4s ease, transform 0.15s ease;',
+    '  opacity: 1; user-select: none;',
+    '}',
+    '#mchatai-fb-pill.idle { opacity: 0.2; }',
+    '#mchatai-fb-pill:hover { opacity: 1 !important; transform: translateY(-1px); }',
+    /* Phase RT.2 follow-up: back-to-/play pill is anchored next to the
+       Feedback pill (bottom-right) because the top-left position made it
+       easy to miss on white-background games. Same z-index, same idle-fade,
+       sits just above the Feedback pill. */
+    '#mchatai-back-pill {',
+    '  position: fixed; right: 18px; bottom: 58px; z-index: 2147483646;',
+    '  display: flex; align-items: center; gap: 6px;',
+    '  padding: 6px 12px 6px 10px; border-radius: 999px;',
+    '  background: rgba(40,40,46,0.92); color: #fff;',
+    '  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;',
+    '  font-size: 12px; font-weight: 500; cursor: pointer;',
+    '  border: 1px solid rgba(255,255,255,0.12);',
+    '  box-shadow: 0 2px 8px rgba(0,0,0,0.25);',
+    '  transition: opacity 0.4s ease, transform 0.15s ease;',
+    '  opacity: 1; text-decoration: none; user-select: none;',
+    '}',
+    '#mchatai-back-pill.idle { opacity: 0.2; }',
+    '#mchatai-back-pill:hover { opacity: 1 !important; transform: translateX(-1px); }',
+    '#mchatai-back-pill svg { width: 14px; height: 14px; display: block; }',
+    '#mchatai-fb-panel {',
+    /* Phase RT.2 follow-up: panel now vertically-sized to fit its contents
+       and caps at 85vh so a screenshot preview + textarea + actions never
+       push Send below the viewport. Overflow moved from hidden → auto so
+       the panel itself scrolls if contents exceed the cap (belt-and-braces
+       for anything unexpected). */
+    '  display: none; width: 320px; max-height: 85vh;',
+    '  background: #1f2025; color: #f2f2f5; border-radius: 12px;',
+    '  border: 1px solid rgba(255,255,255,0.12);',
+    '  box-shadow: 0 8px 24px rgba(0,0,0,0.45);',
+    '  overflow-y: auto; overflow-x: hidden; flex-direction: column;',
+    '}',
+    '#mchatai-fb-panel.open { display: flex; }',
+    '#mchatai-fb-panel header {',
+    '  display: flex; justify-content: space-between; align-items: center;',
+    '  padding: 10px 12px; background: #25262c; font-size: 13px; font-weight: 600;',
+    '  border-bottom: 1px solid rgba(255,255,255,0.06);',
+    '}',
+    '#mchatai-fb-close {',
+    '  background: none; border: none; color: #b8b8be; font-size: 18px;',
+    '  cursor: pointer; line-height: 1; padding: 0 4px;',
+    '}',
+    /* Phase RT.2 follow-up: user identity chip. Shows current sign-in state
+       so users know (a) whether their submission is anonymous, (b) whose
+       Google account is attached when it isn't, (c) that screenshots unlock
+       after signing in. Lives in the header row between title and close. */
+    '#mchatai-fb-user { display: flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 500; color: #b8b8be; cursor: pointer; background: none; border: none; padding: 0; max-width: 140px; }',
+    '#mchatai-fb-user:hover { color: #f2f2f5; }',
+    '#mchatai-fb-user.signed-in { color: #8dd19a; }',
+    '#mchatai-fb-user img, #mchatai-fb-user .mchatai-fb-user-avatar-fallback { width: 16px; height: 16px; border-radius: 50%; flex-shrink: 0; }',
+    '#mchatai-fb-user .mchatai-fb-user-avatar-fallback { background: #3a3b40; color: #f2f2f5; font-size: 9px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; }',
+    '#mchatai-fb-user .mchatai-fb-user-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }',
+    '#mchatai-fb-types { display: flex; gap: 4px; padding: 8px 10px 6px; }',
+    '.mchatai-fb-type {',
+    '  flex: 1; padding: 6px 0; border-radius: 6px; cursor: pointer;',
+    '  background: transparent; color: #b8b8be; border: 1px solid rgba(255,255,255,0.10);',
+    '  font-size: 11px; text-align: center; transition: background 0.12s, color 0.12s;',
+    '}',
+    '.mchatai-fb-type.active { background: #4a8eff; color: #fff; border-color: #4a8eff; }',
+    /* Phase RT.1: 5-star rating control. Optional — users can submit text-only
+       feedback without setting a rating. Hover previews a provisional fill so
+       clicking feels obvious. Clicking the currently-selected star clears. */
+    '#mchatai-fb-rating { display: flex; align-items: center; gap: 4px; padding: 4px 10px 0; font-size: 11px; color: #b8b8be; }',
+    '#mchatai-fb-rating-label { margin-right: 6px; }',
+    '#mchatai-fb-rating .mchatai-fb-star {',
+    '  background: none; border: none; color: #55565c; cursor: pointer;',
+    '  font-size: 18px; padding: 0 2px; line-height: 1;',
+    '  transition: color 0.12s, transform 0.08s;',
+    '}',
+    '#mchatai-fb-rating .mchatai-fb-star:hover { transform: scale(1.12); }',
+    '#mchatai-fb-rating .mchatai-fb-star.filled { color: #ffc940; }',
+    '#mchatai-fb-rating .mchatai-fb-star.preview { color: #e6b73a; opacity: 0.75; }',
+    '#mchatai-fb-rating-clear {',
+    '  background: none; border: none; color: #707078; cursor: pointer;',
+    '  font-size: 11px; margin-left: auto; padding: 0 2px;',
+    '}',
+    '#mchatai-fb-rating-clear:hover { color: #d0d0d6; }',
+    '#mchatai-fb-rating-clear[hidden] { display: none !important; }',
+    '#mchatai-fb-text {',
+    '  margin: 4px 10px; padding: 8px; border-radius: 6px;',
+    '  background: #15161a; color: #f2f2f5; border: 1px solid rgba(255,255,255,0.10);',
+    '  font-size: 13px; font-family: inherit; resize: vertical;',
+    '  min-height: 90px; max-height: 200px; outline: none;',
+    '}',
+    '#mchatai-fb-text:focus { border-color: #4a8eff; }',
+    '#mchatai-fb-actions {',
+    /* Phase RT.2 follow-up: actions row sticks to the bottom of the panel
+       even if the content scrolls. Without this, a large screenshot preview
+       pushed the Send button below the viewport and users could not submit. */
+    '  display: flex; justify-content: space-between; align-items: center;',
+    '  padding: 8px 10px 10px; gap: 8px;',
+    '  position: sticky; bottom: 0; background: #1f2025;',
+    '  border-top: 1px solid rgba(255,255,255,0.06);',
+    '  flex-shrink: 0;',
+    '}',
+    '#mchatai-fb-meta { font-size: 10px; color: #707078; }',
+    '#mchatai-fb-send {',
+    '  padding: 6px 14px; border-radius: 6px; border: none; background: #4a8eff;',
+    '  color: #fff; font-size: 12px; font-weight: 600; cursor: pointer;',
+    '  transition: opacity 0.12s;',
+    '}',
+    '#mchatai-fb-send:disabled { opacity: 0.4; cursor: not-allowed; }',
+    '#mchatai-fb-status { font-size: 11px; padding: 0 12px 8px; min-height: 14px; color: #4a8eff; }',
+    /* Screenshot attachment row: only visible if the product opted in via feedbackAutomation.acceptScreenshots = true. */
+    '#mchatai-fb-shot-btn {',
+    '  width: 100%; padding: 7px 10px; margin: 6px 0 2px;',
+    '  background: #2e2f35; color: #d0d0d6; border: 1px dashed rgba(255,255,255,0.16);',
+    '  border-radius: 6px; cursor: pointer; font-size: 12px;',
+    '  transition: background 0.12s;',
+    '}',
+    '#mchatai-fb-shot-btn:hover { background: #35363d; }',
+    '#mchatai-fb-shot-btn:disabled { opacity: 0.5; cursor: default; }',
+    '#mchatai-fb-shot-preview-wrap {',
+    /* Phase RT.2 follow-up: explicit height on the wrap so the img inside
+       inherits the constrained box. Without this the img renders at its
+       natural aspect ratio and max-height alone doesn't clip (depends on
+       the browser's interpretation of intrinsic sizing). 120px matches the
+       earlier intent — small preview so the Send button stays visible. */
+    '  position: relative; margin: 6px 0 2px;',
+    '  height: 120px; max-height: 120px; overflow: hidden;',
+    '  border-radius: 6px;',
+    '  border: 1px solid rgba(255,255,255,0.10);',
+    '  background: #0d0e12;',
+    '  flex-shrink: 0;',
+    '}',
+    '#mchatai-fb-shot-preview { display:block; width: 100%; height: 100%; object-fit: contain; object-position: center; }',
+    '#mchatai-fb-shot-remove {',
+    '  position: absolute; top: 4px; right: 4px;',
+    '  width: 22px; height: 22px; border-radius: 50%;',
+    '  background: rgba(0,0,0,0.7); color: #fff; border: none;',
+    '  cursor: pointer; font-size: 14px; line-height: 1;',
+    '}',
+  ].join('\n');
+  document.head.appendChild(style);
+
+  // ── DOM ──────────────────────────────────────────────────────────────────
+  var pill = document.createElement('div');
+  pill.id = 'mchatai-fb-pill';
+  pill.innerHTML = '<span aria-hidden="true">💬</span><span>Feedback</span>';
+  pill.title = 'Send feedback about this game';
+  pill.setAttribute('role', 'button');
+  pill.setAttribute('aria-label', 'Send feedback');
+
+  var panel = document.createElement('div');
+  panel.id = 'mchatai-fb-panel';
+  panel.innerHTML = [
+    '<header>',
+    '  <span>Send feedback</span>',
+    '  <div style="display:flex;align-items:center;gap:10px;">',
+    '    <button id="mchatai-fb-user" type="button" title="Sign in to enable screenshots"><span aria-hidden="true">👤</span><span class="mchatai-fb-user-name">anonymous</span></button>',
+    '    <button id="mchatai-fb-close" aria-label="Close feedback panel">×</button>',
+    '  </div>',
+    '</header>',
+    '<div id="mchatai-fb-types">',
+    '  <button class="mchatai-fb-type active" data-type="bug">🐞 Bug</button>',
+    '  <button class="mchatai-fb-type" data-type="feature">✨ Idea</button>',
+    '  <button class="mchatai-fb-type" data-type="other">💬 Other</button>',
+    '</div>',
+    '<div id="mchatai-fb-rating" role="radiogroup" aria-label="Rate this product">',
+    '  <span id="mchatai-fb-rating-label">Rating:</span>',
+    '  <button type="button" class="mchatai-fb-star" data-value="1" role="radio" aria-label="1 star" aria-checked="false">☆</button>',
+    '  <button type="button" class="mchatai-fb-star" data-value="2" role="radio" aria-label="2 stars" aria-checked="false">☆</button>',
+    '  <button type="button" class="mchatai-fb-star" data-value="3" role="radio" aria-label="3 stars" aria-checked="false">☆</button>',
+    '  <button type="button" class="mchatai-fb-star" data-value="4" role="radio" aria-label="4 stars" aria-checked="false">☆</button>',
+    '  <button type="button" class="mchatai-fb-star" data-value="5" role="radio" aria-label="5 stars" aria-checked="false">☆</button>',
+    '  <button type="button" id="mchatai-fb-rating-clear" hidden>clear</button>',
+    '</div>',
+    '<textarea id="mchatai-fb-text" placeholder="What happened? What did you expect?" maxlength="2000"></textarea>',
+    '<div id="mchatai-fb-screenshot-row" style="display:none;padding:0 10px;">',
+    '  <button id="mchatai-fb-shot-btn" type="button">📸 Attach screenshot</button>',
+    '  <div id="mchatai-fb-shot-preview-wrap" style="display:none;"><img id="mchatai-fb-shot-preview" alt="screenshot preview" /><button id="mchatai-fb-shot-remove" type="button" aria-label="Remove screenshot">×</button></div>',
+    '</div>',
+    '<div id="mchatai-fb-status" aria-live="polite"></div>',
+    '<div id="mchatai-fb-actions">',
+    '  <span id="mchatai-fb-meta"></span>',
+    '  <button id="mchatai-fb-send" disabled>Send</button>',
+    '</div>',
+  ].join('');
+
+  // Back-to-hub pill. The hub houses mini-apps, games, agents, skills, pipelines —
+  // "Hub" is the right word. Icon is a house, not an arrow, since it's a home
+  // button, not a linear back button. Rendered as an <a> so right-click → new tab works.
+  var backPill = document.createElement('a');
+  backPill.id = 'mchatai-back-pill';
+  backPill.href = 'https://mchatai.com/hub';
+  backPill.title = 'Back to Hub';
+  backPill.setAttribute('aria-label', 'Back to Hub');
+  backPill.innerHTML = [
+    '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">',
+    '  <path d="M2 7l6-5 6 5v7a1 1 0 0 1-1 1h-3v-5H6v5H3a1 1 0 0 1-1-1V7z"/>',
+    '</svg>',
+    '<span>Hub</span>'
+  ].join('');
+
+  document.body.appendChild(backPill);
+  document.body.appendChild(pill);
+  document.body.appendChild(panel);
+
+  // ── Idle fade ────────────────────────────────────────────────────────────
+  var idleTimer = null;
+  function bumpActivity() {
+    pill.classList.remove('idle');
+    backPill.classList.remove('idle');
+    if (idleTimer) clearTimeout(idleTimer);
+    idleTimer = setTimeout(function () {
+      pill.classList.add('idle');
+      backPill.classList.add('idle');
+    }, 3000);
+  }
+  ['mousemove', 'keydown', 'touchstart', 'scroll'].forEach(function (ev) {
+    window.addEventListener(ev, bumpActivity, { passive: true });
+  });
+  bumpActivity();
+
+  // ── Open / close ─────────────────────────────────────────────────────────
+  async function openPanel() {
+    panel.classList.add('open');
+    pill.style.display = 'none';
+    var meta = document.getElementById('mchatai-fb-meta');
+    meta.textContent = slug ? slug : 'feedback';
+    setTimeout(function () { document.getElementById('mchatai-fb-text').focus(); }, 50);
+    // Phase RT.2 follow-up: refresh the user chip in case the token expired
+    // or the user signed in a different tab between panel opens.
+    updateUserChip();
+    // Silent refresh: if no cached token but Firebase still has a session on
+    // mchatai.com, this pulls a fresh token via a hidden iframe so the user
+    // does not have to click Sign in every single time. Idempotent + bounded
+    // by a 3s timeout so there is no visible delay if they have never signed
+    // in.
+    if (!cachedIdToken) {
+      silentlyRefreshToken().then(function (tok) {
+        if (tok) updateUserChip();
+      });
+    }
+
+    // Async probe for the product's screenshot opt-in flag. Runs concurrently
+    // with the user reading/typing — if it comes back true, the screenshot
+    // row fades into view.
+    console.log('[feedback-widget] probing screenshot opt-in for slug:', slug);
+    checkScreenshotOptIn().then(function (allowed) {
+      console.log('[feedback-widget] screenshotAllowed =', allowed);
+      screenshotAllowed = allowed;
+      updateScreenshotRow();
+      // Defensive: ALSO directly reveal the row in case updateScreenshotRow
+      // runs before some dependency is wired up. Belt-and-suspenders.
+      if (allowed) {
+        var row = document.getElementById('mchatai-fb-screenshot-row');
+        if (row) {
+          row.style.display = 'block';
+          console.log('[feedback-widget] screenshot row revealed');
+        } else {
+          console.warn('[feedback-widget] screenshot row element not found!');
+        }
+      }
+    }).catch(function (err) {
+      console.warn('[feedback-widget] probe failed:', err);
+    });
+  }
+  function closePanel() {
+    panel.classList.remove('open');
+    pill.style.display = 'flex';
+    bumpActivity();
+  }
+  pill.addEventListener('click', openPanel);
+  panel.querySelector('#mchatai-fb-close').addEventListener('click', closePanel);
+
+  // ── Type picker ──────────────────────────────────────────────────────────
+  var selectedType = 'bug';
+  panel.querySelectorAll('.mchatai-fb-type').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      panel.querySelectorAll('.mchatai-fb-type').forEach(function (b) { b.classList.remove('active'); });
+      btn.classList.add('active');
+      selectedType = btn.getAttribute('data-type');
+    });
+  });
+
+  // ── Rating picker (Phase RT.1) ───────────────────────────────────────────
+  // Optional 1-5 stars. Rating is its own signal — users can send text
+  // without a rating, or send a rating without text (any rating auto-enables
+  // the Send button even if the textarea is empty, so a "5 stars, no words"
+  // submission is a valid vote).
+  var selectedRating = null;     // null | 1..5
+  var ratingStars = panel.querySelectorAll('.mchatai-fb-star');
+  var ratingClear = panel.querySelector('#mchatai-fb-rating-clear');
+  function paintStars(previewValue) {
+    var effective = previewValue != null ? previewValue : (selectedRating || 0);
+    ratingStars.forEach(function (s) {
+      var v = parseInt(s.getAttribute('data-value'), 10);
+      s.classList.remove('filled', 'preview');
+      s.textContent = v <= effective ? '★' : '☆';
+      if (previewValue != null && v <= previewValue && v > (selectedRating || 0)) {
+        s.classList.add('preview');
+      } else if (v <= (selectedRating || 0)) {
+        s.classList.add('filled');
+      }
+      s.setAttribute('aria-checked', String(v === selectedRating));
+    });
+    ratingClear.hidden = selectedRating == null;
+  }
+  ratingStars.forEach(function (s) {
+    var v = parseInt(s.getAttribute('data-value'), 10);
+    s.addEventListener('mouseenter', function () { paintStars(v); });
+    s.addEventListener('mouseleave', function () { paintStars(null); });
+    s.addEventListener('click', function () {
+      // Click on currently-selected star → clear. Click elsewhere → set.
+      selectedRating = (selectedRating === v) ? null : v;
+      paintStars(null);
+      updateSendState();
+    });
+  });
+  ratingClear.addEventListener('click', function () {
+    selectedRating = null;
+    paintStars(null);
+    updateSendState();
+  });
+
+  // ── Send button gating + submission ──────────────────────────────────────
+  var textArea = panel.querySelector('#mchatai-fb-text');
+  var sendBtn = panel.querySelector('#mchatai-fb-send');
+  var statusEl = panel.querySelector('#mchatai-fb-status');
+  var shotRow = panel.querySelector('#mchatai-fb-screenshot-row');
+  var shotBtn = panel.querySelector('#mchatai-fb-shot-btn');
+  var shotPreviewWrap = panel.querySelector('#mchatai-fb-shot-preview-wrap');
+  var shotPreview = panel.querySelector('#mchatai-fb-shot-preview');
+  var shotRemove = panel.querySelector('#mchatai-fb-shot-remove');
+
+  // Phase RT.1: either a rating OR a text comment (≥4 chars) is enough to send.
+  // Lets users drop-in a 5-star vote without writing a novel.
+  function updateSendState() {
+    var hasText = textArea.value.trim().length >= 4;
+    var hasRating = selectedRating != null;
+    sendBtn.disabled = !(hasText || hasRating);
+  }
+  textArea.addEventListener('input', updateSendState);
+
+  // Phase RT.2 follow-up: isolate typing inside the feedback panel from the
+  // underlying game. Many games install keyboard listeners on window and
+  // document — when the user types a space into the textarea, the event
+  // bubbles up and the game also receives it (e.g. battleship-vs-ai toggles
+  // ship orientation on any spacebar press). Capture-phase listeners on
+  // window fire BEFORE the game's bubble-phase listeners — we stop
+  // propagation + stop immediate propagation on any keyboard event whose
+  // target is inside our panel. The panel input itself still gets the event
+  // because stopPropagation at capture phase does not prevent the target
+  // from receiving it, only the ancestors.
+  function isInsideFeedbackPanel(el) {
+    while (el && el !== document) {
+      if (el === panel || el === pill || el === backPill) return true;
+      el = el.parentNode;
+    }
+    return false;
+  }
+  // IMPORTANT: only keyboard events get intercepted. Previously I also blocked
+  // pointer/click/mousedown at capture phase, which broke every button inside
+  // the panel (sign-in, send, star rating, attach screenshot) because
+  // stopImmediatePropagation at capture prevents ALL listeners — including
+  // the panel's own click handlers registered via addEventListener('click').
+  // Keyboard-only is the right scope: games listen for arrow keys / space /
+  // letters on window, but they listen for pointer events on their canvas
+  // element — not on window — so click events never bubbled to them anyway.
+  ['keydown', 'keyup', 'keypress'].forEach(function (evName) {
+    window.addEventListener(evName, function (e) {
+      if (!panel.classList.contains('open')) return;
+      if (!isInsideFeedbackPanel(e.target)) return;
+      // stopPropagation (not stopImmediatePropagation) — the panel's own
+      // listeners already ran on the target; we only need to prevent the
+      // event from reaching ancestor window/document listeners the game
+      // installed. Using stopImmediatePropagation here would kill the
+      // textarea's native input handling in some edge cases.
+      e.stopPropagation();
+    }, true); // capture phase fires before the game's bubble-phase listener
+  });
+
+  // ── Screenshot attachment (opt-in per product) ──────────────────────────
+  // The row itself is hidden by default. It only reveals after we confirm the
+  // product has opted in (feedbackAutomation.acceptScreenshots=true on the
+  // Firestore endProduct doc). We query once per panel open via an endpoint
+  // that returns just the opt-in flag — no auth needed, cheap boolean.
+  var capturedScreenshot = null;   // { dataURL: "data:image/jpeg;base64,..." , width, height, bytes }
+  var screenshotAllowed = false;
+
+  async function checkScreenshotOptIn() {
+    if (!slug) return false;
+    try {
+      var resp = await fetch(API_BASE + '/v1/endproducts/feedback-config?slug=' + encodeURIComponent(slug), {
+        method: 'GET',
+      });
+      if (!resp.ok) return false;
+      var body = await resp.json();
+      return !!body.acceptScreenshots;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  async function captureScreenshot() {
+    // Gate: require real sign-in before capturing. Attributable + rate-limitable.
+    shotBtn.disabled = true;
+    shotBtn.textContent = '🔑 Signing in…';
+    statusEl.textContent = '';
+    try {
+      try {
+        await ensureSignedIn();
+      } catch (authErr) {
+        throw new Error('Sign-in required for screenshots: ' + authErr.message);
+      }
+      shotBtn.textContent = '📸 Select the tab to share…';
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
+        throw new Error('Screen capture not supported on this browser');
+      }
+      var stream = await navigator.mediaDevices.getDisplayMedia({
+        video: { displaySurface: 'browser' },
+        audio: false,
+        preferCurrentTab: true,
+      });
+      var track = stream.getVideoTracks()[0];
+
+      // Grab one frame via ImageCapture if available, else via a video element.
+      var bitmap;
+      if (window.ImageCapture) {
+        var capture = new ImageCapture(track);
+        bitmap = await capture.grabFrame();
+      } else {
+        var video = document.createElement('video');
+        video.srcObject = stream;
+        video.muted = true;
+        await video.play();
+        bitmap = {
+          width: video.videoWidth,
+          height: video.videoHeight,
+          _video: video,
+        };
+      }
+
+      // Resize to max 800×600 (fit, keep aspect) and JPEG 0.7 to stay under
+      // the 200KB server cap. Typical output is 30-80KB.
+      var MAX_W = 800, MAX_H = 600;
+      var scale = Math.min(MAX_W / bitmap.width, MAX_H / bitmap.height, 1);
+      var outW = Math.round(bitmap.width * scale);
+      var outH = Math.round(bitmap.height * scale);
+      var canvas = document.createElement('canvas');
+      canvas.width = outW;
+      canvas.height = outH;
+      var ctx = canvas.getContext('2d');
+      if (bitmap._video) {
+        ctx.drawImage(bitmap._video, 0, 0, outW, outH);
+      } else {
+        ctx.drawImage(bitmap, 0, 0, outW, outH);
+      }
+      track.stop();
+
+      var dataURL = canvas.toDataURL('image/jpeg', 0.7);
+      // base64 portion length * 0.75 ≈ byte count
+      var bytes = Math.round((dataURL.length - 'data:image/jpeg;base64,'.length) * 0.75);
+      if (bytes > 200 * 1024) {
+        throw new Error('Screenshot too large after compression (' + Math.round(bytes/1024) + 'KB, max 200KB)');
+      }
+
+      capturedScreenshot = { dataURL: dataURL, width: outW, height: outH, bytes: bytes };
+      shotPreview.src = dataURL;
+      shotPreviewWrap.style.display = 'block';
+      shotBtn.style.display = 'none';
+      shotBtn.disabled = false;
+      shotBtn.textContent = '📸 Attach screenshot';
+    } catch (err) {
+      shotBtn.disabled = false;
+      shotBtn.textContent = '📸 Attach screenshot';
+      statusEl.style.color = '#e26766';
+      statusEl.textContent = err.message || 'Screenshot capture failed';
+    }
+  }
+
+  function removeScreenshot() {
+    capturedScreenshot = null;
+    shotPreview.src = '';
+    shotPreviewWrap.style.display = 'none';
+    shotBtn.style.display = 'block';
+  }
+
+  shotBtn.addEventListener('click', captureScreenshot);
+  shotRemove.addEventListener('click', removeScreenshot);
+
+  // Phase RT.2 follow-up: user chip click — sign-in when signed-out,
+  // sign-out when signed-in.
+  var userChip = panel.querySelector('#mchatai-fb-user');
+  if (userChip) {
+    userChip.addEventListener('click', async function () {
+      if (cachedIdToken) {
+        if (confirm('Sign out? Future submissions will be anonymous until you sign back in.')) {
+          clearToken();
+        }
+        return;
+      }
+      try {
+        await ensureSignedIn();
+      } catch (e) {
+        // Don't block the panel — user might just have dismissed the popup.
+        console.warn('[feedback] sign-in skipped:', e.message);
+      }
+    });
+  }
+  // Render initial state.
+  updateUserChip();
+
+  // ── Real auth for screenshot uploads ───────────────────────────────────
+  // Text-only feedback posts anonymously to /v1/feedback. Screenshots require
+  // real Google sign-in (not anonymous) so:
+  //   1. Abuse is attributable to a real account we can disable
+  //   2. Bot operators can't programmatically create sign-in accounts
+  //   3. The server rate-limits per UID with a hard ceiling that survives
+  //      tab-closes / incognito resets (anon tokens would rotate every session)
+  //
+  // Sign-in flow: if user clicks "Attach screenshot" without a cached token, we
+  // open an Identity Toolkit OAuth popup for Google. Token cached in session
+  // storage so repeated submissions don't re-prompt. Cleared on Remove or when
+  // the server reports the UID was abuse-disabled (403 reason=disabled).
+  // Phase RT.2 follow-up: token persistence moved from sessionStorage to
+  // localStorage. sessionStorage dies on tab close AND is isolated per tab,
+  // so users had to re-sign-in constantly when hopping between products.
+  // localStorage is shared across tabs and persists across browser restarts,
+  // matching the "you are signed in" mental model. Firebase ID tokens expire
+  // after ~1h; we detect expiry in updateUserChip (decoded .exp claim) and
+  // auto-clear the token when it is stale, which triggers a silent re-check
+  // via the /feedback-signin iframe (see silentlyRefreshToken below) so
+  // long-lived users do not keep seeing sign-in prompts as tokens age.
+  var TOKEN_KEY = 'mchatai_fb_idtoken';
+  // Migration: if an older session put a token in sessionStorage, promote it
+  // to localStorage so the user does not lose their sign-in on this refresh.
+  (function migrateOldToken() {
+    try {
+      if (!localStorage.getItem(TOKEN_KEY) && sessionStorage.getItem(TOKEN_KEY)) {
+        localStorage.setItem(TOKEN_KEY, sessionStorage.getItem(TOKEN_KEY));
+      }
+      sessionStorage.removeItem(TOKEN_KEY);
+    } catch (e) {}
+  })();
+  var cachedIdToken = (function () {
+    try { return localStorage.getItem(TOKEN_KEY) || null; } catch (e) { return null; }
+  })();
+
+  function storeToken(tok) {
+    cachedIdToken = tok;
+    try { localStorage.setItem(TOKEN_KEY, tok); } catch (e) {}
+    updateUserChip();
+  }
+
+  function clearToken() {
+    cachedIdToken = null;
+    try { localStorage.removeItem(TOKEN_KEY); } catch (e) {}
+    updateUserChip();
+  }
+
+  // Silent-refresh: when the cached token is missing or expired, try to pull
+  // a fresh one from /feedback-signin.html via a hidden iframe. The signin
+  // page runs Firebase Web SDK which persists auth in IndexedDB — if the
+  // user signed in on any mchatai.com page at any point, Firebase still has
+  // the session and onAuthStateChanged fires with the user, which posts a
+  // fresh ID token back to the widget via postMessage. No visible popup,
+  // no user action required — the sign-in just "carries over."
+  function silentlyRefreshToken() {
+    return new Promise(function (resolve) {
+      var iframe = document.createElement('iframe');
+      iframe.style.cssText = 'position:fixed;left:-9999px;top:-9999px;width:1px;height:1px;border:0;';
+      iframe.src = 'https://mchatai.com/feedback-signin.html?silent=1';
+      var done = false;
+      var finish = function (token) {
+        if (done) return;
+        done = true;
+        window.removeEventListener('message', handler);
+        try { document.body.removeChild(iframe); } catch (e) {}
+        if (token) storeToken(token);
+        resolve(token || null);
+      };
+      var handler = function (ev) {
+        if (ev.origin !== 'https://mchatai.com') return;
+        if (!ev.data || ev.data.type !== 'mchatai-fb-signin') return;
+        finish(ev.data.idToken || null);
+      };
+      window.addEventListener('message', handler);
+      document.body.appendChild(iframe);
+      // 3s timeout — if Firebase has no cached session the iframe just sits
+      // idle at the button prompt. Give up silently.
+      setTimeout(function () { finish(null); }, 3000);
+    });
+  }
+
+  /* Phase RT.2 follow-up: decode a Firebase ID token's payload (the middle
+     JWT segment — base64url-encoded JSON). We only need name/email/picture,
+     so we do NOT verify the signature here (server revalidates on every
+     request). Returns null on any decode failure. */
+  function decodeIdToken(token) {
+    if (!token) return null;
+    try {
+      var parts = token.split('.');
+      if (parts.length < 2) return null;
+      var b64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+      while (b64.length % 4) b64 += '=';
+      return JSON.parse(atob(b64));
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function updateUserChip() {
+    var chip = document.getElementById('mchatai-fb-user');
+    if (!chip) return;
+    var claims = decodeIdToken(cachedIdToken);
+    if (claims && claims.exp && claims.exp * 1000 < Date.now()) {
+      // Token expired — treat as signed-out so the chip prompts sign-in again.
+      claims = null;
+      try { sessionStorage.removeItem('mchatai_fb_idtoken'); } catch (e) {}
+      cachedIdToken = null;
+    }
+    // Build the chip contents via DOM APIs rather than innerHTML with nested
+    // quotes — the IIFE string gets concatenated into an HTML response, and
+    // any backslash-escaped quote here breaks the whole widget at parse time
+    // in the browser. Lost an entire deploy to this — don't regress.
+    while (chip.firstChild) chip.removeChild(chip.firstChild);
+    if (claims) {
+      chip.classList.add('signed-in');
+      chip.title = 'Signed in as ' + (claims.email || claims.name || 'you') + ' — click to sign out';
+      var displayName = claims.name || (claims.email ? claims.email.split('@')[0] : 'you');
+      var shortName = displayName.length > 14 ? displayName.slice(0, 13) + '…' : displayName;
+      var initial = displayName.charAt(0).toUpperCase();
+      // Try avatar image first; fall back to initial-letter span on error.
+      if (claims.picture) {
+        var img = document.createElement('img');
+        img.src = claims.picture;
+        img.alt = '';
+        img.referrerPolicy = 'no-referrer';
+        img.addEventListener('error', function () {
+          var fallback = document.createElement('span');
+          fallback.className = 'mchatai-fb-user-avatar-fallback';
+          fallback.textContent = initial;
+          if (img.parentNode) img.parentNode.replaceChild(fallback, img);
+        });
+        chip.appendChild(img);
+      } else {
+        var fallbackSpan = document.createElement('span');
+        fallbackSpan.className = 'mchatai-fb-user-avatar-fallback';
+        fallbackSpan.textContent = initial;
+        chip.appendChild(fallbackSpan);
+      }
+      var nameSpan = document.createElement('span');
+      nameSpan.className = 'mchatai-fb-user-name';
+      nameSpan.textContent = shortName;
+      chip.appendChild(nameSpan);
+    } else {
+      chip.classList.remove('signed-in');
+      chip.title = 'Sign in to enable screenshots';
+      var icon = document.createElement('span');
+      icon.setAttribute('aria-hidden', 'true');
+      icon.textContent = '👤';
+      var label = document.createElement('span');
+      label.className = 'mchatai-fb-user-name';
+      label.textContent = 'Sign in';
+      chip.appendChild(icon);
+      chip.appendChild(label);
+    }
+    // Also refresh the screenshot row so the "Sign in first" CTA flips to
+    // "Attach screenshot" once signed-in (or vice versa).
+    updateScreenshotRow();
+  }
+
+  /* Phase RT.2 follow-up: keep the screenshot button's label + disabled state
+     in sync with sign-in state so users understand why they can't click it. */
+  function updateScreenshotRow() {
+    var row = document.getElementById('mchatai-fb-screenshot-row');
+    var btn = document.getElementById('mchatai-fb-shot-btn');
+    if (!row || !btn) return;
+    if (!screenshotAllowed) {
+      row.style.display = 'none';
+      return;
+    }
+    row.style.display = 'block';
+    if (cachedIdToken) {
+      btn.textContent = '📸 Attach screenshot';
+      btn.disabled = false;
+    } else {
+      btn.textContent = '🔒 Sign in to attach screenshot';
+      btn.disabled = false;  // clickable — click triggers sign-in popup
+    }
+  }
+
+  async function ensureSignedIn() {
+    if (cachedIdToken) return cachedIdToken;
+    // Use Firebase's identitytoolkit OAuth popup flow. We use the
+    // createAuthUri + verifyAssertion pattern via a popup. Keep it minimal —
+    // the user gets a Google chooser and a standard OAuth consent screen.
+    return new Promise(function (resolve, reject) {
+      var popupW = 500, popupH = 600;
+      var left = (screen.width - popupW) / 2;
+      var top = (screen.height - popupH) / 2;
+      // Firebase Hosting has a stock sign-in handler at __/auth/handler. We'll
+      // send the user to a small sign-in page we host at /feedback-signin that
+      // runs Firebase JS SDK, does signInWithPopup(Google), and posts the
+      // idToken back to the opener via postMessage.
+      var popup = window.open(
+        'https://mchatai.com/feedback-signin.html?return=' + encodeURIComponent(location.href),
+        'mchatai-fb-signin',
+        'width=' + popupW + ',height=' + popupH + ',left=' + left + ',top=' + top
+      );
+      if (!popup) {
+        reject(new Error('Sign-in popup blocked. Allow popups and try again.'));
+        return;
+      }
+      var handler = function (ev) {
+        if (ev.origin !== 'https://mchatai.com') return;
+        if (!ev.data || ev.data.type !== 'mchatai-fb-signin') return;
+        window.removeEventListener('message', handler);
+        try { popup.close(); } catch (e) {}
+        if (ev.data.idToken) {
+          storeToken(ev.data.idToken);
+          resolve(ev.data.idToken);
+        } else {
+          reject(new Error(ev.data.error || 'Sign-in canceled'));
+        }
+      };
+      window.addEventListener('message', handler);
+      // Watchdog — if the popup closes without posting, reject after 5 min.
+      var watch = setInterval(function () {
+        if (popup.closed) {
+          clearInterval(watch);
+          window.removeEventListener('message', handler);
+          reject(new Error('Sign-in window closed'));
+        }
+      }, 500);
+    });
+  }
+
+  sendBtn.addEventListener('click', async function () {
+    var text = textArea.value.trim();
+    // Phase RT.1: allow rating-only submissions. Require at least one signal.
+    if (text.length < 4 && selectedRating == null) return;
+
+    sendBtn.disabled = true;
+    sendBtn.textContent = 'Sending…';
+    statusEl.textContent = '';
+
+    // Phase RT.1: resolve a rating context version so iterations don't pool
+    // their ratings across builds. Prefer a meta tag the product set at publish
+    // time; fall back to the HTML's Last-Modified (set by serveUserProject) or
+    // today's date. The server also records server-side createdAt, so this is
+    // only a hint for cross-build grouping.
+    var ratingContextVersion = null;
+    var versionMeta = document.querySelector('meta[name="mchatai-version"]');
+    if (versionMeta && versionMeta.content) {
+      ratingContextVersion = versionMeta.content;
+    } else {
+      ratingContextVersion = new Date().toISOString().slice(0, 10); // YYYY-MM-DD bucket
+    }
+
+    // When only a rating (no text), synthesize a short description so the
+    // ticket still has searchable content in the review queue.
+    var effectiveText = text;
+    if (effectiveText.length < 4 && selectedRating != null) {
+      effectiveText = selectedRating + '-star rating (no comment)';
+    }
+
+    var payload = {
+      title: effectiveText.split('\n')[0].slice(0, 80),
+      description: effectiveText,
+      type: selectedType,
+      severity: selectedType === 'bug' ? 'medium' : 'low',
+      rating: selectedRating,
+      ratingContextVersion: ratingContextVersion,
+      endProductSlug: slug,
+      previewURL: location.href,
+      source: 'web.user-project-widget',
+      metadata: {
+        consoleErrors: __consoleErrors.slice(),
+        userAgent: navigator.userAgent,
+        viewport: window.innerWidth + 'x' + window.innerHeight,
+        shortUid: shortUid,
+      },
+    };
+
+    // Screenshot attached → attach base64 + dimensions. Server will decode,
+    // verify size, upload to GCS, and embed the URL on the ticket.
+    if (capturedScreenshot) {
+      payload.screenshot = {
+        dataURL: capturedScreenshot.dataURL,
+        width: capturedScreenshot.width,
+        height: capturedScreenshot.height,
+      };
+    }
+
+    try {
+      var headers = { 'Content-Type': 'application/json' };
+      // Include auth only if we have a token; screenshot submissions require it
+      // but we let the server reject rather than blocking client-side — cheaper
+      // to handle edge cases (stale token, abuse-disabled account) in one place.
+      if (cachedIdToken) headers['Authorization'] = 'Bearer ' + cachedIdToken;
+
+      var resp = await fetch(API_BASE + '/v1/feedback', {
+        method: 'POST',
+        headers: headers,
+        body: JSON.stringify(payload),
+      });
+      var body = await resp.json().catch(function () { return {}; });
+
+      // Server telling us the user is abuse-disabled → clear token so the next
+      // attempt forces a fresh sign-in. The abuse-disable lives on the UID in
+      // Firestore so a re-sign-in with the same account will re-reject; only
+      // recovery is to sign in with a different account or contact support.
+      if (resp.status === 403 && body && body.reason === 'user-disabled') {
+        clearToken();
+        removeScreenshot();
+      }
+
+      if (resp.ok && body.ok) {
+        statusEl.style.color = '#5db77a';
+        statusEl.textContent = selectedRating != null
+          ? 'Thanks! Your ' + selectedRating + '-star rating was logged.'
+          : 'Thanks! Your feedback was logged.';
+        textArea.value = '';
+        selectedRating = null;
+        paintStars(null);
+        removeScreenshot();
+        setTimeout(closePanel, 1400);
+      } else {
+        statusEl.style.color = '#e26766';
+        statusEl.textContent = body.error || ('Error ' + resp.status);
+      }
+    } catch (err) {
+      statusEl.style.color = '#e26766';
+      statusEl.textContent = 'Network error — try again.';
+    } finally {
+      sendBtn.textContent = 'Send';
+      updateSendState();
+    }
+  });
+})();
+</script></body>
+</html>
