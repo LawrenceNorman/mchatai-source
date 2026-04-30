@@ -36,5 +36,24 @@
     "_maxAutoFixCyclesComment": "How many fix-and-retest rounds. After this we surface to the user as 'auto-test still finds issues' rather than looping forever.",
     "fixPromptVariant": "anchor-on-original-goal",
     "_fixPromptVariantComment": "Tells the autofix LLM to anchor on the ORIGINAL_GOAL so a 'fix the New Game button' prompt doesn't drift the app into a card game (real-incident 2026-04-29)."
+  },
+
+  "keyboardSynthesis": {
+    "_comment": "Phase 0d.27 (2026-04-30) — when the goal mentions a movement-based game (snake/tetris/platformer/etc), getClickableElements() misses the directional controls (they're keyboard/swipe-driven, not DOM buttons). Auto-play falls back to synthesizing keyboard events to exercise those controls. Real-incident: snake game's movement was keyboard-only and auto-play only clicked Pause+Play Again, so movement bugs were invisible.",
+    "enabled": true,
+    "triggerKeywords": [
+      "snake", "tetris", "platformer", "arcade",
+      "movement", "frogger", "pacman", "pac-man", "mario",
+      "dodge", "jump", "racer", "racing", "scroll",
+      "shoot", "shooter", "asteroids", "centipede",
+      "breakout", "pong", "space invaders"
+    ],
+    "_triggerKeywordsComment": "Substring match on the goal text (case-insensitive). Add new arcade types here without rebuild.",
+    "keysToTry": ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Space", " ", "w", "a", "s", "d"],
+    "_keysToTryComment": "Tried in this order. ArrowUp/Down/Left/Right covers most snake/frogger/pacman. Space covers jump/shoot. WASD covers fallback platformer schemes. Each key is dispatched and screen is checked for change (just like clicks).",
+    "screenshotIntervalMs": 600,
+    "_screenshotIntervalMsComment": "Wait between key event and screenshot. Shorter than click-interval because keypresses on game loops typically settle in <500ms (one game tick).",
+    "maxKeysPerStep": 4,
+    "_maxKeysPerStepComment": "After click steps, fire this many keyboard events. Smaller than click maxSteps because the goal isn't to play through — it's to verify directional input is wired."
   }
 }
