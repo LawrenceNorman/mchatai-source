@@ -178,6 +178,46 @@ async def auth_login(body: Optional[AuthLoginInput] = None):
     return await auth_status()
 
 
+@router.post("/install/gws", response_model=OperationOutput)
+async def install_gws():
+    """Install the gws CLI via npm (preferred) or Homebrew. Long-running (≤5 min).
+
+    Returns success early if gws is already on PATH. Mirrors the gws-setup skill's
+    run.sh ladder so AI Inbox + the existing setup skill stay in sync.
+    """
+    if gws_path() is not None:
+        return OperationOutput(success=True, message="gws already installed")
+
+    if shutil.which("npm") is not None:
+        cmd = ["npm", "install", "-g", "@googleworkspace/cli"]
+        method = "npm"
+    elif shutil.which("brew") is not None:
+        cmd = ["brew", "install", "googleworkspace-cli"]
+        method = "brew"
+    else:
+        raise HTTPException(
+            status_code=412,
+            detail="Neither npm nor Homebrew is available. Install one from https://brew.sh or https://nodejs.org and try again.",
+        )
+
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, check=False, timeout=300)
+    except subprocess.TimeoutExpired:
+        raise HTTPException(status_code=504, detail=f"{method} install timed out after 5 minutes")
+
+    if result.returncode != 0:
+        tail = (result.stderr or result.stdout)[-500:]
+        raise HTTPException(status_code=500, detail=f"{method} install failed: {tail}")
+
+    if gws_path() is None:
+        raise HTTPException(
+            status_code=500,
+            detail=f"{method} reported success but gws is not on PATH (try restarting mChatAIShell).",
+        )
+
+    return OperationOutput(success=True, message=f"Installed gws via {method}")
+
+
 @router.post("/auth/logout", response_model=OperationOutput)
 async def auth_logout():
     """Clear the local gws session."""
