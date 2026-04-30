@@ -1,0 +1,45 @@
+{
+  "version": 1,
+  "lastUpdated": "2026-04-29",
+  "_source_of_truth": true,
+  "_comment": "Policy for the TemplatePromotionFromFeedback v1 feature. The Mac app reads triggerSignalWeights at capture time. The web admin Cloud Functions (runDiscriminator, promoteTemplateCandidate) read the rest at promotion time. Edit + git push + (relaunch / Cloud Function redeploy) ships changes with no Swift rebuild. See docs/TEMPLATE_PROMOTION_FROM_FEEDBACK.md.",
+
+  "minDiscriminatorConfidenceForReview": 0.50,
+  "_minConfidenceComment": "Web admin filters the review queue at this threshold by default. Below this, the candidate is captured + screened but stays in 'low-confidence' view requiring an explicit admin opt-in to surface.",
+
+  "triggerSignalWeights": {
+    "deployToWeb": 1.5,
+    "publishToCommunity": 2.0
+  },
+  "_triggerWeightsComment": "Used by web admin queue ordering: weight × discriminator.confidence × (1 + endProduct.averageRating). Publish weighs higher because it's a stronger user-commitment signal (public listing on Community Hub) than a private deploy URL. v1 dropped looksGreat + rating triggers — those don't produce stable shareable URLs.",
+
+  "targetBaseDirectory": "harness/templates",
+  "subdirectoryByArtifactType": {
+    "miniApp": "miniapps",
+    "macOSApp": "macos-apps",
+    "fullStackApp": "fullstack",
+    "unityGame": "unity-games",
+    "widget": "widgets"
+  },
+  "_directoryComment": "Promoted templates land at mchatai-source/harness/templates/<subdir>/<slug>/. Per-type subdirs let TemplateCatalogService.resolve(prompt:, solutionType:) lookup find the right kind of seed. Renaming the subdirs is a content change here + a git mv — no Swift code change required.",
+
+  "discriminatorProvider": "anthropic",
+  "_discriminatorProviderComment": "Cloud Function picks this provider via its corresponding API key secret (ANTHROPIC_API_KEY, OPENAI_API_KEY, GOOGLE_API_KEY). Default to anthropic per Lawrence's preference. Switch by editing this field + redeploying the Function (the secret only needs to exist for the chosen provider).",
+
+  "discriminatorModelByProvider": {
+    "anthropic": "claude-sonnet-4-6",
+    "openai": "gpt-4o-mini",
+    "google": "gemini-2.5-flash"
+  },
+  "_discriminatorModelComment": "Models per provider for the discriminator call. Cheap/fast tier is fine — it's a yes/no decision with structured output, not a generative task. Override via this field; no code change needed.",
+
+  "autoFilterCategoriesAlreadyAtSize": {
+    "games.arcade-games": 5,
+    "games.puzzle-games": 5,
+    "games.card-games": 4
+  },
+  "_autoFilterComment": "If a category already has N templates, any new candidate in it must beat 0.85 confidence to surface in the default queue view. Prevents catalog bloat in popular categories. Empty map = no auto-filter. Web admin can override per-row.",
+
+  "screeningCapPerInvocation": 5,
+  "_screeningCapComment": "When the admin opens the queue (or a 'Screen all' tunnel command fires), screen at most this many unscreened candidates per call. Prevents accidentally burning a large API budget on an aged backlog."
+}
