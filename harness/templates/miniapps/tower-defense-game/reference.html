@@ -1,0 +1,2042 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dead Zone Defense</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:#0a0a0a;color:#c8b89a;font-family:'Courier New',monospace;overflow:hidden;user-select:none;}
+#game-wrap{position:relative;width:100vw;height:100vh;display:flex;flex-direction:column;}
+#top-bar{display:flex;justify-content:space-between;align-items:center;padding:4px 10px;background:linear-gradient(180deg,#1a1a1a,#111);border-bottom:2px solid #2a2a2a;height:36px;flex-shrink:0;z-index:10;}
+#top-bar .stat{display:flex;align-items:center;gap:4px;font-size:12px;font-weight:bold;letter-spacing:1px;text-transform:uppercase;}
+#top-bar .stat .val{color:#e8d8a0;font-size:14px;}
+.health-val{color:#c0392b !important;}
+.scrap-val{color:#f39c12 !important;}
+#canvas-wrap{flex:1;position:relative;overflow:hidden;}
+canvas{display:block;width:100%;height:100%;}
+#bottom-panel{display:flex;align-items:stretch;background:linear-gradient(0deg,#0d0d0d,#161616);border-top:2px solid #2a2a2a;height:90px;flex-shrink:0;z-index:10;gap:2px;padding:4px;}
+.tower-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#1a1a1a;border:2px solid #333;border-radius:4px;cursor:pointer;padding:4px;min-width:70px;transition:border-color 0.15s,background 0.15s;}
+.tower-btn:hover{border-color:#666;background:#222;}
+.tower-btn.selected{border-color:#f39c12;background:#2a2200;}
+.tower-btn.cant-afford{opacity:0.4;cursor:not-allowed;}
+.tower-btn .icon{width:32px;height:32px;margin-bottom:2px;}
+.tower-btn .tname{font-size:9px;color:#aaa;text-transform:uppercase;letter-spacing:0.5px;white-space:nowrap;}
+.tower-btn .tcost{font-size:11px;color:#f39c12;font-weight:bold;}
+#wave-btn{min-width:90px;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#2a1a0a;border:2px solid #c0392b;border-radius:4px;cursor:pointer;padding:4px;transition:background 0.15s;}
+#wave-btn:hover{background:#3a2010;}
+#wave-btn .wlabel{font-size:11px;color:#e74c3c;font-weight:bold;text-transform:uppercase;letter-spacing:1px;}
+#wave-btn .wsub{font-size:9px;color:#888;margin-top:2px;}
+#wave-btn.running{border-color:#555;background:#1a1a1a;}
+#wave-btn.running .wlabel{color:#888;}
+#speed-btn{min-width:50px;display:flex;align-items:center;justify-content:center;background:#1a1a1a;border:2px solid #444;border-radius:4px;cursor:pointer;font-size:14px;color:#aaa;transition:all 0.15s;}
+#speed-btn:hover{border-color:#888;color:#eee;}
+#speed-btn.fast{border-color:#f39c12;color:#f39c12;background:#2a2200;}
+#tower-info{position:absolute;bottom:100px;left:50%;transform:translateX(-50%);background:rgba(10,10,10,0.95);border:2px solid #444;border-radius:6px;padding:10px 16px;display:none;z-index:20;min-width:220px;text-align:center;}
+#tower-info .ti-name{font-size:14px;color:#e8d8a0;font-weight:bold;margin-bottom:4px;text-transform:uppercase;letter-spacing:1px;}
+#tower-info .ti-stats{font-size:11px;color:#888;margin-bottom:6px;line-height:1.6;}
+#tower-info .ti-stats span{color:#c8b89a;}
+#upgrade-btn{background:#2a2200;border:2px solid #f39c12;color:#f39c12;padding:6px 16px;border-radius:4px;cursor:pointer;font-family:inherit;font-size:12px;font-weight:bold;text-transform:uppercase;letter-spacing:1px;}
+#upgrade-btn:hover{background:#3a3200;}
+#upgrade-btn:disabled{opacity:0.4;cursor:not-allowed;}
+#sell-btn{background:#2a0a0a;border:2px solid #c0392b;color:#c0392b;padding:6px 12px;border-radius:4px;cursor:pointer;font-family:inherit;font-size:11px;font-weight:bold;text-transform:uppercase;margin-left:6px;}
+#sell-btn:hover{background:#3a1010;}
+#game-over{position:absolute;inset:0;background:rgba(0,0,0,0.85);display:none;flex-direction:column;align-items:center;justify-content:center;z-index:50;}
+#game-over h1{font-size:48px;color:#c0392b;text-transform:uppercase;letter-spacing:6px;margin-bottom:8px;text-shadow:0 0 20px rgba(192,57,43,0.5);}
+#game-over .go-sub{font-size:16px;color:#888;margin-bottom:24px;}
+#game-over .go-stat{font-size:14px;color:#c8b89a;margin:4px 0;}
+#restart-btn{margin-top:20px;background:#2a1a0a;border:2px solid #c0392b;color:#e74c3c;padding:12px 32px;border-radius:4px;cursor:pointer;font-family:inherit;font-size:16px;font-weight:bold;text-transform:uppercase;letter-spacing:2px;}
+#restart-btn:hover{background:#3a2010;}
+#range-indicator{position:absolute;border:2px solid rgba(243,156,18,0.3);background:rgba(243,156,18,0.05);border-radius:50%;pointer-events:none;display:none;z-index:5;}
+#toast{position:absolute;top:44px;left:50%;transform:translateX(-50%);background:rgba(192,57,43,0.95);color:#fff;padding:6px 16px;border-radius:4px;font-size:12px;font-weight:bold;text-transform:uppercase;letter-spacing:1px;display:none;z-index:30;white-space:nowrap;}
+</style>
+</head>
+<body>
+<div id="game-wrap">
+  <div id="top-bar">
+    <div class="stat">Wave: <span class="val" id="wave-num">0</span></div>
+    <div class="stat">Zombies: <span class="val" id="zombie-count">0</span></div>
+    <div class="stat">Base HP: <span class="val health-val" id="base-hp">20</span></div>
+    <div class="stat">Scrap: <span class="val scrap-val" id="scrap-val">150</span></div>
+  </div>
+  <div id="canvas-wrap">
+    <canvas id="gc"></canvas>
+    <div id="range-indicator"></div>
+    <div id="tower-info">
+      <div class="ti-name" id="ti-name"></div>
+      <div class="ti-stats" id="ti-stats"></div>
+      <div>
+        <button id="upgrade-btn">Upgrade</button>
+        <button id="sell-btn">Sell</button>
+      </div>
+    </div>
+    <div id="toast"></div>
+  </div>
+  <div id="bottom-panel">
+    <div class="tower-btn" data-tower="guard" title="Barricade Guard - Rapid single-target fire">
+      <svg class="icon" viewBox="0 0 32 32"><rect x="10" y="6" width="12" height="20" rx="2" fill="#5a4a3a"/><rect x="13" y="2" width="6" height="6" rx="1" fill="#888"/><circle cx="16" cy="12" r="2" fill="#f39c12"/><rect x="14" y="18" width="4" height="8" fill="#3a3a3a"/></svg>
+      <span class="tname">Guard</span>
+      <span class="tcost">50</span>
+    </div>
+    <div class="tower-btn" data-tower="shotgun" title="Shotgun Sentry - Cone AoE, short range">
+      <svg class="icon" viewBox="0 0 32 32"><rect x="8" y="8" width="16" height="16" rx="3" fill="#4a3a2a"/><rect x="12" y="4" width="8" height="6" rx="1" fill="#666"/><rect x="10" y="5" width="4" height="8" rx="1" fill="#555" transform="rotate(-20 12 9)"/><rect x="18" y="5" width="4" height="8" rx="1" fill="#555" transform="rotate(20 20 9)"/><circle cx="16" cy="16" r="3" fill="#e74c3c"/></svg>
+      <span class="tname">Shotgun</span>
+      <span class="tcost">80</span>
+    </div>
+    <div class="tower-btn" data-tower="sniper" title="Sniper Nest - Long range, high damage">
+      <svg class="icon" viewBox="0 0 32 32"><polygon points="16,2 22,10 22,28 10,28 10,10" fill="#3a4a3a"/><rect x="14" y="0" width="4" height="12" fill="#666"/><circle cx="16" cy="6" r="3" fill="none" stroke="#0f0" stroke-width="1"/><line x1="16" y1="3" x2="16" y2="9" stroke="#0f0" stroke-width="0.5"/><line x1="13" y1="6" x2="19" y2="6" stroke="#0f0" stroke-width="0.5"/></svg>
+      <span class="tname">Sniper</span>
+      <span class="tcost">120</span>
+    </div>
+    <div class="tower-btn" data-tower="molotov" title="Molotov Launcher - Fire DoT on path">
+      <svg class="icon" viewBox="0 0 32 32"><rect x="11" y="10" width="10" height="18" rx="2" fill="#5a3a1a"/><rect x="13" y="6" width="6" height="6" rx="1" fill="#444"/><path d="M14,8 Q16,2 18,8" fill="#f39c12" opacity="0.8"/><path d="M15,6 Q16,1 17,6" fill="#e74c3c"/><circle cx="16" cy="22" r="3" fill="#c0392b" opacity="0.6"/></svg>
+      <span class="tname">Molotov</span>
+      <span class="tcost">100</span>
+    </div>
+    <div id="wave-btn">
+      <span class="wlabel">Start Wave</span>
+      <span class="wsub">Click to begin</span>
+    </div>
+    <div id="speed-btn" title="Toggle speed">1x</div>
+  </div>
+  <div id="game-over">
+    <h1>Overrun</h1>
+    <div class="go-sub">The dead have claimed the zone.</div>
+    <div class="go-stat">Survived to Wave <span id="go-wave">0</span></div>
+    <div class="go-stat">Zombies Killed: <span id="go-kills">0</span></div>
+    <button id="restart-btn">Try Again</button>
+  </div>
+</div>
+<script>
+(function(){
+"use strict";
+
+const canvas = document.getElementById('gc');
+const ctx = canvas.getContext('2d');
+const canvasWrap = document.getElementById('canvas-wrap');
+
+// --- CONSTANTS ---
+const TILE = 40;
+const MAP_COLS = 24;
+const MAP_ROWS = 14;
+const PATH_COLOR = '#2a2a1e';
+const GROUND_COLOR = '#1a1a14';
+const DEBRIS_COLORS = ['#2a2a2a','#333','#252520','#1e1e18'];
+
+// Tower definitions
+const TOWER_DEFS = {
+  guard: {name:'Barricade Guard',cost:50,range:100,damage:8,fireRate:400,color:'#8a7a5a',upgradeCost:40,dmgUp:5,rangeUp:10,rateUp:-30,maxLvl:4},
+  shotgun:{name:'Shotgun Sentry',cost:80,range:70,damage:12,fireRate:900,color:'#7a5a3a',aoe:true,aoeAngle:0.7,upgradeCost:60,dmgUp:6,rangeUp:8,rateUp:-50,maxLvl:4},
+  sniper:{name:'Sniper Nest',cost:120,range:180,damage:45,fireRate:2000,color:'#4a6a4a',upgradeCost:80,dmgUp:20,rangeUp:15,rateUp:-100,maxLvl:4},
+  molotov:{name:'Molotov Launcher',cost:100,range:120,damage:5,fireRate:2500,color:'#8a5a2a',dot:true,dotDuration:3000,dotDmg:3,upgradeCost:70,dmgUp:3,rangeUp:10,rateUp:-150,maxLvl:4}
+};
+
+// Zombie definitions
+const ZOMBIE_TYPES = {
+  shambler:{name:'Shambler',hp:30,speed:0.6,reward:8,damage:1,color:'#4a6a3a',size:8},
+  runner:{name:'Runner',hp:18,speed:1.4,reward:12,damage:1,color:'#6a4a3a',size:6},
+  brute:{name:'Brute',hp:150,speed:0.3,reward:25,damage:3,color:'#3a3a4a',size:12}
+};
+
+// --- MAP & PATH ---
+// Path defined as grid coordinates the path follows through
+const PATH_GRID = [
+  [0,2],[1,2],[2,2],[3,2],[4,2],[5,2],[5,3],[5,4],[5,5],[5,6],
+  [6,6],[7,6],[8,6],[9,6],[10,6],[11,6],[11,5],[11,4],[11,3],[11,2],
+  [12,2],[13,2],[14,2],[15,2],[15,3],[15,4],[15,5],[15,6],[15,7],[15,8],
+  [15,9],[15,10],[14,10],[13,10],[12,10],[11,10],[10,10],[9,10],[8,10],
+  [7,10],[7,11],[7,12],[8,12],[9,12],[10,12],[11,12],[12,12],[13,12],
+  [14,12],[15,12],[16,12],[17,12],[17,11],[17,10],[17,9],[17,8],[17,7],
+  [17,6],[18,6],[19,6],[20,6],[21,6],[22,6],[23,6]
+];
+
+// Build plot positions (grid coords) - placed adjacent to path
+const BUILD_PLOTS = [
+  [3,1],[3,3],[6,5],[6,7],[8,5],[8,7],[10,5],[10,7],
+  [10,1],[10,3],[13,1],[13,3],[14,5],[14,7],[14,9],[14,11],
+  [16,5],[16,7],[16,9],[16,11],[8,11],[8,13],[10,11],[10,13],
+  [12,11],[12,13],[19,5],[19,7],[21,5],[21,7]
+];
+
+// Precompute path waypoints in pixel coords (center of each tile)
+let pathWaypoints = [];
+let pathSet = new Set();
+
+function initPath() {
+  pathWaypoints = PATH_GRID.map(([c,r]) => ({x: c * TILE + TILE/2, y: r * TILE + TILE/2}));
+  pathSet = new Set(PATH_GRID.map(([c,r]) => `${c},${r}`));
+}
+
+// --- GAME STATE ---
+let state = {
+  phase: 'build', // 'build' | 'wave' | 'gameover'
+  wave: 0,
+  baseHP: 20,
+  maxHP: 20,
+  scrap: 150,
+  towers: [],       // {type, gridX, gridY, x, y, level, lastFire, ...}
+  zombies: [],      // {type, hp, maxHp, x, y, speed, pathIndex, reward, damage, dotTimer, ...}
+  projectiles: [],  // {x, y, tx, ty, speed, damage, aoe, dot, ...}
+  fires: [],        // {x, y, radius, damage, duration, elapsed}
+  selectedTower: null,   // tower type string for placement
+  selectedPlaced: null,  // index into towers[] for info panel
+  totalKills: 0,
+  zombiesRemaining: 0,
+  zombiesToSpawn: [],
+  spawnTimer: 0,
+  spawnInterval: 800,
+  speedMultiplier: 1,
+  debris: [],       // decorative debris positions
+  offsetX: 0,
+  offsetY: 0,
+  scale: 1
+};
+
+// --- DEBRIS GENERATION ---
+function generateDebris() {
+  state.debris = [];
+  for (let i = 0; i < 80; i++) {
+    let gx = Math.floor(Math.random() * MAP_COLS);
+    let gy = Math.floor(Math.random() * MAP_ROWS);
+    if (!pathSet.has(`${gx},${gy}`) && !BUILD_PLOTS.some(([bx,by])=>bx===gx&&by===gy)) {
+      state.debris.push({
+        x: gx * TILE + Math.random() * TILE,
+        y: gy * TILE + Math.random() * TILE,
+        w: 4 + Math.random() * 12,
+        h: 4 + Math.random() * 8,
+        color: DEBRIS_COLORS[Math.floor(Math.random()*DEBRIS_COLORS.length)],
+        rot: Math.random() * Math.PI * 2
+      });
+    }
+  }
+}
+
+// --- RESIZE ---
+function resize() {
+  const w = canvasWrap.clientWidth;
+  const h = canvasWrap.clientHeight;
+  canvas.width = w;
+  canvas.height = h;
+  const mapW = MAP_COLS * TILE;
+  const mapH = MAP_ROWS * TILE;
+  state.scale = Math.min(w / mapW, h / mapH);
+  state.offsetX = (w - mapW * state.scale) / 2;
+  state.offsetY = (h - mapH * state.scale) / 2;
+}
+window.addEventListener('resize', resize);
+
+// --- COORDINATE HELPERS ---
+function screenToMap(sx, sy) {
+  return {
+    x: (sx - state.offsetX) / state.scale,
+    y: (sy - state.offsetY) / state.scale
+  };
+}
+function mapToScreen(mx, my) {
+  return {
+    x: mx * state.scale + state.offsetX,
+    y: my * state.scale + state.offsetY
+  };
+}
+
+// --- RENDERING ---
+function drawMap() {
+  ctx.fillStyle = GROUND_COLOR;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  ctx.save();
+  ctx.translate(state.offsetX, state.offsetY);
+  ctx.scale(state.scale, state.scale);
+
+  // Ground texture - subtle grid
+  ctx.strokeStyle = '#1e1e16';
+  ctx.lineWidth = 0.5;
+  for (let x = 0; x <= MAP_COLS; x++) {
+    ctx.beginPath(); ctx.moveTo(x*TILE,0); ctx.lineTo(x*TILE,MAP_ROWS*TILE); ctx.stroke();
+  }
+  for (let y = 0; y <= MAP_ROWS; y++) {
+    ctx.beginPath(); ctx.moveTo(0,y*TILE); ctx.lineTo(MAP_COLS*TILE,y*TILE); ctx.stroke();
+  }
+
+  // Path
+  ctx.fillStyle = PATH_COLOR;
+  for (const [c,r] of PATH_GRID) {
+    ctx.fillRect(c*TILE, r*TILE, TILE, TILE);
+    // Path edge grime
+    ctx.fillStyle = '#222218';
+    ctx.fillRect(c*TILE, r*TILE, TILE, 2);
+    ctx.fillRect(c*TILE, r*TILE, 2, TILE);
+    ctx.fillStyle = PATH_COLOR;
+  }
+  // Path cracks
+  ctx.strokeStyle = '#1a1a12';
+  ctx.lineWidth = 1;
+  for (let i = 0; i < PATH_GRID.length; i += 3) {
+    const [c,r] = PATH_GRID[i];
+    ctx.beginPath();
+    ctx.moveTo(c*TILE+8, r*TILE+10);
+    ctx.lineTo(c*TILE+20, r*TILE+30);
+    ctx.stroke();
+  }
+
+  // Debris
+  for (const d of state.debris) {
+    ctx.save();
+    ctx.translate(d.x, d.y);
+    ctx.rotate(d.rot);
+    ctx.fillStyle = d.color;
+    ctx.fillRect(-d.w/2, -d.h/2, d.w, d.h);
+    ctx.restore();
+  }
+
+  // Build plots
+  for (const [bx, by] of BUILD_PLOTS) {
+    const hasTower = state.towers.some(t => t.gridX === bx && t.gridY === by);
+    if (!hasTower) {
+      ctx.fillStyle = '#1a2a1a';
+      ctx.fillRect(bx*TILE+2, by*TILE+2, TILE-4, TILE-4);
+      ctx.strokeStyle = '#2a3a2a';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([4,4]);
+      ctx.strokeRect(bx*TILE+2, by*TILE+2, TILE-4, TILE-4);
+      ctx.setLineDash([]);
+    }
+  }
+
+  // Spawn point marker
+  const sp = PATH_GRID[0];
+  ctx.fillStyle = '#4a1a1a';
+  ctx.fillRect(sp[0]*TILE, sp[1]*TILE, TILE, TILE);
+  ctx.fillStyle = '#c0392b';
+  ctx.font = 'bold 10px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText('SPAWN', sp[0]*TILE+TILE/2, sp[1]*TILE+TILE/2+3);
+
+  // Base marker
+  const bp = PATH_GRID[PATH_GRID.length-1];
+  ctx.fillStyle = '#1a2a4a';
+  ctx.fillRect(bp[0]*TILE, bp[1]*TILE, TILE, TILE);
+  ctx.fillStyle = '#3498db';
+  ctx.font = 'bold 10px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText('BASE', bp[0]*TILE+TILE/2, bp[1]*TILE+TILE/2+3);
+
+  ctx.restore();
+}
+
+function drawTowers() {
+  ctx.save();
+  ctx.translate(state.offsetX, state.offsetY);
+  ctx.scale(state.scale, state.scale);
+
+  for (let i = 0; i < state.towers.length; i++) {
+    const t = state.towers[i];
+    const def = TOWER_DEFS[t.type];
+    const cx = t.x;
+    const cy = t.y;
+
+    // Base
+    ctx.fillStyle = '#222';
+    ctx.fillRect(cx - 16, cy - 16, 32, 32);
+    ctx.fillStyle = def.color;
+    ctx.fillRect(cx - 14, cy - 14, 28, 28);
+
+    // Tower-specific visuals
+    if (t.type === 'guard') {
+      ctx.fillStyle = '#666';
+      ctx.fillRect(cx-3, cy-18, 6, 10);
+      ctx.fillStyle = '#f39c12';
+      ctx.beginPath(); ctx.arc(cx, cy-2, 4, 0, Math.PI*2); ctx.fill();
+      // Level pips
+      for (let l = 0; l < t.level; l++) {
+        ctx.fillStyle = '#f39c12';
+        ctx.fillRect(cx-12+l*7, cy+10, 5, 3);
+      }
+    } else if (t.type === 'shotgun') {
+      ctx.fillStyle = '#555';
+      ctx.fillRect(cx-8, cy-18, 6, 10);
+      ctx.fillRect(cx+2, cy-18, 6, 10);
+      ctx.fillStyle = '#e74c3c';
+      ctx.beginPath(); ctx.arc(cx, cy, 5, 0, Math.PI*2); ctx.fill();
+      for (let l = 0; l < t.level; l++) {
+        ctx.fillStyle = '#e74c3c';
+        ctx.fillRect(cx-12+l*7, cy+10, 5, 3);
+      }
+    } else if (t.type === 'sniper') {
+      ctx.fillStyle = '#555';
+      ctx.fillRect(cx-2, cy-22, 4, 16);
+      ctx.strokeStyle = '#0f0';
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.arc(cx, cy-14, 4, 0, Math.PI*2); ctx.stroke();
+      for (let l = 0; l < t.level; l++) {
+        ctx.fillStyle = '#0f0';
+        ctx.fillRect(cx-12+l*7, cy+10, 5, 3);
+      }
+    } else if (t.type === 'molotov') {
+      ctx.fillStyle = '#8a4a0a';
+      ctx.fillRect(cx-4, cy-18, 8, 12);
+      ctx.fillStyle = '#f39c12';
+      ctx.beginPath();
+      ctx.moveTo(cx-3, cy-18);
+      ctx.quadraticCurveTo(cx, cy-26, cx+3, cy-18);
+      ctx.fill();
+      for (let l = 0; l < t.level; l++) {
+        ctx.fillStyle = '#f39c12';
+        ctx.fillRect(cx-12+l*7, cy+10, 5, 3);
+      }
+    }
+
+    // Selection highlight
+    if (state.selectedPlaced === i) {
+      ctx.strokeStyle = '#f39c12';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(cx-17, cy-17, 34, 34);
+    }
+  }
+
+  ctx.restore();
+}
+
+function drawZombies() {
+  ctx.save();
+  ctx.translate(state.offsetX, state.offsetY);
+  ctx.scale(state.scale, state.scale);
+
+  for (const z of state.zombies) {
+    if (z.hp <= 0) continue;
+    const def = ZOMBIE_TYPES[z.type];
+    const s = def.size;
+
+    // Shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.beginPath();
+    ctx.ellipse(z.x+1, z.y+s*0.6, s*0.8, s*0.4, 0, 0, Math.PI*2);
+    ctx.fill();
+
+    // Body
+    ctx.fillStyle = def.color;
+    if (z.type === 'brute') {
+      ctx.fillRect(z.x-s, z.y-s, s*2, s*2);
+      ctx.fillStyle = '#2a2a3a';
+      ctx.fillRect(z.x-s+2, z.y-s+2, s*2-4, s*2-4);
+      ctx.fillStyle = '#c0392b';
+      ctx.fillRect(z.x-3, z.y-3, 6, 4);
+    } else if (z.type === 'runner') {
+      ctx.beginPath();
+      ctx.moveTo(z.x, z.y-s);
+      ctx.lineTo(z.x+s, z.y+s);
+      ctx.lineTo(z.x-s, z.y+s);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = '#c0392b';
+      ctx.beginPath(); ctx.arc(z.x, z.y-2, 2, 0, Math.PI*2); ctx.fill();
+    } else {
+      ctx.beginPath();
+      ctx.arc(z.x, z.y, s, 0, Math.PI*2);
+      ctx.fill();
+      ctx.fillStyle = '#2a4a2a';
+      ctx.beginPath(); ctx.arc(z.x, z.y, s-2, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = '#c0392b';
+      ctx.fillRect(z.x-2, z.y-2, 4, 3);
+    }
+
+    // HP bar
+    const hpPct = z.hp / z.maxHp;
+    const barW = s * 2.5;
+    ctx.fillStyle = '#333';
+    ctx.fillRect(z.x - barW/2, z.y - s - 6, barW, 3);
+    ctx.fillStyle = hpPct > 0.5 ? '#27ae60' : hpPct > 0.25 ? '#f39c12' : '#c0392b';
+    ctx.fillRect(z.x - barW/2, z.y - s - 6, barW * hpPct, 3);
+
+    // DoT indicator
+    if (z.onFire) {
+      ctx.fillStyle = 'rgba(243,156,18,0.5)';
+      ctx.beginPath(); ctx.arc(z.x, z.y, s+3, 0, Math.PI*2); ctx.fill();
+    }
+  }
+
+  ctx.restore();
+}
+
+function drawProjectiles() {
+  ctx.save();
+  ctx.translate(state.offsetX, state.offsetY);
+  ctx.scale(state.scale, state.scale);
+
+  for (const p of state.projectiles) {
+    if (p.dot) {
+      ctx.fillStyle = '#f39c12';
+      ctx.beginPath(); ctx.arc(p.x, p.y, 4, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = '#e74c3c';
+      ctx.beginPath(); ctx.arc(p.x, p.y, 2, 0, Math.PI*2); ctx.fill();
+    } else if (p.aoe) {
+      ctx.fillStyle = '#e74c3c';
+      ctx.beginPath(); ctx.arc(p.x, p.y, 3, 0, Math.PI*2); ctx.fill();
+    } else if (p.sniper) {
+      ctx.strokeStyle = '#0f0';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(p.ox, p.oy);
+      ctx.lineTo(p.x, p.y);
+      ctx.stroke();
+      ctx.lineWidth = 1;
+    } else {
+      ctx.fillStyle = '#f39c12';
+      ctx.fillRect(p.x-2, p.y-2, 4, 4);
+    }
+  }
+
+  ctx.restore();
+}
+
+function drawFires() {
+  ctx.save();
+  ctx.translate(state.offsetX, state.offsetY);
+  ctx.scale(state.scale, state.scale);
+
+  for (const f of state.fires) {
+    const alpha = Math.max(0, 1 - f.elapsed / f.duration) * 0.5;
+    ctx.fillStyle = `rgba(243,156,18,${alpha})`;
+    ctx.beginPath(); ctx.arc(f.x, f.y, f.radius, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = `rgba(231,76,60,${alpha * 0.7})`;
+    ctx.beginPath(); ctx.arc(f.x, f.y, f.radius * 0.6, 0, Math.PI*2); ctx.fill();
+  }
+
+  ctx.restore();
+}
+
+function drawPlacementPreview(mx, my) {
+  if (!state.selectedTower || state.phase === 'gameover') return;
+  const mp = screenToMap(mx, my);
+  const gx = Math.floor(mp.x / TILE);
+  const gy = Math.floor(mp.y / TILE);
+  const valid = Build_PLOTS_set.has(`${gx},${gy}`) && !state.towers.some(t=>t.gridX===gx&&t.gridY===gy);
+  const def = TOWER_DEFS[state.selectedTower];
+
+  ctx.save();
+  ctx.translate(state.offsetX, state.offsetY);
+  ctx.scale(state.scale, state.scale);
+
+  // Range circle
+  const cx = gx*TILE+TILE/2;
+  const cy = gy*TILE+TILE/2;
+  ctx.strokeStyle = valid ? 'rgba(243,156,18,0.4)' : 'rgba(192,57,43,0.4)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.arc(cx, cy, def.range, 0, Math.PI*2);
+  ctx.stroke();
+  ctx.fillStyle = valid ? 'rgba(243,156,18,0.08)' : 'rgba(192,57,43,0.08)';
+  ctx.fill();
+
+  // Ghost tower
+  ctx.globalAlpha = 0.5;
+  ctx.fillStyle = valid ? def.color : '#c0392b';
+  ctx.fillRect(cx-14, cy-14, 28, 28);
+  ctx.globalAlpha = 1;
+
+  ctx.restore();
+}
+
+// --- GAME LOGIC ---
+function dist(x1, y1, x2, y2) {
+  return Math.sqrt((x2-x1)**2 + (y2-y1)**2);
+}
+
+function findTarget(tower) {
+  const def = TOWER_DEFS[tower.type];
+  const range = def.range + (tower.level * def.rangeUp);
+  let best = null;
+  let bestProgress = -1;
+  for (const z of state.zombies) {
+    if (z.hp <= 0) continue;
+    const d = dist(tower.x, tower.y, z.x, z.y);
+    if (d <= range && z.pathIndex > bestProgress) {
+      best = z;
+      bestProgress = z.pathIndex;
+    }
+  }
+  return best;
+}
+
+function findTargetsInCone(tower, target) {
+  const def = TOWER_DEFS[tower.type];
+  const range = def.range + (tower.level * def.rangeUp);
+  const angle = Math.atan2(target.y - tower.y, target.x - tower.x);
+  const targets = [];
+  for (const z of state.zombies) {
+    if (z.hp <= 0) continue;
+    const d = dist(tower.x, tower.y, z.x, z.y);
+    if (d > range) continue;
+    const a = Math.atan2(z.y - tower.y, z.x - tower.x);
+    let diff = Math.abs(a - angle);
+    if (diff > Math.PI) diff = 2*Math.PI - diff;
+    if (diff <= def.aoeAngle) targets.push(z);
+  }
+  return targets;
+}
+
+function towerShoot(tower, now) {
+  const def = TOWER_DEFS[tower.type];
+  const rate = Math.max(100, def.fireRate + tower.level * def.rateUp);
+  if (now - tower.lastFire < rate) return;
+
+  const target = findTarget(tower);
+  if (!target) return;
+
+  tower.lastFire = now;
+  const dmg = def.damage + tower.level * def.dmgUp;
+
+  if (tower.type === 'sniper') {
+    // Instant hit
+    state.projectiles.push({
+      x: target.x, y: target.y, ox: tower.x, oy: tower.y,
+      life: 100, sniper: true, done: false
+    });
+    target.hp -= dmg;
+    if (target.hp <= 0) { target.hp = 0; state.scrap += target.reward; state.totalKills++; }
+  } else if (tower.type === 'shotgun') {
+    const targets = findTargetsInCone(tower, target);
+    for (const t of targets) {
+      t.hp -= dmg;
+      if (t.hp <= 0) { t.hp = 0; state.scrap += t.reward; state.totalKills++; }
+    }
+    state.projectiles.push({
+      x: tower.x, y: tower.y,
+      tx: target.x, ty: target.y,
+      speed: 6, damage: 0, aoe: true, life: 150, done: false
+    });
+  } else if (tower.type === 'molotov') {
+    state.projectiles.push({
+      x: tower.x, y: tower.y,
+      tx: target.x, ty: target.y,
+      speed: 3, damage: dmg, dot: true, dotDuration: def.dotDuration + tower.level * 500,
+      dotDmg: def.dotDmg + tower.level, life: 500, done: false
+    });
+  } else {
+    // Guard - single target projectile
+    state.projectiles.push({
+      x: tower.x, y: tower.y,
+      tx: target.x, ty: target.y,
+      speed: 5, damage: dmg, life: 300, done: false
+    });
+  }
+}
+
+function updateProjectiles(dt) {
+  for (let i = state.projectiles.length - 1; i >= 0; i--) {
+    const p = state.projectiles[i];
+    p.life -= dt;
+    if (p.life <= 0 || p.done) { state.projectiles.splice(i, 1); continue; }
+
+    if (p.sniper) {
+      p.life -= dt * 3; // Fade fast
+      continue;
+    }
+
+    const dx = p.tx - p.x;
+    const dy = p.ty - p.y;
+    const d = Math.sqrt(dx*dx + dy*dy);
+    if (d < 5) {
+      if (p.dot) {
+        // Create fire zone
+        state.fires.push({x: p.tx, y: p.ty, radius: 25, damage: p.dotDmg, duration: p.dotDuration, elapsed: 0});
+      } else if (!p.aoe && p.damage > 0) {
+        // Hit nearest zombie
+        let closest = null;
+        let closestD = Infinity;
+        for (const z of state.zombies) {
+          if (z.hp <= 0) continue;
+          const zd = dist(p.tx, p.ty, z.x, z.y);
+          if (zd < closestD && zd < 20) { closest = z; closestD = zd; }
+        }
+        if (closest) {
+          closest.hp -= p.damage;
+          if (closest.hp <= 0) { closest.hp = 0; state.scrap += closest.reward; state.totalKills++; }
+        }
+      }
+      p.done = true;
+      continue;
+    }
+    const speed = p.speed * dt * 0.1;
+    p.x += (dx/d) * speed;
+    p.y += (dy/d) * speed;
+  }
+}
+
+function updateFires(dt) {
+  for (let i = state.fires.length - 1; i >= 0; i--) {
+    const f = state.fires[i];
+    f.elapsed += dt;
+    if (f.elapsed >= f.duration) { state.fires.splice(i, 1); continue; }
+
+    // Damage zombies in fire
+    for (const z of state.zombies) {
+      if (z.hp <= 0) continue;
+      if (dist(f.x, f.y, z.x, z.y) < f.radius) {
+        z.hp -= f.damage * dt * 0.003;
+        z.onFire = true;
+        z.fireTimer = 500;
+        if (z.hp <= 0) { z.hp = 0; state.scrap += z.reward; state.totalKills++; }
+      }
+    }
+  }
+}
+
+function updateZombies(dt) {
+  for (let i = state.zombies.length - 1; i >= 0; i--) {
+    const z = state.zombies[i];
+    if (z.hp <= 0) { state.zombies.splice(i, 1); state.zombiesRemaining--; continue; }
+
+    // Fire timer
+    if (z.fireTimer > 0) {
+      z.fireTimer -= dt;
+      if (z.fireTimer <= 0) z.onFire = false;
+    }
+
+    // Move along path
+    if (z.pathIndex >= pathWaypoints.length - 1) {
+      // Reached base
+      state.baseHP -= ZOMBIE_TYPES[z.type].damage;
+      state.zombies.splice(i, 1);
+      state.zombiesRemaining--;
+      if (state.baseHP <= 0) {
+        state.baseHP = 0;
+        gameOver();
+      }
+      continue;
+    }
+
+    const target = pathWaypoints[z.pathIndex + 1];
+    const dx = target.x - z.x;
+    const dy = target.y - z.y;
+    const d = Math.sqrt(dx*dx + dy*dy);
+    const speed = z.speed * dt * 0.06;
+    if (d < speed) {
+      z.x = target.x;
+      z.y = target.y;
+      z.pathIndex++;
+    } else {
+      z.x += (dx/d) * speed;
+      z.y += (dy/d) * speed;
+    }
+  }
+}
+
+function spawnZombie(type, waveNum) {
+  const def = ZOMBIE_TYPES[type];
+  const hpScale = 1 + (waveNum - 1) * 0.2;
+  const hp = Math.round(def.hp * hpScale);
+  const sp = pathWaypoints[0];
+  state.zombies.push({
+    type,
+    hp,
+    maxHp: hp,
+    x: sp.x + (Math.random()-0.5)*10,
+    y: sp.y + (Math.random()-0.5)*10,
+    speed: def.speed,
+    pathIndex: 0,
+    reward: def.reward,
+    damage: def.damage,
+    onFire: false,
+    fireTimer: 0
+  });
+}
+
+function generateWave(waveNum) {
+  const queue = [];
+  const baseCount = 6 + waveNum * 3;
+
+  // Shamblers always
+  for (let i = 0; i < baseCount; i++) queue.push('shambler');
+
+  // Runners from wave 4
+  if (waveNum >= 4) {
+    const runnerCount = Math.floor((waveNum - 3) * 2);
+    for (let i = 0; i < runnerCount; i++) queue.push('runner');
+  }
+
+  // Brutes from wave 8
+  if (waveNum >= 8) {
+    const bruteCount = Math.floor((waveNum - 7) * 1.5);
+    for (let i = 0; i < bruteCount; i++) queue.push('brute');
+  }
+
+  // Shuffle
+  for (let i = queue.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [queue[i], queue[j]] = [queue[j], queue[i]];
+  }
+
+  return queue;
+}
+
+function startWave() {
+  if (state.phase !== 'build') return;
+  state.wave++;
+  state.phase = 'wave';
+  state.zombiesToSpawn = generateWave(state.wave);
+  state.zombiesRemaining = state.zombiesToSpawn.length;
+  state.spawnTimer = 0;
+  state.spawnInterval = Math.max(300, 800 - state.wave * 20);
+  updateUI();
+  updateWaveBtn();
+}
+
+function endWave() {
+  state.phase = 'build';
+  // Wave completion bonus
+  state.scrap += 20 + state.wave * 5;
+  showToast(`Wave ${state.wave} cleared! +${20 + state.wave * 5} scrap`);
+  updateUI();
+  updateWaveBtn();
+}
+
+function gameOver() {
+  state.phase = 'gameover';
+  document.getElementById('go-wave').textContent = state.wave;
+  document.getElementById('go-kills').textContent = state.totalKills;
+  document.getElementById('game-over').style.display = 'flex';
+}
+
+function restartGame() {
+  state.phase = 'build';
+  state.wave = 0;
+  state.baseHP = 20;
+  state.scrap = 150;
+  state.towers = [];
+  state.zombies = [];
+  state.projectiles = [];
+  state.fires = [];
+  state.selectedTower = null;
+  state.selectedPlaced = null;
+  state.totalKills = 0;
+  state.zombiesRemaining = 0;
+  state.zombiesToSpawn = [];
+  state.speedMultiplier = 1;
+  document.getElementById('game-over').style.display = 'none';
+  document.getElementById('tower-info').style.display = 'none';
+  document.getElementById('speed-btn').textContent = '1x';
+  document.getElementById('speed-btn').classList.remove('fast');
+  generateDebris();
+  updateUI();
+  updateWaveBtn();
+  updateTowerBtns();
+}
+
+// --- TOWER PLACEMENT ---
+let Build_PLOTS_set;
+
+function initBuildPlots() {
+  Build_PLOTS_set = new Set(BUILD_PLOTS.map(([x,y]) => `${x},${y}`));
+}
+
+function placeTower(gx, gy) {
+  if (!state.selectedTower) return;
+  if (!Build_PLOTS_set.has(`${gx},${gy}`)) return;
+  if (state.towers.some(t => t.gridX === gx && t.gridY === gy)) return;
+
+  const def = TOWER_DEFS[state.selectedTower];
+  if (state.scrap < def.cost) {
+    showToast('Not enough scrap!');
+    return;
+  }
+
+  state.scrap -= def.cost;
+  state.towers.push({
+    type: state.selectedTower,
+    gridX: gx,
+    gridY: gy,
+    x: gx * TILE + TILE/2,
+    y: gy * TILE + TILE/2,
+    level: 0,
+    lastFire: 0
+  });
+
+  updateUI();
+  updateTowerBtns();
+}
+
+function upgradeTower(idx) {
+  const t = state.towers[idx];
+  if (!t) return;
+  const def = TOWER_DEFS[t.type];
+  if (t.level >= def.maxLvl) { showToast('Max level!'); return; }
+  const cost = def.upgradeCost + t.level * 20;
+  if (state.scrap < cost) { showToast('Not enough scrap!'); return; }
+  state.scrap -= cost;
+  t.level++;
+  updateUI();
+  showTowerInfo(idx);
+  updateTowerBtns();
+}
+
+function sellTower(idx) {
+  const t = state.towers[idx];
+  if (!t) return;
+  const def = TOWER_DEFS[t.type];
+  const refund = Math.floor((def.cost + t.level * def.upgradeCost) * 0.6);
+  state.scrap += refund;
+  state.towers.splice(idx, 1);
+  state.selectedPlaced = null;
+  document.getElementById('tower-info').style.display = 'none';
+  updateUI();
+  updateTowerBtns();
+}
+
+// --- UI ---
+function updateUI() {
+  document.getElementById('wave-num').textContent = state.wave;
+  document.getElementById('zombie-count').textContent = state.zombiesRemaining;
+  document.getElementById('base-hp').textContent = state.baseHP;
+  document.getElementById('scrap-val').textContent = state.scrap;
+}
+
+function updateWaveBtn() {
+  const btn = document.getElementById('wave-btn');
+  if (state.phase === 'wave') {
+    btn.classList.add('running');
+    btn.querySelector('.wlabel').textContent = 'In Progress';
+    btn.querySelector('.wsub').textContent = `Wave ${state.wave}`;
+  } else {
+    btn.classList.remove('running');
+    btn.querySelector('.wlabel').textContent = 'Start Wave';
+    btn.querySelector('.wsub').textContent = `Wave ${state.wave + 1}`;
+  }
+}
+
+function updateTowerBtns() {
+  document.querySelectorAll('.tower-btn').forEach(btn => {
+    const type = btn.dataset.tower;
+    if (!type) return;
+    const def = TOWER_DEFS[type];
+    if (state.scrap < def.cost) {
+      btn.classList.add('cant-afford');
+    } else {
+      btn.classList.remove('cant-afford');
+    }
+    if (state.selectedTower === type) {
+      btn.classList.add('selected');
+    } else {
+      btn.classList.remove('selected');
+    }
+  });
+}
+
+function showTowerInfo(idx) {
+  const t = state.towers[idx];
+  if (!t) return;
+  const def = TOWER_DEFS[t.type];
+  const panel = document.getElementById('tower-info');
+  const dmg = def.damage + t.level * def.dmgUp;
+  const range = def.range + t.level * def.rangeUp;
+  const rate = Math.max(100, def.fireRate + t.level * def.rateUp);
+  const upgCost = t.level >= def.maxLvl ? 'MAX' : (def.upgradeCost + t.level * 20);
+
+  document.getElementById('ti-name').textContent = `${def.name} Lv.${t.level+1}`;
+  document.getElementById('ti-stats').innerHTML =
+    `DMG: <span>${dmg}</span> | RNG: <span>${range}</span> | RATE: <span>${(rate/1000).toFixed(1)}s</span>` +
+    (def.dot ? `<br>DoT: <span>${def.dotDmg + t.level}/tick</span>` : '') +
+    (def.aoe ? `<br>AoE: <span>Cone</span>` : '');
+
+  const upgBtn = document.getElementById('upgrade-btn');
+  if (t.level >= def.maxLvl) {
+    upgBtn.textContent = 'MAX LEVEL';
+    upgBtn.disabled = true;
+  } else {
+    upgBtn.textContent = `Upgrade (${upgCost})`;
+    upgBtn.disabled = state.scrap < upgCost;
+  }
+
+  panel.style.display = 'block';
+  state.selectedPlaced = idx;
+
+  // Show range circle
+  const screen = mapToScreen(t.x, t.y);
+  const ri = document.getElementById('range-indicator');
+  const r = range * state.scale;
+  ri.style.width = r*2 + 'px';
+  ri.style.height = r*2 + 'px';
+  ri.style.left = (screen.x - r) + 'px';
+  ri.style.top = (screen.y - r) + 'px';
+  ri.style.display = 'block';
+}
+
+function hideTowerInfo() {
+  document.getElementById('tower-info').style.display = 'none';
+  document.getElementById('range-indicator').style.display = 'none';
+  state.selectedPlaced = null;
+}
+
+let toastTimer = 0;
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.style.display = 'block';
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { el.style.display = 'none'; }, 2000);
+}
+
+// --- EVENT HANDLERS ---
+let mouseX = 0, mouseY = 0;
+
+canvas.addEventListener('mousemove', (e) => {
+  const rect = canvas.getBoundingClientRect();
+  mouseX = e.clientX - rect.left;
+  mouseY = e.clientY - rect.top;
+});
+
+canvas.addEventListener('click', (e) => {
+  if (state.phase === 'gameover') return;
+  const rect = canvas.getBoundingClientRect();
+  const sx = e.clientX - rect.left;
+  const sy = e.clientY - rect.top;
+  const mp = screenToMap(sx, sy);
+  const gx = Math.floor(mp.x / TILE);
+  const gy = Math.floor(mp.y / TILE);
+
+  // Check if clicking on existing tower
+  for (let i = 0; i < state.towers.length; i++) {
+    const t = state.towers[i];
+    if (t.gridX === gx && t.gridY === gy) {
+      state.selectedTower = null;
+      updateTowerBtns();
+      showTowerInfo(i);
+      return;
+    }
+  }
+
+  // Place tower
+  if (state.selectedTower) {
+    placeTower(gx, gy);
+    return;
+  }
+
+  // Click on empty - deselect
+  hideTowerInfo();
+});
+
+canvas.addEventListener('contextmenu', (e) => {
+  e.preventDefault();
+  state.selectedTower = null;
+  hideTowerInfo();
+  updateTowerBtns();
+});
+
+document.querySelectorAll('.tower-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const type = btn.dataset.tower;
+    if (!type) return;
+    if (state.selectedTower === type) {
+      state.selectedTower = null;
+    } else {
+      state.selectedTower = type;
+    }
+    hideTowerInfo();
+    updateTowerBtns();
+  });
+});
+
+document.getElementById('wave-btn').addEventListener('click', startWave);
+document.getElementById('upgrade-btn').addEventListener('click', () => {
+  if (state.selectedPlaced !== null) upgradeTower(state.selectedPlaced);
+});
+document.getElementById('sell-btn').addEventListener('click', () => {
+  if (state.selectedPlaced !== null) sellTower(state.selectedPlaced);
+});
+document.getElementById('restart-btn').addEventListener('click', restartGame);
+document.getElementById('speed-btn').addEventListener('click', () => {
+  const btn = document.getElementById('speed-btn');
+  if (state.speedMultiplier === 1) {
+    state.speedMultiplier = 2;
+    btn.textContent = '2x';
+    btn.classList.add('fast');
+  } else {
+    state.speedMultiplier = 1;
+    btn.textContent = '1x';
+    btn.classList.remove('fast');
+  }
+});
+
+// --- MAIN LOOP ---
+let lastTime = 0;
+
+function gameLoop(timestamp) {
+  if (!lastTime) lastTime = timestamp;
+  let dt = (timestamp - lastTime) * state.speedMultiplier;
+  lastTime = timestamp;
+
+  // Cap dt to prevent spiral
+  if (dt > 100) dt = 100;
+
+  if (state.phase === 'wave') {
+    // Spawn zombies
+    if (state.zombiesToSpawn.length > 0) {
+      state.spawnTimer += dt;
+      if (state.spawnTimer >= state.spawnInterval) {
+        state.spawnTimer = 0;
+        const type = state.zombiesToSpawn.shift();
+        spawnZombie(type, state.wave);
+      }
+    }
+
+    // Tower AI
+    const now = timestamp;
+    for (const tower of state.towers) {
+      towerShoot(tower, now);
+    }
+
+    // Update
+    updateZombies(dt);
+    updateProjectiles(dt);
+    updateFires(dt);
+
+    // Check wave complete
+    if (state.zombiesRemaining <= 0 && state.zombiesToSpawn.length === 0 && state.phase === 'wave') {
+      endWave();
+    }
+
+    updateUI();
+  }
+
+  // Draw
+  drawMap();
+  drawFires();
+  drawTowers();
+  drawZombies();
+  drawProjectiles();
+  if (state.selectedTower) drawPlacementPreview(mouseX, mouseY);
+
+  requestAnimationFrame(gameLoop);
+}
+
+// --- INIT ---
+function init() {
+  initPath();
+  initBuildPlots();
+  generateDebris();
+  resize();
+  updateUI();
+  updateWaveBtn();
+  updateTowerBtns();
+  requestAnimationFrame(gameLoop);
+}
+
+init();
+
+})();
+</script>
+<script>
+(function () {
+  if (window.__MCHATAI_FEEDBACK_WIDGET__) return;
+  window.__MCHATAI_FEEDBACK_WIDGET__ = true;
+
+  // Bail out entirely when embedded inside a native host that has its own
+  // feedback UI. iOS/Android WKWebView/WebView appends ?embed=ios or embed=android
+  // (or sets window.__MCHATAI_NATIVE_HOST__) before loading. In that case the
+  // native toolbar owns the feedback flow and we must not inject any pills,
+  // panels, or capture-phase event listeners (they would fight the native UI
+  // and block the soft-keyboard bridge).
+  try {
+    var params = new URLSearchParams(window.location.search);
+    var embed = params.get('embed');
+    if (embed === 'ios' || embed === 'android' || window.__MCHATAI_NATIVE_HOST__) {
+      return;
+    }
+  } catch (e) {
+    // If URL parsing somehow fails, fall through and render the widget.
+  }
+
+  // ── Config ───────────────────────────────────────────────────────────────
+  // Firebase web API key for the mchatai-2367e project. Public-safe — every web
+  // client has this in its bundle. Used for anonymous auth when submitting a
+  // screenshot (text-only feedback stays anonymous; screenshots require an
+  // anon token so we can rate-limit per-browser without real sign-in UX).
+  var FIREBASE_WEB_API_KEY = 'AIzaSyCp2lvjTqAmv60ktspDwYbPeIhi8nlKbwA';
+
+  // ── Console error capture ─────────────────────────────────────────────────
+  // Wrap console.error so the widget can attach the most recent failures to
+  // any submitted feedback. Bounded ring so a chatty page can't OOM the widget.
+  var __consoleErrors = [];
+  var origError = console.error;
+  console.error = function () {
+    try {
+      var msg = Array.prototype.map.call(arguments, function (a) {
+        if (a && a.stack) return String(a.stack).slice(0, 400);
+        if (typeof a === 'object') { try { return JSON.stringify(a).slice(0, 400); } catch (e) { return '[Object]'; } }
+        return String(a).slice(0, 400);
+      }).join(' ');
+      __consoleErrors.push(msg);
+      if (__consoleErrors.length > 8) __consoleErrors.shift();
+    } catch (e) { /* never break the host */ }
+    return origError.apply(console, arguments);
+  };
+  // Same for uncaught errors
+  window.addEventListener('error', function (e) {
+    try {
+      __consoleErrors.push('Uncaught: ' + (e.message || 'unknown') + ' @ ' + (e.filename || '?') + ':' + (e.lineno || '?'));
+      if (__consoleErrors.length > 8) __consoleErrors.shift();
+    } catch (_) {}
+  });
+
+  // ── Slug from URL ────────────────────────────────────────────────────────
+  // mchatai.com/u/{shortUid}/{slug}/ — pull both pieces for the API.
+  var pathParts = location.pathname.replace(/^\/u\//, '').split('/').filter(Boolean);
+  var shortUid = pathParts[0] || '';
+  var slug = pathParts[1] || '';
+
+  var API_BASE = 'https://web-api-1099075912386.us-central1.run.app';
+
+  // ── Styles ───────────────────────────────────────────────────────────────
+  var style = document.createElement('style');
+  style.id = 'mchatai-feedback-widget-style';
+  style.textContent = [
+    '#mchatai-fb-pill, #mchatai-fb-panel {',
+    '  position: fixed; right: 18px; bottom: 18px; z-index: 2147483646;',
+    '  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;',
+    '}',
+    '#mchatai-fb-pill {',
+    '  display: flex; align-items: center; gap: 6px;',
+    '  padding: 8px 14px; border-radius: 999px;',
+    '  background: rgba(40,40,46,0.92); color: #fff;',
+    '  font-size: 13px; font-weight: 500; cursor: pointer;',
+    '  border: 1px solid rgba(255,255,255,0.12);',
+    '  box-shadow: 0 2px 8px rgba(0,0,0,0.25);',
+    '  transition: opacity 0.4s ease, transform 0.15s ease;',
+    '  opacity: 1; user-select: none;',
+    '}',
+    '#mchatai-fb-pill.idle { opacity: 0.2; }',
+    '#mchatai-fb-pill:hover { opacity: 1 !important; transform: translateY(-1px); }',
+    /* Phase RT.2 follow-up: back-to-/play pill is anchored next to the
+       Feedback pill (bottom-right) because the top-left position made it
+       easy to miss on white-background games. Same z-index, same idle-fade,
+       sits just above the Feedback pill. */
+    '#mchatai-back-pill {',
+    '  position: fixed; right: 18px; bottom: 58px; z-index: 2147483646;',
+    '  display: flex; align-items: center; gap: 6px;',
+    '  padding: 6px 12px 6px 10px; border-radius: 999px;',
+    '  background: rgba(40,40,46,0.92); color: #fff;',
+    '  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;',
+    '  font-size: 12px; font-weight: 500; cursor: pointer;',
+    '  border: 1px solid rgba(255,255,255,0.12);',
+    '  box-shadow: 0 2px 8px rgba(0,0,0,0.25);',
+    '  transition: opacity 0.4s ease, transform 0.15s ease;',
+    '  opacity: 1; text-decoration: none; user-select: none;',
+    '}',
+    '#mchatai-back-pill.idle { opacity: 0.2; }',
+    '#mchatai-back-pill:hover { opacity: 1 !important; transform: translateX(-1px); }',
+    '#mchatai-back-pill svg { width: 14px; height: 14px; display: block; }',
+    '#mchatai-fb-panel {',
+    /* Phase RT.2 follow-up: panel now vertically-sized to fit its contents
+       and caps at 85vh so a screenshot preview + textarea + actions never
+       push Send below the viewport. Overflow moved from hidden → auto so
+       the panel itself scrolls if contents exceed the cap (belt-and-braces
+       for anything unexpected). */
+    '  display: none; width: 320px; max-height: 85vh;',
+    '  background: #1f2025; color: #f2f2f5; border-radius: 12px;',
+    '  border: 1px solid rgba(255,255,255,0.12);',
+    '  box-shadow: 0 8px 24px rgba(0,0,0,0.45);',
+    '  overflow-y: auto; overflow-x: hidden; flex-direction: column;',
+    '}',
+    '#mchatai-fb-panel.open { display: flex; }',
+    '#mchatai-fb-panel header {',
+    '  display: flex; justify-content: space-between; align-items: center;',
+    '  padding: 10px 12px; background: #25262c; font-size: 13px; font-weight: 600;',
+    '  border-bottom: 1px solid rgba(255,255,255,0.06);',
+    '}',
+    '#mchatai-fb-close {',
+    '  background: none; border: none; color: #b8b8be; font-size: 18px;',
+    '  cursor: pointer; line-height: 1; padding: 0 4px;',
+    '}',
+    /* Phase RT.2 follow-up: user identity chip. Shows current sign-in state
+       so users know (a) whether their submission is anonymous, (b) whose
+       Google account is attached when it isn't, (c) that screenshots unlock
+       after signing in. Lives in the header row between title and close. */
+    '#mchatai-fb-user { display: flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 500; color: #b8b8be; cursor: pointer; background: none; border: none; padding: 0; max-width: 140px; }',
+    '#mchatai-fb-user:hover { color: #f2f2f5; }',
+    '#mchatai-fb-user.signed-in { color: #8dd19a; }',
+    '#mchatai-fb-user img, #mchatai-fb-user .mchatai-fb-user-avatar-fallback { width: 16px; height: 16px; border-radius: 50%; flex-shrink: 0; }',
+    '#mchatai-fb-user .mchatai-fb-user-avatar-fallback { background: #3a3b40; color: #f2f2f5; font-size: 9px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; }',
+    '#mchatai-fb-user .mchatai-fb-user-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }',
+    '#mchatai-fb-types { display: flex; gap: 4px; padding: 8px 10px 6px; }',
+    '.mchatai-fb-type {',
+    '  flex: 1; padding: 6px 0; border-radius: 6px; cursor: pointer;',
+    '  background: transparent; color: #b8b8be; border: 1px solid rgba(255,255,255,0.10);',
+    '  font-size: 11px; text-align: center; transition: background 0.12s, color 0.12s;',
+    '}',
+    '.mchatai-fb-type.active { background: #4a8eff; color: #fff; border-color: #4a8eff; }',
+    /* Phase RT.1: 5-star rating control. Optional — users can submit text-only
+       feedback without setting a rating. Hover previews a provisional fill so
+       clicking feels obvious. Clicking the currently-selected star clears. */
+    '#mchatai-fb-rating { display: flex; align-items: center; gap: 4px; padding: 4px 10px 0; font-size: 11px; color: #b8b8be; }',
+    '#mchatai-fb-rating-label { margin-right: 6px; }',
+    '#mchatai-fb-rating .mchatai-fb-star {',
+    '  background: none; border: none; color: #55565c; cursor: pointer;',
+    '  font-size: 18px; padding: 0 2px; line-height: 1;',
+    '  transition: color 0.12s, transform 0.08s;',
+    '}',
+    '#mchatai-fb-rating .mchatai-fb-star:hover { transform: scale(1.12); }',
+    '#mchatai-fb-rating .mchatai-fb-star.filled { color: #ffc940; }',
+    '#mchatai-fb-rating .mchatai-fb-star.preview { color: #e6b73a; opacity: 0.75; }',
+    '#mchatai-fb-rating-clear {',
+    '  background: none; border: none; color: #707078; cursor: pointer;',
+    '  font-size: 11px; margin-left: auto; padding: 0 2px;',
+    '}',
+    '#mchatai-fb-rating-clear:hover { color: #d0d0d6; }',
+    '#mchatai-fb-rating-clear[hidden] { display: none !important; }',
+    '#mchatai-fb-text {',
+    '  margin: 4px 10px; padding: 8px; border-radius: 6px;',
+    '  background: #15161a; color: #f2f2f5; border: 1px solid rgba(255,255,255,0.10);',
+    '  font-size: 13px; font-family: inherit; resize: vertical;',
+    '  min-height: 90px; max-height: 200px; outline: none;',
+    '}',
+    '#mchatai-fb-text:focus { border-color: #4a8eff; }',
+    '#mchatai-fb-actions {',
+    /* Phase RT.2 follow-up: actions row sticks to the bottom of the panel
+       even if the content scrolls. Without this, a large screenshot preview
+       pushed the Send button below the viewport and users could not submit. */
+    '  display: flex; justify-content: space-between; align-items: center;',
+    '  padding: 8px 10px 10px; gap: 8px;',
+    '  position: sticky; bottom: 0; background: #1f2025;',
+    '  border-top: 1px solid rgba(255,255,255,0.06);',
+    '  flex-shrink: 0;',
+    '}',
+    '#mchatai-fb-meta { font-size: 10px; color: #707078; }',
+    '#mchatai-fb-send {',
+    '  padding: 6px 14px; border-radius: 6px; border: none; background: #4a8eff;',
+    '  color: #fff; font-size: 12px; font-weight: 600; cursor: pointer;',
+    '  transition: opacity 0.12s;',
+    '}',
+    '#mchatai-fb-send:disabled { opacity: 0.4; cursor: not-allowed; }',
+    '#mchatai-fb-status { font-size: 11px; padding: 0 12px 8px; min-height: 14px; color: #4a8eff; }',
+    /* Screenshot attachment row: only visible if the product opted in via feedbackAutomation.acceptScreenshots = true. */
+    '#mchatai-fb-shot-btn {',
+    '  width: 100%; padding: 7px 10px; margin: 6px 0 2px;',
+    '  background: #2e2f35; color: #d0d0d6; border: 1px dashed rgba(255,255,255,0.16);',
+    '  border-radius: 6px; cursor: pointer; font-size: 12px;',
+    '  transition: background 0.12s;',
+    '}',
+    '#mchatai-fb-shot-btn:hover { background: #35363d; }',
+    '#mchatai-fb-shot-btn:disabled { opacity: 0.5; cursor: default; }',
+    '#mchatai-fb-shot-preview-wrap {',
+    /* Phase RT.2 follow-up: explicit height on the wrap so the img inside
+       inherits the constrained box. Without this the img renders at its
+       natural aspect ratio and max-height alone doesn't clip (depends on
+       the browser's interpretation of intrinsic sizing). 120px matches the
+       earlier intent — small preview so the Send button stays visible. */
+    '  position: relative; margin: 6px 0 2px;',
+    '  height: 120px; max-height: 120px; overflow: hidden;',
+    '  border-radius: 6px;',
+    '  border: 1px solid rgba(255,255,255,0.10);',
+    '  background: #0d0e12;',
+    '  flex-shrink: 0;',
+    '}',
+    '#mchatai-fb-shot-preview { display:block; width: 100%; height: 100%; object-fit: contain; object-position: center; }',
+    '#mchatai-fb-shot-remove {',
+    '  position: absolute; top: 4px; right: 4px;',
+    '  width: 22px; height: 22px; border-radius: 50%;',
+    '  background: rgba(0,0,0,0.7); color: #fff; border: none;',
+    '  cursor: pointer; font-size: 14px; line-height: 1;',
+    '}',
+  ].join('\n');
+  document.head.appendChild(style);
+
+  // ── DOM ──────────────────────────────────────────────────────────────────
+  var pill = document.createElement('div');
+  pill.id = 'mchatai-fb-pill';
+  pill.innerHTML = '<span aria-hidden="true">💬</span><span>Feedback</span>';
+  pill.title = 'Send feedback about this game';
+  pill.setAttribute('role', 'button');
+  pill.setAttribute('aria-label', 'Send feedback');
+
+  var panel = document.createElement('div');
+  panel.id = 'mchatai-fb-panel';
+  panel.innerHTML = [
+    '<header>',
+    '  <span>Send feedback</span>',
+    '  <div style="display:flex;align-items:center;gap:10px;">',
+    '    <button id="mchatai-fb-user" type="button" title="Sign in to enable screenshots"><span aria-hidden="true">👤</span><span class="mchatai-fb-user-name">anonymous</span></button>',
+    '    <button id="mchatai-fb-close" aria-label="Close feedback panel">×</button>',
+    '  </div>',
+    '</header>',
+    '<div id="mchatai-fb-types">',
+    '  <button class="mchatai-fb-type active" data-type="bug">🐞 Bug</button>',
+    '  <button class="mchatai-fb-type" data-type="feature">✨ Idea</button>',
+    '  <button class="mchatai-fb-type" data-type="other">💬 Other</button>',
+    '</div>',
+    '<div id="mchatai-fb-rating" role="radiogroup" aria-label="Rate this product">',
+    '  <span id="mchatai-fb-rating-label">Rating:</span>',
+    '  <button type="button" class="mchatai-fb-star" data-value="1" role="radio" aria-label="1 star" aria-checked="false">☆</button>',
+    '  <button type="button" class="mchatai-fb-star" data-value="2" role="radio" aria-label="2 stars" aria-checked="false">☆</button>',
+    '  <button type="button" class="mchatai-fb-star" data-value="3" role="radio" aria-label="3 stars" aria-checked="false">☆</button>',
+    '  <button type="button" class="mchatai-fb-star" data-value="4" role="radio" aria-label="4 stars" aria-checked="false">☆</button>',
+    '  <button type="button" class="mchatai-fb-star" data-value="5" role="radio" aria-label="5 stars" aria-checked="false">☆</button>',
+    '  <button type="button" id="mchatai-fb-rating-clear" hidden>clear</button>',
+    '</div>',
+    '<textarea id="mchatai-fb-text" placeholder="What happened? What did you expect?" maxlength="2000"></textarea>',
+    '<div id="mchatai-fb-screenshot-row" style="display:none;padding:0 10px;">',
+    '  <button id="mchatai-fb-shot-btn" type="button">📸 Attach screenshot</button>',
+    '  <div id="mchatai-fb-shot-preview-wrap" style="display:none;"><img id="mchatai-fb-shot-preview" alt="screenshot preview" /><button id="mchatai-fb-shot-remove" type="button" aria-label="Remove screenshot">×</button></div>',
+    '</div>',
+    '<div id="mchatai-fb-status" aria-live="polite"></div>',
+    '<div id="mchatai-fb-actions">',
+    '  <span id="mchatai-fb-meta"></span>',
+    '  <button id="mchatai-fb-send" disabled>Send</button>',
+    '</div>',
+  ].join('');
+
+  // Back-to-hub pill. The hub houses mini-apps, games, agents, skills, pipelines —
+  // "Hub" is the right word. Icon is a house, not an arrow, since it's a home
+  // button, not a linear back button. Rendered as an <a> so right-click → new tab works.
+  var backPill = document.createElement('a');
+  backPill.id = 'mchatai-back-pill';
+  backPill.href = 'https://mchatai.com/hub';
+  backPill.title = 'Back to Hub';
+  backPill.setAttribute('aria-label', 'Back to Hub');
+  backPill.innerHTML = [
+    '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">',
+    '  <path d="M2 7l6-5 6 5v7a1 1 0 0 1-1 1h-3v-5H6v5H3a1 1 0 0 1-1-1V7z"/>',
+    '</svg>',
+    '<span>Hub</span>'
+  ].join('');
+
+  document.body.appendChild(backPill);
+  document.body.appendChild(pill);
+  document.body.appendChild(panel);
+
+  // ── Idle fade ────────────────────────────────────────────────────────────
+  var idleTimer = null;
+  function bumpActivity() {
+    pill.classList.remove('idle');
+    backPill.classList.remove('idle');
+    if (idleTimer) clearTimeout(idleTimer);
+    idleTimer = setTimeout(function () {
+      pill.classList.add('idle');
+      backPill.classList.add('idle');
+    }, 3000);
+  }
+  ['mousemove', 'keydown', 'touchstart', 'scroll'].forEach(function (ev) {
+    window.addEventListener(ev, bumpActivity, { passive: true });
+  });
+  bumpActivity();
+
+  // ── Open / close ─────────────────────────────────────────────────────────
+  async function openPanel() {
+    panel.classList.add('open');
+    pill.style.display = 'none';
+    var meta = document.getElementById('mchatai-fb-meta');
+    meta.textContent = slug ? slug : 'feedback';
+    setTimeout(function () { document.getElementById('mchatai-fb-text').focus(); }, 50);
+    // Phase RT.2 follow-up: refresh the user chip in case the token expired
+    // or the user signed in a different tab between panel opens.
+    updateUserChip();
+    // Silent refresh: if no cached token but Firebase still has a session on
+    // mchatai.com, this pulls a fresh token via a hidden iframe so the user
+    // does not have to click Sign in every single time. Idempotent + bounded
+    // by a 3s timeout so there is no visible delay if they have never signed
+    // in.
+    if (!cachedIdToken) {
+      silentlyRefreshToken().then(function (tok) {
+        if (tok) updateUserChip();
+      });
+    }
+
+    // Async probe for the product's screenshot opt-in flag. Runs concurrently
+    // with the user reading/typing — if it comes back true, the screenshot
+    // row fades into view.
+    console.log('[feedback-widget] probing screenshot opt-in for slug:', slug);
+    checkScreenshotOptIn().then(function (allowed) {
+      console.log('[feedback-widget] screenshotAllowed =', allowed);
+      screenshotAllowed = allowed;
+      updateScreenshotRow();
+      // Defensive: ALSO directly reveal the row in case updateScreenshotRow
+      // runs before some dependency is wired up. Belt-and-suspenders.
+      if (allowed) {
+        var row = document.getElementById('mchatai-fb-screenshot-row');
+        if (row) {
+          row.style.display = 'block';
+          console.log('[feedback-widget] screenshot row revealed');
+        } else {
+          console.warn('[feedback-widget] screenshot row element not found!');
+        }
+      }
+    }).catch(function (err) {
+      console.warn('[feedback-widget] probe failed:', err);
+    });
+  }
+  function closePanel() {
+    panel.classList.remove('open');
+    pill.style.display = 'flex';
+    bumpActivity();
+  }
+  pill.addEventListener('click', openPanel);
+  panel.querySelector('#mchatai-fb-close').addEventListener('click', closePanel);
+
+  // ── Type picker ──────────────────────────────────────────────────────────
+  var selectedType = 'bug';
+  panel.querySelectorAll('.mchatai-fb-type').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      panel.querySelectorAll('.mchatai-fb-type').forEach(function (b) { b.classList.remove('active'); });
+      btn.classList.add('active');
+      selectedType = btn.getAttribute('data-type');
+    });
+  });
+
+  // ── Rating picker (Phase RT.1) ───────────────────────────────────────────
+  // Optional 1-5 stars. Rating is its own signal — users can send text
+  // without a rating, or send a rating without text (any rating auto-enables
+  // the Send button even if the textarea is empty, so a "5 stars, no words"
+  // submission is a valid vote).
+  var selectedRating = null;     // null | 1..5
+  var ratingStars = panel.querySelectorAll('.mchatai-fb-star');
+  var ratingClear = panel.querySelector('#mchatai-fb-rating-clear');
+  function paintStars(previewValue) {
+    var effective = previewValue != null ? previewValue : (selectedRating || 0);
+    ratingStars.forEach(function (s) {
+      var v = parseInt(s.getAttribute('data-value'), 10);
+      s.classList.remove('filled', 'preview');
+      s.textContent = v <= effective ? '★' : '☆';
+      if (previewValue != null && v <= previewValue && v > (selectedRating || 0)) {
+        s.classList.add('preview');
+      } else if (v <= (selectedRating || 0)) {
+        s.classList.add('filled');
+      }
+      s.setAttribute('aria-checked', String(v === selectedRating));
+    });
+    ratingClear.hidden = selectedRating == null;
+  }
+  ratingStars.forEach(function (s) {
+    var v = parseInt(s.getAttribute('data-value'), 10);
+    s.addEventListener('mouseenter', function () { paintStars(v); });
+    s.addEventListener('mouseleave', function () { paintStars(null); });
+    s.addEventListener('click', function () {
+      // Click on currently-selected star → clear. Click elsewhere → set.
+      selectedRating = (selectedRating === v) ? null : v;
+      paintStars(null);
+      updateSendState();
+    });
+  });
+  ratingClear.addEventListener('click', function () {
+    selectedRating = null;
+    paintStars(null);
+    updateSendState();
+  });
+
+  // ── Send button gating + submission ──────────────────────────────────────
+  var textArea = panel.querySelector('#mchatai-fb-text');
+  var sendBtn = panel.querySelector('#mchatai-fb-send');
+  var statusEl = panel.querySelector('#mchatai-fb-status');
+  var shotRow = panel.querySelector('#mchatai-fb-screenshot-row');
+  var shotBtn = panel.querySelector('#mchatai-fb-shot-btn');
+  var shotPreviewWrap = panel.querySelector('#mchatai-fb-shot-preview-wrap');
+  var shotPreview = panel.querySelector('#mchatai-fb-shot-preview');
+  var shotRemove = panel.querySelector('#mchatai-fb-shot-remove');
+
+  // Phase RT.1: either a rating OR a text comment (≥4 chars) is enough to send.
+  // Lets users drop-in a 5-star vote without writing a novel.
+  function updateSendState() {
+    var hasText = textArea.value.trim().length >= 4;
+    var hasRating = selectedRating != null;
+    sendBtn.disabled = !(hasText || hasRating);
+  }
+  textArea.addEventListener('input', updateSendState);
+
+  // Phase RT.2 follow-up: isolate typing inside the feedback panel from the
+  // underlying game. Many games install keyboard listeners on window and
+  // document — when the user types a space into the textarea, the event
+  // bubbles up and the game also receives it (e.g. battleship-vs-ai toggles
+  // ship orientation on any spacebar press). Capture-phase listeners on
+  // window fire BEFORE the game's bubble-phase listeners — we stop
+  // propagation + stop immediate propagation on any keyboard event whose
+  // target is inside our panel. The panel input itself still gets the event
+  // because stopPropagation at capture phase does not prevent the target
+  // from receiving it, only the ancestors.
+  function isInsideFeedbackPanel(el) {
+    while (el && el !== document) {
+      if (el === panel || el === pill || el === backPill) return true;
+      el = el.parentNode;
+    }
+    return false;
+  }
+  // IMPORTANT: only keyboard events get intercepted. Previously I also blocked
+  // pointer/click/mousedown at capture phase, which broke every button inside
+  // the panel (sign-in, send, star rating, attach screenshot) because
+  // stopImmediatePropagation at capture prevents ALL listeners — including
+  // the panel's own click handlers registered via addEventListener('click').
+  // Keyboard-only is the right scope: games listen for arrow keys / space /
+  // letters on window, but they listen for pointer events on their canvas
+  // element — not on window — so click events never bubbled to them anyway.
+  ['keydown', 'keyup', 'keypress'].forEach(function (evName) {
+    window.addEventListener(evName, function (e) {
+      if (!panel.classList.contains('open')) return;
+      if (!isInsideFeedbackPanel(e.target)) return;
+      // stopPropagation (not stopImmediatePropagation) — the panel's own
+      // listeners already ran on the target; we only need to prevent the
+      // event from reaching ancestor window/document listeners the game
+      // installed. Using stopImmediatePropagation here would kill the
+      // textarea's native input handling in some edge cases.
+      e.stopPropagation();
+    }, true); // capture phase fires before the game's bubble-phase listener
+  });
+
+  // ── Screenshot attachment (opt-in per product) ──────────────────────────
+  // The row itself is hidden by default. It only reveals after we confirm the
+  // product has opted in (feedbackAutomation.acceptScreenshots=true on the
+  // Firestore endProduct doc). We query once per panel open via an endpoint
+  // that returns just the opt-in flag — no auth needed, cheap boolean.
+  var capturedScreenshot = null;   // { dataURL: "data:image/jpeg;base64,..." , width, height, bytes }
+  var screenshotAllowed = false;
+
+  async function checkScreenshotOptIn() {
+    if (!slug) return false;
+    try {
+      var resp = await fetch(API_BASE + '/v1/endproducts/feedback-config?slug=' + encodeURIComponent(slug), {
+        method: 'GET',
+      });
+      if (!resp.ok) return false;
+      var body = await resp.json();
+      return !!body.acceptScreenshots;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  async function captureScreenshot() {
+    // Gate: require real sign-in before capturing. Attributable + rate-limitable.
+    shotBtn.disabled = true;
+    shotBtn.textContent = '🔑 Signing in…';
+    statusEl.textContent = '';
+    try {
+      try {
+        await ensureSignedIn();
+      } catch (authErr) {
+        throw new Error('Sign-in required for screenshots: ' + authErr.message);
+      }
+      shotBtn.textContent = '📸 Select the tab to share…';
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
+        throw new Error('Screen capture not supported on this browser');
+      }
+      var stream = await navigator.mediaDevices.getDisplayMedia({
+        video: { displaySurface: 'browser' },
+        audio: false,
+        preferCurrentTab: true,
+      });
+      var track = stream.getVideoTracks()[0];
+
+      // Grab one frame via ImageCapture if available, else via a video element.
+      var bitmap;
+      if (window.ImageCapture) {
+        var capture = new ImageCapture(track);
+        bitmap = await capture.grabFrame();
+      } else {
+        var video = document.createElement('video');
+        video.srcObject = stream;
+        video.muted = true;
+        await video.play();
+        bitmap = {
+          width: video.videoWidth,
+          height: video.videoHeight,
+          _video: video,
+        };
+      }
+
+      // Resize to max 800×600 (fit, keep aspect) and JPEG 0.7 to stay under
+      // the 200KB server cap. Typical output is 30-80KB.
+      var MAX_W = 800, MAX_H = 600;
+      var scale = Math.min(MAX_W / bitmap.width, MAX_H / bitmap.height, 1);
+      var outW = Math.round(bitmap.width * scale);
+      var outH = Math.round(bitmap.height * scale);
+      var canvas = document.createElement('canvas');
+      canvas.width = outW;
+      canvas.height = outH;
+      var ctx = canvas.getContext('2d');
+      if (bitmap._video) {
+        ctx.drawImage(bitmap._video, 0, 0, outW, outH);
+      } else {
+        ctx.drawImage(bitmap, 0, 0, outW, outH);
+      }
+      track.stop();
+
+      var dataURL = canvas.toDataURL('image/jpeg', 0.7);
+      // base64 portion length * 0.75 ≈ byte count
+      var bytes = Math.round((dataURL.length - 'data:image/jpeg;base64,'.length) * 0.75);
+      if (bytes > 200 * 1024) {
+        throw new Error('Screenshot too large after compression (' + Math.round(bytes/1024) + 'KB, max 200KB)');
+      }
+
+      capturedScreenshot = { dataURL: dataURL, width: outW, height: outH, bytes: bytes };
+      shotPreview.src = dataURL;
+      shotPreviewWrap.style.display = 'block';
+      shotBtn.style.display = 'none';
+      shotBtn.disabled = false;
+      shotBtn.textContent = '📸 Attach screenshot';
+    } catch (err) {
+      shotBtn.disabled = false;
+      shotBtn.textContent = '📸 Attach screenshot';
+      statusEl.style.color = '#e26766';
+      statusEl.textContent = err.message || 'Screenshot capture failed';
+    }
+  }
+
+  function removeScreenshot() {
+    capturedScreenshot = null;
+    shotPreview.src = '';
+    shotPreviewWrap.style.display = 'none';
+    shotBtn.style.display = 'block';
+  }
+
+  shotBtn.addEventListener('click', captureScreenshot);
+  shotRemove.addEventListener('click', removeScreenshot);
+
+  // Phase RT.2 follow-up: user chip click — sign-in when signed-out,
+  // sign-out when signed-in.
+  var userChip = panel.querySelector('#mchatai-fb-user');
+  if (userChip) {
+    userChip.addEventListener('click', async function () {
+      if (cachedIdToken) {
+        if (confirm('Sign out? Future submissions will be anonymous until you sign back in.')) {
+          clearToken();
+        }
+        return;
+      }
+      try {
+        await ensureSignedIn();
+      } catch (e) {
+        // Don't block the panel — user might just have dismissed the popup.
+        console.warn('[feedback] sign-in skipped:', e.message);
+      }
+    });
+  }
+  // Render initial state.
+  updateUserChip();
+
+  // ── Real auth for screenshot uploads ───────────────────────────────────
+  // Text-only feedback posts anonymously to /v1/feedback. Screenshots require
+  // real Google sign-in (not anonymous) so:
+  //   1. Abuse is attributable to a real account we can disable
+  //   2. Bot operators can't programmatically create sign-in accounts
+  //   3. The server rate-limits per UID with a hard ceiling that survives
+  //      tab-closes / incognito resets (anon tokens would rotate every session)
+  //
+  // Sign-in flow: if user clicks "Attach screenshot" without a cached token, we
+  // open an Identity Toolkit OAuth popup for Google. Token cached in session
+  // storage so repeated submissions don't re-prompt. Cleared on Remove or when
+  // the server reports the UID was abuse-disabled (403 reason=disabled).
+  // Phase RT.2 follow-up: token persistence moved from sessionStorage to
+  // localStorage. sessionStorage dies on tab close AND is isolated per tab,
+  // so users had to re-sign-in constantly when hopping between products.
+  // localStorage is shared across tabs and persists across browser restarts,
+  // matching the "you are signed in" mental model. Firebase ID tokens expire
+  // after ~1h; we detect expiry in updateUserChip (decoded .exp claim) and
+  // auto-clear the token when it is stale, which triggers a silent re-check
+  // via the /feedback-signin iframe (see silentlyRefreshToken below) so
+  // long-lived users do not keep seeing sign-in prompts as tokens age.
+  var TOKEN_KEY = 'mchatai_fb_idtoken';
+  // Migration: if an older session put a token in sessionStorage, promote it
+  // to localStorage so the user does not lose their sign-in on this refresh.
+  (function migrateOldToken() {
+    try {
+      if (!localStorage.getItem(TOKEN_KEY) && sessionStorage.getItem(TOKEN_KEY)) {
+        localStorage.setItem(TOKEN_KEY, sessionStorage.getItem(TOKEN_KEY));
+      }
+      sessionStorage.removeItem(TOKEN_KEY);
+    } catch (e) {}
+  })();
+  var cachedIdToken = (function () {
+    try { return localStorage.getItem(TOKEN_KEY) || null; } catch (e) { return null; }
+  })();
+
+  function storeToken(tok) {
+    cachedIdToken = tok;
+    try { localStorage.setItem(TOKEN_KEY, tok); } catch (e) {}
+    updateUserChip();
+  }
+
+  function clearToken() {
+    cachedIdToken = null;
+    try { localStorage.removeItem(TOKEN_KEY); } catch (e) {}
+    updateUserChip();
+  }
+
+  // Silent-refresh: when the cached token is missing or expired, try to pull
+  // a fresh one from /feedback-signin.html via a hidden iframe. The signin
+  // page runs Firebase Web SDK which persists auth in IndexedDB — if the
+  // user signed in on any mchatai.com page at any point, Firebase still has
+  // the session and onAuthStateChanged fires with the user, which posts a
+  // fresh ID token back to the widget via postMessage. No visible popup,
+  // no user action required — the sign-in just "carries over."
+  function silentlyRefreshToken() {
+    return new Promise(function (resolve) {
+      var iframe = document.createElement('iframe');
+      iframe.style.cssText = 'position:fixed;left:-9999px;top:-9999px;width:1px;height:1px;border:0;';
+      iframe.src = 'https://mchatai.com/feedback-signin.html?silent=1';
+      var done = false;
+      var finish = function (token) {
+        if (done) return;
+        done = true;
+        window.removeEventListener('message', handler);
+        try { document.body.removeChild(iframe); } catch (e) {}
+        if (token) storeToken(token);
+        resolve(token || null);
+      };
+      var handler = function (ev) {
+        if (ev.origin !== 'https://mchatai.com') return;
+        if (!ev.data || ev.data.type !== 'mchatai-fb-signin') return;
+        finish(ev.data.idToken || null);
+      };
+      window.addEventListener('message', handler);
+      document.body.appendChild(iframe);
+      // 3s timeout — if Firebase has no cached session the iframe just sits
+      // idle at the button prompt. Give up silently.
+      setTimeout(function () { finish(null); }, 3000);
+    });
+  }
+
+  /* Phase RT.2 follow-up: decode a Firebase ID token's payload (the middle
+     JWT segment — base64url-encoded JSON). We only need name/email/picture,
+     so we do NOT verify the signature here (server revalidates on every
+     request). Returns null on any decode failure. */
+  function decodeIdToken(token) {
+    if (!token) return null;
+    try {
+      var parts = token.split('.');
+      if (parts.length < 2) return null;
+      var b64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+      while (b64.length % 4) b64 += '=';
+      return JSON.parse(atob(b64));
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function updateUserChip() {
+    var chip = document.getElementById('mchatai-fb-user');
+    if (!chip) return;
+    var claims = decodeIdToken(cachedIdToken);
+    if (claims && claims.exp && claims.exp * 1000 < Date.now()) {
+      // Token expired — treat as signed-out so the chip prompts sign-in again.
+      claims = null;
+      try { sessionStorage.removeItem('mchatai_fb_idtoken'); } catch (e) {}
+      cachedIdToken = null;
+    }
+    // Build the chip contents via DOM APIs rather than innerHTML with nested
+    // quotes — the IIFE string gets concatenated into an HTML response, and
+    // any backslash-escaped quote here breaks the whole widget at parse time
+    // in the browser. Lost an entire deploy to this — don't regress.
+    while (chip.firstChild) chip.removeChild(chip.firstChild);
+    if (claims) {
+      chip.classList.add('signed-in');
+      chip.title = 'Signed in as ' + (claims.email || claims.name || 'you') + ' — click to sign out';
+      var displayName = claims.name || (claims.email ? claims.email.split('@')[0] : 'you');
+      var shortName = displayName.length > 14 ? displayName.slice(0, 13) + '…' : displayName;
+      var initial = displayName.charAt(0).toUpperCase();
+      // Try avatar image first; fall back to initial-letter span on error.
+      if (claims.picture) {
+        var img = document.createElement('img');
+        img.src = claims.picture;
+        img.alt = '';
+        img.referrerPolicy = 'no-referrer';
+        img.addEventListener('error', function () {
+          var fallback = document.createElement('span');
+          fallback.className = 'mchatai-fb-user-avatar-fallback';
+          fallback.textContent = initial;
+          if (img.parentNode) img.parentNode.replaceChild(fallback, img);
+        });
+        chip.appendChild(img);
+      } else {
+        var fallbackSpan = document.createElement('span');
+        fallbackSpan.className = 'mchatai-fb-user-avatar-fallback';
+        fallbackSpan.textContent = initial;
+        chip.appendChild(fallbackSpan);
+      }
+      var nameSpan = document.createElement('span');
+      nameSpan.className = 'mchatai-fb-user-name';
+      nameSpan.textContent = shortName;
+      chip.appendChild(nameSpan);
+    } else {
+      chip.classList.remove('signed-in');
+      chip.title = 'Sign in to enable screenshots';
+      var icon = document.createElement('span');
+      icon.setAttribute('aria-hidden', 'true');
+      icon.textContent = '👤';
+      var label = document.createElement('span');
+      label.className = 'mchatai-fb-user-name';
+      label.textContent = 'Sign in';
+      chip.appendChild(icon);
+      chip.appendChild(label);
+    }
+    // Also refresh the screenshot row so the "Sign in first" CTA flips to
+    // "Attach screenshot" once signed-in (or vice versa).
+    updateScreenshotRow();
+  }
+
+  /* Phase RT.2 follow-up: keep the screenshot button's label + disabled state
+     in sync with sign-in state so users understand why they can't click it. */
+  function updateScreenshotRow() {
+    var row = document.getElementById('mchatai-fb-screenshot-row');
+    var btn = document.getElementById('mchatai-fb-shot-btn');
+    if (!row || !btn) return;
+    if (!screenshotAllowed) {
+      row.style.display = 'none';
+      return;
+    }
+    row.style.display = 'block';
+    if (cachedIdToken) {
+      btn.textContent = '📸 Attach screenshot';
+      btn.disabled = false;
+    } else {
+      btn.textContent = '🔒 Sign in to attach screenshot';
+      btn.disabled = false;  // clickable — click triggers sign-in popup
+    }
+  }
+
+  async function ensureSignedIn() {
+    if (cachedIdToken) return cachedIdToken;
+    // Use Firebase's identitytoolkit OAuth popup flow. We use the
+    // createAuthUri + verifyAssertion pattern via a popup. Keep it minimal —
+    // the user gets a Google chooser and a standard OAuth consent screen.
+    return new Promise(function (resolve, reject) {
+      var popupW = 500, popupH = 600;
+      var left = (screen.width - popupW) / 2;
+      var top = (screen.height - popupH) / 2;
+      // Firebase Hosting has a stock sign-in handler at __/auth/handler. We'll
+      // send the user to a small sign-in page we host at /feedback-signin that
+      // runs Firebase JS SDK, does signInWithPopup(Google), and posts the
+      // idToken back to the opener via postMessage.
+      var popup = window.open(
+        'https://mchatai.com/feedback-signin.html?return=' + encodeURIComponent(location.href),
+        'mchatai-fb-signin',
+        'width=' + popupW + ',height=' + popupH + ',left=' + left + ',top=' + top
+      );
+      if (!popup) {
+        reject(new Error('Sign-in popup blocked. Allow popups and try again.'));
+        return;
+      }
+      var handler = function (ev) {
+        if (ev.origin !== 'https://mchatai.com') return;
+        if (!ev.data || ev.data.type !== 'mchatai-fb-signin') return;
+        window.removeEventListener('message', handler);
+        try { popup.close(); } catch (e) {}
+        if (ev.data.idToken) {
+          storeToken(ev.data.idToken);
+          resolve(ev.data.idToken);
+        } else {
+          reject(new Error(ev.data.error || 'Sign-in canceled'));
+        }
+      };
+      window.addEventListener('message', handler);
+      // Watchdog — if the popup closes without posting, reject after 5 min.
+      var watch = setInterval(function () {
+        if (popup.closed) {
+          clearInterval(watch);
+          window.removeEventListener('message', handler);
+          reject(new Error('Sign-in window closed'));
+        }
+      }, 500);
+    });
+  }
+
+  sendBtn.addEventListener('click', async function () {
+    var text = textArea.value.trim();
+    // Phase RT.1: allow rating-only submissions. Require at least one signal.
+    if (text.length < 4 && selectedRating == null) return;
+
+    sendBtn.disabled = true;
+    sendBtn.textContent = 'Sending…';
+    statusEl.textContent = '';
+
+    // Phase RT.1: resolve a rating context version so iterations don't pool
+    // their ratings across builds. Prefer a meta tag the product set at publish
+    // time; fall back to the HTML's Last-Modified (set by serveUserProject) or
+    // today's date. The server also records server-side createdAt, so this is
+    // only a hint for cross-build grouping.
+    var ratingContextVersion = null;
+    var versionMeta = document.querySelector('meta[name="mchatai-version"]');
+    if (versionMeta && versionMeta.content) {
+      ratingContextVersion = versionMeta.content;
+    } else {
+      ratingContextVersion = new Date().toISOString().slice(0, 10); // YYYY-MM-DD bucket
+    }
+
+    // When only a rating (no text), synthesize a short description so the
+    // ticket still has searchable content in the review queue.
+    var effectiveText = text;
+    if (effectiveText.length < 4 && selectedRating != null) {
+      effectiveText = selectedRating + '-star rating (no comment)';
+    }
+
+    var payload = {
+      title: effectiveText.split('\n')[0].slice(0, 80),
+      description: effectiveText,
+      type: selectedType,
+      severity: selectedType === 'bug' ? 'medium' : 'low',
+      rating: selectedRating,
+      ratingContextVersion: ratingContextVersion,
+      endProductSlug: slug,
+      previewURL: location.href,
+      source: 'web.user-project-widget',
+      metadata: {
+        consoleErrors: __consoleErrors.slice(),
+        userAgent: navigator.userAgent,
+        viewport: window.innerWidth + 'x' + window.innerHeight,
+        shortUid: shortUid,
+      },
+    };
+
+    // Screenshot attached → attach base64 + dimensions. Server will decode,
+    // verify size, upload to GCS, and embed the URL on the ticket.
+    if (capturedScreenshot) {
+      payload.screenshot = {
+        dataURL: capturedScreenshot.dataURL,
+        width: capturedScreenshot.width,
+        height: capturedScreenshot.height,
+      };
+    }
+
+    try {
+      var headers = { 'Content-Type': 'application/json' };
+      // Include auth only if we have a token; screenshot submissions require it
+      // but we let the server reject rather than blocking client-side — cheaper
+      // to handle edge cases (stale token, abuse-disabled account) in one place.
+      if (cachedIdToken) headers['Authorization'] = 'Bearer ' + cachedIdToken;
+
+      var resp = await fetch(API_BASE + '/v1/feedback', {
+        method: 'POST',
+        headers: headers,
+        body: JSON.stringify(payload),
+      });
+      var body = await resp.json().catch(function () { return {}; });
+
+      // Server telling us the user is abuse-disabled → clear token so the next
+      // attempt forces a fresh sign-in. The abuse-disable lives on the UID in
+      // Firestore so a re-sign-in with the same account will re-reject; only
+      // recovery is to sign in with a different account or contact support.
+      if (resp.status === 403 && body && body.reason === 'user-disabled') {
+        clearToken();
+        removeScreenshot();
+      }
+
+      if (resp.ok && body.ok) {
+        statusEl.style.color = '#5db77a';
+        statusEl.textContent = selectedRating != null
+          ? 'Thanks! Your ' + selectedRating + '-star rating was logged.'
+          : 'Thanks! Your feedback was logged.';
+        textArea.value = '';
+        selectedRating = null;
+        paintStars(null);
+        removeScreenshot();
+        setTimeout(closePanel, 1400);
+      } else {
+        statusEl.style.color = '#e26766';
+        statusEl.textContent = body.error || ('Error ' + resp.status);
+      }
+    } catch (err) {
+      statusEl.style.color = '#e26766';
+      statusEl.textContent = 'Network error — try again.';
+    } finally {
+      sendBtn.textContent = 'Send';
+      updateSendState();
+    }
+  });
+})();
+</script></body>
+</html>
