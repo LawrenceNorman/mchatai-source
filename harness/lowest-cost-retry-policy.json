@@ -4,9 +4,10 @@
   "_source_of_truth": true,
   "_comment": "Lowest Cost retry-with-decomposition policy. When the Generator stage fails on Ollama, this controls how many times we re-plan smaller and retry on Ollama (NEVER escalating to CLI/API). When the budget exhausts (or diminishing returns triggers early), the wizard appends a stuck-step pause to the session with the configured chip options. See docs/LOWEST_COST_RETRY_POLICY.md for the full spec. Edit + git push + (relaunch OR refreshMchataisourceCache) ships changes with no Swift rebuild.",
 
-  "decomposeRetryBudget": 4,
-  "_decomposeRetryBudgetTunedFrom8": "Tuned from 8 → 4 on 2026-04-29. Each retry attempt on qwen3-coder:30b takes ~2-3 min (planner 1-60s + generator 130-141s + verifier 0-1s). 8 attempts = ~24 min of grinding before stuck-pause surfaces; user feedback was that it felt unresponsive. 4 attempts = ~12 min worst case, keeps the retry budget useful for fixable parse errors but bails to user-consented chip selection sooner. Easy to tune back up via push if needed.",
-  "consecutiveSameClassFailureThreshold": 3,
+  "decomposeRetryBudget": 2,
+  "_decomposeRetryBudgetTunedFrom8To2": "Tuned 8 → 4 → 2 across 2026-04-29 iteration. QAFlywheel runs 2026-04-30T00-35-59Z and 00-57-52Z both showed: same model output keeps failing parser/verifier across 4 attempts, model isn't going to magically produce fenced JSON on attempt 4 if it didn't on attempt 1. Drop to 2 — fast surface to user-pause where they can pick 'Try a different approach' (Hail-Mary) or 'Escalate this step to CLI' or 'End the session'. Total grind: ~6 min worst case before chips surface.",
+  "consecutiveSameClassFailureThreshold": 2,
+  "_thresholdTunedFrom3": "Lowered from 3 → 2 same-class failures triggers diminishing-returns exit. Same logic as budget reduction: if 2 consecutive attempts fail at the same error class, attempt 3 isn't going to magically succeed. Faster surface to user-pause.",
 
   "errorClasses": [
     "parse-error",
