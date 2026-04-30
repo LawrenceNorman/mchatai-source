@@ -1,0 +1,2105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Portrait Piano</title>
+  <style>
+    :root {
+      --bg: #f3efe5;
+      --panel: rgba(255, 252, 245, 0.86);
+      --ink: #172033;
+      --muted: #5e6678;
+      --line: rgba(23, 32, 51, 0.12);
+      --accent: #bf5b3d;
+      --accent-deep: #8d3d24;
+      --success: #1f7a4b;
+      --warning: #9f6b10;
+      --danger: #9f2f2f;
+      --white-key-top: #fffdf8;
+      --white-key-bottom: #efe5d2;
+      --white-key-border: #d0c4ae;
+      --black-key-top: #30394d;
+      --black-key-bottom: #0f1421;
+      --glow: rgba(191, 91, 61, 0.3);
+      --shadow: 0 18px 40px rgba(50, 37, 18, 0.14);
+      --radius: 24px;
+      --safe-bottom: max(18px, env(safe-area-inset-bottom));
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+
+    html,
+    body {
+      margin: 0;
+      min-height: 100%;
+      background:
+        radial-gradient(circle at top left, rgba(255, 255, 255, 0.82), transparent 36%),
+        radial-gradient(circle at 85% 12%, rgba(191, 91, 61, 0.18), transparent 25%),
+        linear-gradient(180deg, #f8f3eb 0%, #eadfcb 100%);
+      color: var(--ink);
+      font-family: "Avenir Next", "Trebuchet MS", sans-serif;
+    }
+
+    body {
+      display: flex;
+      justify-content: center;
+      padding: 18px 14px var(--safe-bottom);
+    }
+
+    .app {
+      width: min(100%, 430px);
+      display: grid;
+      gap: 14px;
+      align-content: start;
+    }
+
+    .hero {
+      position: relative;
+      overflow: hidden;
+      padding: 18px;
+      border-radius: 28px;
+      background:
+        linear-gradient(135deg, rgba(255, 255, 255, 0.92), rgba(255, 247, 233, 0.8)),
+        linear-gradient(180deg, #fff, #f5ebdb);
+      border: 1px solid rgba(255, 255, 255, 0.7);
+      box-shadow: var(--shadow);
+      isolation: isolate;
+    }
+
+    .hero::before,
+    .hero::after {
+      content: "";
+      position: absolute;
+      border-radius: 999px;
+      z-index: -1;
+      filter: blur(2px);
+    }
+
+    .hero::before {
+      width: 132px;
+      height: 132px;
+      right: -24px;
+      top: -32px;
+      background: radial-gradient(circle, rgba(191, 91, 61, 0.26), transparent 70%);
+    }
+
+    .hero::after {
+      width: 116px;
+      height: 116px;
+      left: -28px;
+      bottom: -40px;
+      background: radial-gradient(circle, rgba(31, 122, 75, 0.18), transparent 72%);
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: rgba(23, 32, 51, 0.08);
+      color: var(--muted);
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 12px 0 8px;
+      font-size: clamp(30px, 7vw, 38px);
+      line-height: 0.96;
+      letter-spacing: -0.04em;
+    }
+
+    .subtitle {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.45;
+      font-size: 14px;
+      max-width: 30ch;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid rgba(255, 255, 255, 0.72);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(14px);
+      padding: 14px;
+    }
+
+    .status-bar {
+      display: grid;
+      gap: 10px;
+    }
+
+    .status-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .status-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 44px;
+      padding: 10px 14px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.72);
+      border: 1px solid var(--line);
+      font-size: 14px;
+    }
+
+    .pulse-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 0 0 rgba(191, 91, 61, 0.35);
+      animation: pulse 1.8s infinite;
+    }
+
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 rgba(191, 91, 61, 0.35); }
+      70% { box-shadow: 0 0 0 12px rgba(191, 91, 61, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(191, 91, 61, 0); }
+    }
+
+    .meters {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .meter {
+      min-height: 72px;
+      padding: 10px 12px;
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.74);
+      border: 1px solid var(--line);
+      display: grid;
+      align-content: center;
+      gap: 6px;
+    }
+
+    .meter-label {
+      color: var(--muted);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .meter strong {
+      font-size: 19px;
+      line-height: 1;
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    button,
+    .recording-button {
+      appearance: none;
+      border: 0;
+      min-height: 52px;
+      padding: 12px 14px;
+      border-radius: 18px;
+      color: #fff;
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0)),
+        linear-gradient(180deg, var(--accent), var(--accent-deep));
+      font: inherit;
+      font-weight: 700;
+      letter-spacing: 0.01em;
+      box-shadow: 0 10px 18px rgba(141, 61, 36, 0.22);
+      transition: transform 120ms ease, box-shadow 120ms ease, filter 120ms ease;
+    }
+
+    button.secondary {
+      color: var(--ink);
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(249, 243, 232, 0.82));
+      border: 1px solid rgba(23, 32, 51, 0.12);
+      box-shadow: 0 10px 18px rgba(80, 68, 48, 0.12);
+    }
+
+    button.success {
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0)),
+        linear-gradient(180deg, #2da364, #176c44);
+      box-shadow: 0 10px 18px rgba(23, 108, 68, 0.22);
+    }
+
+    button.warning {
+      color: #2e1d05;
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0)),
+        linear-gradient(180deg, #f2cb57, #db9c19);
+      box-shadow: 0 10px 18px rgba(159, 107, 16, 0.2);
+    }
+
+    button.recording {
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0)),
+        linear-gradient(180deg, #d14646, #9f2f2f);
+      box-shadow: 0 12px 20px rgba(159, 47, 47, 0.28);
+    }
+
+    button:active,
+    button.active,
+    .recording-button:active {
+      transform: translateY(2px) scale(0.99);
+      filter: saturate(1.05);
+      box-shadow: 0 6px 10px rgba(50, 37, 18, 0.18);
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      filter: grayscale(0.15);
+      box-shadow: none;
+    }
+
+    .switch-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 10px;
+      min-height: 68px;
+      padding: 12px 14px;
+      border-radius: 20px;
+      background: rgba(255, 255, 255, 0.78);
+      border: 1px solid var(--line);
+    }
+
+    .switch-copy strong,
+    .history-header strong {
+      display: block;
+      font-size: 15px;
+    }
+
+    .switch-copy span,
+    .history-header span,
+    .helper {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.35;
+    }
+
+    .toggle {
+      position: relative;
+      width: 66px;
+      height: 38px;
+      border-radius: 999px;
+      border: 0;
+      background: #c7ccd8;
+      padding: 0;
+      box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.14);
+    }
+
+    .toggle::after {
+      content: "";
+      position: absolute;
+      top: 4px;
+      left: 4px;
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      background: #fff;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.18);
+      transition: transform 140ms ease;
+    }
+
+    .toggle.on {
+      background: linear-gradient(180deg, #2da364, #176c44);
+    }
+
+    .toggle.on::after {
+      transform: translateX(28px);
+    }
+
+    .piano-shell {
+      padding: 14px;
+      border-radius: 28px;
+      background:
+        linear-gradient(180deg, rgba(27, 33, 46, 0.98), rgba(7, 10, 18, 0.98));
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.14),
+        0 20px 36px rgba(10, 11, 15, 0.3);
+      overflow: hidden;
+    }
+
+    .piano-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 10px;
+      color: #e6ecf6;
+    }
+
+    .brand {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .brand strong {
+      font-size: 16px;
+      letter-spacing: 0.03em;
+    }
+
+    .brand span {
+      color: rgba(230, 236, 246, 0.7);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+    }
+
+    .leds {
+      display: flex;
+      gap: 8px;
+    }
+
+    .led {
+      width: 11px;
+      height: 11px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.16);
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+    }
+
+    .led.on {
+      background: #62dd92;
+      box-shadow: 0 0 12px rgba(98, 221, 146, 0.65);
+    }
+
+    .keys-viewport {
+      position: relative;
+      width: 100%;
+      padding: 10px 8px 12px;
+      border-radius: 20px;
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0)),
+        linear-gradient(180deg, #162032, #0c101a);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .keys {
+      position: relative;
+      width: 100%;
+      height: 240px;
+    }
+
+    .white-key {
+      position: absolute;
+      top: 0;
+      width: calc(100% / 14);
+      height: 100%;
+      border: 1px solid var(--white-key-border);
+      border-radius: 0 0 16px 16px;
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(255, 255, 255, 0.12) 12%, rgba(255, 255, 255, 0) 14%),
+        linear-gradient(180deg, var(--white-key-top) 0%, #f6f1e7 54%, var(--white-key-bottom) 100%);
+      box-shadow:
+        inset 0 -16px 20px rgba(158, 131, 87, 0.12),
+        inset 0 1px 0 rgba(255, 255, 255, 0.95);
+      display: flex;
+      justify-content: center;
+      align-items: flex-end;
+      padding-bottom: 14px;
+      color: #6a5b45;
+      font-size: 12px;
+      font-weight: 700;
+      z-index: 1;
+      touch-action: none;
+    }
+
+    .white-key.active {
+      transform: translateY(3px);
+      background:
+        linear-gradient(180deg, #f8c68b 0%, #f5e3c8 54%, #d8b38b 100%);
+      box-shadow:
+        inset 0 -12px 20px rgba(138, 86, 32, 0.18),
+        inset 0 2px 0 rgba(255, 255, 255, 0.72),
+        0 0 0 1px rgba(245, 198, 139, 0.44);
+    }
+
+    .white-key::before {
+      content: "";
+      position: absolute;
+      left: 8%;
+      right: 8%;
+      top: 0;
+      height: 13px;
+      border-radius: 0 0 12px 12px;
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.85), transparent);
+    }
+
+    .black-key {
+      position: absolute;
+      top: 0;
+      width: calc(100% / 14 * 0.68);
+      height: 58%;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 0 0 12px 12px;
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0) 18%),
+        linear-gradient(180deg, var(--black-key-top), var(--black-key-bottom));
+      box-shadow:
+        inset 0 -10px 16px rgba(0, 0, 0, 0.34),
+        0 8px 10px rgba(0, 0, 0, 0.28);
+      z-index: 3;
+      color: rgba(255, 255, 255, 0.6);
+      font-size: 11px;
+      font-weight: 700;
+      display: flex;
+      justify-content: center;
+      align-items: flex-end;
+      padding-bottom: 10px;
+      touch-action: none;
+    }
+
+    .black-key.active {
+      transform: translateY(3px);
+      background:
+        linear-gradient(180deg, rgba(255, 239, 202, 0.26), rgba(255, 255, 255, 0) 16%),
+        linear-gradient(180deg, #5f6980, #161d2f);
+      box-shadow:
+        inset 0 -6px 12px rgba(0, 0, 0, 0.4),
+        0 0 0 1px rgba(245, 198, 139, 0.28);
+    }
+
+    .sparkle {
+      position: absolute;
+      inset: auto auto 16px 16px;
+      width: 92px;
+      height: 92px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(191, 91, 61, 0.2), transparent 65%);
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 180ms ease;
+    }
+
+    .sparkle.on {
+      opacity: 1;
+      animation: drift 460ms ease-out;
+    }
+
+    @keyframes drift {
+      from { transform: translateY(0) scale(0.84); opacity: 0.62; }
+      to { transform: translateY(-30px) scale(1.24); opacity: 0; }
+    }
+
+    .history {
+      display: grid;
+      gap: 10px;
+    }
+
+    .history-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .history-item {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 10px;
+      padding: 12px;
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.76);
+      border: 1px solid var(--line);
+    }
+
+    .history-meta {
+      display: grid;
+      gap: 4px;
+      min-width: 0;
+    }
+
+    .history-meta strong {
+      font-size: 14px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .history-meta span {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .history-play {
+      min-width: 72px;
+      min-height: 44px;
+      padding: 10px 12px;
+      border-radius: 14px;
+      font-size: 13px;
+    }
+
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: calc(var(--safe-bottom) + 10px);
+      transform: translateX(-50%) translateY(120%);
+      width: min(calc(100% - 24px), 360px);
+      padding: 13px 16px;
+      border-radius: 16px;
+      color: #fff;
+      background: rgba(18, 24, 38, 0.96);
+      box-shadow: 0 14px 30px rgba(4, 8, 17, 0.28);
+      text-align: center;
+      font-size: 14px;
+      z-index: 20;
+      transition: transform 180ms ease;
+    }
+
+    .toast.show {
+      transform: translateX(-50%) translateY(0);
+    }
+
+    .toast.success {
+      background: rgba(23, 108, 68, 0.96);
+    }
+
+    .toast.warning {
+      color: #1b1200;
+      background: rgba(242, 203, 87, 0.98);
+    }
+
+    .toast.error {
+      background: rgba(159, 47, 47, 0.96);
+    }
+
+    @media (max-width: 390px) {
+      .controls,
+      .meters {
+        grid-template-columns: 1fr;
+      }
+
+      .keys {
+        height: 216px;
+      }
+
+      .white-key,
+      .black-key {
+        font-size: 10px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <section class="hero">
+      <div class="eyebrow">Pocket instrument</div>
+      <h1>Portrait Piano</h1>
+      <p class="subtitle">Two octaves, tap-ready keys, sustain, instant recording, and a built-in Twinkle demo sized for one-hand mobile play.</p>
+    </section>
+
+    <section class="panel status-bar" aria-label="Status">
+      <div class="status-top">
+        <div class="status-chip"><span class="pulse-dot" id="pulseDot"></span><span id="statusText">Tap any key to arm audio</span></div>
+        <div class="status-chip" id="transportState">Idle</div>
+      </div>
+      <div class="meters">
+        <div class="meter">
+          <span class="meter-label">Last note</span>
+          <strong id="lastNoteValue">-</strong>
+        </div>
+        <div class="meter">
+          <span class="meter-label">Clip length</span>
+          <strong id="clipLengthValue">0.0s</strong>
+        </div>
+        <div class="meter">
+          <span class="meter-label">Saved clips</span>
+          <strong id="savedCountValue">0</strong>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel controls" aria-label="Piano actions">
+      <button id="recordButton" class="recording">Start recording</button>
+      <button id="playButton" class="success">Play last take</button>
+      <button id="demoButton" class="warning">Play Twinkle</button>
+      <button id="clearButton" class="secondary">Clear last take</button>
+    </section>
+
+    <section class="panel switch-row" aria-label="Sustain pedal">
+      <div class="switch-copy">
+        <strong>Sustain pedal</strong>
+        <span>Hold notes after release until playback or manual pedal off.</span>
+      </div>
+      <button id="sustainToggle" class="toggle" type="button" role="switch" aria-checked="false" aria-label="Toggle sustain pedal"></button>
+    </section>
+
+    <section class="piano-shell" aria-label="Virtual piano">
+      <div class="piano-top">
+        <div class="brand">
+          <strong>2 Octave Mobile Keys</strong>
+          <span>C4 to B5</span>
+        </div>
+        <div class="leds">
+          <span class="led" id="recordLed"></span>
+          <span class="led" id="playLed"></span>
+          <span class="led" id="sustainLed"></span>
+        </div>
+      </div>
+      <div class="keys-viewport">
+        <div class="keys" id="keys"></div>
+        <div class="sparkle" id="sparkle"></div>
+      </div>
+    </section>
+
+    <section class="panel history" aria-label="Saved recordings">
+      <div class="history-header">
+        <strong>Recent recordings</strong>
+        <span>Last 5 takes stay on this device.</span>
+      </div>
+      <div class="history-list" id="historyList"></div>
+      <div class="helper" id="historyEmpty">No saved clips yet. Record a phrase to populate this list.</div>
+    </section>
+  </main>
+
+  <div class="toast" id="toast" aria-live="polite"></div>
+
+  <script>
+    (() => {
+      const WHITE_NOTES = [
+        "C4", "D4", "E4", "F4", "G4", "A4", "B4",
+        "C5", "D5", "E5", "F5", "G5", "A5", "B5"
+      ];
+      const BLACK_NOTES = [
+        { note: "C#4", afterWhite: 0 },
+        { note: "D#4", afterWhite: 1 },
+        { note: "F#4", afterWhite: 3 },
+        { note: "G#4", afterWhite: 4 },
+        { note: "A#4", afterWhite: 5 },
+        { note: "C#5", afterWhite: 7 },
+        { note: "D#5", afterWhite: 8 },
+        { note: "F#5", afterWhite: 10 },
+        { note: "G#5", afterWhite: 11 }
+      ];
+      const NOTES = [
+        "C4", "C#4", "D4", "D#4", "E4", "F4", "F#4", "G4", "G#4", "A4", "A#4", "B4",
+        "C5", "C#5", "D5", "D#5", "E5", "F5", "F#5", "G5", "G#5", "A5", "B5"
+      ];
+      const ADSR = { attack: 0.02, decay: 0.12, sustain: 0.68, release: 0.3 };
+      const MAX_RECORDING_MS = 30000;
+      const STORAGE_KEY = "portrait-piano-recordings-v1";
+      const KEYS_CONTAINER = document.getElementById("keys");
+      const statusText = document.getElementById("statusText");
+      const transportState = document.getElementById("transportState");
+      const lastNoteValue = document.getElementById("lastNoteValue");
+      const clipLengthValue = document.getElementById("clipLengthValue");
+      const savedCountValue = document.getElementById("savedCountValue");
+      const recordButton = document.getElementById("recordButton");
+      const playButton = document.getElementById("playButton");
+      const demoButton = document.getElementById("demoButton");
+      const clearButton = document.getElementById("clearButton");
+      const sustainToggle = document.getElementById("sustainToggle");
+      const recordLed = document.getElementById("recordLed");
+      const playLed = document.getElementById("playLed");
+      const sustainLed = document.getElementById("sustainLed");
+      const historyList = document.getElementById("historyList");
+      const historyEmpty = document.getElementById("historyEmpty");
+      const toast = document.getElementById("toast");
+      const sparkle = document.getElementById("sparkle");
+
+      let audioContext = null;
+      let masterGain = null;
+      let initialized = false;
+      let sustainOn = false;
+      let isRecording = false;
+      let isPlaying = false;
+      let recordStart = 0;
+      let currentClip = [];
+      let lastRecording = [];
+      let savedRecordings = loadRecordings();
+      let activeNotes = new Map();
+      let releaseQueue = new Set();
+      let playbackTimers = [];
+      let notePointerId = null;
+      let toastTimer = 0;
+
+      const keyElements = new Map();
+
+      function noteToFrequency(note) {
+        const match = note.match(/^([A-G])(#?)(\d)$/);
+        if (!match) return 440;
+        const [, base, sharp, octaveText] = match;
+        const semitones = {
+          C: -9, D: -7, E: -5, F: -4, G: -2, A: 0, B: 2
+        };
+        const octave = Number(octaveText);
+        const semitoneOffset = semitones[base] + (sharp ? 1 : 0) + (octave - 4) * 12;
+        return 440 * Math.pow(2, semitoneOffset / 12);
+      }
+
+      function ensureAudio() {
+        if (!audioContext) {
+          const Context = window.AudioContext || window.webkitAudioContext;
+          audioContext = new Context();
+          masterGain = audioContext.createGain();
+          masterGain.gain.value = 0.82;
+          masterGain.connect(audioContext.destination);
+        }
+        if (audioContext.state === "suspended") {
+          audioContext.resume();
+        }
+        if (!initialized) {
+          initialized = true;
+          setStatus("Audio armed. Tap to play.", "Ready");
+        }
+      }
+
+      function createVoice(note) {
+        ensureAudio();
+        const now = audioContext.currentTime;
+        const oscillator = audioContext.createOscillator();
+        oscillator.type = "sine";
+        oscillator.frequency.value = noteToFrequency(note);
+
+        const gainNode = audioContext.createGain();
+        gainNode.gain.cancelScheduledValues(now);
+        gainNode.gain.setValueAtTime(0.0001, now);
+        gainNode.gain.linearRampToValueAtTime(0.95, now + ADSR.attack);
+        gainNode.gain.linearRampToValueAtTime(ADSR.sustain, now + ADSR.attack + ADSR.decay);
+
+        oscillator.connect(gainNode);
+        gainNode.connect(masterGain);
+        oscillator.start(now);
+
+        return { oscillator, gainNode, startedAt: now, released: false };
+      }
+
+      function playNote(note, source = "tap") {
+        if (isPlaying && source === "tap") {
+          stopPlayback(false);
+        }
+        const existing = activeNotes.get(note);
+        if (existing) {
+          forceStop(note, 0.02);
+        }
+        const voice = createVoice(note);
+        activeNotes.set(note, voice);
+        lastNoteValue.textContent = note;
+        activateKey(note);
+        flashSparkle();
+        if (isRecording && source !== "playback") {
+          const offset = Math.min(Date.now() - recordStart, MAX_RECORDING_MS);
+          currentClip.push({ note, time: offset, type: "on" });
+        }
+      }
+
+      function releaseNote(note, source = "tap") {
+        const voice = activeNotes.get(note);
+        if (!voice) return;
+        if (sustainOn && source !== "playback") {
+          releaseQueue.add(note);
+          deactivateKey(note);
+          if (isRecording) {
+            const offset = Math.min(Date.now() - recordStart, MAX_RECORDING_MS);
+            currentClip.push({ note, time: offset, type: "off" });
+          }
+          return;
+        }
+        finishRelease(note, ADSR.release);
+        if (isRecording && source !== "playback") {
+          const offset = Math.min(Date.now() - recordStart, MAX_RECORDING_MS);
+          currentClip.push({ note, time: offset, type: "off" });
+        }
+      }
+
+      function finishRelease(note, releaseTime) {
+        const voice = activeNotes.get(note);
+        if (!voice || voice.released) return;
+        const now = audioContext.currentTime;
+        voice.released = true;
+        voice.gainNode.gain.cancelScheduledValues(now);
+        voice.gainNode.gain.setValueAtTime(Math.max(voice.gainNode.gain.value, 0.0001), now);
+        voice.gainNode.gain.linearRampToValueAtTime(0.0001, now + releaseTime);
+        try {
+          voice.oscillator.stop(now + releaseTime + 0.02);
+        } catch (error) {
+          // Oscillator can only stop once.
+        }
+        setTimeout(() => {
+          const current = activeNotes.get(note);
+          if (current === voice) {
+            activeNotes.delete(note);
+          }
+        }, Math.ceil((releaseTime + 0.08) * 1000));
+        deactivateKey(note);
+        releaseQueue.delete(note);
+      }
+
+      function forceStop(note, releaseTime) {
+        if (!audioContext) return;
+        finishRelease(note, releaseTime);
+      }
+
+      function releaseSustainedNotes() {
+        Array.from(releaseQueue).forEach((note) => finishRelease(note, 0.18));
+      }
+
+      function stopAllNotes() {
+        Array.from(activeNotes.keys()).forEach((note) => finishRelease(note, 0.08));
+        releaseQueue.clear();
+      }
+
+      function setStatus(message, transport) {
+        statusText.textContent = message;
+        transportState.textContent = transport;
+      }
+
+      function showToast(message, variant = "") {
+        toast.textContent = message;
+        toast.className = "toast" + (variant ? " " + variant : "");
+        toast.classList.add("show");
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => toast.classList.remove("show"), 1800);
+      }
+
+      function flashSparkle() {
+        sparkle.classList.remove("on");
+        void sparkle.offsetWidth;
+        sparkle.classList.add("on");
+      }
+
+      function activateKey(note) {
+        const el = keyElements.get(note);
+        if (el) el.classList.add("active");
+      }
+
+      function deactivateKey(note) {
+        const el = keyElements.get(note);
+        if (el) el.classList.remove("active");
+      }
+
+      function formatDuration(ms) {
+        return (ms / 1000).toFixed(1) + "s";
+      }
+
+      function updateMeters() {
+        const clip = lastRecording.length ? lastRecording : currentClip;
+        const duration = clip.length ? clip[clip.length - 1].time : 0;
+        clipLengthValue.textContent = formatDuration(duration);
+        savedCountValue.textContent = String(savedRecordings.length);
+      }
+
+      function sanitizeClip(events) {
+        return events
+          .filter((event) => NOTES.includes(event.note) && (event.type === "on" || event.type === "off"))
+          .map((event) => ({
+            note: event.note,
+            time: Math.max(0, Math.min(Number(event.time) || 0, MAX_RECORDING_MS)),
+            type: event.type
+          }))
+          .sort((a, b) => a.time - b.time);
+      }
+
+      function loadRecordings() {
+        try {
+          const raw = localStorage.getItem(STORAGE_KEY);
+          if (!raw) return [];
+          const parsed = JSON.parse(raw);
+          if (!Array.isArray(parsed)) return [];
+          return parsed
+            .map((clip) => {
+              if (!clip || typeof clip !== "object") return null;
+              const events = sanitizeClip(Array.isArray(clip.events) ? clip.events : []);
+              if (!events.length) return null;
+              return {
+                id: String(clip.id || Date.now()),
+                name: String(clip.name || "Saved clip"),
+                createdAt: Number(clip.createdAt) || Date.now(),
+                duration: Number(clip.duration) > 0 ? Number(clip.duration) : events[events.length - 1].time,
+                events
+              };
+            })
+            .filter(Boolean)
+            .slice(0, 5);
+        } catch (error) {
+          return [];
+        }
+      }
+
+      function saveRecordings() {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(savedRecordings.slice(0, 5)));
+      }
+
+      function renderHistory() {
+        historyList.innerHTML = "";
+        historyEmpty.style.display = savedRecordings.length ? "none" : "block";
+        savedRecordings.forEach((clip, index) => {
+          const item = document.createElement("div");
+          item.className = "history-item";
+          const meta = document.createElement("div");
+          meta.className = "history-meta";
+          const strong = document.createElement("strong");
+          strong.textContent = clip.name;
+          const span = document.createElement("span");
+          span.textContent = new Date(clip.createdAt).toLocaleString([], {
+            month: "short", day: "numeric", hour: "numeric", minute: "2-digit"
+          }) + " • " + formatDuration(clip.duration);
+          meta.append(strong, span);
+          const play = document.createElement("button");
+          play.className = "secondary history-play";
+          play.textContent = "Play";
+          play.addEventListener("click", () => playClip(clip.events, "Saved clip " + (index + 1)));
+          item.append(meta, play);
+          historyList.appendChild(item);
+        });
+        updateMeters();
+      }
+
+      function startRecording() {
+        ensureAudio();
+        if (isPlaying) {
+          stopPlayback(false);
+        }
+        isRecording = true;
+        currentClip = [];
+        recordStart = Date.now();
+        recordButton.textContent = "Stop recording";
+        recordButton.classList.add("active");
+        recordLed.classList.add("on");
+        setStatus("Recording. Play up to 30 seconds.", "Recording");
+        showToast("Recording started", "error");
+      }
+
+      function finishRecording(saveClip = true) {
+        if (!isRecording) return;
+        isRecording = false;
+        recordButton.textContent = "Start recording";
+        recordButton.classList.remove("active");
+        recordLed.classList.remove("on");
+
+        const clippedEvents = sanitizeClip(currentClip).filter((event) => event.time <= MAX_RECORDING_MS);
+        currentClip = [];
+        if (!clippedEvents.length) {
+          setStatus("No notes captured. Tap to record again.", "Idle");
+          showToast("No notes captured", "warning");
+          updateMeters();
+          return;
+        }
+        lastRecording = clippedEvents;
+        const duration = clippedEvents[clippedEvents.length - 1].time;
+        if (saveClip) {
+          const clip = {
+            id: String(Date.now()),
+            name: "Take " + new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }),
+            createdAt: Date.now(),
+            duration,
+            events: clippedEvents
+          };
+          savedRecordings.unshift(clip);
+          savedRecordings = savedRecordings.slice(0, 5);
+          saveRecordings();
+          renderHistory();
+        } else {
+          updateMeters();
+        }
+        setStatus("Take captured. Ready for playback.", "Ready");
+        showToast("Saved " + formatDuration(duration) + " take", "success");
+      }
+
+      function clearLastTake() {
+        lastRecording = [];
+        updateMeters();
+        setStatus("Last take cleared.", "Idle");
+        showToast("Cleared current take", "warning");
+      }
+
+      function schedulePlayback(events, label) {
+        ensureAudio();
+        stopAllNotes();
+        isPlaying = true;
+        playLed.classList.add("on");
+        playButton.classList.add("active");
+        setStatus(label + " playing", "Playback");
+        const safeEvents = sanitizeClip(events);
+        if (!safeEvents.length) {
+          stopPlayback(false);
+          showToast("Nothing to play yet", "warning");
+          return;
+        }
+        const endTime = safeEvents[safeEvents.length - 1].time;
+        safeEvents.forEach((event) => {
+          const timer = setTimeout(() => {
+            if (event.type === "on") {
+              playNote(event.note, "playback");
+            } else {
+              const releaseTime = sustainOn ? 0.15 : ADSR.release;
+              finishRelease(event.note, releaseTime);
+            }
+          }, event.time);
+          playbackTimers.push(timer);
+        });
+        playbackTimers.push(setTimeout(() => stopPlayback(true), endTime + 500));
+      }
+
+      function stopPlayback(showDoneToast = true) {
+        playbackTimers.forEach(clearTimeout);
+        playbackTimers = [];
+        if (isPlaying) {
+          stopAllNotes();
+        }
+        isPlaying = false;
+        playLed.classList.remove("on");
+        playButton.classList.remove("active");
+        setStatus("Ready to play.", "Ready");
+        if (showDoneToast) {
+          showToast("Playback finished", "success");
+        }
+      }
+
+      function playClip(events, label) {
+        if (isRecording) {
+          finishRecording(true);
+        }
+        stopPlayback(false);
+        schedulePlayback(events, label);
+      }
+
+      function playLastTake() {
+        if (!lastRecording.length && savedRecordings.length) {
+          lastRecording = savedRecordings[0].events;
+        }
+        if (!lastRecording.length) {
+          showToast("Record a take first", "warning");
+          return;
+        }
+        playClip(lastRecording, "Last take");
+      }
+
+      function toggleSustain() {
+        sustainOn = !sustainOn;
+        sustainToggle.classList.toggle("on", sustainOn);
+        sustainToggle.setAttribute("aria-checked", String(sustainOn));
+        sustainLed.classList.toggle("on", sustainOn);
+        if (!sustainOn) {
+          releaseSustainedNotes();
+        }
+        showToast(sustainOn ? "Sustain on" : "Sustain off", sustainOn ? "success" : "warning");
+      }
+
+      function buildKeys() {
+        WHITE_NOTES.forEach((note, index) => {
+          const key = document.createElement("button");
+          key.type = "button";
+          key.className = "white-key";
+          key.style.left = "calc(100% / 14 * " + index + ")";
+          key.dataset.note = note;
+          key.setAttribute("aria-label", note);
+          key.textContent = note.replace(/\d/, "");
+          attachKeyEvents(key, note);
+          keyElements.set(note, key);
+          KEYS_CONTAINER.appendChild(key);
+        });
+
+        BLACK_NOTES.forEach(({ note, afterWhite }) => {
+          const key = document.createElement("button");
+          key.type = "button";
+          key.className = "black-key";
+          key.style.left = "calc((100% / 14 * " + (afterWhite + 1) + ") - ((100% / 14) * 0.34))";
+          key.dataset.note = note;
+          key.setAttribute("aria-label", note);
+          key.textContent = note.replace(/\d/, "");
+          attachKeyEvents(key, note);
+          keyElements.set(note, key);
+          KEYS_CONTAINER.appendChild(key);
+        });
+      }
+
+      function attachKeyEvents(key, note) {
+        key.addEventListener("pointerdown", (event) => {
+          event.preventDefault();
+          notePointerId = event.pointerId;
+          key.setPointerCapture(event.pointerId);
+          playNote(note);
+        });
+        key.addEventListener("pointerup", (event) => {
+          event.preventDefault();
+          if (notePointerId === event.pointerId) {
+            notePointerId = null;
+          }
+          releaseNote(note);
+        });
+        key.addEventListener("pointercancel", () => releaseNote(note));
+        key.addEventListener("pointerleave", (event) => {
+          if (event.buttons === 1) {
+            releaseNote(note);
+          }
+        });
+        key.addEventListener("contextmenu", (event) => event.preventDefault());
+      }
+
+      function buildTwinkleClip() {
+        const beat = 430;
+        const releasePad = 350;
+        const steps = [
+          "C4", "C4", "G4", "G4", "A4", "A4", "G4",
+          "F4", "F4", "E4", "E4", "D4", "D4", "C4"
+        ];
+        const events = [];
+        steps.forEach((note, index) => {
+          const start = index * beat;
+          events.push({ note, time: start, type: "on" });
+          events.push({ note, time: start + releasePad, type: "off" });
+        });
+        return events;
+      }
+
+      recordButton.addEventListener("click", () => {
+        if (isRecording) {
+          finishRecording(true);
+        } else {
+          startRecording();
+        }
+      });
+      playButton.addEventListener("click", playLastTake);
+      demoButton.addEventListener("click", () => playClip(buildTwinkleClip(), "Twinkle Twinkle"));
+      clearButton.addEventListener("click", clearLastTake);
+      sustainToggle.addEventListener("click", toggleSustain);
+
+      document.addEventListener("visibilitychange", () => {
+        if (document.hidden) {
+          if (isRecording) finishRecording(true);
+          stopPlayback(false);
+          stopAllNotes();
+        }
+      });
+
+      buildKeys();
+      renderHistory();
+      updateMeters();
+    })();
+  </script>
+<script>
+(function () {
+  if (window.__MCHATAI_FEEDBACK_WIDGET__) return;
+  window.__MCHATAI_FEEDBACK_WIDGET__ = true;
+
+  // Bail out entirely when embedded inside a native host that has its own
+  // feedback UI. iOS/Android WKWebView/WebView appends ?embed=ios or embed=android
+  // (or sets window.__MCHATAI_NATIVE_HOST__) before loading. In that case the
+  // native toolbar owns the feedback flow and we must not inject any pills,
+  // panels, or capture-phase event listeners (they would fight the native UI
+  // and block the soft-keyboard bridge).
+  try {
+    var params = new URLSearchParams(window.location.search);
+    var embed = params.get('embed');
+    if (embed === 'ios' || embed === 'android' || window.__MCHATAI_NATIVE_HOST__) {
+      return;
+    }
+  } catch (e) {
+    // If URL parsing somehow fails, fall through and render the widget.
+  }
+
+  // ── Config ───────────────────────────────────────────────────────────────
+  // Firebase web API key for the mchatai-2367e project. Public-safe — every web
+  // client has this in its bundle. Used for anonymous auth when submitting a
+  // screenshot (text-only feedback stays anonymous; screenshots require an
+  // anon token so we can rate-limit per-browser without real sign-in UX).
+  var FIREBASE_WEB_API_KEY = 'AIzaSyCp2lvjTqAmv60ktspDwYbPeIhi8nlKbwA';
+
+  // ── Console error capture ─────────────────────────────────────────────────
+  // Wrap console.error so the widget can attach the most recent failures to
+  // any submitted feedback. Bounded ring so a chatty page can't OOM the widget.
+  var __consoleErrors = [];
+  var origError = console.error;
+  console.error = function () {
+    try {
+      var msg = Array.prototype.map.call(arguments, function (a) {
+        if (a && a.stack) return String(a.stack).slice(0, 400);
+        if (typeof a === 'object') { try { return JSON.stringify(a).slice(0, 400); } catch (e) { return '[Object]'; } }
+        return String(a).slice(0, 400);
+      }).join(' ');
+      __consoleErrors.push(msg);
+      if (__consoleErrors.length > 8) __consoleErrors.shift();
+    } catch (e) { /* never break the host */ }
+    return origError.apply(console, arguments);
+  };
+  // Same for uncaught errors
+  window.addEventListener('error', function (e) {
+    try {
+      __consoleErrors.push('Uncaught: ' + (e.message || 'unknown') + ' @ ' + (e.filename || '?') + ':' + (e.lineno || '?'));
+      if (__consoleErrors.length > 8) __consoleErrors.shift();
+    } catch (_) {}
+  });
+
+  // ── Slug from URL ────────────────────────────────────────────────────────
+  // mchatai.com/u/{shortUid}/{slug}/ — pull both pieces for the API.
+  var pathParts = location.pathname.replace(/^\/u\//, '').split('/').filter(Boolean);
+  var shortUid = pathParts[0] || '';
+  var slug = pathParts[1] || '';
+
+  var API_BASE = 'https://web-api-1099075912386.us-central1.run.app';
+
+  // ── Styles ───────────────────────────────────────────────────────────────
+  var style = document.createElement('style');
+  style.id = 'mchatai-feedback-widget-style';
+  style.textContent = [
+    '#mchatai-fb-pill, #mchatai-fb-panel {',
+    '  position: fixed; right: 18px; bottom: 18px; z-index: 2147483646;',
+    '  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;',
+    '}',
+    '#mchatai-fb-pill {',
+    '  display: flex; align-items: center; gap: 6px;',
+    '  padding: 8px 14px; border-radius: 999px;',
+    '  background: rgba(40,40,46,0.92); color: #fff;',
+    '  font-size: 13px; font-weight: 500; cursor: pointer;',
+    '  border: 1px solid rgba(255,255,255,0.12);',
+    '  box-shadow: 0 2px 8px rgba(0,0,0,0.25);',
+    '  transition: opacity 0.4s ease, transform 0.15s ease;',
+    '  opacity: 1; user-select: none;',
+    '}',
+    '#mchatai-fb-pill.idle { opacity: 0.2; }',
+    '#mchatai-fb-pill:hover { opacity: 1 !important; transform: translateY(-1px); }',
+    /* Phase RT.2 follow-up: back-to-/play pill is anchored next to the
+       Feedback pill (bottom-right) because the top-left position made it
+       easy to miss on white-background games. Same z-index, same idle-fade,
+       sits just above the Feedback pill. */
+    '#mchatai-back-pill {',
+    '  position: fixed; right: 18px; bottom: 58px; z-index: 2147483646;',
+    '  display: flex; align-items: center; gap: 6px;',
+    '  padding: 6px 12px 6px 10px; border-radius: 999px;',
+    '  background: rgba(40,40,46,0.92); color: #fff;',
+    '  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;',
+    '  font-size: 12px; font-weight: 500; cursor: pointer;',
+    '  border: 1px solid rgba(255,255,255,0.12);',
+    '  box-shadow: 0 2px 8px rgba(0,0,0,0.25);',
+    '  transition: opacity 0.4s ease, transform 0.15s ease;',
+    '  opacity: 1; text-decoration: none; user-select: none;',
+    '}',
+    '#mchatai-back-pill.idle { opacity: 0.2; }',
+    '#mchatai-back-pill:hover { opacity: 1 !important; transform: translateX(-1px); }',
+    '#mchatai-back-pill svg { width: 14px; height: 14px; display: block; }',
+    '#mchatai-fb-panel {',
+    /* Phase RT.2 follow-up: panel now vertically-sized to fit its contents
+       and caps at 85vh so a screenshot preview + textarea + actions never
+       push Send below the viewport. Overflow moved from hidden → auto so
+       the panel itself scrolls if contents exceed the cap (belt-and-braces
+       for anything unexpected). */
+    '  display: none; width: 320px; max-height: 85vh;',
+    '  background: #1f2025; color: #f2f2f5; border-radius: 12px;',
+    '  border: 1px solid rgba(255,255,255,0.12);',
+    '  box-shadow: 0 8px 24px rgba(0,0,0,0.45);',
+    '  overflow-y: auto; overflow-x: hidden; flex-direction: column;',
+    '}',
+    '#mchatai-fb-panel.open { display: flex; }',
+    '#mchatai-fb-panel header {',
+    '  display: flex; justify-content: space-between; align-items: center;',
+    '  padding: 10px 12px; background: #25262c; font-size: 13px; font-weight: 600;',
+    '  border-bottom: 1px solid rgba(255,255,255,0.06);',
+    '}',
+    '#mchatai-fb-close {',
+    '  background: none; border: none; color: #b8b8be; font-size: 18px;',
+    '  cursor: pointer; line-height: 1; padding: 0 4px;',
+    '}',
+    /* Phase RT.2 follow-up: user identity chip. Shows current sign-in state
+       so users know (a) whether their submission is anonymous, (b) whose
+       Google account is attached when it isn't, (c) that screenshots unlock
+       after signing in. Lives in the header row between title and close. */
+    '#mchatai-fb-user { display: flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 500; color: #b8b8be; cursor: pointer; background: none; border: none; padding: 0; max-width: 140px; }',
+    '#mchatai-fb-user:hover { color: #f2f2f5; }',
+    '#mchatai-fb-user.signed-in { color: #8dd19a; }',
+    '#mchatai-fb-user img, #mchatai-fb-user .mchatai-fb-user-avatar-fallback { width: 16px; height: 16px; border-radius: 50%; flex-shrink: 0; }',
+    '#mchatai-fb-user .mchatai-fb-user-avatar-fallback { background: #3a3b40; color: #f2f2f5; font-size: 9px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; }',
+    '#mchatai-fb-user .mchatai-fb-user-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }',
+    '#mchatai-fb-types { display: flex; gap: 4px; padding: 8px 10px 6px; }',
+    '.mchatai-fb-type {',
+    '  flex: 1; padding: 6px 0; border-radius: 6px; cursor: pointer;',
+    '  background: transparent; color: #b8b8be; border: 1px solid rgba(255,255,255,0.10);',
+    '  font-size: 11px; text-align: center; transition: background 0.12s, color 0.12s;',
+    '}',
+    '.mchatai-fb-type.active { background: #4a8eff; color: #fff; border-color: #4a8eff; }',
+    /* Phase RT.1: 5-star rating control. Optional — users can submit text-only
+       feedback without setting a rating. Hover previews a provisional fill so
+       clicking feels obvious. Clicking the currently-selected star clears. */
+    '#mchatai-fb-rating { display: flex; align-items: center; gap: 4px; padding: 4px 10px 0; font-size: 11px; color: #b8b8be; }',
+    '#mchatai-fb-rating-label { margin-right: 6px; }',
+    '#mchatai-fb-rating .mchatai-fb-star {',
+    '  background: none; border: none; color: #55565c; cursor: pointer;',
+    '  font-size: 18px; padding: 0 2px; line-height: 1;',
+    '  transition: color 0.12s, transform 0.08s;',
+    '}',
+    '#mchatai-fb-rating .mchatai-fb-star:hover { transform: scale(1.12); }',
+    '#mchatai-fb-rating .mchatai-fb-star.filled { color: #ffc940; }',
+    '#mchatai-fb-rating .mchatai-fb-star.preview { color: #e6b73a; opacity: 0.75; }',
+    '#mchatai-fb-rating-clear {',
+    '  background: none; border: none; color: #707078; cursor: pointer;',
+    '  font-size: 11px; margin-left: auto; padding: 0 2px;',
+    '}',
+    '#mchatai-fb-rating-clear:hover { color: #d0d0d6; }',
+    '#mchatai-fb-rating-clear[hidden] { display: none !important; }',
+    '#mchatai-fb-text {',
+    '  margin: 4px 10px; padding: 8px; border-radius: 6px;',
+    '  background: #15161a; color: #f2f2f5; border: 1px solid rgba(255,255,255,0.10);',
+    '  font-size: 13px; font-family: inherit; resize: vertical;',
+    '  min-height: 90px; max-height: 200px; outline: none;',
+    '}',
+    '#mchatai-fb-text:focus { border-color: #4a8eff; }',
+    '#mchatai-fb-actions {',
+    /* Phase RT.2 follow-up: actions row sticks to the bottom of the panel
+       even if the content scrolls. Without this, a large screenshot preview
+       pushed the Send button below the viewport and users could not submit. */
+    '  display: flex; justify-content: space-between; align-items: center;',
+    '  padding: 8px 10px 10px; gap: 8px;',
+    '  position: sticky; bottom: 0; background: #1f2025;',
+    '  border-top: 1px solid rgba(255,255,255,0.06);',
+    '  flex-shrink: 0;',
+    '}',
+    '#mchatai-fb-meta { font-size: 10px; color: #707078; }',
+    '#mchatai-fb-send {',
+    '  padding: 6px 14px; border-radius: 6px; border: none; background: #4a8eff;',
+    '  color: #fff; font-size: 12px; font-weight: 600; cursor: pointer;',
+    '  transition: opacity 0.12s;',
+    '}',
+    '#mchatai-fb-send:disabled { opacity: 0.4; cursor: not-allowed; }',
+    '#mchatai-fb-status { font-size: 11px; padding: 0 12px 8px; min-height: 14px; color: #4a8eff; }',
+    /* Screenshot attachment row: only visible if the product opted in via feedbackAutomation.acceptScreenshots = true. */
+    '#mchatai-fb-shot-btn {',
+    '  width: 100%; padding: 7px 10px; margin: 6px 0 2px;',
+    '  background: #2e2f35; color: #d0d0d6; border: 1px dashed rgba(255,255,255,0.16);',
+    '  border-radius: 6px; cursor: pointer; font-size: 12px;',
+    '  transition: background 0.12s;',
+    '}',
+    '#mchatai-fb-shot-btn:hover { background: #35363d; }',
+    '#mchatai-fb-shot-btn:disabled { opacity: 0.5; cursor: default; }',
+    '#mchatai-fb-shot-preview-wrap {',
+    /* Phase RT.2 follow-up: explicit height on the wrap so the img inside
+       inherits the constrained box. Without this the img renders at its
+       natural aspect ratio and max-height alone doesn't clip (depends on
+       the browser's interpretation of intrinsic sizing). 120px matches the
+       earlier intent — small preview so the Send button stays visible. */
+    '  position: relative; margin: 6px 0 2px;',
+    '  height: 120px; max-height: 120px; overflow: hidden;',
+    '  border-radius: 6px;',
+    '  border: 1px solid rgba(255,255,255,0.10);',
+    '  background: #0d0e12;',
+    '  flex-shrink: 0;',
+    '}',
+    '#mchatai-fb-shot-preview { display:block; width: 100%; height: 100%; object-fit: contain; object-position: center; }',
+    '#mchatai-fb-shot-remove {',
+    '  position: absolute; top: 4px; right: 4px;',
+    '  width: 22px; height: 22px; border-radius: 50%;',
+    '  background: rgba(0,0,0,0.7); color: #fff; border: none;',
+    '  cursor: pointer; font-size: 14px; line-height: 1;',
+    '}',
+  ].join('\n');
+  document.head.appendChild(style);
+
+  // ── DOM ──────────────────────────────────────────────────────────────────
+  var pill = document.createElement('div');
+  pill.id = 'mchatai-fb-pill';
+  pill.innerHTML = '<span aria-hidden="true">💬</span><span>Feedback</span>';
+  pill.title = 'Send feedback about this game';
+  pill.setAttribute('role', 'button');
+  pill.setAttribute('aria-label', 'Send feedback');
+
+  var panel = document.createElement('div');
+  panel.id = 'mchatai-fb-panel';
+  panel.innerHTML = [
+    '<header>',
+    '  <span>Send feedback</span>',
+    '  <div style="display:flex;align-items:center;gap:10px;">',
+    '    <button id="mchatai-fb-user" type="button" title="Sign in to enable screenshots"><span aria-hidden="true">👤</span><span class="mchatai-fb-user-name">anonymous</span></button>',
+    '    <button id="mchatai-fb-close" aria-label="Close feedback panel">×</button>',
+    '  </div>',
+    '</header>',
+    '<div id="mchatai-fb-types">',
+    '  <button class="mchatai-fb-type active" data-type="bug">🐞 Bug</button>',
+    '  <button class="mchatai-fb-type" data-type="feature">✨ Idea</button>',
+    '  <button class="mchatai-fb-type" data-type="other">💬 Other</button>',
+    '</div>',
+    '<div id="mchatai-fb-rating" role="radiogroup" aria-label="Rate this product">',
+    '  <span id="mchatai-fb-rating-label">Rating:</span>',
+    '  <button type="button" class="mchatai-fb-star" data-value="1" role="radio" aria-label="1 star" aria-checked="false">☆</button>',
+    '  <button type="button" class="mchatai-fb-star" data-value="2" role="radio" aria-label="2 stars" aria-checked="false">☆</button>',
+    '  <button type="button" class="mchatai-fb-star" data-value="3" role="radio" aria-label="3 stars" aria-checked="false">☆</button>',
+    '  <button type="button" class="mchatai-fb-star" data-value="4" role="radio" aria-label="4 stars" aria-checked="false">☆</button>',
+    '  <button type="button" class="mchatai-fb-star" data-value="5" role="radio" aria-label="5 stars" aria-checked="false">☆</button>',
+    '  <button type="button" id="mchatai-fb-rating-clear" hidden>clear</button>',
+    '</div>',
+    '<textarea id="mchatai-fb-text" placeholder="What happened? What did you expect?" maxlength="2000"></textarea>',
+    '<div id="mchatai-fb-screenshot-row" style="display:none;padding:0 10px;">',
+    '  <button id="mchatai-fb-shot-btn" type="button">📸 Attach screenshot</button>',
+    '  <div id="mchatai-fb-shot-preview-wrap" style="display:none;"><img id="mchatai-fb-shot-preview" alt="screenshot preview" /><button id="mchatai-fb-shot-remove" type="button" aria-label="Remove screenshot">×</button></div>',
+    '</div>',
+    '<div id="mchatai-fb-status" aria-live="polite"></div>',
+    '<div id="mchatai-fb-actions">',
+    '  <span id="mchatai-fb-meta"></span>',
+    '  <button id="mchatai-fb-send" disabled>Send</button>',
+    '</div>',
+  ].join('');
+
+  // Back-to-hub pill. The hub houses mini-apps, games, agents, skills, pipelines —
+  // "Hub" is the right word. Icon is a house, not an arrow, since it's a home
+  // button, not a linear back button. Rendered as an <a> so right-click → new tab works.
+  var backPill = document.createElement('a');
+  backPill.id = 'mchatai-back-pill';
+  backPill.href = 'https://mchatai.com/hub';
+  backPill.title = 'Back to Hub';
+  backPill.setAttribute('aria-label', 'Back to Hub');
+  backPill.innerHTML = [
+    '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">',
+    '  <path d="M2 7l6-5 6 5v7a1 1 0 0 1-1 1h-3v-5H6v5H3a1 1 0 0 1-1-1V7z"/>',
+    '</svg>',
+    '<span>Hub</span>'
+  ].join('');
+
+  document.body.appendChild(backPill);
+  document.body.appendChild(pill);
+  document.body.appendChild(panel);
+
+  // ── Idle fade ────────────────────────────────────────────────────────────
+  var idleTimer = null;
+  function bumpActivity() {
+    pill.classList.remove('idle');
+    backPill.classList.remove('idle');
+    if (idleTimer) clearTimeout(idleTimer);
+    idleTimer = setTimeout(function () {
+      pill.classList.add('idle');
+      backPill.classList.add('idle');
+    }, 3000);
+  }
+  ['mousemove', 'keydown', 'touchstart', 'scroll'].forEach(function (ev) {
+    window.addEventListener(ev, bumpActivity, { passive: true });
+  });
+  bumpActivity();
+
+  // ── Open / close ─────────────────────────────────────────────────────────
+  async function openPanel() {
+    panel.classList.add('open');
+    pill.style.display = 'none';
+    var meta = document.getElementById('mchatai-fb-meta');
+    meta.textContent = slug ? slug : 'feedback';
+    setTimeout(function () { document.getElementById('mchatai-fb-text').focus(); }, 50);
+    // Phase RT.2 follow-up: refresh the user chip in case the token expired
+    // or the user signed in a different tab between panel opens.
+    updateUserChip();
+    // Silent refresh: if no cached token but Firebase still has a session on
+    // mchatai.com, this pulls a fresh token via a hidden iframe so the user
+    // does not have to click Sign in every single time. Idempotent + bounded
+    // by a 3s timeout so there is no visible delay if they have never signed
+    // in.
+    if (!cachedIdToken) {
+      silentlyRefreshToken().then(function (tok) {
+        if (tok) updateUserChip();
+      });
+    }
+
+    // Async probe for the product's screenshot opt-in flag. Runs concurrently
+    // with the user reading/typing — if it comes back true, the screenshot
+    // row fades into view.
+    console.log('[feedback-widget] probing screenshot opt-in for slug:', slug);
+    checkScreenshotOptIn().then(function (allowed) {
+      console.log('[feedback-widget] screenshotAllowed =', allowed);
+      screenshotAllowed = allowed;
+      updateScreenshotRow();
+      // Defensive: ALSO directly reveal the row in case updateScreenshotRow
+      // runs before some dependency is wired up. Belt-and-suspenders.
+      if (allowed) {
+        var row = document.getElementById('mchatai-fb-screenshot-row');
+        if (row) {
+          row.style.display = 'block';
+          console.log('[feedback-widget] screenshot row revealed');
+        } else {
+          console.warn('[feedback-widget] screenshot row element not found!');
+        }
+      }
+    }).catch(function (err) {
+      console.warn('[feedback-widget] probe failed:', err);
+    });
+  }
+  function closePanel() {
+    panel.classList.remove('open');
+    pill.style.display = 'flex';
+    bumpActivity();
+  }
+  pill.addEventListener('click', openPanel);
+  panel.querySelector('#mchatai-fb-close').addEventListener('click', closePanel);
+
+  // ── Type picker ──────────────────────────────────────────────────────────
+  var selectedType = 'bug';
+  panel.querySelectorAll('.mchatai-fb-type').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      panel.querySelectorAll('.mchatai-fb-type').forEach(function (b) { b.classList.remove('active'); });
+      btn.classList.add('active');
+      selectedType = btn.getAttribute('data-type');
+    });
+  });
+
+  // ── Rating picker (Phase RT.1) ───────────────────────────────────────────
+  // Optional 1-5 stars. Rating is its own signal — users can send text
+  // without a rating, or send a rating without text (any rating auto-enables
+  // the Send button even if the textarea is empty, so a "5 stars, no words"
+  // submission is a valid vote).
+  var selectedRating = null;     // null | 1..5
+  var ratingStars = panel.querySelectorAll('.mchatai-fb-star');
+  var ratingClear = panel.querySelector('#mchatai-fb-rating-clear');
+  function paintStars(previewValue) {
+    var effective = previewValue != null ? previewValue : (selectedRating || 0);
+    ratingStars.forEach(function (s) {
+      var v = parseInt(s.getAttribute('data-value'), 10);
+      s.classList.remove('filled', 'preview');
+      s.textContent = v <= effective ? '★' : '☆';
+      if (previewValue != null && v <= previewValue && v > (selectedRating || 0)) {
+        s.classList.add('preview');
+      } else if (v <= (selectedRating || 0)) {
+        s.classList.add('filled');
+      }
+      s.setAttribute('aria-checked', String(v === selectedRating));
+    });
+    ratingClear.hidden = selectedRating == null;
+  }
+  ratingStars.forEach(function (s) {
+    var v = parseInt(s.getAttribute('data-value'), 10);
+    s.addEventListener('mouseenter', function () { paintStars(v); });
+    s.addEventListener('mouseleave', function () { paintStars(null); });
+    s.addEventListener('click', function () {
+      // Click on currently-selected star → clear. Click elsewhere → set.
+      selectedRating = (selectedRating === v) ? null : v;
+      paintStars(null);
+      updateSendState();
+    });
+  });
+  ratingClear.addEventListener('click', function () {
+    selectedRating = null;
+    paintStars(null);
+    updateSendState();
+  });
+
+  // ── Send button gating + submission ──────────────────────────────────────
+  var textArea = panel.querySelector('#mchatai-fb-text');
+  var sendBtn = panel.querySelector('#mchatai-fb-send');
+  var statusEl = panel.querySelector('#mchatai-fb-status');
+  var shotRow = panel.querySelector('#mchatai-fb-screenshot-row');
+  var shotBtn = panel.querySelector('#mchatai-fb-shot-btn');
+  var shotPreviewWrap = panel.querySelector('#mchatai-fb-shot-preview-wrap');
+  var shotPreview = panel.querySelector('#mchatai-fb-shot-preview');
+  var shotRemove = panel.querySelector('#mchatai-fb-shot-remove');
+
+  // Phase RT.1: either a rating OR a text comment (≥4 chars) is enough to send.
+  // Lets users drop-in a 5-star vote without writing a novel.
+  function updateSendState() {
+    var hasText = textArea.value.trim().length >= 4;
+    var hasRating = selectedRating != null;
+    sendBtn.disabled = !(hasText || hasRating);
+  }
+  textArea.addEventListener('input', updateSendState);
+
+  // Phase RT.2 follow-up: isolate typing inside the feedback panel from the
+  // underlying game. Many games install keyboard listeners on window and
+  // document — when the user types a space into the textarea, the event
+  // bubbles up and the game also receives it (e.g. battleship-vs-ai toggles
+  // ship orientation on any spacebar press). Capture-phase listeners on
+  // window fire BEFORE the game's bubble-phase listeners — we stop
+  // propagation + stop immediate propagation on any keyboard event whose
+  // target is inside our panel. The panel input itself still gets the event
+  // because stopPropagation at capture phase does not prevent the target
+  // from receiving it, only the ancestors.
+  function isInsideFeedbackPanel(el) {
+    while (el && el !== document) {
+      if (el === panel || el === pill || el === backPill) return true;
+      el = el.parentNode;
+    }
+    return false;
+  }
+  // IMPORTANT: only keyboard events get intercepted. Previously I also blocked
+  // pointer/click/mousedown at capture phase, which broke every button inside
+  // the panel (sign-in, send, star rating, attach screenshot) because
+  // stopImmediatePropagation at capture prevents ALL listeners — including
+  // the panel's own click handlers registered via addEventListener('click').
+  // Keyboard-only is the right scope: games listen for arrow keys / space /
+  // letters on window, but they listen for pointer events on their canvas
+  // element — not on window — so click events never bubbled to them anyway.
+  ['keydown', 'keyup', 'keypress'].forEach(function (evName) {
+    window.addEventListener(evName, function (e) {
+      if (!panel.classList.contains('open')) return;
+      if (!isInsideFeedbackPanel(e.target)) return;
+      // stopPropagation (not stopImmediatePropagation) — the panel's own
+      // listeners already ran on the target; we only need to prevent the
+      // event from reaching ancestor window/document listeners the game
+      // installed. Using stopImmediatePropagation here would kill the
+      // textarea's native input handling in some edge cases.
+      e.stopPropagation();
+    }, true); // capture phase fires before the game's bubble-phase listener
+  });
+
+  // ── Screenshot attachment (opt-in per product) ──────────────────────────
+  // The row itself is hidden by default. It only reveals after we confirm the
+  // product has opted in (feedbackAutomation.acceptScreenshots=true on the
+  // Firestore endProduct doc). We query once per panel open via an endpoint
+  // that returns just the opt-in flag — no auth needed, cheap boolean.
+  var capturedScreenshot = null;   // { dataURL: "data:image/jpeg;base64,..." , width, height, bytes }
+  var screenshotAllowed = false;
+
+  async function checkScreenshotOptIn() {
+    if (!slug) return false;
+    try {
+      var resp = await fetch(API_BASE + '/v1/endproducts/feedback-config?slug=' + encodeURIComponent(slug), {
+        method: 'GET',
+      });
+      if (!resp.ok) return false;
+      var body = await resp.json();
+      return !!body.acceptScreenshots;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  async function captureScreenshot() {
+    // Gate: require real sign-in before capturing. Attributable + rate-limitable.
+    shotBtn.disabled = true;
+    shotBtn.textContent = '🔑 Signing in…';
+    statusEl.textContent = '';
+    try {
+      try {
+        await ensureSignedIn();
+      } catch (authErr) {
+        throw new Error('Sign-in required for screenshots: ' + authErr.message);
+      }
+      shotBtn.textContent = '📸 Select the tab to share…';
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
+        throw new Error('Screen capture not supported on this browser');
+      }
+      var stream = await navigator.mediaDevices.getDisplayMedia({
+        video: { displaySurface: 'browser' },
+        audio: false,
+        preferCurrentTab: true,
+      });
+      var track = stream.getVideoTracks()[0];
+
+      // Grab one frame via ImageCapture if available, else via a video element.
+      var bitmap;
+      if (window.ImageCapture) {
+        var capture = new ImageCapture(track);
+        bitmap = await capture.grabFrame();
+      } else {
+        var video = document.createElement('video');
+        video.srcObject = stream;
+        video.muted = true;
+        await video.play();
+        bitmap = {
+          width: video.videoWidth,
+          height: video.videoHeight,
+          _video: video,
+        };
+      }
+
+      // Resize to max 800×600 (fit, keep aspect) and JPEG 0.7 to stay under
+      // the 200KB server cap. Typical output is 30-80KB.
+      var MAX_W = 800, MAX_H = 600;
+      var scale = Math.min(MAX_W / bitmap.width, MAX_H / bitmap.height, 1);
+      var outW = Math.round(bitmap.width * scale);
+      var outH = Math.round(bitmap.height * scale);
+      var canvas = document.createElement('canvas');
+      canvas.width = outW;
+      canvas.height = outH;
+      var ctx = canvas.getContext('2d');
+      if (bitmap._video) {
+        ctx.drawImage(bitmap._video, 0, 0, outW, outH);
+      } else {
+        ctx.drawImage(bitmap, 0, 0, outW, outH);
+      }
+      track.stop();
+
+      var dataURL = canvas.toDataURL('image/jpeg', 0.7);
+      // base64 portion length * 0.75 ≈ byte count
+      var bytes = Math.round((dataURL.length - 'data:image/jpeg;base64,'.length) * 0.75);
+      if (bytes > 200 * 1024) {
+        throw new Error('Screenshot too large after compression (' + Math.round(bytes/1024) + 'KB, max 200KB)');
+      }
+
+      capturedScreenshot = { dataURL: dataURL, width: outW, height: outH, bytes: bytes };
+      shotPreview.src = dataURL;
+      shotPreviewWrap.style.display = 'block';
+      shotBtn.style.display = 'none';
+      shotBtn.disabled = false;
+      shotBtn.textContent = '📸 Attach screenshot';
+    } catch (err) {
+      shotBtn.disabled = false;
+      shotBtn.textContent = '📸 Attach screenshot';
+      statusEl.style.color = '#e26766';
+      statusEl.textContent = err.message || 'Screenshot capture failed';
+    }
+  }
+
+  function removeScreenshot() {
+    capturedScreenshot = null;
+    shotPreview.src = '';
+    shotPreviewWrap.style.display = 'none';
+    shotBtn.style.display = 'block';
+  }
+
+  shotBtn.addEventListener('click', captureScreenshot);
+  shotRemove.addEventListener('click', removeScreenshot);
+
+  // Phase RT.2 follow-up: user chip click — sign-in when signed-out,
+  // sign-out when signed-in.
+  var userChip = panel.querySelector('#mchatai-fb-user');
+  if (userChip) {
+    userChip.addEventListener('click', async function () {
+      if (cachedIdToken) {
+        if (confirm('Sign out? Future submissions will be anonymous until you sign back in.')) {
+          clearToken();
+        }
+        return;
+      }
+      try {
+        await ensureSignedIn();
+      } catch (e) {
+        // Don't block the panel — user might just have dismissed the popup.
+        console.warn('[feedback] sign-in skipped:', e.message);
+      }
+    });
+  }
+  // Render initial state.
+  updateUserChip();
+
+  // ── Real auth for screenshot uploads ───────────────────────────────────
+  // Text-only feedback posts anonymously to /v1/feedback. Screenshots require
+  // real Google sign-in (not anonymous) so:
+  //   1. Abuse is attributable to a real account we can disable
+  //   2. Bot operators can't programmatically create sign-in accounts
+  //   3. The server rate-limits per UID with a hard ceiling that survives
+  //      tab-closes / incognito resets (anon tokens would rotate every session)
+  //
+  // Sign-in flow: if user clicks "Attach screenshot" without a cached token, we
+  // open an Identity Toolkit OAuth popup for Google. Token cached in session
+  // storage so repeated submissions don't re-prompt. Cleared on Remove or when
+  // the server reports the UID was abuse-disabled (403 reason=disabled).
+  // Phase RT.2 follow-up: token persistence moved from sessionStorage to
+  // localStorage. sessionStorage dies on tab close AND is isolated per tab,
+  // so users had to re-sign-in constantly when hopping between products.
+  // localStorage is shared across tabs and persists across browser restarts,
+  // matching the "you are signed in" mental model. Firebase ID tokens expire
+  // after ~1h; we detect expiry in updateUserChip (decoded .exp claim) and
+  // auto-clear the token when it is stale, which triggers a silent re-check
+  // via the /feedback-signin iframe (see silentlyRefreshToken below) so
+  // long-lived users do not keep seeing sign-in prompts as tokens age.
+  var TOKEN_KEY = 'mchatai_fb_idtoken';
+  // Migration: if an older session put a token in sessionStorage, promote it
+  // to localStorage so the user does not lose their sign-in on this refresh.
+  (function migrateOldToken() {
+    try {
+      if (!localStorage.getItem(TOKEN_KEY) && sessionStorage.getItem(TOKEN_KEY)) {
+        localStorage.setItem(TOKEN_KEY, sessionStorage.getItem(TOKEN_KEY));
+      }
+      sessionStorage.removeItem(TOKEN_KEY);
+    } catch (e) {}
+  })();
+  var cachedIdToken = (function () {
+    try { return localStorage.getItem(TOKEN_KEY) || null; } catch (e) { return null; }
+  })();
+
+  function storeToken(tok) {
+    cachedIdToken = tok;
+    try { localStorage.setItem(TOKEN_KEY, tok); } catch (e) {}
+    updateUserChip();
+  }
+
+  function clearToken() {
+    cachedIdToken = null;
+    try { localStorage.removeItem(TOKEN_KEY); } catch (e) {}
+    updateUserChip();
+  }
+
+  // Silent-refresh: when the cached token is missing or expired, try to pull
+  // a fresh one from /feedback-signin.html via a hidden iframe. The signin
+  // page runs Firebase Web SDK which persists auth in IndexedDB — if the
+  // user signed in on any mchatai.com page at any point, Firebase still has
+  // the session and onAuthStateChanged fires with the user, which posts a
+  // fresh ID token back to the widget via postMessage. No visible popup,
+  // no user action required — the sign-in just "carries over."
+  function silentlyRefreshToken() {
+    return new Promise(function (resolve) {
+      var iframe = document.createElement('iframe');
+      iframe.style.cssText = 'position:fixed;left:-9999px;top:-9999px;width:1px;height:1px;border:0;';
+      iframe.src = 'https://mchatai.com/feedback-signin.html?silent=1';
+      var done = false;
+      var finish = function (token) {
+        if (done) return;
+        done = true;
+        window.removeEventListener('message', handler);
+        try { document.body.removeChild(iframe); } catch (e) {}
+        if (token) storeToken(token);
+        resolve(token || null);
+      };
+      var handler = function (ev) {
+        if (ev.origin !== 'https://mchatai.com') return;
+        if (!ev.data || ev.data.type !== 'mchatai-fb-signin') return;
+        finish(ev.data.idToken || null);
+      };
+      window.addEventListener('message', handler);
+      document.body.appendChild(iframe);
+      // 3s timeout — if Firebase has no cached session the iframe just sits
+      // idle at the button prompt. Give up silently.
+      setTimeout(function () { finish(null); }, 3000);
+    });
+  }
+
+  /* Phase RT.2 follow-up: decode a Firebase ID token's payload (the middle
+     JWT segment — base64url-encoded JSON). We only need name/email/picture,
+     so we do NOT verify the signature here (server revalidates on every
+     request). Returns null on any decode failure. */
+  function decodeIdToken(token) {
+    if (!token) return null;
+    try {
+      var parts = token.split('.');
+      if (parts.length < 2) return null;
+      var b64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+      while (b64.length % 4) b64 += '=';
+      return JSON.parse(atob(b64));
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function updateUserChip() {
+    var chip = document.getElementById('mchatai-fb-user');
+    if (!chip) return;
+    var claims = decodeIdToken(cachedIdToken);
+    if (claims && claims.exp && claims.exp * 1000 < Date.now()) {
+      // Token expired — treat as signed-out so the chip prompts sign-in again.
+      claims = null;
+      try { sessionStorage.removeItem('mchatai_fb_idtoken'); } catch (e) {}
+      cachedIdToken = null;
+    }
+    // Build the chip contents via DOM APIs rather than innerHTML with nested
+    // quotes — the IIFE string gets concatenated into an HTML response, and
+    // any backslash-escaped quote here breaks the whole widget at parse time
+    // in the browser. Lost an entire deploy to this — don't regress.
+    while (chip.firstChild) chip.removeChild(chip.firstChild);
+    if (claims) {
+      chip.classList.add('signed-in');
+      chip.title = 'Signed in as ' + (claims.email || claims.name || 'you') + ' — click to sign out';
+      var displayName = claims.name || (claims.email ? claims.email.split('@')[0] : 'you');
+      var shortName = displayName.length > 14 ? displayName.slice(0, 13) + '…' : displayName;
+      var initial = displayName.charAt(0).toUpperCase();
+      // Try avatar image first; fall back to initial-letter span on error.
+      if (claims.picture) {
+        var img = document.createElement('img');
+        img.src = claims.picture;
+        img.alt = '';
+        img.referrerPolicy = 'no-referrer';
+        img.addEventListener('error', function () {
+          var fallback = document.createElement('span');
+          fallback.className = 'mchatai-fb-user-avatar-fallback';
+          fallback.textContent = initial;
+          if (img.parentNode) img.parentNode.replaceChild(fallback, img);
+        });
+        chip.appendChild(img);
+      } else {
+        var fallbackSpan = document.createElement('span');
+        fallbackSpan.className = 'mchatai-fb-user-avatar-fallback';
+        fallbackSpan.textContent = initial;
+        chip.appendChild(fallbackSpan);
+      }
+      var nameSpan = document.createElement('span');
+      nameSpan.className = 'mchatai-fb-user-name';
+      nameSpan.textContent = shortName;
+      chip.appendChild(nameSpan);
+    } else {
+      chip.classList.remove('signed-in');
+      chip.title = 'Sign in to enable screenshots';
+      var icon = document.createElement('span');
+      icon.setAttribute('aria-hidden', 'true');
+      icon.textContent = '👤';
+      var label = document.createElement('span');
+      label.className = 'mchatai-fb-user-name';
+      label.textContent = 'Sign in';
+      chip.appendChild(icon);
+      chip.appendChild(label);
+    }
+    // Also refresh the screenshot row so the "Sign in first" CTA flips to
+    // "Attach screenshot" once signed-in (or vice versa).
+    updateScreenshotRow();
+  }
+
+  /* Phase RT.2 follow-up: keep the screenshot button's label + disabled state
+     in sync with sign-in state so users understand why they can't click it. */
+  function updateScreenshotRow() {
+    var row = document.getElementById('mchatai-fb-screenshot-row');
+    var btn = document.getElementById('mchatai-fb-shot-btn');
+    if (!row || !btn) return;
+    if (!screenshotAllowed) {
+      row.style.display = 'none';
+      return;
+    }
+    row.style.display = 'block';
+    if (cachedIdToken) {
+      btn.textContent = '📸 Attach screenshot';
+      btn.disabled = false;
+    } else {
+      btn.textContent = '🔒 Sign in to attach screenshot';
+      btn.disabled = false;  // clickable — click triggers sign-in popup
+    }
+  }
+
+  async function ensureSignedIn() {
+    if (cachedIdToken) return cachedIdToken;
+    // Use Firebase's identitytoolkit OAuth popup flow. We use the
+    // createAuthUri + verifyAssertion pattern via a popup. Keep it minimal —
+    // the user gets a Google chooser and a standard OAuth consent screen.
+    return new Promise(function (resolve, reject) {
+      var popupW = 500, popupH = 600;
+      var left = (screen.width - popupW) / 2;
+      var top = (screen.height - popupH) / 2;
+      // Firebase Hosting has a stock sign-in handler at __/auth/handler. We'll
+      // send the user to a small sign-in page we host at /feedback-signin that
+      // runs Firebase JS SDK, does signInWithPopup(Google), and posts the
+      // idToken back to the opener via postMessage.
+      var popup = window.open(
+        'https://mchatai.com/feedback-signin.html?return=' + encodeURIComponent(location.href),
+        'mchatai-fb-signin',
+        'width=' + popupW + ',height=' + popupH + ',left=' + left + ',top=' + top
+      );
+      if (!popup) {
+        reject(new Error('Sign-in popup blocked. Allow popups and try again.'));
+        return;
+      }
+      var handler = function (ev) {
+        if (ev.origin !== 'https://mchatai.com') return;
+        if (!ev.data || ev.data.type !== 'mchatai-fb-signin') return;
+        window.removeEventListener('message', handler);
+        try { popup.close(); } catch (e) {}
+        if (ev.data.idToken) {
+          storeToken(ev.data.idToken);
+          resolve(ev.data.idToken);
+        } else {
+          reject(new Error(ev.data.error || 'Sign-in canceled'));
+        }
+      };
+      window.addEventListener('message', handler);
+      // Watchdog — if the popup closes without posting, reject after 5 min.
+      var watch = setInterval(function () {
+        if (popup.closed) {
+          clearInterval(watch);
+          window.removeEventListener('message', handler);
+          reject(new Error('Sign-in window closed'));
+        }
+      }, 500);
+    });
+  }
+
+  sendBtn.addEventListener('click', async function () {
+    var text = textArea.value.trim();
+    // Phase RT.1: allow rating-only submissions. Require at least one signal.
+    if (text.length < 4 && selectedRating == null) return;
+
+    sendBtn.disabled = true;
+    sendBtn.textContent = 'Sending…';
+    statusEl.textContent = '';
+
+    // Phase RT.1: resolve a rating context version so iterations don't pool
+    // their ratings across builds. Prefer a meta tag the product set at publish
+    // time; fall back to the HTML's Last-Modified (set by serveUserProject) or
+    // today's date. The server also records server-side createdAt, so this is
+    // only a hint for cross-build grouping.
+    var ratingContextVersion = null;
+    var versionMeta = document.querySelector('meta[name="mchatai-version"]');
+    if (versionMeta && versionMeta.content) {
+      ratingContextVersion = versionMeta.content;
+    } else {
+      ratingContextVersion = new Date().toISOString().slice(0, 10); // YYYY-MM-DD bucket
+    }
+
+    // When only a rating (no text), synthesize a short description so the
+    // ticket still has searchable content in the review queue.
+    var effectiveText = text;
+    if (effectiveText.length < 4 && selectedRating != null) {
+      effectiveText = selectedRating + '-star rating (no comment)';
+    }
+
+    var payload = {
+      title: effectiveText.split('\n')[0].slice(0, 80),
+      description: effectiveText,
+      type: selectedType,
+      severity: selectedType === 'bug' ? 'medium' : 'low',
+      rating: selectedRating,
+      ratingContextVersion: ratingContextVersion,
+      endProductSlug: slug,
+      previewURL: location.href,
+      source: 'web.user-project-widget',
+      metadata: {
+        consoleErrors: __consoleErrors.slice(),
+        userAgent: navigator.userAgent,
+        viewport: window.innerWidth + 'x' + window.innerHeight,
+        shortUid: shortUid,
+      },
+    };
+
+    // Screenshot attached → attach base64 + dimensions. Server will decode,
+    // verify size, upload to GCS, and embed the URL on the ticket.
+    if (capturedScreenshot) {
+      payload.screenshot = {
+        dataURL: capturedScreenshot.dataURL,
+        width: capturedScreenshot.width,
+        height: capturedScreenshot.height,
+      };
+    }
+
+    try {
+      var headers = { 'Content-Type': 'application/json' };
+      // Include auth only if we have a token; screenshot submissions require it
+      // but we let the server reject rather than blocking client-side — cheaper
+      // to handle edge cases (stale token, abuse-disabled account) in one place.
+      if (cachedIdToken) headers['Authorization'] = 'Bearer ' + cachedIdToken;
+
+      var resp = await fetch(API_BASE + '/v1/feedback', {
+        method: 'POST',
+        headers: headers,
+        body: JSON.stringify(payload),
+      });
+      var body = await resp.json().catch(function () { return {}; });
+
+      // Server telling us the user is abuse-disabled → clear token so the next
+      // attempt forces a fresh sign-in. The abuse-disable lives on the UID in
+      // Firestore so a re-sign-in with the same account will re-reject; only
+      // recovery is to sign in with a different account or contact support.
+      if (resp.status === 403 && body && body.reason === 'user-disabled') {
+        clearToken();
+        removeScreenshot();
+      }
+
+      if (resp.ok && body.ok) {
+        statusEl.style.color = '#5db77a';
+        statusEl.textContent = selectedRating != null
+          ? 'Thanks! Your ' + selectedRating + '-star rating was logged.'
+          : 'Thanks! Your feedback was logged.';
+        textArea.value = '';
+        selectedRating = null;
+        paintStars(null);
+        removeScreenshot();
+        setTimeout(closePanel, 1400);
+      } else {
+        statusEl.style.color = '#e26766';
+        statusEl.textContent = body.error || ('Error ' + resp.status);
+      }
+    } catch (err) {
+      statusEl.style.color = '#e26766';
+      statusEl.textContent = 'Network error — try again.';
+    } finally {
+      sendBtn.textContent = 'Send';
+      updateSendState();
+    }
+  });
+})();
+</script></body>
+</html>
