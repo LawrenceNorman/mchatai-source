@@ -1,5 +1,6 @@
 """Gmail Manager — mChatAI microservice wrapping gws CLI (v0.22+)."""
 
+import asyncio
 import json
 import os
 import shutil
@@ -66,6 +67,11 @@ def run_gws_raw(args: List[str], timeout: int = 30) -> Tuple[int, str, str]:
     subcommand family (status/login/logout/setup/export) does NOT accept it
     in gws v0.22+ — they return JSON natively, and adding the flag errors with
     "unexpected argument '--format' found".
+
+    BLOCKING: callers from `async def` handlers MUST wrap this in
+    `asyncio.to_thread(...)` so a long-running gws (like `auth login` which
+    waits up to 5 min for browser consent) doesn't block FastAPI's event
+    loop and starve every other endpoint.
     """
     binary = gws_path()
     if binary is None:
@@ -75,6 +81,14 @@ def run_gws_raw(args: List[str], timeout: int = 30) -> Tuple[int, str, str]:
         cmd.append("--format=json")
     result = subprocess.run(cmd, capture_output=True, text=True, check=False, timeout=timeout)
     return result.returncode, result.stdout.strip(), result.stderr.strip()
+
+
+async def run_gws_raw_async(args: List[str], timeout: int = 30) -> Tuple[int, str, str]:
+    """Async wrapper. Use this from `async def` route handlers — `to_thread`
+    dispatches the blocking subprocess call to a worker thread so other
+    requests on the event loop keep flowing while gws runs.
+    """
+    return await asyncio.to_thread(run_gws_raw, args, timeout)
 
 
 def run_gws(args: List[str], timeout: int = 30) -> Any:
@@ -144,7 +158,7 @@ async def auth_status():
         return AuthStatus(gws_installed=False, authenticated=False, error="gws CLI not installed")
 
     try:
-        rc, stdout, stderr = run_gws_raw(["auth", "status"], timeout=15)
+        rc, stdout, stderr = await run_gws_raw_async(["auth", "status"], timeout=15)
     except FileNotFoundError:
         return AuthStatus(gws_installed=False, authenticated=False, error="gws CLI not installed")
     except subprocess.TimeoutExpired:
@@ -190,28 +204,80 @@ async def auth_status():
 async def auth_login(body: Optional[AuthLoginInput] = None):
     """Run interactive `gws auth login`. Blocks until user completes browser consent.
 
+    Critical mechanic: `gws auth login` does NOT auto-open a browser — it
+    prints "Open this URL in your browser..." followed by the OAuth URL,
+    then waits for the redirect callback. We have to actively pipe stdout,
+    detect the URL, and shell out `open <url>` so the user's browser
+    actually launches. Without that, the user stares at a spinner while gws
+    waits forever for a callback that can never come.
+
+    Uses asyncio subprocess so the FastAPI event loop stays responsive
+    while the 5-minute consent flow runs.
+
     Long-running — Mac client should use a 5-minute timeout for this call.
     Returns the post-login auth status.
     """
-    if gws_path() is None:
+    binary = gws_path()
+    if binary is None:
         raise HTTPException(status_code=503, detail="gws CLI not installed. Install: brew install gws")
 
     payload = body or AuthLoginInput()
-    args: List[str] = ["auth", "login"]
+    args: List[str] = [binary, "auth", "login"]
     if payload.readonly:
         args.append("--readonly")
     if payload.services:
         args.extend(["--services", ",".join(payload.services)])
 
+    proc = await asyncio.create_subprocess_exec(
+        *args,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.STDOUT,
+    )
+
+    output_buffer: List[str] = []
+    url_opened = False
+
+    async def reader_loop() -> None:
+        nonlocal url_opened
+        assert proc.stdout is not None
+        while True:
+            chunk = await proc.stdout.readline()
+            if not chunk:
+                break
+            line = chunk.decode("utf-8", errors="replace").strip()
+            if line:
+                output_buffer.append(line)
+            # gws prints the OAuth URL on its own line. Detect it and shell
+            # out `open` so the user's default browser launches. Without
+            # this the URL just sits in our captured output and the consent
+            # flow can never complete.
+            if not url_opened and line.startswith("https://accounts.google.com/o/oauth2/auth"):
+                try:
+                    await asyncio.create_subprocess_exec("/usr/bin/open", line)
+                    url_opened = True
+                except Exception:
+                    # Fall back to leaving the URL in the response body so
+                    # the Mac can open it client-side as a last resort.
+                    pass
+
     try:
-        rc, _stdout, stderr = run_gws_raw(args, timeout=300)
-    except subprocess.TimeoutExpired:
-        raise HTTPException(status_code=504, detail="gws auth login timed out after 5 minutes")
-    except FileNotFoundError:
-        raise HTTPException(status_code=503, detail="gws CLI not installed")
+        # 300s == gws's effective timeout. If the user doesn't complete
+        # consent in 5 min, gws gives up; we kill the subprocess too.
+        await asyncio.wait_for(reader_loop(), timeout=300)
+        rc = await proc.wait()
+    except asyncio.TimeoutError:
+        proc.kill()
+        await proc.wait()
+        raise HTTPException(
+            status_code=504,
+            detail="Sign-in timed out after 5 minutes. If a browser tab didn't open, check your default-browser setting and try again.",
+        )
 
     if rc != 0:
-        raise HTTPException(status_code=500, detail=f"gws auth login failed: {(stderr or '')[:300]}")
+        # Show the last few lines of output — gws's own error message is
+        # almost always more useful than just the exit code.
+        tail = "\n".join(output_buffer[-12:])[-500:]
+        raise HTTPException(status_code=500, detail=f"gws auth login failed (exit {rc}): {tail}")
 
     return await auth_status()
 
@@ -283,8 +349,11 @@ async def install_gws():
             detail="Neither Homebrew nor npm is available on this machine. Install Homebrew from https://brew.sh and try again.",
         )
 
+    # to_thread keeps the FastAPI event loop responsive while npm/brew runs.
+    # Without it, every other endpoint stalls behind the install for up to 5 min.
     try:
-        result = subprocess.run(
+        result = await asyncio.to_thread(
+            subprocess.run,
             cmd,
             capture_output=True,
             text=True,
@@ -314,7 +383,7 @@ async def auth_logout():
     if gws_path() is None:
         raise HTTPException(status_code=503, detail="gws CLI not installed")
     try:
-        rc, _stdout, stderr = run_gws_raw(["auth", "logout"], timeout=15)
+        rc, _stdout, stderr = await run_gws_raw_async(["auth", "logout"], timeout=15)
     except FileNotFoundError:
         raise HTTPException(status_code=503, detail="gws CLI not installed")
     if rc != 0:
