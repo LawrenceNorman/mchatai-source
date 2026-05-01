@@ -1,6 +1,6 @@
 {
   "packID": "macos-app",
-  "version": 3,
+  "version": 4,
   "displayName": "macOS App Generation Wisdom",
   "description": "Rules for generating executable macOS apps (SwiftUI / AppKit) via Swift Playground. Focused on making the generated binary actually appear as a visible, interactive window \u2014 not a headless background process.",
   "categories": [
@@ -139,7 +139,58 @@
         "REQUIRED: `Sources/MyApp/Resources/.gitkeep` (or any file) AND `resources: [.process(\"Resources\")]` in Package.swift \u2014 both or neither.",
         "WRONG: `resources: [.process(\"Resources\")]` in Package.swift but NO `Sources/MyApp/Resources/` directory on disk. SwiftPM warns + Bundle.module returns nil at runtime."
       ]
+    },
+    {
+      "id": "mac-011",
+      "rule": "When Package.swift's executableTarget uses `path: \"Sources/<TargetName>\"` (nested), EVERY .swift file in your project MUST live at `Sources/<TargetName>/*.swift` \u2014 NEVER at `Sources/*.swift` (one level shallower). SwiftPM compiles files only at the configured target path; @main files at the wrong depth get IGNORED during compile but the linker still searches for `_<TargetName>_main` symbol \u2192 'Undefined symbols for architecture arm64' link error. Pick ONE layout per project: either flat (`path: \"Sources\"` + files at `Sources/*.swift`) or nested (`path: \"Sources/<Target>\"` + files at `Sources/<Target>/*.swift`). Don't mix.",
+      "why": "Hit by Wave-4 round-3 Adventure-reboot 2026-04-30: LLM emitted both `Sources/AtariApp.swift` (@main = AdventureRebootApp) AND `Sources/AdventureReboot/AdventureRebootApp.swift` (@main = AdventureRebootApp duplicate). Package.swift had `path: \"Sources/AdventureReboot\"` so only the nested files compiled. The orphan AtariApp.swift at the shallow depth got ignored by SwiftPM but its @main was the one the auto-fix loop kept regenerating. Result: 'Undefined symbols ... _AdventureReboot_main' link error that the auto-fix loop can never repair (it's a topology bug, not a code bug). Same family hit Bomberman wave-4-round-2 (`@main` file at `Sources/BombermanApp.swift` but target path was `Sources/Bomberman/`).",
+      "severity": "critical",
+      "appliesTo": "macOSApp",
+      "examples": [
+        "RIGHT (flat layout): Package.swift `.executableTarget(name: \"MyApp\", path: \"Sources\")` + ALL files at `Sources/*.swift` (no subdirectory).",
+        "RIGHT (nested layout): Package.swift `.executableTarget(name: \"MyApp\", path: \"Sources/MyApp\")` + ALL files at `Sources/MyApp/*.swift` including the @main App struct file.",
+        "WRONG: target `path: \"Sources/MyApp\"` but @main file at `Sources/MyAppApp.swift` (one level shallower). Linker error.",
+        "WRONG: target `path: \"Sources\"` but you create a `Sources/MyApp/` subdirectory and put files there. Linker error (target compiles 0 files)."
+      ]
+    },
+    {
+      "id": "mac-012",
+      "rule": "GameplayKit API: use `GKGoal(toAvoid: <obstacles>, maxPredictionTime: <s>)` \u2014 NOT `GKGoal(toAvoidObstacles: ..., maxPredictionTime: ...)`. The `toAvoidObstacles:` initializer was renamed to `toAvoid:` in modern SDKs (macOS 12+). Same renaming applied to `GKGoal(toFleeAgent:)`, `GKGoal(toSeekAgent:)`, etc. \u2014 those are the current names; the older `toFleeFromAgent:` / `toSeekTargetAgent:` form gives an 'has been renamed' error.",
+      "why": "Hit by Wave-4 round-3 Coleco Football 2026-04-30: GameScene.swift:330 used `GKGoal(toAvoidObstacles: obstacles, maxPredictionTime: 1.5)`. Compiler error: 'init(toAvoidObstacles:maxPredictionTime:) has been renamed to init(toAvoid:maxPredictionTime:)'. Auto-fix can repair this in one edit but burns a turn + masks the underlying API knowledge gap. Spec the canonical form in wisdom so the LLM emits it on first try.",
+      "severity": "high",
+      "appliesTo": "macOSApp",
+      "examples": [
+        "RIGHT: `let goal = GKGoal(toAvoid: [obstacle], maxPredictionTime: 1.5)`",
+        "RIGHT: `let goal = GKGoal(toFleeAgent: pacmanAgent)` (NOT toFleeFromAgent)",
+        "RIGHT: `let goal = GKGoal(toSeekAgent: ballCarrierAgent)` (NOT toSeekTargetAgent)",
+        "WRONG: `let goal = GKGoal(toAvoidObstacles: [obstacle], maxPredictionTime: 1.5)` \u2014 compiler error 'has been renamed to init(toAvoid:maxPredictionTime:)'."
+      ]
+    },
+    {
+      "id": "mac-013",
+      "rule": "NEVER `import SwiftUICore` \u2014 that is a PRIVATE Apple framework, not part of the public SDK. Linker rejects it with 'cannot link directly with SwiftUICore because product being built is not an allowed client of it'. If you reach for SwiftUICore for some advanced internal type, find the public SwiftUI alternative or simply use what's in `import SwiftUI` + `import AppKit`. Same applies to other underscored / Core-suffixed private frameworks (`SwiftUI/_SwiftUI_AppKit`, `_SwiftUIShims`, etc.) \u2014 never import them directly.",
+      "why": "Hit by Wave-4 round-3 Adventure-reboot 2026-04-30: link error 'Could not parse or use implicit file SwiftUICore.tbd: cannot link directly with SwiftUICore because product being built is not an allowed client of it'. The LLM probably reached for it after seeing it in some StackOverflow answer; the public SwiftUI surface always covers what's needed for an app target.",
+      "severity": "high",
+      "appliesTo": "macOSApp",
+      "examples": [
+        "RIGHT: `import SwiftUI` + `import AppKit`",
+        "WRONG: `import SwiftUICore` \u2014 link error, will not build.",
+        "WRONG: `@_implementationOnly import SwiftUICore` \u2014 same error. Underscored imports of Apple internals are rejected at link time even if the compile passes."
+      ]
+    },
+    {
+      "id": "mac-014",
+      "rule": "SpriteKit games MUST wire all game-event callbacks in the `update(_ currentTime:)` loop or via `didBeginContact` — do NOT write standalone score/collect/eat/collision functions without calling them. Every class that 'owns' a game-event function MUST also be the place it is called. Common missing wires: (1) Pac-Man / collect-dot: `GameScene.update` must call `if scene.tiles[tile.row][tile.col] == .dot { scene.dotNodes[tile.row][tile.col]?.removeFromParent(); scene.gameState.eatDot() }` after `pacMan.update`. (2) Ghost-player collision: after `ghost.update`, check `distanceSq(ghost.position, pacMan.position) < collisionRadius*collisionRadius`. (3) Power-pellet: same check against pellet node positions. (4) Ghost-eat: check if ghost is frightened AND close to Pac-Man. If you generate a `GameState.eatDot()` method but never call it from the update loop, the score never changes and dots never disappear.",
+      "why": "Wave-4 round-3 macOS Pac-Man shipped with correct GameState methods (eatDot, eatPowerPellet, eatGhost) and correct dot/ghost node structures, but PacManNode.update() had zero calls back to GameState and zero dot-removal code. Result: dots never disappeared, ghosts were never triggered. The LLM correctly wrote the individual building blocks but missed the glue. Rule filed 2026-05-01.",
+      "severity": "high",
+      "appliesTo": "macOSApp",
+      "examples": [
+        "RIGHT: In GameScene.update after pacMan.update(deltaTime:in:self): check tile at pacMan's current grid position, if .dot: remove dotNode, call gameState.eatDot(), set tiles[row][col] = .empty",
+        "WRONG: Having a `gameState.eatDot()` function that is never called from anywhere in update()",
+        "RIGHT: In GameScene.update after ghost.update: `if dist(ghost.position, pacMan.position) < threshold { if ghost.isFrightened { ghost.isEaten = true; gameState.eatGhost() } else { handlePacManCaught() } }`",
+        "WRONG: Writing handlePacManCaught() as a standalone method that requires an external caller but having no caller in the update loop"
+      ]
     }
   ],
-  "_last_updated": "2026-04-30"
+  "_last_updated": "2026-05-01"
 }
