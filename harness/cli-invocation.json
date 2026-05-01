@@ -1,7 +1,7 @@
 {
   "$schema": "https://mchatai.com/schemas/cli-invocation-v1.json",
   "version": "2.0.0",
-  "last_updated": "2026-04-17",
+  "last_updated": "2026-05-01",
   "description": "Per-CLI-backend invocation policy + optimization config for mChatAIShell dev sessions. Each CLI has unique capabilities (MCP, sub-agents, model selection, context management) — this file is the single source of truth for how we configure them.",
 
   "defaults": {
@@ -45,6 +45,27 @@
     "copyStarterCode": true,
     "agentInstructionsTemplate": "asset-gathering-instructions",
     "description": "Phase AQ.GATHER: copy matched asset pack JSON + starter code into workDir before CLI session. The CLI agent reads these files directly instead of parsing prompt-injected strings. agentInstructionsTemplate references a prompt template in mchatai-source/harness/prompts/."
+  },
+
+  "contextSanitization": {
+    "gemini": {
+      "stripLeadingBlockquotes": true,
+      "skipInsideCodeFences": true,
+      "description": "Workaround for Gemini CLI ImportProcessor parsing failures on blockquote-led context lines in injected GEMINI.md. Tune here via git (no shell/app rebuild required)."
+    }
+  },
+
+  "modelCompatibility": {
+    "codex": {
+      "enabled": true,
+      "unsupportedModelErrorSubstring": "not supported when using Codex with a ChatGPT account",
+      "fallbackModel": "codex-mini-latest",
+      "fallbackByModel": {
+        "o4-mini": "codex-mini-latest",
+        "o3": "codex-mini-latest"
+      },
+      "description": "If Codex rejects a selected model for the current auth mode, retry once with this fallback. Tunable via git so model-compat incidents are content-only patches."
+    }
   },
 
   "streamJsonMapping": {
