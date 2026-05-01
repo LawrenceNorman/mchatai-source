@@ -1,7 +1,7 @@
 {
-  "version": 9,
+  "version": 10,
   "surface": "aiwizard",
-  "description": "Context recipe for AIWizard mini-app (single-file HTML) generation. Lighter than the macOS-app recipe — no framework scaffold (mini-apps are self-contained HTML). v2 added active-memory layer (Phase MA.3). v3 added excludeTitlePatterns to drop CCAA / AgentRuntime / ScheduledJob log spam from retrieval results. v4 (2026-04-18): added wisdom-framework layer at priority 85 with its own 3500-token budget so framework-specific packs (card-games, arcade-games, visual-quality, etc.) get a dedicated slot instead of competing with universal rules in a single 2500-token pool. v5 (2026-04-19): bumped wisdom-framework to 11000 tokens (~44000 chars) because 3500 tokens was truncating card-games + visual-quality packs combined (30k raw → ~45k rendered) — rules late in the resolve order (cg-011, cg-012, cg-013, cg-020) were being chopped off at '…[truncated]' and the LLM never saw them. v6 (2026-04-19): added layout-reference layer at priority 80 — picks a curated HTML skeleton from assets/layout-references/ matching the goal (hearts/spades/bridge → trick-taking-hearts.html). LLMs follow concrete code patterns far more reliably than they follow 1200-char prose rules; the evaluator can also grep for preserved structural ids. Root cause of the Hearts 'rules visible but ignored' plateau: rules describe, references demonstrate. v7 (2026-04-20): Phase DF — pinned frontend-skill wisdom pack at priority 82 between wisdom-framework (85) and layout-reference (80). Unlike wisdom-framework which is keyword-gated, this pack always loads for miniApp turns so taste rules (hero budget, one-composition, no-cards-by-default, motion recipe, copy discipline) land even when the goal prose contains zero design keywords.",
+  "description": "Context recipe for AIWizard mini-app (single-file HTML) generation. Lighter than the macOS-app recipe — no framework scaffold (mini-apps are self-contained HTML). v2 added active-memory layer (Phase MA.3). v3 added excludeTitlePatterns to drop CCAA / AgentRuntime / ScheduledJob log spam from retrieval results. v4 (2026-04-18): added wisdom-framework layer at priority 85 with its own 3500-token budget so framework-specific packs (card-games, arcade-games, visual-quality, etc.) get a dedicated slot instead of competing with universal rules in a single 2500-token pool. v5 (2026-04-19): bumped wisdom-framework to 11000 tokens (~44000 chars) because 3500 tokens was truncating card-games + visual-quality packs combined (30k raw → ~45k rendered) — rules late in the resolve order (cg-011, cg-012, cg-013, cg-020) were being chopped off at '…[truncated]' and the LLM never saw them. v6 (2026-04-19): added layout-reference layer at priority 80 — picks a curated HTML skeleton from assets/layout-references/ matching the goal (hearts/spades/bridge → trick-taking-hearts.html). LLMs follow concrete code patterns far more reliably than they follow 1200-char prose rules; the evaluator can also grep for preserved structural ids. Root cause of the Hearts 'rules visible but ignored' plateau: rules describe, references demonstrate. v7 (2026-04-20): Phase DF — pinned frontend-skill wisdom pack at priority 82 between wisdom-framework (85) and layout-reference (80). Unlike wisdom-framework which is keyword-gated, this pack always loads for miniApp turns so taste rules (hero budget, one-composition, no-cards-by-default, motion recipe, copy discipline) land even when the goal prose contains zero design keywords. v10 (2026-05-01): Phase SR.WEB initial `web-components` layer at priority 83. This injects a small, recipe-matched slice of the Lego-block component catalog (starting with Asteroids-family arcade modules) so the generator can assemble from reusable engine/entity modules instead of rewriting game-loop and collision primitives from scratch.",
   "layers": [
     {
       "id": "active-memory",
@@ -38,6 +38,16 @@
       "loader": "wisdom-framework",
       "priority": 85,
       "maxTokens": 11000
+    },
+    {
+      "id": "web-components",
+      "loader": "web-components",
+      "priority": 83,
+      "maxTokens": 9000,
+      "options": {
+        "maxComponents": 8,
+        "maxSourceBytes": 36000
+      }
     },
     {
       "id": "frontend-skill-guidance",

@@ -1,0 +1,542 @@
+{
+  "$schema_version": "1.0.0",
+  "last_updated": "2026-05-01",
+  "notes": "Phase SR.WEB initial catalog. This manifest is the source of truth for reusable vanilla ES6 mini-app Lego blocks. AIWizard should compose from the shipped components below first, then use the planned recipes as guidance for which additional blocks belong in each game family. Prefer local bundling into published mini-app ZIPs; CDN loading is a secondary development option.",
+  "library": {
+    "id": "framework.web-components",
+    "name": "Web Mini-App Lego Blocks",
+    "platform": "web",
+    "runtime": "vanilla-es6-modules",
+    "preferredDistribution": "bundled",
+    "alternateDistribution": "cdn",
+    "importStyle": "relative-esm",
+    "entryPoints": [
+      "core/GameManager.js",
+      "core/Physics2D.js",
+      "entities/Entity.js",
+      "entities/SpaceShip.js",
+      "entities/Asteroid.js",
+      "entities/Projectile.js",
+      "ui/ScoreBoard.js",
+      "resources/Swatches.js"
+    ]
+  },
+  "categories": [
+    {
+      "id": "core",
+      "displayName": "Core Engines",
+      "description": "Loop, timing, motion, and collision primitives shared by many mini-app genres."
+    },
+    {
+      "id": "entities",
+      "displayName": "Entities",
+      "description": "Composable gameplay actors such as ships, paddles, cards, tiles, and player avatars."
+    },
+    {
+      "id": "ui",
+      "displayName": "UI",
+      "description": "Reusable overlays, HUD widgets, and control surfaces that can be re-skinned per swatch."
+    },
+    {
+      "id": "resources",
+      "displayName": "Resources",
+      "description": "Swatches, textures, audio, and other shared presentation assets."
+    }
+  ],
+  "components": [
+    {
+      "id": "core.game-manager",
+      "name": "GameManager",
+      "category": "core",
+      "path": "core/GameManager.js",
+      "exports": [
+        "GameManager"
+      ],
+      "status": "ready",
+      "summary": "requestAnimationFrame baseplate with delta time, pause/resume, resize support, and entity lifecycle management.",
+      "tags": [
+        "engine",
+        "loop",
+        "canvas",
+        "arcade",
+        "miniapp"
+      ],
+      "contracts": {
+        "entityUpdate": "entity.update(dt, gameManager)",
+        "entityDraw": "entity.draw(ctx, gameManager)",
+        "entityLifecycle": [
+          "entity.onAdd(gameManager)",
+          "entity.onRemove(gameManager)"
+        ]
+      },
+      "goodFits": [
+        "asteroids",
+        "pong",
+        "frogger",
+        "alien-abduction",
+        "tower-defense",
+        "platformers"
+      ]
+    },
+    {
+      "id": "core.physics2d",
+      "name": "Physics2D",
+      "category": "core",
+      "path": "core/Physics2D.js",
+      "exports": [
+        "Physics2D",
+        "getAABB",
+        "getCircle",
+        "integrateMotion",
+        "intersectsAABB",
+        "intersectsCircle",
+        "findAABBCollisions",
+        "findCircleCollisions"
+      ],
+      "status": "ready",
+      "summary": "Simple motion integrator plus AABB and circle collision helpers for lightweight 2D arcade and platformer logic.",
+      "tags": [
+        "physics",
+        "collision",
+        "motion",
+        "2d"
+      ],
+      "contracts": {
+        "bodyFields": [
+          "x",
+          "y",
+          "width",
+          "height",
+          "vx",
+          "vy",
+          "ax",
+          "ay",
+          "radius"
+        ],
+        "optionalFields": [
+          "maxSpeed",
+          "maxSpeedX",
+          "maxSpeedY",
+          "centered",
+          "bounds",
+          "hitbox"
+        ]
+      },
+      "goodFits": [
+        "asteroids",
+        "pong",
+        "mario-style-platformers",
+        "tower-defense-projectiles",
+        "top-down-arcade"
+      ]
+    },
+    {
+      "id": "ui.scoreboard",
+      "name": "ScoreBoard",
+      "category": "ui",
+      "path": "ui/ScoreBoard.js",
+      "exports": [
+        "ScoreBoard"
+      ],
+      "status": "ready",
+      "summary": "DOM HUD component for current score and best score, with mChatAI bridge persistence and localStorage fallback.",
+      "tags": [
+        "hud",
+        "score",
+        "high-score",
+        "storage",
+        "bridge-aware"
+      ],
+      "contracts": {
+        "bridge": [
+          "window.mChatAI.storage.get(key)",
+          "window.mChatAI.storage.set(key, value)"
+        ],
+        "dom": "Creates a root element and optional mount target for CSS-driven theming."
+      },
+      "goodFits": [
+        "asteroids",
+        "alien-abduction",
+        "pong",
+        "word-quest",
+        "minesweeper-99",
+        "arcade-score-challenges"
+      ]
+    },
+    {
+      "id": "entities.entity",
+      "name": "Entity",
+      "category": "entities",
+      "path": "entities/Entity.js",
+      "exports": [
+        "Entity"
+      ],
+      "status": "ready",
+      "summary": "Lightweight gameplay base class with motion fields, world wrapping helpers, and reusable lifecycle hooks.",
+      "tags": [
+        "entity",
+        "gameplay",
+        "base-class",
+        "arcade"
+      ],
+      "contracts": {
+        "constructor": "new Entity({ x, y, vx, vy, width, height, radius, wrap })",
+        "lifecycle": [
+          "update(dt, gameManager)",
+          "draw(ctx, gameManager)",
+          "destroy()"
+        ]
+      },
+      "goodFits": [
+        "asteroids",
+        "alien-abduction",
+        "pong",
+        "frogger",
+        "top-down-arcade"
+      ]
+    },
+    {
+      "id": "entities.space-ship",
+      "name": "SpaceShip",
+      "category": "entities",
+      "path": "entities/SpaceShip.js",
+      "exports": [
+        "SpaceShip"
+      ],
+      "status": "ready",
+      "summary": "Asteroids-style player ship with thrust, rotation, drag, wrapping, and projectile spawning.",
+      "tags": [
+        "player",
+        "ship",
+        "asteroids",
+        "arcade"
+      ],
+      "contracts": {
+        "controls": [
+          "setInputState({ left, right, thrust, fire })",
+          "createProjectile({ speed, ttl })"
+        ],
+        "tuning": [
+          "turnSpeed",
+          "thrustPower",
+          "drag",
+          "maxSpeed"
+        ]
+      },
+      "goodFits": [
+        "asteroids",
+        "alien-abduction",
+        "space shooter",
+        "vector arcade"
+      ]
+    },
+    {
+      "id": "entities.asteroid",
+      "name": "Asteroid",
+      "category": "entities",
+      "path": "entities/Asteroid.js",
+      "exports": [
+        "Asteroid",
+        "ASTEROID_LEVELS"
+      ],
+      "status": "ready",
+      "summary": "Jagged drifting asteroid body with spin, size levels, and split helpers for Asteroids-like games.",
+      "tags": [
+        "asteroid",
+        "enemy",
+        "arcade",
+        "vector"
+      ],
+      "contracts": {
+        "sizes": [
+          "large",
+          "medium",
+          "small"
+        ],
+        "helpers": [
+          "split()",
+          "buildPolygonPointCount(level)"
+        ]
+      },
+      "goodFits": [
+        "asteroids",
+        "space shooter",
+        "vector arcade"
+      ]
+    },
+    {
+      "id": "entities.projectile",
+      "name": "Projectile",
+      "category": "entities",
+      "path": "entities/Projectile.js",
+      "exports": [
+        "Projectile"
+      ],
+      "status": "ready",
+      "summary": "Short-lived arcade projectile with velocity, optional wrapping, and compact vector rendering.",
+      "tags": [
+        "projectile",
+        "bullet",
+        "arcade",
+        "combat"
+      ],
+      "contracts": {
+        "constructor": "new Projectile({ x, y, angle, speed, ttl, wrap })",
+        "fields": [
+          "ttl",
+          "speed",
+          "length",
+          "color"
+        ]
+      },
+      "goodFits": [
+        "asteroids",
+        "alien-abduction",
+        "top-down-arcade"
+      ]
+    },
+    {
+      "id": "resources.swatches",
+      "name": "Swatches",
+      "category": "resources",
+      "path": "resources/Swatches.js",
+      "exports": [
+        "WEB_COMPONENT_SWATCHES",
+        "ASTEROIDS_SWATCHES",
+        "getSwatchByID",
+        "applySwatchVariables"
+      ],
+      "status": "ready",
+      "summary": "Theme tokens and CSS variable helper for re-skinning gameplay HUDs and canvases without changing logic.",
+      "tags": [
+        "swatch",
+        "theme",
+        "design tokens",
+        "reskin"
+      ],
+      "contracts": {
+        "css": [
+          "applySwatchVariables(element, swatch, { prefix })",
+          "getSwatchByID(id)"
+        ],
+        "families": [
+          "retro-neon",
+          "vector-noir",
+          "sunset-arcade"
+        ]
+      },
+      "goodFits": [
+        "asteroids",
+        "alien-abduction",
+        "pong",
+        "miniapp ui",
+        "reskinning"
+      ]
+    }
+  ],
+  "compositionRecipes": [
+    {
+      "id": "recipe.arcade-top-down",
+      "name": "Arcade Top-Down",
+      "keywords": [
+        "asteroids",
+        "alien",
+        "space shooter",
+        "vector arcade",
+        "centipede",
+        "top-down arcade"
+      ],
+      "templateIDs": [
+        "asteroids-clone",
+        "games.arcade-games.alien-abduction.v1",
+        "games.arcade-games.centipede.v1"
+      ],
+      "existingGames": [
+        "asteroids",
+        "alien-abduction",
+        "arcade-centipede"
+      ],
+      "starterComponents": [
+        "core.game-manager",
+        "core.physics2d",
+        "entities.entity",
+        "entities.space-ship",
+        "entities.asteroid",
+        "entities.projectile",
+        "ui.scoreboard",
+        "resources.swatches"
+      ],
+      "assemblyNotes": [
+        "Treat the shipped engine and entity modules as canonical building blocks. Write glue code around them instead of rewriting movement, wrapping, and projectile logic from scratch.",
+        "If the final artifact still needs to be single-file HTML, preserve clear module boundaries as separated sections or classes inside the HTML so modify-existing turns can recover the same structure later."
+      ],
+      "requiredNow": [
+        "core.game-manager",
+        "core.physics2d",
+        "entities.entity",
+        "entities.space-ship",
+        "entities.asteroid",
+        "entities.projectile",
+        "ui.scoreboard",
+        "resources.swatches"
+      ],
+      "plannedNext": [
+        "entities.ufo-enemy",
+        "resources.audio-manager",
+        "ui.virtual-joystick"
+      ]
+    },
+    {
+      "id": "recipe.arcade-grid",
+      "name": "Arcade Grid",
+      "keywords": [
+        "frogger",
+        "pacman",
+        "maze",
+        "grid arcade"
+      ],
+      "templateIDs": [
+        "games.arcade-games.frogger.v1",
+        "games.arcade-games.pacman.v1"
+      ],
+      "existingGames": [
+        "frogger",
+        "pacman"
+      ],
+      "requiredNow": [
+        "core.game-manager"
+      ],
+      "plannedNext": [
+        "entities.grid-board",
+        "entities.grid-mover",
+        "entities.path-follower",
+        "ui.scoreboard",
+        "resources.swatches"
+      ]
+    },
+    {
+      "id": "recipe.platformer",
+      "name": "Platformer",
+      "keywords": [
+        "platformer",
+        "mario",
+        "jump",
+        "side scroller"
+      ],
+      "templateIDs": [
+        "games.platformer.plumber.v1"
+      ],
+      "existingGames": [
+        "plumber",
+        "pyramid-hopper"
+      ],
+      "requiredNow": [
+        "core.game-manager",
+        "core.physics2d"
+      ],
+      "plannedNext": [
+        "entities.platformer-player",
+        "entities.platform-tilemap",
+        "entities.camera-follow",
+        "resources.texture-manager"
+      ]
+    },
+    {
+      "id": "recipe.turn-based-board-card",
+      "name": "Turn-Based Board and Card",
+      "keywords": [
+        "blackjack",
+        "poker",
+        "chess",
+        "checkers",
+        "board game",
+        "card game"
+      ],
+      "templateIDs": [
+        "games.card-games.blackjack.v1",
+        "texas-holdem-poker",
+        "games.board-games.checkers-mono.v1",
+        "chess-game-board"
+      ],
+      "existingGames": [
+        "blackjack",
+        "texas-holdem-poker",
+        "checkers-mono",
+        "playable-chess"
+      ],
+      "requiredNow": [
+        "ui.scoreboard"
+      ],
+      "plannedNext": [
+        "core.turn-based-manager",
+        "entities.card",
+        "entities.deck",
+        "entities.board8x8",
+        "entities.piece",
+        "resources.swatches"
+      ]
+    },
+    {
+      "id": "recipe.puzzle-grid",
+      "name": "Puzzle Grid",
+      "keywords": [
+        "minesweeper",
+        "match three",
+        "candy match",
+        "mastermind",
+        "word quest",
+        "grid puzzle"
+      ],
+      "templateIDs": [
+        "games.puzzle-games.2048.v1",
+        "match-three-puzzle-game",
+        "mastermind-color-guessing-game",
+        "word-puzzle-game"
+      ],
+      "existingGames": [
+        "minesweeper-99",
+        "candy-match",
+        "mastermind",
+        "word-quest"
+      ],
+      "requiredNow": [
+        "ui.scoreboard"
+      ],
+      "plannedNext": [
+        "core.turn-based-manager",
+        "entities.grid-board",
+        "entities.letter-grid",
+        "entities.tile-swapper",
+        "entities.match3-logic",
+        "entities.keyboard-input"
+      ]
+    }
+  ],
+  "goldenAssemblies": [
+    {
+      "id": "assembly.asteroids.vector-core",
+      "name": "Asteroids Golden Assembly",
+      "summary": "Runnable Asteroids example composed from the shared engine, entity, swatch, and HUD modules.",
+      "recipeID": "recipe.arcade-top-down",
+      "templateIDs": [
+        "asteroids-clone"
+      ],
+      "keywords": [
+        "asteroids",
+        "space shooter",
+        "vector arcade",
+        "wrap around"
+      ],
+      "files": [
+        "examples/asteroids/index.html",
+        "examples/asteroids/asteroids.css",
+        "examples/asteroids/main.js",
+        "examples/asteroids/AsteroidsGame.js"
+      ],
+      "notes": [
+        "Use this as the canonical wiring example for how GameManager, SpaceShip, Asteroid, Projectile, ScoreBoard, and Swatches fit together.",
+        "Preserve the module boundaries when generating variants. Change rules, UI, theme, or enemy mix before collapsing the code back into one giant game loop."
+      ]
+    }
+  ]
+}
