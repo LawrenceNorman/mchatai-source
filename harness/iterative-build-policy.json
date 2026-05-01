@@ -1,0 +1,51 @@
+{
+  "version": 1,
+  "lastUpdated": "2026-04-30",
+  "_source_of_truth": true,
+  "_comment": "Phase 0d.36 #2 (2026-04-30) — iterative-build mode for games. Lawrence-flagged: 'games are not great, they have a lot of issues, hoping that if we take smaller chunks and are more gradual the quality will go up'. Instead of generating a full 16KB game in one shot, the wizard generates in stages: skeleton (small) → core logic → polish. Each stage has a smaller scope + clearer success criteria. Auto-play between stages catches regressions early.\n\nLoader: IterativeBuildContent.swift (Phase 0d.36 #2). Edit + push + (relaunch OR refreshMchataisourceCache) ships changes with no Swift rebuild.",
+
+  "enabled": true,
+  "_enabledComment": "Master switch. Set false to roll back to single-shot generation if iterative-build regresses quality on any genre.",
+
+  "triggerKeywords": [
+    "snake", "tetris", "platformer", "arcade", "asteroids",
+    "pacman", "pac-man", "pac man", "frogger", "mario", "breakout",
+    "pong", "tower defense", "td game", "centipede", "space invader",
+    "space invaders", "tic tac toe", "tic-tac-toe", "checkers",
+    "chess", "connect four", "mastermind", "word puzzle", "match three",
+    "match-3", "candy crush", "minesweeper", "simon"
+  ],
+  "_triggerKeywordsComment": "Substring match (case-insensitive) on goal text. Match → route to iterative-build. Otherwise standard single-shot generation. Mirrors AutoPlayPolicyContent.keyboardSynthesisTriggerKeywords with extras (chess/checkers/etc) since iterative-build helps board games too, not just movement-arcade.",
+
+  "stages": [
+    {
+      "id": "skeleton",
+      "displayName": "Skeleton",
+      "maxTokens": 4000,
+      "instructionAppend": "STAGE 1 OF 2 — SKELETON ONLY. Generate the GAME STRUCTURE: UI layout (canvas + score + controls), input handlers (keyboard + touch), and an EMPTY game loop with a 'Press Start' screen. DO NOT implement game logic yet. DO NOT implement collision, scoring, win/lose, or AI yet. The output should be ~150-300 lines of HTML/CSS/JS — a working interactive shell that says 'press Start' and shows the canvas. Stage 2 will add the game logic on top of this skeleton in the next turn.",
+      "_instructionAppendComment": "Appended to the standard generator prompt. Constrains the FIRST turn to a small, focused skeleton output. By limiting scope, the model gets fewer things wrong + each component is in one logical place."
+    },
+    {
+      "id": "complete",
+      "displayName": "Game Logic + Polish",
+      "maxTokens": 16000,
+      "instructionAppend": "STAGE 2 OF 2 — IMPLEMENT THE GAME. The previous turn produced a skeleton (UI + input + empty loop). NOW implement the FULL game on top of that skeleton: game logic per the genre's invariants (you have these from the wisdom pack injection above), collision + scoring + win/lose conditions, AI opponents (if applicable), persistence (best score in localStorage), polish (animations, sound via Web Audio API). The output replaces the skeleton with the COMPLETE working game. Reference the previous turn's structure — keep the same IDs, style classes, and layout. Just fill in the empty handlers and add what's missing.",
+      "_instructionAppendComment": "Stage 2 takes the previous output as base + augments. The wizard's existing autofix path runs after Stage 2 to catch any remaining gaps."
+    }
+  ],
+  "_stagesComment": "Two-stage flow for v1. Could expand to 3 (skeleton → core → polish) later. Stage 1's output becomes part of Stage 2's prompt context (similar to how StepwiseRetry feeds previous-attempt-summaries into the next attempt).",
+
+  "betweenStageCheck": {
+    "_comment": "What to do between stages. v1: just inspect that Stage 1 produced parseable output before kicking off Stage 2. v2 could add full auto-play + autofix between stages.",
+    "requireParseable": true,
+    "requireBasicStructure": true,
+    "_requireBasicStructureComment": "After Stage 1, verify the output contains <canvas> AND <button> with start-related text. If not, treat as Stage 1 failure → autofix Stage 1 BEFORE moving to Stage 2."
+  },
+
+  "autoFixPolicy": {
+    "_comment": "Whether autofix can also run between stages, after Stage 2, or both.",
+    "afterStage1": false,
+    "afterStage2": true,
+    "_rationale": "v1: only autofix the final output (after Stage 2). Autofixing Stage 1 separately would multiply Ollama time without much win because Stage 1 is intentionally minimal. If Stage 1 has structural issues, Stage 2 can correct them as part of its 'fill in' work."
+  }
+}
