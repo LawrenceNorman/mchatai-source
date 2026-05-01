@@ -1,9 +1,12 @@
 {
   "packID": "macos-app",
-  "version": 2,
+  "version": 3,
   "displayName": "macOS App Generation Wisdom",
-  "description": "Rules for generating executable macOS apps (SwiftUI / AppKit) via Swift Playground. Focused on making the generated binary actually appear as a visible, interactive window — not a headless background process.",
-  "categories": ["platform", "macos"],
+  "description": "Rules for generating executable macOS apps (SwiftUI / AppKit) via Swift Playground. Focused on making the generated binary actually appear as a visible, interactive window \u2014 not a headless background process.",
+  "categories": [
+    "platform",
+    "macos"
+  ],
   "keywords": [
     "macos app",
     "macos application",
@@ -23,19 +26,19 @@
     {
       "id": "mac-001",
       "rule": "Every SwiftUI @main macOS app MUST call NSApplication.shared.setActivationPolicy(.regular) AND NSApplication.shared.activate(ignoringOtherApps: true) in its init(). Import AppKit at the top of the file.",
-      "why": "When the binary is launched directly (e.g. `swift run` or `.build/.../MyApp`) instead of from a .app bundle, macOS treats it as a command-line tool. The default activation policy gives no Dock tile, no menu bar presence, and windows that stay hidden behind every other app with no way to bring them forward. Users repeatedly report 'the app ran but nothing showed up' because the window exists but is invisible. This is the SINGLE most common failure of generated macOS apps — and it wastes the whole point of generating them.",
+      "why": "When the binary is launched directly (e.g. `swift run` or `.build/.../MyApp`) instead of from a .app bundle, macOS treats it as a command-line tool. The default activation policy gives no Dock tile, no menu bar presence, and windows that stay hidden behind every other app with no way to bring them forward. Users repeatedly report 'the app ran but nothing showed up' because the window exists but is invisible. This is the SINGLE most common failure of generated macOS apps \u2014 and it wastes the whole point of generating them.",
       "severity": "critical",
       "appliesTo": "macOSApp",
       "examples": [
-        "REQUIRED pattern: `@main struct MyApp: App { init() { NSApplication.shared.setActivationPolicy(.regular); NSApplication.shared.activate(ignoringOtherApps: true) }; var body: some Scene { WindowGroup { ContentView() } } }` — include `import AppKit` at the top",
+        "REQUIRED pattern: `@main struct MyApp: App { init() { NSApplication.shared.setActivationPolicy(.regular); NSApplication.shared.activate(ignoringOtherApps: true) }; var body: some Scene { WindowGroup { ContentView() } } }` \u2014 include `import AppKit` at the top",
         "WRONG (window hidden forever): `@main struct MyApp: App { var body: some Scene { WindowGroup { ContentView() } } }`",
-        "Real incident 2026-04-23: Zombie Tower Defense built + launched (PID 33983, sleeping on GUI event loop), log empty, no errors — but no window visible on desktop. Missing activation-policy calls was the cause."
+        "Real incident 2026-04-23: Zombie Tower Defense built + launched (PID 33983, sleeping on GUI event loop), log empty, no errors \u2014 but no window visible on desktop. Missing activation-policy calls was the cause."
       ]
     },
     {
       "id": "mac-002",
-      "rule": "The root ContentView (or equivalent root SwiftUI view) MUST declare an explicit .frame(minWidth:, minHeight:) so the window opens at a usable size. Recommended minimum 600×400; games/dashboards usually want 800×600 or larger.",
-      "why": "SwiftUI on macOS opens windows at the intrinsic content size of the root view. A VStack of text has no intrinsic size, so the window can open at 50×50 pt in the top-left corner — easy to miss, easy to mistake for 'no window opened'. Pair with .windowResizability(.contentSize) on the Scene so the user can grow the window.",
+      "rule": "The root ContentView (or equivalent root SwiftUI view) MUST declare an explicit .frame(minWidth:, minHeight:) so the window opens at a usable size. Recommended minimum 600\u00d7400; games/dashboards usually want 800\u00d7600 or larger.",
+      "why": "SwiftUI on macOS opens windows at the intrinsic content size of the root view. A VStack of text has no intrinsic size, so the window can open at 50\u00d750 pt in the top-left corner \u2014 easy to miss, easy to mistake for 'no window opened'. Pair with .windowResizability(.contentSize) on the Scene so the user can grow the window.",
       "severity": "important",
       "appliesTo": "macOSApp",
       "examples": [
@@ -46,49 +49,97 @@
     {
       "id": "mac-003",
       "rule": "Print a one-line launch confirmation to stdout from init() so the wizard's CLI runner and the user can both confirm the process reached its GUI event loop.",
-      "why": "Compiles-successfully ≠ window-appears. A stdout print from init() is a deterministic signal that the @main struct was actually instantiated (not just compiled), and gives the user visible confirmation in the terminal even while they alt-tab hunting for the window.",
+      "why": "Compiles-successfully \u2260 window-appears. A stdout print from init() is a deterministic signal that the @main struct was actually instantiated (not just compiled), and gives the user visible confirmation in the terminal even while they alt-tab hunting for the window.",
       "severity": "recommended",
       "appliesTo": "macOSApp",
       "examples": [
-        "init() { NSApplication.shared.setActivationPolicy(.regular); NSApplication.shared.activate(ignoringOtherApps: true); print(\"[MyApp] launched — window should be visible\") }"
+        "init() { NSApplication.shared.setActivationPolicy(.regular); NSApplication.shared.activate(ignoringOtherApps: true); print(\"[MyApp] launched \u2014 window should be visible\") }"
       ]
     },
     {
       "id": "mac-005",
       "rule": "The `@main` struct's containing target name MUST match the executableTarget name in Package.swift, AND the file containing `@main` MUST live at `Sources/<TargetName>/<anything>.swift`. Mismatches cause linker errors like `\"_<TargetName>_main\", referenced from: _main in command-line-aliases-file; ld: symbol(s) not found for architecture arm64`.",
-      "why": "Swift Package Manager generates `_<TargetName>_main` as the linkage symbol for executableTarget entries. If `Package.swift` declares `executableTarget(name: \"ZombieTD\", path: \"Sources/ZombieTD\")` but the actual `@main` struct is inside `Sources/Here/HereApp.swift`, or the executable target is named `Here` while the `@main` file lives in `Sources/ZombieTD/`, the linker looks for `_ZombieTD_main` and fails. This is not a Swift compile error — it's a link-time error, so auto-fix cycles that read Swift diagnostics don't catch it. Every generated macOS app must have (a) one executableTarget, (b) target name matches the `@main` struct's directory, (c) that directory contains exactly one `@main` annotation. Rename the target OR move the file — pick one and be consistent.",
+      "why": "Swift Package Manager generates `_<TargetName>_main` as the linkage symbol for executableTarget entries. If `Package.swift` declares `executableTarget(name: \"ZombieTD\", path: \"Sources/ZombieTD\")` but the actual `@main` struct is inside `Sources/Here/HereApp.swift`, or the executable target is named `Here` while the `@main` file lives in `Sources/ZombieTD/`, the linker looks for `_ZombieTD_main` and fails. This is not a Swift compile error \u2014 it's a link-time error, so auto-fix cycles that read Swift diagnostics don't catch it. Every generated macOS app must have (a) one executableTarget, (b) target name matches the `@main` struct's directory, (c) that directory contains exactly one `@main` annotation. Rename the target OR move the file \u2014 pick one and be consistent.",
       "severity": "blocking",
       "appliesTo": "macOSApp",
       "examples": [
         "CORRECT: Package.swift has `.executableTarget(name: \"ZombieTD\", path: \"Sources/ZombieTD\")` AND `Sources/ZombieTD/ZombieTDApp.swift` contains `@main struct ZombieTDApp: App { ... }`",
-        "WRONG (linker error): Package.swift says target name `Here` but `@main` struct lives in `Sources/ZombieTD/ZombieTDApp.swift` — linker looks for `_Here_main`, finds nothing. Fix: rename the target to `ZombieTD` in Package.swift (`name: \"ZombieTD\"`, `path: \"Sources/ZombieTD\"`) and keep the directory + filename in sync.",
+        "WRONG (linker error): Package.swift says target name `Here` but `@main` struct lives in `Sources/ZombieTD/ZombieTDApp.swift` \u2014 linker looks for `_Here_main`, finds nothing. Fix: rename the target to `ZombieTD` in Package.swift (`name: \"ZombieTD\"`, `path: \"Sources/ZombieTD\"`) and keep the directory + filename in sync.",
         "Rule of thumb: the directory name under `Sources/`, the `executableTarget.name` in Package.swift, and the file containing `@main` should all agree on the same concept (e.g., all say `ZombieTD` or all say `TowerDefense`). A single mismatch breaks the linker.",
         "Real incident 2026-04-23: Zombie TD session failed repeatedly with `\"_Here_main\", referenced from: _main in command-line-aliases-file` because the Package target was named `Here` while the @main file was `ZombieTDApp.swift` under a `ZombieTD/` directory."
       ]
     },
     {
       "id": "mac-004",
-      "rule": "After a successful `swift build`, produce a proper `.app` bundle at `./build/<slug>-v<NNNN>.app` inside the working directory — NOT the bare executable at `.build/arm64-apple-macosx/debug/<binary>`. Use 4-digit zero-padded version numbers (v0001, v0002, …) and the kebab-case slug of the app name.",
-      "why": "mChatAI+ runs an FSEventStream watcher on the session's working folder. When it sees a `.app` appear at `./build/<slug>-v<NNNN>.app`, it auto-promotes that bundle into `MacOSAppManager` as a new numbered version and flips the session's UI to show an 'Open App' launcher. A bare executable at `.build/...` is invisible to users — they can't double-click to launch it, the window activation rules differ from a proper bundle, and the session sits in 'failed' state even though the build worked. Every macOS end-product type (mini-app, macOS app, future types) shares the `v%04d` filename scheme so directory listings sort correctly and users see a consistent naming convention.",
+      "rule": "After a successful `swift build`, produce a proper `.app` bundle at `./build/<slug>-v<NNNN>.app` inside the working directory \u2014 NOT the bare executable at `.build/arm64-apple-macosx/debug/<binary>`. Use 4-digit zero-padded version numbers (v0001, v0002, \u2026) and the kebab-case slug of the app name.",
+      "why": "mChatAI+ runs an FSEventStream watcher on the session's working folder. When it sees a `.app` appear at `./build/<slug>-v<NNNN>.app`, it auto-promotes that bundle into `MacOSAppManager` as a new numbered version and flips the session's UI to show an 'Open App' launcher. A bare executable at `.build/...` is invisible to users \u2014 they can't double-click to launch it, the window activation rules differ from a proper bundle, and the session sits in 'failed' state even though the build worked. Every macOS end-product type (mini-app, macOS app, future types) shares the `v%04d` filename scheme so directory listings sort correctly and users see a consistent naming convention.",
       "severity": "critical",
       "appliesTo": "macOSApp",
       "examples": [
         "After `swift build` succeeds, run:\n```bash\nmkdir -p build\nNEXT=$(ls build 2>/dev/null | grep -oE 'v[0-9]{4}' | sort | tail -1 | sed 's/v//')\nNEXT=$(printf 'v%04d' $((${NEXT:-0} + 1)))\nSLUG=$(basename \"$(pwd)\" | sed 's/[^a-z0-9-]/-/g')\nAPP_DIR=\"build/${SLUG}-${NEXT}.app\"\nmkdir -p \"$APP_DIR/Contents/MacOS\"\ncp .build/arm64-apple-macosx/debug/<BinaryName> \"$APP_DIR/Contents/MacOS/<BinaryName>\"\ncat > \"$APP_DIR/Contents/Info.plist\" <<'EOF'\n<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n<plist version=\"1.0\">\n<dict>\n  <key>CFBundleExecutable</key><string><BinaryName></string>\n  <key>CFBundleIdentifier</key><string>com.mchatai.generated.<slug></string>\n  <key>CFBundleName</key><string><DisplayName></string>\n  <key>CFBundlePackageType</key><string>APPL</string>\n  <key>CFBundleShortVersionString</key><string>1.0</string>\n  <key>LSMinimumSystemVersion</key><string>14.0</string>\n</dict>\n</plist>\nEOF\nopen \"$APP_DIR\"\n```",
-        "Bundle path format: `build/zombie-tower-defense-v0001.app`, next build → `build/zombie-tower-defense-v0002.app`, etc.",
-        "NEVER ship just `.build/arm64-apple-macosx/debug/BinaryName` as the end-product — that's a Swift Package build artifact, not a launchable macOS app."
+        "Bundle path format: `build/zombie-tower-defense-v0001.app`, next build \u2192 `build/zombie-tower-defense-v0002.app`, etc.",
+        "NEVER ship just `.build/arm64-apple-macosx/debug/BinaryName` as the end-product \u2014 that's a Swift Package build artifact, not a launchable macOS app."
       ]
     },
     {
       "id": "mac-006",
-      "rule": "Use the canonical scaffold at `assets/scaffolds/macos-swiftpm-app/` as the starting structure for every macOSApp generation. Copy its Package.swift, Sources/<TargetName>/<TargetName>App.swift, ContentView.swift, build_app.sh, and Info.plist.template — substituting <TargetName>, <slug>, and <DisplayName> tokens — instead of authoring these files from scratch each time. Read the scaffold's CONTEXT.md before generating.",
-      "why": "Every macOS app session that has shipped successfully reproduces the same five files in the same shape: a Package.swift with one executableTarget, a `<TargetName>App.swift` with activation-policy + window-promotion in init(), a ContentView.swift with explicit minWidth/minHeight, a build_app.sh that wraps the binary into `build/<slug>-v<NNNN>.app`, and an Info.plist. Sessions that hand-roll these from scratch repeatedly hit the same failures: `_<TargetName>_main` linker errors (mac-005), invisible windows (mac-001), 50×50pt windows (mac-002), missing .app bundles (mac-004). The scaffold encodes every previous fix; using it is faster AND more reliable. The window-promotion `Timer.scheduledTimer` flip-to-floating-then-back trick in particular is non-obvious and hard to rediscover.",
+      "rule": "Use the canonical scaffold at `assets/scaffolds/macos-swiftpm-app/` as the starting structure for every macOSApp generation. Copy its Package.swift, Sources/<TargetName>/<TargetName>App.swift, ContentView.swift, build_app.sh, and Info.plist.template \u2014 substituting <TargetName>, <slug>, and <DisplayName> tokens \u2014 instead of authoring these files from scratch each time. Read the scaffold's CONTEXT.md before generating.",
+      "why": "Every macOS app session that has shipped successfully reproduces the same five files in the same shape: a Package.swift with one executableTarget, a `<TargetName>App.swift` with activation-policy + window-promotion in init(), a ContentView.swift with explicit minWidth/minHeight, a build_app.sh that wraps the binary into `build/<slug>-v<NNNN>.app`, and an Info.plist. Sessions that hand-roll these from scratch repeatedly hit the same failures: `_<TargetName>_main` linker errors (mac-005), invisible windows (mac-001), 50\u00d750pt windows (mac-002), missing .app bundles (mac-004). The scaffold encodes every previous fix; using it is faster AND more reliable. The window-promotion `Timer.scheduledTimer` flip-to-floating-then-back trick in particular is non-obvious and hard to rediscover.",
       "severity": "important",
       "appliesTo": "macOSApp",
       "examples": [
         "First step of any macOSApp generation: `cat assets/scaffolds/macos-swiftpm-app/CONTEXT.md` (or read it via mchatai-source) to confirm the file layout and token-replacement rules.",
-        "Then copy the scaffold tree into the workDir — replacing `__TargetName__` directory + filename markers with the chosen PascalCase target name, and `<TargetName>` / `<slug>` / `<DisplayName>` string tokens inside file bodies.",
+        "Then copy the scaffold tree into the workDir \u2014 replacing `__TargetName__` directory + filename markers with the chosen PascalCase target name, and `<TargetName>` / `<slug>` / `<DisplayName>` string tokens inside file bodies.",
         "Customize ContentView.swift with the actual app UI; leave Package.swift, <TargetName>App.swift's activation-policy block, and build_app.sh structurally untouched."
       ]
+    },
+    {
+      "id": "mac-007",
+      "rule": "Every custom Notification.Name you reference (like `.newGame`, `.newMission`, `.resetTerrain`) MUST be declared in EXACTLY ONE place via `extension Notification.Name { static let newGame = Notification.Name(\"newGame\") }`. Put this declaration in your top-level `<App>App.swift` file (alongside `@main struct App`) so all targets have access. Do NOT spread declarations across multiple files (you'll get duplicate-definition errors). Better still: AVOID NotificationCenter entirely for menu-driven actions \u2014 use SwiftUI CommandMenu Button(action:) closures that call your game-state methods directly.",
+      "why": "Recurring compile failure across wave-4 macOSApp canaries: LLM declares `NotificationCenter.default.post(name: .newGame, ...)` but never declares the corresponding `extension Notification.Name { static let newGame = ... }`. Compiler error: `type 'NSNotification.Name?' has no member 'newGame'`. Because the post site and the listener site are often in different files (App.swift posts on Cmd+N, GameScene.swift listens), the LLM's attention drops the declaration entirely. Hit by Bomberman 2026-04-30 (`.newGame`) + Lunar Lander 2026-04-30 (`.newMission` + `.resetTerrain`). Auto-fix couldn't resolve in 2 attempts because the fix requires understanding the full file map, not a local edit.",
+      "severity": "critical",
+      "appliesTo": "macOSApp",
+      "examples": [
+        "REQUIRED in <App>App.swift: `import SwiftUI\\nimport AppKit\\n\\nextension Notification.Name {\\n    static let newGame = Notification.Name(\"newGame\")\\n    static let pauseGame = Notification.Name(\"pauseGame\")\\n}\\n\\n@main struct MyGameApp: App { ... }`",
+        "BETTER (no NotificationCenter at all): `CommandMenu(\"Game\") { Button(\"New Game\") { gameState.newGame() }.keyboardShortcut(\"n\") }` \u2014 direct method call on a @StateObject or @Bindable game-state singleton. NotificationCenter is overkill for menu actions in a SwiftUI app.",
+        "WRONG (compile fail): `Button(\"New Game\") { NotificationCenter.default.post(name: .newGame, object: nil) }` without the `extension Notification.Name { static let newGame = ... }` declaration."
+      ]
+    },
+    {
+      "id": "mac-008",
+      "rule": "If your code uses `Bundle.module` (e.g. `Bundle.module.url(forResource:withExtension:)`), Package.swift's executable target MUST include `resources: [.process(\"Resources\")]` AND a `Sources/<Target>/Resources/<file>` directory must exist with the actual file. Otherwise `Bundle.module` does NOT exist as a symbol and you get `type 'Bundle' has no member 'module'`. If you do NOT actually need bundled resources, hard-code your data inline (in a Swift `let` array/dictionary) instead of reaching for Bundle.module.",
+      "why": "Bundle.module is a synthesized symbol that SwiftPM only emits when the target's resources: clause is non-empty. The LLM frequently writes `Bundle.module.url(forResource:)` casually (it's the right pattern in PRINCIPLE) but doesn't add the matching Package.swift resources directive AND doesn't create the Resources/ directory with the actual file. Result: cryptic `'Bundle' has no member 'module'` compile error. Hit by Spelling-Bee wave-4 2026-04-30 (auto-fix recovered after adding Resources/dictionary.txt + the resources directive).",
+      "severity": "high",
+      "appliesTo": "macOSApp",
+      "examples": [
+        "REQUIRED in Package.swift: `.executableTarget(name: \"MyApp\", path: \"Sources/MyApp\", resources: [.process(\"Resources\")])` \u2014 note BOTH the directive AND a real Resources/ dir at Sources/MyApp/Resources/ with the file you load.",
+        "REQUIRED in Sources/MyApp/Resources/dictionary.txt: actual file content (one word per line, etc.). Empty directories don't trigger SwiftPM's bundle synthesis.",
+        "BETTER (no resources at all): `private static let dictionary: Set<String> = [\"RANG\", \"RING\", ...]` inline. ~5KB of words is fine inline; don't reach for Bundle.module unless you have >50KB of asset data."
+      ]
+    },
+    {
+      "id": "mac-009",
+      "rule": "Avoid LARGE multi-line string literals (tables, dictionaries, embedded data, level layouts >500 chars) inside Swift source. If you have data that's >500 chars total, put it in `Sources/<Target>/Resources/<file>.json` and load via Bundle.module \u2014 never hard-code as a multi-line `\"\"\"raw string\"\"\"`. Multi-line raw strings spanning 200+ lines are the #1 cause of `unterminated string literal` compile errors in generator output: the LLM loses track of the closing `\"\"\"` boundary on long files OR a mid-string `\\\\` gets double-escaped during stream-json deserialization.",
+      "why": "Two compile-error patterns share this root cause: (a) `unterminated string literal` repeated at consecutive lines (Marble Madness wave-4 GameScene.swift line 533/534 hit this \u2014 LLM ran out of attention before closing the `\"\"\"`), (b) `'c' invalid digit` on hex-color literals adjacent to a broken raw string (the parser's recovery picks up garbage). Auto-fix typically can't repair these because the fixer rewrites larger and larger sections trying to find the boundary. Filed pattern in followup_macos_app_recurring_compile_errors.md.",
+      "severity": "high",
+      "appliesTo": "macOSApp",
+      "examples": [
+        "WRONG (likely to break): `let levelData = \"\"\"\\n#####\\n#...#\\n... 200 lines ...\\n\"\"\"`",
+        "RIGHT: put the level in `Sources/MyApp/Resources/level1.txt`, load via `let url = Bundle.module.url(forResource: \"level1\", withExtension: \"txt\")!; let data = try String(contentsOf: url, encoding: .utf8)`",
+        "RIGHT for small data (<100 lines): `private static let levels: [String] = [\\\"#####\\\", \\\"#...#\\\", ...]` \u2014 array of short strings is robust because each `\"` boundary is local."
+      ]
+    },
+    {
+      "id": "mac-010",
+      "rule": "When Package.swift declares `resources: [.process(\"Resources\")]`, you MUST create the Resources directory at `Sources/<Target>/Resources/` and place at least one file in it. SwiftPM warns `Invalid Resource 'Resources': File not found.` at build time when the directive is set but the directory is empty or absent. The build still succeeds (warning, not error) but downstream Bundle.module lookups return nil, and the harness's auto-fix loop can mis-classify this transient warning as a hard failure (\"Build reported failure but no compile errors were detected\"). If you don't need a Resources/ dir, omit the `resources:` parameter entirely.",
+      "why": "Filed in followup_macos_app_recurring_compile_errors.md from Spelling-Bee wave-4 sequence. Belt-and-suspenders rule paired with mac-008.",
+      "severity": "medium",
+      "appliesTo": "macOSApp",
+      "examples": [
+        "REQUIRED: `Sources/MyApp/Resources/.gitkeep` (or any file) AND `resources: [.process(\"Resources\")]` in Package.swift \u2014 both or neither.",
+        "WRONG: `resources: [.process(\"Resources\")]` in Package.swift but NO `Sources/MyApp/Resources/` directory on disk. SwiftPM warns + Bundle.module returns nil at runtime."
+      ]
     }
-  ]
+  ],
+  "_last_updated": "2026-04-30"
 }
