@@ -1,0 +1,32 @@
+{
+  "$schema_version": "1.0.0",
+  "_phase": "TT.3 — Cost cap for Phase TT chunk runner",
+  "_note": "Hard ceiling on automated decomposition spend. The ChunkRunner aborts when projected_cost_usd exceeds maxUsdPerDecomposition, OR when the per-step time hits maxSecondsPerStep. Hot-reloadable via refreshMchataisourceCache. Every wizard send tracks token usage via w1Metrics; the runner sums those before each step. If w1 is unavailable, falls back to maxStepsHard alone.",
+
+  "version": "2026-04-30",
+
+  "maxUsdPerDecomposition": 0.50,
+  "maxStepsHard": 5,
+  "maxSecondsPerStep": 1800,
+  "maxSecondsTotal": 5400,
+
+  "perArtifactOverrides": {
+    "_note": "Per-artifact-type overrides. Most artifacts use the global default; macOSApp gets a higher per-step ceiling because Swift compilation + auto-fix consume more wall-time than HTML generation.",
+    "macOSApp": {
+      "maxSecondsPerStep": 2400,
+      "maxSecondsTotal": 7200
+    },
+    "miniApp": {
+      "maxSecondsPerStep": 1500,
+      "maxSecondsTotal": 4500
+    }
+  },
+
+  "abortBehavior": {
+    "_note": "What ChunkRunner does when a budget tripwire fires.",
+    "onUsdExceeded": "Stop after current step; emit user message 'Stopped after step N — cost cap $X reached. Use diagDecomposeNow with --maxUsd to retry with a higher cap.' Do NOT install partial work as the final artifact.",
+    "onSecondsExceeded": "Same as onUsdExceeded but cite the time-cap.",
+    "onStepFailed": "Skip remaining steps. Surface step-N's failure as the session result. Treat earlier successful steps as a partial-stair the user can resume from.",
+    "ifNoBudgetData": "Proceed with maxStepsHard alone. No usd/second tripwires fire."
+  }
+}
