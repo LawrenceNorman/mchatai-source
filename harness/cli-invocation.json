@@ -71,8 +71,19 @@
   "toolAccess": {
     "gemini": {
       "approvalMode": "yolo",
-      "description": "Headless (-p) Gemini runs should set explicit approval mode so edit/shell tools are registered in non-interactive sessions."
+      "noBrowser": true,
+      "description": "Headless (-p) Gemini runs should set explicit approval mode so edit/shell tools are registered in non-interactive sessions. noBrowser=true avoids local OAuth callback timeouts in background sessions."
     }
+  },
+
+  "authPreflight": {
+    "enabled": true,
+    "requireAPIKeyForGemini": true,
+    "requireAPIKeyForCodex": true,
+    "requireAPIKeyForPythonMicroservice": true,
+    "requireCLIBinaryOnPATH": true,
+    "runVersionProbe": true,
+    "description": "Fail fast before session planning if required CLI binary or credential is missing. Keeps failures deterministic and avoids launching long-running sessions that cannot succeed."
   },
 
   "cliVersionPolicy": {
