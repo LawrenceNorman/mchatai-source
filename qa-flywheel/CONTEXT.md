@@ -1,21 +1,34 @@
 ---
 id: qa-flywheel
 kind: meta
-purpose: Versioned catalog of test goals driving the QAFlywheel — forces breadth across every artifact type + difficulty level so Phase LEARN's rubric ledger + proposer see enough diverse failure modes to learn from.
+purpose: Versioned per-domain catalogs of test goals driving the QAFlywheel — forces breadth across every artifact type + difficulty level so Phase LEARN's rubric ledger + proposer see enough diverse failure modes to learn from.
 owner: platform
-last_touched: 2026-04-23
+last_touched: 2026-04-30
 ---
 
-# qa-flywheel — diverse test-goal catalog
+# qa-flywheel — diverse test-goal catalogs (per-domain split)
 
 ## Purpose
 
-Every entry in [`qaflywheel-goal-catalog.json`](qaflywheel-goal-catalog.json) is a prompt that gets fired at AIWizard (or a pipeline / agent / skill) by the [`qaflywheel_run_catalog.py`](../../mchatai_macOS/scripts/qaflywheel_run_catalog.py) harness. (Renamed 2026-04-30 from `goal-catalog.json` to namespace-isolate from third-party templates.) Results flow into:
+Each QAFlywheel campaign owns its own catalog file at `qaflywheel-<domain>-catalog.json`. Entries from all catalogs get fired at AIWizard (or a pipeline / agent / skill) by the [`qaflywheel_run_catalog.py`](../../mchatai_macOS/scripts/qaflywheel_run_catalog.py) harness. Results flow into:
 
 1. A **per-run JSONL log** (`mchatai_macOS/scripts/qaflywheel_runs/*.jsonl`) capturing status, duration, `capabilities_found/missing`, and the `mchatai_source_head` SHA so rubric regressions can be bisected.
 2. The existing **Phase LEARN rubric ledger** — `diagRubricTrend proposerNow` after each run cycle queues wisdom-rule proposals; `diagLearnPR dryRun:false` opens the draft PR to this repo.
 
-The catalog is checked into `mchatai-source` on purpose: it hot-reloads via `refreshMchataisourceCache` and evolves alongside the content it tests. If we ever want the app itself to surface example prompts to users, the same file is the source.
+The catalogs are checked into `mchatai-source` on purpose: they hot-reload via `refreshMchataisourceCache` and evolve alongside the content they test.
+
+## Active catalogs (as of 2026-04-30)
+
+| File | Entries | Scope |
+|---|---|---|
+| [`qaflywheel-macos-arcade-catalog.json`](qaflywheel-macos-arcade-catalog.json) | 65 | macOSApp native arcade games (.app bundles via Swift Package + SpriteKit/SceneKit) |
+| [`qaflywheel-mini-app-catalog.json`](qaflywheel-mini-app-catalog.json) | 172 | miniApp (HTML mini-apps, single-file index.html WKWebView previews) |
+
+**Naming convention:** `qaflywheel-<domain>-catalog.json` where `<domain>` describes the campaign's surface (NOT the agent's name). Future domains: `qaflywheel-ios-touch-catalog.json`, `qaflywheel-mobile-puzzle-catalog.json`, etc. Full convention reference: [`memory/reference_qaflywheel_catalog_namespace_convention.md`](../../.claude/projects/.../memory/reference_qaflywheel_catalog_namespace_convention.md).
+
+**Loaders auto-merge:** Swift `SelfLearnCoordinator.loadCatalog()` and Python `qaflywheel_run_catalog.py` both load the full set + concatenate entries. Validator (`qaflywheel_validate_catalog.py`) checks each catalog and verifies cross-catalog ID uniqueness.
+
+**DO NOT create a bare `goal-catalog.json`.** That namespace is reserved for third-party templates that don't belong in the QAFlywheel catalogs.
 
 ## Coverage target (v1.0 ≈ 400 entries)
 
