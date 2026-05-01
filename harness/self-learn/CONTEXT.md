@@ -58,7 +58,7 @@ Composition rule: primary strategy fills most slots; quota strategies claim name
 - **Phase DF** (taste rubric) — provides the per-generation signal that feeds LEARN.
 - **Fix 1** (L1 fast-path in `complexity-tiers.json`) — makes SelfLearn affordable. Without L1 fast-path, 12 entries/night ≈ 3 hours of CLI time. With it, same 12 ≈ ~12 min wall-clock.
 - **Fix T1** (TaskLocal requestID) — prerequisite for SelfLearn's internal parallelism. The coordinator will fire entries with concurrency >1 once T1 is validated.
-- **QA Flywheel catalog** (`qa-flywheel/goal-catalog.json`) — the source of entries. SelfLearn IS the nightly driver of this catalog.
+- **QA Flywheel catalog** (`qa-flywheel/qaflywheel-goal-catalog.json`) — the source of entries. SelfLearn IS the nightly driver of this catalog.
 
 ## Tunable via PR, not rebuild
 
