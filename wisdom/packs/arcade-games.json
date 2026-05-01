@@ -1,8 +1,8 @@
 {
   "packID": "arcade-games",
-  "version": 5,
+  "version": 6,
   "displayName": "Arcade Game Guidelines",
-  "description": "Quality rules for arcade-style action games — sprite anatomy (ag-016), attack animations (ag-017), keyboard input, rAF loop, collision, off-screen spawn (ag-018). Covers named-game canaries: Frogger, Pac-Man, Joust, Defender, Galaxian, Asteroids, Centipede, Q*bert, Kaboom, BurgerTime, Lode Runner, Spy Hunter, Pole Position, Skee-Ball, Pinball, Tempest, Adventure, Boxing, Snake, Breakout, Pong, Tetris.",
+  "description": "Quality rules for arcade-style action games \u2014 sprite anatomy (ag-016), attack animations (ag-017), keyboard input, rAF loop, collision, off-screen spawn (ag-018). Covers named-game canaries: Frogger, Pac-Man, Joust, Defender, Galaxian, Asteroids, Centipede, Q*bert, Kaboom, BurgerTime, Lode Runner, Spy Hunter, Pole Position, Skee-Ball, Pinball, Tempest, Adventure, Boxing, Snake, Breakout, Pong, Tetris.",
   "categories": [
     "arcade"
   ],
@@ -80,7 +80,7 @@
     {
       "id": "ag-004",
       "rule": "Implement proper collision detection. For rectangles use AABB, for circles use distance checks.",
-      "why": "Bad collision detection — objects passing through each other or false collisions — ruins gameplay.",
+      "why": "Bad collision detection \u2014 objects passing through each other or false collisions \u2014 ruins gameplay.",
       "severity": "critical",
       "appliesTo": "arcade",
       "examples": [
@@ -89,7 +89,7 @@
     },
     {
       "id": "ag-005",
-      "rule": "Snake game MUST grow correctly when eating food, and MUST end when the snake hits a wall or its own body. The snake body segments MUST follow the head exactly — each segment moves to where the previous segment was. Food MUST appear at a random empty cell, never on the snake body.",
+      "rule": "Snake game MUST grow correctly when eating food, and MUST end when the snake hits a wall or its own body. The snake body segments MUST follow the head exactly \u2014 each segment moves to where the previous segment was. Food MUST appear at a random empty cell, never on the snake body.",
       "why": "Common Snake bugs: snake passes through walls instead of dying, body segments don't follow correctly creating gaps, food spawns on snake body, score doesn't increase on eat.",
       "severity": "critical",
       "appliesTo": "arcade",
@@ -102,18 +102,18 @@
     {
       "id": "ag-006",
       "rule": "Minesweeper MUST implement: left-click to reveal a cell, right-click to toggle flag, flood-fill auto-reveal for empty cells (cells with 0 adjacent mines), correct mine count in adjacent cells (1-8), first-click safety (never a mine on the first click), win condition (all non-mine cells revealed).",
-      "why": "Minesweeper without flood-fill is essentially unplayable. First-click safety is essential — dying on move 1 is not fun.",
+      "why": "Minesweeper without flood-fill is essentially unplayable. First-click safety is essential \u2014 dying on move 1 is not fun.",
       "severity": "critical",
       "appliesTo": "arcade",
       "examples": [
         "Flood-fill: when revealing a 0-cell, recursively reveal all 8 neighbours",
         "First-click: place mines AFTER first click, excluding clicked cell and its neighbours",
-        "Flag: right-click toggles 🚩, flagged cells cannot be revealed by left-click"
+        "Flag: right-click toggles \ud83d\udea9, flagged cells cannot be revealed by left-click"
       ]
     },
     {
       "id": "ag-007",
-      "rule": "Connect Four MUST alternate turns between Red and Yellow, check for 4-in-a-row in all 4 directions (horizontal, vertical, diagonal ↗, diagonal ↘) after every move, highlight the winning 4 chips, and prevent moves into full columns.",
+      "rule": "Connect Four MUST alternate turns between Red and Yellow, check for 4-in-a-row in all 4 directions (horizontal, vertical, diagonal \u2197, diagonal \u2198) after every move, highlight the winning 4 chips, and prevent moves into full columns.",
       "why": "Games that don't check diagonals allow undetected wins. Overflowing a full column corrupts board state.",
       "severity": "critical",
       "appliesTo": "arcade",
@@ -125,7 +125,7 @@
     },
     {
       "id": "ag-008",
-      "rule": "Battleship MUST have a 10×10 grid for each player. Ship placement (5 ships: Carrier×5, Battleship×4, Cruiser×3, Submarine×3, Destroyer×2) must validate no overlaps and no out-of-bounds. AI opponent fires intelligently after a hit (target adjacent cells). Show hit/miss on the opponent's board with contrasting colors.",
+      "rule": "Battleship MUST have a 10\u00d710 grid for each player. Ship placement (5 ships: Carrier\u00d75, Battleship\u00d74, Cruiser\u00d73, Submarine\u00d73, Destroyer\u00d72) must validate no overlaps and no out-of-bounds. AI opponent fires intelligently after a hit (target adjacent cells). Show hit/miss on the opponent's board with contrasting colors.",
       "why": "Battleship without hit-targeting AI is trivially easy. Ship placement validation prevents impossible board states.",
       "severity": "critical",
       "appliesTo": "arcade",
@@ -144,13 +144,13 @@
       "examples": [
         "Use AudioContext to play: 261Hz (green), 329Hz (red), 392Hz (yellow), 523Hz (blue)",
         "Disable buttons while showing sequence: buttons.forEach(b => b.disabled = true)",
-        "Show current round: 'Round 5 — sequence of 5 colors'"
+        "Show current round: 'Round 5 \u2014 sequence of 5 colors'"
       ]
     },
     {
       "id": "ag-010",
       "rule": "Arcade games MUST save high scores to localStorage AND submit to the global leaderboard on game-over using `window.mChatAI?.leaderboard?.submit({ score: finalScore, metadata: { level, lives_lost } })`. Show the user's global rank on the game-over screen. Render a top-10 leaderboard table with names and scores.",
-      "why": "Local high scores vanish on reinstall and provide no competitive incentive. Leaderboard turns 'I beat my score' into 'I beat everyone'. Zero-config with the mChatAI bridge — 3 lines of code.",
+      "why": "Local high scores vanish on reinstall and provide no competitive incentive. Leaderboard turns 'I beat my score' into 'I beat everyone'. Zero-config with the mChatAI bridge \u2014 3 lines of code.",
       "severity": "important",
       "appliesTo": "arcade",
       "examples": [
@@ -162,13 +162,13 @@
     {
       "id": "ag-011",
       "rule": "Atari/retro-style games MUST use a pixel-art aesthetic: chunky pixels rendered on a canvas using integer coordinates, a limited palette of 4-16 bold colors (no gradients or anti-aliasing), blocky sans-serif font (monospace or bitmap-style), and scanline or CRT overlay (optional but strongly recommended). The canvas should fill the viewport with `imageSmoothingEnabled = false`.",
-      "why": "Atari-style games that use modern smooth CSS gradients, rounded corners, or system fonts break the retro illusion completely. The pixelated aesthetic IS the product — without it the game feels like a bad clone rather than a loving tribute.",
+      "why": "Atari-style games that use modern smooth CSS gradients, rounded corners, or system fonts break the retro illusion completely. The pixelated aesthetic IS the product \u2014 without it the game feels like a bad clone rather than a loving tribute.",
       "severity": "critical",
       "appliesTo": "arcade",
       "examples": [
-        "ctx.imageSmoothingEnabled = false; — must be set on every canvas resize",
-        "Canvas scale: draw at 320×240 internal resolution, CSS-scale up to fill the screen",
-        "Palette: use Atari 2600-style colors — black #000, white #FFF, orange #F77F00, cyan #00FFFF, green #00FF00, red #FF0000, purple #7700FF",
+        "ctx.imageSmoothingEnabled = false; \u2014 must be set on every canvas resize",
+        "Canvas scale: draw at 320\u00d7240 internal resolution, CSS-scale up to fill the screen",
+        "Palette: use Atari 2600-style colors \u2014 black #000, white #FFF, orange #F77F00, cyan #00FFFF, green #00FF00, red #FF0000, purple #7700FF",
         "Font: use 'Courier New' or embed a pixel font via @font-face",
         "Scanlines: draw semi-transparent horizontal lines every 2px over the canvas for CRT effect",
         "Sound: use AudioContext square-wave oscillators (type:'square') for authentic beeps, not sine waves"
@@ -176,12 +176,12 @@
     },
     {
       "id": "ag-012",
-      "rule": "Atari-style Space Invaders / Galaxian MUST: render the player ship as a pixel-art sprite at the bottom, alien grid of 5×11 marching left/right and descending, aliens shoot back at increasing rate as their count decreases, bunkers erode pixel-by-pixel when hit, UFO bonus target crosses top. Player has 3 lives shown as mini ship sprites.",
-      "why": "Space Invaders clones without alien return fire, descending movement, or bunker erosion miss the core tension. The game gets harder as you kill aliens — fewer aliens move faster — this is the key difficulty curve.",
+      "rule": "Atari-style Space Invaders / Galaxian MUST: render the player ship as a pixel-art sprite at the bottom, alien grid of 5\u00d711 marching left/right and descending, aliens shoot back at increasing rate as their count decreases, bunkers erode pixel-by-pixel when hit, UFO bonus target crosses top. Player has 3 lives shown as mini ship sprites.",
+      "why": "Space Invaders clones without alien return fire, descending movement, or bunker erosion miss the core tension. The game gets harder as you kill aliens \u2014 fewer aliens move faster \u2014 this is the key difficulty curve.",
       "severity": "critical",
       "appliesTo": "arcade",
       "examples": [
-        "Alien march speed: baseSpeed * (totalAliens / startingAliens) — gets faster as aliens die",
+        "Alien march speed: baseSpeed * (totalAliens / startingAliens) \u2014 gets faster as aliens die",
         "Alien descent: move down by alienHeight when hitting a wall",
         "Bunkers: use a pixel buffer (ImageData) that removes individual pixels on bullet hit",
         "3 alien types: top row = 30pts, middle rows = 20pts, bottom rows = 10pts",
@@ -190,21 +190,21 @@
     },
     {
       "id": "ag-013",
-      "rule": "Atari-style Asteroids MUST: render vector-style ship (triangle outline), implement screen wrapping (objects exit one side and enter the other), ship thrust with momentum/inertia (no instant stop), asteroids split into 2 smaller ones when shot (large→medium→small→destroyed), ship is invincible for 3 seconds after respawn, hyperspace (random teleport) as emergency escape.",
-      "why": "Asteroids without screen-wrapping and inertia feels completely wrong — these are the two defining physics properties of the game. Asteroids that disappear instead of splitting remove the core difficulty escalation.",
+      "rule": "Atari-style Asteroids MUST: render vector-style ship (triangle outline), implement screen wrapping (objects exit one side and enter the other), ship thrust with momentum/inertia (no instant stop), asteroids split into 2 smaller ones when shot (large\u2192medium\u2192small\u2192destroyed), ship is invincible for 3 seconds after respawn, hyperspace (random teleport) as emergency escape.",
+      "why": "Asteroids without screen-wrapping and inertia feels completely wrong \u2014 these are the two defining physics properties of the game. Asteroids that disappear instead of splitting remove the core difficulty escalation.",
       "severity": "critical",
       "appliesTo": "arcade",
       "examples": [
         "Wrapping: if (x < 0) x = canvas.width; if (x > canvas.width) x = 0; (same for y)",
         "Inertia: vx += Math.cos(angle) * thrust * dt; x += vx * dt; vx *= 0.99; (friction)",
-        "Split: large asteroid (r=40) → 2 medium (r=20); medium → 2 small (r=10); small → destroyed",
+        "Split: large asteroid (r=40) \u2192 2 medium (r=20); medium \u2192 2 small (r=10); small \u2192 destroyed",
         "Respawn: new ship at center, 3s invincibility shown by blinking"
       ]
     },
     {
       "id": "ag-014",
       "rule": "Atari Adventure-style games MUST: implement a multi-room dungeon map (at least 20 rooms connected by doors), a player avatar (blocky square or arrow), items the player can pick up and carry (sword, key, bridge), enemies that chase the player with simple pathfinding, and a win condition (reach the chalice). Rooms must persist state (items stay where dropped). Include a map legend or mini-map.",
-      "why": "Adventure (Atari 2600) is the ancestor of all action-adventure games. Its defining features — inventory, multi-room exploration, key-locked doors — must all be present. Without them it's just a maze game.",
+      "why": "Adventure (Atari 2600) is the ancestor of all action-adventure games. Its defining features \u2014 inventory, multi-room exploration, key-locked doors \u2014 must all be present. Without them it's just a maze game.",
       "severity": "critical",
       "appliesTo": "arcade",
       "examples": [
@@ -218,8 +218,8 @@
     },
     {
       "id": "ag-015",
-      "rule": "Wave-based / level-based shooters MUST implement a level-clear → next-wave transition. When all enemies on the current wave are destroyed, IMMEDIATELY advance to the next wave: respawn enemies (with increased difficulty: more enemies, faster spawn, or new behavior), bump a wave counter visible in the HUD, and reset the player's position if appropriate. The game cannot be 'won' on a single wave alone — there must be a sense of progression.",
-      "why": "Galaga + Centipede first-pass canaries 2026-04-25 both shipped with terminal-level-1 bugs: clearing all enemies on level 1 left an empty playfield with no progression. Players had nothing to do. The level-clear → next-wave loop is a defining property of arcade shooters; without it, they're not games, they're tech demos. Easy to overlook because LLMs render the FIRST wave and assume the loop is implicit.",
+      "rule": "Wave-based / level-based shooters MUST implement a level-clear \u2192 next-wave transition. When all enemies on the current wave are destroyed, IMMEDIATELY advance to the next wave: respawn enemies (with increased difficulty: more enemies, faster spawn, or new behavior), bump a wave counter visible in the HUD, and reset the player's position if appropriate. The game cannot be 'won' on a single wave alone \u2014 there must be a sense of progression.",
+      "why": "Galaga + Centipede first-pass canaries 2026-04-25 both shipped with terminal-level-1 bugs: clearing all enemies on level 1 left an empty playfield with no progression. Players had nothing to do. The level-clear \u2192 next-wave loop is a defining property of arcade shooters; without it, they're not games, they're tech demos. Easy to overlook because LLMs render the FIRST wave and assume the loop is implicit.",
       "severity": "critical",
       "appliesTo": "arcade",
       "examples": [
@@ -233,12 +233,12 @@
         "arcade-games",
         "shooter"
       ],
-      "originated": "2026-04-25 first-pass beta of galaga-079 + centipede-080 — both stuck on level 1"
+      "originated": "2026-04-25 first-pass beta of galaga-079 + centipede-080 \u2014 both stuck on level 1"
     },
     {
       "id": "ag-016",
-      "rule": "When the goal NAMES a recognizable arcade game by title (Atari Boxing, Frogger, Pac-Man, Joust, Defender, Pole Position, Q*bert, Kaboom, BurgerTime, Lode Runner, Spy Hunter, Skee-Ball, Pinball, Galaxian, Centipede, Tempest, etc.), the player avatar and primary game-objects MUST be MULTI-PART COMPOSITE SPRITES that visually match that game's iconic silhouette — NOT solid-color rectangles or circles. Minimum bar: ≥4 visually distinct parts (head + body + 2 limbs for figures; cab + wheels + windshield for vehicles; ladders + platforms + chef + components for BurgerTime). A 'red square vs green square' fails this rule for every named game in this list.",
-      "why": "Real incident 2026-04-27: Atari Boxing canary 140 first-pass shipped two solid-fill rectangles (red, green) standing in for the boxers. The original Atari 2600 Boxing rendered each boxer as a stick figure with HEAD + BODY + LEFT-ARM + RIGHT-ARM, where each ARM extends and retracts to throw a punch (the punch animation IS the gameplay readout — you can see who's exposed). Without recognizable anatomy, the gameplay loop is unreadable; without the extending-arm visual, 'punch' has no visual signal. Same pattern threatens any named-game canary. This rule forces the planner/generator to plan the sprite anatomy as a deliberate spec line, not an afterthought. (Second-turn auto-iteration on the same canary produced proper stick-figure boxers — proving the wizard CAN do it when the rule is pulled into context; this rule makes that the default, not the recovery.)",
+      "rule": "When the goal NAMES a recognizable arcade game by title (Atari Boxing, Frogger, Pac-Man, Joust, Defender, Pole Position, Q*bert, Kaboom, BurgerTime, Lode Runner, Spy Hunter, Skee-Ball, Pinball, Galaxian, Centipede, Tempest, etc.), the player avatar and primary game-objects MUST be MULTI-PART COMPOSITE SPRITES that visually match that game's iconic silhouette \u2014 NOT solid-color rectangles or circles. Minimum bar: \u22654 visually distinct parts (head + body + 2 limbs for figures; cab + wheels + windshield for vehicles; ladders + platforms + chef + components for BurgerTime). A 'red square vs green square' fails this rule for every named game in this list.",
+      "why": "Real incident 2026-04-27: Atari Boxing canary 140 first-pass shipped two solid-fill rectangles (red, green) standing in for the boxers. The original Atari 2600 Boxing rendered each boxer as a stick figure with HEAD + BODY + LEFT-ARM + RIGHT-ARM, where each ARM extends and retracts to throw a punch (the punch animation IS the gameplay readout \u2014 you can see who's exposed). Without recognizable anatomy, the gameplay loop is unreadable; without the extending-arm visual, 'punch' has no visual signal. Same pattern threatens any named-game canary. This rule forces the planner/generator to plan the sprite anatomy as a deliberate spec line, not an afterthought. (Second-turn auto-iteration on the same canary produced proper stick-figure boxers \u2014 proving the wizard CAN do it when the rule is pulled into context; this rule makes that the default, not the recovery.)",
       "severity": "critical",
       "appliesTo": "arcade",
       "examples": [
@@ -251,7 +251,7 @@
         "// { body: rounded-rect green 16x12, head: circle 8x8 forward, eyes: 2 black 2x2 dots,",
         "//   legs: 4 small triangles at corners, animated to alternate fold/extend on hop }",
         "// CORRECT: Pac-Man",
-        "// { body: yellow circle r=12 with mouth = pie-slice cut from -45° to +45°, animated open/close at 8Hz }",
+        "// { body: yellow circle r=12 with mouth = pie-slice cut from -45\u00b0 to +45\u00b0, animated open/close at 8Hz }",
         "// BAD",
         "// const player = { x, y, w: 30, h: 30, color: 'green' };  ctx.fillRect(...)",
         "// (a green rectangle is not Frogger. A red rectangle is not a boxer.)"
@@ -259,12 +259,12 @@
       "appliesToGenres": [
         "arcade-games"
       ],
-      "originated": "2026-04-27 boxing-140 canary — turn-1 was two solid-fill squares with no anatomy; turn-2 self-corrected to stick figures (proving capability), but the default should be anatomy-from-the-start"
+      "originated": "2026-04-27 boxing-140 canary \u2014 turn-1 was two solid-fill squares with no anatomy; turn-2 self-corrected to stick figures (proving capability), but the default should be anatomy-from-the-start"
     },
     {
       "id": "ag-017",
       "rule": "Boxing / fighting / 1v1-melee games MUST show ATTACK ANIMATIONS that visibly extend the attacking limb away from the body (left jab = left arm extends 8-12px outward over 80-120ms then retracts; power punch = arm extends further with telegraph wind-up frames). The opponent's hit-reaction MUST be visible (head flinches back 4-6px, body flashes white for 100ms, OR a 'POW!' text burst appears). Without visible attack + reaction, players can't tell if a punch landed and fights become guess-and-check.",
-      "why": "Boxing-140 canary 2026-04-27 first-pass had 'punch' as a state-toggle with score ticker but no visible attack animation — the player saw their score tick up but couldn't see the punch happen. Same gap threatens every fighting/melee entry. Genre convention from Atari Boxing → Punch-Out → every modern fighter: arm extends OUT to throw, opponent flinches BACK on hit, score updates AFTER the visible exchange. The visual sequence IS the gameplay — without it, players can't read the fight.",
+      "why": "Boxing-140 canary 2026-04-27 first-pass had 'punch' as a state-toggle with score ticker but no visible attack animation \u2014 the player saw their score tick up but couldn't see the punch happen. Same gap threatens every fighting/melee entry. Genre convention from Atari Boxing \u2192 Punch-Out \u2192 every modern fighter: arm extends OUT to throw, opponent flinches BACK on hit, score updates AFTER the visible exchange. The visual sequence IS the gameplay \u2014 without it, players can't read the fight.",
       "severity": "important",
       "appliesTo": "arcade",
       "examples": [
@@ -289,18 +289,18 @@
         "  target.score = Math.max(0, target.score - 1);",
         "  spawnPow(target.x, target.y - 20);  // 'POW!' text burst",
         "}",
-        "// BAD: invisible punch — score ticks but nothing visible happens",
+        "// BAD: invisible punch \u2014 score ticks but nothing visible happens",
         "// if (button === 'punch') { opponent.score--; }"
       ],
       "appliesToGenres": [
         "arcade-games"
       ],
-      "originated": "2026-04-27 boxing-140 — punch was state-toggle with score change, no visible attack on first pass"
+      "originated": "2026-04-27 boxing-140 \u2014 punch was state-toggle with score change, no visible attack on first pass"
     },
     {
       "id": "ag-018",
-      "rule": "Side-scrolling and lane-traffic spawners (cars in Frogger, ghosts in Pac-Man, fish in Fishing Derby, vehicles in Spy Hunter, asteroids in Defender, falling bombs in Kaboom, missiles in Missile Command) MUST spawn entities OFF-SCREEN, then scroll them ON-SCREEN at their lane velocity. Spawning AT random visible positions (e.g. `entity.x = Math.random() * canvas.width`) causes cars/logs/enemies to BLINK INTO EXISTENCE in front of the player — unfair, unreadable, and breaks genre convention. Standard pattern: spawn at `x = (lane.direction > 0) ? -entity.width : canvas.width`; despawn at the opposite edge with `+ entity.width` margin so they fully exit before recycling.",
-      "why": "Real incident 2026-04-27: Frogger-pond canary first-pass had cars + logs popping into existence at random visible X positions instead of scrolling on from off-screen. Player reported 'I just see a car pop up' — fair-play impossible because entities materialize without warning. Same anti-pattern threatens every lane-traffic / scrolling-spawner game. Genre convention from the original Atari Frogger (1981), Pac-Man (1980), and every modern endless-runner: visible entities ALWAYS originate from beyond the screen edge in their lane's direction. The bug is easy to write because `Math.random() * canvas.width` is the obvious-looking 'random spawn' code; the test is whether the LLM remembers the off-screen anchor.",
+      "rule": "Side-scrolling and lane-traffic spawners (cars in Frogger, ghosts in Pac-Man, fish in Fishing Derby, vehicles in Spy Hunter, asteroids in Defender, falling bombs in Kaboom, missiles in Missile Command) MUST spawn entities OFF-SCREEN, then scroll them ON-SCREEN at their lane velocity. Spawning AT random visible positions (e.g. `entity.x = Math.random() * canvas.width`) causes cars/logs/enemies to BLINK INTO EXISTENCE in front of the player \u2014 unfair, unreadable, and breaks genre convention. Standard pattern: spawn at `x = (lane.direction > 0) ? -entity.width : canvas.width`; despawn at the opposite edge with `+ entity.width` margin so they fully exit before recycling.",
+      "why": "Real incident 2026-04-27: Frogger-pond canary first-pass had cars + logs popping into existence at random visible X positions instead of scrolling on from off-screen. Player reported 'I just see a car pop up' \u2014 fair-play impossible because entities materialize without warning. Same anti-pattern threatens every lane-traffic / scrolling-spawner game. Genre convention from the original Atari Frogger (1981), Pac-Man (1980), and every modern endless-runner: visible entities ALWAYS originate from beyond the screen edge in their lane's direction. The bug is easy to write because `Math.random() * canvas.width` is the obvious-looking 'random spawn' code; the test is whether the LLM remembers the off-screen anchor.",
       "severity": "important",
       "appliesTo": "arcade",
       "examples": [
@@ -313,40 +313,40 @@
         "// CORRECT: despawn after car has fully exited the opposite edge",
         "function tickCar(c, dt) {",
         "  c.x += c.vx * dt;",
-        "  if (c.vx > 0 && c.x > canvas.width + 4) return false;  // off right edge → recycle",
-        "  if (c.vx < 0 && c.x < -c.w - 4) return false;          // off left edge → recycle",
+        "  if (c.vx > 0 && c.x > canvas.width + 4) return false;  // off right edge \u2192 recycle",
+        "  if (c.vx < 0 && c.x < -c.w - 4) return false;          // off left edge \u2192 recycle",
         "  return true;",
         "}",
-        "// BAD: random visible spawn — entities pop into existence in front of the player",
-        "// const x = Math.random() * canvas.width;  // ← causes blink-in",
+        "// BAD: random visible spawn \u2014 entities pop into existence in front of the player",
+        "// const x = Math.random() * canvas.width;  // \u2190 causes blink-in",
         "// CORRECT: spawn cadence (Poisson-like) decoupled from spawn position",
         "if (lane.spawnTimer <= 0) { spawnCar(lane); lane.spawnTimer = lane.spawnInterval + (Math.random() - 0.5) * lane.spawnJitter; }"
       ],
       "appliesToGenres": [
         "arcade-games"
       ],
-      "originated": "2026-04-27 frogger-132 — cars + logs spawned at random visible X instead of off-screen; player can't react"
+      "originated": "2026-04-27 frogger-132 \u2014 cars + logs spawned at random visible X instead of off-screen; player can't react"
     },
     {
       "id": "ag-019",
-      "title": "Forced-perspective sports games: screen Y is DEPTH, not HEIGHT — no gravity along screen-Y",
-      "rule": "When a game shows a forced-perspective top-down lane (Skee-Ball, bowling, shuffleboard, curling, basketball-at-hoop, mini-golf-putt, billiards-cue-end, beer-pong, ring-toss, darts-from-line), the screen Y-axis represents WORLD DEPTH (distance into the lane), NOT vertical height. The ball/disc rolls horizontally on a flat plane and gravity acts perpendicular to the screen — which means **gravity does NOT pull the ball back toward the player along screen-Y**. The ONLY deceleration is rolling friction. NEVER write `vy += GRAVITY` against screen-Y in this class of game.",
-      "why": "Real incident 2026-04-28 Skee-Ball canary: LLM modeled the lane as a 2D platformer, set `GRAVITY=0.14` on screen-vy, and wrote `ball.vy += GRAVITY`. Result: when the player flicks UP (vy negative, ball moves toward target rings at top of screen), gravity decelerates the ball, brings it to rest, then accelerates it BACK toward the player. The ball never reaches the rings no matter how hard the player flicks — it 'rises and falls' as if thrown straight up under gravity. This is a category error: in a forced-perspective top-down view, screen-Y is a projection of world-depth (Z in 3D), not world-Y (height). World gravity points along world-Y which is OUT OF the screen, so it has zero component along screen-Y. The bug is easy to write because 'ball + arc + gravity' is the LLM's strongest physics pattern and forced-perspective is rarer training data. The fix is structural: model the ball as moving on a 2D top-down plane where vy is depth-velocity, vx is lateral-velocity, and the only deceleration is friction (vy *= friction; vx *= friction).",
+      "title": "Forced-perspective sports games: screen Y is DEPTH, not HEIGHT \u2014 no gravity along screen-Y",
+      "rule": "When a game shows a forced-perspective top-down lane (Skee-Ball, bowling, shuffleboard, curling, basketball-at-hoop, mini-golf-putt, billiards-cue-end, beer-pong, ring-toss, darts-from-line), the screen Y-axis represents WORLD DEPTH (distance into the lane), NOT vertical height. The ball/disc rolls horizontally on a flat plane and gravity acts perpendicular to the screen \u2014 which means **gravity does NOT pull the ball back toward the player along screen-Y**. The ONLY deceleration is rolling friction. NEVER write `vy += GRAVITY` against screen-Y in this class of game.",
+      "why": "Real incident 2026-04-28 Skee-Ball canary: LLM modeled the lane as a 2D platformer, set `GRAVITY=0.14` on screen-vy, and wrote `ball.vy += GRAVITY`. Result: when the player flicks UP (vy negative, ball moves toward target rings at top of screen), gravity decelerates the ball, brings it to rest, then accelerates it BACK toward the player. The ball never reaches the rings no matter how hard the player flicks \u2014 it 'rises and falls' as if thrown straight up under gravity. This is a category error: in a forced-perspective top-down view, screen-Y is a projection of world-depth (Z in 3D), not world-Y (height). World gravity points along world-Y which is OUT OF the screen, so it has zero component along screen-Y. The bug is easy to write because 'ball + arc + gravity' is the LLM's strongest physics pattern and forced-perspective is rarer training data. The fix is structural: model the ball as moving on a 2D top-down plane where vy is depth-velocity, vx is lateral-velocity, and the only deceleration is friction (vy *= friction; vx *= friction).",
       "severity": "critical",
       "appliesTo": "arcade",
       "examples": [
         "// BAD: 2D-platformer physics applied to a forced-perspective top-down lane",
         "// var GRAVITY = 0.14;",
-        "// ball.vy += GRAVITY;  // ← pulls ball back toward player; ball NEVER reaches target",
+        "// ball.vy += GRAVITY;  // \u2190 pulls ball back toward player; ball NEVER reaches target",
         "// ball.x += ball.vx; ball.y += ball.vy;",
         "",
-        "// CORRECT: top-down rolling physics — gravity is perpendicular to screen, only friction decelerates",
+        "// CORRECT: top-down rolling physics \u2014 gravity is perpendicular to screen, only friction decelerates",
         "var ROLL_FRICTION = 0.985;  // tune so a strong flick reaches the far end in ~1.2-1.8s",
         "function stepBall(ball) {",
         "  ball.vx *= ROLL_FRICTION;",
         "  ball.vy *= ROLL_FRICTION;  // depth-velocity decays from rolling friction ONLY",
         "  ball.x += ball.vx;",
-        "  ball.y += ball.vy;       // NOTE: no `ball.vy += GRAVITY` — there is no gravity along screen-Y",
+        "  ball.y += ball.vy;       // NOTE: no `ball.vy += GRAVITY` \u2014 there is no gravity along screen-Y",
         "  if (Math.hypot(ball.vx, ball.vy) < 0.3) settleAndScore(ball);",
         "}",
         "",
@@ -358,7 +358,7 @@
       "appliesToGenres": [
         "arcade-games"
       ],
-      "originated": "2026-04-28 skee-ball-152 — LLM applied 2D-platformer gravity to screen-vy; ball flicked UP rises, slows, falls back to start. User: 'instead of going INTO the screen and landing in the holes, ball rises up vertically and then falls back to the ground back to the bottom of the screen'."
+      "originated": "2026-04-28 skee-ball-152 \u2014 LLM applied 2D-platformer gravity to screen-vy; ball flicked UP rises, slows, falls back to start. User: 'instead of going INTO the screen and landing in the holes, ball rises up vertically and then falls back to the ground back to the bottom of the screen'."
     },
     {
       "id": "ag-020",
@@ -387,7 +387,89 @@
       "appliesToGenres": [
         "arcade-games"
       ],
-      "originated": "2026-04-28 skee-ball-152 followup — even after fixing gravity, naive radius hit-test against perspective-shrunk render-radius produces 'visually in the ring but scored 0' frustration."
+      "originated": "2026-04-28 skee-ball-152 followup \u2014 even after fixing gravity, naive radius hit-test against perspective-shrunk render-radius produces 'visually in the ring but scored 0' frustration."
+    },
+    {
+      "id": "ag-snake-invariants",
+      "rule": "SNAKE GENRE INVARIANTS (must-have checklist)",
+      "applies_when": "Goal mentions snake, classic snake, mobile snake, snake clone",
+      "guidance": "When generating ANY snake-style game, your output MUST satisfy ALL these invariants \u2014 verify each before declaring complete:\n\n1. **Snake cannot reverse onto itself.** When user presses opposite direction (e.g. Right while moving Left), reject the input OR queue it for the next tick where it would be a 90\u00b0 turn \u2014 never apply on the current tick.\n2. **Eating an apple grows the snake by EXACTLY +1 segment** at the tail position, and a NEW apple appears at a random empty cell (not on the snake body).\n3. **Game over conditions** (both must be checked every tick): snake head hits a wall (or wraps if the goal explicitly says wrap), AND snake head touches any of its own body segments.\n4. **Score = (segments - initialLength) \u00d7 10**. Persist best score in localStorage with key 'snakeBestScore' or similar.\n5. **Speed**: tick interval starts ~150ms, decreases 2-5% per apple eaten (cap at minimum ~50ms). Use setInterval OR requestAnimationFrame with delta-time.\n6. **Input buffering**: if user presses two keys in quick succession, queue the second so it applies after the first. Without this, fast players feel input-loss.\n7. **Initial state**: snake is 3 segments at center, moving right at 1 cell/tick.\n8. **Mobile**: support both arrow keys AND swipe gestures (touchstart/touchmove/touchend with 30px+ threshold).",
+      "example": "Lawrence-flagged 2026-04-30: original snake had no keyboard handlers \u2014 autofix had to add them after Phase 0d.27 caught it. With this checklist injected, the first generation should wire keydown listeners up front.",
+      "severity": "blocking",
+      "learnedFrom": "2026-04-30 snake canaries v1-v8: model produced 2D grid + draw loop but consistently missed (a) keyboard handlers, (b) reverse-prevention, (c) speed acceleration. With this consolidated invariant block, all three should land in the first turn."
+    },
+    {
+      "id": "ag-asteroids-invariants",
+      "rule": "ASTEROIDS GENRE INVARIANTS (must-have checklist)",
+      "applies_when": "Goal mentions asteroids, space shooter, rotate ship, vector arcade",
+      "guidance": "When generating ANY Asteroids-style space shooter, satisfy ALL these:\n\n1. **Ship physics**: ship rotates by Left/Right (constant angular velocity ~0.05 rad/frame), thrust by Up (apply velocity in ship's facing direction at constant force).\n2. **Velocity friction**: multiply velocity by ~0.98 each frame so the ship coasts gradually after thrust released, not infinitely.\n3. **Wrap-around**: when ship/bullet/asteroid exits screen edge, wrap to opposite edge (NOT bounce). Without this, asteroids escape and player has nothing to shoot.\n4. **Shoot**: Space fires a bullet from ship's nose, traveling in ship's current angle at high speed. Bullets despawn after ~1 second OR on screen exit.\n5. **Asteroid splitting**: when shot, large asteroids split into 2 medium; medium split into 2 small; small disappear. Total 3 size tiers.\n6. **Asteroid spawning**: 4-6 large asteroids at start. New wave when all destroyed (level up).\n7. **Game over**: ship collides with asteroid \u2192 lose life. 3 lives total. After last life, show score + Game Over screen.\n8. **Score**: large=20, medium=50, small=100. Persist high score.\n9. **Visuals**: classic style is vector outline (stroke, no fill) on black background, white/cyan stroke. Use `ctx.stroke()` not `ctx.fill()` for the ship/asteroid shapes.",
+      "example": "// ship rotation sample\\nif (keys['ArrowLeft']) ship.angle -= 0.05;\\nif (keys['ArrowRight']) ship.angle += 0.05;\\nif (keys['ArrowUp']) {\\n  ship.vx += Math.cos(ship.angle) * 0.1;\\n  ship.vy += Math.sin(ship.angle) * 0.1;\\n}\\nship.vx *= 0.98; ship.vy *= 0.98;",
+      "severity": "blocking",
+      "learnedFrom": "2026-04-30 asteroid-snake mashup canary: produced 18KB working code in 1 turn but rotation+thrust physics was correct only because the goal explicitly described it. Without this checklist, snake-genre prompt would not have produced asteroids physics \u2014 fragile."
+    },
+    {
+      "id": "ag-pacman-invariants",
+      "rule": "PAC-MAN GENRE INVARIANTS (must-have checklist)",
+      "applies_when": "Goal mentions pacman, pac-man, maze game, ghosts and dots",
+      "guidance": "Pac-Man-style mazes have 8+ specific rules. Satisfy ALL:\n\n1. **Grid-based movement**: player and ghosts move tile-by-tile at constant speed (don't free-fly). Tile size ~20-30px.\n2. **4-direction input + buffering**: user can queue NEXT direction by pressing it while moving \u2014 it applies at the next intersection where that direction is valid (a wall isn't blocking).\n3. **Maze walls block movement**: collision check before each tile move; if next tile is wall, halt motion, retain queued direction.\n4. **Dots**: every non-wall tile has a dot. Player overlapping dot \u2192 +10 points, remove dot.\n5. **Power-pellets**: 4 large dots in corners. Eating one \u2192 ghosts enter 'frightened' mode for ~8 seconds (visual: ghosts turn blue/dark). During frightened, collision with ghost = ghost respawns at center + +200 points.\n6. **Ghost AI**: 4 ghosts with distinct personalities is the hallmark \u2014 at minimum implement TWO of: Blinky (chase nearest tile to player), Pinky (target 4 tiles ahead of player's facing), Clyde (random walk), Inky (alternates chase + scatter).\n7. **Lives**: 3 lives. Non-frightened ghost collision = lose life + reset positions.\n8. **Win condition**: all dots eaten \u2192 level complete. Optionally next level with faster ghosts.\n9. **Tunnel wrap**: most Pac-Man boards have a horizontal tunnel at the middle row that wraps left \u2194 right edges.",
+      "example": "// input-buffering pattern\\nlet pendingDir = currentDir;\\nfunction tryTurn() {\\n  if (canMove(player.x, player.y, pendingDir)) currentDir = pendingDir;\\n}\\n// each tick, apply currentDir if not blocked, else stop.",
+      "severity": "blocking",
+      "learnedFrom": "2026-04-30 pacman canary: model produced ASTEROIDS-style ship rotation code (ship.angle, ship.thrust, ArrowLeft/Right rotate) for a pacman maze goal \u2014 completely wrong genre. Lawrence flagged in screenshot. Pac-Man is grid + maze + dots, not free-flying ship. This checklist forces the right mental model upfront."
+    },
+    {
+      "id": "ag-frogger-invariants",
+      "rule": "FROGGER GENRE INVARIANTS (must-have checklist)",
+      "applies_when": "Goal mentions frogger, dodge cars, cross road, lily pad",
+      "guidance": "Frogger has 3 distinct play zones top-to-bottom. Satisfy ALL:\n\n1. **Three zones top-to-bottom**: 5 lily pads (target/safe), river (with logs+turtles, deadly water), grass median (safe), road (with cars, deadly), starting bottom (safe).\n2. **Cars on the road**: 4-5 lanes, each with cars moving horizontally at different speeds + directions. Sprite + speed varies per lane.\n3. **Logs and turtles on the river**: player MUST stand on a log/turtle to cross. Floating moves player along with the log. Stepping into water (gap between logs) = lose life.\n4. **Turtle dive**: turtles periodically submerge for ~2 seconds. Player on a submerged turtle = lose life. Adds tension vs. logs (always-safe).\n5. **Goal**: reach all 5 lily pads. Each lily pad reached = score + reset to start.\n6. **Time limit**: ~30-60 seconds per crossing. Time runs out = lose life.\n7. **Lives**: 3 lives. Game over when 0.\n8. **Movement**: arrow keys move ONE tile per press (not continuous). Each move bumps player up/down/left/right by exactly 1 cell. Don't free-scroll.\n9. **Score**: per-row points crossing forward + bonus for reaching lily pad.",
+      "example": "// log-floating logic\\nif (player.row === RIVER_ROW) {\\n  const log = logs.find(l => l.row === player.row && Math.abs(l.x - player.x) < TILE);\\n  if (log) { player.x += log.vx; }  // float with the log\\n  else { loseLife(); }  // fell in water\\n}",
+      "severity": "blocking",
+      "learnedFrom": "Common frogger canary failure: model omits the river/log mechanic entirely, just makes a road-crossing game. River is the harder half and the genre-defining feature."
+    },
+    {
+      "id": "ag-tetris-invariants",
+      "rule": "TETRIS GENRE INVARIANTS (must-have checklist)",
+      "applies_when": "Goal mentions tetris, falling blocks, tetromino, line clear",
+      "guidance": "Tetris is a falling-block puzzle. Satisfy ALL:\n\n1. **7 tetromino shapes**: I (long), O (square), T, S, Z, L, J. Define each as a 4\u00d74 grid of cells. Random selection (or 7-bag for fairness).\n2. **Playfield**: 10 wide \u00d7 20 tall. Visible top is 20 (older Tetrises hide top 4 rows for spawn).\n3. **Piece falls continuously**: every X ms (start ~1000, accelerate per level), the active piece moves down 1 row.\n4. **Controls**: Left/Right move horizontally (1 cell). Up = rotate clockwise. Down = soft drop (faster fall). Space = hard drop (slam to bottom + lock).\n5. **Wall kicks**: when rotating near walls, try simple offsets (-1, +1, -2, +2) to find a valid placement before giving up.\n6. **Lock + line clear**: when piece can't fall further (collides with floor or another piece), lock its cells into the playfield. Then check each row top-to-bottom; FULL rows clear (all cells filled). Award points: 1 line=100, 2=300, 3=500, 4=800 (Tetris bonus).\n7. **Level + speed**: every 10 lines cleared, level++ and fall speed \u00d7 0.85 (accelerates).\n8. **Game over**: new piece spawns and immediately collides \u2192 game over.\n9. **Next-piece preview**: show the next 1-3 pieces in a sidebar.\n10. **Hold piece** (optional but classic): C/Shift swaps the active piece with a held piece (only swap once per piece).",
+      "example": "// line-clear pattern\\nfor (let row = HEIGHT - 1; row >= 0; row--) {\\n  if (playfield[row].every(cell => cell !== 0)) {\\n    playfield.splice(row, 1);\\n    playfield.unshift(new Array(WIDTH).fill(0));\\n    linesCleared++;\\n    row++;  // recheck same index after splice\\n  }\\n}",
+      "severity": "blocking",
+      "learnedFrom": "Common tetris failure: model produces falling pieces but skips line-clear OR rotates incorrectly OR doesn't accelerate. The 4-line Tetris bonus (800pts) is also commonly missed."
+    },
+    {
+      "id": "ag-breakout-invariants",
+      "rule": "BREAKOUT/ARKANOID GENRE INVARIANTS (must-have checklist)",
+      "applies_when": "Goal mentions breakout, arkanoid, brick breaker, paddle ball",
+      "guidance": "Breakout is paddle + ball + bricks. Satisfy ALL:\n\n1. **Layout**: bricks at top in a grid (8-12 wide \u00d7 4-8 high), paddle at bottom (movable horizontally), ball starts on paddle.\n2. **Ball physics**: constant speed, bounces off walls (top/left/right) AND paddle AND bricks. Bouncing reverses the relevant velocity component.\n3. **Paddle bounce angle**: when ball hits paddle, the rebound angle depends on WHERE on the paddle it hit. Center \u2192 straight up; edges \u2192 45\u00b0+. Without this, the game has no skill ceiling.\n4. **Brick break**: ball touches brick \u2192 remove brick + reverse ball Y-velocity + +N points (varies by row color).\n5. **Lives**: 3 lives. Ball below paddle = lose life + reset ball on paddle.\n6. **Win**: all bricks cleared = level complete. Optionally next level with faster ball OR more bricks.\n7. **Visuals**: bricks colored by row. Classic palette: red/orange/yellow/green top-to-bottom.\n8. **Mobile**: on touch, paddle follows finger X-position.\n9. **Score persistence**: localStorage best score.",
+      "example": "// paddle-bounce angle\\nconst paddleHitX = (ball.x - paddle.x) / paddle.width; // 0..1\\nconst angle = (paddleHitX - 0.5) * Math.PI * 0.7; // -63\u00b0..+63\u00b0\\nball.vx = Math.sin(angle) * BALL_SPEED;\\nball.vy = -Math.abs(Math.cos(angle) * BALL_SPEED);",
+      "severity": "blocking",
+      "learnedFrom": "Common breakout failure: ball bounces off paddle straight without angle variation \u2192 game becomes deterministic + boring."
+    },
+    {
+      "id": "ag-pong-invariants",
+      "rule": "PONG GENRE INVARIANTS (must-have checklist)",
+      "applies_when": "Goal mentions pong, paddle game, two-paddle, ball game",
+      "guidance": "Pong is the simplest genre but commonly butchered. Satisfy ALL:\n\n1. **2 paddles, 1 ball**: left and right paddles, ball in middle.\n2. **Paddle motion**: each paddle moves vertically only. Player 1 keys (W/S), Player 2 (Up/Down) OR AI for one side.\n3. **Ball physics**: constant speed, bounces off top/bottom walls + paddles. Side walls (left/right) = score for opposite side.\n4. **Paddle bounce angle** (same as breakout): rebound angle based on hit location on paddle.\n5. **Score**: first to N points (configurable, default 11). Ball resets to center after each score, served toward losing side.\n6. **AI opponent**: simple \u2014 track ball Y, but with a delay/error so it's beatable. Without delay, AI is unbeatable.\n7. **Visuals**: classic black background, white paddles + ball, dashed center line, large score numbers at top.\n8. **Sound**: short beep on paddle hit, different beep on score. Use Web Audio API tones (no sample files).",
+      "example": "// AI tracking with delay\\nconst targetY = ball.y + (Math.random() - 0.5) * 100; // jitter\\nif (aiPaddle.y < targetY - 10) aiPaddle.y += AI_SPEED;\\nelse if (aiPaddle.y > targetY + 10) aiPaddle.y -= AI_SPEED;",
+      "severity": "blocking",
+      "learnedFrom": "Pong canary 2026-04-30: model produced functional pong but AI was 100% accurate (impossible to beat) AND no paddle-position-based bounce angle. Both common."
+    },
+    {
+      "id": "ag-tic-tac-toe-invariants",
+      "rule": "TIC-TAC-TOE GENRE INVARIANTS (must-have checklist)",
+      "applies_when": "Goal mentions tic tac toe, tic-tac-toe, noughts and crosses, X and O, 3x3 grid",
+      "guidance": "Tic-tac-toe is small but the AI is the hard part. Satisfy ALL:\n\n1. **3\u00d73 grid**: 9 cells, each empty/X/O. Click empty cell to place mark.\n2. **Turn alternation**: track whose turn it is, alternate after each valid move.\n3. **Win detection**: 8 winning lines (3 rows + 3 cols + 2 diagonals). After every move, check if current player just completed any line.\n4. **Draw detection**: all 9 cells filled and no winner = draw.\n5. **AI opponent**: implement minimax (perfect play) \u2014 AI never loses, only wins or draws. Recursion depth \u22649 so it's fast. Without minimax, AI is too easy.\n6. **AI difficulty toggle** (nice-to-have): Easy = random move, Medium = block opponent's threats, Hard = minimax.\n7. **Reset**: after win/draw, show 'Play again' button that clears the board.\n8. **Visuals**: clear X and O markers, highlight the winning line when won.\n9. **Score tracker**: optionally count X-wins / O-wins / Draws across games.",
+      "example": "// minimax AI\\nfunction minimax(board, isMaxTurn) {\\n  const winner = checkWin(board);\\n  if (winner === 'O') return 1;  // AI wins\\n  if (winner === 'X') return -1; // Player wins\\n  if (isFull(board)) return 0;\\n  // ... recurse, pick max/min\\n}",
+      "severity": "blocking",
+      "learnedFrom": "2026-04-30 tic-tac-toe canary: model produced functional 3x3 grid but AI was random \u2014 easy to win, no challenge. Players quit immediately."
+    },
+    {
+      "id": "ag-tower-defense-invariants",
+      "rule": "TOWER DEFENSE GENRE INVARIANTS (must-have checklist)",
+      "applies_when": "Goal mentions tower defense, td game, wave defense, place towers",
+      "guidance": "Tower defense has many moving parts. Satisfy ALL:\n\n1. **Map with path**: a fixed enemy path from spawn to end. Drawn as a series of waypoints. Enemies follow this path.\n2. **Tower placement**: click empty grid cell (not on path) \u2192 place tower (after paying gold cost). Towers cannot be placed on the path itself.\n3. **Tower types**: at minimum 2 (e.g., basic-fast vs slow-AOE). Each has range, damage, fire-rate, cost.\n4. **Targeting**: each frame, each tower picks an enemy in range (closest, OR most-progressed) and fires a projectile toward it. Projectile homes (or is hitscan) and damages on impact.\n5. **Enemy waves**: enemies spawn in waves of ~10-20. Pause between waves so player can place towers. After all waves cleared = win.\n6. **Enemy types**: vary HP and speed. Fast enemy = low HP, slow tank = high HP.\n7. **Gold economy**: kill enemy \u2192 gain gold. Place tower \u2192 spend gold. Player must balance offense vs. resources.\n8. **Lives**: enemies that reach the path's end \u2192 -1 life. 0 lives = game over.\n9. **Tower upgrade**: clicking placed tower \u2192 upgrade button (spend gold for higher damage/range).",
+      "example": "// closest-in-range targeting\\nfunction pickTarget(tower, enemies) {\\n  return enemies\\n    .filter(e => dist(tower, e) <= tower.range)\\n    .sort((a, b) => b.pathProgress - a.pathProgress)[0]; // most-progressed first\\n}",
+      "severity": "blocking",
+      "learnedFrom": "TD canary failures: model produces grid + enemies but skips waves (continuous enemy spawn) OR towers don't target (just placeholders) OR no gold economy."
     }
-  ]
+  ],
+  "lastUpdated": "2026-04-30"
 }
