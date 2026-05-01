@@ -1,7 +1,7 @@
 {
   "$schema_version": "1.0.0",
-  "catalog_version": "2026.04.30-w4c-macos-split",
-  "last_updated": "2026-04-30",
+  "catalog_version": "2026.05.01-w4r5-pacman-basketball-spec",
+  "last_updated": "2026-05-01",
   "difficulty_definitions": {
     "L1": "Simple CRUD / single view / static content. <150 LOC target. One wizard turn.",
     "L2": "Non-trivial glue: state mgmt, 2+ screens, one external API or framework primitive. 1-2 turns.",
@@ -1135,7 +1135,7 @@
     },
     {
       "id": "macos-l2-games-arcade-pacman-spritekit-157",
-      "goal": "macOS Pac-Man clone. 540x680 SwiftUI window hosting SpriteKit. Classic 28x31 grid maze drawn with SKShapeNode walls + dot SKShapeNodes (small) + 4 power-pellet SKShapeNodes (large, pulsing via SKAction.scale). Player Pac-Man SK_SpriteNode (yellow circle, mouth-open/close via SKAction.repeatForever) moves through corridors via arrow-keys (NSEvent.keyDown), CONTINUOUS-direction model (last-pressed direction is buffered + applied at next valid intersection). 4 ghosts (Blinky red, Pinky pink, Inky cyan, Clyde orange) \u2014 each implemented with a GameplayKit GKAgent2D + GKGoal(toSeekAgent: pacmanAgent). Personality differences: Blinky direct chase, Pinky aims 4 tiles ahead of Pac-Man's facing, Inky uses Blinky-relative offset, Clyde alternates chase/scatter at distance threshold. Power-pellet: ghosts turn DARK BLUE (SKSpriteNode.color tint via SKAction.colorize) for 8s; eaten ghosts respawn at center. Score top-left (10/dot, 50/power-pellet, 200+ chain on ghost-eat with doubling). 3 lives. Win when board cleared. CommandMenu Game > 'New Game' Cmd+N + 'Pause' Cmd+P (toggles SKView.isPaused).",
+      "goal": "macOS Pac-Man clone. 540x680 SwiftUI window hosting SpriteKit. Classic 28x31 grid maze drawn with SKShapeNode walls + dot SKShapeNodes (small) + 4 power-pellet SKShapeNodes (large, pulsing via SKAction.scale). Player Pac-Man SK_SpriteNode (yellow circle, mouth-open/close via SKAction.repeatForever) moves through corridors via arrow-keys (NSEvent.keyDown), CONTINUOUS-direction model (last-pressed direction is buffered + applied at next valid intersection). 4 ghosts (Blinky red, Pinky pink, Inky cyan, Clyde orange) each as a subclass of a base GhostNode \u2014 Blinky starts at the ghost-house exit (row 11, col 13) and immediately begins chasing; Pinky, Inky, Clyde start INSIDE the ghost house and are released via a per-ghost timer (Pinky 3s, Inky 7s, Clyde 11s after game start). Ghost movement: tile-based grid step, choose direction at each tile center that minimizes distance to target tile (no reverse except at dead ends). Ghost personality targets: Blinky=Pac-Man's tile; Pinky=4-tiles-ahead of Pac-Man; Inky=Blinky-offset mirror; Clyde=Pac-Man when >8 tiles away, scatter corner when close. CRITICAL WIRING in GameScene.update \u2014 call these every frame after moving Pac-Man: (1) Check Pac-Man's current grid tile; if tiles[row][col] == .dot: remove dotNodes[row][col], set tiles[row][col] = .empty, call gameState.eatDot(). (2) If tiles[row][col] == .pellet: same removal, call gameState.eatPowerPellet(), enter frightened mode on all ghosts. (3) For each ghost: if distance(ghost.position, pacMan.position) < 18pts: if ghost.isFrightened { ghost.isEaten = true; gameState.eatGhost() } else { handlePacManCaught() }. Power-pellet: all ghosts turn DARK BLUE (SKAction.colorize) for 8s; eaten ghosts return to spawn center and rejoin. Score top-left (10/dot, 50/power-pellet, 200-1600 chain on ghost-eat). 3 lives. Win when dotsRemaining==0. CommandMenu Game > 'New Game' Cmd+N + 'Pause' Cmd+P (toggles SKView.isPaused).",
       "artifact_type": "macOSApp",
       "category": "games",
       "genre": "arcade",
@@ -1158,7 +1158,8 @@
       ],
       "flaky": false,
       "flaky_history": [],
-      "notes": "First chase-grid + 4-distinct-AI-personality entry on macOS. GKAgent2D with per-ghost goal weights tests whether LLMs reach for GameplayKit's autonomous steering vs. hand-rolled BFS. Trap: continuous-direction buffering at intersections is a classic Pac-Man subtlety LLMs often skip \u2014 they implement immediate-turn-on-keypress which feels clunky."
+      "notes": "First chase-grid + 4-distinct-AI-personality entry on macOS. GKAgent2D with per-ghost goal weights tests whether LLMs reach for GameplayKit's autonomous steering vs. hand-rolled BFS. Trap: continuous-direction buffering at intersections is a classic Pac-Man subtlety LLMs often skip \u2014 they implement immediate-turn-on-keypress which feels clunky.",
+      "version": 2
     },
     {
       "id": "macos-l2-games-arcade-asteroids-vector-158",
@@ -1418,7 +1419,7 @@
     },
     {
       "id": "macos-l2-games-sports-atari-basketball-168",
-      "goal": "macOS Atari 2600-style Basketball. 480x540 SwiftUI window hosting SpriteKit. Half-court (top-down view: hoop at top, baseline at bottom). Two stick-figure players: PLAYER (cyan SKShapeNode body + smaller 'head' circle) vs CPU (orange SKShapeNode). Ball SKShapeNode (yellow) starts with player. SHOT-CLOCK: 24 seconds per possession (SKLabelNode countdown). PLAYER INPUT: WASD = move (Atari-style: move 1 step per keypress, NOT continuous), SPACE = shoot (when holding ball) OR pass (briefly tap), F = pump-fake. CPU defender uses GKAgent2D toSeekAgent (ball-carrier) + GKGoal-toAvoidAgents (player teammate placeholder). HOOP: SKShapeNode rim circle at top; ball dropping THROUGH from above scores 2 (or 3 if past 3-point arc \u2014 drawn as SKShapeNode arc). MISS: ball SKPhysicsBody bounces off backboard (SKShapeNode rectangle behind rim). Possession changes on rebound to whichever player reaches ball first. STEAL: defender contact with ball-carrier when player not actively shooting = takeaway. Quarters: 4\u00d730 seconds. Score top-left, shot-clock top-right, period bottom. CommandMenu Game > 'New Game' Cmd+N.",
+      "goal": "macOS Atari 2600-style Basketball. 480x540 SwiftUI window hosting SpriteKit. Half-court top-down view: hoop at top center, baseline at bottom. Two stick-figure players: PLAYER (cyan) vs CPU (orange). Ball (yellow circle) starts held by player. PLAYER INPUT: WASD = move 1 cell per keypress on a 12x10 grid, SPACE = shoot if near hoop zone OR pass if far, F = pump-fake. BALL POSSESSION WIRING \u2014 CRITICAL: a player 'holds' the ball when `distanceSq(player.position, ball.position) < 24*24`. When the ball is loose, whichever player reaches it first picks it up (check in update loop: `if !ball.isHeld && distanceSq(p.position, ball.position) < holdRadius*holdRadius { p.hasBall = true; ball.isHeld = true; ball.holder = p }`). SHOOT WIRING: when SPACE pressed and player.hasBall and player is in hoop zone (top half of court): launch ball along arc toward hoop via SKAction.sequence([parabolic move, check-at-hoop]). Score 2pts if ball enters hoop rect (y near hoopY, x within \u00b120pts of hoopX). MISS: ball bounces off backboard rectangle, becomes loose. CPU defender: simple chase \u2014 move toward ball.holder each tick at CPU speed (no GKAgent2D needed, just `cpuPos += normalize(ballHolderPos - cpuPos) * cpuSpeed * dt`). STEAL: if CPU within 20pts of player while player is not actively shooting, ball becomes loose. SHOT-CLOCK: 24 seconds per possession, SKLabelNode countdown; turnover if expires. Quarters: 4\u00d730 seconds. Score top-left, shot-clock top-right. CommandMenu Game > 'New Game' Cmd+N.",
       "artifact_type": "macOSApp",
       "category": "games",
       "genre": "sports",
@@ -1442,7 +1443,8 @@
       ],
       "flaky": false,
       "flaky_history": [],
-      "notes": "Half-court 1v1 keeps it tractable. Step-per-keypress (NOT continuous WASD held) is the Atari-2600 signature \u2014 most LLMs default to held-keys; the prompt says 'move 1 step per keypress'. Backboard rebound + 3-point arc + shot-clock are correctness markers. Pump-fake is a deliberate trap: the LLM either implements it (defender freezes 1 step) or skips."
+      "notes": "Half-court 1v1 keeps it tractable. Step-per-keypress (NOT continuous WASD held) is the Atari-2600 signature \u2014 most LLMs default to held-keys; the prompt says 'move 1 step per keypress'. Backboard rebound + 3-point arc + shot-clock are correctness markers. Pump-fake is a deliberate trap: the LLM either implements it (defender freezes 1 step) or skips.",
+      "version": 2
     },
     {
       "id": "macos-l3-games-rpg-adventure-reboot-169",
