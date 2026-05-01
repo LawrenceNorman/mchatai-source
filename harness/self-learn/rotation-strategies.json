@@ -1,7 +1,7 @@
 {
   "$schema_version": "1.0.0",
   "last_updated": "2026-04-24",
-  "notes": "Strategies for picking entries_per_run entries from goal-catalog.json each night. The SelfLearnCoordinator consults its config's slice.rotation_strategy to pick an implementation; quotas in config.slice.rotation_overrides are enforced on top.",
+  "notes": "Strategies for picking entries_per_run entries from qaflywheel-goal-catalog.json each night. The SelfLearnCoordinator consults its config's slice.rotation_strategy to pick an implementation; quotas in config.slice.rotation_overrides are enforced on top.",
 
   "strategies": {
     "weakest_first": {
@@ -18,7 +18,7 @@
       "description": "Entries that have zero ledger rows. Ensures new catalog additions get exercised within one rotation cycle regardless of their weakness profile.",
       "signal_sources": [
         "RubricLedger scanned for entry_id absence",
-        "goal-catalog.json entries enumerated"
+        "qaflywheel-goal-catalog.json entries enumerated"
       ],
       "cap_per_run": "config.slice.rotation_overrides.never_tested_quota_per_run",
       "notes": "This strategy is USUALLY applied as an override on top of whatever primary strategy is active — 3 slots of never-tested mixed into 9 slots of weakest_first."
@@ -33,13 +33,13 @@
     },
     "balanced_mix": {
       "description": "Equal-ish distribution across category tags (productivity/education/games/creative/utility/finance/health/social). Used as a fallback when weakest_first has no signal yet (cold start).",
-      "signal_sources": ["goal-catalog.json entry.category"],
+      "signal_sources": ["qaflywheel-goal-catalog.json entry.category"],
       "tie_break": "round-robin across categories",
       "notes": "Typical usage: week 1 cold-start cycles while the ledger fills, then switch to weakest_first once every entry has ≥3 rows."
     },
     "round_robin": {
       "description": "Simple cursor through the catalog in stable order. Boring but predictable. Useful for smoke-testing the coordinator itself.",
-      "signal_sources": ["goal-catalog.json entry order + persisted cursor"],
+      "signal_sources": ["qaflywheel-goal-catalog.json entry order + persisted cursor"],
       "notes": "Primarily for testing SelfLearnCoordinator SL.2. Not recommended for production."
     }
   },

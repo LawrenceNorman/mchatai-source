@@ -10,7 +10,7 @@ last_touched: 2026-04-23
 
 ## Purpose
 
-Every entry in [`goal-catalog.json`](goal-catalog.json) is a prompt that gets fired at AIWizard (or a pipeline / agent / skill) by the [`qaflywheel_run_catalog.py`](../../mchatai_macOS/scripts/qaflywheel_run_catalog.py) harness. Results flow into:
+Every entry in [`qaflywheel-goal-catalog.json`](qaflywheel-goal-catalog.json) is a prompt that gets fired at AIWizard (or a pipeline / agent / skill) by the [`qaflywheel_run_catalog.py`](../../mchatai_macOS/scripts/qaflywheel_run_catalog.py) harness. (Renamed 2026-04-30 from `goal-catalog.json` to namespace-isolate from third-party templates.) Results flow into:
 
 1. A **per-run JSONL log** (`mchatai_macOS/scripts/qaflywheel_runs/*.jsonl`) capturing status, duration, `capabilities_found/missing`, and the `mchatai_source_head` SHA so rubric regressions can be bisected.
 2. The existing **Phase LEARN rubric ledger** — `diagRubricTrend proposerNow` after each run cycle queues wisdom-rule proposals; `diagLearnPR dryRun:false` opens the draft PR to this repo.
@@ -82,7 +82,7 @@ Rule of thumb when proposing a new entry: *"If I described this to a competent d
 
 ## Authoring workflow
 
-1. Write entries as a diff to `goal-catalog.json`, bump `catalog_version` (date-a, date-b, …).
+1. Write entries as a diff to `qaflywheel-goal-catalog.json`, bump `catalog_version` (date-a, date-b, …).
 2. Run `python3 mchatai_macOS/scripts/qaflywheel_validate_catalog.py` (validator — ships with the harness) to confirm schema + unique IDs + genre cross-reference.
 3. Smoke-test one entry: `./scripts/qaflywheel_run_catalog.sh --id <new-id> --count 1`.
 4. Commit + push. Next `refreshMchataisourceCache` in a DEBUG build picks it up — no rebuild.
