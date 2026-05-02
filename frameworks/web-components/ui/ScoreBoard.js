@@ -1,4 +1,4 @@
-function resolveTarget(target) {
+function resolveScoreBoardTarget(target) {
   if (!target || typeof document === "undefined") {
     return null;
   }
@@ -51,7 +51,7 @@ export class ScoreBoard {
     this.highScoreValueElement = this.element.querySelector("[data-role='high-score-value']");
     this.ready = this.loadHighScore();
 
-    const mountTarget = resolveTarget(options.target);
+    const mountTarget = resolveScoreBoardTarget(options.target);
     if (mountTarget) {
       mountTarget.appendChild(this.element);
     }
@@ -60,7 +60,7 @@ export class ScoreBoard {
   }
 
   attach(target) {
-    const mountTarget = resolveTarget(target);
+    const mountTarget = resolveScoreBoardTarget(target);
     if (mountTarget) {
       mountTarget.appendChild(this.element);
     }
