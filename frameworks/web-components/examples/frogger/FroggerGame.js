@@ -123,6 +123,7 @@ export class FroggerGame {
     this.installJoystick(options.joystickTarget);
     this.restartButton?.addEventListener("click", () => this.resetGame());
     this.renderHUD();
+    this.engine.step(0);
   }
 
   start() {

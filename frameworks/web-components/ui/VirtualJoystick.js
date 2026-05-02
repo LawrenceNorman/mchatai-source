@@ -1,4 +1,4 @@
-function resolveTarget(target) {
+function resolveVirtualJoystickTarget(target) {
   if (!target || typeof document === "undefined") {
     return null;
   }
@@ -17,14 +17,14 @@ export class VirtualJoystick {
     this.center = { x: 0, y: 0 };
     this._bind();
 
-    const target = resolveTarget(options.target);
+    const target = resolveVirtualJoystickTarget(options.target);
     if (target) {
       target.appendChild(this.element);
     }
   }
 
   attach(target) {
-    const resolved = resolveTarget(target);
+    const resolved = resolveVirtualJoystickTarget(target);
     if (resolved) {
       resolved.appendChild(this.element);
     }
