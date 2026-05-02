@@ -50,6 +50,14 @@ For live AIWizard canaries:
 5. Run `node tests/check_component_usage.mjs <installed index.html> <expected recipe-id>`.
 6. Treat checker failure as a Harness failure, even if the preview looks good.
 
+Fast catalog-selection QA:
+
+```bash
+node mchatai-source/frameworks/web-components/tests/run_catalog_recipe_diagnostics.mjs
+```
+
+This drives `diagHarnessContext` through the DebugTunnel for every known-good family in `tests/catalog_recipe_cases.json`, including continuation prompts that rely on `recentUserMessages`.
+
 Useful inspection paths:
 
 - Tunnel session log: `~/Library/Containers/com.sevenhillsstudio.mChatAImac/Data/Library/Application Support/mChatAI/DebugTunnel/sessions/<requestID>.session-log`
@@ -66,13 +74,16 @@ Useful inspection paths:
 - **Stale source cache:** The app uses older cached `_index.json` or prompt files because local `mchatai-source` edits were not synced into the container source cache.
 - **Continuation context drop:** A second-turn prompt such as "Yes, build it now" can lose obvious genre keywords unless the Harness matches Web Components against prior user prompts as well as the current prompt.
 - **Template keyword contamination:** A wrong-but-plausible template seed can contain another recipe's keywords. Keep template-ID scoring separate from prompt/category keyword scoring so explicit prompts like Blackjack do not select Poker.
+- **Prompt-only compliance miss:** Even with the correct recipe context, OpenAI/local models can still emit a playable monolith. The hard gate catches this; retry prompts now include a concrete Lego repair marker/import block, but this still needs live canary validation with the tunnel active.
+- **Tunnel not attached:** Launching the app process is not enough if the Harness view model is not initialized. The ready file can be stale; verify with a cheap `listSkills` request before running catalog diagnostics or canaries.
 
 Harness status as of 2026-05-02:
 
 - A hard Lego gate exists in `AIHarness+MiniAppOps`: if a recipe is selected and the generated artifact omits the marker/imports/canonical inline component bodies, the mini-app is rejected before install.
 - Tunnel results should report `status:error`, `phase:failed`, and a `failureReason` beginning with `Web Components Lego gate rejected...` for rejected artifacts.
 - `diagHarnessContext` supports `recentUserMessages` so QA can verify continuation turns still select the correct component recipe.
-- The next improvement is auto-fix/retry after gate rejection, preferably from a pre-seeded module scaffold instead of another blank `index.html` prompt.
+- Gate-rejection retries include an exact marker/import block via `webComponentRetryInstruction(sessionID:)`.
+- The next improvement is a true auto-fix/retry loop that starts from a pre-seeded module scaffold instead of another blank `index.html` prompt.
 
 ## Current Families
 
