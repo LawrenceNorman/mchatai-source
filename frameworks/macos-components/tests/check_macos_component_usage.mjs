@@ -18,6 +18,25 @@ const catalogPath = path.join(libraryRoot, "_index.json");
 const catalog = JSON.parse(fs.readFileSync(catalogPath, "utf8"));
 
 const files = readGeneratedFiles(inputPath);
+const swiftBasenames = new Map();
+for (const filePath of Object.keys(files)) {
+  if (!filePath.startsWith("Sources/") || !filePath.endsWith(".swift")) continue;
+  const basename = path.posix.basename(filePath);
+  const existing = swiftBasenames.get(basename) ?? [];
+  existing.push(filePath);
+  swiftBasenames.set(basename, existing);
+}
+for (const [basename, matches] of swiftBasenames) {
+  if (matches.length > 1) {
+    fail(`SwiftPM target contains duplicate Swift filename ${basename}: ${matches.sort().join(", ")}`);
+  }
+}
+
+const markerPaths = Object.keys(files).filter((filePath) => filePath.endsWith("mchatai-macos-components-used.json"));
+if (markerPaths.length !== 1 || markerPaths[0] !== "mchatai-macos-components-used.json") {
+  fail(`expected exactly one root mchatai-macos-components-used.json marker, found: ${markerPaths.sort().join(", ") || "none"}`);
+}
+
 const markerText = files["mchatai-macos-components-used.json"];
 if (!markerText) {
   fail("missing mchatai-macos-components-used.json marker file");
@@ -59,6 +78,7 @@ if (unknown.length) {
   fail(`marker references unknown component ids: ${unknown.join(", ")}`);
 }
 
+const canonicalCopyPaths = new Set();
 for (const componentID of expectedComponentIDs) {
   const component = componentsByID.get(componentID);
   const canonicalPath = path.join(libraryRoot, component.path);
@@ -76,9 +96,34 @@ for (const componentID of expectedComponentIDs) {
     fail(`generated app did not copy canonical source for ${componentID} (${component.path})`);
   }
 
+  if (generatedMatches.length > 1) {
+    const duplicatePaths = generatedMatches.map(([filePath]) => filePath).sort().join(", ");
+    fail(`generated app copied canonical source for ${componentID} more than once: ${duplicatePaths}`);
+  }
+
   const markerNeedle = `BEGIN mChatAI macOS Component: ${componentID}`;
   if (!generatedMatches.some(([, body]) => body.includes(markerNeedle))) {
     fail(`generated component source for ${componentID} is missing canonical BEGIN marker`);
+  }
+
+  for (const [filePath] of generatedMatches) {
+    canonicalCopyPaths.add(filePath);
+  }
+}
+
+const glueSource = Object.entries(files)
+  .filter(([filePath]) => filePath.startsWith("Sources/") && filePath.endsWith(".swift"))
+  .filter(([filePath]) => !canonicalCopyPaths.has(filePath))
+  .map(([, body]) => body)
+  .join("\n");
+
+for (const componentID of expectedComponentIDs) {
+  const component = componentsByID.get(componentID);
+  if (!requiresGlueReference(component)) continue;
+  const exports = (component.exports ?? []).filter(Boolean);
+  const referenced = exports.some((symbol) => referencesSwiftSymbol(glueSource, symbol));
+  if (!referenced) {
+    fail(`app glue copied but did not compose ${componentID}; expected a reference to one of: ${exports.join(", ")}`);
   }
 }
 
@@ -127,6 +172,18 @@ function walk(root, current, out) {
 
 function normalize(value) {
   return value.replace(/\r\n/g, "\n").trim();
+}
+
+function requiresGlueReference(component) {
+  if (!component?.exports?.length) return false;
+  if (component.id.endsWith(".core")) return false;
+  if (component.id.endsWith(".lexicon")) return false;
+  return true;
+}
+
+function referencesSwiftSymbol(source, symbol) {
+  const escaped = symbol.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`(?<![A-Za-z0-9_])${escaped}(?![A-Za-z0-9_])`).test(source);
 }
 
 function fail(message) {

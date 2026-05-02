@@ -461,7 +461,7 @@
       "path": "components/arcade/ArcadeSmokeTests.swift",
       "exports": ["ArcadeSmokeTests"],
       "status": "ready",
-      "summary": "Runtime smoke-test reporter for Asteroids, Pong, grid adventure, and tower-defense engines.",
+      "summary": "Runtime smoke-test reporter for shared arcade core primitives; app glue should add recipe-specific gameplay smoke lines.",
       "tags": ["qa", "smoke-test", "arcade"],
       "contracts": {
         "stdout": "Call ArcadeSmokeTests.printLaunchReport() from app init()."
@@ -680,12 +680,12 @@
       "keywords": ["Atari Adventure", "adventure clone", "castle", "key", "treasure", "maze adventure", "dragon"],
       "templateIDs": [],
       "existingApps": ["Atari Adventure clone"],
-      "starterComponents": ["gridpuzzle.core", "arcade.grid-adventure", "arcade.smoke-tests"],
+      "starterComponents": ["arcade.core", "gridpuzzle.core", "arcade.grid-adventure", "arcade.smoke-tests"],
       "assemblyNotes": [
         "Use GridAdventureEngine.adventureCastleMap() as the seed map, then add rooms, keys, doors, treasure, and enemy behavior in app glue.",
         "Expose keyboard movement, inventory/status HUD, room labels, and clear win/loss feedback."
       ],
-      "requiredNow": ["gridpuzzle.core", "arcade.grid-adventure", "arcade.smoke-tests"],
+      "requiredNow": ["arcade.core", "gridpuzzle.core", "arcade.grid-adventure", "arcade.smoke-tests"],
       "plannedNext": ["adventure-room-graph", "adventure-inventory"]
     },
     {
@@ -694,12 +694,12 @@
       "keywords": ["frogger", "cross the road", "lanes", "traffic", "river", "logs", "grid arcade"],
       "templateIDs": [],
       "existingApps": ["frogger"],
-      "starterComponents": ["gridpuzzle.core", "arcade.grid-adventure", "arcade.smoke-tests"],
+      "starterComponents": ["arcade.core", "gridpuzzle.core", "arcade.grid-adventure", "arcade.smoke-tests"],
       "assemblyNotes": [
         "Use GridAdventureEngine.froggerLaneMap() as the seed layout.",
         "Keep lane data, moving hazards, safe zones, lives, and score in app glue while preserving the copied movement/collision engine."
       ],
-      "requiredNow": ["gridpuzzle.core", "arcade.grid-adventure", "arcade.smoke-tests"],
+      "requiredNow": ["arcade.core", "gridpuzzle.core", "arcade.grid-adventure", "arcade.smoke-tests"],
       "plannedNext": ["frogger-log-carrier"]
     },
     {
@@ -708,12 +708,12 @@
       "keywords": ["pacman", "pac-man", "maze", "ghost", "pellet", "powerup", "waka"],
       "templateIDs": [],
       "existingApps": ["pacman"],
-      "starterComponents": ["gridpuzzle.core", "arcade.grid-adventure", "arcade.smoke-tests"],
+      "starterComponents": ["arcade.core", "gridpuzzle.core", "arcade.grid-adventure", "arcade.smoke-tests"],
       "assemblyNotes": [
         "Use GridAdventureEngine.mazePelletMap() as the seed layout.",
         "Add ghost chase/scatter rules, power pellets, score multipliers, and maze rendering in app-specific glue."
       ],
-      "requiredNow": ["gridpuzzle.core", "arcade.grid-adventure", "arcade.smoke-tests"],
+      "requiredNow": ["arcade.core", "gridpuzzle.core", "arcade.grid-adventure", "arcade.smoke-tests"],
       "plannedNext": ["maze-pathfinder", "ghost-ai"]
     },
     {
@@ -736,12 +736,12 @@
       "keywords": ["tower defense", "waves", "turret", "creeps", "path", "tower placement"],
       "templateIDs": [],
       "existingApps": ["tower-defense"],
-      "starterComponents": ["gridpuzzle.core", "arcade.tower-defense", "arcade.smoke-tests"],
+      "starterComponents": ["arcade.core", "gridpuzzle.core", "arcade.tower-defense", "arcade.smoke-tests"],
       "assemblyNotes": [
         "Use TowerDefenseEngine for pathing, waves, tower placement, targeting, cooldowns, lives, credits, and phase.",
         "Render the map grid, tower range previews, wave controls, and economy HUD in app glue."
       ],
-      "requiredNow": ["gridpuzzle.core", "arcade.tower-defense", "arcade.smoke-tests"],
+      "requiredNow": ["arcade.core", "gridpuzzle.core", "arcade.tower-defense", "arcade.smoke-tests"],
       "plannedNext": ["tower-projectile-visuals", "tower-upgrades"]
     },
     {
@@ -835,6 +835,28 @@
       "notes": [
         "Treat example files as glue patterns, not components. They may be adapted to the user's requested visual style.",
         "The selected components themselves should remain byte-for-byte canonical copies."
+      ]
+    },
+    {
+      "id": "assembly.arcade-pong.basic",
+      "name": "Native Pong Golden Assembly",
+      "summary": "Minimal SwiftUI composition showing PongEngine-driven gameplay, keyboard glue, HUD rendering, and arcade smoke-test launch output.",
+      "recipeID": "recipe.arcade-pong",
+      "templateIDs": [],
+      "keywords": [
+        "pong",
+        "paddle",
+        "paddle ball",
+        "native pong"
+      ],
+      "files": [
+        "examples/arcade-pong/ContentView.swift",
+        "examples/arcade-pong/ExampleAppInit.swift"
+      ],
+      "notes": [
+        "Treat example files as glue patterns, not components. Adapt the visual style and labels to the user's requested product.",
+        "The selected components themselves should remain byte-for-byte canonical copies.",
+        "Keep PongEngine as the gameplay source of truth; do not hand-roll ball or paddle physics in ContentView."
       ]
     }
   ]
