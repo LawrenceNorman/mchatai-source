@@ -36,8 +36,8 @@ struct CrosswordEntry: Codable, Identifiable, Equatable, Sendable {
 }
 
 struct CrosswordCell: Codable, Equatable, Sendable {
-    var solution: Character?
-    var guess: Character?
+    var solution: String?
+    var guess: String?
     var number: Int?
 
     var isBlock: Bool { solution == nil }
@@ -78,8 +78,8 @@ struct CrosswordEngine: Codable, Equatable, Sendable {
         guard grid.contains(selectedPoint), !grid[selectedPoint].isBlock else { return }
         let upperString = String(String(character).uppercased().prefix(1))
         guard upperString.unicodeScalars.allSatisfy({ CharacterSet.letters.contains($0) }),
-              let upper = upperString.first else { return }
-        grid[selectedPoint].guess = upper
+              !upperString.isEmpty else { return }
+        grid[selectedPoint].guess = upperString
         advanceSelection()
     }
 
@@ -108,7 +108,7 @@ struct CrosswordEngine: Codable, Equatable, Sendable {
                     point = PuzzlePoint(row: entry.start.row + offset, col: entry.start.col)
                 }
                 guard grid.contains(point) else { continue }
-                grid[point].solution = character
+                grid[point].solution = String(character)
             }
             if grid.contains(entry.start) {
                 grid[entry.start].number = entry.number

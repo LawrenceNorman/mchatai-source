@@ -9,7 +9,7 @@ enum GridPuzzleSmokeTests {
         var mines = MinesweeperEngine(rows: 5, columns: 5, mineCount: 3, seed: 7)
         mines.reveal(at: PuzzlePoint(row: 0, col: 0))
 
-        var match3 = Match3Engine(rows: 5, columns: 5, seed: 12)
+        let match3 = Match3Engine(rows: 5, columns: 5, seed: 12)
         let matchesBefore = match3.findMatches().count
 
         return [

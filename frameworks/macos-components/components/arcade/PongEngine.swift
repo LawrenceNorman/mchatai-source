@@ -13,9 +13,9 @@ struct PongEngine: Codable, Equatable, Sendable {
 
     mutating func update(dt: Double, leftDirection: Double, rightDirection: Double? = nil) {
         guard phase == .playing else { return }
-        movePaddle(&leftPaddle, direction: leftDirection, dt: dt)
+        leftPaddle = movedPaddle(leftPaddle, direction: leftDirection, dt: dt, playfieldHeight: playfield.height)
         let aiDirection = rightDirection ?? (ball.position.y > rightPaddle.position.y ? 1 : -1)
-        movePaddle(&rightPaddle, direction: aiDirection, dt: dt)
+        rightPaddle = movedPaddle(rightPaddle, direction: aiDirection, dt: dt, playfieldHeight: playfield.height)
 
         ball.integrate(dt: dt)
         if ball.position.y < ball.radius || ball.position.y > playfield.height - ball.radius {
@@ -42,9 +42,11 @@ struct PongEngine: Codable, Equatable, Sendable {
         ball.velocity = ArcadeVector(x: 320 * direction, y: 120)
     }
 
-    private mutating func movePaddle(_ paddle: inout ArcadeBody, direction: Double, dt: Double) {
+    private func movedPaddle(_ paddle: ArcadeBody, direction: Double, dt: Double, playfieldHeight: Double) -> ArcadeBody {
+        var paddle = paddle
         paddle.position.y += max(-1, min(1, direction)) * 380 * dt
-        paddle.position.y = max(42, min(playfield.height - 42, paddle.position.y))
+        paddle.position.y = max(42, min(playfieldHeight - 42, paddle.position.y))
+        return paddle
     }
 
     private mutating func bounceIfNeeded(paddle: ArcadeBody, direction: Double) {
