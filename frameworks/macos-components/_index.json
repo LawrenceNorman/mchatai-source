@@ -1,0 +1,220 @@
+{
+  "$schema_version": "1.0.0",
+  "last_updated": "2026-05-02",
+  "notes": "Catalog for reusable SwiftUI/AppKit macOS Lego components. AIWizard should copy canonical Swift source files into generated macOSApp artifacts before writing app-specific glue.",
+  "library": {
+    "id": "framework.macos-components",
+    "name": "Native macOS SwiftUI Lego Blocks",
+    "platform": "macos",
+    "runtime": "swiftpm-swiftui",
+    "preferredDistribution": "source-copy",
+    "importStyle": "same-target-swift-files",
+    "entryPoints": [
+      "components/word-game/WordGameEngine.swift",
+      "components/word-game/WordGameLexicon.swift",
+      "components/word-game/WordGameKeyboardHandling.swift",
+      "components/word-game/WordGameSmokeTests.swift"
+    ]
+  },
+  "categories": [
+    {
+      "id": "word-game",
+      "displayName": "Word Games",
+      "description": "Reusable engine, dictionary, keyboard, and smoke-test helpers for native five-letter word guessing games."
+    },
+    {
+      "id": "desktop-shell",
+      "displayName": "Desktop Shell",
+      "description": "Reusable macOS app shell and scene affordances. Planned after the word-game MVP proves the gate."
+    },
+    {
+      "id": "spritekit-arcade",
+      "displayName": "SpriteKit Arcade",
+      "description": "Reusable SpriteKit scene, input, HUD, and game-loop helpers. Planned after the shell layer is stable."
+    }
+  ],
+  "components": [
+    {
+      "id": "wordgame.engine",
+      "name": "WordGameEngine",
+      "category": "word-game",
+      "path": "components/word-game/WordGameEngine.swift",
+      "exports": [
+        "WordGameEngine",
+        "WordGameRow",
+        "WordGameTile",
+        "WordGameTileFeedback",
+        "WordGameState",
+        "WordGameSubmitResult"
+      ],
+      "status": "ready",
+      "summary": "Observable five-letter word guessing engine with duplicate-letter scoring, row advancement, permissive fallback validation, and reset support.",
+      "tags": [
+        "wordle",
+        "word-game",
+        "engine",
+        "observable",
+        "macos"
+      ],
+      "contracts": {
+        "input": "Call inputLetter(_:), deleteLetter(), and submitGuess() from physical or on-screen controls.",
+        "state": "Bind rows, currentInput, state, and statusMessage into SwiftUI views.",
+        "validation": "Default dictionary allows known answers plus permissive five-letter ASCII fallback so Enter never looks dead."
+      },
+      "goodFits": [
+        "wordle",
+        "5-letter word guessing",
+        "spelling puzzle",
+        "keyboard-first word game"
+      ]
+    },
+    {
+      "id": "wordgame.lexicon",
+      "name": "WordGameLexicon",
+      "category": "word-game",
+      "path": "components/word-game/WordGameLexicon.swift",
+      "exports": [
+        "WordGameLexicon"
+      ],
+      "status": "ready",
+      "summary": "Inline curated five-letter answer and valid-guess lists that avoid Bundle.module resource pitfalls.",
+      "tags": [
+        "wordle",
+        "dictionary",
+        "offline",
+        "macos"
+      ],
+      "contracts": {
+        "offline": "No network or Bundle.module dependency.",
+        "format": "Uppercase ASCII five-letter words only."
+      },
+      "goodFits": [
+        "wordle",
+        "offline word game",
+        "built-in word list"
+      ]
+    },
+    {
+      "id": "wordgame.keyboard-handling",
+      "name": "WordGameKeyboardHandling",
+      "category": "word-game",
+      "path": "components/word-game/WordGameKeyboardHandling.swift",
+      "exports": [
+        "WordGameKeyboardHandling",
+        "wordGameKeyboardHandling"
+      ],
+      "status": "ready",
+      "summary": "SwiftUI ViewModifier for focused physical keyboard input using stable onKeyPress signatures for letters, Return, and Delete.",
+      "tags": [
+        "keyboard",
+        "swiftui",
+        "focus",
+        "macos"
+      ],
+      "contracts": {
+        "letters": "Uses .onKeyPress(characters: .letters, phases: .down).",
+        "return": "Uses .onKeyPress(.return, phases: .down) with explicit closure parameter.",
+        "delete": "Uses .onKeyPress(.delete, phases: .down) with explicit closure parameter."
+      },
+      "goodFits": [
+        "wordle",
+        "keyboard-first game",
+        "native macOS word game"
+      ]
+    },
+    {
+      "id": "wordgame.smoke-tests",
+      "name": "WordGameSmokeTests",
+      "category": "word-game",
+      "path": "components/word-game/WordGameSmokeTests.swift",
+      "exports": [
+        "WordGameSmokeTests"
+      ],
+      "status": "ready",
+      "summary": "Runtime smoke-test reporter that exercises a wrong guess, reset, and winning guess so the Harness sees useful stdout.",
+      "tags": [
+        "qa",
+        "smoke-test",
+        "stdout",
+        "macos"
+      ],
+      "contracts": {
+        "stdout": "Call WordGameSmokeTests.printLaunchReport() from app init().",
+        "coverage": "Exercises row advancement, reset, and win path without UI automation."
+      },
+      "goodFits": [
+        "wordle",
+        "native macOS QA",
+        "launch smoke test"
+      ]
+    }
+  ],
+  "compositionRecipes": [
+    {
+      "id": "recipe.native-word-game",
+      "name": "Native Word Game",
+      "keywords": [
+        "wordle",
+        "word game",
+        "word guessing",
+        "5-letter",
+        "five letter",
+        "letter grid",
+        "built-in word list",
+        "native macOS 5-letter",
+        "native macOS word"
+      ],
+      "templateIDs": [],
+      "existingApps": [
+        "Wordle-style word guessing game",
+        "native macOS 5-letter word guessing game"
+      ],
+      "starterComponents": [
+        "wordgame.lexicon",
+        "wordgame.engine",
+        "wordgame.keyboard-handling",
+        "wordgame.smoke-tests"
+      ],
+      "assemblyNotes": [
+        "Copy all selected component files verbatim under Sources/<TargetName>/MChatAIComponents/.",
+        "Keep app-specific UI in ContentView.swift or Views/*.swift; do not edit the copied component files.",
+        "Call WordGameSmokeTests.printLaunchReport() from the @main App init() after activation setup.",
+        "Use wordGameKeyboardHandling(onLetter:onDelete:onSubmit:) on the root playable surface so physical keyboard input works immediately.",
+        "Add visible ENTER and DELETE controls in the on-screen keyboard, even when physical keyboard handling is present."
+      ],
+      "requiredNow": [
+        "wordgame.lexicon",
+        "wordgame.engine",
+        "wordgame.keyboard-handling",
+        "wordgame.smoke-tests"
+      ],
+      "plannedNext": [
+        "wordgame-grid-view",
+        "wordgame-onscreen-keyboard",
+        "wordgame-stats-store"
+      ]
+    }
+  ],
+  "goldenAssemblies": [
+    {
+      "id": "assembly.native-word-game.basic",
+      "name": "Native Word Game Golden Assembly",
+      "summary": "Minimal SwiftUI composition showing how the copied word-game components wire into ContentView and App init.",
+      "recipeID": "recipe.native-word-game",
+      "templateIDs": [],
+      "keywords": [
+        "wordle",
+        "word guessing",
+        "native word game"
+      ],
+      "files": [
+        "examples/word-game/ContentView.swift",
+        "examples/word-game/ExampleAppInit.swift"
+      ],
+      "notes": [
+        "Treat example files as glue patterns, not components. They may be adapted to the user's requested visual style.",
+        "The selected components themselves should remain byte-for-byte canonical copies."
+      ]
+    }
+  ]
+}
