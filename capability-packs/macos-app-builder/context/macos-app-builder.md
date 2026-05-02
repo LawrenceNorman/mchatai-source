@@ -17,6 +17,22 @@ Use this pack when AIWizard is generating, fixing, testing, or packaging a nativ
 - The generated app must run, emit lightweight smoke-test output, and produce a screenshot or runtime status that can be evaluated.
 - Native apps need Open App / Reveal in Finder semantics, not an inline web preview.
 
+## Native Lego Component Contract
+
+When the context includes a `macOS Components Recipe`, that recipe is mandatory, not inspirational. Build the app as source-copy composition:
+
+- Add a root `files` entry named `mchatai-macos-components-used.json`.
+- Copy each selected component source file verbatim into `Sources/<TargetName>/MChatAIComponents/<ComponentFile>.swift`.
+- Preserve the `BEGIN mChatAI macOS Component` and `END mChatAI macOS Component` comments in copied files.
+- Put only app-specific SwiftUI/AppKit glue in `ContentView.swift`, `Views/*.swift`, `Models/*.swift`, or the `@main` app file.
+- Never rewrite the copied engines into a monolithic replacement just because it seems shorter. The Lego gate rejects apps that compile but do not prove source-copy provenance.
+
+The marker file is an actual file in the `macosapp.files` dictionary, for example:
+
+```json
+"mchatai-macos-components-used.json": "{\"recipe\":\"recipe.native-word-game\",\"components\":[\"wordgame.lexicon\",\"wordgame.engine\"],\"mode\":\"source-copy\"}"
+```
+
 ## QA Flywheel
 
 1. Generate files.
@@ -34,4 +50,3 @@ Use this pack when AIWizard is generating, fixing, testing, or packaging a nativ
 - If word games reject every guess, add a larger dictionary or a permissive fallback for valid-length guesses.
 - If generated string literals are corrupted, sanitize quotes and apostrophes before rebuilding.
 - If the app compiles but runtime output is empty, add a lightweight smoke path that exercises core state transitions.
-

@@ -68,14 +68,18 @@ Some Goals demand a native macOS Swift app instead. Before reading anything else
 
 **Output format for native macOS apps** (NOT a `\`\`\`miniapp` block — that's for HTML mini-apps only):
 
+If the context includes a **macOS Components Recipe**, follow it over any generic scaffold habit. Include `mchatai-macos-components-used.json` as a root entry in the `files` dictionary, copy the selected Swift component files verbatim under `Sources/<TargetName>/MChatAIComponents/`, and keep all custom UI/game glue in separate files. Do not replace the recipe with a hand-written monolith.
+
 ```macosapp
 {
   "id": "com.mchatai.wizard.<kebab-slug>",
   "name": "<DisplayName>",
   "template": "swiftuiApp" | "menuBarApp" | "documentApp",
   "files": {
+    "mchatai-macos-components-used.json": "{\"recipe\":\"recipe.native-word-game\",\"components\":[\"wordgame.lexicon\",\"wordgame.engine\"],\"mode\":\"source-copy\"}",
     "Package.swift": "// swift-tools-version: 5.9\nimport PackageDescription\n...",
     "Sources/<TargetName>App.swift": "import SwiftUI\n@main\nstruct <TargetName>App: App { ... }",
+    "Sources/<TargetName>/MChatAIComponents/WordGameEngine.swift": "// BEGIN mChatAI macOS Component: wordgame.engine ...",
     "Sources/ContentView.swift": "import SwiftUI\nstruct ContentView: View { ... }"
   }
 }
@@ -167,6 +171,8 @@ If the context includes a **Web Components Recipe**, prefer module imports in `h
 If there is no Web Components Recipe, use the legacy single-file `index.html` style with inline CSS and JS.
 
 **If you decided you're building a native macOS Swift app** (per the "🟦 ARTIFACT TYPE" section near the top): output a `\`\`\`macosapp` fenced JSON block instead, with `id`, `name`, `template`, and `files`. NEVER use the `miniapp` fence for a macOSApp — the wizard's parser routes on the fence marker, and a macOSApp inside a `miniapp` fence will be installed as an HTML mini-app.
+
+If there is a **macOS Components Recipe**, the `macosapp.files` dictionary must also include `mchatai-macos-components-used.json` and the copied component `.swift` files with their canonical `BEGIN mChatAI macOS Component` markers. The checker treats a compiling monolith as a failed Lego composition.
 
 ## Fence examples
 

@@ -40,9 +40,25 @@ Treat checker failure as a Harness failure even if the Swift app compiles and la
 ## Current Families
 
 - `recipe.native-word-game`: native five-letter word guessing apps with reusable engine, dictionary, keyboard, and smoke-test helpers.
+- `recipe.native-crossword`: NYT Mini-style crossword apps with reusable grid, clue, selection, and validation helpers.
+- `recipe.mastermind`: code-breaker games with reusable duplicate-safe peg scoring and turn history.
+- `recipe.minesweeper`: mine, flag, adjacency, reveal, and flood-fill puzzle apps.
+- `recipe.match3`: Candy Match-style tile swapping, match detection, collapse, refill, and cascades.
+- `recipe.arcade-asteroids`: Asteroids and Alien Abduction-style top-down vector shooter apps.
+- `recipe.arcade-pong`: Pong/paddle-ball apps with reusable ball/paddle/scoring physics.
+- `recipe.arcade-adventure`: Atari Adventure-style castle/key/treasure grid adventures.
+- `recipe.arcade-grid`: Frogger-style lane and traffic grid arcade games.
+- `recipe.maze-arcade`: PacMan-style maze/pellet games.
+- `recipe.platformer`: Mario/plumber and Pyramid Hopper-style platformers.
+- `recipe.tower-defense`: path, wave, tower, targeting, credits, and lives tower-defense apps.
+- `recipe.blackjack`: blackjack table flow, dealer policy, bankroll, and settlement.
+- `recipe.poker`: Texas Holdem helpers with card/deck primitives and poker hand evaluation.
+- `recipe.checkers`: 8x8 checkers with forced captures and kinging.
+- `recipe.chess`: chess setup, normal legal moves, check, and checkmate helpers.
+- `recipe.music-piano`: piano note metadata and active-key state for native synth toys.
 
 ## Planned Families
 
 - Desktop shell: settings scenes, sidebar-detail shells, command routing, and menu-bar affordances.
-- Productivity: local list stores, inspector panels, table editors, and export helpers.
-- SpriteKit arcade: scene baseplate, keyboard/gamepad input, HUD, entity movement, and smoke-test hooks.
+- SpriteKit rendering adapters for arcade engines that need richer animation than SwiftUI Canvas.
+- Audio adapters for piano and arcade SFX using AVAudioEngine.
