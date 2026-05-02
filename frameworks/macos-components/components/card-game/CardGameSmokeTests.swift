@@ -3,22 +3,18 @@ import Foundation
 
 enum CardGameSmokeTests {
     static func launchReport() -> String {
-        var blackjack = BlackjackEngine()
-        blackjack.deal(bet: 25)
-        blackjack.stand()
-
-        let royal = [
-            PlayingCard(suit: .spades, rank: .ten),
-            PlayingCard(suit: .spades, rank: .jack),
-            PlayingCard(suit: .spades, rank: .queen),
-            PlayingCard(suit: .spades, rank: .king),
-            PlayingCard(suit: .spades, rank: .ace)
+        var deck = CardDeck(seed: 21)
+        let draw = deck.draw(3)
+        let softHand = [
+            PlayingCard(suit: .spades, rank: .ace),
+            PlayingCard(suit: .hearts, rank: .six),
+            PlayingCard(suit: .clubs, rank: .nine)
         ]
-        let poker = PokerHandEvaluator.evaluate(royal)
+        let value = CardHandValue.blackjack(softHand)
 
         return [
-            "[CardGameSmoke] blackjack bankroll=\(blackjack.bankroll) status=\(blackjack.status)",
-            "[CardGameSmoke] poker rank=\(poker.rank)"
+            "[CardGameSmoke] deck draw=\(draw.count) remaining=\(deck.remaining)",
+            "[CardGameSmoke] blackjackValue=\(value)"
         ].joined(separator: "\n")
     }
 
