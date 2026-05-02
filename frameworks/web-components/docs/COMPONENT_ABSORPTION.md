@@ -95,6 +95,7 @@ Useful inspection paths:
 - **Continuation context drop:** A second-turn prompt such as "Yes, build it now" can lose obvious genre keywords unless the Harness matches Web Components against prior user prompts as well as the current prompt.
 - **Template keyword contamination:** A wrong-but-plausible template seed can contain another recipe's keywords. Keep template-ID scoring separate from prompt/category keyword scoring so explicit prompts like Blackjack do not select Poker.
 - **Prompt-only compliance miss:** Even with the correct recipe context, OpenAI/local models can still emit a playable monolith. The hard gate catches this; retry prompts include a concrete Lego repair marker/import block, and golden assembly fallback should repair known recipe families when available.
+- **Cross-recipe golden assembly drift:** A fallback assembly must never be reused across recipes. A Wordle golden assembly relabeled as `recipe.arcade-grid` can pass marker checks while visibly producing Word Quest for a Frogger prompt. Constrain golden assembly fallback to `assembly.recipeID == selectedRecipe.id` and add semantic identity checks for clone canaries.
 - **Tunnel not attached:** Launching the app process is not enough if the Harness view model is not initialized. The ready file can be stale; verify with a cheap `listSkills` request before running catalog diagnostics or canaries.
 - **L2 CLI detour:** Catalog clone prompts such as Defender should not depend
   on Claude/Codex CLI output. If a Web Components recipe is selected, the
@@ -115,7 +116,7 @@ Harness status as of 2026-05-02:
 - A hard Lego gate exists in `AIHarness+MiniAppOps`: if a recipe is selected and the generated artifact omits the marker/imports/canonical inline component bodies, the mini-app is rejected before install.
 - Tunnel results should report `status:error`, `phase:failed`, and a `failureReason` beginning with `Web Components Lego gate rejected...` for rejected artifacts.
 - `diagHarnessContext` supports `recentUserMessages` so QA can verify continuation turns still select the correct component recipe.
-- Gate-rejection retries include an exact marker/import block via `webComponentRetryInstruction(sessionID:)`.
+- Gate-rejection retries include the original user goal plus an exact marker/import block via `webComponentRetryInstruction(sessionID:)`.
 - Web Components recipe requests skip CLI-first generation and route through the
   API/gate path so golden assembly fallback can deterministically repair
   markerless output.
@@ -123,6 +124,9 @@ Harness status as of 2026-05-02:
   tunnel responses return the accepted `miniAppID`.
 - Text evaluator/autofix is skipped for gate-compliant Lego artifacts; the hard
   component checker is the composition authority.
+- Generation canaries may include semantic `mustContain`/`mustNotContain`
+  checks. Passing the component marker/import checker is necessary but not
+  sufficient if the installed artifact clearly belongs to another game.
 - Golden assemblies are the practical absorption target. Starter components are
   useful, but every production recipe should eventually have a known-good
   assembly fallback that reconstitutes a playable app from canonical modules.
