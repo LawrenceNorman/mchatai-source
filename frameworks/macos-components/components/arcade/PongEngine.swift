@@ -50,7 +50,13 @@ struct PongEngine: Codable, Equatable, Sendable {
     }
 
     private mutating func bounceIfNeeded(paddle: ArcadeBody, direction: Double) {
-        guard ball.intersects(paddle), ball.velocity.x.sign == direction.sign else { return }
+        let isMovingTowardPaddle = direction > 0 ? ball.velocity.x < 0 : ball.velocity.x > 0
+        guard ball.intersects(paddle), isMovingTowardPaddle else { return }
+        if direction > 0 {
+            ball.position.x = paddle.position.x + paddle.radius + ball.radius
+        } else {
+            ball.position.x = paddle.position.x - paddle.radius - ball.radius
+        }
         ball.velocity.x = abs(ball.velocity.x) * direction
         ball.velocity.y += (ball.position.y - paddle.position.y) * 5
     }
