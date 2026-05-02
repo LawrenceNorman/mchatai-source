@@ -24,18 +24,25 @@
       "entities/Board8x8.js",
       "entities/Card.js",
       "entities/Deck.js",
+      "entities/BlackjackRules.js",
+      "entities/PokerHandEvaluator.js",
       "entities/PlatformerPlayer.js",
       "entities/PathFollower.js",
       "entities/GridMover.js",
+      "entities/AIPathfinder.js",
       "entities/Match3Logic.js",
+      "entities/TileSwapper.js",
       "entities/RevealLogic.js",
       "entities/LetterGrid.js",
+      "entities/MastermindLogic.js",
       "entities/WaveManager.js",
       "entities/Turret.js",
       "entities/CameraFollow.js",
+      "entities/CheckersRules.js",
       "ui/ScoreBoard.js",
       "ui/VirtualJoystick.js",
       "ui/PianoKeyboard.js",
+      "ui/KeyboardInput.js",
       "resources/Swatches.js",
       "resources/AudioManager.js"
     ]
@@ -222,7 +229,7 @@
       "summary": "Chess/checkers board built on GridBoard with algebraic coordinates, square coloring, and piece iteration.",
       "tags": ["board", "chess", "checkers", "8x8"],
       "contracts": {
-        "coordinates": ["toAlgebraic(row, col)", "fromAlgebraic(square)", "isDarkSquare(row, col)"]
+        "coordinates": ["cellToAlgebraic(row, col)", "algebraicToCell(square)", "isDarkSquare(row, col)"]
       },
       "goodFits": ["chess", "checkers-mono", "draughts"]
     },
@@ -231,12 +238,12 @@
       "name": "Card",
       "category": "entities",
       "path": "entities/Card.js",
-      "exports": ["Card", "CARD_SUITS", "CARD_RANKS"],
+      "exports": ["Card", "SUITS", "RANKS"],
       "status": "ready",
-      "summary": "Standard playing card value object with labels, colors, blackjack value, and DOM rendering helper.",
+      "summary": "Standard playing card value object with id, color, blackjack value, and readable string output.",
       "tags": ["card", "deck", "blackjack", "poker"],
       "contracts": {
-        "helpers": ["label", "shortLabel", "blackjackValue", "renderElement(options)"]
+        "helpers": ["id", "color", "blackjackValue", "toString()"]
       },
       "goodFits": ["blackjack", "texas-holdem-poker", "solitaire", "card-games"]
     },
@@ -250,9 +257,37 @@
       "summary": "Standard 52-card deck with shuffle, draw, discard, reset, and blackjack hand value helper.",
       "tags": ["card", "deck", "shuffle", "blackjack", "poker"],
       "contracts": {
-        "helpers": ["shuffle()", "draw(count)", "discard(card)", "reset({ shuffle })", "blackjackHandValue(cards)"]
+        "helpers": ["shuffle()", "draw(count)", "remaining()", "reset({ shuffle })", "blackjackHandValue(cards)", "scoreBlackjackHand(cards)"]
       },
       "goodFits": ["blackjack", "texas-holdem-poker", "card-games"]
+    },
+    {
+      "id": "entities.blackjack-rules",
+      "name": "BlackjackRules",
+      "category": "entities",
+      "path": "entities/BlackjackRules.js",
+      "exports": ["BlackjackRules"],
+      "status": "ready",
+      "summary": "Blackjack hand evaluation, dealer hit policy, blackjack/bust checks, and payout settlement.",
+      "tags": ["blackjack", "card", "rules", "dealer"],
+      "contracts": {
+        "helpers": ["handValue(cards)", "isBlackjack(cards)", "shouldDealerHit(cards)", "settle(playerCards, dealerCards, bet)"]
+      },
+      "goodFits": ["blackjack"]
+    },
+    {
+      "id": "entities.poker-hand-evaluator",
+      "name": "PokerHandEvaluator",
+      "category": "entities",
+      "path": "entities/PokerHandEvaluator.js",
+      "exports": ["PokerHandEvaluator"],
+      "status": "ready",
+      "summary": "Five-to-seven-card poker hand evaluator with ranking and tie-breakers.",
+      "tags": ["poker", "texas-holdem", "card", "rules"],
+      "contracts": {
+        "helpers": ["evaluate(cards)", "evaluateFive(cards)", "compare(a, b)"]
+      },
+      "goodFits": ["texas-holdem-poker", "poker"]
     },
     {
       "id": "entities.platformer-player",
@@ -297,6 +332,20 @@
       "goodFits": ["frogger", "pacman", "grid-arcade", "tile-movement"]
     },
     {
+      "id": "entities.ai-pathfinder",
+      "name": "AIPathfinder",
+      "category": "entities",
+      "path": "entities/AIPathfinder.js",
+      "exports": ["AIPathfinder"],
+      "status": "ready",
+      "summary": "Breadth-first grid pathfinder for PacMan ghosts, tower-defense path checks, and maze enemies.",
+      "tags": ["pathfinding", "maze", "pacman", "grid"],
+      "contracts": {
+        "helpers": ["findPath(board, start, goal)", "nextStep(board, start, goal)"]
+      },
+      "goodFits": ["pacman", "maze", "tower-defense"]
+    },
+    {
       "id": "entities.match3-logic",
       "name": "Match3Logic",
       "category": "entities",
@@ -307,6 +356,20 @@
       "tags": ["match3", "puzzle", "candy", "grid"],
       "contracts": {
         "helpers": ["findMatches(board)", "clearMatches(board, matches)", "collapseColumns(board)", "resolve(board)"]
+      },
+      "goodFits": ["candy-match", "match-three", "tile-puzzle"]
+    },
+    {
+      "id": "entities.tile-swapper",
+      "name": "TileSwapper",
+      "category": "entities",
+      "path": "entities/TileSwapper.js",
+      "exports": ["TileSwapper"],
+      "status": "ready",
+      "summary": "Selection and adjacent-swap controller for match-three and tile puzzle boards.",
+      "tags": ["match3", "swap", "puzzle", "grid"],
+      "contracts": {
+        "helpers": ["select(row, col)", "trySwap(board, row, col)", "clear()"]
       },
       "goodFits": ["candy-match", "match-three", "tile-puzzle"]
     },
@@ -337,6 +400,20 @@
         "helpers": ["setWord(row, word)", "rowWord(row)", "scoreGuess(row, answer)"]
       },
       "goodFits": ["word-quest", "word-puzzle", "letter-games"]
+    },
+    {
+      "id": "entities.mastermind-logic",
+      "name": "MastermindLogic",
+      "category": "entities",
+      "path": "entities/MastermindLogic.js",
+      "exports": ["MastermindLogic"],
+      "status": "ready",
+      "summary": "Mastermind secret-code generation and exact/color-only feedback scoring.",
+      "tags": ["mastermind", "logic", "color", "puzzle"],
+      "contracts": {
+        "helpers": ["generateCode()", "scoreGuess(guess, code)"]
+      },
+      "goodFits": ["mastermind"]
     },
     {
       "id": "entities.wave-manager",
@@ -379,6 +456,35 @@
         "helpers": ["follow(target, viewport)", "apply(ctx)", "worldToScreen(x, y)", "screenToWorld(x, y)"]
       },
       "goodFits": ["open-world-asteroids", "plumber", "pyramid-hopper", "tower-defense"]
+    },
+    {
+      "id": "entities.checkers-rules",
+      "name": "CheckersRules",
+      "category": "entities",
+      "path": "entities/CheckersRules.js",
+      "exports": ["CheckersRules"],
+      "status": "ready",
+      "summary": "Checkers diagonal movement, captures, kinging, and move application helpers.",
+      "tags": ["checkers", "board", "rules", "8x8"],
+      "contracts": {
+        "helpers": ["legalMoves(board, row, col)", "applyMove(board, move)", "directions(piece)"]
+      },
+      "goodFits": ["checkers-mono", "checkers"]
+    },
+    {
+      "id": "entities.chess-rules",
+      "name": "ChessRules",
+      "category": "entities",
+      "path": "entities/ChessRules.js",
+      "exports": ["ChessRules"],
+      "status": "ready",
+      "summary": "Chess setup, piece movement, capture rules, check filtering, checkmate, and stalemate helpers for 8x8 board games.",
+      "tags": ["chess", "board", "rules", "8x8"],
+      "contracts": {
+        "helpers": ["setupStandardBoard(board)", "legalMoves(board, row, col)", "applyMove(board, move)", "isKingInCheck(board, color)", "isCheckmate(board, color)"],
+        "scope": "Handles normal piece movement and pawn promotion; castling and en passant can be layered in assembly code."
+      },
+      "goodFits": ["chess", "playable-chess"]
     },
     {
       "id": "ui.scoreboard",
@@ -425,6 +531,20 @@
       "goodFits": ["piano", "music-miniapps", "synth-toys"]
     },
     {
+      "id": "ui.keyboard-input",
+      "name": "KeyboardInput",
+      "category": "ui",
+      "path": "ui/KeyboardInput.js",
+      "exports": ["KeyboardInput"],
+      "status": "ready",
+      "summary": "Small keyboard binding helper for word games, grid movement, and arcade controls.",
+      "tags": ["keyboard", "input", "controls", "word"],
+      "contracts": {
+        "helpers": ["bind(key, action)", "bindMany(mapping)", "destroy()"]
+      },
+      "goodFits": ["word-quest", "mastermind", "frogger", "pacman", "piano"]
+    },
+    {
       "id": "resources.swatches",
       "name": "Swatches",
       "category": "resources",
@@ -456,12 +576,25 @@
   ],
   "compositionRecipes": [
     {
+      "id": "recipe.open-world-asteroids",
+      "name": "Open-World Asteroids",
+      "keywords": ["open world asteroids", "vast outer space", "no wrap", "no wraparound", "camera follows", "home base", "home-base", "turret", "moons", "enemy locations"],
+      "templateIDs": ["asteroids-clone"],
+      "existingGames": ["asteroids", "alien-abduction"],
+      "starterComponents": ["core.game-manager", "core.physics2d", "entities.entity", "entities.space-ship", "entities.asteroid", "entities.projectile", "entities.camera-follow", "entities.turret", "ui.scoreboard", "resources.swatches"],
+      "assemblyNotes": [
+        "Use CameraFollow and world coordinates instead of wraparound screen coordinates.",
+        "Use Turret for moon/base installations and Projectile for both player and enemy fire.",
+        "Keep Asteroid splitting from the normal Asteroids recipe, but spawn/despawn objects around the camera viewport."
+      ]
+    },
+    {
       "id": "recipe.arcade-top-down",
       "name": "Arcade Top-Down",
       "keywords": ["asteroids", "alien", "space shooter", "vector arcade", "centipede", "top-down arcade"],
       "templateIDs": ["asteroids-clone", "arcade-alien-abduction"],
       "existingGames": ["asteroids", "alien-abduction"],
-      "starterComponents": ["core.game-manager", "core.physics2d", "entities.entity", "entities.space-ship", "entities.asteroid", "entities.projectile", "entities.path-follower", "entities.camera-follow", "entities.turret", "ui.scoreboard", "ui.virtual-joystick", "resources.swatches", "resources.audio-manager"],
+      "starterComponents": ["core.game-manager", "core.physics2d", "entities.entity", "entities.space-ship", "entities.asteroid", "entities.projectile", "ui.scoreboard", "resources.swatches", "entities.camera-follow", "entities.turret", "ui.virtual-joystick", "resources.audio-manager"],
       "assemblyNotes": [
         "Write glue code around the shipped engine and entity modules instead of rewriting movement, wrapping, projectile, and scoring logic from scratch.",
         "For open-world Asteroids variants, keep SpaceShip and Projectile but disable world wrapping and add camera/world coordinates in the assembly layer."
@@ -478,12 +611,21 @@
     },
     {
       "id": "recipe.arcade-grid",
-      "name": "Arcade Grid",
-      "keywords": ["frogger", "pacman", "maze", "grid arcade"],
-      "templateIDs": ["arcade-frogger", "arcade-pacman-v1"],
-      "existingGames": ["frogger", "pacman"],
+      "name": "Frogger / Grid Arcade",
+      "keywords": ["frogger", "cross the road", "lanes", "traffic", "river", "grid arcade"],
+      "templateIDs": ["arcade-frogger"],
+      "existingGames": ["frogger"],
       "starterComponents": ["core.game-manager", "entities.grid-board", "entities.grid-mover", "entities.path-follower", "ui.scoreboard", "ui.virtual-joystick", "resources.swatches", "resources.audio-manager"],
-      "plannedNext": ["entities.ai-pathfinder", "entities.maze-runner"]
+      "assemblyNotes": ["Use GridBoard for lanes, GridMover for the player, and PathFollower for cars/logs; generate only lane data and collision rules."]
+    },
+    {
+      "id": "recipe.maze-arcade",
+      "name": "PacMan / Maze Arcade",
+      "keywords": ["pacman", "pac-man", "maze", "ghost", "pellet", "powerup"],
+      "templateIDs": ["arcade-pacman-v1"],
+      "existingGames": ["pacman"],
+      "starterComponents": ["core.game-manager", "entities.grid-board", "entities.grid-mover", "entities.ai-pathfinder", "ui.scoreboard", "ui.virtual-joystick", "resources.swatches", "resources.audio-manager"],
+      "assemblyNotes": ["Use GridBoard for maze walls and pellets, GridMover for player/ghost movement, and AIPathfinder for ghost chase/scatter behavior."]
     },
     {
       "id": "recipe.platformer",
@@ -504,31 +646,76 @@
       "plannedNext": ["entities.health-bar"]
     },
     {
-      "id": "recipe.puzzle-grid",
-      "name": "Puzzle Grid",
-      "keywords": ["minesweeper", "match three", "candy match", "mastermind", "word quest", "grid puzzle"],
-      "templateIDs": ["match-three-puzzle-game", "mastermind-color-guessing-game", "word-puzzle-game"],
-      "existingGames": ["minesweeper-99", "candy-match", "mastermind", "word-quest"],
-      "starterComponents": ["core.turn-based-manager", "entities.grid-board", "entities.letter-grid", "entities.match3-logic", "entities.reveal-logic", "ui.scoreboard", "resources.swatches", "resources.audio-manager"],
-      "plannedNext": ["entities.tile-swapper", "entities.keyboard-input"]
+      "id": "recipe.word-logic",
+      "name": "Word / Letter Puzzle",
+      "keywords": ["word quest", "word puzzle", "wordle", "letters", "guess word", "letter grid"],
+      "templateIDs": ["word-puzzle-game"],
+      "existingGames": ["word-quest"],
+      "starterComponents": ["core.turn-based-manager", "entities.grid-board", "entities.letter-grid", "ui.keyboard-input", "ui.scoreboard", "resources.swatches", "resources.audio-manager"],
+      "assemblyNotes": ["Use LetterGrid for guesses and feedback; generate dictionary/level content separately from grid scoring."]
     },
     {
-      "id": "recipe.card-games",
-      "name": "Card Games",
-      "keywords": ["blackjack", "poker", "texas holdem", "cards", "deck"],
+      "id": "recipe.mastermind",
+      "name": "Mastermind",
+      "keywords": ["mastermind", "code breaker", "feedback pegs", "color guessing", "color code"],
+      "templateIDs": ["mastermind-color-guessing-game"],
+      "existingGames": ["mastermind"],
+      "starterComponents": ["core.turn-based-manager", "entities.grid-board", "entities.mastermind-logic", "ui.keyboard-input", "ui.scoreboard", "resources.swatches", "resources.audio-manager"],
+      "assemblyNotes": ["Use MastermindLogic for code generation and feedback pegs; do not ask the model to reinvent exact/color-only scoring."]
+    },
+    {
+      "id": "recipe.minesweeper",
+      "name": "Minesweeper",
+      "keywords": ["minesweeper", "minesweeper 99", "mine", "flag", "reveal", "flood reveal"],
+      "templateIDs": ["minesweeper-99"],
+      "existingGames": ["minesweeper-99"],
+      "starterComponents": ["core.turn-based-manager", "entities.grid-board", "entities.reveal-logic", "ui.scoreboard", "resources.swatches", "resources.audio-manager"],
+      "assemblyNotes": ["Use RevealLogic for mine seeding, adjacency counts, flags, and flood reveal; generate board size/difficulty settings only."]
+    },
+    {
+      "id": "recipe.match3",
+      "name": "Match Three",
+      "keywords": ["match three", "match-3", "candy match", "candy", "swap", "cascade"],
+      "templateIDs": ["match-three-puzzle-game"],
+      "existingGames": ["candy-match"],
+      "starterComponents": ["core.turn-based-manager", "entities.grid-board", "entities.tile-swapper", "entities.match3-logic", "ui.scoreboard", "resources.swatches", "resources.audio-manager"],
+      "assemblyNotes": ["Use TileSwapper for selection/swap input and Match3Logic for matches/cascades; generate tile skins and level goals only."]
+    },
+    {
+      "id": "recipe.blackjack",
+      "name": "Blackjack",
+      "keywords": ["blackjack", "twenty one", "hit", "stand", "dealer", "bankroll"],
+      "templateIDs": ["blackjack", "texas-holdem-poker"],
+      "existingGames": ["blackjack"],
+      "starterComponents": ["core.turn-based-manager", "entities.card", "entities.deck", "entities.blackjack-rules", "ui.scoreboard", "resources.swatches", "resources.audio-manager"],
+      "assemblyNotes": ["Use BlackjackRules for hand totals, dealer policy, blackjack checks, and settlement; generate table flow and UI only."]
+    },
+    {
+      "id": "recipe.poker",
+      "name": "Texas Holdem Poker",
+      "keywords": ["poker", "texas holdem", "texas hold em", "holdem", "flop", "turn", "river"],
       "templateIDs": ["texas-holdem-poker"],
-      "existingGames": ["blackjack", "texas-holdem-poker"],
-      "starterComponents": ["core.turn-based-manager", "entities.card", "entities.deck", "ui.scoreboard", "resources.swatches", "resources.audio-manager"],
-      "plannedNext": ["entities.hand-evaluator", "entities.poker-pot-manager", "ui.card-table"]
+      "existingGames": ["texas-holdem-poker"],
+      "starterComponents": ["core.turn-based-manager", "entities.card", "entities.deck", "entities.poker-hand-evaluator", "ui.scoreboard", "resources.swatches", "resources.audio-manager"],
+      "plannedNext": ["entities.poker-pot-manager", "ui.card-table"]
     },
     {
-      "id": "recipe.board8x8",
-      "name": "8x8 Board Games",
-      "keywords": ["chess", "checkers", "board game", "8x8"],
-      "templateIDs": ["board-checkers-mono", "chess-game-board"],
-      "existingGames": ["checkers-mono", "playable-chess"],
-      "starterComponents": ["core.turn-based-manager", "entities.grid-board", "entities.board8x8", "resources.swatches", "resources.audio-manager"],
-      "plannedNext": ["entities.piece", "entities.move-rules", "entities.chess-rules", "entities.checkers-rules"]
+      "id": "recipe.checkers",
+      "name": "Checkers",
+      "keywords": ["checkers", "draughts", "captures", "king me"],
+      "templateIDs": ["board-checkers-mono"],
+      "existingGames": ["checkers-mono"],
+      "starterComponents": ["core.turn-based-manager", "entities.grid-board", "entities.board8x8", "entities.checkers-rules", "resources.swatches", "resources.audio-manager"],
+      "assemblyNotes": ["Use CheckersRules for diagonal movement, captures, and kinging; generate board UI and turn prompts only."]
+    },
+    {
+      "id": "recipe.chess",
+      "name": "Chess",
+      "keywords": ["chess", "playable chess", "king", "queen", "bishop", "rook", "knight"],
+      "templateIDs": ["chess-game-board", "board-checkers-mono"],
+      "existingGames": ["playable-chess"],
+      "starterComponents": ["core.turn-based-manager", "entities.grid-board", "entities.board8x8", "entities.chess-rules", "resources.swatches", "resources.audio-manager"],
+      "assemblyNotes": ["Use ChessRules for standard setup, legal move generation, check filtering, checkmate, and stalemate; add UI affordances and optional castling/en passant only after the base rules are wired."]
     },
     {
       "id": "recipe.music",

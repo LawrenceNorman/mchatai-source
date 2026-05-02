@@ -52,6 +52,10 @@ export class Deck {
 }
 
 export function scoreBlackjackHand(cards) {
+  return blackjackHandValue(cards).total;
+}
+
+export function blackjackHandValue(cards) {
   let total = 0;
   let aces = 0;
   for (const card of cards) {
@@ -60,9 +64,13 @@ export function scoreBlackjackHand(cards) {
       aces += 1;
     }
   }
+  const naturalAces = aces;
   while (total > 21 && aces > 0) {
     total -= 10;
     aces -= 1;
   }
-  return total;
+  return {
+    total,
+    soft: naturalAces > 0 && aces > 0
+  };
 }

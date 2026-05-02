@@ -1,13 +1,20 @@
 # Mini-App Builder Capability Pack
 
-Use this pack when AIWizard is building a mini-app: a self-contained browser
-artifact that runs inside mChatAI+ and can be published as a single HTML-based
-experience.
+Use this pack when AIWizard is building a mini-app: a browser artifact that runs
+inside mChatAI+ and can be published as an HTML-based experience. Most mini-apps
+are self-contained single-file HTML, but a Web Components Recipe explicitly
+allows bundled ES module sidecars under `./web-components/`.
 
 ## Build Contract
 
 - Output a complete mini-app artifact in the platform's `miniapp` JSON shape.
-- Keep the artifact self-contained. Inline CSS and JavaScript are preferred.
+- If a Web Components Recipe is present, prefer `<script type="module">` imports
+  from `./web-components/<component-path>`, include the
+  `mchatai-web-components-used` marker, and let the installer bundle those
+  catalog modules. Do not rewrite the selected components into a one-off
+  monolithic class.
+- If no Web Components Recipe is present, keep the artifact self-contained.
+  Inline CSS and JavaScript are preferred.
 - The first screen is the usable app, game, or tool. Do not create a marketing
   landing page unless the user explicitly asks for one.
 - Use browser-native APIs conservatively. Avoid features that are unreliable in
