@@ -18,6 +18,7 @@ const appSupportDir = process.env.MCHATAI_APP_SUPPORT ||
     homedir(),
     "Library/Containers/com.sevenhillsstudio.mChatAImac/Data/Library/Application Support/mChatAI"
   );
+const wizardSessionsPath = resolve(appSupportDir, "wizard_sessions.json");
 const pollMs = 500;
 
 function usage() {
@@ -115,6 +116,47 @@ function miniAppIDFromResponse(response) {
     "";
 }
 
+function loadWizardSession(sessionID) {
+  if (!sessionID || !existsSync(wizardSessionsPath)) {
+    return null;
+  }
+
+  const raw = readJSON(wizardSessionsPath);
+  const sessions = Array.isArray(raw) ? raw : (raw.sessions || []);
+  return sessions.find((session) => session.id === sessionID) || null;
+}
+
+function sessionFailureSignals(session) {
+  if (!session) {
+    return [];
+  }
+
+  const failures = [];
+  if (session.phase === "failed") {
+    failures.push("session phase is failed");
+  }
+  if (session.lastFailureReason) {
+    failures.push(`lastFailureReason: ${session.lastFailureReason}`);
+  }
+
+  const messages = Array.isArray(session.messages) ? session.messages : [];
+  for (const message of messages) {
+    const content = String(message.content || "");
+    const lower = content.toLowerCase();
+    if (lower.includes("no clickable buttons")) {
+      failures.push("auto-play found no clickable buttons");
+    }
+    if (lower.includes("completeness: fail") || lower.includes("correctness: fail") || lower.includes("ui quality: fail")) {
+      failures.push("evaluator reported FAIL");
+    }
+    if (lower.includes("rubric_score: 0/14")) {
+      failures.push("frontend taste score was 0/14");
+    }
+  }
+
+  return Array.from(new Set(failures));
+}
+
 function checkArtifact(miniAppID, expectedRecipe) {
   const indexPath = resolve(appSupportDir, "MiniApps/installed", miniAppID, "index.html");
   if (!existsSync(indexPath)) {
@@ -184,6 +226,25 @@ for (const testCase of cases) {
       output: response.output,
       failureReason: response.failureReason,
       miniAppID
+    }, null, 2));
+    continue;
+  }
+
+  const consoleErrors = Number(response.consoleErrors || 0);
+  const session = loadWizardSession(response.sessionID);
+  const sessionFailures = sessionFailureSignals(session);
+  if (consoleErrors > 0 || sessionFailures.length > 0) {
+    failed += 1;
+    console.error(`FAIL ${testCase.id}: generated mini-app did not pass runtime/evaluator quality gates.`);
+    console.error(JSON.stringify({
+      requestID,
+      sessionID: response.sessionID,
+      miniAppID,
+      consoleErrors,
+      sessionPhase: session?.phase,
+      sessionFailures,
+      output: response.output,
+      logLines: response.logLines
     }, null, 2));
     continue;
   }
