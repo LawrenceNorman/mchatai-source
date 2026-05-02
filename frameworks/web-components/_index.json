@@ -75,513 +75,1151 @@
       "name": "GameManager",
       "category": "core",
       "path": "core/GameManager.js",
-      "exports": ["GameManager"],
+      "exports": [
+        "GameManager"
+      ],
       "status": "ready",
       "summary": "requestAnimationFrame baseplate with delta time, pause/resume, resize support, events, collision callbacks, and entity lifecycle management.",
-      "tags": ["engine", "loop", "canvas", "arcade", "miniapp"],
+      "tags": [
+        "engine",
+        "loop",
+        "canvas",
+        "arcade",
+        "miniapp"
+      ],
       "contracts": {
         "entityUpdate": "entity.update(dt, gameManager)",
         "entityDraw": "entity.draw(ctx, gameManager)",
-        "entityLifecycle": ["entity.onAdd(gameManager)", "entity.onRemove(gameManager)"]
+        "entityLifecycle": [
+          "entity.onAdd(gameManager)",
+          "entity.onRemove(gameManager)"
+        ]
       },
-      "goodFits": ["asteroids", "pong", "frogger", "pacman", "alien-abduction", "tower-defense", "platformers"]
+      "goodFits": [
+        "asteroids",
+        "pong",
+        "frogger",
+        "pacman",
+        "alien-abduction",
+        "tower-defense",
+        "platformers"
+      ]
     },
     {
       "id": "core.physics2d",
       "name": "Physics2D",
       "category": "core",
       "path": "core/Physics2D.js",
-      "exports": ["Physics2D", "getAABB", "getCircle", "integrateMotion", "intersectsAABB", "intersectsCircle", "findAABBCollisions", "findCircleCollisions"],
+      "exports": [
+        "Physics2D",
+        "getAABB",
+        "getCircle",
+        "integrateMotion",
+        "intersectsAABB",
+        "intersectsCircle",
+        "findAABBCollisions",
+        "findCircleCollisions"
+      ],
       "status": "ready",
       "summary": "Simple motion integrator plus AABB and circle collision helpers for lightweight 2D arcade and platformer logic.",
-      "tags": ["physics", "collision", "motion", "2d"],
+      "tags": [
+        "physics",
+        "collision",
+        "motion",
+        "2d"
+      ],
       "contracts": {
-        "bodyFields": ["x", "y", "width", "height", "vx", "vy", "ax", "ay", "radius"],
-        "optionalFields": ["maxSpeed", "maxSpeedX", "maxSpeedY", "centered", "bounds", "hitbox"]
+        "bodyFields": [
+          "x",
+          "y",
+          "width",
+          "height",
+          "vx",
+          "vy",
+          "ax",
+          "ay",
+          "radius"
+        ],
+        "optionalFields": [
+          "maxSpeed",
+          "maxSpeedX",
+          "maxSpeedY",
+          "centered",
+          "bounds",
+          "hitbox"
+        ]
       },
-      "goodFits": ["asteroids", "pong", "mario-style-platformers", "tower-defense-projectiles", "top-down-arcade"]
+      "goodFits": [
+        "asteroids",
+        "pong",
+        "mario-style-platformers",
+        "tower-defense-projectiles",
+        "top-down-arcade"
+      ]
     },
     {
       "id": "core.turn-based-manager",
       "name": "TurnBasedManager",
       "category": "core",
       "path": "core/TurnBasedManager.js",
-      "exports": ["TurnBasedManager"],
+      "exports": [
+        "TurnBasedManager"
+      ],
       "status": "ready",
       "summary": "Turn, phase, round, history, and rule dispatcher baseplate for board, card, word, and puzzle games.",
-      "tags": ["turn-based", "state-machine", "rules", "board", "card", "puzzle"],
+      "tags": [
+        "turn-based",
+        "state-machine",
+        "rules",
+        "board",
+        "card",
+        "puzzle"
+      ],
       "contracts": {
-        "events": ["turn", "phase", "round", "record", "reset"],
-        "rules": ["registerRule(name, fn)", "runRule(name, payload)"]
+        "events": [
+          "turn",
+          "phase",
+          "round",
+          "record",
+          "reset"
+        ],
+        "rules": [
+          "registerRule(name, fn)",
+          "runRule(name, payload)"
+        ]
       },
-      "goodFits": ["blackjack", "texas-holdem-poker", "chess", "checkers", "mastermind", "word-quest", "minesweeper-99", "candy-match"]
+      "goodFits": [
+        "blackjack",
+        "texas-holdem-poker",
+        "chess",
+        "checkers",
+        "mastermind",
+        "word-quest",
+        "minesweeper-99",
+        "candy-match"
+      ]
     },
     {
       "id": "entities.entity",
       "name": "Entity",
       "category": "entities",
       "path": "entities/Entity.js",
-      "exports": ["Entity"],
+      "exports": [
+        "Entity"
+      ],
       "status": "ready",
       "summary": "Lightweight gameplay base class with motion fields, world wrapping helpers, AABB/circle hit shapes, and reusable lifecycle hooks.",
-      "tags": ["entity", "gameplay", "base-class", "arcade"],
+      "tags": [
+        "entity",
+        "gameplay",
+        "base-class",
+        "arcade"
+      ],
       "contracts": {
         "constructor": "new Entity({ x, y, vx, vy, width, height, radius, wrap })",
-        "lifecycle": ["update(dt, gameManager)", "draw(ctx, gameManager)", "destroy()"]
+        "lifecycle": [
+          "update(dt, gameManager)",
+          "draw(ctx, gameManager)",
+          "destroy()"
+        ]
       },
-      "goodFits": ["asteroids", "alien-abduction", "pong", "frogger", "top-down-arcade"]
+      "goodFits": [
+        "asteroids",
+        "alien-abduction",
+        "pong",
+        "frogger",
+        "top-down-arcade"
+      ]
     },
     {
       "id": "entities.space-ship",
       "name": "SpaceShip",
       "category": "entities",
       "path": "entities/SpaceShip.js",
-      "exports": ["SpaceShip"],
+      "exports": [
+        "SpaceShip"
+      ],
       "status": "ready",
       "summary": "Asteroids-style player ship with thrust, rotation, drag, wrapping, and projectile spawning.",
-      "tags": ["player", "ship", "asteroids", "arcade"],
+      "tags": [
+        "player",
+        "ship",
+        "asteroids",
+        "arcade"
+      ],
       "contracts": {
-        "controls": ["setInputState({ left, right, thrust, fire })", "createProjectile({ speed, ttl })"],
-        "tuning": ["turnSpeed", "thrustPower", "drag", "maxSpeed"]
+        "controls": [
+          "setInputState({ left, right, thrust, fire })",
+          "createProjectile({ speed, ttl })"
+        ],
+        "tuning": [
+          "turnSpeed",
+          "thrustPower",
+          "drag",
+          "maxSpeed"
+        ]
       },
-      "goodFits": ["asteroids", "alien-abduction", "space shooter", "vector arcade"]
+      "goodFits": [
+        "asteroids",
+        "alien-abduction",
+        "space shooter",
+        "vector arcade"
+      ]
     },
     {
       "id": "entities.asteroid",
       "name": "Asteroid",
       "category": "entities",
       "path": "entities/Asteroid.js",
-      "exports": ["Asteroid", "ASTEROID_LEVELS"],
+      "exports": [
+        "Asteroid",
+        "ASTEROID_LEVELS"
+      ],
       "status": "ready",
       "summary": "Jagged drifting asteroid body with spin, size levels, and split helpers for Asteroids-like games.",
-      "tags": ["asteroid", "enemy", "arcade", "vector"],
+      "tags": [
+        "asteroid",
+        "enemy",
+        "arcade",
+        "vector"
+      ],
       "contracts": {
-        "sizes": ["large", "medium", "small"],
-        "helpers": ["split()", "buildPolygonPointCount(level)"]
+        "sizes": [
+          "large",
+          "medium",
+          "small"
+        ],
+        "helpers": [
+          "split()",
+          "buildPolygonPointCount(level)"
+        ]
       },
-      "goodFits": ["asteroids", "space shooter", "vector arcade"]
+      "goodFits": [
+        "asteroids",
+        "space shooter",
+        "vector arcade"
+      ]
     },
     {
       "id": "entities.projectile",
       "name": "Projectile",
       "category": "entities",
       "path": "entities/Projectile.js",
-      "exports": ["Projectile"],
+      "exports": [
+        "Projectile"
+      ],
       "status": "ready",
       "summary": "Short-lived arcade projectile with velocity, optional wrapping, and compact vector rendering.",
-      "tags": ["projectile", "bullet", "arcade", "combat"],
+      "tags": [
+        "projectile",
+        "bullet",
+        "arcade",
+        "combat"
+      ],
       "contracts": {
         "constructor": "new Projectile({ x, y, angle, speed, ttl, wrap })",
-        "fields": ["ttl", "speed", "length", "color"]
+        "fields": [
+          "ttl",
+          "speed",
+          "length",
+          "color"
+        ]
       },
-      "goodFits": ["asteroids", "alien-abduction", "tower-defense", "top-down-arcade"]
+      "goodFits": [
+        "asteroids",
+        "alien-abduction",
+        "tower-defense",
+        "top-down-arcade"
+      ]
     },
     {
       "id": "entities.paddle",
       "name": "Paddle",
       "category": "entities",
       "path": "entities/Paddle.js",
-      "exports": ["Paddle"],
+      "exports": [
+        "Paddle"
+      ],
       "status": "ready",
       "summary": "Pong-style paddle with keyboard/AI movement helpers and simple canvas rendering.",
-      "tags": ["pong", "paddle", "arcade"],
+      "tags": [
+        "pong",
+        "paddle",
+        "arcade"
+      ],
       "contracts": {
-        "controls": ["setDirection(direction)", "move(dt, minY, maxY)"]
+        "controls": [
+          "setDirection(direction)",
+          "move(dt, minY, maxY)"
+        ]
       },
-      "goodFits": ["pong", "breakout", "two-player-arcade"]
+      "goodFits": [
+        "pong",
+        "breakout",
+        "two-player-arcade"
+      ]
     },
     {
       "id": "entities.ball",
       "name": "Ball",
       "category": "entities",
       "path": "entities/Ball.js",
-      "exports": ["Ball"],
+      "exports": [
+        "Ball"
+      ],
       "status": "ready",
       "summary": "Pong/breakout ball with reset, speed clamp, bounce helpers, and vector rendering.",
-      "tags": ["pong", "ball", "arcade", "physics"],
+      "tags": [
+        "pong",
+        "ball",
+        "arcade",
+        "physics"
+      ],
       "contracts": {
-        "helpers": ["reset({ x, y, direction })", "bounceX()", "bounceY()"]
+        "helpers": [
+          "reset({ x, y, direction })",
+          "bounceX()",
+          "bounceY()"
+        ]
       },
-      "goodFits": ["pong", "breakout", "brick-breaker"]
+      "goodFits": [
+        "pong",
+        "breakout",
+        "brick-breaker"
+      ]
     },
     {
       "id": "entities.grid-board",
       "name": "GridBoard",
       "category": "entities",
       "path": "entities/GridBoard.js",
-      "exports": ["GridBoard"],
+      "exports": [
+        "GridBoard"
+      ],
       "status": "ready",
       "summary": "Reusable tile grid with row/col addressing, neighbor lookup, swapping, world conversion, and optional wrapping.",
-      "tags": ["grid", "tiles", "puzzle", "maze", "board"],
+      "tags": [
+        "grid",
+        "tiles",
+        "puzzle",
+        "maze",
+        "board"
+      ],
       "contracts": {
-        "coordinates": ["get(row, col)", "set(row, col, value)", "cellToWorld(row, col)", "worldToCell(x, y)"],
-        "helpers": ["neighbors(row, col, options)", "swap(a, b)", "forEach(fn)"]
+        "coordinates": [
+          "get(row, col)",
+          "set(row, col, value)",
+          "cellToWorld(row, col)",
+          "worldToCell(x, y)"
+        ],
+        "helpers": [
+          "neighbors(row, col, options)",
+          "swap(a, b)",
+          "forEach(fn)"
+        ]
       },
-      "goodFits": ["frogger", "pacman", "minesweeper-99", "candy-match", "word-quest", "mastermind"]
+      "goodFits": [
+        "frogger",
+        "pacman",
+        "minesweeper-99",
+        "candy-match",
+        "word-quest",
+        "mastermind"
+      ]
     },
     {
       "id": "entities.board8x8",
       "name": "Board8x8",
       "category": "entities",
       "path": "entities/Board8x8.js",
-      "exports": ["Board8x8"],
+      "exports": [
+        "Board8x8"
+      ],
       "status": "ready",
       "summary": "Chess/checkers board built on GridBoard with algebraic coordinates, square coloring, and piece iteration.",
-      "tags": ["board", "chess", "checkers", "8x8"],
+      "tags": [
+        "board",
+        "chess",
+        "checkers",
+        "8x8"
+      ],
       "contracts": {
-        "coordinates": ["cellToAlgebraic(row, col)", "algebraicToCell(square)", "isDarkSquare(row, col)"]
+        "coordinates": [
+          "cellToAlgebraic(row, col)",
+          "algebraicToCell(square)",
+          "isDarkSquare(row, col)"
+        ]
       },
-      "goodFits": ["chess", "checkers-mono", "draughts"]
+      "goodFits": [
+        "chess",
+        "checkers-mono",
+        "draughts"
+      ]
     },
     {
       "id": "entities.card",
       "name": "Card",
       "category": "entities",
       "path": "entities/Card.js",
-      "exports": ["Card", "SUITS", "RANKS"],
+      "exports": [
+        "Card",
+        "SUITS",
+        "RANKS"
+      ],
       "status": "ready",
       "summary": "Standard playing card value object with id, color, blackjack value, and readable string output.",
-      "tags": ["card", "deck", "blackjack", "poker"],
+      "tags": [
+        "card",
+        "deck",
+        "blackjack",
+        "poker"
+      ],
       "contracts": {
-        "helpers": ["id", "color", "blackjackValue", "toString()"]
+        "helpers": [
+          "id",
+          "color",
+          "blackjackValue",
+          "toString()"
+        ]
       },
-      "goodFits": ["blackjack", "texas-holdem-poker", "solitaire", "card-games"]
+      "goodFits": [
+        "blackjack",
+        "texas-holdem-poker",
+        "solitaire",
+        "card-games"
+      ]
     },
     {
       "id": "entities.deck",
       "name": "Deck",
       "category": "entities",
       "path": "entities/Deck.js",
-      "exports": ["Deck", "blackjackHandValue"],
+      "exports": [
+        "Deck",
+        "blackjackHandValue"
+      ],
       "status": "ready",
       "summary": "Standard 52-card deck with shuffle, draw, discard, reset, and blackjack hand value helper.",
-      "tags": ["card", "deck", "shuffle", "blackjack", "poker"],
+      "tags": [
+        "card",
+        "deck",
+        "shuffle",
+        "blackjack",
+        "poker"
+      ],
       "contracts": {
-        "helpers": ["shuffle()", "draw(count)", "remaining()", "reset({ shuffle })", "blackjackHandValue(cards)", "scoreBlackjackHand(cards)"]
+        "helpers": [
+          "shuffle()",
+          "draw(count)",
+          "remaining()",
+          "reset({ shuffle })",
+          "blackjackHandValue(cards)",
+          "scoreBlackjackHand(cards)"
+        ]
       },
-      "goodFits": ["blackjack", "texas-holdem-poker", "card-games"]
+      "goodFits": [
+        "blackjack",
+        "texas-holdem-poker",
+        "card-games"
+      ]
     },
     {
       "id": "entities.blackjack-rules",
       "name": "BlackjackRules",
       "category": "entities",
       "path": "entities/BlackjackRules.js",
-      "exports": ["BlackjackRules"],
+      "exports": [
+        "BlackjackRules"
+      ],
       "status": "ready",
       "summary": "Blackjack hand evaluation, dealer hit policy, blackjack/bust checks, and payout settlement.",
-      "tags": ["blackjack", "card", "rules", "dealer"],
+      "tags": [
+        "blackjack",
+        "card",
+        "rules",
+        "dealer"
+      ],
       "contracts": {
-        "helpers": ["handValue(cards)", "isBlackjack(cards)", "shouldDealerHit(cards)", "settle(playerCards, dealerCards, bet)"]
+        "helpers": [
+          "handValue(cards)",
+          "isBlackjack(cards)",
+          "shouldDealerHit(cards)",
+          "settle(playerCards, dealerCards, bet)"
+        ]
       },
-      "goodFits": ["blackjack"]
+      "goodFits": [
+        "blackjack"
+      ]
     },
     {
       "id": "entities.poker-hand-evaluator",
       "name": "PokerHandEvaluator",
       "category": "entities",
       "path": "entities/PokerHandEvaluator.js",
-      "exports": ["PokerHandEvaluator"],
+      "exports": [
+        "PokerHandEvaluator"
+      ],
       "status": "ready",
       "summary": "Five-to-seven-card poker hand evaluator with ranking and tie-breakers.",
-      "tags": ["poker", "texas-holdem", "card", "rules"],
+      "tags": [
+        "poker",
+        "texas-holdem",
+        "card",
+        "rules"
+      ],
       "contracts": {
-        "helpers": ["evaluate(cards)", "evaluateFive(cards)", "compare(a, b)"]
+        "helpers": [
+          "evaluate(cards)",
+          "evaluateFive(cards)",
+          "compare(a, b)"
+        ]
       },
-      "goodFits": ["texas-holdem-poker", "poker"]
+      "goodFits": [
+        "texas-holdem-poker",
+        "poker"
+      ]
     },
     {
       "id": "entities.platformer-player",
       "name": "PlatformerPlayer",
       "category": "entities",
       "path": "entities/PlatformerPlayer.js",
-      "exports": ["PlatformerPlayer"],
+      "exports": [
+        "PlatformerPlayer"
+      ],
       "status": "ready",
       "summary": "Platformer avatar with acceleration, gravity, coyote time, jump buffering, facing direction, and grounded state.",
-      "tags": ["platformer", "player", "jump", "gravity"],
+      "tags": [
+        "platformer",
+        "player",
+        "jump",
+        "gravity"
+      ],
       "contracts": {
-        "controls": ["setInput({ left, right, jump })", "landOn(y)", "hitCeiling(y)"]
+        "controls": [
+          "setInput({ left, right, jump })",
+          "landOn(y)",
+          "hitCeiling(y)"
+        ]
       },
-      "goodFits": ["plumber", "mario-style", "pyramid-hopper", "side-scroller"]
+      "goodFits": [
+        "plumber",
+        "mario-style",
+        "pyramid-hopper",
+        "side-scroller"
+      ]
     },
     {
       "id": "entities.path-follower",
       "name": "PathFollower",
       "category": "entities",
       "path": "entities/PathFollower.js",
-      "exports": ["PathFollower"],
+      "exports": [
+        "PathFollower"
+      ],
       "status": "ready",
       "summary": "Waypoint-following entity for tower defense creeps, Frogger traffic, patrols, and scripted enemies.",
-      "tags": ["path", "waypoints", "enemy", "tower-defense", "traffic"],
+      "tags": [
+        "path",
+        "waypoints",
+        "enemy",
+        "tower-defense",
+        "traffic"
+      ],
       "contracts": {
-        "helpers": ["setPath(path, options)", "currentTarget", "arrived"]
+        "helpers": [
+          "setPath(path, options)",
+          "currentTarget",
+          "arrived"
+        ]
       },
-      "goodFits": ["tower-defense", "frogger", "pacman", "alien-abduction"]
+      "goodFits": [
+        "tower-defense",
+        "frogger",
+        "pacman",
+        "alien-abduction"
+      ]
     },
     {
       "id": "entities.grid-mover",
       "name": "GridMover",
       "category": "entities",
       "path": "entities/GridMover.js",
-      "exports": ["GridMover"],
+      "exports": [
+        "GridMover"
+      ],
       "status": "ready",
       "summary": "Grid-snapped movement helper for maze runners, Frogger players, traffic, and tile-based enemies.",
-      "tags": ["grid", "movement", "maze", "frogger", "pacman"],
+      "tags": [
+        "grid",
+        "movement",
+        "maze",
+        "frogger",
+        "pacman"
+      ],
       "contracts": {
-        "helpers": ["setDirection(direction)", "update(dt, board)", "worldPosition(board)"]
+        "helpers": [
+          "setDirection(direction)",
+          "update(dt, board)",
+          "worldPosition(board)"
+        ]
       },
-      "goodFits": ["frogger", "pacman", "grid-arcade", "tile-movement"]
+      "goodFits": [
+        "frogger",
+        "pacman",
+        "grid-arcade",
+        "tile-movement"
+      ]
     },
     {
       "id": "entities.ai-pathfinder",
       "name": "AIPathfinder",
       "category": "entities",
       "path": "entities/AIPathfinder.js",
-      "exports": ["AIPathfinder"],
+      "exports": [
+        "AIPathfinder"
+      ],
       "status": "ready",
       "summary": "Breadth-first grid pathfinder for PacMan ghosts, tower-defense path checks, and maze enemies.",
-      "tags": ["pathfinding", "maze", "pacman", "grid"],
+      "tags": [
+        "pathfinding",
+        "maze",
+        "pacman",
+        "grid"
+      ],
       "contracts": {
-        "helpers": ["findPath(board, start, goal)", "nextStep(board, start, goal)"]
+        "helpers": [
+          "findPath(board, start, goal)",
+          "nextStep(board, start, goal)"
+        ]
       },
-      "goodFits": ["pacman", "maze", "tower-defense"]
+      "goodFits": [
+        "pacman",
+        "maze",
+        "tower-defense"
+      ]
     },
     {
       "id": "entities.match3-logic",
       "name": "Match3Logic",
       "category": "entities",
       "path": "entities/Match3Logic.js",
-      "exports": ["Match3Logic"],
+      "exports": [
+        "Match3Logic"
+      ],
       "status": "ready",
       "summary": "Match-three resolver with horizontal/vertical run detection, clearing, column collapse, refill, and cascades.",
-      "tags": ["match3", "puzzle", "candy", "grid"],
+      "tags": [
+        "match3",
+        "puzzle",
+        "candy",
+        "grid"
+      ],
       "contracts": {
-        "helpers": ["findMatches(board)", "clearMatches(board, matches)", "collapseColumns(board)", "resolve(board)"]
+        "helpers": [
+          "findMatches(board)",
+          "clearMatches(board, matches)",
+          "collapseColumns(board)",
+          "resolve(board)"
+        ]
       },
-      "goodFits": ["candy-match", "match-three", "tile-puzzle"]
+      "goodFits": [
+        "candy-match",
+        "match-three",
+        "tile-puzzle"
+      ]
     },
     {
       "id": "entities.tile-swapper",
       "name": "TileSwapper",
       "category": "entities",
       "path": "entities/TileSwapper.js",
-      "exports": ["TileSwapper"],
+      "exports": [
+        "TileSwapper"
+      ],
       "status": "ready",
       "summary": "Selection and adjacent-swap controller for match-three and tile puzzle boards.",
-      "tags": ["match3", "swap", "puzzle", "grid"],
+      "tags": [
+        "match3",
+        "swap",
+        "puzzle",
+        "grid"
+      ],
       "contracts": {
-        "helpers": ["select(row, col)", "trySwap(board, row, col)", "clear()"]
+        "helpers": [
+          "select(row, col)",
+          "trySwap(board, row, col)",
+          "clear()"
+        ]
       },
-      "goodFits": ["candy-match", "match-three", "tile-puzzle"]
+      "goodFits": [
+        "candy-match",
+        "match-three",
+        "tile-puzzle"
+      ]
     },
     {
       "id": "entities.reveal-logic",
       "name": "RevealLogic",
       "category": "entities",
       "path": "entities/RevealLogic.js",
-      "exports": ["RevealLogic"],
+      "exports": [
+        "RevealLogic"
+      ],
       "status": "ready",
       "summary": "Minesweeper-style mine seeding, adjacency scoring, flag toggling, and flood reveal.",
-      "tags": ["minesweeper", "reveal", "puzzle", "grid"],
+      "tags": [
+        "minesweeper",
+        "reveal",
+        "puzzle",
+        "grid"
+      ],
       "contracts": {
-        "helpers": ["seedMines(board, count, avoid)", "computeAdjacency(board)", "toggleFlag(board, row, col)", "reveal(board, row, col)"]
+        "helpers": [
+          "seedMines(board, count, avoid)",
+          "computeAdjacency(board)",
+          "toggleFlag(board, row, col)",
+          "reveal(board, row, col)"
+        ]
       },
-      "goodFits": ["minesweeper-99", "reveal-puzzle"]
+      "goodFits": [
+        "minesweeper-99",
+        "reveal-puzzle"
+      ]
     },
     {
       "id": "entities.letter-grid",
       "name": "LetterGrid",
       "category": "entities",
       "path": "entities/LetterGrid.js",
-      "exports": ["LetterGrid"],
+      "exports": [
+        "LetterGrid"
+      ],
       "status": "ready",
       "summary": "Word-game grid with row word helpers and Wordle-style correct/present/absent scoring.",
-      "tags": ["word", "letters", "grid", "wordle"],
+      "tags": [
+        "word",
+        "letters",
+        "grid",
+        "wordle"
+      ],
       "contracts": {
-        "helpers": ["setWord(row, word)", "rowWord(row)", "scoreGuess(row, answer)"]
+        "helpers": [
+          "setWord(row, word)",
+          "rowWord(row)",
+          "scoreGuess(row, answer)"
+        ]
       },
-      "goodFits": ["word-quest", "word-puzzle", "letter-games"]
+      "goodFits": [
+        "word-quest",
+        "word-puzzle",
+        "letter-games"
+      ]
     },
     {
       "id": "entities.mastermind-logic",
       "name": "MastermindLogic",
       "category": "entities",
       "path": "entities/MastermindLogic.js",
-      "exports": ["MastermindLogic"],
+      "exports": [
+        "MastermindLogic"
+      ],
       "status": "ready",
       "summary": "Mastermind secret-code generation and exact/color-only feedback scoring.",
-      "tags": ["mastermind", "logic", "color", "puzzle"],
+      "tags": [
+        "mastermind",
+        "logic",
+        "color",
+        "puzzle"
+      ],
       "contracts": {
-        "helpers": ["generateCode()", "scoreGuess(guess, code)"]
+        "helpers": [
+          "generateCode()",
+          "scoreGuess(guess, code)"
+        ]
       },
-      "goodFits": ["mastermind"]
+      "goodFits": [
+        "mastermind"
+      ]
     },
     {
       "id": "entities.wave-manager",
       "name": "WaveManager",
       "category": "entities",
       "path": "entities/WaveManager.js",
-      "exports": ["WaveManager"],
+      "exports": [
+        "WaveManager"
+      ],
       "status": "ready",
       "summary": "Wave spawner for tower defense, enemy attacks, traffic bursts, and level pacing.",
-      "tags": ["waves", "spawner", "tower-defense", "enemy"],
+      "tags": [
+        "waves",
+        "spawner",
+        "tower-defense",
+        "enemy"
+      ],
       "contracts": {
-        "helpers": ["start(index)", "nextWave()", "update(dt)"]
+        "helpers": [
+          "start(index)",
+          "nextWave()",
+          "update(dt)"
+        ]
       },
-      "goodFits": ["tower-defense", "alien-abduction", "space-shooter"]
+      "goodFits": [
+        "tower-defense",
+        "alien-abduction",
+        "space-shooter"
+      ]
     },
     {
       "id": "entities.turret",
       "name": "Turret",
       "category": "entities",
       "path": "entities/Turret.js",
-      "exports": ["Turret"],
+      "exports": [
+        "Turret"
+      ],
       "status": "ready",
       "summary": "Target-seeking turret with range, cooldown, aim angle, and projectile-factory hook.",
-      "tags": ["turret", "tower-defense", "enemy", "projectile"],
+      "tags": [
+        "turret",
+        "tower-defense",
+        "enemy",
+        "projectile"
+      ],
       "contracts": {
-        "helpers": ["findTarget(entities)", "projectileFactory(turret, target)"]
+        "helpers": [
+          "findTarget(entities)",
+          "projectileFactory(turret, target)"
+        ]
       },
-      "goodFits": ["tower-defense", "open-world-asteroids", "alien-abduction"]
+      "goodFits": [
+        "tower-defense",
+        "open-world-asteroids",
+        "alien-abduction"
+      ]
     },
     {
       "id": "entities.camera-follow",
       "name": "CameraFollow",
       "category": "entities",
       "path": "entities/CameraFollow.js",
-      "exports": ["CameraFollow"],
+      "exports": [
+        "CameraFollow"
+      ],
       "status": "ready",
       "summary": "World-camera helper for ship-centered Asteroids variants, platformers, and large maps.",
-      "tags": ["camera", "scrolling", "world", "platformer"],
+      "tags": [
+        "camera",
+        "scrolling",
+        "world",
+        "platformer"
+      ],
       "contracts": {
-        "helpers": ["follow(target, viewport)", "apply(ctx)", "worldToScreen(x, y)", "screenToWorld(x, y)"]
+        "helpers": [
+          "follow(target, viewport)",
+          "apply(ctx)",
+          "worldToScreen(x, y)",
+          "screenToWorld(x, y)"
+        ]
       },
-      "goodFits": ["open-world-asteroids", "plumber", "pyramid-hopper", "tower-defense"]
+      "goodFits": [
+        "open-world-asteroids",
+        "plumber",
+        "pyramid-hopper",
+        "tower-defense"
+      ]
     },
     {
       "id": "entities.checkers-rules",
       "name": "CheckersRules",
       "category": "entities",
       "path": "entities/CheckersRules.js",
-      "exports": ["CheckersRules"],
+      "exports": [
+        "CheckersRules"
+      ],
       "status": "ready",
       "summary": "Checkers diagonal movement, captures, kinging, and move application helpers.",
-      "tags": ["checkers", "board", "rules", "8x8"],
+      "tags": [
+        "checkers",
+        "board",
+        "rules",
+        "8x8"
+      ],
       "contracts": {
-        "helpers": ["legalMoves(board, row, col)", "applyMove(board, move)", "directions(piece)"]
+        "helpers": [
+          "legalMoves(board, row, col)",
+          "applyMove(board, move)",
+          "directions(piece)"
+        ]
       },
-      "goodFits": ["checkers-mono", "checkers"]
+      "goodFits": [
+        "checkers-mono",
+        "checkers"
+      ]
     },
     {
       "id": "entities.chess-rules",
       "name": "ChessRules",
       "category": "entities",
       "path": "entities/ChessRules.js",
-      "exports": ["ChessRules"],
+      "exports": [
+        "ChessRules"
+      ],
       "status": "ready",
       "summary": "Chess setup, piece movement, capture rules, check filtering, checkmate, and stalemate helpers for 8x8 board games.",
-      "tags": ["chess", "board", "rules", "8x8"],
+      "tags": [
+        "chess",
+        "board",
+        "rules",
+        "8x8"
+      ],
       "contracts": {
-        "helpers": ["setupStandardBoard(board)", "legalMoves(board, row, col)", "applyMove(board, move)", "isKingInCheck(board, color)", "isCheckmate(board, color)"],
+        "helpers": [
+          "setupStandardBoard(board)",
+          "legalMoves(board, row, col)",
+          "applyMove(board, move)",
+          "isKingInCheck(board, color)",
+          "isCheckmate(board, color)"
+        ],
         "scope": "Handles normal piece movement and pawn promotion; castling and en passant can be layered in assembly code."
       },
-      "goodFits": ["chess", "playable-chess"]
+      "goodFits": [
+        "chess",
+        "playable-chess"
+      ]
     },
     {
       "id": "ui.scoreboard",
       "name": "ScoreBoard",
       "category": "ui",
       "path": "ui/ScoreBoard.js",
-      "exports": ["ScoreBoard"],
+      "exports": [
+        "ScoreBoard"
+      ],
       "status": "ready",
       "summary": "DOM HUD component for current score and best score, with mChatAI bridge persistence and localStorage fallback.",
-      "tags": ["hud", "score", "high-score", "storage", "bridge-aware"],
+      "tags": [
+        "hud",
+        "score",
+        "high-score",
+        "storage",
+        "bridge-aware"
+      ],
       "contracts": {
-        "bridge": ["window.mChatAI.storage.get(key)", "window.mChatAI.storage.set(key, value)"],
+        "bridge": [
+          "window.mChatAI.storage.get(key)",
+          "window.mChatAI.storage.set(key, value)"
+        ],
         "dom": "Creates a root element and optional mount target for CSS-driven theming."
       },
-      "goodFits": ["asteroids", "alien-abduction", "pong", "word-quest", "minesweeper-99", "arcade-score-challenges"]
+      "goodFits": [
+        "asteroids",
+        "alien-abduction",
+        "pong",
+        "word-quest",
+        "minesweeper-99",
+        "arcade-score-challenges"
+      ]
     },
     {
       "id": "ui.virtual-joystick",
       "name": "VirtualJoystick",
       "category": "ui",
       "path": "ui/VirtualJoystick.js",
-      "exports": ["VirtualJoystick"],
+      "exports": [
+        "VirtualJoystick"
+      ],
       "status": "ready",
       "summary": "Pointer-event virtual joystick overlay for mobile/touch arcade controls.",
-      "tags": ["touch", "mobile", "controls", "joystick"],
+      "tags": [
+        "touch",
+        "mobile",
+        "controls",
+        "joystick"
+      ],
       "contracts": {
         "value": "joystick.value -> { x, y, active }",
-        "events": ["onChange(value)", "destroy()"]
+        "events": [
+          "onChange(value)",
+          "destroy()"
+        ]
       },
-      "goodFits": ["asteroids", "frogger", "pacman", "platformers", "alien-abduction"]
+      "goodFits": [
+        "asteroids",
+        "frogger",
+        "pacman",
+        "platformers",
+        "alien-abduction"
+      ]
     },
     {
       "id": "ui.piano-keyboard",
       "name": "PianoKeyboard",
       "category": "ui",
       "path": "ui/PianoKeyboard.js",
-      "exports": ["PianoKeyboard"],
+      "exports": [
+        "PianoKeyboard"
+      ],
       "status": "ready",
       "summary": "DOM piano keyboard that emits note/frequency events and can drive AudioManager.",
-      "tags": ["piano", "keyboard", "music", "audio"],
+      "tags": [
+        "piano",
+        "keyboard",
+        "music",
+        "audio"
+      ],
       "contracts": {
-        "helpers": ["play(note)", "destroy()", "PianoKeyboard.noteFrequency(note)"]
+        "helpers": [
+          "play(note)",
+          "destroy()",
+          "PianoKeyboard.noteFrequency(note)"
+        ]
       },
-      "goodFits": ["piano", "music-miniapps", "synth-toys"]
+      "goodFits": [
+        "piano",
+        "music-miniapps",
+        "synth-toys"
+      ]
     },
     {
       "id": "ui.keyboard-input",
       "name": "KeyboardInput",
       "category": "ui",
       "path": "ui/KeyboardInput.js",
-      "exports": ["KeyboardInput"],
+      "exports": [
+        "KeyboardInput"
+      ],
       "status": "ready",
       "summary": "Small keyboard binding helper for word games, grid movement, and arcade controls.",
-      "tags": ["keyboard", "input", "controls", "word"],
+      "tags": [
+        "keyboard",
+        "input",
+        "controls",
+        "word"
+      ],
       "contracts": {
-        "helpers": ["bind(key, action)", "bindMany(mapping)", "destroy()"]
+        "helpers": [
+          "bind(key, action)",
+          "bindMany(mapping)",
+          "destroy()"
+        ]
       },
-      "goodFits": ["word-quest", "mastermind", "frogger", "pacman", "piano"]
+      "goodFits": [
+        "word-quest",
+        "mastermind",
+        "frogger",
+        "pacman",
+        "piano"
+      ]
     },
     {
       "id": "resources.swatches",
       "name": "Swatches",
       "category": "resources",
       "path": "resources/Swatches.js",
-      "exports": ["WEB_COMPONENT_SWATCHES", "ASTEROIDS_SWATCHES", "getSwatchByID", "applySwatchVariables"],
+      "exports": [
+        "WEB_COMPONENT_SWATCHES",
+        "ASTEROIDS_SWATCHES",
+        "getSwatchByID",
+        "applySwatchVariables"
+      ],
       "status": "ready",
       "summary": "Theme tokens and CSS variable helper for re-skinning gameplay HUDs and canvases without changing logic.",
-      "tags": ["swatch", "theme", "design-tokens", "reskin"],
+      "tags": [
+        "swatch",
+        "theme",
+        "design-tokens",
+        "reskin"
+      ],
       "contracts": {
-        "css": ["applySwatchVariables(element, swatch, { prefix })", "getSwatchByID(id)"],
-        "families": ["retro-neon", "vector-noir", "sunset-arcade"]
+        "css": [
+          "applySwatchVariables(element, swatch, { prefix })",
+          "getSwatchByID(id)"
+        ],
+        "families": [
+          "retro-neon",
+          "vector-noir",
+          "sunset-arcade"
+        ]
       },
-      "goodFits": ["asteroids", "alien-abduction", "pong", "miniapp-ui", "reskinning"]
+      "goodFits": [
+        "asteroids",
+        "alien-abduction",
+        "pong",
+        "miniapp-ui",
+        "reskinning"
+      ]
     },
     {
       "id": "resources.audio-manager",
       "name": "AudioManager",
       "category": "resources",
       "path": "resources/AudioManager.js",
-      "exports": ["AudioManager"],
+      "exports": [
+        "AudioManager"
+      ],
       "status": "ready",
       "summary": "Tiny WebAudio SFX helper for beeps, noise bursts, and named sound effects without external assets.",
-      "tags": ["audio", "sfx", "webaudio", "arcade"],
+      "tags": [
+        "audio",
+        "sfx",
+        "webaudio",
+        "arcade"
+      ],
       "contracts": {
-        "helpers": ["beep(options)", "noise(options)", "playEffect(name, options)", "resume()"]
+        "helpers": [
+          "beep(options)",
+          "noise(options)",
+          "playEffect(name, options)",
+          "resume()"
+        ]
       },
-      "goodFits": ["asteroids", "pong", "candy-match", "piano", "platformers", "tower-defense"]
+      "goodFits": [
+        "asteroids",
+        "pong",
+        "candy-match",
+        "piano",
+        "platformers",
+        "tower-defense"
+      ]
     }
   ],
   "compositionRecipes": [
     {
       "id": "recipe.open-world-asteroids",
       "name": "Open-World Asteroids",
-      "keywords": ["open world asteroids", "vast outer space", "no wrap", "no wraparound", "camera follows", "home base", "home-base", "turret", "moons", "enemy locations"],
-      "templateIDs": ["asteroids-clone"],
-      "existingGames": ["asteroids", "alien-abduction"],
-      "starterComponents": ["core.game-manager", "core.physics2d", "entities.entity", "entities.space-ship", "entities.asteroid", "entities.projectile", "entities.camera-follow", "entities.turret", "ui.scoreboard", "resources.swatches"],
+      "keywords": [
+        "open world asteroids",
+        "vast outer space",
+        "no wrap",
+        "no wraparound",
+        "camera follows",
+        "home base",
+        "home-base",
+        "turret",
+        "moons",
+        "enemy locations"
+      ],
+      "templateIDs": [
+        "asteroids-clone"
+      ],
+      "existingGames": [
+        "asteroids",
+        "alien-abduction"
+      ],
+      "starterComponents": [
+        "core.game-manager",
+        "core.physics2d",
+        "entities.entity",
+        "entities.space-ship",
+        "entities.asteroid",
+        "entities.projectile",
+        "entities.camera-follow",
+        "entities.turret",
+        "ui.scoreboard",
+        "resources.swatches"
+      ],
       "assemblyNotes": [
         "Use CameraFollow and world coordinates instead of wraparound screen coordinates.",
         "Use Turret for moon/base installations and Projectile for both player and enemy fire.",
@@ -591,10 +1229,36 @@
     {
       "id": "recipe.arcade-top-down",
       "name": "Arcade Top-Down",
-      "keywords": ["asteroids", "alien", "space shooter", "vector arcade", "centipede", "top-down arcade"],
-      "templateIDs": ["asteroids-clone", "arcade-alien-abduction"],
-      "existingGames": ["asteroids", "alien-abduction"],
-      "starterComponents": ["core.game-manager", "core.physics2d", "entities.entity", "entities.space-ship", "entities.asteroid", "entities.projectile", "ui.scoreboard", "resources.swatches", "entities.camera-follow", "entities.turret", "ui.virtual-joystick", "resources.audio-manager"],
+      "keywords": [
+        "asteroids",
+        "alien",
+        "space shooter",
+        "vector arcade",
+        "centipede",
+        "top-down arcade"
+      ],
+      "templateIDs": [
+        "asteroids-clone",
+        "arcade-alien-abduction"
+      ],
+      "existingGames": [
+        "asteroids",
+        "alien-abduction"
+      ],
+      "starterComponents": [
+        "core.game-manager",
+        "core.physics2d",
+        "entities.entity",
+        "entities.space-ship",
+        "entities.asteroid",
+        "entities.projectile",
+        "ui.scoreboard",
+        "resources.swatches",
+        "entities.camera-follow",
+        "entities.turret",
+        "ui.virtual-joystick",
+        "resources.audio-manager"
+      ],
       "assemblyNotes": [
         "Write glue code around the shipped engine and entity modules instead of rewriting movement, wrapping, projectile, and scoring logic from scratch.",
         "For open-world Asteroids variants, keep SpaceShip and Projectile but disable world wrapping and add camera/world coordinates in the assembly layer."
@@ -603,128 +1267,421 @@
     {
       "id": "recipe.pong",
       "name": "Pong / Paddle Ball",
-      "keywords": ["pong", "paddle", "ball", "breakout"],
-      "templateIDs": ["classic-pong-game"],
-      "existingGames": ["pong"],
-      "starterComponents": ["core.game-manager", "core.physics2d", "entities.paddle", "entities.ball", "ui.scoreboard", "resources.swatches", "resources.audio-manager"],
-      "assemblyNotes": ["Use Paddle and Ball as fixed rules primitives; only generate scoring rules, input binding, and theme."]
+      "keywords": [
+        "pong",
+        "paddle",
+        "ball",
+        "breakout"
+      ],
+      "templateIDs": [
+        "classic-pong-game"
+      ],
+      "existingGames": [
+        "pong"
+      ],
+      "starterComponents": [
+        "core.game-manager",
+        "core.physics2d",
+        "entities.paddle",
+        "entities.ball",
+        "ui.scoreboard",
+        "resources.swatches",
+        "resources.audio-manager"
+      ],
+      "assemblyNotes": [
+        "Use Paddle and Ball as fixed rules primitives; only generate scoring rules, input binding, and theme."
+      ]
     },
     {
       "id": "recipe.arcade-grid",
       "name": "Frogger / Grid Arcade",
-      "keywords": ["frogger", "cross the road", "lanes", "traffic", "river", "grid arcade"],
-      "templateIDs": ["arcade-frogger"],
-      "existingGames": ["frogger"],
-      "starterComponents": ["core.game-manager", "entities.grid-board", "entities.grid-mover", "entities.path-follower", "ui.scoreboard", "ui.virtual-joystick", "resources.swatches", "resources.audio-manager"],
-      "assemblyNotes": ["Use GridBoard for lanes, GridMover for the player, and PathFollower for cars/logs; generate only lane data and collision rules."]
+      "keywords": [
+        "frogger",
+        "cross the road",
+        "lanes",
+        "traffic",
+        "river",
+        "grid arcade"
+      ],
+      "templateIDs": [
+        "arcade-frogger"
+      ],
+      "existingGames": [
+        "frogger"
+      ],
+      "starterComponents": [
+        "core.game-manager",
+        "entities.grid-board",
+        "entities.grid-mover",
+        "entities.path-follower",
+        "ui.scoreboard",
+        "ui.virtual-joystick",
+        "resources.swatches",
+        "resources.audio-manager"
+      ],
+      "assemblyNotes": [
+        "Use GridBoard for lanes, GridMover for the player, and PathFollower for cars/logs; generate only lane data and collision rules."
+      ]
     },
     {
       "id": "recipe.maze-arcade",
       "name": "PacMan / Maze Arcade",
-      "keywords": ["pacman", "pac-man", "maze", "ghost", "pellet", "powerup"],
-      "templateIDs": ["arcade-pacman-v1"],
-      "existingGames": ["pacman"],
-      "starterComponents": ["core.game-manager", "entities.grid-board", "entities.grid-mover", "entities.ai-pathfinder", "ui.scoreboard", "ui.virtual-joystick", "resources.swatches", "resources.audio-manager"],
-      "assemblyNotes": ["Use GridBoard for maze walls and pellets, GridMover for player/ghost movement, and AIPathfinder for ghost chase/scatter behavior."]
+      "keywords": [
+        "pacman",
+        "pac-man",
+        "maze",
+        "ghost",
+        "pellet",
+        "powerup"
+      ],
+      "templateIDs": [
+        "arcade-pacman-v1"
+      ],
+      "existingGames": [
+        "pacman"
+      ],
+      "starterComponents": [
+        "core.game-manager",
+        "entities.grid-board",
+        "entities.grid-mover",
+        "entities.ai-pathfinder",
+        "ui.scoreboard",
+        "ui.virtual-joystick",
+        "resources.swatches",
+        "resources.audio-manager"
+      ],
+      "assemblyNotes": [
+        "Use GridBoard for maze walls and pellets, GridMover for player/ghost movement, and AIPathfinder for ghost chase/scatter behavior."
+      ]
     },
     {
       "id": "recipe.platformer",
       "name": "Platformer",
-      "keywords": ["platformer", "mario", "plumber", "jump", "side scroller", "pyramid hopper"],
-      "templateIDs": ["platformer-mario-style"],
-      "existingGames": ["plumber", "pyramid-hopper"],
-      "starterComponents": ["core.game-manager", "core.physics2d", "entities.grid-board", "entities.platformer-player", "entities.camera-follow", "ui.scoreboard", "ui.virtual-joystick", "resources.swatches", "resources.audio-manager"],
-      "plannedNext": ["entities.platform-tilemap", "resources.texture-manager"]
+      "keywords": [
+        "platformer",
+        "mario",
+        "plumber",
+        "jump",
+        "side scroller",
+        "pyramid hopper"
+      ],
+      "templateIDs": [
+        "platformer-mario-style"
+      ],
+      "existingGames": [
+        "plumber",
+        "pyramid-hopper"
+      ],
+      "starterComponents": [
+        "core.game-manager",
+        "core.physics2d",
+        "entities.grid-board",
+        "entities.platformer-player",
+        "entities.camera-follow",
+        "ui.scoreboard",
+        "ui.virtual-joystick",
+        "resources.swatches",
+        "resources.audio-manager"
+      ],
+      "plannedNext": [
+        "entities.platform-tilemap",
+        "resources.texture-manager"
+      ]
     },
     {
       "id": "recipe.tower-defense",
       "name": "Tower Defense",
-      "keywords": ["tower defense", "waves", "turret", "creeps", "path"],
-      "templateIDs": ["tower-defense-game"],
-      "existingGames": ["tower-defense"],
-      "starterComponents": ["core.game-manager", "core.physics2d", "entities.grid-board", "entities.path-follower", "entities.projectile", "entities.wave-manager", "entities.turret", "ui.scoreboard", "resources.swatches", "resources.audio-manager"],
-      "plannedNext": ["entities.health-bar"]
+      "keywords": [
+        "tower defense",
+        "waves",
+        "turret",
+        "creeps",
+        "path"
+      ],
+      "templateIDs": [
+        "tower-defense-game"
+      ],
+      "existingGames": [
+        "tower-defense"
+      ],
+      "starterComponents": [
+        "core.game-manager",
+        "core.physics2d",
+        "entities.grid-board",
+        "entities.path-follower",
+        "entities.projectile",
+        "entities.wave-manager",
+        "entities.turret",
+        "ui.scoreboard",
+        "resources.swatches",
+        "resources.audio-manager"
+      ],
+      "plannedNext": [
+        "entities.health-bar"
+      ]
     },
     {
       "id": "recipe.word-logic",
       "name": "Word / Letter Puzzle",
-      "keywords": ["word quest", "word puzzle", "wordle", "letters", "guess word", "letter grid"],
-      "templateIDs": ["word-puzzle-game"],
-      "existingGames": ["word-quest"],
-      "starterComponents": ["core.turn-based-manager", "entities.grid-board", "entities.letter-grid", "ui.keyboard-input", "ui.scoreboard", "resources.swatches", "resources.audio-manager"],
-      "assemblyNotes": ["Use LetterGrid for guesses and feedback; generate dictionary/level content separately from grid scoring."]
+      "keywords": [
+        "word quest",
+        "word puzzle",
+        "wordle",
+        "letters",
+        "guess word",
+        "letter grid"
+      ],
+      "templateIDs": [
+        "word-puzzle-game"
+      ],
+      "existingGames": [
+        "word-quest"
+      ],
+      "starterComponents": [
+        "core.turn-based-manager",
+        "entities.grid-board",
+        "entities.letter-grid",
+        "ui.keyboard-input",
+        "ui.scoreboard",
+        "resources.swatches",
+        "resources.audio-manager"
+      ],
+      "assemblyNotes": [
+        "Use LetterGrid for guesses and feedback; generate dictionary/level content separately from grid scoring."
+      ]
     },
     {
       "id": "recipe.mastermind",
       "name": "Mastermind",
-      "keywords": ["mastermind", "code breaker", "feedback pegs", "color guessing", "color code"],
-      "templateIDs": ["mastermind-color-guessing-game"],
-      "existingGames": ["mastermind"],
-      "starterComponents": ["core.turn-based-manager", "entities.grid-board", "entities.mastermind-logic", "ui.keyboard-input", "ui.scoreboard", "resources.swatches", "resources.audio-manager"],
-      "assemblyNotes": ["Use MastermindLogic for code generation and feedback pegs; do not ask the model to reinvent exact/color-only scoring."]
+      "keywords": [
+        "mastermind",
+        "code breaker",
+        "feedback pegs",
+        "color guessing",
+        "color code"
+      ],
+      "templateIDs": [
+        "mastermind-color-guessing-game"
+      ],
+      "existingGames": [
+        "mastermind"
+      ],
+      "starterComponents": [
+        "core.turn-based-manager",
+        "entities.grid-board",
+        "entities.mastermind-logic",
+        "ui.keyboard-input",
+        "ui.scoreboard",
+        "resources.swatches",
+        "resources.audio-manager"
+      ],
+      "assemblyNotes": [
+        "Use MastermindLogic for code generation and feedback pegs; do not ask the model to reinvent exact/color-only scoring."
+      ]
     },
     {
       "id": "recipe.minesweeper",
       "name": "Minesweeper",
-      "keywords": ["minesweeper", "minesweeper 99", "mine", "flag", "reveal", "flood reveal"],
-      "templateIDs": ["minesweeper-99"],
-      "existingGames": ["minesweeper-99"],
-      "starterComponents": ["core.turn-based-manager", "entities.grid-board", "entities.reveal-logic", "ui.scoreboard", "resources.swatches", "resources.audio-manager"],
-      "assemblyNotes": ["Use RevealLogic for mine seeding, adjacency counts, flags, and flood reveal; generate board size/difficulty settings only."]
+      "keywords": [
+        "minesweeper",
+        "minesweeper 99",
+        "mine",
+        "flag",
+        "reveal",
+        "flood reveal"
+      ],
+      "templateIDs": [
+        "minesweeper-99"
+      ],
+      "existingGames": [
+        "minesweeper-99"
+      ],
+      "starterComponents": [
+        "core.turn-based-manager",
+        "entities.grid-board",
+        "entities.reveal-logic",
+        "ui.scoreboard",
+        "resources.swatches",
+        "resources.audio-manager"
+      ],
+      "assemblyNotes": [
+        "Use RevealLogic for mine seeding, adjacency counts, flags, and flood reveal; generate board size/difficulty settings only."
+      ]
     },
     {
       "id": "recipe.match3",
       "name": "Match Three",
-      "keywords": ["match three", "match-3", "candy match", "candy", "swap", "cascade"],
-      "templateIDs": ["match-three-puzzle-game"],
-      "existingGames": ["candy-match"],
-      "starterComponents": ["core.turn-based-manager", "entities.grid-board", "entities.tile-swapper", "entities.match3-logic", "ui.scoreboard", "resources.swatches", "resources.audio-manager"],
-      "assemblyNotes": ["Use TileSwapper for selection/swap input and Match3Logic for matches/cascades; generate tile skins and level goals only."]
+      "keywords": [
+        "match three",
+        "match-3",
+        "candy match",
+        "candy",
+        "swap",
+        "cascade"
+      ],
+      "templateIDs": [
+        "match-three-puzzle-game"
+      ],
+      "existingGames": [
+        "candy-match"
+      ],
+      "starterComponents": [
+        "core.turn-based-manager",
+        "entities.grid-board",
+        "entities.tile-swapper",
+        "entities.match3-logic",
+        "ui.scoreboard",
+        "resources.swatches",
+        "resources.audio-manager"
+      ],
+      "assemblyNotes": [
+        "Use TileSwapper for selection/swap input and Match3Logic for matches/cascades; generate tile skins and level goals only."
+      ]
     },
     {
       "id": "recipe.blackjack",
       "name": "Blackjack",
-      "keywords": ["blackjack", "twenty one", "hit", "stand", "dealer", "bankroll"],
-      "templateIDs": ["blackjack", "texas-holdem-poker"],
-      "existingGames": ["blackjack"],
-      "starterComponents": ["core.turn-based-manager", "entities.card", "entities.deck", "entities.blackjack-rules", "ui.scoreboard", "resources.swatches", "resources.audio-manager"],
-      "assemblyNotes": ["Use BlackjackRules for hand totals, dealer policy, blackjack checks, and settlement; generate table flow and UI only."]
+      "keywords": [
+        "blackjack",
+        "twenty one",
+        "hit",
+        "stand",
+        "dealer",
+        "bankroll"
+      ],
+      "templateIDs": [
+        "blackjack"
+      ],
+      "existingGames": [
+        "blackjack"
+      ],
+      "starterComponents": [
+        "core.turn-based-manager",
+        "entities.card",
+        "entities.deck",
+        "entities.blackjack-rules",
+        "ui.scoreboard",
+        "resources.swatches",
+        "resources.audio-manager"
+      ],
+      "assemblyNotes": [
+        "Use BlackjackRules for hand totals, dealer policy, blackjack checks, and settlement; generate table flow and UI only."
+      ]
     },
     {
       "id": "recipe.poker",
       "name": "Texas Holdem Poker",
-      "keywords": ["poker", "texas holdem", "texas hold em", "holdem", "flop", "turn", "river"],
-      "templateIDs": ["texas-holdem-poker"],
-      "existingGames": ["texas-holdem-poker"],
-      "starterComponents": ["core.turn-based-manager", "entities.card", "entities.deck", "entities.poker-hand-evaluator", "ui.scoreboard", "resources.swatches", "resources.audio-manager"],
-      "plannedNext": ["entities.poker-pot-manager", "ui.card-table"]
+      "keywords": [
+        "poker",
+        "texas holdem",
+        "texas hold em",
+        "holdem",
+        "flop",
+        "turn",
+        "river"
+      ],
+      "templateIDs": [
+        "texas-holdem-poker"
+      ],
+      "existingGames": [
+        "texas-holdem-poker"
+      ],
+      "starterComponents": [
+        "core.turn-based-manager",
+        "entities.card",
+        "entities.deck",
+        "entities.poker-hand-evaluator",
+        "ui.scoreboard",
+        "resources.swatches",
+        "resources.audio-manager"
+      ],
+      "plannedNext": [
+        "entities.poker-pot-manager",
+        "ui.card-table"
+      ]
     },
     {
       "id": "recipe.checkers",
       "name": "Checkers",
-      "keywords": ["checkers", "draughts", "captures", "king me"],
-      "templateIDs": ["board-checkers-mono"],
-      "existingGames": ["checkers-mono"],
-      "starterComponents": ["core.turn-based-manager", "entities.grid-board", "entities.board8x8", "entities.checkers-rules", "resources.swatches", "resources.audio-manager"],
-      "assemblyNotes": ["Use CheckersRules for diagonal movement, captures, and kinging; generate board UI and turn prompts only."]
+      "keywords": [
+        "checkers",
+        "draughts",
+        "captures",
+        "king me"
+      ],
+      "templateIDs": [
+        "board-checkers-mono"
+      ],
+      "existingGames": [
+        "checkers-mono"
+      ],
+      "starterComponents": [
+        "core.turn-based-manager",
+        "entities.grid-board",
+        "entities.board8x8",
+        "entities.checkers-rules",
+        "resources.swatches",
+        "resources.audio-manager"
+      ],
+      "assemblyNotes": [
+        "Use CheckersRules for diagonal movement, captures, and kinging; generate board UI and turn prompts only."
+      ]
     },
     {
       "id": "recipe.chess",
       "name": "Chess",
-      "keywords": ["chess", "playable chess", "king", "queen", "bishop", "rook", "knight"],
-      "templateIDs": ["chess-game-board", "board-checkers-mono"],
-      "existingGames": ["playable-chess"],
-      "starterComponents": ["core.turn-based-manager", "entities.grid-board", "entities.board8x8", "entities.chess-rules", "resources.swatches", "resources.audio-manager"],
-      "assemblyNotes": ["Use ChessRules for standard setup, legal move generation, check filtering, checkmate, and stalemate; add UI affordances and optional castling/en passant only after the base rules are wired."]
+      "keywords": [
+        "chess",
+        "playable chess",
+        "king",
+        "queen",
+        "bishop",
+        "rook",
+        "knight"
+      ],
+      "templateIDs": [
+        "chess-game-board",
+        "board-checkers-mono"
+      ],
+      "existingGames": [
+        "playable-chess"
+      ],
+      "starterComponents": [
+        "core.turn-based-manager",
+        "entities.grid-board",
+        "entities.board8x8",
+        "entities.chess-rules",
+        "resources.swatches",
+        "resources.audio-manager"
+      ],
+      "assemblyNotes": [
+        "Use ChessRules for standard setup, legal move generation, check filtering, checkmate, and stalemate; add UI affordances and optional castling/en passant only after the base rules are wired."
+      ]
     },
     {
       "id": "recipe.music",
       "name": "Music / Piano",
-      "keywords": ["piano", "keyboard", "music", "synth"],
-      "templateIDs": ["music-piano-keyboard"],
-      "existingGames": ["piano"],
-      "starterComponents": ["ui.piano-keyboard", "resources.audio-manager", "resources.swatches"],
-      "plannedNext": ["ui.note-display", "resources.synth-presets"]
+      "keywords": [
+        "piano",
+        "keyboard",
+        "music",
+        "synth"
+      ],
+      "templateIDs": [
+        "music-piano-keyboard"
+      ],
+      "existingGames": [
+        "piano"
+      ],
+      "starterComponents": [
+        "ui.piano-keyboard",
+        "resources.audio-manager",
+        "resources.swatches"
+      ],
+      "plannedNext": [
+        "ui.note-display",
+        "resources.synth-presets"
+      ]
     }
   ],
   "sourceCatalogs": [
@@ -743,8 +1700,15 @@
       "name": "Asteroids Golden Assembly",
       "summary": "Runnable Asteroids example composed from the shared engine, entity, swatch, and HUD modules.",
       "recipeID": "recipe.arcade-top-down",
-      "templateIDs": ["asteroids-clone"],
-      "keywords": ["asteroids", "space shooter", "vector arcade", "wrap around"],
+      "templateIDs": [
+        "asteroids-clone"
+      ],
+      "keywords": [
+        "asteroids",
+        "space shooter",
+        "vector arcade",
+        "wrap around"
+      ],
       "files": [
         "examples/asteroids/index.html",
         "examples/asteroids/asteroids.css",

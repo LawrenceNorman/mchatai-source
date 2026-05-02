@@ -64,8 +64,15 @@ Useful inspection paths:
 - **Class-name mimicry:** The generated app defines local `GameManager`, `SpaceShip`, or `Asteroid` classes instead of using catalog modules.
 - **Backend fallback:** Codex or a local model fails, then another provider produces a playable app that did not receive or follow the same component constraints.
 - **Stale source cache:** The app uses older cached `_index.json` or prompt files because local `mchatai-source` edits were not synced into the container source cache.
+- **Continuation context drop:** A second-turn prompt such as "Yes, build it now" can lose obvious genre keywords unless the Harness matches Web Components against prior user prompts as well as the current prompt.
+- **Template keyword contamination:** A wrong-but-plausible template seed can contain another recipe's keywords. Keep template-ID scoring separate from prompt/category keyword scoring so explicit prompts like Blackjack do not select Poker.
 
-The required next Harness improvement is a hard gate: if a Web Components recipe is selected and `check_component_usage.mjs` fails, the Harness should auto-fix or retry before the session can be marked complete.
+Harness status as of 2026-05-02:
+
+- A hard Lego gate exists in `AIHarness+MiniAppOps`: if a recipe is selected and the generated artifact omits the marker/imports/canonical inline component bodies, the mini-app is rejected before install.
+- Tunnel results should report `status:error`, `phase:failed`, and a `failureReason` beginning with `Web Components Lego gate rejected...` for rejected artifacts.
+- `diagHarnessContext` supports `recentUserMessages` so QA can verify continuation turns still select the correct component recipe.
+- The next improvement is auto-fix/retry after gate rejection, preferably from a pre-seeded module scaffold instead of another blank `index.html` prompt.
 
 ## Current Families
 
