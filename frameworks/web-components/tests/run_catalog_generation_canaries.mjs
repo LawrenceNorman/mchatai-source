@@ -202,6 +202,7 @@ function sessionFailureSignals(session) {
 
 async function checkArtifact(miniAppID, expectedRecipe) {
   let indexPath = resolve(appSupportDir, "MiniApps/installed", miniAppID, "index.html");
+  let html = "";
 
   if (useSocketTunnel) {
     const safeID = miniAppID.replace(/[^A-Za-z0-9_.-]/g, "-");
@@ -221,12 +222,15 @@ async function checkArtifact(miniAppID, expectedRecipe) {
       });
     }
 
+    html = response.html;
     const tempDir = resolve(tmpdir(), "mchatai-lego-canary", safeID);
     mkdirSync(tempDir, { recursive: true });
     indexPath = resolve(tempDir, "index.html");
-    writeFileSync(indexPath, response.html);
+    writeFileSync(indexPath, html);
   } else if (!existsSync(indexPath)) {
     fail("Generated mini-app index.html not found.", { miniAppID, indexPath });
+  } else {
+    html = readFileSync(indexPath, "utf8");
   }
 
   const result = spawnSync(process.execPath, [checkerPath, indexPath, expectedRecipe], {
@@ -244,7 +248,73 @@ async function checkArtifact(miniAppID, expectedRecipe) {
 
   return {
     indexPath,
-    usage: JSON.parse(result.stdout)
+    usage: JSON.parse(result.stdout),
+    html
+  };
+}
+
+function semanticArtifactSignals(html, testCase) {
+  const normalizedHTML = String(html || "").toLowerCase();
+  const mustContain = testCase.mustContain || testCase.semanticContains || [];
+  const mustNotContain = testCase.mustNotContain || testCase.semanticExcludes || [];
+  return {
+    missing: mustContain.filter((value) => !normalizedHTML.includes(String(value).toLowerCase())),
+    forbidden: mustNotContain.filter((value) => normalizedHTML.includes(String(value).toLowerCase()))
+  };
+}
+
+function stripVisibleText(html) {
+  return String(html || "")
+    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, " ")
+    .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, " ")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function inlineModuleBody(html) {
+  const matches = Array.from(String(html || "").matchAll(/<script\s+[^>]*type\s*=\s*["']module["'][^>]*>([\s\S]*?)<\/script>/gi));
+  return matches.length ? matches[matches.length - 1][1] : "";
+}
+
+function previewQualitySignals(html, usage) {
+  const lower = String(html || "").toLowerCase();
+  const suspiciousPatterns = [
+    ".initialize(",
+    "gamemanager.init(",
+    "gridboard.initialize(",
+    "new gamemanager(ctx",
+    "new scoreboard(ctx",
+    "gamemanager.update(",
+    "gamemanager.render(",
+    "scoreboard.update(",
+    "gridmover.move(",
+    ".update(score",
+    ".update(score,"
+  ];
+  const suspicious = suspiciousPatterns.filter((pattern) => lower.includes(pattern));
+
+  if (usage.mode !== "module-imports") {
+    return { suspicious, skeletal: false, moduleLineCount: 0, bodyTextLength: stripVisibleText(html).length };
+  }
+
+  const bodyText = stripVisibleText(html);
+  const moduleLineCount = inlineModuleBody(html)
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line && !line.startsWith("import ") && !line.startsWith("//"))
+    .length;
+  const hasStaticSurface = lower.includes("<canvas") ||
+    lower.includes("<button") ||
+    lower.includes("data-role=") ||
+    lower.includes("class=\"hud") ||
+    lower.includes("id=\"hud");
+
+  return {
+    suspicious,
+    skeletal: bodyText.length < 24 && !hasStaticSurface && moduleLineCount < 80,
+    moduleLineCount,
+    bodyTextLength: bodyText.length
   };
 }
 
@@ -322,6 +392,38 @@ for (const testCase of cases) {
 
   try {
     const artifact = await checkArtifact(miniAppID, testCase.expectedRecipe);
+    const previewQuality = previewQualitySignals(artifact.html, artifact.usage);
+    if (previewQuality.suspicious.length > 0 || previewQuality.skeletal) {
+      failed += 1;
+      console.error(`FAIL ${testCase.id}: generated mini-app passed component marker checks but is a poor preview shell.`);
+      console.error(JSON.stringify({
+        requestID,
+        sessionID: response.sessionID,
+        miniAppID,
+        indexPath: artifact.indexPath,
+        previewQuality,
+        output: response.output,
+        logLines: response.logLines
+      }, null, 2));
+      continue;
+    }
+
+    const semantic = semanticArtifactSignals(artifact.html, testCase);
+    if (semantic.missing.length > 0 || semantic.forbidden.length > 0) {
+      failed += 1;
+      console.error(`FAIL ${testCase.id}: generated mini-app passed component marker checks but failed semantic identity checks.`);
+      console.error(JSON.stringify({
+        requestID,
+        sessionID: response.sessionID,
+        miniAppID,
+        indexPath: artifact.indexPath,
+        missing: semantic.missing,
+        forbidden: semantic.forbidden,
+        output: response.output,
+        logLines: response.logLines
+      }, null, 2));
+      continue;
+    }
     console.log(`PASS ${testCase.id} → ${miniAppID}`);
     console.log(JSON.stringify({
       indexPath: artifact.indexPath,
