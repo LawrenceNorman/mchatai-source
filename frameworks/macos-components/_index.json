@@ -13,7 +13,25 @@
       "components/word-game/WordGameEngine.swift",
       "components/word-game/WordGameLexicon.swift",
       "components/word-game/WordGameKeyboardHandling.swift",
-      "components/word-game/WordGameSmokeTests.swift"
+      "components/word-game/WordGameSmokeTests.swift",
+      "components/crossword/CrosswordEngine.swift",
+      "components/grid-puzzle/GridPuzzleCore.swift",
+      "components/grid-puzzle/MastermindEngine.swift",
+      "components/grid-puzzle/MinesweeperEngine.swift",
+      "components/grid-puzzle/Match3Engine.swift",
+      "components/board-game/BoardGameCore.swift",
+      "components/board-game/CheckersRules.swift",
+      "components/board-game/ChessRules.swift",
+      "components/arcade/ArcadeCore.swift",
+      "components/arcade/AsteroidsEngine.swift",
+      "components/arcade/PongEngine.swift",
+      "components/arcade/GridAdventureEngine.swift",
+      "components/arcade/PlatformerEngine.swift",
+      "components/arcade/TowerDefenseEngine.swift",
+      "components/card-game/CardGameCore.swift",
+      "components/card-game/BlackjackEngine.swift",
+      "components/card-game/PokerHandEvaluator.swift",
+      "components/music/PianoEngine.swift"
     ]
   },
   "categories": [
@@ -21,6 +39,36 @@
       "id": "word-game",
       "displayName": "Word Games",
       "description": "Reusable engine, dictionary, keyboard, and smoke-test helpers for native five-letter word guessing games."
+    },
+    {
+      "id": "crossword",
+      "displayName": "Crossword",
+      "description": "Reusable mini-crossword grid, clue, entry, selection, and validation helpers."
+    },
+    {
+      "id": "grid-puzzle",
+      "displayName": "Grid Puzzles",
+      "description": "Reusable grid, reveal, match-three, Mastermind, and puzzle-state engines."
+    },
+    {
+      "id": "board-game",
+      "displayName": "Board Games",
+      "description": "Reusable 8x8 board, checkers, and chess rule engines for native SwiftUI board games."
+    },
+    {
+      "id": "arcade",
+      "displayName": "Arcade",
+      "description": "Reusable model engines for Asteroids, Pong, Adventure, Frogger, PacMan-style mazes, platformers, and tower defense."
+    },
+    {
+      "id": "card-game",
+      "displayName": "Card Games",
+      "description": "Reusable card, deck, blackjack, and poker hand evaluation engines."
+    },
+    {
+      "id": "music",
+      "displayName": "Music",
+      "description": "Reusable piano note and keyboard state helpers for native music toys."
     },
     {
       "id": "desktop-shell",
@@ -147,6 +195,352 @@
         "native macOS QA",
         "launch smoke test"
       ]
+    },
+    {
+      "id": "crossword.engine",
+      "name": "CrosswordEngine",
+      "category": "crossword",
+      "path": "components/crossword/CrosswordEngine.swift",
+      "exports": [
+        "CrosswordEngine",
+        "CrosswordEntry",
+        "CrosswordCell",
+        "CrosswordDirection",
+        "MiniCrosswordSeed"
+      ],
+      "status": "ready",
+      "summary": "Mini-crossword state engine with numbered entries, across/down selection, letter input, clue lookup, and solved validation.",
+      "tags": ["crossword", "nyt-mini", "word", "grid", "macos"],
+      "contracts": {
+        "state": "Bind grid, selectedPoint, selectedDirection, entries, and isSolved into SwiftUI.",
+        "input": "Call select(_:direction:), input(_:), and delete() from pointer and keyboard controls."
+      },
+      "goodFits": ["NYT mini crossword clone", "mini crossword", "daily crossword"]
+    },
+    {
+      "id": "crossword.smoke-tests",
+      "name": "CrosswordSmokeTests",
+      "category": "crossword",
+      "path": "components/crossword/CrosswordSmokeTests.swift",
+      "exports": ["CrosswordSmokeTests"],
+      "status": "ready",
+      "summary": "Runtime smoke-test reporter for mini-crossword entry input and solved-state wiring.",
+      "tags": ["crossword", "qa", "smoke-test"],
+      "contracts": {
+        "stdout": "Call CrosswordSmokeTests.printLaunchReport() from app init()."
+      },
+      "goodFits": ["NYT mini crossword clone", "native crossword QA"]
+    },
+    {
+      "id": "gridpuzzle.core",
+      "name": "GridPuzzleCore",
+      "category": "grid-puzzle",
+      "path": "components/grid-puzzle/GridPuzzleCore.swift",
+      "exports": ["PuzzlePoint", "GridDirection", "PuzzleGrid", "SeededRandomNumberGenerator"],
+      "status": "ready",
+      "summary": "Generic Codable grid, coordinate, direction, neighbor, and deterministic RNG primitives shared by puzzle and board engines.",
+      "tags": ["grid", "coordinates", "puzzle", "board"],
+      "contracts": {
+        "coordinates": "Use PuzzlePoint(row:col:) and GridDirection for deterministic row/column movement.",
+        "grid": "PuzzleGrid stores Codable/Equatable cells and provides contains, neighbors, and allPoints helpers."
+      },
+      "goodFits": ["minesweeper", "match-3", "mastermind", "crossword", "frogger", "pacman", "chess", "checkers"]
+    },
+    {
+      "id": "gridpuzzle.mastermind",
+      "name": "MastermindEngine",
+      "category": "grid-puzzle",
+      "path": "components/grid-puzzle/MastermindEngine.swift",
+      "exports": ["MastermindEngine", "MastermindPeg", "MastermindFeedback", "MastermindGuess"],
+      "status": "ready",
+      "summary": "Mastermind code-breaker engine with exact/color-only peg scoring, turn history, and completion state.",
+      "tags": ["mastermind", "code-breaker", "puzzle", "turn-based"],
+      "contracts": {
+        "feedback": "Use MastermindEngine.evaluate(secret:guess:) for duplicate-safe exact and color-only scoring.",
+        "turns": "Call submit(_:) once per guess and render guesses plus feedback pegs from guesses."
+      },
+      "goodFits": ["mastermind clone", "color code breaker"]
+    },
+    {
+      "id": "gridpuzzle.minesweeper",
+      "name": "MinesweeperEngine",
+      "category": "grid-puzzle",
+      "path": "components/grid-puzzle/MinesweeperEngine.swift",
+      "exports": ["MinesweeperEngine", "MinesweeperCell", "MinesweeperState"],
+      "status": "ready",
+      "summary": "Minesweeper engine with mine seeding, adjacency counts, flagging, reveal, flood reveal, win, and loss state.",
+      "tags": ["minesweeper", "reveal", "flood-fill", "grid"],
+      "contracts": {
+        "input": "Call reveal(at:) for clicks and toggleFlag(at:) for secondary-click or flag mode.",
+        "state": "Render each MinesweeperCell from grid and end the game from state."
+      },
+      "goodFits": ["minesweeper 99", "minesweeper clone", "reveal puzzle"]
+    },
+    {
+      "id": "gridpuzzle.match3",
+      "name": "Match3Engine",
+      "category": "grid-puzzle",
+      "path": "components/grid-puzzle/Match3Engine.swift",
+      "exports": ["Match3Engine", "Match3Tile"],
+      "status": "ready",
+      "summary": "Match-three engine with adjacent swapping, run detection, clearing, column collapse, refill, cascades, and scoring.",
+      "tags": ["match3", "candy", "swap", "cascade"],
+      "contracts": {
+        "input": "Call swap(_: _:) only for adjacent selected tiles; false means rollback/no valid match.",
+        "rendering": "Render grid symbols with app-specific candy/tile visuals."
+      },
+      "goodFits": ["candy match", "match-three", "tile swapping puzzle"]
+    },
+    {
+      "id": "gridpuzzle.smoke-tests",
+      "name": "GridPuzzleSmokeTests",
+      "category": "grid-puzzle",
+      "path": "components/grid-puzzle/GridPuzzleSmokeTests.swift",
+      "exports": ["GridPuzzleSmokeTests"],
+      "status": "ready",
+      "summary": "Runtime smoke-test reporter for Mastermind, Minesweeper, and Match3 engines.",
+      "tags": ["qa", "smoke-test", "puzzle"],
+      "contracts": {
+        "stdout": "Call GridPuzzleSmokeTests.printLaunchReport() from app init()."
+      },
+      "goodFits": ["puzzle QA", "native mini-game QA"]
+    },
+    {
+      "id": "boardgame.core",
+      "name": "BoardGameCore",
+      "category": "board-game",
+      "path": "components/board-game/BoardGameCore.swift",
+      "exports": ["Board8x8", "BoardPiece", "BoardPieceKind", "BoardSide", "BoardMove"],
+      "status": "ready",
+      "summary": "Codable 8x8 board, pieces, sides, moves, algebraic coordinates, and piece iteration shared by chess and checkers.",
+      "tags": ["board", "8x8", "chess", "checkers"],
+      "contracts": {
+        "coordinates": "Use Board8x8.algebraic(_:) and Board8x8.squareName(_:) for chess/checkers notation.",
+        "state": "Board8x8 stores optional BoardPiece values by PuzzlePoint."
+      },
+      "goodFits": ["chess", "checkers", "draughts", "8x8 board games"]
+    },
+    {
+      "id": "boardgame.checkers",
+      "name": "CheckersRules",
+      "category": "board-game",
+      "path": "components/board-game/CheckersRules.swift",
+      "exports": ["CheckersRules"],
+      "status": "ready",
+      "summary": "Checkers setup, diagonal slide/capture generation, forced-capture preference, kinging, and move application.",
+      "tags": ["checkers", "draughts", "rules", "captures"],
+      "contracts": {
+        "moves": "Use allLegalMoves(for:on:) to enforce forced captures before rendering selectable moves.",
+        "apply": "Call apply(_:to:) after the player chooses a legal move."
+      },
+      "goodFits": ["checkers mono clone", "checkers", "draughts"]
+    },
+    {
+      "id": "boardgame.chess",
+      "name": "ChessRules",
+      "category": "board-game",
+      "path": "components/board-game/ChessRules.swift",
+      "exports": ["ChessRules"],
+      "status": "ready",
+      "summary": "Chess setup, normal piece movement, captures, pawn promotion, self-check filtering, check, and checkmate helpers.",
+      "tags": ["chess", "rules", "legal moves", "checkmate"],
+      "contracts": {
+        "scope": "Covers normal legal moves and promotion; castling and en passant can be layered in app-specific glue.",
+        "moves": "Use legalMoves(from:on:) for selected-piece highlighting and allLegalMoves(for:on:) for game-over checks."
+      },
+      "goodFits": ["playable chess", "chess clone", "board game"]
+    },
+    {
+      "id": "boardgame.smoke-tests",
+      "name": "BoardGameSmokeTests",
+      "category": "board-game",
+      "path": "components/board-game/BoardGameSmokeTests.swift",
+      "exports": ["BoardGameSmokeTests"],
+      "status": "ready",
+      "summary": "Runtime smoke-test reporter for checkers and chess starting move generation.",
+      "tags": ["qa", "smoke-test", "board"],
+      "contracts": {
+        "stdout": "Call BoardGameSmokeTests.printLaunchReport() from app init()."
+      },
+      "goodFits": ["chess QA", "checkers QA"]
+    },
+    {
+      "id": "arcade.core",
+      "name": "ArcadeCore",
+      "category": "arcade",
+      "path": "components/arcade/ArcadeCore.swift",
+      "exports": ["ArcadeVector", "ArcadeBody", "ArcadePlayfield", "ArcadeControls", "ArcadePhase"],
+      "status": "ready",
+      "summary": "Shared vector, body, playfield, control, phase, integration, wrapping, and circle-intersection primitives for native arcade engines.",
+      "tags": ["arcade", "physics", "vector", "controls"],
+      "contracts": {
+        "loop": "Call update(dt:controls:) from a SwiftUI TimelineView, Timer, or display-link bridge.",
+        "rendering": "Render ArcadeBody positions with SwiftUI Canvas, shapes, or SpriteKit glue."
+      },
+      "goodFits": ["asteroids", "pong", "alien abduction", "platformer", "tower defense"]
+    },
+    {
+      "id": "arcade.asteroids",
+      "name": "AsteroidsEngine",
+      "category": "arcade",
+      "path": "components/arcade/AsteroidsEngine.swift",
+      "exports": ["AsteroidsEngine", "AsteroidsRock", "AsteroidsShot"],
+      "status": "ready",
+      "summary": "Asteroids-style engine with rotating/thrusting ship, shots, wrapping rocks, splitting, score, lives, waves, and collision state.",
+      "tags": ["asteroids", "space shooter", "vector arcade", "alien abduction"],
+      "contracts": {
+        "input": "Call update(dt:controls:) for rotation/thrust and fire() from keyboard or toolbar actions.",
+        "state": "Render ship, rocks, shots, score, lives, and phase from the engine."
+      },
+      "goodFits": ["asteroids clone", "alien abduction", "space shooter"]
+    },
+    {
+      "id": "arcade.pong",
+      "name": "PongEngine",
+      "category": "arcade",
+      "path": "components/arcade/PongEngine.swift",
+      "exports": ["PongEngine"],
+      "status": "ready",
+      "summary": "Pong engine with ball/paddle movement, wall bounces, paddle bounces, AI paddle fallback, scoring, and win state.",
+      "tags": ["pong", "paddle", "ball", "arcade"],
+      "contracts": {
+        "input": "Call update(dt:leftDirection:rightDirection:) and pass -1/0/1 from keyboard controls.",
+        "state": "Render ball, paddles, score, winningScore, and phase."
+      },
+      "goodFits": ["pong clone", "paddle ball", "breakout base"]
+    },
+    {
+      "id": "arcade.grid-adventure",
+      "name": "GridAdventureEngine",
+      "category": "arcade",
+      "path": "components/arcade/GridAdventureEngine.swift",
+      "exports": ["GridAdventureEngine", "AdventureTile", "AdventureActor"],
+      "status": "ready",
+      "summary": "Tile-map adventure engine for Atari Adventure, Frogger lanes, and PacMan-style pellet mazes with hero movement, collectibles, exits, enemies, vehicles, score, lives, and phase.",
+      "tags": ["adventure", "frogger", "pacman", "maze", "grid arcade"],
+      "contracts": {
+        "maps": "Use adventureCastleMap(), froggerLaneMap(), or mazePelletMap() as seed layouts and customize tiles in app glue.",
+        "input": "Call moveHero(_:) for keyboard movement and stepTraffic() for lane/enemy ticks."
+      },
+      "goodFits": ["Atari Adventure clone", "Frogger clone", "PacMan clone", "maze arcade"]
+    },
+    {
+      "id": "arcade.platformer",
+      "name": "PlatformerEngine",
+      "category": "arcade",
+      "path": "components/arcade/PlatformerEngine.swift",
+      "exports": ["PlatformerEngine", "PlatformerPlayer", "PlatformRect"],
+      "status": "ready",
+      "summary": "Side-scrolling platformer engine with acceleration, gravity, jumping, grounded state, platforms, simple coin scoring, and loss state.",
+      "tags": ["platformer", "mario", "plumber", "pyramid hopper"],
+      "contracts": {
+        "input": "Call update(dt:controls:) with left/right/jump controls.",
+        "rendering": "Use player.body, platforms, coins, score, and phase to draw SwiftUI or SpriteKit scenes."
+      },
+      "goodFits": ["Mario style plumber", "Pyramid Hopper", "side-scrolling platformer"]
+    },
+    {
+      "id": "arcade.tower-defense",
+      "name": "TowerDefenseEngine",
+      "category": "arcade",
+      "path": "components/arcade/TowerDefenseEngine.swift",
+      "exports": ["TowerDefenseEngine", "TowerDefenseEnemy", "TowerDefenseTower"],
+      "status": "ready",
+      "summary": "Tower-defense model with path-following enemies, tower placement, range targeting, cooldowns, waves, credits, lives, and win/loss phase.",
+      "tags": ["tower defense", "waves", "turrets", "path"],
+      "contracts": {
+        "input": "Call placeTower(at:) from grid clicks and startWave(count:) from a wave button.",
+        "loop": "Call update(dt:) from the app timer."
+      },
+      "goodFits": ["tower defense clone", "waves and turrets"]
+    },
+    {
+      "id": "arcade.smoke-tests",
+      "name": "ArcadeSmokeTests",
+      "category": "arcade",
+      "path": "components/arcade/ArcadeSmokeTests.swift",
+      "exports": ["ArcadeSmokeTests"],
+      "status": "ready",
+      "summary": "Runtime smoke-test reporter for Asteroids, Pong, grid adventure, and tower-defense engines.",
+      "tags": ["qa", "smoke-test", "arcade"],
+      "contracts": {
+        "stdout": "Call ArcadeSmokeTests.printLaunchReport() from app init()."
+      },
+      "goodFits": ["arcade QA", "native game QA"]
+    },
+    {
+      "id": "cardgame.core",
+      "name": "CardGameCore",
+      "category": "card-game",
+      "path": "components/card-game/CardGameCore.swift",
+      "exports": ["PlayingCard", "PlayingCardSuit", "PlayingCardRank", "CardDeck", "CardHandValue"],
+      "status": "ready",
+      "summary": "Standard card, suit, rank, deterministic deck, draw, shuffle, and blackjack hand-value primitives.",
+      "tags": ["cards", "deck", "blackjack", "poker"],
+      "contracts": {
+        "deck": "Use CardDeck.draw(_:) and reset by constructing a new CardDeck when low.",
+        "values": "Use CardHandValue.blackjack(_:) for ace-adjusted totals."
+      },
+      "goodFits": ["blackjack", "texas hold'em poker", "card games"]
+    },
+    {
+      "id": "cardgame.blackjack",
+      "name": "BlackjackEngine",
+      "category": "card-game",
+      "path": "components/card-game/BlackjackEngine.swift",
+      "exports": ["BlackjackEngine", "BlackjackPhase"],
+      "status": "ready",
+      "summary": "Blackjack table engine with deal, hit, stand, dealer policy, settlement, bankroll, bet, phase, and status text.",
+      "tags": ["blackjack", "dealer", "bankroll", "cards"],
+      "contracts": {
+        "flow": "Call deal(bet:), hit(), and stand(); render player/dealer hands, bankroll, bet, phase, and status.",
+        "dealer": "Dealer draws to 17 before settlement."
+      },
+      "goodFits": ["BlackJack clone", "twenty-one card game"]
+    },
+    {
+      "id": "cardgame.poker",
+      "name": "PokerHandEvaluator",
+      "category": "card-game",
+      "path": "components/card-game/PokerHandEvaluator.swift",
+      "exports": ["PokerHandEvaluator", "PokerEvaluation", "PokerHandRank"],
+      "status": "ready",
+      "summary": "Five-to-seven-card poker evaluator with hand ranks, kickers, comparison, straights, flushes, full houses, and straight flushes.",
+      "tags": ["poker", "texas holdem", "hand evaluator", "cards"],
+      "contracts": {
+        "evaluation": "Call PokerHandEvaluator.evaluate(_:) with five to seven cards.",
+        "scope": "Provides hand ranking; betting, pots, and AI opponents belong in app-specific glue."
+      },
+      "goodFits": ["Texas Holdem Poker", "poker hand evaluator"]
+    },
+    {
+      "id": "cardgame.smoke-tests",
+      "name": "CardGameSmokeTests",
+      "category": "card-game",
+      "path": "components/card-game/CardGameSmokeTests.swift",
+      "exports": ["CardGameSmokeTests"],
+      "status": "ready",
+      "summary": "Runtime smoke-test reporter for blackjack settlement and poker hand evaluation.",
+      "tags": ["qa", "smoke-test", "cards"],
+      "contracts": {
+        "stdout": "Call CardGameSmokeTests.printLaunchReport() from app init()."
+      },
+      "goodFits": ["blackjack QA", "poker QA"]
+    },
+    {
+      "id": "music.piano",
+      "name": "PianoEngine",
+      "category": "music",
+      "path": "components/music/PianoEngine.swift",
+      "exports": ["PianoEngine", "PianoNote", "PianoSmokeTests"],
+      "status": "ready",
+      "summary": "Piano keyboard model with note names, MIDI numbers, frequencies, sharp-key metadata, and active note state.",
+      "tags": ["piano", "music", "keyboard", "synth"],
+      "contracts": {
+        "input": "Call noteOn(_:) and noteOff(_:) from pointer or keyboard bindings.",
+        "audio": "Use PianoNote.frequency to drive AVAudioEngine or NSSound glue in the generated app."
+      },
+      "goodFits": ["piano mini-app", "music keyboard", "synth toy"]
     }
   ],
   "compositionRecipes": [
@@ -193,6 +587,233 @@
         "wordgame-onscreen-keyboard",
         "wordgame-stats-store"
       ]
+    },
+    {
+      "id": "recipe.native-crossword",
+      "name": "Native Mini Crossword",
+      "keywords": ["crossword", "mini crossword", "NYT mini crossword", "nyt mini", "daily crossword", "clues", "across", "down"],
+      "templateIDs": [],
+      "existingApps": ["NYT mini crossword clone", "mini crossword"],
+      "starterComponents": ["gridpuzzle.core", "crossword.engine", "crossword.smoke-tests"],
+      "assemblyNotes": [
+        "Copy the crossword engine verbatim and build the SwiftUI board/clue list as app-specific glue.",
+        "Expose across/down selection, arrow-key movement, letter input, delete, active clue highlighting, and solved feedback.",
+        "Call CrosswordSmokeTests.printLaunchReport() from app init()."
+      ],
+      "requiredNow": ["gridpuzzle.core", "crossword.engine", "crossword.smoke-tests"],
+      "plannedNext": ["crossword-timer", "crossword-streak-store"]
+    },
+    {
+      "id": "recipe.mastermind",
+      "name": "Native Mastermind",
+      "keywords": ["mastermind", "code breaker", "color guessing", "feedback pegs", "color code"],
+      "templateIDs": [],
+      "existingApps": ["mastermind"],
+      "starterComponents": ["gridpuzzle.mastermind", "gridpuzzle.smoke-tests"],
+      "assemblyNotes": [
+        "Use MastermindEngine for duplicate-safe scoring. Do not rewrite exact/color-only peg logic in ContentView.",
+        "Render selectable color pegs, guess history, feedback pegs, remaining turns, and win/loss state."
+      ],
+      "requiredNow": ["gridpuzzle.mastermind", "gridpuzzle.smoke-tests"],
+      "plannedNext": ["mastermind-ai-hints"]
+    },
+    {
+      "id": "recipe.minesweeper",
+      "name": "Native Minesweeper",
+      "keywords": ["minesweeper", "minesweeper 99", "mine", "flag", "reveal", "flood reveal", "timer"],
+      "templateIDs": [],
+      "existingApps": ["minesweeper-99"],
+      "starterComponents": ["gridpuzzle.core", "gridpuzzle.minesweeper", "gridpuzzle.smoke-tests"],
+      "assemblyNotes": [
+        "Use MinesweeperEngine for mine placement, adjacency, flags, reveal, and flood reveal.",
+        "Add secondary-click flagging, visible flag mode, timer, difficulty controls, and win/loss overlays in app glue."
+      ],
+      "requiredNow": ["gridpuzzle.core", "gridpuzzle.minesweeper", "gridpuzzle.smoke-tests"],
+      "plannedNext": ["minesweeper-best-time-store"]
+    },
+    {
+      "id": "recipe.match3",
+      "name": "Native Match Three",
+      "keywords": ["match three", "match-3", "candy match", "candy", "swap", "cascade", "tile swapping"],
+      "templateIDs": [],
+      "existingApps": ["candy-match"],
+      "starterComponents": ["gridpuzzle.core", "gridpuzzle.match3", "gridpuzzle.smoke-tests"],
+      "assemblyNotes": [
+        "Use Match3Engine for adjacent swaps, match detection, collapse, refill, cascades, and score.",
+        "Keep candy visuals, animations, combo labels, and level goals in app-specific SwiftUI glue."
+      ],
+      "requiredNow": ["gridpuzzle.core", "gridpuzzle.match3", "gridpuzzle.smoke-tests"],
+      "plannedNext": ["match3-level-goals"]
+    },
+    {
+      "id": "recipe.arcade-asteroids",
+      "name": "Native Asteroids / Top-Down Shooter",
+      "keywords": ["asteroids", "asteroids clone", "alien abduction", "space shooter", "vector arcade", "top-down arcade", "ship", "asteroid splitting"],
+      "templateIDs": [],
+      "existingApps": ["asteroids", "alien-abduction"],
+      "starterComponents": ["arcade.core", "arcade.asteroids", "arcade.smoke-tests"],
+      "assemblyNotes": [
+        "Use AsteroidsEngine for ship rotation, thrust, shots, wrapping, rock splitting, score, lives, and waves.",
+        "For Alien Abduction variants, keep the top-down controls and projectile loop but replace rocks with abductable targets in app glue.",
+        "Render with SwiftUI Canvas or SpriteKit; do not collapse the copied engine into a custom monolithic game loop."
+      ],
+      "requiredNow": ["arcade.core", "arcade.asteroids", "arcade.smoke-tests"],
+      "plannedNext": ["arcade-camera-follow", "arcade-sfx"]
+    },
+    {
+      "id": "recipe.arcade-pong",
+      "name": "Native Pong",
+      "keywords": ["pong", "paddle", "ball", "score to 7", "paddle ball", "breakout"],
+      "templateIDs": [],
+      "existingApps": ["pong"],
+      "starterComponents": ["arcade.core", "arcade.pong", "arcade.smoke-tests"],
+      "assemblyNotes": [
+        "Use PongEngine for ball physics, paddle movement, scoring, AI fallback, and win state.",
+        "Add keyboard shortcuts, pause/reset controls, score HUD, and optional sound in app glue."
+      ],
+      "requiredNow": ["arcade.core", "arcade.pong", "arcade.smoke-tests"],
+      "plannedNext": ["pong-two-player-networking"]
+    },
+    {
+      "id": "recipe.arcade-adventure",
+      "name": "Native Atari Adventure",
+      "keywords": ["Atari Adventure", "adventure clone", "castle", "key", "treasure", "maze adventure", "dragon"],
+      "templateIDs": [],
+      "existingApps": ["Atari Adventure clone"],
+      "starterComponents": ["gridpuzzle.core", "arcade.grid-adventure", "arcade.smoke-tests"],
+      "assemblyNotes": [
+        "Use GridAdventureEngine.adventureCastleMap() as the seed map, then add rooms, keys, doors, treasure, and enemy behavior in app glue.",
+        "Expose keyboard movement, inventory/status HUD, room labels, and clear win/loss feedback."
+      ],
+      "requiredNow": ["gridpuzzle.core", "arcade.grid-adventure", "arcade.smoke-tests"],
+      "plannedNext": ["adventure-room-graph", "adventure-inventory"]
+    },
+    {
+      "id": "recipe.arcade-grid",
+      "name": "Native Frogger / Grid Arcade",
+      "keywords": ["frogger", "cross the road", "lanes", "traffic", "river", "logs", "grid arcade"],
+      "templateIDs": [],
+      "existingApps": ["frogger"],
+      "starterComponents": ["gridpuzzle.core", "arcade.grid-adventure", "arcade.smoke-tests"],
+      "assemblyNotes": [
+        "Use GridAdventureEngine.froggerLaneMap() as the seed layout.",
+        "Keep lane data, moving hazards, safe zones, lives, and score in app glue while preserving the copied movement/collision engine."
+      ],
+      "requiredNow": ["gridpuzzle.core", "arcade.grid-adventure", "arcade.smoke-tests"],
+      "plannedNext": ["frogger-log-carrier"]
+    },
+    {
+      "id": "recipe.maze-arcade",
+      "name": "Native PacMan / Maze Arcade",
+      "keywords": ["pacman", "pac-man", "maze", "ghost", "pellet", "powerup", "waka"],
+      "templateIDs": [],
+      "existingApps": ["pacman"],
+      "starterComponents": ["gridpuzzle.core", "arcade.grid-adventure", "arcade.smoke-tests"],
+      "assemblyNotes": [
+        "Use GridAdventureEngine.mazePelletMap() as the seed layout.",
+        "Add ghost chase/scatter rules, power pellets, score multipliers, and maze rendering in app-specific glue."
+      ],
+      "requiredNow": ["gridpuzzle.core", "arcade.grid-adventure", "arcade.smoke-tests"],
+      "plannedNext": ["maze-pathfinder", "ghost-ai"]
+    },
+    {
+      "id": "recipe.platformer",
+      "name": "Native Platformer",
+      "keywords": ["platformer", "mario", "plumber", "jump", "side scroller", "side-scrolling", "pyramid hopper"],
+      "templateIDs": [],
+      "existingApps": ["plumber", "pyramid-hopper"],
+      "starterComponents": ["arcade.core", "arcade.platformer", "arcade.smoke-tests"],
+      "assemblyNotes": [
+        "Use PlatformerEngine for movement, gravity, jumping, platform collision, coins, score, and loss state.",
+        "Render levels, enemies, camera follow, HUD, and tile skins in app glue."
+      ],
+      "requiredNow": ["arcade.core", "arcade.platformer", "arcade.smoke-tests"],
+      "plannedNext": ["platformer-tilemap", "platformer-enemies"]
+    },
+    {
+      "id": "recipe.tower-defense",
+      "name": "Native Tower Defense",
+      "keywords": ["tower defense", "waves", "turret", "creeps", "path", "tower placement"],
+      "templateIDs": [],
+      "existingApps": ["tower-defense"],
+      "starterComponents": ["gridpuzzle.core", "arcade.tower-defense", "arcade.smoke-tests"],
+      "assemblyNotes": [
+        "Use TowerDefenseEngine for pathing, waves, tower placement, targeting, cooldowns, lives, credits, and phase.",
+        "Render the map grid, tower range previews, wave controls, and economy HUD in app glue."
+      ],
+      "requiredNow": ["gridpuzzle.core", "arcade.tower-defense", "arcade.smoke-tests"],
+      "plannedNext": ["tower-projectile-visuals", "tower-upgrades"]
+    },
+    {
+      "id": "recipe.blackjack",
+      "name": "Native Blackjack",
+      "keywords": ["blackjack", "BlackJack", "twenty one", "hit", "stand", "dealer", "bankroll", "betting"],
+      "templateIDs": [],
+      "existingApps": ["blackjack"],
+      "starterComponents": ["gridpuzzle.core", "cardgame.core", "cardgame.blackjack", "cardgame.smoke-tests"],
+      "assemblyNotes": [
+        "Use BlackjackEngine for deal/hit/stand/dealer/settlement/bankroll behavior.",
+        "Generated glue should focus on card-table UI, betting controls, keyboard shortcuts, and status presentation."
+      ],
+      "requiredNow": ["gridpuzzle.core", "cardgame.core", "cardgame.blackjack", "cardgame.smoke-tests"],
+      "plannedNext": ["card-table-view"]
+    },
+    {
+      "id": "recipe.poker",
+      "name": "Native Texas Holdem Poker",
+      "keywords": ["poker", "texas holdem", "texas hold em", "holdem", "flop", "turn", "river", "hand evaluator"],
+      "templateIDs": [],
+      "existingApps": ["texas-holdem-poker"],
+      "starterComponents": ["gridpuzzle.core", "cardgame.core", "cardgame.poker", "cardgame.smoke-tests"],
+      "assemblyNotes": [
+        "Use PokerHandEvaluator for hand ranking; app glue owns betting rounds, seats, pot UI, and opponent behavior.",
+        "Include community cards, hole cards, phase labels, and a reveal/settle flow."
+      ],
+      "requiredNow": ["gridpuzzle.core", "cardgame.core", "cardgame.poker", "cardgame.smoke-tests"],
+      "plannedNext": ["poker-pot-manager", "poker-ai-player"]
+    },
+    {
+      "id": "recipe.checkers",
+      "name": "Native Checkers",
+      "keywords": ["checkers", "checkers mono", "draughts", "captures", "king me", "legal moves"],
+      "templateIDs": [],
+      "existingApps": ["checkers-mono"],
+      "starterComponents": ["gridpuzzle.core", "boardgame.core", "boardgame.checkers", "boardgame.smoke-tests"],
+      "assemblyNotes": [
+        "Use CheckersRules for setup, legal moves, forced captures, move application, and kinging.",
+        "Generated glue should handle board rendering, selected square, legal move highlights, turn prompts, and restart."
+      ],
+      "requiredNow": ["gridpuzzle.core", "boardgame.core", "boardgame.checkers", "boardgame.smoke-tests"],
+      "plannedNext": ["checkers-ai-opponent"]
+    },
+    {
+      "id": "recipe.chess",
+      "name": "Native Chess",
+      "keywords": ["chess", "playable chess", "king", "queen", "bishop", "rook", "knight", "checkmate", "stalemate"],
+      "templateIDs": [],
+      "existingApps": ["playable-chess"],
+      "starterComponents": ["gridpuzzle.core", "boardgame.core", "boardgame.chess", "boardgame.smoke-tests"],
+      "assemblyNotes": [
+        "Use ChessRules for setup, legal move generation, move application, check, and checkmate.",
+        "Generated glue should render the board, pieces, selected square, legal move highlights, captured status, promotion UI, and reset.",
+        "Castling and en passant are optional follow-up polish; do not block the base playable clone on them."
+      ],
+      "requiredNow": ["gridpuzzle.core", "boardgame.core", "boardgame.chess", "boardgame.smoke-tests"],
+      "plannedNext": ["chess-castling", "chess-en-passant", "chess-ai"]
+    },
+    {
+      "id": "recipe.music-piano",
+      "name": "Native Piano",
+      "keywords": ["piano", "keyboard", "music", "synth", "playable notes"],
+      "templateIDs": [],
+      "existingApps": ["piano"],
+      "starterComponents": ["music.piano"],
+      "assemblyNotes": [
+        "Use PianoEngine for note metadata and active note state.",
+        "Use generated AVAudioEngine/NSSound glue or simple system tones to play PianoNote.frequency; do not hardcode note math outside the copied component."
+      ],
+      "requiredNow": ["music.piano"],
+      "plannedNext": ["native-audio-engine", "recording-mode"]
     }
   ],
   "goldenAssemblies": [
