@@ -3,6 +3,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { homedir } from "node:os";
+import net from "node:net";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const casesPath = resolve(here, "catalog_recipe_cases.json");
@@ -13,6 +14,10 @@ const tunnelDir = process.env.MCHATAI_DEBUG_TUNNEL ||
   );
 const timeoutMs = Number(process.env.MCHATAI_TUNNEL_TIMEOUT_MS || 60_000);
 const pollMs = 250;
+const useLegacyTunnel = process.env.MCHATAI_TUNNEL_LEGACY === "1";
+const useSocketTunnel = process.env.MCHATAI_TUNNEL_SOCKET === "1";
+const socketHost = process.env.MCHATAI_TUNNEL_HOST || "127.0.0.1";
+const socketPort = Number(process.env.MCHATAI_TUNNEL_PORT || 17877);
 
 function usageFailure(message) {
   console.error(message);
@@ -30,6 +35,10 @@ function readJSON(path) {
 }
 
 function writeTunnelRequest(requestID, payload) {
+  if (useLegacyTunnel) {
+    writeFileSync(resolve(tunnelDir, "request.json"), JSON.stringify(payload, null, 2));
+    return;
+  }
   const inboxDir = resolve(tunnelDir, "inbox");
   mkdirSync(inboxDir, { recursive: true });
   const safeID = requestID.replace(/[^A-Za-z0-9_.-]/g, "-");
@@ -43,7 +52,7 @@ async function waitForResponse(requestID) {
   const started = Date.now();
 
   while (Date.now() - started < timeoutMs) {
-    if (existsSync(responsePath)) {
+    if (!useLegacyTunnel && existsSync(responsePath)) {
       return readJSON(responsePath);
     }
 
@@ -60,7 +69,38 @@ async function waitForResponse(requestID) {
   throw new Error(`Timed out waiting for DebugTunnel response ${requestID}`);
 }
 
+function sendSocketRequest(payload) {
+  return new Promise((resolveResponse, rejectResponse) => {
+    const client = net.createConnection({ host: socketHost, port: socketPort });
+    const chunks = [];
+    const timer = setTimeout(() => {
+      client.destroy();
+      rejectResponse(new Error(`Timed out waiting for DebugTunnel socket response ${payload.requestID}`));
+    }, timeoutMs);
+
+    client.on("connect", () => {
+      client.write(JSON.stringify(payload));
+    });
+    client.on("data", (chunk) => chunks.push(chunk));
+    client.on("error", (error) => {
+      clearTimeout(timer);
+      rejectResponse(error);
+    });
+    client.on("end", () => {
+      clearTimeout(timer);
+      try {
+        resolveResponse(JSON.parse(Buffer.concat(chunks).toString("utf8")));
+      } catch (error) {
+        rejectResponse(error);
+      }
+    });
+  });
+}
+
 function assertTunnelReady() {
+  if (useSocketTunnel) {
+    return;
+  }
   if (!existsSync(resolve(tunnelDir, "ready"))) {
     usageFailure(`DebugTunnel ready file not found at ${resolve(tunnelDir, "ready")}`);
   }
@@ -91,7 +131,7 @@ let failed = 0;
 
 for (const [index, testCase] of cases.entries()) {
   const requestID = `lego-catalog-${testCase.id}-${Date.now()}`;
-  writeTunnelRequest(requestID, {
+  const payload = {
     command: "diagHarnessContext",
     recipe: "aiwizard-miniapp",
     goal: testCase.goal,
@@ -100,11 +140,16 @@ for (const [index, testCase] of cases.entries()) {
     dumpLayer: "web-components",
     dumpChars: 700,
     requestID
-  });
+  };
 
   let response;
   try {
-    response = await waitForResponse(requestID);
+    if (useSocketTunnel) {
+      response = await sendSocketRequest(payload);
+    } else {
+      writeTunnelRequest(requestID, payload);
+      response = await waitForResponse(requestID);
+    }
   } catch (error) {
     failed += 1;
     console.error(`FAIL ${index + 1}/${cases.length} ${testCase.id}: ${error.message}`);

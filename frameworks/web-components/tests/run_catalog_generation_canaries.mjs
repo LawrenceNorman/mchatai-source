@@ -3,7 +3,8 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { homedir } from "node:os";
+import { homedir, tmpdir } from "node:os";
+import net from "node:net";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const casesPath = resolve(here, "catalog_generation_cases.json");
@@ -20,6 +21,10 @@ const appSupportDir = process.env.MCHATAI_APP_SUPPORT ||
   );
 const wizardSessionsPath = resolve(appSupportDir, "wizard_sessions.json");
 const pollMs = 500;
+const useLegacyTunnel = process.env.MCHATAI_TUNNEL_LEGACY === "1";
+const useSocketTunnel = process.env.MCHATAI_TUNNEL_SOCKET === "1";
+const socketHost = process.env.MCHATAI_TUNNEL_HOST || "127.0.0.1";
+const socketPort = Number(process.env.MCHATAI_TUNNEL_PORT || 17877);
 
 function usage() {
   return [
@@ -73,12 +78,19 @@ function selectedCases(allCases) {
 }
 
 function assertTunnelReady() {
+  if (useSocketTunnel) {
+    return;
+  }
   if (!existsSync(resolve(tunnelDir, "ready"))) {
     fail(`DebugTunnel ready file not found at ${resolve(tunnelDir, "ready")}`);
   }
 }
 
 function writeTunnelRequest(requestID, payload) {
+  if (useLegacyTunnel) {
+    writeFileSync(resolve(tunnelDir, "request.json"), JSON.stringify(payload, null, 2));
+    return;
+  }
   const inboxDir = resolve(tunnelDir, "inbox");
   mkdirSync(inboxDir, { recursive: true });
   const safeID = requestID.replace(/[^A-Za-z0-9_.-]/g, "-");
@@ -92,7 +104,7 @@ async function waitForResponse(requestID, timeoutSeconds) {
   const timeoutMs = timeoutSeconds * 1000;
 
   while (Date.now() - started < timeoutMs) {
-    if (existsSync(responsePath)) {
+    if (!useLegacyTunnel && existsSync(responsePath)) {
       return readJSON(responsePath);
     }
 
@@ -109,6 +121,34 @@ async function waitForResponse(requestID, timeoutSeconds) {
   throw new Error(`Timed out waiting for DebugTunnel response ${requestID}`);
 }
 
+function sendSocketRequest(payload, timeoutSeconds) {
+  return new Promise((resolveResponse, rejectResponse) => {
+    const client = net.createConnection({ host: socketHost, port: socketPort });
+    const chunks = [];
+    const timer = setTimeout(() => {
+      client.destroy();
+      rejectResponse(new Error(`Timed out waiting for DebugTunnel socket response ${payload.requestID}`));
+    }, timeoutSeconds * 1000);
+
+    client.on("connect", () => {
+      client.write(JSON.stringify(payload));
+    });
+    client.on("data", (chunk) => chunks.push(chunk));
+    client.on("error", (error) => {
+      clearTimeout(timer);
+      rejectResponse(error);
+    });
+    client.on("end", () => {
+      clearTimeout(timer);
+      try {
+        resolveResponse(JSON.parse(Buffer.concat(chunks).toString("utf8")));
+      } catch (error) {
+        rejectResponse(error);
+      }
+    });
+  });
+}
+
 function miniAppIDFromResponse(response) {
   return response.miniAppID ||
     response.artifactID ||
@@ -117,6 +157,9 @@ function miniAppIDFromResponse(response) {
 }
 
 function loadWizardSession(sessionID) {
+  if (useSocketTunnel) {
+    return null;
+  }
   if (!sessionID || !existsSync(wizardSessionsPath)) {
     return null;
   }
@@ -157,9 +200,32 @@ function sessionFailureSignals(session) {
   return Array.from(new Set(failures));
 }
 
-function checkArtifact(miniAppID, expectedRecipe) {
-  const indexPath = resolve(appSupportDir, "MiniApps/installed", miniAppID, "index.html");
-  if (!existsSync(indexPath)) {
+async function checkArtifact(miniAppID, expectedRecipe) {
+  let indexPath = resolve(appSupportDir, "MiniApps/installed", miniAppID, "index.html");
+
+  if (useSocketTunnel) {
+    const safeID = miniAppID.replace(/[^A-Za-z0-9_.-]/g, "-");
+    const requestID = `lego-read-${safeID}-${Date.now()}`;
+    const response = await sendSocketRequest({
+      command: "readInstalledMiniAppHTML",
+      miniAppID,
+      requestID
+    }, 60);
+
+    if (response.status !== "ok" || typeof response.html !== "string") {
+      fail("Unable to read generated mini-app HTML through DebugTunnel.", {
+        miniAppID,
+        status: response.status,
+        error: response.error,
+        output: response.output
+      });
+    }
+
+    const tempDir = resolve(tmpdir(), "mchatai-lego-canary", safeID);
+    mkdirSync(tempDir, { recursive: true });
+    indexPath = resolve(tempDir, "index.html");
+    writeFileSync(indexPath, response.html);
+  } else if (!existsSync(indexPath)) {
     fail("Generated mini-app index.html not found.", { miniAppID, indexPath });
   }
 
@@ -197,7 +263,7 @@ for (const testCase of cases) {
   const timeoutSeconds = Number(testCase.timeoutSeconds || 900);
   console.log(`RUN ${testCase.id} → ${testCase.expectedRecipe}`);
 
-  writeTunnelRequest(requestID, {
+  const payload = {
     command: "runWizard",
     goal: testCase.goal,
     artifactType: testCase.artifactType || "miniApp",
@@ -205,11 +271,16 @@ for (const testCase of cases) {
     maxTurns: Number(testCase.maxTurns || 8),
     timeoutSeconds,
     requestID
-  });
+  };
 
   let response;
   try {
-    response = await waitForResponse(requestID, timeoutSeconds);
+    if (useSocketTunnel) {
+      response = await sendSocketRequest(payload, timeoutSeconds);
+    } else {
+      writeTunnelRequest(requestID, payload);
+      response = await waitForResponse(requestID, timeoutSeconds);
+    }
   } catch (error) {
     failed += 1;
     console.error(`FAIL ${testCase.id}: ${error.message}`);
@@ -250,7 +321,7 @@ for (const testCase of cases) {
   }
 
   try {
-    const artifact = checkArtifact(miniAppID, testCase.expectedRecipe);
+    const artifact = await checkArtifact(miniAppID, testCase.expectedRecipe);
     console.log(`PASS ${testCase.id} → ${miniAppID}`);
     console.log(JSON.stringify({
       indexPath: artifact.indexPath,
