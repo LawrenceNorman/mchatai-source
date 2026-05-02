@@ -62,3 +62,28 @@ Treat checker failure as a Harness failure even if the Swift app compiles and la
 - Desktop shell: settings scenes, sidebar-detail shells, command routing, and menu-bar affordances.
 - SpriteKit rendering adapters for arcade engines that need richer animation than SwiftUI Canvas.
 - Audio adapters for piano and arcade SFX using AVAudioEngine.
+
+## MVP Web References
+
+When creating or improving native macOS golden assemblies, borrow the minimum
+playable feature set from these known-good web mini-apps. Keep the macOS side
+native Swift/SwiftUI and continue to copy only canonical Swift Lego components
+into generated apps.
+
+- Asteroids: https://mchatai.com/hub/asteroids/play
+- Word Quest / Wordle-style: https://mchatai.com/hub/word-quest/play
+- Mastermind: https://mchatai.com/hub/mastermind/play
+- Pong: https://mchatai.com/hub/pong/play
+- Minesweeper: https://mchatai.com/hub/minesweeper-99/play
+- Texas Holdem Poker: https://mchatai.com/hub/texas-holdem-poker/play
+- Candy Match: https://mchatai.com/hub/candy-match/play
+- Tower Defense: https://mchatai.com/hub/tower-defense/play
+- Alien Abduction: https://mchatai.com/hub/alien-abduction/play
+- Blackjack: https://mchatai.com/u/GI1GHQ7wpLQKjJyf9QRQATyw5e33/blackjack/
+- Frogger: https://mchatai.com/hub/frogger/play
+- Mario / Plumber: https://mchatai.com/hub/plumber
+- PacMan: https://mchatai.com/u/GI1GHQ7w/c92bb121/ and https://mchatai.com/u/GI1GHQ7w/ac83185e/
+- Checkers: https://mchatai.com/hub/checkers-mono/play
+- Piano: https://mchatai.com/hub/com.mchatai.miniApp.piano/play
+- Pyramid Hopper: https://mchatai.com/hub/pyramid-hopper/play
+- Chess: https://mchatai.com/u/GI1GHQ7wpLQKjJyf9QRQATyw5e33/playable-chess/

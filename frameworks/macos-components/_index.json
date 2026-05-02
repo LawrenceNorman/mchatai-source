@@ -357,7 +357,7 @@
       "path": "components/board-game/BoardGameSmokeTests.swift",
       "exports": ["BoardGameSmokeTests"],
       "status": "ready",
-      "summary": "Runtime smoke-test reporter for checkers and chess starting move generation.",
+      "summary": "Runtime smoke-test reporter for shared Board8x8 coordinate, piece, and iteration primitives.",
       "tags": ["qa", "smoke-test", "board"],
       "contracts": {
         "stdout": "Call BoardGameSmokeTests.printLaunchReport() from app init()."
@@ -767,7 +767,7 @@
       "starterComponents": ["gridpuzzle.core", "cardgame.core", "cardgame.poker", "cardgame.smoke-tests"],
       "assemblyNotes": [
         "Use PokerHandEvaluator for hand ranking; app glue owns betting rounds, seats, pot UI, and opponent behavior.",
-        "Include community cards, hole cards, phase labels, and a reveal/settle flow."
+        "For macOS prompts that mention Poker, prefer the native golden assembly shape: one human versus four CPU seats, dealer/blinds, chip stacks, pot, fold/check-call/raise/deal controls, hidden opponent hole cards, community flop/turn/river, logs, and tournament-style elimination toward heads-up play."
       ],
       "requiredNow": ["gridpuzzle.core", "cardgame.core", "cardgame.poker", "cardgame.smoke-tests"],
       "plannedNext": ["poker-pot-manager", "poker-ai-player"]
@@ -879,6 +879,50 @@
         "Treat example files as glue patterns, not components. Adapt the visual style and labels to the user's requested product.",
         "The selected components themselves should remain byte-for-byte canonical copies.",
         "Keep BlackjackEngine as the table source of truth; do not hand-roll card dealing or settlement in ContentView."
+      ]
+    },
+    {
+      "id": "assembly.poker.basic",
+      "name": "Native Poker Golden Assembly",
+      "summary": "SwiftUI composition showing PokerHandEvaluator-driven five-seat Hold'em gameplay, green felt table, hidden CPU hole cards, community flop/turn/river, pot/chip UI, keyboard shortcuts, settlement, elimination, and launch smoke output.",
+      "recipeID": "recipe.poker",
+      "templateIDs": [],
+      "keywords": [
+        "poker",
+        "texas holdem",
+        "holdem",
+        "native poker"
+      ],
+      "files": [
+        "examples/poker/ContentView.swift",
+        "examples/poker/ExampleAppInit.swift"
+      ],
+      "notes": [
+        "Treat example files as glue patterns, not components. Adapt the visual style and labels to the user's requested product.",
+        "The selected components themselves should remain byte-for-byte canonical copies.",
+        "Keep PokerHandEvaluator as the hand-ranking source of truth; do not hand-roll ranking logic in ContentView."
+      ]
+    },
+    {
+      "id": "assembly.checkers.basic",
+      "name": "Native Checkers Golden Assembly",
+      "summary": "SwiftUI composition showing CheckersRules-driven 8x8 gameplay, selected piece, legal move highlights, forced captures, kinging, reset, a deterministic CPU opponent, and launch smoke output.",
+      "recipeID": "recipe.checkers",
+      "templateIDs": [],
+      "keywords": [
+        "checkers",
+        "draughts",
+        "checkers mono",
+        "native checkers"
+      ],
+      "files": [
+        "examples/checkers/ContentView.swift",
+        "examples/checkers/ExampleAppInit.swift"
+      ],
+      "notes": [
+        "Treat example files as glue patterns, not components. Adapt visual style and labels to the user's requested product.",
+        "The selected components themselves should remain byte-for-byte canonical copies.",
+        "Keep CheckersRules as the legal-move, capture, apply, and kinging source of truth; do not hand-roll checkers rules in ContentView."
       ]
     }
   ]
