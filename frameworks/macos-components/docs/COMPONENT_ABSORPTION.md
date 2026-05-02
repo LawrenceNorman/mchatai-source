@@ -22,6 +22,13 @@ The native macOS Lego system extracts reusable SwiftUI/AppKit/SpriteKit source f
 
 ## QA Loop
 
+Before running a full AIWizard canary, prove the Harness selects the native
+component recipe:
+
+```bash
+node mchatai-source/frameworks/macos-components/tests/run_catalog_recipe_diagnostics.mjs
+```
+
 Run:
 
 ```bash
