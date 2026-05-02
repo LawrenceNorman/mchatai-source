@@ -192,10 +192,10 @@ struct ContentView: View {
 
     private func suitLabel(_ suit: PlayingCardSuit) -> String {
         switch suit {
-        case .clubs: return "C"
-        case .diamonds: return "D"
-        case .hearts: return "H"
-        case .spades: return "S"
+        case .clubs: return "♣"
+        case .diamonds: return "♦"
+        case .hearts: return "♥"
+        case .spades: return "♠"
         }
     }
 

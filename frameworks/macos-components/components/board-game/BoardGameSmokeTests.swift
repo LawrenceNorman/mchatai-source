@@ -3,16 +3,14 @@ import Foundation
 
 enum BoardGameSmokeTests {
     static func launchReport() -> String {
-        let checkers = CheckersRules.startingBoard()
-        let checkersMoves = CheckersRules.allLegalMoves(for: .white, on: checkers).count
-
-        let chess = ChessRules.startingBoard()
-        let chessMoves = ChessRules.allLegalMoves(for: .white, on: chess).count
-        let whiteInCheck = ChessRules.isKingInCheck(.white, on: chess)
+        var board = Board8x8()
+        let square = Board8x8.algebraic("c3") ?? PuzzlePoint(row: 5, col: 2)
+        board[square] = BoardPiece(side: .white, kind: .checker)
+        let pieces = board.pieces(for: .white).count
 
         return [
-            "[BoardGameSmoke] checkersMoves=\(checkersMoves)",
-            "[BoardGameSmoke] chessMoves=\(chessMoves) whiteInCheck=\(whiteInCheck)"
+            "[BoardGameSmoke] square=\(Board8x8.squareName(square))",
+            "[BoardGameSmoke] whitePieces=\(pieces)"
         ].joined(separator: "\n")
     }
 
