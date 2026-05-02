@@ -6,7 +6,7 @@
 
   "earlyAutoRouter": {
     "_comment": "Used by AIHarness.send() at the early auto-router block. When mode == .lowestCost the wizard walks this providerOrder, picks first grid-green + available. Order matches the ladders below: local first, then cloud-credit, then frontier APIs.",
-    "providerOrder": ["ollama", "foundation", "mchataicloud", "anthropic", "openai", "google"]
+    "providerOrder": ["ollama", "mchataicloud", "anthropic", "openai", "google", "foundation"]
   },
 
   "ladders": {
@@ -14,56 +14,56 @@
 
     "coding": [
       { "provider": "ollama",       "reason": "Local Ollama — Lowest Cost prefers free local inference" },
-      { "provider": "foundation",   "reason": "On-device model — free fallback when Ollama is unreachable" },
       { "provider": "mchataicloud", "reason": "mChatAI Cloud — pay-per-use fallback" },
       { "provider": "anthropic", "model": "claude-sonnet-4-6", "reason": "Claude Sonnet 4.6 — frontier fallback when local + cloud-credit options exhausted" },
       { "provider": "openai",       "reason": "OpenAI — frontier fallback" },
-      { "provider": "google",       "reason": "Gemini — frontier fallback" }
+      { "provider": "google",       "reason": "Gemini — frontier fallback" },
+      { "provider": "foundation",   "reason": "On-device model — last-resort fallback when other routes are unavailable" }
     ],
 
     "planning": [
       { "provider": "ollama",       "reason": "Local Ollama — Lowest Cost prefers free local planning" },
-      { "provider": "foundation",   "reason": "On-device model — free fallback" },
       { "provider": "mchataicloud", "reason": "mChatAI Cloud — pay-per-use fallback" },
       { "provider": "anthropic",    "reason": "Claude — frontier planning fallback" },
       { "provider": "openai",       "reason": "OpenAI — frontier planning fallback" },
-      { "provider": "google",       "reason": "Gemini — frontier planning fallback" }
+      { "provider": "google",       "reason": "Gemini — frontier planning fallback" },
+      { "provider": "foundation",   "reason": "On-device model — last-resort fallback" }
     ],
 
     "analysis": [
       { "provider": "ollama",       "reason": "Local Ollama — Lowest Cost prefers free local analysis" },
-      { "provider": "foundation",   "reason": "On-device model — free fallback" },
       { "provider": "mchataicloud", "reason": "mChatAI Cloud — pay-per-use fallback" },
       { "provider": "anthropic",    "reason": "Claude — frontier analysis fallback" },
       { "provider": "openai",       "reason": "OpenAI — frontier analysis fallback" },
-      { "provider": "google",       "reason": "Gemini — frontier analysis fallback" }
+      { "provider": "google",       "reason": "Gemini — frontier analysis fallback" },
+      { "provider": "foundation",   "reason": "On-device model — last-resort fallback" }
     ],
 
     "research": [
       { "provider": "ollama",       "reason": "Local Ollama — Lowest Cost prefers free local research" },
-      { "provider": "foundation",   "reason": "On-device model — free fallback" },
       { "provider": "mchataicloud", "reason": "mChatAI Cloud — pay-per-use fallback" },
       { "provider": "perplexity",   "reason": "Perplexity Sonar — frontier research fallback" },
       { "provider": "google",       "reason": "Gemini — frontier research fallback" },
       { "provider": "anthropic",    "reason": "Claude — frontier research fallback" },
-      { "provider": "openai",       "reason": "OpenAI — frontier research fallback" }
+      { "provider": "openai",       "reason": "OpenAI — frontier research fallback" },
+      { "provider": "foundation",   "reason": "On-device model — last-resort fallback" }
     ],
 
     "creative": [
       { "provider": "ollama",       "reason": "Local Ollama — Lowest Cost prefers free local generation" },
-      { "provider": "foundation",   "reason": "On-device model — free fallback" },
       { "provider": "mchataicloud", "reason": "mChatAI Cloud — pay-per-use fallback" },
       { "provider": "anthropic",    "reason": "Claude — frontier creative fallback" },
       { "provider": "openai",       "reason": "OpenAI — frontier creative fallback" },
-      { "provider": "google",       "reason": "Gemini — frontier creative fallback" }
+      { "provider": "google",       "reason": "Gemini — frontier creative fallback" },
+      { "provider": "foundation",   "reason": "On-device model — last-resort fallback" }
     ],
 
     "simple": [
-      { "provider": "foundation",   "reason": "Free on-device model for simple tasks" },
       { "provider": "ollama",       "reason": "Free local model for simple tasks" },
       { "provider": "google",       "reason": "Gemini Flash for simple tasks" },
       { "provider": "openai",       "reason": "OpenAI for simple tasks" },
-      { "provider": "anthropic",    "reason": "Claude for simple tasks" }
+      { "provider": "anthropic",    "reason": "Claude for simple tasks" },
+      { "provider": "foundation",   "reason": "On-device model — last-resort fallback for simple tasks" }
     ]
   },
 
