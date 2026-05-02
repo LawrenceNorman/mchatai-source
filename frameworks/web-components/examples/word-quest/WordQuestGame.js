@@ -7,6 +7,7 @@ import { WEB_COMPONENT_SWATCHES, applySwatchVariables, getSwatchByID } from "../
 import { AudioManager } from "../../resources/AudioManager.js";
 
 const KEY_ROWS = ["QWERTYUIOP", "ASDFGHJKL", "ZXCVBNM"];
+const STATUS_RANK = { absent: 1, present: 2, correct: 3 };
 
 function choose(list) {
   return list[Math.floor(Math.random() * list.length)];
@@ -46,6 +47,9 @@ export class WordQuestGame {
     this.answer = "";
     this.row = 0;
     this.col = 0;
+    this.keyStatuses = new Map();
+    this.rowScores = new Map();
+    this.controlsBound = false;
     this.streak = Number(localStorage.getItem(`${this.storagePrefix}.streak`) || 0);
     this.finished = false;
   }
@@ -61,11 +65,14 @@ export class WordQuestGame {
     this.grid = new LetterGrid({ rows: this.maxRows, cols: this.wordLength });
     this.row = 0;
     this.col = 0;
+    this.keyStatuses.clear();
+    this.rowScores.clear();
     this.finished = false;
     this.turns.reset({ phase: "guessing" });
     this.renderGrid();
+    this.updateKeyboardStatuses();
     this.renderStreak();
-    this.setMessage("Find the hidden word.");
+    this.setMessage("Guess the hidden five-letter word.");
   }
 
   addLetter(letter) {
@@ -165,10 +172,16 @@ export class WordQuestGame {
   }
 
   markRow(scored) {
+    this.rowScores.set(this.row, scored);
     const row = this.root.querySelector(`[data-row="${this.row}"]`);
     scored.forEach((cell, index) => {
       row?.children[index]?.setAttribute("data-status", cell.status);
+      const previous = this.keyStatuses.get(cell.letter);
+      if (!previous || STATUS_RANK[cell.status] > STATUS_RANK[previous]) {
+        this.keyStatuses.set(cell.letter, cell.status);
+      }
     });
+    this.updateKeyboardStatuses();
   }
 
   renderGrid() {
@@ -182,6 +195,10 @@ export class WordQuestGame {
         const cell = document.createElement("div");
         cell.className = "grid-cell";
         cell.textContent = this.grid.get(row, col) || "";
+        const status = this.rowScores.get(row)?.[col]?.status;
+        if (status) {
+          cell.dataset.status = status;
+        }
         rowEl.appendChild(cell);
       }
       target.appendChild(rowEl);
@@ -198,6 +215,7 @@ export class WordQuestGame {
         const button = document.createElement("button");
         button.type = "button";
         button.className = "key";
+        button.dataset.letter = letter;
         button.textContent = letter;
         button.addEventListener("click", () => this.handleAction(letter));
         rowEl.appendChild(button);
@@ -205,9 +223,24 @@ export class WordQuestGame {
       target.appendChild(rowEl);
     });
 
-    this.root.querySelector("#enterButton").addEventListener("click", () => this.handleAction("submit"));
-    this.root.querySelector("#deleteButton").addEventListener("click", () => this.handleAction("delete"));
-    this.root.querySelector("#newRoundButton").addEventListener("click", () => this.handleAction("new"));
+    if (!this.controlsBound) {
+      this.root.querySelector("#enterButton").addEventListener("click", () => this.handleAction("submit"));
+      this.root.querySelector("#deleteButton").addEventListener("click", () => this.handleAction("delete"));
+      this.root.querySelector("#newRoundButton").addEventListener("click", () => this.handleAction("new"));
+      this.controlsBound = true;
+    }
+    this.updateKeyboardStatuses();
+  }
+
+  updateKeyboardStatuses() {
+    this.root.querySelectorAll(".key[data-letter]").forEach((button) => {
+      const status = this.keyStatuses.get(button.dataset.letter);
+      if (status) {
+        button.dataset.status = status;
+      } else {
+        delete button.dataset.status;
+      }
+    });
   }
 
   renderStreak() {
