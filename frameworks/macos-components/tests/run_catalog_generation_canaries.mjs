@@ -177,7 +177,15 @@ function sessionFailureSignals(session) {
   }
 
   const messages = Array.isArray(session.messages) ? session.messages : [];
-  for (const message of messages) {
+  const lastSuccessfulMacOSIndex = messages.findLastIndex((message) => {
+    const lower = String(message.content || "").toLowerCase();
+    return lower.includes("passed a launch smoke test") || lower.includes("**build succeeded");
+  });
+  const messagesToScan = lastSuccessfulMacOSIndex >= 0
+    ? messages.slice(lastSuccessfulMacOSIndex + 1)
+    : messages;
+
+  for (const message of messagesToScan) {
     const content = String(message.content || "");
     const lower = content.toLowerCase();
     if (lower.includes("lego component gate rejected")) {
