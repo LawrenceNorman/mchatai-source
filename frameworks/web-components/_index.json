@@ -1,7 +1,7 @@
 {
-  "$schema_version": "1.0.0",
+  "$schema_version": "1.1.0",
   "last_updated": "2026-05-01",
-  "notes": "Phase SR.WEB initial catalog. This manifest is the source of truth for reusable vanilla ES6 mini-app Lego blocks. AIWizard should compose from the shipped components below first, then use the planned recipes as guidance for which additional blocks belong in each game family. Prefer local bundling into published mini-app ZIPs; CDN loading is a secondary development option.",
+  "notes": "Catalog for reusable vanilla ES6 mini-app Lego blocks. AIWizard should compose from these modules before generating custom logic. Prefer local bundling into published mini-app ZIPs; CDN loading is only a development option.",
   "library": {
     "id": "framework.web-components",
     "name": "Web Mini-App Lego Blocks",
@@ -13,24 +13,43 @@
     "entryPoints": [
       "core/GameManager.js",
       "core/Physics2D.js",
+      "core/TurnBasedManager.js",
       "entities/Entity.js",
       "entities/SpaceShip.js",
       "entities/Asteroid.js",
       "entities/Projectile.js",
+      "entities/Paddle.js",
+      "entities/Ball.js",
+      "entities/GridBoard.js",
+      "entities/Board8x8.js",
+      "entities/Card.js",
+      "entities/Deck.js",
+      "entities/PlatformerPlayer.js",
+      "entities/PathFollower.js",
+      "entities/GridMover.js",
+      "entities/Match3Logic.js",
+      "entities/RevealLogic.js",
+      "entities/LetterGrid.js",
+      "entities/WaveManager.js",
+      "entities/Turret.js",
+      "entities/CameraFollow.js",
       "ui/ScoreBoard.js",
-      "resources/Swatches.js"
+      "ui/VirtualJoystick.js",
+      "ui/PianoKeyboard.js",
+      "resources/Swatches.js",
+      "resources/AudioManager.js"
     ]
   },
   "categories": [
     {
       "id": "core",
       "displayName": "Core Engines",
-      "description": "Loop, timing, motion, and collision primitives shared by many mini-app genres."
+      "description": "Loop, timing, state, motion, and collision primitives shared by many mini-app genres."
     },
     {
       "id": "entities",
       "displayName": "Entities",
-      "description": "Composable gameplay actors such as ships, paddles, cards, tiles, and player avatars."
+      "description": "Composable gameplay actors such as ships, paddles, cards, boards, tile grids, and player avatars."
     },
     {
       "id": "ui",
@@ -40,7 +59,7 @@
     {
       "id": "resources",
       "displayName": "Resources",
-      "description": "Swatches, textures, audio, and other shared presentation assets."
+      "description": "Swatches, audio, textures, and other shared presentation assets."
     }
   ],
   "components": [
@@ -49,468 +68,487 @@
       "name": "GameManager",
       "category": "core",
       "path": "core/GameManager.js",
-      "exports": [
-        "GameManager"
-      ],
+      "exports": ["GameManager"],
       "status": "ready",
-      "summary": "requestAnimationFrame baseplate with delta time, pause/resume, resize support, and entity lifecycle management.",
-      "tags": [
-        "engine",
-        "loop",
-        "canvas",
-        "arcade",
-        "miniapp"
-      ],
+      "summary": "requestAnimationFrame baseplate with delta time, pause/resume, resize support, events, collision callbacks, and entity lifecycle management.",
+      "tags": ["engine", "loop", "canvas", "arcade", "miniapp"],
       "contracts": {
         "entityUpdate": "entity.update(dt, gameManager)",
         "entityDraw": "entity.draw(ctx, gameManager)",
-        "entityLifecycle": [
-          "entity.onAdd(gameManager)",
-          "entity.onRemove(gameManager)"
-        ]
+        "entityLifecycle": ["entity.onAdd(gameManager)", "entity.onRemove(gameManager)"]
       },
-      "goodFits": [
-        "asteroids",
-        "pong",
-        "frogger",
-        "alien-abduction",
-        "tower-defense",
-        "platformers"
-      ]
+      "goodFits": ["asteroids", "pong", "frogger", "pacman", "alien-abduction", "tower-defense", "platformers"]
     },
     {
       "id": "core.physics2d",
       "name": "Physics2D",
       "category": "core",
       "path": "core/Physics2D.js",
-      "exports": [
-        "Physics2D",
-        "getAABB",
-        "getCircle",
-        "integrateMotion",
-        "intersectsAABB",
-        "intersectsCircle",
-        "findAABBCollisions",
-        "findCircleCollisions"
-      ],
+      "exports": ["Physics2D", "getAABB", "getCircle", "integrateMotion", "intersectsAABB", "intersectsCircle", "findAABBCollisions", "findCircleCollisions"],
       "status": "ready",
       "summary": "Simple motion integrator plus AABB and circle collision helpers for lightweight 2D arcade and platformer logic.",
-      "tags": [
-        "physics",
-        "collision",
-        "motion",
-        "2d"
-      ],
+      "tags": ["physics", "collision", "motion", "2d"],
       "contracts": {
-        "bodyFields": [
-          "x",
-          "y",
-          "width",
-          "height",
-          "vx",
-          "vy",
-          "ax",
-          "ay",
-          "radius"
-        ],
-        "optionalFields": [
-          "maxSpeed",
-          "maxSpeedX",
-          "maxSpeedY",
-          "centered",
-          "bounds",
-          "hitbox"
-        ]
+        "bodyFields": ["x", "y", "width", "height", "vx", "vy", "ax", "ay", "radius"],
+        "optionalFields": ["maxSpeed", "maxSpeedX", "maxSpeedY", "centered", "bounds", "hitbox"]
       },
-      "goodFits": [
-        "asteroids",
-        "pong",
-        "mario-style-platformers",
-        "tower-defense-projectiles",
-        "top-down-arcade"
-      ]
+      "goodFits": ["asteroids", "pong", "mario-style-platformers", "tower-defense-projectiles", "top-down-arcade"]
     },
     {
-      "id": "ui.scoreboard",
-      "name": "ScoreBoard",
-      "category": "ui",
-      "path": "ui/ScoreBoard.js",
-      "exports": [
-        "ScoreBoard"
-      ],
+      "id": "core.turn-based-manager",
+      "name": "TurnBasedManager",
+      "category": "core",
+      "path": "core/TurnBasedManager.js",
+      "exports": ["TurnBasedManager"],
       "status": "ready",
-      "summary": "DOM HUD component for current score and best score, with mChatAI bridge persistence and localStorage fallback.",
-      "tags": [
-        "hud",
-        "score",
-        "high-score",
-        "storage",
-        "bridge-aware"
-      ],
+      "summary": "Turn, phase, round, history, and rule dispatcher baseplate for board, card, word, and puzzle games.",
+      "tags": ["turn-based", "state-machine", "rules", "board", "card", "puzzle"],
       "contracts": {
-        "bridge": [
-          "window.mChatAI.storage.get(key)",
-          "window.mChatAI.storage.set(key, value)"
-        ],
-        "dom": "Creates a root element and optional mount target for CSS-driven theming."
+        "events": ["turn", "phase", "round", "record", "reset"],
+        "rules": ["registerRule(name, fn)", "runRule(name, payload)"]
       },
-      "goodFits": [
-        "asteroids",
-        "alien-abduction",
-        "pong",
-        "word-quest",
-        "minesweeper-99",
-        "arcade-score-challenges"
-      ]
+      "goodFits": ["blackjack", "texas-holdem-poker", "chess", "checkers", "mastermind", "word-quest", "minesweeper-99", "candy-match"]
     },
     {
       "id": "entities.entity",
       "name": "Entity",
       "category": "entities",
       "path": "entities/Entity.js",
-      "exports": [
-        "Entity"
-      ],
+      "exports": ["Entity"],
       "status": "ready",
-      "summary": "Lightweight gameplay base class with motion fields, world wrapping helpers, and reusable lifecycle hooks.",
-      "tags": [
-        "entity",
-        "gameplay",
-        "base-class",
-        "arcade"
-      ],
+      "summary": "Lightweight gameplay base class with motion fields, world wrapping helpers, AABB/circle hit shapes, and reusable lifecycle hooks.",
+      "tags": ["entity", "gameplay", "base-class", "arcade"],
       "contracts": {
         "constructor": "new Entity({ x, y, vx, vy, width, height, radius, wrap })",
-        "lifecycle": [
-          "update(dt, gameManager)",
-          "draw(ctx, gameManager)",
-          "destroy()"
-        ]
+        "lifecycle": ["update(dt, gameManager)", "draw(ctx, gameManager)", "destroy()"]
       },
-      "goodFits": [
-        "asteroids",
-        "alien-abduction",
-        "pong",
-        "frogger",
-        "top-down-arcade"
-      ]
+      "goodFits": ["asteroids", "alien-abduction", "pong", "frogger", "top-down-arcade"]
     },
     {
       "id": "entities.space-ship",
       "name": "SpaceShip",
       "category": "entities",
       "path": "entities/SpaceShip.js",
-      "exports": [
-        "SpaceShip"
-      ],
+      "exports": ["SpaceShip"],
       "status": "ready",
       "summary": "Asteroids-style player ship with thrust, rotation, drag, wrapping, and projectile spawning.",
-      "tags": [
-        "player",
-        "ship",
-        "asteroids",
-        "arcade"
-      ],
+      "tags": ["player", "ship", "asteroids", "arcade"],
       "contracts": {
-        "controls": [
-          "setInputState({ left, right, thrust, fire })",
-          "createProjectile({ speed, ttl })"
-        ],
-        "tuning": [
-          "turnSpeed",
-          "thrustPower",
-          "drag",
-          "maxSpeed"
-        ]
+        "controls": ["setInputState({ left, right, thrust, fire })", "createProjectile({ speed, ttl })"],
+        "tuning": ["turnSpeed", "thrustPower", "drag", "maxSpeed"]
       },
-      "goodFits": [
-        "asteroids",
-        "alien-abduction",
-        "space shooter",
-        "vector arcade"
-      ]
+      "goodFits": ["asteroids", "alien-abduction", "space shooter", "vector arcade"]
     },
     {
       "id": "entities.asteroid",
       "name": "Asteroid",
       "category": "entities",
       "path": "entities/Asteroid.js",
-      "exports": [
-        "Asteroid",
-        "ASTEROID_LEVELS"
-      ],
+      "exports": ["Asteroid", "ASTEROID_LEVELS"],
       "status": "ready",
       "summary": "Jagged drifting asteroid body with spin, size levels, and split helpers for Asteroids-like games.",
-      "tags": [
-        "asteroid",
-        "enemy",
-        "arcade",
-        "vector"
-      ],
+      "tags": ["asteroid", "enemy", "arcade", "vector"],
       "contracts": {
-        "sizes": [
-          "large",
-          "medium",
-          "small"
-        ],
-        "helpers": [
-          "split()",
-          "buildPolygonPointCount(level)"
-        ]
+        "sizes": ["large", "medium", "small"],
+        "helpers": ["split()", "buildPolygonPointCount(level)"]
       },
-      "goodFits": [
-        "asteroids",
-        "space shooter",
-        "vector arcade"
-      ]
+      "goodFits": ["asteroids", "space shooter", "vector arcade"]
     },
     {
       "id": "entities.projectile",
       "name": "Projectile",
       "category": "entities",
       "path": "entities/Projectile.js",
-      "exports": [
-        "Projectile"
-      ],
+      "exports": ["Projectile"],
       "status": "ready",
       "summary": "Short-lived arcade projectile with velocity, optional wrapping, and compact vector rendering.",
-      "tags": [
-        "projectile",
-        "bullet",
-        "arcade",
-        "combat"
-      ],
+      "tags": ["projectile", "bullet", "arcade", "combat"],
       "contracts": {
         "constructor": "new Projectile({ x, y, angle, speed, ttl, wrap })",
-        "fields": [
-          "ttl",
-          "speed",
-          "length",
-          "color"
-        ]
+        "fields": ["ttl", "speed", "length", "color"]
       },
-      "goodFits": [
-        "asteroids",
-        "alien-abduction",
-        "top-down-arcade"
-      ]
+      "goodFits": ["asteroids", "alien-abduction", "tower-defense", "top-down-arcade"]
+    },
+    {
+      "id": "entities.paddle",
+      "name": "Paddle",
+      "category": "entities",
+      "path": "entities/Paddle.js",
+      "exports": ["Paddle"],
+      "status": "ready",
+      "summary": "Pong-style paddle with keyboard/AI movement helpers and simple canvas rendering.",
+      "tags": ["pong", "paddle", "arcade"],
+      "contracts": {
+        "controls": ["setDirection(direction)", "move(dt, minY, maxY)"]
+      },
+      "goodFits": ["pong", "breakout", "two-player-arcade"]
+    },
+    {
+      "id": "entities.ball",
+      "name": "Ball",
+      "category": "entities",
+      "path": "entities/Ball.js",
+      "exports": ["Ball"],
+      "status": "ready",
+      "summary": "Pong/breakout ball with reset, speed clamp, bounce helpers, and vector rendering.",
+      "tags": ["pong", "ball", "arcade", "physics"],
+      "contracts": {
+        "helpers": ["reset({ x, y, direction })", "bounceX()", "bounceY()"]
+      },
+      "goodFits": ["pong", "breakout", "brick-breaker"]
+    },
+    {
+      "id": "entities.grid-board",
+      "name": "GridBoard",
+      "category": "entities",
+      "path": "entities/GridBoard.js",
+      "exports": ["GridBoard"],
+      "status": "ready",
+      "summary": "Reusable tile grid with row/col addressing, neighbor lookup, swapping, world conversion, and optional wrapping.",
+      "tags": ["grid", "tiles", "puzzle", "maze", "board"],
+      "contracts": {
+        "coordinates": ["get(row, col)", "set(row, col, value)", "cellToWorld(row, col)", "worldToCell(x, y)"],
+        "helpers": ["neighbors(row, col, options)", "swap(a, b)", "forEach(fn)"]
+      },
+      "goodFits": ["frogger", "pacman", "minesweeper-99", "candy-match", "word-quest", "mastermind"]
+    },
+    {
+      "id": "entities.board8x8",
+      "name": "Board8x8",
+      "category": "entities",
+      "path": "entities/Board8x8.js",
+      "exports": ["Board8x8"],
+      "status": "ready",
+      "summary": "Chess/checkers board built on GridBoard with algebraic coordinates, square coloring, and piece iteration.",
+      "tags": ["board", "chess", "checkers", "8x8"],
+      "contracts": {
+        "coordinates": ["toAlgebraic(row, col)", "fromAlgebraic(square)", "isDarkSquare(row, col)"]
+      },
+      "goodFits": ["chess", "checkers-mono", "draughts"]
+    },
+    {
+      "id": "entities.card",
+      "name": "Card",
+      "category": "entities",
+      "path": "entities/Card.js",
+      "exports": ["Card", "CARD_SUITS", "CARD_RANKS"],
+      "status": "ready",
+      "summary": "Standard playing card value object with labels, colors, blackjack value, and DOM rendering helper.",
+      "tags": ["card", "deck", "blackjack", "poker"],
+      "contracts": {
+        "helpers": ["label", "shortLabel", "blackjackValue", "renderElement(options)"]
+      },
+      "goodFits": ["blackjack", "texas-holdem-poker", "solitaire", "card-games"]
+    },
+    {
+      "id": "entities.deck",
+      "name": "Deck",
+      "category": "entities",
+      "path": "entities/Deck.js",
+      "exports": ["Deck", "blackjackHandValue"],
+      "status": "ready",
+      "summary": "Standard 52-card deck with shuffle, draw, discard, reset, and blackjack hand value helper.",
+      "tags": ["card", "deck", "shuffle", "blackjack", "poker"],
+      "contracts": {
+        "helpers": ["shuffle()", "draw(count)", "discard(card)", "reset({ shuffle })", "blackjackHandValue(cards)"]
+      },
+      "goodFits": ["blackjack", "texas-holdem-poker", "card-games"]
+    },
+    {
+      "id": "entities.platformer-player",
+      "name": "PlatformerPlayer",
+      "category": "entities",
+      "path": "entities/PlatformerPlayer.js",
+      "exports": ["PlatformerPlayer"],
+      "status": "ready",
+      "summary": "Platformer avatar with acceleration, gravity, coyote time, jump buffering, facing direction, and grounded state.",
+      "tags": ["platformer", "player", "jump", "gravity"],
+      "contracts": {
+        "controls": ["setInput({ left, right, jump })", "landOn(y)", "hitCeiling(y)"]
+      },
+      "goodFits": ["plumber", "mario-style", "pyramid-hopper", "side-scroller"]
+    },
+    {
+      "id": "entities.path-follower",
+      "name": "PathFollower",
+      "category": "entities",
+      "path": "entities/PathFollower.js",
+      "exports": ["PathFollower"],
+      "status": "ready",
+      "summary": "Waypoint-following entity for tower defense creeps, Frogger traffic, patrols, and scripted enemies.",
+      "tags": ["path", "waypoints", "enemy", "tower-defense", "traffic"],
+      "contracts": {
+        "helpers": ["setPath(path, options)", "currentTarget", "arrived"]
+      },
+      "goodFits": ["tower-defense", "frogger", "pacman", "alien-abduction"]
+    },
+    {
+      "id": "entities.grid-mover",
+      "name": "GridMover",
+      "category": "entities",
+      "path": "entities/GridMover.js",
+      "exports": ["GridMover"],
+      "status": "ready",
+      "summary": "Grid-snapped movement helper for maze runners, Frogger players, traffic, and tile-based enemies.",
+      "tags": ["grid", "movement", "maze", "frogger", "pacman"],
+      "contracts": {
+        "helpers": ["setDirection(direction)", "update(dt, board)", "worldPosition(board)"]
+      },
+      "goodFits": ["frogger", "pacman", "grid-arcade", "tile-movement"]
+    },
+    {
+      "id": "entities.match3-logic",
+      "name": "Match3Logic",
+      "category": "entities",
+      "path": "entities/Match3Logic.js",
+      "exports": ["Match3Logic"],
+      "status": "ready",
+      "summary": "Match-three resolver with horizontal/vertical run detection, clearing, column collapse, refill, and cascades.",
+      "tags": ["match3", "puzzle", "candy", "grid"],
+      "contracts": {
+        "helpers": ["findMatches(board)", "clearMatches(board, matches)", "collapseColumns(board)", "resolve(board)"]
+      },
+      "goodFits": ["candy-match", "match-three", "tile-puzzle"]
+    },
+    {
+      "id": "entities.reveal-logic",
+      "name": "RevealLogic",
+      "category": "entities",
+      "path": "entities/RevealLogic.js",
+      "exports": ["RevealLogic"],
+      "status": "ready",
+      "summary": "Minesweeper-style mine seeding, adjacency scoring, flag toggling, and flood reveal.",
+      "tags": ["minesweeper", "reveal", "puzzle", "grid"],
+      "contracts": {
+        "helpers": ["seedMines(board, count, avoid)", "computeAdjacency(board)", "toggleFlag(board, row, col)", "reveal(board, row, col)"]
+      },
+      "goodFits": ["minesweeper-99", "reveal-puzzle"]
+    },
+    {
+      "id": "entities.letter-grid",
+      "name": "LetterGrid",
+      "category": "entities",
+      "path": "entities/LetterGrid.js",
+      "exports": ["LetterGrid"],
+      "status": "ready",
+      "summary": "Word-game grid with row word helpers and Wordle-style correct/present/absent scoring.",
+      "tags": ["word", "letters", "grid", "wordle"],
+      "contracts": {
+        "helpers": ["setWord(row, word)", "rowWord(row)", "scoreGuess(row, answer)"]
+      },
+      "goodFits": ["word-quest", "word-puzzle", "letter-games"]
+    },
+    {
+      "id": "entities.wave-manager",
+      "name": "WaveManager",
+      "category": "entities",
+      "path": "entities/WaveManager.js",
+      "exports": ["WaveManager"],
+      "status": "ready",
+      "summary": "Wave spawner for tower defense, enemy attacks, traffic bursts, and level pacing.",
+      "tags": ["waves", "spawner", "tower-defense", "enemy"],
+      "contracts": {
+        "helpers": ["start(index)", "nextWave()", "update(dt)"]
+      },
+      "goodFits": ["tower-defense", "alien-abduction", "space-shooter"]
+    },
+    {
+      "id": "entities.turret",
+      "name": "Turret",
+      "category": "entities",
+      "path": "entities/Turret.js",
+      "exports": ["Turret"],
+      "status": "ready",
+      "summary": "Target-seeking turret with range, cooldown, aim angle, and projectile-factory hook.",
+      "tags": ["turret", "tower-defense", "enemy", "projectile"],
+      "contracts": {
+        "helpers": ["findTarget(entities)", "projectileFactory(turret, target)"]
+      },
+      "goodFits": ["tower-defense", "open-world-asteroids", "alien-abduction"]
+    },
+    {
+      "id": "entities.camera-follow",
+      "name": "CameraFollow",
+      "category": "entities",
+      "path": "entities/CameraFollow.js",
+      "exports": ["CameraFollow"],
+      "status": "ready",
+      "summary": "World-camera helper for ship-centered Asteroids variants, platformers, and large maps.",
+      "tags": ["camera", "scrolling", "world", "platformer"],
+      "contracts": {
+        "helpers": ["follow(target, viewport)", "apply(ctx)", "worldToScreen(x, y)", "screenToWorld(x, y)"]
+      },
+      "goodFits": ["open-world-asteroids", "plumber", "pyramid-hopper", "tower-defense"]
+    },
+    {
+      "id": "ui.scoreboard",
+      "name": "ScoreBoard",
+      "category": "ui",
+      "path": "ui/ScoreBoard.js",
+      "exports": ["ScoreBoard"],
+      "status": "ready",
+      "summary": "DOM HUD component for current score and best score, with mChatAI bridge persistence and localStorage fallback.",
+      "tags": ["hud", "score", "high-score", "storage", "bridge-aware"],
+      "contracts": {
+        "bridge": ["window.mChatAI.storage.get(key)", "window.mChatAI.storage.set(key, value)"],
+        "dom": "Creates a root element and optional mount target for CSS-driven theming."
+      },
+      "goodFits": ["asteroids", "alien-abduction", "pong", "word-quest", "minesweeper-99", "arcade-score-challenges"]
+    },
+    {
+      "id": "ui.virtual-joystick",
+      "name": "VirtualJoystick",
+      "category": "ui",
+      "path": "ui/VirtualJoystick.js",
+      "exports": ["VirtualJoystick"],
+      "status": "ready",
+      "summary": "Pointer-event virtual joystick overlay for mobile/touch arcade controls.",
+      "tags": ["touch", "mobile", "controls", "joystick"],
+      "contracts": {
+        "value": "joystick.value -> { x, y, active }",
+        "events": ["onChange(value)", "destroy()"]
+      },
+      "goodFits": ["asteroids", "frogger", "pacman", "platformers", "alien-abduction"]
+    },
+    {
+      "id": "ui.piano-keyboard",
+      "name": "PianoKeyboard",
+      "category": "ui",
+      "path": "ui/PianoKeyboard.js",
+      "exports": ["PianoKeyboard"],
+      "status": "ready",
+      "summary": "DOM piano keyboard that emits note/frequency events and can drive AudioManager.",
+      "tags": ["piano", "keyboard", "music", "audio"],
+      "contracts": {
+        "helpers": ["play(note)", "destroy()", "PianoKeyboard.noteFrequency(note)"]
+      },
+      "goodFits": ["piano", "music-miniapps", "synth-toys"]
     },
     {
       "id": "resources.swatches",
       "name": "Swatches",
       "category": "resources",
       "path": "resources/Swatches.js",
-      "exports": [
-        "WEB_COMPONENT_SWATCHES",
-        "ASTEROIDS_SWATCHES",
-        "getSwatchByID",
-        "applySwatchVariables"
-      ],
+      "exports": ["WEB_COMPONENT_SWATCHES", "ASTEROIDS_SWATCHES", "getSwatchByID", "applySwatchVariables"],
       "status": "ready",
       "summary": "Theme tokens and CSS variable helper for re-skinning gameplay HUDs and canvases without changing logic.",
-      "tags": [
-        "swatch",
-        "theme",
-        "design tokens",
-        "reskin"
-      ],
+      "tags": ["swatch", "theme", "design-tokens", "reskin"],
       "contracts": {
-        "css": [
-          "applySwatchVariables(element, swatch, { prefix })",
-          "getSwatchByID(id)"
-        ],
-        "families": [
-          "retro-neon",
-          "vector-noir",
-          "sunset-arcade"
-        ]
+        "css": ["applySwatchVariables(element, swatch, { prefix })", "getSwatchByID(id)"],
+        "families": ["retro-neon", "vector-noir", "sunset-arcade"]
       },
-      "goodFits": [
-        "asteroids",
-        "alien-abduction",
-        "pong",
-        "miniapp ui",
-        "reskinning"
-      ]
+      "goodFits": ["asteroids", "alien-abduction", "pong", "miniapp-ui", "reskinning"]
+    },
+    {
+      "id": "resources.audio-manager",
+      "name": "AudioManager",
+      "category": "resources",
+      "path": "resources/AudioManager.js",
+      "exports": ["AudioManager"],
+      "status": "ready",
+      "summary": "Tiny WebAudio SFX helper for beeps, noise bursts, and named sound effects without external assets.",
+      "tags": ["audio", "sfx", "webaudio", "arcade"],
+      "contracts": {
+        "helpers": ["beep(options)", "noise(options)", "playEffect(name, options)", "resume()"]
+      },
+      "goodFits": ["asteroids", "pong", "candy-match", "piano", "platformers", "tower-defense"]
     }
   ],
   "compositionRecipes": [
     {
       "id": "recipe.arcade-top-down",
       "name": "Arcade Top-Down",
-      "keywords": [
-        "asteroids",
-        "alien",
-        "space shooter",
-        "vector arcade",
-        "centipede",
-        "top-down arcade"
-      ],
-      "templateIDs": [
-        "asteroids-clone",
-        "games.arcade-games.alien-abduction.v1",
-        "games.arcade-games.centipede.v1"
-      ],
-      "existingGames": [
-        "asteroids",
-        "alien-abduction",
-        "arcade-centipede"
-      ],
-      "starterComponents": [
-        "core.game-manager",
-        "core.physics2d",
-        "entities.entity",
-        "entities.space-ship",
-        "entities.asteroid",
-        "entities.projectile",
-        "ui.scoreboard",
-        "resources.swatches"
-      ],
+      "keywords": ["asteroids", "alien", "space shooter", "vector arcade", "centipede", "top-down arcade"],
+      "templateIDs": ["asteroids-clone", "arcade-alien-abduction"],
+      "existingGames": ["asteroids", "alien-abduction"],
+      "starterComponents": ["core.game-manager", "core.physics2d", "entities.entity", "entities.space-ship", "entities.asteroid", "entities.projectile", "entities.path-follower", "entities.camera-follow", "entities.turret", "ui.scoreboard", "ui.virtual-joystick", "resources.swatches", "resources.audio-manager"],
       "assemblyNotes": [
-        "Treat the shipped engine and entity modules as canonical building blocks. Write glue code around them instead of rewriting movement, wrapping, and projectile logic from scratch.",
-        "If the final artifact still needs to be single-file HTML, preserve clear module boundaries as separated sections or classes inside the HTML so modify-existing turns can recover the same structure later."
-      ],
-      "requiredNow": [
-        "core.game-manager",
-        "core.physics2d",
-        "entities.entity",
-        "entities.space-ship",
-        "entities.asteroid",
-        "entities.projectile",
-        "ui.scoreboard",
-        "resources.swatches"
-      ],
-      "plannedNext": [
-        "entities.ufo-enemy",
-        "resources.audio-manager",
-        "ui.virtual-joystick"
+        "Write glue code around the shipped engine and entity modules instead of rewriting movement, wrapping, projectile, and scoring logic from scratch.",
+        "For open-world Asteroids variants, keep SpaceShip and Projectile but disable world wrapping and add camera/world coordinates in the assembly layer."
       ]
+    },
+    {
+      "id": "recipe.pong",
+      "name": "Pong / Paddle Ball",
+      "keywords": ["pong", "paddle", "ball", "breakout"],
+      "templateIDs": ["classic-pong-game"],
+      "existingGames": ["pong"],
+      "starterComponents": ["core.game-manager", "core.physics2d", "entities.paddle", "entities.ball", "ui.scoreboard", "resources.swatches", "resources.audio-manager"],
+      "assemblyNotes": ["Use Paddle and Ball as fixed rules primitives; only generate scoring rules, input binding, and theme."]
     },
     {
       "id": "recipe.arcade-grid",
       "name": "Arcade Grid",
-      "keywords": [
-        "frogger",
-        "pacman",
-        "maze",
-        "grid arcade"
-      ],
-      "templateIDs": [
-        "games.arcade-games.frogger.v1",
-        "games.arcade-games.pacman.v1"
-      ],
-      "existingGames": [
-        "frogger",
-        "pacman"
-      ],
-      "requiredNow": [
-        "core.game-manager"
-      ],
-      "plannedNext": [
-        "entities.grid-board",
-        "entities.grid-mover",
-        "entities.path-follower",
-        "ui.scoreboard",
-        "resources.swatches"
-      ]
+      "keywords": ["frogger", "pacman", "maze", "grid arcade"],
+      "templateIDs": ["arcade-frogger", "arcade-pacman-v1"],
+      "existingGames": ["frogger", "pacman"],
+      "starterComponents": ["core.game-manager", "entities.grid-board", "entities.grid-mover", "entities.path-follower", "ui.scoreboard", "ui.virtual-joystick", "resources.swatches", "resources.audio-manager"],
+      "plannedNext": ["entities.ai-pathfinder", "entities.maze-runner"]
     },
     {
       "id": "recipe.platformer",
       "name": "Platformer",
-      "keywords": [
-        "platformer",
-        "mario",
-        "jump",
-        "side scroller"
-      ],
-      "templateIDs": [
-        "games.platformer.plumber.v1"
-      ],
-      "existingGames": [
-        "plumber",
-        "pyramid-hopper"
-      ],
-      "requiredNow": [
-        "core.game-manager",
-        "core.physics2d"
-      ],
-      "plannedNext": [
-        "entities.platformer-player",
-        "entities.platform-tilemap",
-        "entities.camera-follow",
-        "resources.texture-manager"
-      ]
+      "keywords": ["platformer", "mario", "plumber", "jump", "side scroller", "pyramid hopper"],
+      "templateIDs": ["platformer-mario-style"],
+      "existingGames": ["plumber", "pyramid-hopper"],
+      "starterComponents": ["core.game-manager", "core.physics2d", "entities.grid-board", "entities.platformer-player", "entities.camera-follow", "ui.scoreboard", "ui.virtual-joystick", "resources.swatches", "resources.audio-manager"],
+      "plannedNext": ["entities.platform-tilemap", "resources.texture-manager"]
     },
     {
-      "id": "recipe.turn-based-board-card",
-      "name": "Turn-Based Board and Card",
-      "keywords": [
-        "blackjack",
-        "poker",
-        "chess",
-        "checkers",
-        "board game",
-        "card game"
-      ],
-      "templateIDs": [
-        "games.card-games.blackjack.v1",
-        "texas-holdem-poker",
-        "games.board-games.checkers-mono.v1",
-        "chess-game-board"
-      ],
-      "existingGames": [
-        "blackjack",
-        "texas-holdem-poker",
-        "checkers-mono",
-        "playable-chess"
-      ],
-      "requiredNow": [
-        "ui.scoreboard"
-      ],
-      "plannedNext": [
-        "core.turn-based-manager",
-        "entities.card",
-        "entities.deck",
-        "entities.board8x8",
-        "entities.piece",
-        "resources.swatches"
-      ]
+      "id": "recipe.tower-defense",
+      "name": "Tower Defense",
+      "keywords": ["tower defense", "waves", "turret", "creeps", "path"],
+      "templateIDs": ["tower-defense-game"],
+      "existingGames": ["tower-defense"],
+      "starterComponents": ["core.game-manager", "core.physics2d", "entities.grid-board", "entities.path-follower", "entities.projectile", "entities.wave-manager", "entities.turret", "ui.scoreboard", "resources.swatches", "resources.audio-manager"],
+      "plannedNext": ["entities.health-bar"]
     },
     {
       "id": "recipe.puzzle-grid",
       "name": "Puzzle Grid",
-      "keywords": [
-        "minesweeper",
-        "match three",
-        "candy match",
-        "mastermind",
-        "word quest",
-        "grid puzzle"
-      ],
-      "templateIDs": [
-        "games.puzzle-games.2048.v1",
-        "match-three-puzzle-game",
-        "mastermind-color-guessing-game",
-        "word-puzzle-game"
-      ],
-      "existingGames": [
-        "minesweeper-99",
-        "candy-match",
-        "mastermind",
-        "word-quest"
-      ],
-      "requiredNow": [
-        "ui.scoreboard"
-      ],
-      "plannedNext": [
-        "core.turn-based-manager",
-        "entities.grid-board",
-        "entities.letter-grid",
-        "entities.tile-swapper",
-        "entities.match3-logic",
-        "entities.keyboard-input"
-      ]
+      "keywords": ["minesweeper", "match three", "candy match", "mastermind", "word quest", "grid puzzle"],
+      "templateIDs": ["match-three-puzzle-game", "mastermind-color-guessing-game", "word-puzzle-game"],
+      "existingGames": ["minesweeper-99", "candy-match", "mastermind", "word-quest"],
+      "starterComponents": ["core.turn-based-manager", "entities.grid-board", "entities.letter-grid", "entities.match3-logic", "entities.reveal-logic", "ui.scoreboard", "resources.swatches", "resources.audio-manager"],
+      "plannedNext": ["entities.tile-swapper", "entities.keyboard-input"]
+    },
+    {
+      "id": "recipe.card-games",
+      "name": "Card Games",
+      "keywords": ["blackjack", "poker", "texas holdem", "cards", "deck"],
+      "templateIDs": ["texas-holdem-poker"],
+      "existingGames": ["blackjack", "texas-holdem-poker"],
+      "starterComponents": ["core.turn-based-manager", "entities.card", "entities.deck", "ui.scoreboard", "resources.swatches", "resources.audio-manager"],
+      "plannedNext": ["entities.hand-evaluator", "entities.poker-pot-manager", "ui.card-table"]
+    },
+    {
+      "id": "recipe.board8x8",
+      "name": "8x8 Board Games",
+      "keywords": ["chess", "checkers", "board game", "8x8"],
+      "templateIDs": ["board-checkers-mono", "chess-game-board"],
+      "existingGames": ["checkers-mono", "playable-chess"],
+      "starterComponents": ["core.turn-based-manager", "entities.grid-board", "entities.board8x8", "resources.swatches", "resources.audio-manager"],
+      "plannedNext": ["entities.piece", "entities.move-rules", "entities.chess-rules", "entities.checkers-rules"]
+    },
+    {
+      "id": "recipe.music",
+      "name": "Music / Piano",
+      "keywords": ["piano", "keyboard", "music", "synth"],
+      "templateIDs": ["music-piano-keyboard"],
+      "existingGames": ["piano"],
+      "starterComponents": ["ui.piano-keyboard", "resources.audio-manager", "resources.swatches"],
+      "plannedNext": ["ui.note-display", "resources.synth-presets"]
     }
+  ],
+  "sourceCatalogs": [
+    "catalog/good-games.json"
+  ],
+  "absorptionProcess": [
+    "Select a known-good mini-app from catalog/good-games.json or /admin/template-candidates.",
+    "Extract reusable mechanics into a focused ES module with a documented constructor and small method surface.",
+    "Reassemble the source game as an example using imports from this catalog.",
+    "Run module import checks and browser smoke tests.",
+    "Mark the component ready in this manifest only after the reassembled example behaves like the source game."
   ],
   "goldenAssemblies": [
     {
@@ -518,15 +556,8 @@
       "name": "Asteroids Golden Assembly",
       "summary": "Runnable Asteroids example composed from the shared engine, entity, swatch, and HUD modules.",
       "recipeID": "recipe.arcade-top-down",
-      "templateIDs": [
-        "asteroids-clone"
-      ],
-      "keywords": [
-        "asteroids",
-        "space shooter",
-        "vector arcade",
-        "wrap around"
-      ],
+      "templateIDs": ["asteroids-clone"],
+      "keywords": ["asteroids", "space shooter", "vector arcade", "wrap around"],
       "files": [
         "examples/asteroids/index.html",
         "examples/asteroids/asteroids.css",
