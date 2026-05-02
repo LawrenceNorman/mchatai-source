@@ -3,31 +3,25 @@ import Foundation
 
 enum ArcadeSmokeTests {
     static func launchReport() -> String {
-        var asteroids = AsteroidsEngine()
-        asteroids.fire()
-        asteroids.update(dt: 1.0 / 30.0, controls: ArcadeControls(up: true))
-
-        var pong = PongEngine()
-        pong.update(dt: 1.0 / 30.0, leftDirection: 1)
-
-        var adventure = GridAdventureEngine.adventureCastleMap()
-        adventure.moveHero(.right)
-
-        var towerDefense = TowerDefenseEngine()
-        _ = towerDefense.placeTower(at: PuzzlePoint(row: 3, col: 3))
-        towerDefense.startWave(count: 2)
-        towerDefense.update(dt: 0.5)
-
+        let playfield = ArcadePlayfield(width: 900, height: 560)
+        var body = ArcadeBody(position: playfield.center, velocity: ArcadeVector(x: 120, y: -80), radius: 12)
+        body.integrate(dt: 1.0 / 30.0)
+        body.wrap(in: playfield)
+        let controls = ArcadeControls(up: true, fire: true)
         return [
-            "[ArcadeSmoke] asteroids rocks=\(asteroids.rocks.count) shots=\(asteroids.shots.count)",
-            "[ArcadeSmoke] pong score=\(pong.leftScore)-\(pong.rightScore)",
-            "[ArcadeSmoke] adventure score=\(adventure.score) lives=\(adventure.lives)",
-            "[ArcadeSmoke] tower wave=\(towerDefense.wave) enemies=\(towerDefense.enemies.count)"
+            "[ArcadeSmoke] core body=(\(Int(body.position.x)),\(Int(body.position.y))) radius=\(Int(body.radius))",
+            "[ArcadeSmoke] playfield=\(Int(playfield.width))x\(Int(playfield.height)) phase=\(ArcadePhase.playing.rawValue)",
+            "[ArcadeSmoke] controls up=\(controls.up) fire=\(controls.fire)"
         ].joined(separator: "\n")
     }
 
     static func printLaunchReport() {
-        print(launchReport())
+        let output = launchReport() + "\n"
+        if let data = output.data(using: .utf8) {
+            FileHandle.standardOutput.write(data)
+        } else {
+            print(launchReport())
+        }
     }
 }
 // END mChatAI macOS Component: arcade.smoke-tests

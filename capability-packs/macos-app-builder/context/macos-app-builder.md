@@ -25,6 +25,8 @@ When the context includes a `macOS Components Recipe`, that recipe is mandatory,
 - Copy each selected component source file verbatim into `Sources/<TargetName>/MChatAIComponents/<ComponentFile>.swift`.
 - Preserve the `BEGIN mChatAI macOS Component` and `END mChatAI macOS Component` comments in copied files.
 - Put only app-specific SwiftUI/AppKit glue in `ContentView.swift`, `Views/*.swift`, `Models/*.swift`, or the `@main` app file.
+- App-specific glue must instantiate or call the selected exported component APIs. Copying components but then hand-rolling separate game/state logic is still a failed Lego composition.
+- If a selected smoke-test component exists, call its `printLaunchReport()` from the `@main App` `init()` so launch smoke stdout proves the component path ran.
 - Never rewrite the copied engines into a monolithic replacement just because it seems shorter. The Lego gate rejects apps that compile but do not prove source-copy provenance.
 
 The marker file is an actual file in the `macosapp.files` dictionary, for example:

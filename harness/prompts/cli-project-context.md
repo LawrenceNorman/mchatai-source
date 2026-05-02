@@ -68,7 +68,7 @@ Some Goals demand a native macOS Swift app instead. Before reading anything else
 
 **Output format for native macOS apps** (NOT a `\`\`\`miniapp` block — that's for HTML mini-apps only):
 
-If the context includes a **macOS Components Recipe**, follow it over any generic scaffold habit. Include `mchatai-macos-components-used.json` as a root entry in the `files` dictionary, copy the selected Swift component files verbatim under `Sources/<TargetName>/MChatAIComponents/`, and keep all custom UI/game glue in separate files. Do not replace the recipe with a hand-written monolith.
+If the context includes a **macOS Components Recipe**, follow it over any generic scaffold habit. Include `mchatai-macos-components-used.json` as a root entry in the `files` dictionary, copy the selected Swift component files verbatim under `Sources/<TargetName>/MChatAIComponents/`, and keep all custom UI/game glue in separate files. The glue must instantiate or call the selected exported component APIs, including smoke-test `printLaunchReport()` calls when selected. Do not replace the recipe with a hand-written monolith.
 
 ```macosapp
 {
