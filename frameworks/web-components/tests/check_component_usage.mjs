@@ -22,6 +22,7 @@ function readText(path) {
 
 function normalizeInlineSource(text) {
   return text
+    .replace(/^\s*import\s+[^;]+;?\s*$/gm, "")
     .replace(/\bexport\s+(?=(class|function|const|let|var)\b)/g, "")
     .replace(/\bexport\s*\{[^}]*\};?/g, "")
     .replace(/\s+/g, " ")

@@ -43,20 +43,40 @@ Do not promote components because a generated app merely used similar class name
 
 For live AIWizard canaries:
 
-1. If testing local uncommitted `mchatai-source` edits, sync them into the app source cache before the run.
-2. Run `diagHarnessContext` for `aiwizard-miniapp` and confirm the web-components layer selected the expected recipe.
-3. Use `maxTurns >= 2` for Codex-backed runs so Codex has enough turns to inspect context and write output.
-4. Inspect the tunnel session log and wizard workdir `session.log` if the result appears to come from a fallback backend.
-5. Run `node tests/check_component_usage.mjs <installed index.html> <expected recipe-id>`.
-6. Treat checker failure as a Harness failure, even if the preview looks good.
+1. Prefer the socket DebugTunnel transport for Lego QA:
+   `MCHATAI_TUNNEL_SOCKET=1`.
+   The legacy file transport can hang or return stale payloads when the app
+   container is under load.
+2. If testing local uncommitted `mchatai-source` edits, sync them into the app source cache before the run.
+   When direct filesystem copies into the container hang, use the tunnel command
+   `writeMchataisourceCacheFile` to write each changed file into
+   `source-cache/mchatai-source`, then run `invalidateMchataisourceCaches`.
+3. Run `diagHarnessContext` for `aiwizard-miniapp` and confirm the web-components layer selected the expected recipe.
+4. Use `maxTurns >= 2` for Codex-backed runs so Codex has enough turns to inspect context and write output.
+5. Inspect the tunnel session log and wizard workdir `session.log` if the result appears to come from a fallback backend.
+6. Run `node tests/check_component_usage.mjs <installed index.html> <expected recipe-id>`.
+7. Treat checker failure as a Harness failure, even if the preview looks good.
 
 Fast catalog-selection QA:
 
 ```bash
-node mchatai-source/frameworks/web-components/tests/run_catalog_recipe_diagnostics.mjs
+MCHATAI_TUNNEL_SOCKET=1 node mchatai-source/frameworks/web-components/tests/run_catalog_recipe_diagnostics.mjs
 ```
 
 This drives `diagHarnessContext` through the DebugTunnel for every known-good family in `tests/catalog_recipe_cases.json`, including continuation prompts that rely on `recentUserMessages`.
+
+End-to-end generation canaries:
+
+```bash
+MCHATAI_TUNNEL_SOCKET=1 node mchatai-source/frameworks/web-components/tests/run_catalog_generation_canaries.mjs --smoke
+MCHATAI_TUNNEL_SOCKET=1 node mchatai-source/frameworks/web-components/tests/run_catalog_generation_canaries.mjs --case defender
+MCHATAI_TUNNEL_SOCKET=1 node mchatai-source/frameworks/web-components/tests/run_catalog_generation_canaries.mjs --all
+```
+
+The canary runner reads installed HTML through the socket command
+`readInstalledMiniAppHTML` in socket mode. That avoids direct reads from
+`Application Support/mChatAI/MiniApps/installed`, which can block from external
+automation in this sandbox setup.
 
 Useful inspection paths:
 
@@ -74,8 +94,21 @@ Useful inspection paths:
 - **Stale source cache:** The app uses older cached `_index.json` or prompt files because local `mchatai-source` edits were not synced into the container source cache.
 - **Continuation context drop:** A second-turn prompt such as "Yes, build it now" can lose obvious genre keywords unless the Harness matches Web Components against prior user prompts as well as the current prompt.
 - **Template keyword contamination:** A wrong-but-plausible template seed can contain another recipe's keywords. Keep template-ID scoring separate from prompt/category keyword scoring so explicit prompts like Blackjack do not select Poker.
-- **Prompt-only compliance miss:** Even with the correct recipe context, OpenAI/local models can still emit a playable monolith. The hard gate catches this; retry prompts now include a concrete Lego repair marker/import block, but this still needs live canary validation with the tunnel active.
+- **Prompt-only compliance miss:** Even with the correct recipe context, OpenAI/local models can still emit a playable monolith. The hard gate catches this; retry prompts include a concrete Lego repair marker/import block, and golden assembly fallback should repair known recipe families when available.
 - **Tunnel not attached:** Launching the app process is not enough if the Harness view model is not initialized. The ready file can be stale; verify with a cheap `listSkills` request before running catalog diagnostics or canaries.
+- **L2 CLI detour:** Catalog clone prompts such as Defender should not depend
+  on Claude/Codex CLI output. If a Web Components recipe is selected, the
+  Harness should prefer the API/gate/golden-assembly path so the deterministic
+  Lego repair can run. Otherwise CLI limits or no-artifact exits can fail the
+  session before the component gate sees an artifact.
+- **Stale gate rejection after repair:** If an early generation was rejected but
+  a retry later installs a compliant Lego artifact, clear the prior
+  `lastFailureReason`. The accepted component-checked install must be the
+  tunnel truth source.
+- **Evaluator drift:** Text evaluator/autofix can mutate a component-compliant
+  artifact back into a markerless monolith. Once a Web Components artifact
+  passes the hard gate, skip text evaluator drift and rely on catalog validation
+  plus auto-play/visual QA.
 
 Harness status as of 2026-05-02:
 
@@ -83,7 +116,23 @@ Harness status as of 2026-05-02:
 - Tunnel results should report `status:error`, `phase:failed`, and a `failureReason` beginning with `Web Components Lego gate rejected...` for rejected artifacts.
 - `diagHarnessContext` supports `recentUserMessages` so QA can verify continuation turns still select the correct component recipe.
 - Gate-rejection retries include an exact marker/import block via `webComponentRetryInstruction(sessionID:)`.
-- The next improvement is a true auto-fix/retry loop that starts from a pre-seeded module scaffold instead of another blank `index.html` prompt.
+- Web Components recipe requests skip CLI-first generation and route through the
+  API/gate path so golden assembly fallback can deterministically repair
+  markerless output.
+- A successful component-compliant install clears stale Lego rejection state, so
+  tunnel responses return the accepted `miniAppID`.
+- Text evaluator/autofix is skipped for gate-compliant Lego artifacts; the hard
+  component checker is the composition authority.
+- Golden assemblies are the practical absorption target. Starter components are
+  useful, but every production recipe should eventually have a known-good
+  assembly fallback that reconstitutes a playable app from canonical modules.
+
+Validated on 2026-05-02:
+
+- Recipe diagnostics: 24/24 catalog prompts passed.
+- Generation canaries: Word Quest/Wordle, Mastermind, Minesweeper 99, Pong,
+  Defender, NYT Mini Crossword, and Atari Adventure all passed
+  `check_component_usage.mjs` through the socket tunnel.
 
 ## Current Families
 

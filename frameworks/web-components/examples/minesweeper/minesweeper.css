@@ -1,0 +1,214 @@
+:root {
+  --mchat-background: #020617;
+  --mchat-surface: #08111f;
+  --mchat-text: #f8fafc;
+  --mchat-accent: #22d3ee;
+  --mchat-accentWarm: #fb923c;
+  --mchat-stroke: #e2e8f0;
+  --mchat-shadow: rgba(34, 211, 238, 0.24);
+  color-scheme: dark;
+  font-family: "Avenir Next", "Trebuchet MS", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 20% 15%, rgba(34, 211, 238, 0.18), transparent 34rem),
+    linear-gradient(135deg, #020617 0%, #0f172a 58%, #1e293b 100%);
+  color: var(--mchat-text);
+}
+
+button {
+  font: inherit;
+}
+
+.mine-shell {
+  width: min(960px, 100%);
+  margin: 0 auto;
+  padding: 18px;
+  display: grid;
+  gap: 18px;
+}
+
+.hero-panel,
+.game-panel {
+  border: 1px solid rgba(226, 232, 240, 0.18);
+  border-radius: 28px;
+  background: rgba(8, 17, 31, 0.86);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.32), 0 0 32px var(--mchat-shadow);
+}
+
+.hero-panel {
+  padding: 28px;
+}
+
+.eyebrow {
+  margin: 0 0 8px;
+  color: var(--mchat-accent);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+h1 {
+  margin: 0;
+  font-size: clamp(2.4rem, 9vw, 5.6rem);
+  line-height: 0.92;
+}
+
+.brief {
+  max-width: 42rem;
+  margin: 14px 0 0;
+  color: rgba(248, 250, 252, 0.72);
+  font-size: 1.04rem;
+}
+
+.game-panel {
+  padding: 22px;
+}
+
+.hud-row {
+  display: grid;
+  grid-template-columns: minmax(210px, 1fr) repeat(3, minmax(88px, 0.45fr));
+  gap: 12px;
+  align-items: stretch;
+}
+
+.mchatai-scoreboard,
+.stat-card {
+  min-height: 68px;
+  border: 1px solid rgba(226, 232, 240, 0.14);
+  border-radius: 18px;
+  background: rgba(15, 23, 42, 0.82);
+  padding: 12px 14px;
+}
+
+.mchatai-scoreboard {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.mchatai-scoreboard__label,
+.stat-card span {
+  display: block;
+  color: rgba(248, 250, 252, 0.62);
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.mchatai-scoreboard__value,
+.stat-card strong {
+  display: block;
+  margin-top: 5px;
+  color: #fff7ed;
+  font-size: 1.55rem;
+}
+
+.message {
+  margin: 16px 0;
+  border-radius: 16px;
+  background: rgba(34, 211, 238, 0.12);
+  color: rgba(248, 250, 252, 0.88);
+  padding: 12px 14px;
+}
+
+.mine-board {
+  --rows: 9;
+  --cols: 9;
+  display: grid;
+  grid-template-columns: repeat(var(--cols), minmax(30px, 1fr));
+  gap: 7px;
+  max-width: 620px;
+  margin: 0 auto;
+  touch-action: manipulation;
+}
+
+.mine-cell {
+  aspect-ratio: 1;
+  border: 1px solid rgba(226, 232, 240, 0.16);
+  border-radius: 12px;
+  background: linear-gradient(145deg, rgba(30, 41, 59, 0.98), rgba(15, 23, 42, 0.98));
+  color: #fff7ed;
+  cursor: pointer;
+  font-weight: 900;
+  font-size: clamp(0.9rem, 3vw, 1.25rem);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.09), 0 6px 18px rgba(0, 0, 0, 0.22);
+}
+
+.mine-cell:focus-visible {
+  outline: 3px solid var(--mchat-accent);
+  outline-offset: 2px;
+}
+
+.mine-cell.is-revealed {
+  background: rgba(226, 232, 240, 0.13);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+}
+
+.mine-cell.is-flagged {
+  color: #0f172a;
+  background: linear-gradient(145deg, #facc15, #fb923c);
+}
+
+.mine-cell.is-mine {
+  color: #020617;
+  background: linear-gradient(145deg, #fb7185, #f97316);
+}
+
+.mine-cell[data-count="1"] { color: #7dd3fc; }
+.mine-cell[data-count="2"] { color: #86efac; }
+.mine-cell[data-count="3"] { color: #fde68a; }
+.mine-cell[data-count="4"],
+.mine-cell[data-count="5"],
+.mine-cell[data-count="6"],
+.mine-cell[data-count="7"],
+.mine-cell[data-count="8"] { color: #fca5a5; }
+
+.actions {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 18px;
+  flex-wrap: wrap;
+}
+
+.actions button {
+  border: 0;
+  border-radius: 999px;
+  background: #fff7ed;
+  color: #0f172a;
+  cursor: pointer;
+  font-weight: 900;
+  min-width: 128px;
+  padding: 12px 18px;
+}
+
+.actions button.is-active {
+  background: var(--mchat-accentWarm);
+}
+
+@media (max-width: 720px) {
+  .mine-shell {
+    padding: 10px;
+  }
+
+  .hud-row {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .mchatai-scoreboard {
+    grid-column: 1 / -1;
+  }
+
+  .mine-board {
+    gap: 5px;
+  }
+}
