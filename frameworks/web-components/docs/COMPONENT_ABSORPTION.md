@@ -17,6 +17,13 @@ The template system keeps complete known-good mini-apps. The Lego system extract
 - Constructor options must be small and documented in `_index.json`.
 - Blocks should degrade outside mChatAI: use localStorage/WebAudio/browser APIs when the platform bridge is absent.
 - Prefer small primitives over giant genre engines. A local LLM should compose `GridBoard + TurnBasedManager + CheckersRules`, not edit a 2,000-line checkers app.
+- Generated artifacts must include `<script type="application/json" id="mchatai-web-components-used">...` and either use module imports for selected component paths or inline selected source bodies with `// BEGIN mChatAI Web Component: ...` markers. Matching class names alone is not enough; that allows playable monoliths to masquerade as Lego compositions.
+
+## QA Loop
+
+1. Run `node tests/check_component_usage.mjs <generated index.html> <recipe-id>` on each candidate artifact.
+2. Treat missing markers, missing imports, or missing canonical source bodies as a generation miss, even when the game is playable.
+3. Promote a new component only after a known-good game can be reassembled with the component and the checker passes.
 
 ## Current Families
 

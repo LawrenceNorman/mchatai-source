@@ -50,7 +50,9 @@ If you finish writing code but didn't emit the required fenced block, GO BACK an
 
 ## 🟦 ARTIFACT TYPE — DECIDE FIRST
 
-Most of this file describes building **HTML mini-apps** (single-file `index.html` web apps). That is the DEFAULT, but **some Goals demand a native macOS Swift app instead**. Before reading anything else, decide which one:
+Most of this file describes building **HTML mini-apps**. Historically those were single-file `index.html` web apps. That remains the DEFAULT unless the prompt context includes a **Web Components Recipe**. When a Web Components Recipe is present, mini-apps may use bundled ES module sidecar files under `./web-components/`; follow that recipe over the legacy single-file habit.
+
+Some Goals demand a native macOS Swift app instead. Before reading anything else, decide which one:
 
 **You are building a NATIVE macOS Swift app (NOT an HTML mini-app) if the Goal contains ANY of these signals:**
 
@@ -158,7 +160,11 @@ If your Goal does NOT match the native-macOS signals above, continue to the HTML
 
 ## Output
 
-**If you decided you're building an HTML mini-app** (the default — and the case for almost every Goal): build a single-file `index.html`. Output the COMPLETE file content in a `\`\`\`miniapp` fenced JSON block. The JSON must have `id`, `name`, `manifest`, and `html` fields.
+**If you decided you're building an HTML mini-app** (the default — and the case for almost every Goal): output the COMPLETE artifact in a `\`\`\`miniapp` fenced JSON block. The JSON must have `id`, `name`, `manifest`, and `html` fields.
+
+If the context includes a **Web Components Recipe**, prefer module imports in `html` from `./web-components/<component-path>` and include the required `mchatai-web-components-used` marker. The installer will bundle those sidecar modules from the Lego catalog. Do not collapse that recipe back into a hand-written monolith.
+
+If there is no Web Components Recipe, use the legacy single-file `index.html` style with inline CSS and JS.
 
 **If you decided you're building a native macOS Swift app** (per the "🟦 ARTIFACT TYPE" section near the top): output a `\`\`\`macosapp` fenced JSON block instead, with `id`, `name`, `template`, and `files`. NEVER use the `miniapp` fence for a macOSApp — the wizard's parser routes on the fence marker, and a macOSApp inside a `miniapp` fence will be installed as an HTML mini-app.
 
