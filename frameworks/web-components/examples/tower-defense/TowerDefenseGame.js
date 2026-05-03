@@ -8,13 +8,7 @@ import { TURRET_VARIANTS } from "../../entities/TurretVariants.js";
 import { ScoreBoard } from "../../ui/ScoreBoard.js";
 import { AudioManager } from "../../resources/AudioManager.js";
 import { applySwatchVariables, getSwatchByID } from "../../resources/Swatches.js";
-import {
-  drawZombie,
-  drawZombieFast,
-  drawZombieBrute,
-  drawZombieSwarm,
-  drawBase
-} from "../../resources/VectorSprites.js";
+import { drawZombie, drawZombieFast, drawZombieBrute, drawZombieSwarm, drawBase } from "../../resources/VectorSprites.js";
 
 const WIDTH = 1000;
 const HEIGHT = 620;
