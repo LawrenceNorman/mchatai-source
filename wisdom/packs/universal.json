@@ -301,6 +301,35 @@
         "BAD: tokens.json present but generator picks `#1abc9c` and `#3498db` from its own knowledge → palette is wrong, user-picked archetype is ignored, the entire VD.7 pre-pick UX is wasted.",
         "CHECK: before writing any CSS color or font value, run `cat visual-brief/tokens.json` (or read the file via your tool). If the file exists, those values are mandatory inputs, not suggestions. If the file doesn't exist, fall back to taste — that means the user opted out via Skip and you have license to choose."
       ]
+    },
+    {
+      "id": "u-025",
+      "rule": "Mini-apps MUST be designed mobile-first. The header is the worst offender for stealing screen space — total header height ≤ 32px on mobile / ≤ 44px on desktop. For mini-apps using web-components, mount the `ui/MiniHeader` component (path: `ui/MiniHeader.js`, export: `MiniHeader`) — title-only by default; subtitle is OPTIONAL and hides on mobile. Never roll your own hero block. For non-Lego artifacts, the title `<h1>` font-size must be in `clamp(0.95rem, 3.4vw, 1.2rem)` (≈15-19px), no eyebrow line, no brief paragraph in the header. The header ANNOUNCES; the game/tool is the primary content. HUD widgets (score cards, lives, timers, action buttons) belong BELOW the header in their own row — they are NOT part of the header and must also be compact: ≤ 50px row height on mobile, ≤ 1.1rem (~18px) for the value text, ≤ 8px padding. Reserve at least 75% of the viewport height for the actual game/tool content.",
+      "why": "Seen 2026-05-02 across recent generations (Chess, Adventure, Tower Defense, Pyramid Hopper, Mini Crossword): hero blocks with `h1 { font-size: clamp(3rem, 12vw, 7rem); }` plus eyebrow + brief paragraph consumed 200-300px before the game appeared. Then below the header, oversized HUD cards (TURN/MOVES/CAPTURED at ~80px each with `font-size: 2rem` and `padding: 24px`) ate another 100-150px. User feedback: 'still pretty massive ... I'd like to default to a mobile friendly view ... we would still have a whole chessboard that would need to fit below.' Mobile-first means designing for a 360px wide / 640px tall viewport FIRST and scaling up — not the reverse.",
+      "severity": "critical",
+      "appliesTo": "miniapp, webspa, website",
+      "examples": [
+        "GOOD (Lego): import { MiniHeader } from '../../ui/MiniHeader.js'; MiniHeader.mount('[data-mini-header]', { title: 'Chess' }); — title-only, ~28px tall on mobile.",
+        "GOOD (non-Lego): <h1 style='font-size:clamp(0.95rem,3.4vw,1.2rem); margin:4px 8px'>Tower Defense</h1>.",
+        "GOOD HUD row: 4 cards at 36px tall each, side-by-side flex with `flex-wrap: wrap` so they reflow to 2x2 on narrow screens; value text 1rem, label text 0.7rem.",
+        "BAD: <section class='hero'><p class='eyebrow'>X clone assembled from blocks</p><h1>Title</h1><p class='brief'>...</p></section> — anything > 50px on mobile is too much.",
+        "BAD: HUD card with `font-size: 2rem` on the value and `padding: 24px` — eats viewport.",
+        "BAD: any `vw`-based clamp on a header where the upper bound is > 1.5rem."
+      ]
+    },
+    {
+      "id": "u-026",
+      "rule": "Never write internal architecture jargon into user-visible content. Banned phrases in titles, subtitles, eyebrows, instructions, puzzle clues, dialogue, copy: 'Lego', 'Lego blocks', 'web-component(s)', 'mini-app', 'assembled from blocks', 'recipe', 'golden assembly', 'scaffold', 'harness'. These are internal developer terms — they must stay in code comments and JSON markers, NOT in DOM text the player sees. The user sees a polished GAME or TOOL named what THEY asked for; they should never see how it was built.",
+      "why": "Seen 2026-05-02: Mini Crossword shipped with clue text mentioning 'Lego' and 'mini-app' as if they were trivia (e.g. clue 'What Lego blocks help produce'); Chess/Adventure/Tower-Defense ship with eyebrow text 'Chess clone assembled from Lego blocks' visible above the title. Users complained 'the focus on Lego and mini-apps is just bizarre.' Root cause: the example HTML files in mchatai-source/frameworks/web-components/examples/*/index.html include the eyebrow string verbatim, and the LLM copies it into generated artifacts. Wisdom rule + marker check + scrubbed examples close the loop.",
+      "severity": "critical",
+      "appliesTo": "all",
+      "examples": [
+        "BAD eyebrow: 'Chess clone assembled from Lego blocks' — exposes our component model to the player.",
+        "BAD crossword clue: 'Container holding mini-app components (8 letters)' — meta-content, not real trivia.",
+        "GOOD: title 'Chess', subtitle 'Drag a piece to a highlighted square'.",
+        "GOOD: title 'Word Quest', subtitle 'Six guesses. Five letters.'",
+        "If you generate puzzle/quiz/dialogue content, the source for clues/answers/lines must be REAL-WORLD facts, vocabulary, or fiction — never a description of the platform that produced them."
+      ]
     }
   ]
 }

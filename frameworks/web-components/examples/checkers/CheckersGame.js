@@ -28,6 +28,10 @@ export class CheckersGame {
     this.legalMoves = [];
     this.moveCount = 0;
     this.capturedCount = 0;
+    this.humanColor = options.humanColor || "red";
+    this.ai = options.ai || null;
+    this.aiThinkDelay = typeof options.aiThinkDelay === "number" ? options.aiThinkDelay : 350;
+    this._aiPending = false;
 
     applySwatchVariables(document.documentElement, getSwatchByID("retro-neon"));
     this.bindControls();
@@ -78,12 +82,17 @@ export class CheckersGame {
     this.legalMoves = [];
     this.moveCount = 0;
     this.capturedCount = 0;
+    this._aiPending = false;
     this.setMessage("Red to move.");
     this.render();
+    this._maybeScheduleAIMove();
   }
 
   handleSquare(row, col) {
     if (this.turns.phase !== "playing") {
+      return;
+    }
+    if (this.ai && this.turns.currentPlayer !== this.humanColor) {
       return;
     }
 
@@ -131,6 +140,22 @@ export class CheckersGame {
       this.audio.beep({ freq: captured ? 480 : 300, duration: 0.07, type: "square" });
     }
     this.render();
+    this._maybeScheduleAIMove();
+  }
+
+  _maybeScheduleAIMove() {
+    if (!this.ai) return;
+    if (this.turns.phase !== "playing") return;
+    if (this.turns.currentPlayer === this.humanColor) return;
+    if (this._aiPending) return;
+    this._aiPending = true;
+    setTimeout(() => {
+      this._aiPending = false;
+      if (this.turns.phase !== "playing" || this.turns.currentPlayer === this.humanColor) return;
+      const move = this.ai.pickMove(this.board, this.turns.currentPlayer);
+      if (!move) return;
+      this.applyMove(move);
+    }, this.aiThinkDelay);
   }
 
   availableMoves(color) {

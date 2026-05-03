@@ -39,12 +39,21 @@
       "entities/Turret.js",
       "entities/CameraFollow.js",
       "entities/CheckersRules.js",
+      "entities/MinimaxAI.js",
+      "entities/SimpleOpponent.js",
+      "entities/ChessAI.js",
+      "entities/CheckersAI.js",
+      "entities/PongAI.js",
+      "entities/TurretVariants.js",
+      "ui/MiniHeader.js",
       "ui/ScoreBoard.js",
       "ui/VirtualJoystick.js",
       "ui/PianoKeyboard.js",
       "ui/KeyboardInput.js",
       "resources/Swatches.js",
-      "resources/AudioManager.js"
+      "resources/AudioManager.js",
+      "resources/SpriteRenderer.js",
+      "resources/SpritePresets.js"
     ]
   },
   "categories": [
@@ -927,6 +936,44 @@
       ]
     },
     {
+      "id": "entities.turret-variants",
+      "name": "TurretVariants",
+      "category": "entities",
+      "path": "entities/TurretVariants.js",
+      "exports": [
+        "BasicTurret",
+        "CannonTurret",
+        "FrostTurret",
+        "BeamTurret",
+        "TURRET_VARIANTS"
+      ],
+      "status": "ready",
+      "summary": "Four turret subclasses with distinct stats: BasicTurret (50g, fast, low damage), CannonTurret (120g, slow, splash damage), FrostTurret (90g, slows enemies), BeamTurret (180g, continuous beam, long range). Each renders with a unique pixel-art sprite from SpritePresets. Drop-in replacement for the base Turret when you want meaningful build choice.",
+      "dependencies": [
+        "entities.turret",
+        "resources.sprite-renderer",
+        "resources.sprite-presets"
+      ],
+      "tags": [
+        "tower-defense",
+        "turret",
+        "weapon-variety",
+        "sprite-rendered"
+      ],
+      "contracts": {
+        "factory": [
+          "new BasicTurret({ x, y, faction, projectileFactory })",
+          "new CannonTurret({ x, y, splashRadius?, projectileFactory })",
+          "new FrostTurret({ x, y, slowFactor?, slowDuration?, projectileFactory })",
+          "new BeamTurret({ x, y, beamColor? })"
+        ],
+        "lookup": "TURRET_VARIANTS[name] -> class"
+      },
+      "goodFits": [
+        "tower-defense"
+      ]
+    },
+    {
       "id": "entities.camera-follow",
       "name": "CameraFollow",
       "category": "entities",
@@ -1014,6 +1061,200 @@
       "goodFits": [
         "chess",
         "playable-chess"
+      ]
+    },
+    {
+      "id": "entities.minimax-ai",
+      "name": "MinimaxAI",
+      "category": "entities",
+      "path": "entities/MinimaxAI.js",
+      "exports": [
+        "MinimaxAI"
+      ],
+      "status": "ready",
+      "summary": "Generic alpha-beta (negamax) search for any 2-player turn-based board game whose rules expose legalMoves + applyMove. Snapshots from-square/to-square/capture before each apply so search-and-undo doesn't clone the board. Default depth 2.",
+      "dependencies": [],
+      "tags": [
+        "ai",
+        "minimax",
+        "alpha-beta",
+        "board-games",
+        "engine"
+      ],
+      "contracts": {
+        "factory": "new MinimaxAI({ rules, evalFn, depth })",
+        "helpers": [
+          "pickMove(board, color)"
+        ],
+        "evalFn": "function(board, color) -> number; positive when `color` is winning"
+      },
+      "goodFits": [
+        "chess",
+        "checkers",
+        "tic-tac-toe",
+        "any-2-player-board-game"
+      ]
+    },
+    {
+      "id": "entities.simple-opponent",
+      "name": "SimpleOpponent",
+      "category": "entities",
+      "path": "entities/SimpleOpponent.js",
+      "exports": [
+        "SimpleOpponent"
+      ],
+      "status": "ready",
+      "summary": "Random-legal-move opponent. Use as a fallback when a smarter AI isn't available — satisfies the 'every 2-player game must have an opponent' rule (universal.json u-010).",
+      "dependencies": [],
+      "tags": [
+        "ai",
+        "fallback",
+        "random",
+        "board-games",
+        "minimum-viable-opponent"
+      ],
+      "contracts": {
+        "factory": "new SimpleOpponent({ rules, preferCaptures? })",
+        "helpers": [
+          "pickMove(board, color)"
+        ]
+      },
+      "goodFits": [
+        "any-2-player-board-game",
+        "card-games"
+      ]
+    },
+    {
+      "id": "entities.chess-ai",
+      "name": "ChessAI",
+      "category": "entities",
+      "path": "entities/ChessAI.js",
+      "exports": [
+        "ChessAI"
+      ],
+      "status": "ready",
+      "summary": "MinimaxAI wrapper with chess-specific evaluator (material values + central control + king safety). Default depth 2 keeps moves under ~1s.",
+      "dependencies": [
+        "entities.minimax-ai",
+        "entities.chess-rules"
+      ],
+      "tags": [
+        "ai",
+        "chess",
+        "minimax"
+      ],
+      "contracts": {
+        "factory": "new ChessAI({ rules, depth?, evalFn? })",
+        "helpers": [
+          "pickMove(board, color)",
+          "playMove(board, color)"
+        ]
+      },
+      "goodFits": [
+        "chess",
+        "playable-chess"
+      ]
+    },
+    {
+      "id": "entities.checkers-ai",
+      "name": "CheckersAI",
+      "category": "entities",
+      "path": "entities/CheckersAI.js",
+      "exports": [
+        "CheckersAI"
+      ],
+      "status": "ready",
+      "summary": "MinimaxAI wrapper for checkers — material + king bonus + advancement evaluator. Default depth 3.",
+      "dependencies": [
+        "entities.minimax-ai",
+        "entities.checkers-rules"
+      ],
+      "tags": [
+        "ai",
+        "checkers",
+        "minimax"
+      ],
+      "contracts": {
+        "factory": "new CheckersAI({ rules, depth?, evalFn? })",
+        "helpers": [
+          "pickMove(board, color)",
+          "playMove(board, color)"
+        ]
+      },
+      "goodFits": [
+        "checkers",
+        "checkers-mono"
+      ]
+    },
+    {
+      "id": "entities.pong-ai",
+      "name": "PongAI",
+      "category": "entities",
+      "path": "entities/PongAI.js",
+      "exports": [
+        "PongAI"
+      ],
+      "status": "ready",
+      "summary": "Beatable AI paddle for Pong-style games. Tracks ball Y with reaction delay (default 110ms) + per-decision error (default 12% of paddle height). Without delay+error a tracking paddle is unbeatable.",
+      "dependencies": [
+        "entities.paddle",
+        "entities.ball"
+      ],
+      "tags": [
+        "ai",
+        "pong",
+        "paddle",
+        "tracker"
+      ],
+      "contracts": {
+        "factory": "new PongAI({ paddle, ball, bounds?, delay?, error?, deadZone? })",
+        "helpers": [
+          "update(dt)",
+          "computeDirection()",
+          "retarget()",
+          "reset()"
+        ]
+      },
+      "goodFits": [
+        "pong",
+        "breakout-paddle"
+      ]
+    },
+    {
+      "id": "ui.mini-header",
+      "name": "MiniHeader",
+      "category": "ui",
+      "path": "ui/MiniHeader.js",
+      "exports": [
+        "MiniHeader"
+      ],
+      "status": "ready",
+      "summary": "Compact app header (title + optional subtitle) sized to ~50-60px tall. The single source of truth for mini-app titles. Replaces oversized .hero-panel patterns; never write a raw <h1> for a user-visible title — mount MiniHeader instead.",
+      "tags": [
+        "header",
+        "title",
+        "hud",
+        "layout",
+        "mobile-first"
+      ],
+      "contracts": {
+        "factory": "new MiniHeader({ target, title, subtitle? })",
+        "static": "MiniHeader.mount(target, { title, subtitle? })",
+        "runtime": [
+          "setTitle(value)",
+          "setSubtitle(value)"
+        ],
+        "css": "Self-injects #mchatai-mini-header-styles on first instance; safe to instantiate multiple times."
+      },
+      "constraints": {
+        "userVisibleStrings": "Never include internal architecture jargon ('Lego', 'web-component', 'mini-app', 'assembled from blocks') in title/subtitle. Use the actual brand or game name only.",
+        "maxHeight": "60px desktop / 50px mobile"
+      },
+      "goodFits": [
+        "every-mini-app",
+        "every-game",
+        "tools",
+        "trackers"
       ]
     },
     {
@@ -1210,6 +1451,86 @@
         "platformers",
         "tower-defense"
       ]
+    },
+    {
+      "id": "resources.sprite-renderer",
+      "name": "SpriteRenderer",
+      "category": "resources",
+      "path": "resources/SpriteRenderer.js",
+      "exports": [
+        "drawSprite",
+        "drawCompositeSprite",
+        "SpriteAnimation",
+        "Sprite",
+        "spriteSize"
+      ],
+      "status": "ready",
+      "summary": "Pixel-grid sprite renderer for Canvas2D. Each sprite is a 2D array of palette indices (0 = transparent). Supports composite layered sprites, frame-based animation, scale/rotation/flip/anchor. Use this instead of plain colored rectangles for ANY game entity (player, enemy, item, projectile) — see wisdom rule vq-001.",
+      "tags": [
+        "sprite",
+        "pixel-art",
+        "canvas",
+        "rendering",
+        "animation"
+      ],
+      "contracts": {
+        "helpers": [
+          "drawSprite(ctx, grid, palette, { x, y, scale, anchor, rotation, flipX, flipY, alpha })",
+          "drawCompositeSprite(ctx, layers, palette, options)",
+          "new SpriteAnimation({ frames, frameDuration, loop })",
+          "new Sprite({ grid, palette, scale, animation })"
+        ],
+        "format": "grid: 2D array; 0 = transparent; 1, 2, 3, ... = palette index"
+      },
+      "goodFits": [
+        "adventure",
+        "platformer",
+        "tower-defense",
+        "any-arcade-game"
+      ]
+    },
+    {
+      "id": "resources.sprite-presets",
+      "name": "SpritePresets",
+      "category": "resources",
+      "path": "resources/SpritePresets.js",
+      "exports": [
+        "KNIGHT", "KNIGHT_PALETTE",
+        "DRAGON", "DRAGON_PALETTE",
+        "TREASURE", "TREASURE_PALETTE",
+        "KEY", "KEY_PALETTE",
+        "GATE", "GATE_PALETTE",
+        "PLUMBER", "PLUMBER_PALETTE",
+        "COIN_1", "COIN_2", "COIN_PALETTE", "COIN_FRAMES",
+        "PIPE", "PIPE_PALETTE",
+        "BRICK", "BRICK_PALETTE",
+        "GOOMBA", "GOOMBA_PALETTE",
+        "TURRET_BASIC", "TURRET_BASIC_PALETTE",
+        "TURRET_CANNON", "TURRET_CANNON_PALETTE",
+        "TURRET_FROST", "TURRET_FROST_PALETTE",
+        "TURRET_BEAM", "TURRET_BEAM_PALETTE",
+        "SPRITE_PRESETS",
+        "getSpritePreset"
+      ],
+      "status": "ready",
+      "summary": "Bundled pixel-art sprites for common entities — knight, dragon, treasure, key, gate, plumber, coin (animated), pipe, brick, goomba, and 4 turret variants. Each comes with a default palette that's overridable. Use these instead of inventing rectangles or simple shapes — wisdom rule vq-001 + vq-002 (3+ visually distinct entities) is satisfied automatically.",
+      "tags": [
+        "sprites",
+        "pixel-art",
+        "presets",
+        "library"
+      ],
+      "contracts": {
+        "lookup": "SPRITE_PRESETS[name] -> { grid, palette, frames? }",
+        "helpers": [
+          "getSpritePreset(name)"
+        ]
+      },
+      "goodFits": [
+        "adventure",
+        "platformer",
+        "tower-defense"
+      ]
     }
   ],
   "compositionRecipes": [
@@ -1364,13 +1685,19 @@
         "core.physics2d",
         "entities.paddle",
         "entities.ball",
+        "entities.pong-ai",
         "ui.scoreboard",
         "resources.swatches",
         "resources.audio-manager"
       ],
+      "requiresAIOpponent": true,
+      "aiOpponentComponents": [
+        "entities.pong-ai"
+      ],
       "assemblyNotes": [
         "Use Paddle and Ball as fixed rules primitives; only generate scoring rules, input binding, and theme.",
-        "Use GameManager callbacks (`onUpdate`, `onDraw`) and `game.start()`; there is no GameManager.update() API."
+        "Use GameManager callbacks (`onUpdate`, `onDraw`) and `game.start()`; there is no GameManager.update() API.",
+        "Use PongAI to drive the CPU paddle. Without delay+error parameters a perfect ball-tracker is unbeatable; defaults (110ms / 12%) make it fun."
       ]
     },
     {
@@ -1474,10 +1801,14 @@
         "ui.scoreboard",
         "ui.virtual-joystick",
         "resources.swatches",
-        "resources.audio-manager"
+        "resources.audio-manager",
+        "resources.sprite-renderer",
+        "resources.sprite-presets"
       ],
       "assemblyNotes": [
         "Build a recognizable side-scrolling platformer clone: player, platforms, gaps, coins, hazards, lives, score, camera follow, keyboard/touch controls, and restart.",
+        "Render the player with PLUMBER (or KNIGHT for adventure-flavored), coins with COIN_FRAMES animation, pipes with PIPE, bricks with BRICK, enemies with GOOMBA — all from resources/SpritePresets.js. Plain colored rectangles for player/enemies are forbidden (vq-001).",
+        "For Pyramid Hopper variants, use a hex-staircase background pattern + KNIGHT player + GOOMBA enemies. The platformer recipe is the right home for this — there is no separate `recipe.pyramid-hopper` (yet).",
         "Use PlatformerPlayer for movement/jumping and CameraFollow for side scrolling; do not omit the mchatai-web-components-used marker."
       ],
       "plannedNext": [
@@ -1512,12 +1843,18 @@
         "entities.projectile",
         "entities.wave-manager",
         "entities.turret",
+        "entities.turret-variants",
         "ui.scoreboard",
         "resources.swatches",
-        "resources.audio-manager"
+        "resources.audio-manager",
+        "resources.sprite-renderer",
+        "resources.sprite-presets"
       ],
       "assemblyNotes": [
         "Build a recognizable tower defense clone: visible path, build pads, turrets, enemy waves, projectiles, lives, gold, score, and Start Wave control.",
+        "Use TurretVariants — BasicTurret / CannonTurret / FrostTurret / BeamTurret — to give the player real build choices. A single turret type is boring; the four variants have distinct stats (cost, range, cooldown, damage, splash, slow) so players plan placement.",
+        "Render each turret with its bundled sprite (TURRET_BASIC, TURRET_CANNON, TURRET_FROST, TURRET_BEAM from SpritePresets). Do NOT render turrets as plain circles — wisdom rule vq-001 forbids it.",
+        "Add a small turret-shop UI with one button per variant showing cost; selecting a variant before clicking a build pad determines what gets placed.",
         "Instantiate documented component constructors directly; there is no framework-level initialize() API."
       ],
       "plannedNext": [
@@ -1751,14 +2088,21 @@
       ],
       "starterComponents": [
         "core.turn-based-manager",
-        "entities.grid-board",
         "entities.board8x8",
         "entities.checkers-rules",
+        "entities.minimax-ai",
+        "entities.checkers-ai",
         "resources.swatches",
         "resources.audio-manager"
       ],
+      "requiresAIOpponent": true,
+      "aiOpponentComponents": [
+        "entities.checkers-ai",
+        "entities.simple-opponent"
+      ],
       "assemblyNotes": [
         "Use CheckersRules for diagonal movement, captures, and kinging; generate board UI and turn prompts only.",
+        "Wire CheckersAI to play one color (default: 'black'). After every human move, schedule the AI's reply via setTimeout (~350ms for thinking-feel). Never let the user play both sides.",
         "Do not output markerless board-game HTML. Render a visible 8x8 board, selectable pieces, legal move highlights, capture feedback, turn HUD, and reset control."
       ]
     },
@@ -1786,14 +2130,22 @@
       ],
       "starterComponents": [
         "core.turn-based-manager",
-        "entities.grid-board",
         "entities.board8x8",
         "entities.chess-rules",
+        "entities.minimax-ai",
+        "entities.chess-ai",
         "resources.swatches",
         "resources.audio-manager"
       ],
+      "requiresAIOpponent": true,
+      "aiOpponentComponents": [
+        "entities.chess-ai",
+        "entities.simple-opponent"
+      ],
       "assemblyNotes": [
-        "Use ChessRules for standard setup, legal move generation, check filtering, checkmate, and stalemate; add UI affordances and optional castling/en passant only after the base rules are wired.",
+        "Use ChessRules for standard setup, legal move generation, check filtering, checkmate, and stalemate.",
+        "Wire ChessAI to play one color (default: 'black'). After every human move, schedule the AI's reply via setTimeout (~350ms for thinking-feel). Never let the user play both sides.",
+        "ChessAI default depth is 2 (move under ~1s on typical hardware); raise to 3 for stronger play if you can afford up to ~3s thinking time.",
         "Do not invent lifecycle APIs such as initialize(). Render a visible 8x8 board, selectable pieces, legal move highlights, turn/status HUD, and reset control."
       ]
     },
@@ -1895,10 +2247,14 @@
         "entities.ai-pathfinder",
         "ui.scoreboard",
         "resources.swatches",
-        "resources.audio-manager"
+        "resources.audio-manager",
+        "resources.sprite-renderer",
+        "resources.sprite-presets"
       ],
       "assemblyNotes": [
-        "Build a recognizable Atari Adventure clone: room-to-room map, player square/avatar, keys, locked gates, treasure goal, simple enemies, inventory status, score/time, and reset.",
+        "Build a recognizable Atari Adventure clone: room-to-room map, player avatar, keys, locked gates, treasure goal, simple enemies, inventory status, score/time, and reset.",
+        "Render the player as KNIGHT, the dragon as DRAGON, the treasure as TREASURE, the key as KEY, the locked gate as GATE — all bundled in resources/SpritePresets.js. Do NOT use plain colored rectangles or triangles for entities (wisdom rule vq-001).",
+        "Aim for at least 6-8 distinct rooms, not 3. Each room can mix terrain (forest, cavern, keep, vault, bridge, river) by reskinning the bg color and item layout. The lego-style draw layer makes adding rooms cheap.",
         "Until dedicated room graph and inventory blocks are promoted, model rooms and items as small data tables in glue code.",
         "Instantiate documented component constructors directly; there is no framework-level initialize() API."
       ],
