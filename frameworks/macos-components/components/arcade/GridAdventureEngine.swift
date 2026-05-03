@@ -16,6 +16,7 @@ struct AdventureActor: Codable, Identifiable, Equatable, Sendable {
         case treasure
         case key
         case vehicle
+        case log
         case pellet
     }
 
@@ -53,7 +54,8 @@ struct GridAdventureEngine: Codable, Equatable, Sendable {
     }
 
     mutating func stepTraffic() {
-        for index in actors.indices where actors[index].kind == .vehicle || actors[index].kind == .enemy {
+        for index in actors.indices where actors[index].kind == .vehicle || actors[index].kind == .enemy || actors[index].kind == .log {
+            let previous = actors[index].position
             var next = actors[index].position.moved(actors[index].direction)
             if !map.contains(next) || map[next] == .wall {
                 actors[index].direction = actors[index].direction == .left ? .right : .left
@@ -61,8 +63,13 @@ struct GridAdventureEngine: Codable, Equatable, Sendable {
             }
             if map.contains(next), map[next] != .wall {
                 actors[index].position = next
+                if actors[index].kind == .log,
+                   let heroIndex = actors.firstIndex(where: { $0.kind == .hero && $0.position == previous }) {
+                    actors[heroIndex].position = next
+                }
             }
         }
+        resolveHeroTile()
         resolveActorCollisions()
     }
 
@@ -96,7 +103,9 @@ struct GridAdventureEngine: Codable, Equatable, Sendable {
             actors: [
                 AdventureActor(kind: .hero, position: PuzzlePoint(row: 7, col: 4), direction: .up),
                 AdventureActor(kind: .vehicle, position: PuzzlePoint(row: 2, col: 1), direction: .right),
-                AdventureActor(kind: .vehicle, position: PuzzlePoint(row: 3, col: 7), direction: .left)
+                AdventureActor(kind: .vehicle, position: PuzzlePoint(row: 3, col: 7), direction: .left),
+                AdventureActor(kind: .log, position: PuzzlePoint(row: 5, col: 4), direction: .right),
+                AdventureActor(kind: .log, position: PuzzlePoint(row: 5, col: 7), direction: .left)
             ]
         )
     }
@@ -106,11 +115,20 @@ struct GridAdventureEngine: Codable, Equatable, Sendable {
         for point in grid.allPoints() where point.row == 0 || point.row == 6 || point.col == 0 || point.col == 8 {
             grid[point] = .wall
         }
-        let pellets = grid.allPoints().filter { grid[$0] == .floor && $0 != PuzzlePoint(row: 3, col: 4) }
+        let heroStart = PuzzlePoint(row: 3, col: 4)
+        let enemyStarts: Set<PuzzlePoint> = [
+            PuzzlePoint(row: 1, col: 1),
+            PuzzlePoint(row: 5, col: 7)
+        ]
+        let pellets = grid.allPoints().filter { grid[$0] == .floor && $0 != heroStart && !enemyStarts.contains($0) }
             .map { AdventureActor(kind: .pellet, position: $0) }
         return GridAdventureEngine(
             map: grid,
-            actors: [AdventureActor(kind: .hero, position: PuzzlePoint(row: 3, col: 4))] + pellets
+            actors: [
+                AdventureActor(kind: .hero, position: heroStart),
+                AdventureActor(kind: .enemy, position: PuzzlePoint(row: 1, col: 1), direction: .right),
+                AdventureActor(kind: .enemy, position: PuzzlePoint(row: 5, col: 7), direction: .left)
+            ] + pellets
         )
     }
 
@@ -121,7 +139,8 @@ struct GridAdventureEngine: Codable, Equatable, Sendable {
             phase = .won
             score += 500
         }
-        if map[heroPoint] == .water {
+        if map[heroPoint] == .water,
+           !actors.contains(where: { $0.kind == .log && $0.position == heroPoint }) {
             loseLife()
         }
     }
@@ -144,18 +163,39 @@ struct GridAdventureEngine: Codable, Equatable, Sendable {
                 removeIDs.insert(actor.id)
             case .enemy, .vehicle:
                 loseLife()
+            case .log:
+                break
             case .hero:
                 break
             }
         }
 
         actors.removeAll { removeIDs.contains($0.id) }
+        if phase == .playing, !actors.contains(where: { $0.kind == .pellet }) {
+            phase = .won
+            score += 500
+        }
     }
 
     private mutating func loseLife() {
         lives -= 1
         if lives <= 0 {
             phase = .lost
+        } else {
+            respawnHero()
+        }
+    }
+
+    private mutating func respawnHero() {
+        guard let heroIndex = actors.firstIndex(where: { $0.kind == .hero }) else { return }
+        let preferred = PuzzlePoint(row: max(0, map.rows - 1), col: map.columns / 2)
+        if map.contains(preferred), map[preferred] != .wall {
+            actors[heroIndex].position = preferred
+            return
+        }
+
+        if let fallback = map.allPoints().first(where: { map[$0] == .floor }) {
+            actors[heroIndex].position = fallback
         }
     }
 }
