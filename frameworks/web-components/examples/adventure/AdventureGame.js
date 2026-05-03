@@ -5,6 +5,14 @@ import { AIPathfinder } from "../../entities/AIPathfinder.js";
 import { ScoreBoard } from "../../ui/ScoreBoard.js";
 import { AudioManager } from "../../resources/AudioManager.js";
 import { applySwatchVariables, getSwatchByID } from "../../resources/Swatches.js";
+import { drawSprite } from "../../resources/SpriteRenderer.js";
+import {
+  KNIGHT, KNIGHT_PALETTE,
+  DRAGON, DRAGON_PALETTE,
+  TREASURE, TREASURE_PALETTE,
+  KEY, KEY_PALETTE,
+  GATE, GATE_PALETTE
+} from "../../resources/SpritePresets.js";
 
 const WIDTH = 560;
 const HEIGHT = 420;
@@ -219,39 +227,56 @@ export class AdventureGame {
 
   drawExits() {
     Object.keys(this.room.exits).forEach((side) => {
-      this.ctx.fillStyle = this.room.gate?.side === side ? "#facc15" : "#fff8e8";
-      if (side === "right") this.ctx.fillRect(WIDTH - 18, HEIGHT / 2 - 48, 18, 96);
-      if (side === "left") this.ctx.fillRect(0, HEIGHT / 2 - 48, 18, 96);
+      const isGate = this.room.gate?.side === side;
+      if (isGate) {
+        // Render the GATE sprite at the right edge for "right" gates,
+        // mirrored for left gates. The gate sprite is 12x14.
+        const scale = 4;
+        const spriteWidth = 12 * scale;
+        const spriteHeight = 14 * scale;
+        const y = HEIGHT / 2 - spriteHeight / 2;
+        const x = side === "right" ? WIDTH - spriteWidth : 0;
+        drawSprite(this.ctx, GATE, GATE_PALETTE, { x, y, scale });
+      } else {
+        // Open passage — light bar
+        this.ctx.fillStyle = "#fff8e8";
+        if (side === "right") this.ctx.fillRect(WIDTH - 12, HEIGHT / 2 - 48, 12, 96);
+        if (side === "left") this.ctx.fillRect(0, HEIGHT / 2 - 48, 12, 96);
+      }
     });
   }
 
   drawItems() {
     this.room.items.forEach((item) => {
       if (this.itemsTaken.has(`${this.roomID}:${item.id}`)) return;
-      const x = item.col * TILE + TILE / 2;
-      const y = item.row * TILE + TILE / 2;
-      this.ctx.fillStyle = item.color;
-      this.ctx.fillRect(x - 16, y - 16, 32, 32);
+      const cx = item.col * TILE + TILE / 2;
+      const cy = item.row * TILE + TILE / 2;
+      if (item.id === "key") {
+        // KEY sprite is 8x4. Scale 5 = 40x20.
+        drawSprite(this.ctx, KEY, KEY_PALETTE, { x: cx, y: cy, scale: 5, anchor: "center" });
+      } else if (item.id === "treasure") {
+        // TREASURE 10x8. Scale 5 = 50x40.
+        drawSprite(this.ctx, TREASURE, TREASURE_PALETTE, { x: cx, y: cy, scale: 5, anchor: "center" });
+      } else {
+        // Fallback rectangle for any unknown item type.
+        this.ctx.fillStyle = item.color;
+        this.ctx.fillRect(cx - 16, cy - 16, 32, 32);
+      }
     });
   }
 
   drawDragon() {
     if (!this.room.dragon) return;
-    const x = this.dragon.col * TILE + TILE / 2;
-    const y = this.dragon.row * TILE + TILE / 2;
-    this.ctx.fillStyle = "#fb7185";
-    this.ctx.beginPath();
-    this.ctx.moveTo(x, y - 24);
-    this.ctx.lineTo(x + 28, y + 20);
-    this.ctx.lineTo(x - 28, y + 20);
-    this.ctx.closePath();
-    this.ctx.fill();
+    const cx = this.dragon.col * TILE + TILE / 2;
+    const cy = this.dragon.row * TILE + TILE / 2;
+    // DRAGON 16x11. Scale 4 = 64x44.
+    drawSprite(this.ctx, DRAGON, DRAGON_PALETTE, { x: cx, y: cy, scale: 4, anchor: "center" });
   }
 
   drawPlayer() {
-    const x = this.player.col * TILE + TILE / 2;
-    const y = this.player.row * TILE + TILE / 2;
-    this.ctx.fillStyle = "#fff8e8";
-    this.ctx.fillRect(x - 18, y - 18, 36, 36);
+    const cx = this.player.col * TILE + TILE / 2;
+    const cy = this.player.row * TILE + TILE / 2;
+    // KNIGHT 12x14. Scale 4 = 48x56.
+    drawSprite(this.ctx, KNIGHT, KNIGHT_PALETTE, { x: cx, y: cy, scale: 4, anchor: "center" });
   }
 }

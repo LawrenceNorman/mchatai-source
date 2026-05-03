@@ -8,26 +8,29 @@
   "guidelines": [
     {
       "id": "vq-001",
-      "rule": "NEVER use plain colored rectangles (div with background-color only) for game entities like players, enemies, projectiles, or obstacles. Every entity must have a recognizable shape using SVG, CSS shapes (clip-path, border-radius, box-shadow), pixel-art grid rendering, or canvas drawing.",
-      "why": "Users rated Space Invaders with red rectangles as 'terrible' and refused to publish it. The game was functionally correct but visually unacceptable. Professional-quality sprites are the difference between shareable and shameful.",
+      "rule": "NEVER use plain colored rectangles, circles, or solid triangles for game entities (players, enemies, projectiles, obstacles, NPCs, items). Every entity must have a recognizable shape. For Lego web-component artifacts, use `resources/SpriteRenderer` with grids from `resources/SpritePresets` — knight, dragon, treasure, key, gate, plumber, coin (animated), pipe, brick, goomba, and 4 turret variants are bundled. For non-Lego artifacts, use SVG, CSS clip-path, pixel-grid arrays drawn to canvas, or sprite atlases.",
+      "why": "Users rated Space Invaders with red rectangles as 'terrible' and refused to publish it. The Atari Adventure clone shipped 2026-05-02 with a white-square player and red-triangle dragon — user called the graphics 'so basic it's embarrassing.' The game was functionally correct but visually unacceptable. Professional-quality sprites are the difference between shareable and shameful. SpriteRenderer + SpritePresets makes this a 2-line fix in any Lego artifact.",
       "severity": "critical",
       "appliesTo": "games",
       "examples": [
         "BAD: <div style='width:30px;height:20px;background:red'></div> for an alien",
-        "GOOD: renderSprite(ALIEN_1, {1:'#ff0040'}, 4) using pixel grid arrays",
-        "GOOD: <svg viewBox='0 0 40 30'><path d='M20,0 L40,30 L0,30 Z' fill='#ff0040'/></svg> for a triangle ship",
-        "GOOD: clip-path:polygon(50% 0, 100% 100%, 0 100%) for a simple ship shape"
+        "BAD: ctx.fillRect(x-18, y-18, 36, 36) — a white square is not a knight, draw a sprite",
+        "BAD: ctx.beginPath(); ctx.moveTo(x, y-24); ctx.lineTo(...); ctx.fill(); — solid pink triangle is not a dragon",
+        "GOOD (Lego): import { drawSprite } from '../../resources/SpriteRenderer.js'; import { KNIGHT, KNIGHT_PALETTE } from '../../resources/SpritePresets.js'; drawSprite(ctx, KNIGHT, KNIGHT_PALETTE, { x: cx, y: cy, scale: 4, anchor: 'center' });",
+        "GOOD (non-Lego): renderSprite(ALIEN_1, {1:'#ff0040'}, 4) using pixel grid arrays",
+        "GOOD: <svg viewBox='0 0 40 30'><path d='M20,0 L40,30 L0,30 Z' fill='#ff0040'/></svg> for a triangle ship"
       ]
     },
     {
       "id": "vq-002",
-      "rule": "Every game must have at least 3 visually distinct entity types. Enemies/aliens should look different from each other (different shapes, colors, or patterns). The player entity must be immediately recognizable and distinct from enemies.",
-      "why": "Games where all entities are the same colored box are boring and confusing. Visual variety is a core quality signal.",
+      "rule": "Every game must have at least 3 visually distinct entity types. Enemies/aliens should look different from each other (different shapes, colors, or patterns). The player entity must be immediately recognizable and distinct from enemies. For Tower Defense specifically, ship at LEAST 3 turret variants (e.g., BasicTurret + CannonTurret + FrostTurret from `entities/TurretVariants`) so the player has meaningful build choices — a single-turret tower defense fails this rule.",
+      "why": "Games where all entities are the same colored box are boring and confusing. Visual variety is a core quality signal. Tower Defense canary 2026-05-02 shipped with one turret type (a yellow circle) — user called it 'so basic its not going to hold anyones interest for long at all.'",
       "severity": "important",
       "appliesTo": "games",
       "examples": [
         "Space Invaders: 3 alien types (squid, crab, octopus) + player ship + UFO — each a different shape and color",
-        "Breakout: colored bricks (gradient rows), distinct paddle, visible ball with trail"
+        "Breakout: colored bricks (gradient rows), distinct paddle, visible ball with trail",
+        "Tower Defense: BasicTurret + CannonTurret + FrostTurret + BeamTurret — different sprites, costs, ranges, and effects. One variant = fails this rule."
       ]
     },
     {

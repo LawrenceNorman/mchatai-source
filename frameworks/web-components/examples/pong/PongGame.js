@@ -2,6 +2,7 @@ import { GameManager } from "../../core/GameManager.js";
 import { intersectsAABB } from "../../core/Physics2D.js";
 import { Paddle } from "../../entities/Paddle.js";
 import { Ball } from "../../entities/Ball.js";
+import { PongAI } from "../../entities/PongAI.js";
 import { ScoreBoard } from "../../ui/ScoreBoard.js";
 import { AudioManager } from "../../resources/AudioManager.js";
 import { applySwatchVariables, getSwatchByID } from "../../resources/Swatches.js";
@@ -39,6 +40,13 @@ export class PongGame {
     this.player = new Paddle({ x: 28, y: HEIGHT / 2 - 50, width: 16, height: 100, speed: 430, color: "#22d3ee" });
     this.cpu = new Paddle({ x: WIDTH - 44, y: HEIGHT / 2 - 50, width: 16, height: 100, speed: 345, color: "#fb923c" });
     this.ball = new Ball({ x: WIDTH / 2, y: HEIGHT / 2, radius: 9, speed: 350, color: "#f7fbff" });
+    this.cpuAI = new PongAI({
+      paddle: this.cpu,
+      ball: this.ball,
+      bounds: { minY: 0, maxY: HEIGHT - this.cpu.height },
+      delay: 110,
+      error: 0.14
+    });
 
     this.playerScore = 0;
     this.cpuScore = 0;
@@ -152,10 +160,7 @@ export class PongGame {
   }
 
   updateCPU(dt) {
-    const target = this.ball.y - this.cpu.height / 2;
-    const delta = target - this.cpu.y;
-    const direction = Math.abs(delta) < 8 ? 0 : Math.sign(delta);
-    this.cpu.move(direction, dt, { minY: 0, maxY: HEIGHT - this.cpu.height });
+    this.cpuAI.update(dt);
   }
 
   handleWallBounce() {

@@ -67,14 +67,15 @@
     },
     {
       "id": "bg-005",
-      "rule": "If the game has a human player, there MUST be at least one AI/computer opponent to play against. Never generate a game where the user has to play both sides manually. The AI can use simple heuristics (random legal move, minimax, greedy) — it does not need to be strong, just present.",
-      "why": "Users ask for a 'playable' game expecting someone to play against. A board with no opponent forces the user to move pieces for both sides, which is not a game — it's a demo.",
+      "rule": "If the game has a human player, there MUST be at least one AI/computer opponent to play against. Never generate a game where the user has to play both sides manually. For web mini-apps using Lego components, mount one of the provided AI components — `entities/ChessAI` for chess, `entities/CheckersAI` for checkers, or `entities/SimpleOpponent` (random legal moves) as the universal fallback for any TurnBasedManager-driven game. After the human moves, schedule the AI's reply via `setTimeout(() => { const m = ai.pickMove(board, aiColor); if (m) applyMove(m); }, 350)` — the small delay sells 'thinking' and gives the human time to register their own move. ChessAI default depth is 2; raise to 3 for stronger play. CheckersAI default depth is 3.",
+      "why": "Users ask for a 'playable' game expecting someone to play against. A board with no opponent forces the user to move pieces for both sides, which is not a game — it's a demo. Until 2026-05-02 our chess/checkers golden assemblies HAD this bug — the user moved white and the board froze waiting for them to also move black. Adding the AI components and this rule together closes the loop. The marker check `requiresAIOpponent` now refuses to publish a 2-player game without one of the registered AI components OR an inline `selectComputerMove`/`cpuTurn`/equivalent function.",
       "severity": "critical",
       "appliesTo": "board-games",
       "examples": [
-        "Chess: AI picks a random legal move after human moves",
-        "Checkers: simple greedy AI that captures when possible",
-        "Tic-tac-toe: minimax for perfect play or random for easy mode"
+        "GOOD (Lego): import { ChessAI } from '../../entities/ChessAI.js'; const ai = new ChessAI({ rules, depth: 2 }); after human move: setTimeout(() => ai.playMove(board, 'black'), 350);",
+        "GOOD fallback: import { SimpleOpponent } from '../../entities/SimpleOpponent.js'; — random legal moves are still better than no opponent.",
+        "BAD: chess game where after white moves the board says 'BLACK to move' but never moves anything — the human has to click for both colors. This is the bug the wisdom rule was added to prevent.",
+        "Tic-tac-toe: build a small inline minimax (depth ≤9 is fast on the 3x3 board) for perfect play, or use SimpleOpponent for easy mode."
       ]
     },
     {

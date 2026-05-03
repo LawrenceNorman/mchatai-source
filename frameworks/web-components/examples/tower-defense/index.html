@@ -9,6 +9,7 @@
       {
         "recipe": "recipe.tower-defense",
         "components": [
+          "ui.mini-header",
           "core.game-manager",
           "core.physics2d",
           "entities.grid-board",
@@ -16,23 +17,20 @@
           "entities.projectile",
           "entities.wave-manager",
           "entities.turret",
+          "entities.turret-variants",
           "ui.scoreboard",
           "resources.swatches",
           "resources.audio-manager"
         ],
         "mode": "module-imports",
-        "cloneTarget": "Tower Defense",
+        "cloneTarget": "Tower Defense with 4 turret types",
         "brandedAs": "Tower Defense"
       }
     </script>
   </head>
   <body>
     <main class="tower-shell" data-tower-defense-app>
-      <section class="hero">
-        <p class="eyebrow">Tower Defense clone assembled from Lego blocks</p>
-        <h1>Tower Defense</h1>
-        <p class="brief">Place turrets beside the road. Stop waves before they reach the portal.</p>
-      </section>
+      <header data-mini-header aria-label="App header"></header>
 
       <section class="battlefield" aria-label="Tower defense battlefield">
         <div class="hud">
@@ -42,8 +40,14 @@
           <div class="hud-card">Wave <strong id="wave">1</strong></div>
           <button id="startWaveButton" type="button">Start Wave</button>
         </div>
+        <div class="turret-shop" role="toolbar" aria-label="Turret types">
+          <button type="button" class="turret-pick is-selected" data-variant="basic" title="Single-target gun: fast, low damage. Cost 50.">Basic <span>50</span></button>
+          <button type="button" class="turret-pick" data-variant="cannon" title="Heavy cannon: slow, splash damage. Cost 120.">Cannon <span>120</span></button>
+          <button type="button" class="turret-pick" data-variant="frost" title="Frost tower: slows enemies. Cost 90.">Frost <span>90</span></button>
+          <button type="button" class="turret-pick" data-variant="beam" title="Continuous beam: long range. Cost 180.">Beam <span>180</span></button>
+        </div>
         <canvas id="battleCanvas" width="720" height="480" aria-label="Tower defense game board"></canvas>
-        <p id="message" class="message" role="status" aria-live="polite">Tap a build pad to place a turret.</p>
+        <p id="message" class="message" role="status" aria-live="polite">Pick a turret type, then tap a build pad.</p>
       </section>
     </main>
 

@@ -47,6 +47,10 @@ export class ChessGame {
     this.legalMoves = [];
     this.moveCount = 0;
     this.capturedCount = 0;
+    this.humanColor = options.humanColor || "white";
+    this.ai = options.ai || null;
+    this.aiThinkDelay = typeof options.aiThinkDelay === "number" ? options.aiThinkDelay : 350;
+    this._aiPending = false;
 
     applySwatchVariables(document.documentElement, getSwatchByID("retro-neon"));
     this.bindControls();
@@ -87,12 +91,19 @@ export class ChessGame {
     this.legalMoves = [];
     this.moveCount = 0;
     this.capturedCount = 0;
+    this._aiPending = false;
     this.setMessage("White to move.");
     this.render();
+    // If the AI plays White (human chose Black), kick off its first move.
+    this._maybeScheduleAIMove();
   }
 
   handleSquare(row, col) {
     if (this.turns.phase !== "playing") {
+      return;
+    }
+    if (this.ai && this.turns.currentPlayer !== this.humanColor) {
+      // It's the AI's turn — clicks are ignored. The AI move is scheduled by applyMove().
       return;
     }
 
@@ -147,6 +158,23 @@ export class ChessGame {
       this.audio.beep({ freq: captured ? 480 : 300, duration: 0.07, type: "square" });
     }
     this.render();
+    this._maybeScheduleAIMove();
+  }
+
+  _maybeScheduleAIMove() {
+    if (!this.ai) return;
+    if (this.turns.phase !== "playing") return;
+    if (this.turns.currentPlayer === this.humanColor) return;
+    if (this._aiPending) return;
+    this._aiPending = true;
+    setTimeout(() => {
+      this._aiPending = false;
+      // Re-check phase (user may have hit Reset during the timeout).
+      if (this.turns.phase !== "playing" || this.turns.currentPlayer === this.humanColor) return;
+      const move = this.ai.pickMove(this.board, this.turns.currentPlayer);
+      if (!move) return;
+      this.applyMove(move);
+    }, this.aiThinkDelay);
   }
 
   render() {

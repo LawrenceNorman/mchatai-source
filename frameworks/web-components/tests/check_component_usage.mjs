@@ -172,6 +172,78 @@ if (missingCanonicalSources.length > 0) {
   });
 }
 
+// AI-opponent presence check. Recipes flagged `requiresAIOpponent: true` in
+// _index.json must include at least one component declared in their
+// `aiOpponentComponents` list, OR the artifact source must contain inline
+// opponent logic (a function name like `selectComputerMove`, `cpuTurn`,
+// `opponentMove`, etc.). Without this gate, the LLM can ship a 2-player game
+// where the human plays both sides — see wisdom rule u-010 / bg-005.
+const recipes = Array.isArray(catalog.recipes) ? catalog.recipes : [];
+const recipeMeta = recipes.find((r) => r && r.id === marker.recipe);
+if (recipeMeta && recipeMeta.requiresAIOpponent === true) {
+  const expected = Array.isArray(recipeMeta.aiOpponentComponents) && recipeMeta.aiOpponentComponents.length > 0
+    ? recipeMeta.aiOpponentComponents
+    : ["entities.simple-opponent"];
+  const hasComponent = expected.some((id) => marker.components.includes(id));
+  const inlineMarkers = [
+    /\bselectComputerMove\s*\(/,
+    /\bopponentMove\s*\(/,
+    /\bcpuTurn\s*\(/,
+    /\bcpuPlayTurn\s*\(/,
+    /\baiMove\s*\(/,
+    /\bplayAITurn\s*\(/,
+    /\bcomputerMove\s*\(/
+  ];
+  const hasInline = inlineMarkers.some((re) => re.test(sourceText));
+  if (!hasComponent && !hasInline) {
+    fail(
+      "Recipe requires an AI opponent but neither a recognized AI component nor an inline opponent function was found. The user cannot be left to play both sides. See wisdom rule u-010 / bg-005.",
+      {
+        recipe: marker.recipe,
+        expectedAnyOf: expected,
+        markerComponents: marker.components,
+        inlineFunctionPatterns: inlineMarkers.map((re) => re.source)
+      }
+    );
+  }
+}
+
+// User-visible jargon scan. Architecture terms must not leak into DOM text.
+// We strip <script>, <style>, and tag attributes, then case-insensitive search the remaining text.
+const BANNED_USER_VISIBLE_PHRASES = [
+  "lego block",
+  "lego blocks",
+  "assembled from lego",
+  "assembled from blocks",
+  "web component",
+  "web-component",
+  "mini-app",
+  "mini app",
+  "golden assembly",
+  "harness scaffold"
+];
+
+function extractUserVisibleText(htmlSource) {
+  return htmlSource
+    .replace(/<script\b[\s\S]*?<\/script>/gi, " ")
+    .replace(/<style\b[\s\S]*?<\/style>/gi, " ")
+    .replace(/<!--[\s\S]*?-->/g, " ")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+const visibleText = extractUserVisibleText(html).toLowerCase();
+const jargonHits = BANNED_USER_VISIBLE_PHRASES.filter((phrase) => visibleText.includes(phrase));
+
+if (jargonHits.length > 0) {
+  fail(
+    "User-visible content contains banned internal architecture jargon. Internal terms must stay in code/comments, not DOM text. See wisdom rule u-026.",
+    { jargonHits }
+  );
+}
+
 console.log(
   JSON.stringify(
     {
@@ -179,7 +251,8 @@ console.log(
       recipe: marker.recipe,
       mode: marker.mode || "unspecified",
       componentCount: marker.components.length,
-      components: marker.components
+      components: marker.components,
+      jargonScan: "clean"
     },
     null,
     2
