@@ -107,8 +107,14 @@ struct ContentView: View {
 
             scoreCard
 
+            Toggle("Mandatory jumps", isOn: Binding(
+                get: { game.capturePolicy == .mandatory },
+                set: { game.setCapturePolicy($0 ? .mandatory : .optional) }
+            ))
+            .toggleStyle(.switch)
+
             Button("Reset") {
-                game = .newGame()
+                game = .newGame(capturePolicy: game.capturePolicy)
             }
             .keyboardShortcut("r", modifiers: [])
             .buttonStyle(.borderedProminent)
@@ -116,7 +122,7 @@ struct ContentView: View {
             VStack(alignment: .leading, spacing: 8) {
                 Text("Rules")
                     .font(.headline)
-                Text("White moves first. Captures are forced when available. Pieces king on the far row. Click a piece, then a highlighted square.")
+                Text("White moves first. Pieces king on the far row. Red targets are jumps. Optional jumps allow normal moves when another piece can jump; once a jump starts, available double jumps must continue.")
                     .font(.callout)
                     .foregroundStyle(.white.opacity(0.66))
                     .fixedSize(horizontal: false, vertical: true)
@@ -157,7 +163,14 @@ struct ContentView: View {
             HStack {
                 Label("Legal", systemImage: "target")
                 Spacer()
-                Text("\(CheckersRules.allLegalMoves(for: game.turn, on: game.board).count)")
+                Text("\(game.availableMoves.count)")
+                    .monospacedDigit()
+                    .fontWeight(.black)
+            }
+            HStack {
+                Label("Jump", systemImage: "arrow.up.right.circle")
+                Spacer()
+                Text(CheckersRules.hasCapture(for: game.turn, on: game.board) ? "Available" : "None")
                     .monospacedDigit()
                     .fontWeight(.black)
             }
@@ -196,23 +209,32 @@ private struct CheckersGameState {
     var selected: PuzzlePoint?
     var status: String
     var log: [String]
+    var capturePolicy: CheckersCapturePolicy
+    var mustContinueFrom: PuzzlePoint?
     var gameOver = false
 
-    static func newGame() -> CheckersGameState {
+    static func newGame(capturePolicy: CheckersCapturePolicy = .optional) -> CheckersGameState {
         CheckersGameState(
             board: CheckersRules.startingBoard(),
             turn: .white,
             selected: nil,
-            status: "White to move.",
-            log: ["New game. White moves first."]
+            status: "White to move. Jumps are optional.",
+            log: ["New game. White moves first.", "Optional jumps: slides remain legal when a jump exists."],
+            capturePolicy: capturePolicy,
+            mustContinueFrom: nil
         )
+    }
+
+    var availableMoves: [BoardMove] {
+        if let mustContinueFrom {
+            return CheckersRules.captureMoves(from: mustContinueFrom, on: board)
+        }
+        return CheckersRules.allLegalMoves(for: turn, on: board, capturePolicy: capturePolicy)
     }
 
     var legalMovesForSelection: [BoardMove] {
         guard let selected else { return [] }
-        return CheckersRules
-            .allLegalMoves(for: turn, on: board)
-            .filter { $0.from == selected }
+        return availableMoves.filter { $0.from == selected }
     }
 
     var whiteCount: Int { board.pieces(for: .white).count }
@@ -222,10 +244,16 @@ private struct CheckersGameState {
         guard !gameOver else { return }
 
         if let move = legalMovesForSelection.first(where: { $0.to == point }) {
-            apply(move, actor: "White")
-            if !gameOver {
+            let turnCompleted = apply(move, actor: "White")
+            if turnCompleted && !gameOver {
                 runComputerTurn()
             }
+            return
+        }
+
+        if let mustContinueFrom {
+            selected = mustContinueFrom
+            status = "\(turnName) must continue the jump from \(Board8x8.squareName(mustContinueFrom))."
             return
         }
 
@@ -235,29 +263,31 @@ private struct CheckersGameState {
             return
         }
 
-        let forcedMoves = CheckersRules.allLegalMoves(for: turn, on: board)
-        let moves = forcedMoves.filter { $0.from == point }
+        let moves = availableMoves.filter { $0.from == point }
         if moves.isEmpty {
             selected = nil
             status = "That piece has no legal move."
         } else {
             selected = point
-            let captureText = moves.contains { $0.captured != nil } ? " Capture available." : ""
+            let captureText = moves.contains { $0.captured != nil } ? " Jump available." : jumpHint
             status = "\(turnName) selected \(Board8x8.squareName(point)).\(captureText)"
         }
     }
 
     private mutating func runComputerTurn() {
         guard turn == .black, !gameOver else { return }
-        let moves = CheckersRules.allLegalMoves(for: .black, on: board)
-        guard let move = moves.max(by: { movePriority($0) < movePriority($1) }) else {
-            finish(winner: .white)
-            return
-        }
-        apply(move, actor: "Black")
+        repeat {
+            let moves = availableMoves
+            guard let move = moves.max(by: { movePriority($0) < movePriority($1) }) else {
+                finish(winner: .white)
+                return
+            }
+            _ = apply(move, actor: "Black")
+        } while turn == .black && !gameOver
     }
 
-    private mutating func apply(_ move: BoardMove, actor: String) {
+    @discardableResult
+    private mutating func apply(_ move: BoardMove, actor: String) -> Bool {
         CheckersRules.apply(move, to: &board)
         selected = nil
 
@@ -265,12 +295,33 @@ private struct CheckersGameState {
         let promotion = move.promotion == nil ? "" : " and kinging"
         appendLog("\(actor): \(Board8x8.squareName(move.from)) to \(Board8x8.squareName(move.to))\(capture)\(promotion).")
 
+        if move.captured != nil, move.promotion == nil {
+            let continuations = CheckersRules.captureMoves(from: move.to, on: board)
+            if !continuations.isEmpty {
+                selected = move.to
+                mustContinueFrom = move.to
+                status = "\(turnName) must continue the jump from \(Board8x8.squareName(move.to))."
+                appendLog("\(actor): continue jumping from \(Board8x8.squareName(move.to)).")
+                return false
+            }
+        }
+
         turn = turn.opponent
-        if board.pieces(for: turn).isEmpty || CheckersRules.allLegalMoves(for: turn, on: board).isEmpty {
+        mustContinueFrom = nil
+        if board.pieces(for: turn).isEmpty || availableMoves.isEmpty {
             finish(winner: turn.opponent)
         } else {
-            status = "\(turnName) to move."
+            status = "\(turnName) to move.\(jumpHint)"
         }
+        return true
+    }
+
+    mutating func setCapturePolicy(_ policy: CheckersCapturePolicy) {
+        capturePolicy = policy
+        selected = nil
+        mustContinueFrom = nil
+        status = "\(turnName) to move.\(jumpHint)"
+        appendLog(policy == .mandatory ? "Rule changed: jumps are mandatory." : "Rule changed: jumps are optional.")
     }
 
     private mutating func finish(winner: BoardSide) {
@@ -290,6 +341,11 @@ private struct CheckersGameState {
 
     private var turnName: String {
         turn == .white ? "White" : "Black"
+    }
+
+    private var jumpHint: String {
+        guard CheckersRules.hasCapture(for: turn, on: board) else { return "" }
+        return capturePolicy == .mandatory ? " Jump required." : " Jump available; slides are allowed."
     }
 
     private mutating func appendLog(_ message: String) {

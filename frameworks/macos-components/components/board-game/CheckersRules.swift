@@ -1,6 +1,11 @@
 // BEGIN mChatAI macOS Component: boardgame.checkers (components/board-game/CheckersRules.swift)
 import Foundation
 
+enum CheckersCapturePolicy: String, Codable, Sendable {
+    case optional
+    case mandatory
+}
+
 enum CheckersRules {
     static func startingBoard() -> Board8x8 {
         var board = Board8x8()
@@ -17,33 +22,58 @@ enum CheckersRules {
         return board
     }
 
-    static func legalMoves(from point: PuzzlePoint, on board: Board8x8) -> [BoardMove] {
+    static func legalMoves(from point: PuzzlePoint, on board: Board8x8, capturePolicy: CheckersCapturePolicy = .mandatory) -> [BoardMove] {
         guard let piece = board[point],
               piece.kind == .checker || piece.kind == .checkerKing else { return [] }
 
-        let directions = movementDirections(for: piece)
-        var captures: [BoardMove] = []
-        var slides: [BoardMove] = []
+        let captures = captureMoves(from: point, on: board)
+        let slides = slideMoves(from: point, on: board)
+        switch capturePolicy {
+        case .optional:
+            return captures + slides
+        case .mandatory:
+            return captures.isEmpty ? slides : captures
+        }
+    }
 
-        for direction in directions {
+    static func allLegalMoves(for side: BoardSide, on board: Board8x8, capturePolicy: CheckersCapturePolicy = .mandatory) -> [BoardMove] {
+        let moves = board.pieces(for: side).flatMap { legalMoves(from: $0.point, on: board, capturePolicy: .optional) }
+        guard capturePolicy == .mandatory else { return moves }
+        let captures = moves.filter { $0.captured != nil }
+        return captures.isEmpty ? moves : captures
+    }
+
+    static func captureMoves(from point: PuzzlePoint, on board: Board8x8) -> [BoardMove] {
+        guard let piece = board[point],
+              piece.kind == .checker || piece.kind == .checkerKing else { return [] }
+
+        return movementDirections(for: piece).compactMap { direction in
             let adjacent = PuzzlePoint(row: point.row + direction.row, col: point.col + direction.col)
             let landing = PuzzlePoint(row: point.row + direction.row * 2, col: point.col + direction.col * 2)
 
-            if board.contains(adjacent), let target = board[adjacent], target.side != piece.side,
-               board.contains(landing), board[landing] == nil {
-                captures.append(BoardMove(from: point, to: landing, captured: adjacent, promotion: promotion(for: piece, landing: landing)))
-            } else if board.contains(adjacent), board[adjacent] == nil {
-                slides.append(BoardMove(from: point, to: adjacent, captured: nil, promotion: promotion(for: piece, landing: adjacent)))
-            }
-        }
+            guard board.contains(adjacent),
+                  let target = board[adjacent],
+                  target.side != piece.side,
+                  board.contains(landing),
+                  board[landing] == nil else { return nil }
 
-        return captures.isEmpty ? slides : captures
+            return BoardMove(from: point, to: landing, captured: adjacent, promotion: promotion(for: piece, landing: landing))
+        }
     }
 
-    static func allLegalMoves(for side: BoardSide, on board: Board8x8) -> [BoardMove] {
-        let moves = board.pieces(for: side).flatMap { legalMoves(from: $0.point, on: board) }
-        let captures = moves.filter { $0.captured != nil }
-        return captures.isEmpty ? moves : captures
+    static func slideMoves(from point: PuzzlePoint, on board: Board8x8) -> [BoardMove] {
+        guard let piece = board[point],
+              piece.kind == .checker || piece.kind == .checkerKing else { return [] }
+
+        return movementDirections(for: piece).compactMap { direction in
+            let adjacent = PuzzlePoint(row: point.row + direction.row, col: point.col + direction.col)
+            guard board.contains(adjacent), board[adjacent] == nil else { return nil }
+            return BoardMove(from: point, to: adjacent, captured: nil, promotion: promotion(for: piece, landing: adjacent))
+        }
+    }
+
+    static func hasCapture(for side: BoardSide, on board: Board8x8) -> Bool {
+        board.pieces(for: side).contains { !captureMoves(from: $0.point, on: board).isEmpty }
     }
 
     static func apply(_ move: BoardMove, to board: inout Board8x8) {

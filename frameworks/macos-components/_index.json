@@ -780,8 +780,8 @@
       "existingApps": ["checkers-mono"],
       "starterComponents": ["gridpuzzle.core", "boardgame.core", "boardgame.checkers", "boardgame.smoke-tests"],
       "assemblyNotes": [
-        "Use CheckersRules for setup, legal moves, forced captures, move application, and kinging.",
-        "Generated glue should handle board rendering, selected square, legal move highlights, turn prompts, and restart."
+        "Use CheckersRules for setup, legal moves, optional or mandatory capture policy, move application, and kinging.",
+        "Generated glue should handle board rendering, selected square, legal move highlights, turn prompts, restart, clear capture-policy feedback, and same-piece double-jump continuation after any chosen capture."
       ],
       "requiredNow": ["gridpuzzle.core", "boardgame.core", "boardgame.checkers", "boardgame.smoke-tests"],
       "plannedNext": ["checkers-ai-opponent"]
@@ -795,11 +795,12 @@
       "starterComponents": ["gridpuzzle.core", "boardgame.core", "boardgame.chess", "boardgame.smoke-tests"],
       "assemblyNotes": [
         "Use ChessRules for setup, legal move generation, move application, check, and checkmate.",
-        "Generated glue should render the board, pieces, selected square, legal move highlights, captured status, promotion UI, and reset.",
+        "Generated glue should render centered pieces and legal-target dots, selected square, captured status, promotion UI, reset, and a simple Black CPU opponent that replies automatically after White moves.",
+        "For macOS prompts that mention Chess, prefer the native golden assembly shape: an 8x8 board, rendered centered pieces, selected square, legal move targets, check/checkmate/stalemate status, captured pieces, reset, move log, and one-player White-versus-Black-CPU interaction.",
         "Castling and en passant are optional follow-up polish; do not block the base playable clone on them."
       ],
       "requiredNow": ["gridpuzzle.core", "boardgame.core", "boardgame.chess", "boardgame.smoke-tests"],
-      "plannedNext": ["chess-castling", "chess-en-passant", "chess-ai"]
+      "plannedNext": ["chess-castling", "chess-en-passant", "stronger-chess-ai"]
     },
     {
       "id": "recipe.music-piano",
@@ -906,7 +907,7 @@
     {
       "id": "assembly.checkers.basic",
       "name": "Native Checkers Golden Assembly",
-      "summary": "SwiftUI composition showing CheckersRules-driven 8x8 gameplay, selected piece, legal move highlights, forced captures, kinging, reset, a deterministic CPU opponent, and launch smoke output.",
+      "summary": "SwiftUI composition showing CheckersRules-driven 8x8 gameplay, selected piece, legal move highlights, optional or mandatory jump starts, same-piece double-jump continuation after any chosen capture, kinging, reset, a deterministic CPU opponent that also completes multi-jumps, and launch smoke output.",
       "recipeID": "recipe.checkers",
       "templateIDs": [],
       "keywords": [
@@ -922,7 +923,30 @@
       "notes": [
         "Treat example files as glue patterns, not components. Adapt visual style and labels to the user's requested product.",
         "The selected components themselves should remain byte-for-byte canonical copies.",
-        "Keep CheckersRules as the legal-move, capture, apply, and kinging source of truth; do not hand-roll checkers rules in ContentView."
+        "Default to optional jumps for casual play, with a mandatory-jumps toggle for stricter rules.",
+        "Even in optional-jumps mode, once a player or CPU chooses a jump, continue same-piece double jumps until no further capture is available.",
+        "Keep CheckersRules as the legal-move, capture-policy, apply, and kinging source of truth; do not hand-roll checkers rules in ContentView."
+      ]
+    },
+    {
+      "id": "assembly.chess.basic",
+      "name": "Native Chess Golden Assembly",
+      "summary": "SwiftUI composition showing ChessRules-driven 8x8 gameplay, piece rendering, selected square, legal move highlights, check/checkmate/stalemate messaging, captured pieces, reset, move log, and launch smoke output.",
+      "recipeID": "recipe.chess",
+      "templateIDs": [],
+      "keywords": [
+        "chess",
+        "playable chess",
+        "native chess"
+      ],
+      "files": [
+        "examples/chess/ContentView.swift",
+        "examples/chess/ExampleAppInit.swift"
+      ],
+      "notes": [
+        "Treat example files as glue patterns, not components. Adapt visual style and labels to the user's requested product.",
+        "The selected components themselves should remain byte-for-byte canonical copies.",
+        "Keep ChessRules as the setup, legal-move, check, checkmate, apply, and promotion source of truth; do not hand-roll chess rules in ContentView."
       ]
     }
   ]
