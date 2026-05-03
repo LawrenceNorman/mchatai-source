@@ -290,45 +290,70 @@
     },
     {
       "id": "u-024",
-      "rule": "If `visual-brief/tokens.json` exists in the working directory, you MUST read it and use those exact hex values + typography + spacing for the artifact's visual design. Do NOT invent your own palette. Map: tokens.colors.primary → primary CTA / hero color; tokens.colors.accent → highlights, hover, badges; tokens.colors.background → page/canvas background; tokens.colors.surface → cards, panels; tokens.colors.text + textMuted → body text. Use tokens.typography.fontFamily verbatim in CSS `font-family`. Use tokens.spacing.baseUnit (in px) as the base of all paddings/margins (multiples of it). Use tokens.radii.{sm,md,lg} for `border-radius`. Honor `tokens.componentHints` qualitatively (e.g. `glass-panels-with-blur` → `backdrop-filter: blur(...)`, `glowing-CTAs` → CSS `box-shadow` glow on accent). Also read `visual-brief/meta.json` for `referenceStyle` (e.g. `cinematic-dark`) — that's the user's chosen archetype name; align the overall mood to it.",
-      "why": "Phase VD.7.12 ships a Swatch Catalog: the user picks one of 5 pre-baked design swatches BEFORE generation begins, and the picked tokens are written to `visual-brief/tokens.json` in the workDir for the CLI generator to read. Without this rule, the LLM ignores the file and invents its own palette — defeating the entire pre-generation visual picker. Hit 2026-04-26 on a Cavern Descent run: user picked Cinematic Dark (purple #7C3AED + orange #FB923C + near-black bg + glass panels), tokens.json was staged correctly, but Claude CLI never read it and shipped a generic green-and-blue palette.",
+      "rule": "If `visual-brief/tokens.json` exists in the working directory, you MUST read it and use those exact hex values + typography + spacing for the artifact's visual design. Do NOT invent your own palette. Map: tokens.colors.primary \u2192 primary CTA / hero color; tokens.colors.accent \u2192 highlights, hover, badges; tokens.colors.background \u2192 page/canvas background; tokens.colors.surface \u2192 cards, panels; tokens.colors.text + textMuted \u2192 body text. Use tokens.typography.fontFamily verbatim in CSS `font-family`. Use tokens.spacing.baseUnit (in px) as the base of all paddings/margins (multiples of it). Use tokens.radii.{sm,md,lg} for `border-radius`. Honor `tokens.componentHints` qualitatively (e.g. `glass-panels-with-blur` \u2192 `backdrop-filter: blur(...)`, `glowing-CTAs` \u2192 CSS `box-shadow` glow on accent). Also read `visual-brief/meta.json` for `referenceStyle` (e.g. `cinematic-dark`) \u2014 that's the user's chosen archetype name; align the overall mood to it.",
+      "why": "Phase VD.7.12 ships a Swatch Catalog: the user picks one of 5 pre-baked design swatches BEFORE generation begins, and the picked tokens are written to `visual-brief/tokens.json` in the workDir for the CLI generator to read. Without this rule, the LLM ignores the file and invents its own palette \u2014 defeating the entire pre-generation visual picker. Hit 2026-04-26 on a Cavern Descent run: user picked Cinematic Dark (purple #7C3AED + orange #FB923C + near-black bg + glass panels), tokens.json was staged correctly, but Claude CLI never read it and shipped a generic green-and-blue palette.",
       "severity": "critical",
       "appliesTo": "all",
       "examples": [
-        "GOOD: tokens.json says primary=#7C3AED → CSS `:root { --primary: #7C3AED; }`, hero buttons use `var(--primary)`, hover state uses tokens.colors.accent.",
-        "GOOD: meta.json says referenceStyle=cinematic-dark + tokens.componentHints includes glass-panels-with-blur → cards get `background: rgba(28,28,32,0.6); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.08)`.",
-        "GOOD: tokens.spacing.baseUnit=8 → all paddings/margins use 8/16/24/32px (multiples of 8). tokens.radii.md=12 → cards `border-radius: 12px`.",
-        "BAD: tokens.json present but generator picks `#1abc9c` and `#3498db` from its own knowledge → palette is wrong, user-picked archetype is ignored, the entire VD.7 pre-pick UX is wasted.",
-        "CHECK: before writing any CSS color or font value, run `cat visual-brief/tokens.json` (or read the file via your tool). If the file exists, those values are mandatory inputs, not suggestions. If the file doesn't exist, fall back to taste — that means the user opted out via Skip and you have license to choose."
+        "GOOD: tokens.json says primary=#7C3AED \u2192 CSS `:root { --primary: #7C3AED; }`, hero buttons use `var(--primary)`, hover state uses tokens.colors.accent.",
+        "GOOD: meta.json says referenceStyle=cinematic-dark + tokens.componentHints includes glass-panels-with-blur \u2192 cards get `background: rgba(28,28,32,0.6); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.08)`.",
+        "GOOD: tokens.spacing.baseUnit=8 \u2192 all paddings/margins use 8/16/24/32px (multiples of 8). tokens.radii.md=12 \u2192 cards `border-radius: 12px`.",
+        "BAD: tokens.json present but generator picks `#1abc9c` and `#3498db` from its own knowledge \u2192 palette is wrong, user-picked archetype is ignored, the entire VD.7 pre-pick UX is wasted.",
+        "CHECK: before writing any CSS color or font value, run `cat visual-brief/tokens.json` (or read the file via your tool). If the file exists, those values are mandatory inputs, not suggestions. If the file doesn't exist, fall back to taste \u2014 that means the user opted out via Skip and you have license to choose."
       ]
     },
     {
       "id": "u-025",
-      "rule": "Mini-apps MUST be designed mobile-first. The header is the worst offender for stealing screen space — total header height ≤ 32px on mobile / ≤ 44px on desktop. For mini-apps using web-components, mount the `ui/MiniHeader` component (path: `ui/MiniHeader.js`, export: `MiniHeader`) — title-only by default; subtitle is OPTIONAL and hides on mobile. Never roll your own hero block. For non-Lego artifacts, the title `<h1>` font-size must be in `clamp(0.95rem, 3.4vw, 1.2rem)` (≈15-19px), no eyebrow line, no brief paragraph in the header. The header ANNOUNCES; the game/tool is the primary content. HUD widgets (score cards, lives, timers, action buttons) belong BELOW the header in their own row — they are NOT part of the header and must also be compact: ≤ 50px row height on mobile, ≤ 1.1rem (~18px) for the value text, ≤ 8px padding. Reserve at least 75% of the viewport height for the actual game/tool content.",
-      "why": "Seen 2026-05-02 across recent generations (Chess, Adventure, Tower Defense, Pyramid Hopper, Mini Crossword): hero blocks with `h1 { font-size: clamp(3rem, 12vw, 7rem); }` plus eyebrow + brief paragraph consumed 200-300px before the game appeared. Then below the header, oversized HUD cards (TURN/MOVES/CAPTURED at ~80px each with `font-size: 2rem` and `padding: 24px`) ate another 100-150px. User feedback: 'still pretty massive ... I'd like to default to a mobile friendly view ... we would still have a whole chessboard that would need to fit below.' Mobile-first means designing for a 360px wide / 640px tall viewport FIRST and scaling up — not the reverse.",
+      "rule": "Mini-apps MUST be designed mobile-first. The header is the worst offender for stealing screen space \u2014 total header height \u2264 32px on mobile / \u2264 44px on desktop. For mini-apps using web-components, mount the `ui/MiniHeader` component (path: `ui/MiniHeader.js`, export: `MiniHeader`) \u2014 title-only by default; subtitle is OPTIONAL and hides on mobile. Never roll your own hero block. For non-Lego artifacts, the title `<h1>` font-size must be in `clamp(0.95rem, 3.4vw, 1.2rem)` (\u224815-19px), no eyebrow line, no brief paragraph in the header. The header ANNOUNCES; the game/tool is the primary content. HUD widgets (score cards, lives, timers, action buttons) belong BELOW the header in their own row \u2014 they are NOT part of the header and must also be compact: \u2264 50px row height on mobile, \u2264 1.1rem (~18px) for the value text, \u2264 8px padding. Reserve at least 75% of the viewport height for the actual game/tool content.",
+      "why": "Seen 2026-05-02 across recent generations (Chess, Adventure, Tower Defense, Pyramid Hopper, Mini Crossword): hero blocks with `h1 { font-size: clamp(3rem, 12vw, 7rem); }` plus eyebrow + brief paragraph consumed 200-300px before the game appeared. Then below the header, oversized HUD cards (TURN/MOVES/CAPTURED at ~80px each with `font-size: 2rem` and `padding: 24px`) ate another 100-150px. User feedback: 'still pretty massive ... I'd like to default to a mobile friendly view ... we would still have a whole chessboard that would need to fit below.' Mobile-first means designing for a 360px wide / 640px tall viewport FIRST and scaling up \u2014 not the reverse.",
       "severity": "critical",
       "appliesTo": "miniapp, webspa, website",
       "examples": [
-        "GOOD (Lego): import { MiniHeader } from '../../ui/MiniHeader.js'; MiniHeader.mount('[data-mini-header]', { title: 'Chess' }); — title-only, ~28px tall on mobile.",
+        "GOOD (Lego): import { MiniHeader } from '../../ui/MiniHeader.js'; MiniHeader.mount('[data-mini-header]', { title: 'Chess' }); \u2014 title-only, ~28px tall on mobile.",
         "GOOD (non-Lego): <h1 style='font-size:clamp(0.95rem,3.4vw,1.2rem); margin:4px 8px'>Tower Defense</h1>.",
         "GOOD HUD row: 4 cards at 36px tall each, side-by-side flex with `flex-wrap: wrap` so they reflow to 2x2 on narrow screens; value text 1rem, label text 0.7rem.",
-        "BAD: <section class='hero'><p class='eyebrow'>X clone assembled from blocks</p><h1>Title</h1><p class='brief'>...</p></section> — anything > 50px on mobile is too much.",
-        "BAD: HUD card with `font-size: 2rem` on the value and `padding: 24px` — eats viewport.",
+        "BAD: <section class='hero'><p class='eyebrow'>X clone assembled from blocks</p><h1>Title</h1><p class='brief'>...</p></section> \u2014 anything > 50px on mobile is too much.",
+        "BAD: HUD card with `font-size: 2rem` on the value and `padding: 24px` \u2014 eats viewport.",
         "BAD: any `vw`-based clamp on a header where the upper bound is > 1.5rem."
       ]
     },
     {
       "id": "u-026",
-      "rule": "Never write internal architecture jargon into user-visible content. Banned phrases in titles, subtitles, eyebrows, instructions, puzzle clues, dialogue, copy: 'Lego', 'Lego blocks', 'web-component(s)', 'mini-app', 'assembled from blocks', 'recipe', 'golden assembly', 'scaffold', 'harness'. These are internal developer terms — they must stay in code comments and JSON markers, NOT in DOM text the player sees. The user sees a polished GAME or TOOL named what THEY asked for; they should never see how it was built.",
+      "rule": "Never write internal architecture jargon into user-visible content. Banned phrases in titles, subtitles, eyebrows, instructions, puzzle clues, dialogue, copy: 'Lego', 'Lego blocks', 'web-component(s)', 'mini-app', 'assembled from blocks', 'recipe', 'golden assembly', 'scaffold', 'harness'. These are internal developer terms \u2014 they must stay in code comments and JSON markers, NOT in DOM text the player sees. The user sees a polished GAME or TOOL named what THEY asked for; they should never see how it was built.",
       "why": "Seen 2026-05-02: Mini Crossword shipped with clue text mentioning 'Lego' and 'mini-app' as if they were trivia (e.g. clue 'What Lego blocks help produce'); Chess/Adventure/Tower-Defense ship with eyebrow text 'Chess clone assembled from Lego blocks' visible above the title. Users complained 'the focus on Lego and mini-apps is just bizarre.' Root cause: the example HTML files in mchatai-source/frameworks/web-components/examples/*/index.html include the eyebrow string verbatim, and the LLM copies it into generated artifacts. Wisdom rule + marker check + scrubbed examples close the loop.",
       "severity": "critical",
       "appliesTo": "all",
       "examples": [
-        "BAD eyebrow: 'Chess clone assembled from Lego blocks' — exposes our component model to the player.",
-        "BAD crossword clue: 'Container holding mini-app components (8 letters)' — meta-content, not real trivia.",
+        "BAD eyebrow: 'Chess clone assembled from Lego blocks' \u2014 exposes our component model to the player.",
+        "BAD crossword clue: 'Container holding mini-app components (8 letters)' \u2014 meta-content, not real trivia.",
         "GOOD: title 'Chess', subtitle 'Drag a piece to a highlighted square'.",
         "GOOD: title 'Word Quest', subtitle 'Six guesses. Five letters.'",
-        "If you generate puzzle/quiz/dialogue content, the source for clues/answers/lines must be REAL-WORLD facts, vocabulary, or fiction — never a description of the platform that produced them."
+        "If you generate puzzle/quiz/dialogue content, the source for clues/answers/lines must be REAL-WORLD facts, vocabulary, or fiction \u2014 never a description of the platform that produced them."
+      ]
+    },
+    {
+      "id": "u-027",
+      "rule": "When inlining a selected web-components source file (single-file-inline mode), copy the EXACT verbatim file body. Do not abbreviate, summarize, drop methods, omit class fields, or 'simplify' implementations. Only the top-level `import { ... } from '...';` statements may be removed (since they would not resolve inline). Multi-line imports must be removed in their entirety, including the `}` on the last line \u2014 do not leave orphaned `} from '...';` fragments.",
+      "why": "Validation 2026-05-03 found two recurring transcription bugs in tower-defense generation: (1) multi-line `import { drawTurretBasic, ... } from '...';` had its `import {` line stripped but the body and `} from '...';` end were kept, producing `Unexpected token '}'` parse errors at runtime; (2) Entity.js and Turret.js were silently abbreviated mid-class-body, with constructor fields and method conditions missing \u2014 the canonical-source check caught the divergence but the marker still claimed `ok` for the marker-only check. Both bugs render the entire generated app non-functional.",
+      "severity": "critical",
+      "appliesTo": [
+        "miniApp",
+        "webSPA"
+      ],
+      "checklist": [
+        "Strip the ENTIRE import statement (multi-line or single-line) \u2014 never leave a dangling `} from '...';`.",
+        "Copy class bodies verbatim. Do not condense `if (a || b || c || d)` chains, do not drop `this.foo = options.foo;` assignments, do not skip helper methods.",
+        "If you find yourself shortening anything, stop \u2014 emit the exact source bytes between BEGIN/END markers."
+      ]
+    },
+    {
+      "id": "u-028",
+      "rule": "When the user's goal includes a theme adjective like 'cinematic dark', 'deep purple', 'neon retro', 'sunset', map it to the closest matching swatch in `WEB_COMPONENT_SWATCHES` rather than defaulting to `retro-neon`. Pick by `surface`/`accent` color match, not by id similarity. The current swatches are `retro-neon` (cyan + dark navy), `vector-noir` (pure black + amber), and `sunset-arcade` (deep purple `#2f1734` + warm pink/orange).",
+      "why": "Validation 2026-05-03: `Make me a chess web mini-app with a deep purple cinematic theme` produced `applySwatchVariables(getSwatchByID('retro-neon'))` despite `sunset-arcade` having a literal deep purple `#2f1734` surface. The LLM picked the default swatch and authored an inline custom palette rather than using the matching catalog swatch, defeating the swatch-system contract.",
+      "severity": "warning",
+      "appliesTo": [
+        "miniApp",
+        "webSPA"
       ]
     }
   ]
