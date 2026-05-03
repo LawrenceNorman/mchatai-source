@@ -15,12 +15,7 @@
 //   const turret = new BasicTurret({ x: 200, y: 150, faction: "player", projectileFactory });
 
 import { Turret } from "./Turret.js";
-import {
-  drawTurretBasic,
-  drawTurretCannon,
-  drawTurretFrost,
-  drawTurretBeam
-} from "../resources/VectorSprites.js";
+import { drawTurretBasic, drawTurretCannon, drawTurretFrost, drawTurretBeam } from "../resources/VectorSprites.js";
 
 class SpriteTurret extends Turret {
   constructor(options = {}) {
