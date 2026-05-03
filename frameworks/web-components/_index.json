@@ -1331,7 +1331,8 @@
       ],
       "assemblyNotes": [
         "Build a recognizable Defender clone: horizontal wrap or long-scrolling world, ship always free-flying, enemy abductors, rescue targets/humans, radar/minimap, lives, score, and escalating waves.",
-        "Use GameManager, Physics2D, Projectile, CameraFollow, ScoreBoard, Swatches, and AudioManager as the baseplate. Only generate the game-specific enemy wave, radar, terrain, and rescue glue until dedicated Defender blocks are promoted."
+        "Use GameManager, Physics2D, Projectile, CameraFollow, ScoreBoard, Swatches, and AudioManager as the baseplate. Only generate the game-specific enemy wave, radar, terrain, and rescue glue until dedicated Defender blocks are promoted.",
+        "Instantiate GameManager with an options object like new GameManager({ canvas, width, height, onUpdate, onDraw }); never call new GameManager(ctx)."
       ],
       "plannedNext": [
         "ui.radar-strip",
@@ -1368,7 +1369,8 @@
         "resources.audio-manager"
       ],
       "assemblyNotes": [
-        "Use Paddle and Ball as fixed rules primitives; only generate scoring rules, input binding, and theme."
+        "Use Paddle and Ball as fixed rules primitives; only generate scoring rules, input binding, and theme.",
+        "Use GameManager callbacks (`onUpdate`, `onDraw`) and `game.start()`; there is no GameManager.update() API."
       ]
     },
     {
@@ -1438,7 +1440,8 @@
         "resources.audio-manager"
       ],
       "assemblyNotes": [
-        "Use GridBoard for maze walls and pellets, GridMover for player/ghost movement, and AIPathfinder for ghost chase/scatter behavior."
+        "Use GridBoard for maze walls and pellets, GridMover for player/ghost movement, and AIPathfinder for ghost chase/scatter behavior.",
+        "Instantiate documented component constructors directly; there is no framework-level initialize() API."
       ]
     },
     {
@@ -1472,6 +1475,10 @@
         "ui.virtual-joystick",
         "resources.swatches",
         "resources.audio-manager"
+      ],
+      "assemblyNotes": [
+        "Build a recognizable side-scrolling platformer clone: player, platforms, gaps, coins, hazards, lives, score, camera follow, keyboard/touch controls, and restart.",
+        "Use PlatformerPlayer for movement/jumping and CameraFollow for side scrolling; do not omit the mchatai-web-components-used marker."
       ],
       "plannedNext": [
         "entities.platform-tilemap",
@@ -1508,6 +1515,10 @@
         "ui.scoreboard",
         "resources.swatches",
         "resources.audio-manager"
+      ],
+      "assemblyNotes": [
+        "Build a recognizable tower defense clone: visible path, build pads, turrets, enemy waves, projectiles, lives, gold, score, and Start Wave control.",
+        "Instantiate documented component constructors directly; there is no framework-level initialize() API."
       ],
       "plannedNext": [
         "entities.health-bar"
@@ -1581,7 +1592,8 @@
         "resources.audio-manager"
       ],
       "assemblyNotes": [
-        "Use MastermindLogic for code generation and feedback pegs; do not ask the model to reinvent exact/color-only scoring."
+        "Use MastermindLogic for code generation and feedback pegs; do not ask the model to reinvent exact/color-only scoring.",
+        "Use ScoreBoard.setScore(), ScoreBoard.add(), or ScoreBoard.reset(); there is no ScoreBoard.update() API."
       ]
     },
     {
@@ -1646,7 +1658,8 @@
         "resources.audio-manager"
       ],
       "assemblyNotes": [
-        "Use TileSwapper for selection/swap input and Match3Logic for matches/cascades; generate tile skins and level goals only."
+        "Use TileSwapper for selection/swap input and Match3Logic for matches/cascades; generate tile skins and level goals only.",
+        "Do not stop at an import shell. A valid match-three app must render a visible tile board, selectable adjacent swaps, match/cascade resolution, score/combo HUD, and restart/shuffle controls."
       ]
     },
     {
@@ -1679,7 +1692,8 @@
         "resources.audio-manager"
       ],
       "assemblyNotes": [
-        "Use BlackjackRules for hand totals, dealer policy, blackjack checks, and settlement; generate table flow and UI only."
+        "Use BlackjackRules for hand totals, dealer policy, blackjack checks, and settlement; generate table flow and UI only.",
+        "Use ScoreBoard.setScore(), ScoreBoard.add(), or ScoreBoard.reset(); there is no ScoreBoard.update() API."
       ]
     },
     {
@@ -1744,7 +1758,8 @@
         "resources.audio-manager"
       ],
       "assemblyNotes": [
-        "Use CheckersRules for diagonal movement, captures, and kinging; generate board UI and turn prompts only."
+        "Use CheckersRules for diagonal movement, captures, and kinging; generate board UI and turn prompts only.",
+        "Do not output markerless board-game HTML. Render a visible 8x8 board, selectable pieces, legal move highlights, capture feedback, turn HUD, and reset control."
       ]
     },
     {
@@ -1778,7 +1793,8 @@
         "resources.audio-manager"
       ],
       "assemblyNotes": [
-        "Use ChessRules for standard setup, legal move generation, check filtering, checkmate, and stalemate; add UI affordances and optional castling/en passant only after the base rules are wired."
+        "Use ChessRules for standard setup, legal move generation, check filtering, checkmate, and stalemate; add UI affordances and optional castling/en passant only after the base rules are wired.",
+        "Do not invent lifecycle APIs such as initialize(). Render a visible 8x8 board, selectable pieces, legal move highlights, turn/status HUD, and reset control."
       ]
     },
     {
@@ -1801,8 +1817,13 @@
       ],
       "starterComponents": [
         "ui.piano-keyboard",
+        "ui.keyboard-input",
         "resources.audio-manager",
         "resources.swatches"
+      ],
+      "assemblyNotes": [
+        "Build a recognizable compact piano clone: visible piano keys, click/tap play, keyboard shortcuts, current note, note trail, and synth feedback.",
+        "Use PianoKeyboard for DOM keys and KeyboardInput for hardware shortcuts; do not output an import-only shell."
       ],
       "plannedNext": [
         "ui.note-display",
@@ -1838,7 +1859,8 @@
       ],
       "assemblyNotes": [
         "Build a recognizable compact crossword clone: small square grid, black cells, numbered starts, Across/Down clue lists, selected cell/word highlighting, keyboard entry, timer, score, and persistent best time.",
-        "Until dedicated CrosswordGrid and ClueSet blocks are promoted, keep the crossword puzzle data small and explicit in glue code."
+        "Until dedicated CrosswordGrid and ClueSet blocks are promoted, keep the crossword puzzle data small and explicit in glue code.",
+        "Instantiate documented component constructors directly; there is no framework-level initialize() API."
       ],
       "plannedNext": [
         "entities.crossword-grid",
@@ -1877,7 +1899,8 @@
       ],
       "assemblyNotes": [
         "Build a recognizable Atari Adventure clone: room-to-room map, player square/avatar, keys, locked gates, treasure goal, simple enemies, inventory status, score/time, and reset.",
-        "Until dedicated room graph and inventory blocks are promoted, model rooms and items as small data tables in glue code."
+        "Until dedicated room graph and inventory blocks are promoted, model rooms and items as small data tables in glue code.",
+        "Instantiate documented component constructors directly; there is no framework-level initialize() API."
       ],
       "plannedNext": [
         "entities.room-graph",
@@ -1975,6 +1998,357 @@
       "notes": [
         "Use this as the canonical wiring example for a Minesweeper clone: visible 9x9 grid, click reveal, right-click or long-press flagging, timer, score, persistent best score, and new game control.",
         "Generated variants should compose with RevealLogic for mine seeding, adjacency counts, flags, and flood reveal instead of reimplementing those mechanics."
+      ]
+    },
+    {
+      "id": "assembly.candy-match.playable-core",
+      "name": "Candy Match Golden Assembly",
+      "summary": "Runnable Candy Match clone composed from turn manager, grid board, tile swapper, match-3 logic, scoreboard, swatches, and audio modules.",
+      "recipeID": "recipe.match3",
+      "templateIDs": [
+        "match-three-puzzle-game"
+      ],
+      "keywords": [
+        "candy match",
+        "match three",
+        "match-3",
+        "swap",
+        "cascade",
+        "combo"
+      ],
+      "files": [
+        "examples/candy-match/index.html",
+        "examples/candy-match/candy-match.css",
+        "examples/candy-match/main.js",
+        "examples/candy-match/CandyMatchGame.js"
+      ],
+      "notes": [
+        "Use this as the canonical wiring example for a Candy Match clone: visible 8x8 tile grid, adjacent click/tap swapping, match detection, cascades, combos, moves, score, persistent best score, shuffle, and new-board controls.",
+        "Generated variants should compose with TileSwapper.trySwap(), Match3Logic.findMatches()/clearMatches()/collapseColumns(), GridBoard.swap(), TurnBasedManager.record(), and ScoreBoard.add()/reset(). Do not output a shell that only imports these modules."
+      ]
+    },
+    {
+      "id": "assembly.mastermind.playable-core",
+      "name": "Mastermind Golden Assembly",
+      "summary": "Runnable Mastermind clone composed from turn manager, grid board, mastermind logic, keyboard input, scoreboard, swatches, and audio modules.",
+      "recipeID": "recipe.mastermind",
+      "templateIDs": [
+        "mastermind-color-guessing-game"
+      ],
+      "keywords": [
+        "mastermind",
+        "code breaker",
+        "feedback pegs",
+        "color guessing",
+        "color code"
+      ],
+      "files": [
+        "examples/mastermind/index.html",
+        "examples/mastermind/mastermind.css",
+        "examples/mastermind/main.js",
+        "examples/mastermind/MastermindGame.js"
+      ],
+      "notes": [
+        "Use this as the canonical wiring example for a Mastermind clone: visible guess history, hidden/revealed code row, clickable color palette, Submit/Delete/New Code controls, exact/color-only feedback pegs, turn tracking, score, and persistent best score.",
+        "Generated variants should compose with MastermindLogic.scoreGuess() and ScoreBoard.add()/reset(); do not invent APIs such as scoreboard.update()."
+      ]
+    },
+    {
+      "id": "assembly.pong.playable-core",
+      "name": "Pong Golden Assembly",
+      "summary": "Runnable Pong clone composed from the shared game loop, physics helpers, paddle, ball, scoreboard, swatches, and audio modules.",
+      "recipeID": "recipe.pong",
+      "templateIDs": [
+        "classic-pong-game"
+      ],
+      "keywords": [
+        "pong",
+        "paddle",
+        "ball",
+        "table tennis",
+        "arcade"
+      ],
+      "files": [
+        "examples/pong/index.html",
+        "examples/pong/pong.css",
+        "examples/pong/main.js",
+        "examples/pong/PongGame.js"
+      ],
+      "notes": [
+        "Use this as the canonical wiring example for a Pong clone: GameManager owns the requestAnimationFrame loop, onUpdate moves paddles/ball, onDraw paints the court, and ScoreBoard.add()/setScore()/reset() updates persistent best score.",
+        "Generated variants should compose with Paddle.move(), Ball.reset()/bounceX()/bounceY(), and Physics2D.intersectsAABB(). Do not invent APIs such as gameManager.update()."
+      ]
+    },
+    {
+      "id": "assembly.blackjack.playable-core",
+      "name": "Blackjack Golden Assembly",
+      "summary": "Runnable Blackjack clone composed from turn manager, deck, card, blackjack rules, scoreboard, swatches, and audio modules.",
+      "recipeID": "recipe.blackjack",
+      "templateIDs": [
+        "blackjack"
+      ],
+      "keywords": [
+        "blackjack",
+        "twenty one",
+        "hit",
+        "stand",
+        "double down",
+        "dealer",
+        "bankroll"
+      ],
+      "files": [
+        "examples/blackjack/index.html",
+        "examples/blackjack/blackjack.css",
+        "examples/blackjack/main.js",
+        "examples/blackjack/BlackjackGame.js"
+      ],
+      "notes": [
+        "Use this as the canonical wiring example for a Blackjack clone: visible dealer/player hands, Deal/Hit/Stand/Double controls, hand totals, phase/bet/deck HUD, bankroll score, persistent best bankroll, and dealer settlement.",
+        "Generated variants should compose with Deck.draw()/reset(), BlackjackRules.handValue()/shouldDealerHit()/settle(), and ScoreBoard.setScore(). Do not invent APIs such as scoreboard.update()."
+      ]
+    },
+    {
+      "id": "assembly.checkers.playable-core",
+      "name": "Checkers Golden Assembly",
+      "summary": "Runnable Checkers clone composed from turn manager, Board8x8, CheckersRules, swatches, and audio modules.",
+      "recipeID": "recipe.checkers",
+      "templateIDs": [
+        "board-checkers-mono"
+      ],
+      "keywords": [
+        "checkers",
+        "draughts",
+        "captures",
+        "king me",
+        "legal moves"
+      ],
+      "files": [
+        "examples/checkers/index.html",
+        "examples/checkers/checkers.css",
+        "examples/checkers/main.js",
+        "examples/checkers/CheckersGame.js"
+      ],
+      "notes": [
+        "Use this as the canonical wiring example for a Checkers clone: visible 8x8 board, standard opening setup, selected-piece highlight, legal diagonal moves, captures, king promotion, turn tracking, move/capture HUD, and reset control.",
+        "Generated variants should compose with CheckersRules.legalMoves(), CheckersRules.applyMove(), Board8x8.isDarkSquare(), and TurnBasedManager.nextTurn(). Do not emit markerless monoliths."
+      ]
+    },
+    {
+      "id": "assembly.chess.playable-core",
+      "name": "Chess Golden Assembly",
+      "summary": "Runnable Chess clone composed from turn manager, Board8x8, ChessRules, swatches, and audio modules.",
+      "recipeID": "recipe.chess",
+      "templateIDs": [
+        "chess-game-board",
+        "board-checkers-mono"
+      ],
+      "keywords": [
+        "chess",
+        "playable chess",
+        "king",
+        "queen",
+        "legal moves",
+        "checkmate"
+      ],
+      "files": [
+        "examples/chess/index.html",
+        "examples/chess/chess.css",
+        "examples/chess/main.js",
+        "examples/chess/ChessGame.js"
+      ],
+      "notes": [
+        "Use this as the canonical wiring example for a Chess clone: visible 8x8 board, standard setup, piece selection, legal move highlights, captures, turn tracking, check/checkmate/stalemate status, and reset control.",
+        "Generated variants should compose with ChessRules.setupStandardBoard(), ChessRules.legalMoves(), ChessRules.applyMove(), Board8x8.cellToAlgebraic(), and TurnBasedManager.nextTurn(). Do not invent APIs such as initialize()."
+      ]
+    },
+    {
+      "id": "assembly.piano.playable-core",
+      "name": "Piano Golden Assembly",
+      "summary": "Runnable piano keyboard clone composed from piano keyboard, keyboard input, audio manager, and swatches modules.",
+      "recipeID": "recipe.music",
+      "templateIDs": [
+        "music-piano-keyboard"
+      ],
+      "keywords": [
+        "piano",
+        "keyboard",
+        "music",
+        "synth",
+        "notes"
+      ],
+      "files": [
+        "examples/piano/index.html",
+        "examples/piano/piano.css",
+        "examples/piano/main.js",
+        "examples/piano/PianoGame.js"
+      ],
+      "notes": [
+        "Use this as the canonical wiring example for a Piano clone: visible piano keys, tap/click controls, A-K keyboard shortcuts, current note HUD, note count, melody trail, play-scale control, and synth feedback.",
+        "Generated variants should compose with PianoKeyboard.play(), PianoKeyboard.noteFrequency(), KeyboardInput.bindMany(), and AudioManager.beep(). Do not output a shell that only imports these modules."
+      ]
+    },
+    {
+      "id": "assembly.pacman.playable-core",
+      "name": "Pac-Man Golden Assembly",
+      "summary": "Runnable Pac-Man clone composed from game loop, grid board, grid movers, pathfinder, scoreboard, joystick, swatches, and audio modules.",
+      "recipeID": "recipe.maze-arcade",
+      "templateIDs": [
+        "arcade-pacman-v1"
+      ],
+      "keywords": [
+        "pacman",
+        "pac-man",
+        "maze",
+        "ghost",
+        "pellet",
+        "power pellet"
+      ],
+      "files": [
+        "examples/pacman/index.html",
+        "examples/pacman/pacman.css",
+        "examples/pacman/main.js",
+        "examples/pacman/PacmanGame.js"
+      ],
+      "notes": [
+        "Use this as the canonical wiring example for a Pac-Man clone: visible maze, walls, pellets, power pellets, ghost chase/scatter, score, lives, persistent best score, keyboard controls, touch joystick, and restart control.",
+        "Generated variants should compose with GridBoard, GridMover, AIPathfinder.nextStep(), GameManager callbacks, ScoreBoard.add()/reset(), and VirtualJoystick. Do not invent APIs such as initialize()."
+      ]
+    },
+    {
+      "id": "assembly.tower-defense.playable-core",
+      "name": "Tower Defense Golden Assembly",
+      "summary": "Runnable tower defense clone composed from game loop, grid board, path followers, projectiles, wave manager, turrets, scoreboard, swatches, and audio modules.",
+      "recipeID": "recipe.tower-defense",
+      "templateIDs": [
+        "tower-defense-game"
+      ],
+      "keywords": [
+        "tower defense",
+        "turret",
+        "waves",
+        "path",
+        "creeps",
+        "projectiles"
+      ],
+      "files": [
+        "examples/tower-defense/index.html",
+        "examples/tower-defense/tower-defense.css",
+        "examples/tower-defense/main.js",
+        "examples/tower-defense/TowerDefenseGame.js"
+      ],
+      "notes": [
+        "Use this as the canonical wiring example for a Tower Defense clone: visible path, build pads, click-to-place turrets, wave spawning, enemy path following, projectile hits, lives, gold, score, persistent best score, and Start Wave control.",
+        "Generated variants should compose with GameManager callbacks, WaveManager.update(), PathFollower enemies, Turret projectileFactory, Projectile, Physics2D.intersectsCircle(), and ScoreBoard.add()/reset(). Do not invent APIs such as initialize()."
+      ]
+    },
+    {
+      "id": "assembly.platformer.playable-core",
+      "name": "Platformer Golden Assembly",
+      "summary": "Runnable side-scrolling platformer clone composed from game loop, physics helpers, grid board, platformer player, camera follow, scoreboard, joystick, swatches, and audio modules.",
+      "recipeID": "recipe.platformer",
+      "templateIDs": [
+        "platformer-mario-style"
+      ],
+      "keywords": [
+        "platformer",
+        "mario",
+        "plumber",
+        "pyramid hopper",
+        "jump",
+        "side scroller"
+      ],
+      "files": [
+        "examples/platformer/index.html",
+        "examples/platformer/platformer.css",
+        "examples/platformer/main.js",
+        "examples/platformer/PlatformerGame.js"
+      ],
+      "notes": [
+        "Use this as the canonical wiring example for a Platformer clone: visible side-scrolling stage, platforms, gaps, coins, hazards, lives, score, persistent best score, camera follow, keyboard controls, touch joystick, and restart control.",
+        "Generated variants should compose with PlatformerPlayer.setInput()/landOn(), CameraFollow.follow()/apply(), Physics2D.intersectsAABB(), ScoreBoard.add()/reset(), and VirtualJoystick. Preserve the recipe marker."
+      ]
+    },
+    {
+      "id": "assembly.crossword.playable-core",
+      "name": "Mini Crossword Golden Assembly",
+      "summary": "Runnable NYT Mini-style crossword clone composed from turn manager, grid board, keyboard input, scoreboard, swatches, and audio modules.",
+      "recipeID": "recipe.crossword",
+      "templateIDs": [
+        "mini-crossword"
+      ],
+      "keywords": [
+        "crossword",
+        "mini crossword",
+        "nyt mini crossword",
+        "across",
+        "down",
+        "clues"
+      ],
+      "files": [
+        "examples/crossword/index.html",
+        "examples/crossword/crossword.css",
+        "examples/crossword/main.js",
+        "examples/crossword/CrosswordGame.js"
+      ],
+      "notes": [
+        "Use this as the canonical wiring example for a Mini Crossword clone: visible 5x5 grid, black cells, clue numbers, Across/Down clue lists, selected cell, keyboard entry, timer, check/reset controls, score, and persistent best score.",
+        "Generated variants should compose with GridBoard, KeyboardInput.bindMany(), TurnBasedManager, ScoreBoard.setScore()/reset(), and AudioManager. Do not invent APIs such as initialize()."
+      ]
+    },
+    {
+      "id": "assembly.adventure.playable-core",
+      "name": "Adventure Golden Assembly",
+      "summary": "Runnable Atari Adventure clone composed from game loop, grid board, grid mover, pathfinder, scoreboard, swatches, and audio modules.",
+      "recipeID": "recipe.adventure-maze",
+      "templateIDs": [
+        "adventure-maze"
+      ],
+      "keywords": [
+        "atari adventure",
+        "adventure",
+        "room maze",
+        "keys",
+        "locked gates",
+        "treasure",
+        "dragon"
+      ],
+      "files": [
+        "examples/adventure/index.html",
+        "examples/adventure/adventure.css",
+        "examples/adventure/main.js",
+        "examples/adventure/AdventureGame.js"
+      ],
+      "notes": [
+        "Use this as the canonical wiring example for an Atari Adventure clone: room-to-room navigation, player square, key pickup, locked gate, dragon hazard, treasure goal, inventory HUD, score, persistent best score, and restart control.",
+        "Generated variants should compose with GridBoard, GridMover.snapTo(), AIPathfinder.nextStep(), GameManager callbacks, ScoreBoard.add()/reset(), and AudioManager. Do not invent APIs such as initialize()."
+      ]
+    },
+    {
+      "id": "assembly.defender.playable-core",
+      "name": "Defender Golden Assembly",
+      "summary": "Runnable Defender clone composed from game loop, physics helpers, entity base, projectile, camera follow, scoreboard, swatches, and audio modules.",
+      "recipeID": "recipe.defender",
+      "templateIDs": [
+        "arcade-alien-abduction"
+      ],
+      "keywords": [
+        "defender",
+        "stellar defender",
+        "horizontal shooter",
+        "side scrolling shooter",
+        "rescue humans",
+        "radar",
+        "abduction"
+      ],
+      "files": [
+        "examples/defender/index.html",
+        "examples/defender/defender.css",
+        "examples/defender/main.js",
+        "examples/defender/DefenderGame.js"
+      ],
+      "notes": [
+        "Use this as the canonical wiring example for a Defender clone: side-scrolling ship, long world, enemy abductors, rescue humans, radar strip, projectiles, waves, lives, score, persistent best score, and restart control.",
+        "Generated variants should compose with GameManager({ canvas, width, height, onUpdate, onDraw }), Entity, Projectile, Physics2D.intersectsCircle(), CameraFollow.follow()/apply(), ScoreBoard.add()/reset(), and AudioManager. Do not invent APIs such as new GameManager(ctx)."
       ]
     },
     {
