@@ -116,9 +116,9 @@ const ZOMBIE_RENDERERS = {
 };
 
 const ZOMBIE_STATS = {
-  zombie:      { radius: 12, scale: 1.2, reward: 6,  damage: 1 },
-  zombieFast:  { radius: 11, scale: 1.0, reward: 8,  damage: 1 },
-  zombieBrute: { radius: 18, scale: 1.0, reward: 20, damage: 4 },
+  zombie:      { radius: 12, scale: 1.2, reward: 6,  damage: 2 },
+  zombieFast:  { radius: 11, scale: 1.0, reward: 8,  damage: 2 },
+  zombieBrute: { radius: 18, scale: 1.0, reward: 20, damage: 6 },
   zombieSwarm: { radius: 8,  scale: 0.9, reward: 4,  damage: 1 }
 };
 
@@ -153,6 +153,7 @@ class TDRangeOverlay {
 }
 
 // Base/bunker that the player defends. Has hp, takes damage when zombies reach the path end.
+// faction: "tower" so friendly turrets won't target it (Turret.findTarget skips same-faction).
 class TDBase {
   constructor(host, position) {
     this.host = host;
@@ -161,6 +162,8 @@ class TDBase {
     this.hp = 25;
     this.maxHp = 25;
     this.zIndex = 6;
+    this.faction = "tower";
+    this.active = true;
   }
   update() {}
   draw(ctx) {
@@ -419,8 +422,15 @@ export class TowerDefenseGame {
     this.projectiles = this.projectiles.filter((p) => p.active !== false);
     this.resolveHits();
 
-    // Wave-complete detection
-    if (this.waveManager.active && this.waveManager.remaining === 0 && this.enemies.length === 0) {
+    // Wave-complete detection. spawned>0 guards against firing on the very first
+    // frame of a new wave (before any enemy has spawned) which could otherwise
+    // race with the geography-swap visuals.
+    if (
+      this.waveManager.active &&
+      this.waveManager.remaining === 0 &&
+      this.waveManager.spawned > 0 &&
+      this.enemies.length === 0
+    ) {
       this.waveManager.active = false;
       const completedIdx = this.waveManager.waveIndex;
       if (completedIdx >= 0 && completedIdx < WAVES.length) {
