@@ -2,7 +2,7 @@ import SwiftUI
 import AppKit
 
 struct ContentView: View {
-    @State private var engine = MiniCrosswordSeed.nytStyleFiveByFive()
+    @State private var engine = MiniCrosswordSeed.daily()
     @State private var elapsedSeconds = 0
     @FocusState private var hasKeyboardFocus: Bool
 
@@ -79,26 +79,24 @@ struct ContentView: View {
     }
 
     private var header: some View {
-        HStack(alignment: .firstTextBaseline) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Native Mini Crossword")
-                    .font(.system(size: 30, weight: .black, design: .rounded))
-                Text(statusText)
-                    .font(.callout.weight(.semibold))
-                    .foregroundStyle(engine.isSolved ? .green : .secondary)
-            }
-
+        HStack(alignment: .firstTextBaseline, spacing: 12) {
+            Text("Mini Crossword")
+                .font(.system(size: 18, weight: .semibold, design: .rounded))
+            Text(statusText)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(engine.isSolved ? .green : .secondary)
+                .lineLimit(1)
             Spacer()
-
-            VStack(alignment: .trailing, spacing: 2) {
+            HStack(spacing: 6) {
                 Text("TIME")
-                    .font(.caption.weight(.bold))
+                    .font(.caption2.weight(.black))
                     .foregroundStyle(.secondary)
                 Text(timeText)
-                    .font(.system(size: 28, weight: .black, design: .rounded))
+                    .font(.system(size: 18, weight: .heavy, design: .rounded))
                     .monospacedDigit()
             }
         }
+        .frame(maxHeight: 44)
     }
 
     private var crosswordBoard: some View {
@@ -298,7 +296,7 @@ struct ContentView: View {
     }
 
     private func resetPuzzle() {
-        engine = MiniCrosswordSeed.nytStyleFiveByFive()
+        engine = MiniCrosswordSeed.daily()
         elapsedSeconds = 0
         focusKeyboardInput()
     }
