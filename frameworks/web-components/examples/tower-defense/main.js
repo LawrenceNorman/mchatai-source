@@ -1,7 +1,7 @@
 import { TowerDefenseGame } from "./TowerDefenseGame.js";
 import { MiniHeader } from "../../ui/MiniHeader.js";
 
-MiniHeader.mount(document.querySelector("[data-mini-header]"), { title: "Tower Defense", subtitle: "Place turrets beside the road. Stop the waves." });
+MiniHeader.mount(document.querySelector("[data-mini-header]"), { title: "Bunker Defense", subtitle: "Build turrets, stop the zombie horde." });
 
 const game = new TowerDefenseGame({
   canvas: document.querySelector("#battleCanvas"),

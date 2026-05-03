@@ -1,6 +1,5 @@
 import { GameManager } from "../../core/GameManager.js";
 import { intersectsCircle } from "../../core/Physics2D.js";
-import { GridBoard } from "../../entities/GridBoard.js";
 import { PathFollower } from "../../entities/PathFollower.js";
 import { Projectile } from "../../entities/Projectile.js";
 import { WaveManager } from "../../entities/WaveManager.js";
@@ -9,103 +8,133 @@ import { TURRET_VARIANTS } from "../../entities/TurretVariants.js";
 import { ScoreBoard } from "../../ui/ScoreBoard.js";
 import { AudioManager } from "../../resources/AudioManager.js";
 import { applySwatchVariables, getSwatchByID } from "../../resources/Swatches.js";
+import {
+  drawZombie,
+  drawZombieFast,
+  drawZombieBrute,
+  drawZombieSwarm,
+  drawBase
+} from "../../resources/VectorSprites.js";
 
 const WIDTH = 1000;
 const HEIGHT = 620;
-const TILE = 60;
 
-// Three "geographies" — different paths, themes, and build pads. The active geography
-// rotates every 3 waves so the player has to rebuild and adapt strategy.
+// Three "geographies" — themed defense zones. Path/pads/visual change every 3 waves.
+// All paths end at the SAME approximate base position so the bunker stays put.
+// Pads are placed at least 60px clear of any path segment (path lineWidth is 56 = 28px half).
 const GEOGRAPHIES = [
   {
-    id: "meadow",
-    name: "Meadow",
+    id: "outpost",
+    name: "Outpost",
     bg: "#0d2e1a",
     pathColor: "#7a5a2c",
     pathColorAlt: "#946d3a",
     pattern: "grass",
     accent: "#86efac",
     path: [
-      { x: 0, y: 200 }, { x: 200, y: 200 }, { x: 200, y: 80 },
-      { x: 480, y: 80 }, { x: 480, y: 360 }, { x: 760, y: 360 },
-      { x: 760, y: 540 }, { x: 1000, y: 540 }
+      { x: 0,   y: 100 },
+      { x: 280, y: 100 },
+      { x: 280, y: 260 },
+      { x: 560, y: 260 },
+      { x: 560, y: 420 },
+      { x: 820, y: 420 },
+      { x: 820, y: 560 },
+      { x: 940, y: 560 }
     ],
     pads: [
-      { x: 100, y: 110 }, { x: 100, y: 290 }, { x: 340, y: 80 },
-      { x: 340, y: 240 }, { x: 580, y: 200 }, { x: 580, y: 460 },
-      { x: 850, y: 280 }, { x: 850, y: 460 }, { x: 920, y: 360 }
+      { x: 100, y: 200 }, { x: 220, y: 200 },
+      { x: 380, y: 180 }, { x: 460, y: 180 },
+      { x: 380, y: 340 }, { x: 660, y: 340 },
+      { x: 700, y: 510 }, { x: 920, y: 470 }
     ]
   },
   {
-    id: "desert",
-    name: "Desert",
+    id: "highway",
+    name: "Highway",
     bg: "#3a2a14",
     pathColor: "#7c5e3a",
     pathColorAlt: "#a07a4a",
     pattern: "sand",
     accent: "#fbbf24",
     path: [
-      { x: 0, y: 480 }, { x: 220, y: 480 }, { x: 220, y: 280 },
-      { x: 480, y: 280 }, { x: 480, y: 120 }, { x: 760, y: 120 },
-      { x: 760, y: 380 }, { x: 1000, y: 380 }
+      { x: 0,   y: 540 },
+      { x: 240, y: 540 },
+      { x: 240, y: 360 },
+      { x: 460, y: 360 },
+      { x: 460, y: 180 },
+      { x: 720, y: 180 },
+      { x: 720, y: 460 },
+      { x: 940, y: 460 }
     ],
     pads: [
-      { x: 110, y: 380 }, { x: 110, y: 580 }, { x: 350, y: 200 },
-      { x: 350, y: 380 }, { x: 580, y: 80 }, { x: 580, y: 260 },
-      { x: 880, y: 200 }, { x: 880, y: 480 }, { x: 690, y: 480 }
+      { x: 100, y: 440 }, { x: 100, y: 600 },
+      { x: 350, y: 280 }, { x: 350, y: 460 },
+      { x: 580, y: 100 }, { x: 580, y: 280 },
+      { x: 820, y: 280 }, { x: 850, y: 540 }
     ]
   },
   {
-    id: "ice",
-    name: "Glacier",
-    bg: "#0f2540",
+    id: "fortress",
+    name: "Fortress",
+    bg: "#0f1740",
     pathColor: "#3a4a5e",
     pathColorAlt: "#5a6a82",
     pattern: "snow",
     accent: "#67e8f9",
     path: [
-      { x: 0, y: 100 }, { x: 280, y: 100 }, { x: 280, y: 320 },
-      { x: 520, y: 320 }, { x: 520, y: 540 }, { x: 800, y: 540 },
-      { x: 800, y: 200 }, { x: 1000, y: 200 }
+      { x: 0,   y: 80  },
+      { x: 320, y: 80  },
+      { x: 320, y: 280 },
+      { x: 580, y: 280 },
+      { x: 580, y: 460 },
+      { x: 800, y: 460 },
+      { x: 800, y: 540 },
+      { x: 940, y: 540 }
     ],
     pads: [
-      { x: 140, y: 220 }, { x: 380, y: 200 }, { x: 380, y: 440 },
-      { x: 640, y: 320 }, { x: 640, y: 460 }, { x: 200, y: 420 },
-      { x: 880, y: 360 }, { x: 880, y: 80 }, { x: 720, y: 80 }
+      { x: 160, y: 200 }, { x: 220, y: 380 },
+      { x: 460, y: 180 }, { x: 460, y: 380 },
+      { x: 690, y: 180 }, { x: 690, y: 380 },
+      { x: 690, y: 540 }, { x: 900, y: 460 }
     ]
   }
 ];
 
-// Ten escalating waves. Mix of enemy types: scout (fast, low HP), grunt (mid),
-// brute (slow, high HP), swarm (many small).
+// Ten escalating waves of zombie horde.
 const WAVES = [
-  { count: 8,  interval: 0.7, enemy: "scout",  speed: 50,  hp: 2  },
-  { count: 10, interval: 0.6, enemy: "grunt",  speed: 55,  hp: 3  },
-  { count: 14, interval: 0.5, enemy: "scout",  speed: 70,  hp: 2  },
-  { count: 6,  interval: 1.0, enemy: "brute",  speed: 38,  hp: 10 },
-  { count: 16, interval: 0.45, enemy: "swarm", speed: 80,  hp: 1  },
-  { count: 12, interval: 0.5, enemy: "grunt",  speed: 70,  hp: 5  },
-  { count: 8,  interval: 0.9, enemy: "brute",  speed: 44,  hp: 14 },
-  { count: 20, interval: 0.4, enemy: "swarm",  speed: 90,  hp: 2  },
-  { count: 14, interval: 0.5, enemy: "grunt",  speed: 80,  hp: 7  },
-  { count: 10, interval: 0.7, enemy: "brute",  speed: 50,  hp: 22 }
+  { count: 8,  interval: 0.7, kind: "zombie",       speed: 50,  hp: 2  },
+  { count: 10, interval: 0.6, kind: "zombieFast",   speed: 80,  hp: 2  },
+  { count: 14, interval: 0.5, kind: "zombie",       speed: 60,  hp: 4  },
+  { count: 6,  interval: 1.0, kind: "zombieBrute",  speed: 40,  hp: 14 },
+  { count: 18, interval: 0.4, kind: "zombieSwarm",  speed: 95,  hp: 1  },
+  { count: 12, interval: 0.5, kind: "zombieFast",   speed: 90,  hp: 4  },
+  { count: 10, interval: 0.8, kind: "zombieBrute",  speed: 46,  hp: 20 },
+  { count: 22, interval: 0.35, kind: "zombieSwarm", speed: 105, hp: 2  },
+  { count: 14, interval: 0.5, kind: "zombieFast",   speed: 100, hp: 6  },
+  { count: 8,  interval: 1.1, kind: "zombieBrute",  speed: 50,  hp: 30 }
 ];
 
-const ENEMY_STYLES = {
-  scout:  { color: "#f97316", outline: "#7a2410", radius: 11, reward: 6  },
-  grunt:  { color: "#fb7185", outline: "#7a1f1f", radius: 14, reward: 9  },
-  brute:  { color: "#a21caf", outline: "#3b0a4d", radius: 18, reward: 18 },
-  swarm:  { color: "#22d3ee", outline: "#155e75", radius: 8,  reward: 4  }
+const ZOMBIE_RENDERERS = {
+  zombie: drawZombie,
+  zombieFast: drawZombieFast,
+  zombieBrute: drawZombieBrute,
+  zombieSwarm: drawZombieSwarm
+};
+
+const ZOMBIE_STATS = {
+  zombie:      { radius: 12, scale: 1.2, reward: 6,  damage: 1 },
+  zombieFast:  { radius: 11, scale: 1.0, reward: 8,  damage: 1 },
+  zombieBrute: { radius: 18, scale: 1.0, reward: 20, damage: 4 },
+  zombieSwarm: { radius: 8,  scale: 0.9, reward: 4,  damage: 1 }
 };
 
 function tdQuery(selector) {
   return document.querySelector(selector);
 }
 
-// A "background" entity that draws bg/path/pads BENEATH all real entities.
-// GameManager sorts entities by zIndex; this one is -100 so it draws first.
-// NOTE: do NOT use a property called `game` — GameManager overwrites
-// `entity.game = engine` when the entity is added (see _flushEntityQueues).
+// Background entity — drawn at zIndex -100 so it goes UNDER turrets/zombies/projectiles.
+// CRITICAL: use `host` not `game` because GameManager._flushEntityQueues overwrites
+// `entity.game = engine` when an entity is added.
 class TDBackground {
   constructor(host) {
     this.host = host;
@@ -114,6 +143,45 @@ class TDBackground {
   update() {}
   draw(ctx) {
     this.host._drawBackground(ctx);
+  }
+}
+
+// Range overlay entity — draws turret range circles on top of bg but under turrets.
+class TDRangeOverlay {
+  constructor(host) {
+    this.host = host;
+    this.zIndex = -50;
+  }
+  update() {}
+  draw(ctx) {
+    this.host._drawTurretRanges(ctx);
+  }
+}
+
+// Base/bunker that the player defends. Has hp, takes damage when zombies reach the path end.
+class TDBase {
+  constructor(host, position) {
+    this.host = host;
+    this.x = position.x;
+    this.y = position.y;
+    this.hp = 25;
+    this.maxHp = 25;
+    this.zIndex = 6;
+  }
+  update() {}
+  draw(ctx) {
+    drawBase(ctx, this.x, this.y, { scale: 1.5, hpRatio: this.hp / this.maxHp });
+    // HP bar above base
+    const w = 60;
+    const x = this.x - w / 2;
+    const y = this.y - 50;
+    ctx.fillStyle = "rgba(0,0,0,0.7)";
+    ctx.fillRect(x, y, w, 6);
+    ctx.fillStyle = this.hp / this.maxHp > 0.4 ? "#22c55e" : "#dc2626";
+    ctx.fillRect(x, y, w * (this.hp / this.maxHp), 6);
+    ctx.strokeStyle = "#000";
+    ctx.lineWidth = 1;
+    ctx.strokeRect(x, y, w, 6);
   }
 }
 
@@ -136,7 +204,7 @@ export class TowerDefenseGame {
       clearColor: "#000",
       sortEntities: true,
       onUpdate: (dt) => this.update(dt),
-      onError: (err) => console.error("TowerDefense engine error:", err)
+      onError: (err) => console.error("TD engine error:", err)
     });
     this.waveManager = new WaveManager({
       waves: WAVES,
@@ -145,20 +213,35 @@ export class TowerDefenseGame {
     this.enemies = [];
     this.projectiles = [];
     this.turrets = [];
-    this.lives = 25;
-    this.gold = 200;
+    this.scrap = 200;
     this.selectedVariant = "basic";
     this.currentGeography = 0;
     this.message = tdQuery("#message");
-    this.livesEl = tdQuery("#lives");
-    this.goldEl = tdQuery("#gold");
+    this.baseHpEl = tdQuery("#baseHp");
+    this.scrapEl = tdQuery("#scrap");
     this.waveEl = tdQuery("#wave");
+    // Add background and range overlay entities up front
     this.engine.addEntity(new TDBackground(this));
+    this.engine.addEntity(new TDRangeOverlay(this));
+    // Place the base at the path end of the current geography
+    this._placeBase();
   }
 
   get geography() { return GEOGRAPHIES[this.currentGeography]; }
   get path() { return this.geography.path; }
   get pads() { return this.geography.pads; }
+
+  _placeBase() {
+    const last = this.path[this.path.length - 1];
+    // Position the base just past the path end
+    const baseX = Math.min(WIDTH - 30, last.x + 30);
+    const baseY = last.y;
+    if (this.base) {
+      this.engine.removeEntity(this.base);
+    }
+    this.base = new TDBase(this, { x: baseX, y: baseY });
+    this.engine.addEntity(this.base);
+  }
 
   start() {
     applySwatchVariables(document.documentElement, getSwatchByID("sunset-arcade"));
@@ -172,7 +255,7 @@ export class TowerDefenseGame {
         this.message.textContent = `Selected ${btn.dataset.variant} turret. Tap a glowing pad.`;
       });
     });
-    this.message.textContent = `${this.geography.name}. Pick a turret type, then tap a glowing pad.`;
+    this.message.textContent = `Defend the bunker. Pick a turret, tap a glowing pad. Wave 1 of 10 ready.`;
     this.engine.start();
   }
 
@@ -187,61 +270,52 @@ export class TowerDefenseGame {
     }
     const nextIndex = Math.max(0, this.waveManager.waveIndex + 1);
     if (nextIndex >= WAVES.length) {
-      this.message.textContent = "Final wave cleared. You win!";
+      this.message.textContent = "Final wave cleared. Bunker holds. You win!";
       return;
     }
     this.waveManager.start(nextIndex);
-    this.message.textContent = `${this.geography.name} — Wave ${nextIndex + 1} of ${WAVES.length} (${WAVES[nextIndex].enemy}) incoming.`;
-    this.audio.beep({ freq: 360, duration: 0.1, type: "triangle" });
+    const w = WAVES[nextIndex];
+    const labels = { zombie: "Walkers", zombieFast: "Runners", zombieBrute: "Tanks", zombieSwarm: "Swarmers" };
+    this.message.textContent = `${this.geography.name} — Wave ${nextIndex + 1} of ${WAVES.length}: ${labels[w.kind] || w.kind} (${w.count}) incoming.`;
+    this.audio.beep({ freq: 220, duration: 0.18, type: "sawtooth" });
   }
 
   spawnEnemy(wave) {
-    const style = ENEMY_STYLES[wave.enemy] || ENEMY_STYLES.grunt;
+    const stats = ZOMBIE_STATS[wave.kind] || ZOMBIE_STATS.zombie;
+    const renderer = ZOMBIE_RENDERERS[wave.kind] || drawZombie;
     const enemy = new PathFollower({
       x: this.path[0].x,
       y: this.path[0].y,
       path: this.path,
       speed: wave.speed,
-      radius: style.radius,
-      width: style.radius * 2,
-      height: style.radius * 2,
+      radius: stats.radius,
+      width: stats.radius * 2,
+      height: stats.radius * 2,
       faction: "enemy"
     });
     enemy.hp = wave.hp;
     enemy.maxHp = wave.hp;
-    enemy.reward = style.reward;
-    enemy.color = style.color;
-    enemy.outline = style.outline;
-    enemy.kind = wave.enemy;
+    enemy.reward = stats.reward;
+    enemy.damageToBase = stats.damage;
+    enemy.kind = wave.kind;
     enemy.zIndex = 5;
-    // Override draw to show health bar + outline
+    enemy._renderer = renderer;
+    enemy._renderScale = stats.scale;
+    enemy._facingLeft = false;
+    // Override draw to use the zombie sprite + health bar
     enemy.draw = function (ctx) {
-      ctx.save();
-      ctx.fillStyle = this.color;
-      ctx.strokeStyle = this.outline;
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
-      // Eye-spot for personality
-      ctx.fillStyle = "#fff";
-      ctx.beginPath();
-      ctx.arc(this.x + this.radius * 0.3, this.y - this.radius * 0.2, this.radius * 0.25, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = "#000";
-      ctx.beginPath();
-      ctx.arc(this.x + this.radius * 0.35, this.y - this.radius * 0.2, this.radius * 0.12, 0, Math.PI * 2);
-      ctx.fill();
-      // Health bar
+      // Determine facing from velocity
+      const facingLeft = (this.vx ?? 0) < -0.5;
+      this._renderer(ctx, this.x, this.y, { scale: this._renderScale, flipX: facingLeft });
+      // Health bar (only when damaged)
       if (this.hp < this.maxHp) {
-        const w = this.radius * 2;
-        ctx.fillStyle = "rgba(0,0,0,0.6)";
-        ctx.fillRect(this.x - w / 2, this.y - this.radius - 7, w, 4);
-        ctx.fillStyle = this.hp / this.maxHp > 0.4 ? "#22c55e" : "#fbbf24";
-        ctx.fillRect(this.x - w / 2, this.y - this.radius - 7, w * (this.hp / this.maxHp), 4);
+        const w = this.radius * 2.4;
+        const hbY = this.y - this.radius - 8;
+        ctx.fillStyle = "rgba(0,0,0,0.7)";
+        ctx.fillRect(this.x - w / 2, hbY, w, 3);
+        ctx.fillStyle = this.hp / this.maxHp > 0.4 ? "#22c55e" : "#dc2626";
+        ctx.fillRect(this.x - w / 2, hbY, w * (this.hp / this.maxHp), 3);
       }
-      ctx.restore();
     };
     this.enemies.push(enemy);
     this.engine.addEntity(enemy);
@@ -274,9 +348,9 @@ export class TowerDefenseGame {
       x: tower.x,
       y: tower.y,
       angle,
-      speed: variant === "cannon" ? 320 : 440,
-      ttl: 0.85,
-      radius: variant === "cannon" ? 8 : 4,
+      speed: variant === "cannon" ? 320 : 480,
+      ttl: 1.2,
+      radius: variant === "cannon" ? 8 : 5,
       faction: "tower",
       color: variantColors[variant] || "#facc15"
     });
@@ -284,7 +358,6 @@ export class TowerDefenseGame {
     projectile.splashRadius = tower.splashRadius ?? 0;
     projectile.zIndex = 8;
     this.projectiles.push(projectile);
-    this.engine.addEntity(projectile);
     return projectile;
   }
 
@@ -294,22 +367,22 @@ export class TowerDefenseGame {
     const scaleY = HEIGHT / rect.height;
     const x = (event.clientX - rect.left) * scaleX;
     const y = (event.clientY - rect.top) * scaleY;
-    const pad = this.pads.find((candidate) => Math.hypot(candidate.x - x, candidate.y - y) < 30);
+    const pad = this.pads.find((c) => Math.hypot(c.x - x, c.y - y) < 28);
     if (!pad) return;
-    if (this.turrets.some((turret) => Math.hypot(turret.x - pad.x, turret.y - pad.y) < 8)) {
+    if (this.turrets.some((t) => Math.hypot(t.x - pad.x, t.y - pad.y) < 8)) {
       this.message.textContent = "That pad already has a turret.";
       return;
     }
     const variant = this.selectedVariant || "basic";
     const VariantClass = TURRET_VARIANTS[variant] || TURRET_VARIANTS.basic;
     const cost = new VariantClass().cost;
-    if (this.gold < cost) {
-      this.message.textContent = `Need ${cost} gold for a ${variant} turret. You have ${this.gold}.`;
+    if (this.scrap < cost) {
+      this.message.textContent = `Need ${cost} scrap for a ${variant} turret. You have ${this.scrap}.`;
       return;
     }
-    this.gold -= cost;
+    this.scrap -= cost;
     this.seedTurret(pad, variant);
-    this.message.textContent = `Built a ${variant} turret for ${cost}g.`;
+    this.message.textContent = `Built a ${variant} turret for ${cost} scrap.`;
     this.audio.beep({ freq: 520, duration: 0.07, type: "triangle" });
   }
 
@@ -317,12 +390,14 @@ export class TowerDefenseGame {
     this.waveManager.update(dt);
     const now = (typeof performance !== "undefined" ? performance.now() : Date.now()) / 1000;
     this.applyEnemySlowEffects(now);
-    // Reap arrived/dead enemies
+
+    // Reap enemies that reached the base + apply damage
     this.enemies = this.enemies.filter((enemy) => {
       if (enemy.arrived) {
-        this.lives -= 1;
+        const dmg = enemy.damageToBase ?? 1;
+        this.base.hp = Math.max(0, this.base.hp - dmg);
         enemy.destroy();
-        this.audio.beep({ freq: 180, duration: 0.08, type: "square" });
+        this.audio.beep({ freq: 140, duration: 0.1, type: "square" });
         return false;
       }
       if (enemy.active === false || enemy.hp <= 0) return false;
@@ -336,11 +411,11 @@ export class TowerDefenseGame {
       this.waveManager.active = false;
       const completedIdx = this.waveManager.waveIndex;
       if (completedIdx >= 0 && completedIdx < WAVES.length) {
-        const bonus = 50 + completedIdx * 10;
-        this.gold += bonus;
+        const bonus = 80 + completedIdx * 15;
+        this.scrap += bonus;
         this.scoreboard.add(bonus);
-        this.message.textContent = `Wave ${completedIdx + 1} cleared. +${bonus}g. Hit Start Wave for the next.`;
-        // Switch geography every 3 waves (after wave 3 → desert, after wave 6 → ice).
+        this.message.textContent = `Wave ${completedIdx + 1} cleared. +${bonus} scrap. Hit Start Wave for the next.`;
+        // Switch geography every 3 waves (after wave 3 → highway, after wave 6 → fortress).
         const newGeoIndex = Math.min(GEOGRAPHIES.length - 1, Math.floor((completedIdx + 1) / 3));
         if (newGeoIndex !== this.currentGeography) {
           this.currentGeography = newGeoIndex;
@@ -348,18 +423,18 @@ export class TowerDefenseGame {
           let refund = 0;
           for (const turret of this.turrets) {
             refund += Math.round((turret.cost || 50) * 0.5);
-            turret.destroy?.();
             this.engine.removeEntity(turret);
           }
           this.turrets = [];
-          this.gold += refund;
-          this.message.textContent = `Cleared. Travelled to ${this.geography.name}. +${bonus}g + ${refund}g turret refund.`;
+          this.scrap += refund;
+          this._placeBase();
+          this.message.textContent = `Cleared. Moved to ${this.geography.name}. +${bonus} scrap + ${refund} salvage from turrets.`;
         }
       }
     }
 
-    if (this.lives <= 0) {
-      this.message.textContent = "Base breached. Reset.";
+    if (this.base.hp <= 0) {
+      this.message.textContent = "Bunker overrun. Defenses reset.";
       this._resetMatch();
     }
     this.updateHUD();
@@ -375,7 +450,7 @@ export class TowerDefenseGame {
               t.hp -= projectile.damage;
               if (t.hp <= 0) {
                 t.destroy();
-                this.gold += t.reward;
+                this.scrap += t.reward;
                 this.scoreboard.add(t.reward);
               }
             }
@@ -384,7 +459,7 @@ export class TowerDefenseGame {
           enemy.hp -= projectile.damage;
           if (enemy.hp <= 0) {
             enemy.destroy();
-            this.gold += enemy.reward;
+            this.scrap += enemy.reward;
             this.scoreboard.add(enemy.reward);
             this.audio.beep({ freq: 740, duration: 0.04, type: "square" });
           }
@@ -393,11 +468,11 @@ export class TowerDefenseGame {
         break;
       }
     }
-    // Beam continuous damage already applied by BeamTurret.update
+    // Beam continuous damage (already applied by BeamTurret.update); reap dead.
     for (const enemy of this.enemies) {
-      if (typeof enemy.hp === "number" && enemy.hp <= 0) {
+      if (typeof enemy.hp === "number" && enemy.hp <= 0 && enemy.active !== false) {
         enemy.destroy();
-        this.gold += enemy.reward;
+        this.scrap += enemy.reward;
         this.scoreboard.add(enemy.reward);
       }
     }
@@ -416,50 +491,44 @@ export class TowerDefenseGame {
   }
 
   _resetMatch() {
-    this.lives = 25;
-    this.gold = 200;
+    this.scrap = 200;
     this.scoreboard.reset();
     this.currentGeography = 0;
     this.waveManager.waveIndex = -1;
     this.waveManager.active = false;
     for (const e of this.enemies) e.destroy();
     for (const p of this.projectiles) p.destroy();
-    for (const t of this.turrets) {
-      t.destroy?.();
-      this.engine.removeEntity(t);
-    }
+    for (const t of this.turrets) this.engine.removeEntity(t);
     this.enemies = [];
     this.projectiles = [];
     this.turrets = [];
-    this.message.textContent = "Reset. Pick a turret and start the next wave.";
+    this._placeBase();
+    this.message.textContent = "Reset. Defend the bunker.";
   }
 
   updateHUD() {
-    if (this.livesEl) this.livesEl.textContent = String(this.lives);
-    if (this.goldEl) this.goldEl.textContent = String(this.gold);
+    if (this.baseHpEl) this.baseHpEl.textContent = `${this.base.hp}/${this.base.maxHp}`;
+    if (this.scrapEl) this.scrapEl.textContent = String(this.scrap);
     if (this.waveEl) {
       const i = this.waveManager.waveIndex;
       this.waveEl.textContent = `${Math.max(1, i + 1)} / ${WAVES.length}`;
     }
   }
 
-  // Background drawn by TDBackground entity (zIndex -100), called from its draw().
   _drawBackground(ctx) {
     const geo = this.geography;
-    // Base
     ctx.fillStyle = geo.bg;
     ctx.fillRect(0, 0, WIDTH, HEIGHT);
-    // Decorative pattern
     this._drawPattern(ctx, geo.pattern, geo.accent);
     // Path with shoulder
-    this._drawPath(ctx, geo.pathColorAlt, 60);
-    this._drawPath(ctx, geo.pathColor, 48);
+    this._drawPath(ctx, geo.pathColorAlt, 64);
+    this._drawPath(ctx, geo.pathColor, 56);
     // Build pads
     for (const pad of this.pads) {
       const occupied = this.turrets.some((t) => Math.hypot(t.x - pad.x, t.y - pad.y) < 8);
       ctx.save();
-      ctx.fillStyle = occupied ? "rgba(250, 204, 21, 0.06)" : "rgba(34, 197, 94, 0.16)";
-      ctx.strokeStyle = occupied ? "rgba(250, 204, 21, 0.4)" : "#22c55e";
+      ctx.fillStyle = occupied ? "rgba(250, 204, 21, 0.05)" : "rgba(34, 197, 94, 0.18)";
+      ctx.strokeStyle = occupied ? "rgba(250, 204, 21, 0.35)" : "#22c55e";
       ctx.lineWidth = 2;
       ctx.beginPath();
       ctx.arc(pad.x, pad.y, 22, 0, Math.PI * 2);
@@ -509,6 +578,19 @@ export class TowerDefenseGame {
         ctx.arc(x, y, 1.6, 0, Math.PI * 2);
         ctx.fill();
       }
+    }
+    ctx.restore();
+  }
+
+  _drawTurretRanges(ctx) {
+    // Draw a faint range circle for each placed turret so the player can plan.
+    ctx.save();
+    for (const turret of this.turrets) {
+      ctx.strokeStyle = "rgba(255,255,255,0.12)";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.arc(turret.x, turret.y, turret.range, 0, Math.PI * 2);
+      ctx.stroke();
     }
     ctx.restore();
   }
