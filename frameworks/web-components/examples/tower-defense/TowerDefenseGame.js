@@ -104,14 +104,16 @@ function tdQuery(selector) {
 
 // A "background" entity that draws bg/path/pads BENEATH all real entities.
 // GameManager sorts entities by zIndex; this one is -100 so it draws first.
+// NOTE: do NOT use a property called `game` — GameManager overwrites
+// `entity.game = engine` when the entity is added (see _flushEntityQueues).
 class TDBackground {
-  constructor(game) {
-    this.game = game;
+  constructor(host) {
+    this.host = host;
     this.zIndex = -100;
   }
   update() {}
   draw(ctx) {
-    this.game._drawBackground(ctx);
+    this.host._drawBackground(ctx);
   }
 }
 
@@ -133,7 +135,8 @@ export class TowerDefenseGame {
       clearEachFrame: true,
       clearColor: "#000",
       sortEntities: true,
-      onUpdate: (dt) => this.update(dt)
+      onUpdate: (dt) => this.update(dt),
+      onError: (err) => console.error("TowerDefense engine error:", err)
     });
     this.waveManager = new WaveManager({
       waves: WAVES,

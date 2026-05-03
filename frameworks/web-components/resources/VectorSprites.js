@@ -498,6 +498,255 @@ export function drawGate(ctx, x, y, options = {}) {
 }
 
 // ===========================================================================
+// ZOMBIE — generic shambler. Variants: drawZombieFast (lean), drawZombieBrute
+// (big), drawZombieSwarm (small). All share the green/decay palette.
+// ===========================================================================
+export function drawZombie(ctx, x, y, options = {}) {
+  const palette = options.palette || {};
+  const skin = palette.skin || "#6b8e3a";
+  const skinDark = palette.skinDark || "#3d5e1c";
+  const shirt = palette.shirt || "#5a3a3a";
+  const pants = palette.pants || "#1f1c14";
+  const blood = palette.blood || "#7a1f1f";
+
+  withTransform(ctx, x, y, options, () => {
+    // Legs (one slightly forward — shamble pose)
+    ctx.fillStyle = pants;
+    ctx.strokeStyle = "#000";
+    ctx.lineWidth = 1;
+    ctx.fillRect(-5, 8, 4, 12);
+    ctx.fillRect(2, 6, 4, 14);
+    ctx.strokeRect(-5, 8, 4, 12);
+    ctx.strokeRect(2, 6, 4, 14);
+
+    // Torso (slumped)
+    ctx.fillStyle = shirt;
+    ctx.beginPath();
+    ctx.moveTo(-7, -4);
+    ctx.lineTo(-8, 9);
+    ctx.lineTo(8, 9);
+    ctx.lineTo(7, -4);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    // Bloody tatters on shirt
+    ctx.fillStyle = blood;
+    ctx.fillRect(-2, 0, 3, 4);
+    ctx.fillRect(3, 2, 2, 3);
+
+    // Outstretched arms
+    ctx.fillStyle = skin;
+    ctx.beginPath();
+    ctx.ellipse(-12, -2, 3, 6, -0.3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.ellipse(11, -3, 3, 6, 0.3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    // Head
+    ctx.fillStyle = skin;
+    ctx.beginPath();
+    ctx.arc(0, -10, 7, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    // Decay patches
+    ctx.fillStyle = skinDark;
+    ctx.beginPath();
+    ctx.arc(-3, -8, 2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(4, -12, 1.5, 0, Math.PI * 2);
+    ctx.fill();
+    // Eyes (white with red iris — undead glow)
+    ctx.fillStyle = "#fff";
+    ctx.beginPath();
+    ctx.arc(-2.5, -10, 1.6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(2.5, -10, 1.6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#dc2626";
+    ctx.beginPath();
+    ctx.arc(-2.5, -10, 0.8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(2.5, -10, 0.8, 0, Math.PI * 2);
+    ctx.fill();
+    // Mouth — open, hanging
+    ctx.fillStyle = "#3a0606";
+    ctx.fillRect(-3, -7, 6, 3);
+    // Teeth
+    ctx.fillStyle = "#fde68a";
+    ctx.fillRect(-3, -7, 1, 1.5);
+    ctx.fillRect(2, -7, 1, 1.5);
+  });
+}
+
+export function drawZombieFast(ctx, x, y, options = {}) {
+  // Leaner, more upright. Different palette tint.
+  drawZombie(ctx, x, y, {
+    ...options,
+    scale: (options.scale || 1) * 0.85,
+    palette: {
+      skin: "#a3b07a",
+      skinDark: "#5a6b3a",
+      shirt: "#3d2c5a",
+      pants: "#1a1426",
+      blood: "#8b1f3a",
+      ...(options.palette || {})
+    }
+  });
+}
+
+export function drawZombieBrute(ctx, x, y, options = {}) {
+  // Bigger, hunched. Darker green.
+  const scale = (options.scale || 1) * 1.4;
+  drawZombie(ctx, x, y, {
+    ...options,
+    scale,
+    palette: {
+      skin: "#3d5e1c",
+      skinDark: "#1f3d0c",
+      shirt: "#1c1208",
+      pants: "#0a0805",
+      blood: "#7a0606",
+      ...(options.palette || {})
+    }
+  });
+}
+
+export function drawZombieSwarm(ctx, x, y, options = {}) {
+  // Small ankle-biter. Just a head with stubby limbs.
+  withTransform(ctx, x, y, options, () => {
+    ctx.fillStyle = "#7a3a3a";
+    ctx.strokeStyle = "#1a0606";
+    ctx.lineWidth = 1;
+    // Body (low and round)
+    ctx.beginPath();
+    ctx.ellipse(0, 2, 6, 4, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    // Tiny legs
+    ctx.fillRect(-4, 5, 2, 3);
+    ctx.fillRect(2, 5, 2, 3);
+    // Head
+    ctx.fillStyle = "#6b8e3a";
+    ctx.beginPath();
+    ctx.arc(0, -4, 5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    // Single big red eye
+    ctx.fillStyle = "#dc2626";
+    ctx.beginPath();
+    ctx.arc(0, -4, 2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#fff";
+    ctx.beginPath();
+    ctx.arc(0.5, -4.5, 0.7, 0, Math.PI * 2);
+    ctx.fill();
+    // Tiny teeth
+    ctx.fillStyle = "#fde68a";
+    ctx.fillRect(-2, -2, 1, 1.5);
+    ctx.fillRect(1, -2, 1, 1.5);
+  });
+}
+
+// ===========================================================================
+// BASE — fortified bunker / refuge that the player defends.
+// Has hp/maxHp visualized as a damage cracking on the walls.
+// ===========================================================================
+export function drawBase(ctx, x, y, options = {}) {
+  const palette = options.palette || {};
+  const wall = palette.wall || "#5e6b78";
+  const wallDark = palette.wallDark || "#1f2937";
+  const roof = palette.roof || "#8b4513";
+  const roofDark = palette.roofDark || "#3d1f08";
+  const sandbag = palette.sandbag || "#a3a380";
+  const door = palette.door || "#1c1206";
+  const flag = palette.flag || "#dc2626";
+  const hpRatio = typeof options.hpRatio === "number" ? Math.max(0, Math.min(1, options.hpRatio)) : 1;
+
+  withTransform(ctx, x, y, options, () => {
+    // Sandbag wall (front line)
+    ctx.fillStyle = sandbag;
+    ctx.strokeStyle = "#5a4a2a";
+    ctx.lineWidth = 1.5;
+    for (let i = -3; i <= 3; i += 1) {
+      const sx = i * 7;
+      ctx.beginPath();
+      ctx.ellipse(sx, 24, 5, 3, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+    }
+    // Bunker body
+    ctx.fillStyle = wall;
+    ctx.beginPath();
+    ctx.moveTo(-22, 20);
+    ctx.lineTo(-22, -10);
+    ctx.lineTo(22, -10);
+    ctx.lineTo(22, 20);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    // Slit windows
+    ctx.fillStyle = "#0a0a0a";
+    ctx.fillRect(-16, -5, 6, 2);
+    ctx.fillRect(-3, -5, 6, 2);
+    ctx.fillRect(10, -5, 6, 2);
+    // Roof
+    ctx.fillStyle = roof;
+    ctx.beginPath();
+    ctx.moveTo(-26, -10);
+    ctx.lineTo(-18, -22);
+    ctx.lineTo(18, -22);
+    ctx.lineTo(26, -10);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    // Roof detail
+    ctx.fillStyle = roofDark;
+    ctx.fillRect(-22, -12, 44, 2);
+    // Door
+    ctx.fillStyle = door;
+    ctx.fillRect(-5, 4, 10, 16);
+    ctx.strokeRect(-5, 4, 10, 16);
+    // Door handle
+    ctx.fillStyle = "#fbbf24";
+    ctx.beginPath();
+    ctx.arc(2, 12, 1, 0, Math.PI * 2);
+    ctx.fill();
+    // Flag pole + flag
+    ctx.fillStyle = "#1c1917";
+    ctx.fillRect(0, -32, 1.5, 12);
+    ctx.fillStyle = flag;
+    ctx.beginPath();
+    ctx.moveTo(1.5, -32);
+    ctx.lineTo(10, -29);
+    ctx.lineTo(1.5, -25);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    // Damage cracks (more visible as hp decreases)
+    if (hpRatio < 0.99) {
+      ctx.strokeStyle = wallDark;
+      ctx.lineWidth = 1.2;
+      const damageStrength = 1 - hpRatio;
+      ctx.globalAlpha = damageStrength;
+      ctx.beginPath();
+      ctx.moveTo(-15, -8); ctx.lineTo(-10, 4); ctx.lineTo(-13, 12);
+      ctx.moveTo(8, -7); ctx.lineTo(14, 8); ctx.lineTo(9, 18);
+      if (damageStrength > 0.5) {
+        ctx.moveTo(-3, -3); ctx.lineTo(2, 6); ctx.lineTo(-5, 16);
+      }
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+  });
+}
+
+// ===========================================================================
 // REGISTRY
 // ===========================================================================
 export const VECTOR_SPRITES = {
@@ -505,7 +754,12 @@ export const VECTOR_SPRITES = {
   knight: drawKnight,
   treasure: drawTreasure,
   key: drawKey,
-  gate: drawGate
+  gate: drawGate,
+  zombie: drawZombie,
+  zombieFast: drawZombieFast,
+  zombieBrute: drawZombieBrute,
+  zombieSwarm: drawZombieSwarm,
+  base: drawBase
 };
 
 export function drawVectorSprite(ctx, name, x, y, options = {}) {

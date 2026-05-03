@@ -1,5 +1,4 @@
 import { TowerDefenseGame } from "./TowerDefenseGame.js";
-
 import { MiniHeader } from "../../ui/MiniHeader.js";
 
 MiniHeader.mount(document.querySelector("[data-mini-header]"), { title: "Tower Defense", subtitle: "Place turrets beside the road. Stop the waves." });
