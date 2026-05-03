@@ -48,6 +48,7 @@ struct AsteroidsEngine: Codable, Equatable, Sendable {
     private(set) var score = 0
     private(set) var lives = 3
     private(set) var phase: ArcadePhase = .ready
+    private(set) var respawnShield: Double = 1.6
 
     init() {
         resetWave()
@@ -67,6 +68,7 @@ struct AsteroidsEngine: Codable, Equatable, Sendable {
             let thrust = ArcadeVector(x: cos(ship.angle), y: sin(ship.angle)).scaled(by: 260 * dt)
             ship.velocity = ship.velocity + thrust
         }
+        respawnShield = max(0, respawnShield - dt)
         ship.velocity = ship.velocity.scaled(by: 0.992)
         ship.integrate(dt: dt)
         ship.wrap(in: playfield)
@@ -130,9 +132,11 @@ struct AsteroidsEngine: Codable, Equatable, Sendable {
     }
 
     private mutating func resolveShipHits() {
+        guard respawnShield <= 0 else { return }
         guard rocks.contains(where: { ship.intersects($0.body) }) else { return }
         lives -= 1
         ship = ArcadeBody(position: playfield.center, radius: 18)
+        respawnShield = 1.6
         if lives <= 0 {
             phase = .lost
         }
