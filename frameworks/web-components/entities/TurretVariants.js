@@ -160,8 +160,8 @@ export class BeamTurret extends SpriteTurret {
     super({
       label: "Beam",
       cost: 180,
-      damage: 0.5,
-      range: 320,
+      damage: 0.9,
+      range: 340,
       cooldown: 0.05,
       vectorRenderer: drawTurretBeam,
       barrelLength: 22,
@@ -169,17 +169,22 @@ export class BeamTurret extends SpriteTurret {
     });
     this._beamTarget = null;
     this._beamColor = options.beamColor || "#c084fc";
+    this._beamCore = options.beamCore || "#fae8ff";
+    this._beamGlow = options.beamGlow || "#a855f7";
+    this._beamTime = 0;
   }
 
   update(dt, game) {
+    this._beamTime += dt;
     this._beamTarget = this.findTarget(game?.entities ?? []);
     if (this._beamTarget) {
       this.angle = Math.atan2(this._beamTarget.y - this.y, this._beamTarget.x - this.x);
-      // Continuous damage tick proportional to dt.
+      // Continuous damage tick proportional to dt (frame-rate independent).
+      const dmg = this.damage * dt * 60;
       if (typeof this._beamTarget.takeDamage === "function") {
-        this._beamTarget.takeDamage(this.damage * dt * 60);
+        this._beamTarget.takeDamage(dmg);
       } else if (typeof this._beamTarget.hp === "number") {
-        this._beamTarget.hp -= this.damage * dt * 60;
+        this._beamTarget.hp -= dmg;
       }
     }
   }
@@ -187,15 +192,64 @@ export class BeamTurret extends SpriteTurret {
   draw(ctx) {
     super.draw(ctx);
     if (!this._beamTarget) return;
+    const t = this._beamTime;
+    const pulse = 0.7 + 0.3 * Math.sin(t * 14); // 0.4-1.0 oscillation
+    const tx = this._beamTarget.x;
+    const ty = this._beamTarget.y;
     ctx.save();
-    ctx.strokeStyle = this._beamColor;
-    ctx.lineWidth = 3;
-    ctx.shadowColor = this._beamColor;
-    ctx.shadowBlur = 8;
+    // Outer glow layer (wide, faint)
+    ctx.shadowColor = this._beamGlow;
+    ctx.shadowBlur = 14;
+    ctx.strokeStyle = this._beamGlow;
+    ctx.globalAlpha = 0.35 * pulse;
+    ctx.lineWidth = 8;
     ctx.beginPath();
     ctx.moveTo(this.x, this.y);
-    ctx.lineTo(this._beamTarget.x, this._beamTarget.y);
+    ctx.lineTo(tx, ty);
     ctx.stroke();
+    // Mid layer
+    ctx.shadowBlur = 8;
+    ctx.strokeStyle = this._beamColor;
+    ctx.globalAlpha = 0.85;
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(this.x, this.y);
+    ctx.lineTo(tx, ty);
+    ctx.stroke();
+    // Inner core (bright, thin, pulsing white)
+    ctx.shadowBlur = 4;
+    ctx.strokeStyle = this._beamCore;
+    ctx.globalAlpha = 1;
+    ctx.lineWidth = 1.5 + pulse;
+    ctx.beginPath();
+    ctx.moveTo(this.x, this.y);
+    ctx.lineTo(tx, ty);
+    ctx.stroke();
+    // Energy nodes traveling along the beam
+    const dx = tx - this.x;
+    const dy = ty - this.y;
+    const len = Math.hypot(dx, dy);
+    if (len > 1) {
+      const nx = dx / len;
+      const ny = dy / len;
+      ctx.shadowBlur = 10;
+      ctx.fillStyle = this._beamCore;
+      for (let k = 0; k < 3; k += 1) {
+        const phase = ((t * 200 + k * 40) % len);
+        const nodeX = this.x + nx * phase;
+        const nodeY = this.y + ny * phase;
+        ctx.beginPath();
+        ctx.arc(nodeX, nodeY, 3 + pulse, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    // Impact burst at target
+    ctx.shadowBlur = 12;
+    ctx.fillStyle = this._beamCore;
+    ctx.globalAlpha = 0.85 * pulse;
+    ctx.beginPath();
+    ctx.arc(tx, ty, 7 + pulse * 2, 0, Math.PI * 2);
+    ctx.fill();
     ctx.restore();
   }
 }

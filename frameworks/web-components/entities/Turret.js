@@ -31,7 +31,15 @@ export class Turret extends Entity {
     let best = null;
     let bestDistance = Infinity;
     for (const entity of entities) {
-      if (!entity || entity === this || entity.destroyed || entity.faction === this.faction) {
+      if (
+        !entity ||
+        entity === this ||
+        entity.destroyed ||
+        entity.active === false ||
+        entity.faction === this.faction ||
+        typeof entity.x !== "number" ||
+        typeof entity.y !== "number"
+      ) {
         continue;
       }
       const distance = Math.hypot(entity.x - this.x, entity.y - this.y);
