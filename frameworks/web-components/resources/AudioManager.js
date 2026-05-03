@@ -24,7 +24,7 @@ export class AudioManager {
     if (!ctx) {
       return;
     }
-    const freq = options.freq ?? 440;
+    const freq = options.freq ?? options.frequency ?? 440;
     const duration = options.duration ?? 0.08;
     const type = options.type || "square";
     const volume = options.volume ?? this.masterVolume;

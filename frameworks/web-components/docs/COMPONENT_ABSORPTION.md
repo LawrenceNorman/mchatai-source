@@ -95,6 +95,8 @@ Useful inspection paths:
 - **Continuation context drop:** A second-turn prompt such as "Yes, build it now" can lose obvious genre keywords unless the Harness matches Web Components against prior user prompts as well as the current prompt.
 - **Template keyword contamination:** A wrong-but-plausible template seed can contain another recipe's keywords. Keep template-ID scoring separate from prompt/category keyword scoring so explicit prompts like Blackjack do not select Poker.
 - **Prompt-only compliance miss:** Even with the correct recipe context, OpenAI/local models can still emit a playable monolith. The hard gate catches this; retry prompts include a concrete Lego repair marker/import block, and golden assembly fallback should repair known recipe families when available.
+- **No-artifact CLI/model exit:** A backend can spend its first turn exploring files or exit with no parseable mini-app block. If a Web Components recipe and matching golden assembly are selected, the Harness should synthesize/install the assembly even when there is no rejected mini-app artifact for `enforceWebComponentGate` to inspect.
+- **Import shell:** A model can output the exact marker/import scaffold but no meaningful game surface. The gate should reject skeletal module-import shells; add a golden assembly for that recipe rather than loosening the checker.
 - **Cross-recipe golden assembly drift:** A fallback assembly must never be reused across recipes. A Wordle golden assembly relabeled as `recipe.arcade-grid` can pass marker checks while visibly producing Word Quest for a Frogger prompt. Constrain golden assembly fallback to `assembly.recipeID == selectedRecipe.id` and add semantic identity checks for clone canaries.
 - **Tunnel not attached:** Launching the app process is not enough if the Harness view model is not initialized. The ready file can be stale; verify with a cheap `listSkills` request before running catalog diagnostics or canaries.
 - **L2 CLI detour:** Catalog clone prompts such as Defender should not depend
@@ -120,6 +122,9 @@ Harness status as of 2026-05-02:
 - Web Components recipe requests skip CLI-first generation and route through the
   API/gate path so golden assembly fallback can deterministically repair
   markerless output.
+- If all generator backends fail to emit a parseable mini-app artifact, `tunnelRunWizard`
+  can synthesize the selected Web Components golden assembly directly before
+  returning the tunnel result.
 - A successful component-compliant install clears stale Lego rejection state, so
   tunnel responses return the accepted `miniAppID`.
 - Text evaluator/autofix is skipped for gate-compliant Lego artifacts; the hard
@@ -131,12 +136,16 @@ Harness status as of 2026-05-02:
   useful, but every production recipe should eventually have a known-good
   assembly fallback that reconstitutes a playable app from canonical modules.
 
-Validated on 2026-05-02:
+Validated on 2026-05-03:
 
 - Recipe diagnostics: 24/24 catalog prompts passed.
 - Generation canaries: Word Quest/Wordle, Mastermind, Minesweeper 99, Pong,
-  Defender, NYT Mini Crossword, and Atari Adventure all passed
-  `check_component_usage.mjs` through the socket tunnel.
+  Defender, Blackjack, Texas Holdem Poker, Candy Match, Frogger, Pac-Man,
+  Checkers, Chess, Piano, Tower Defense, Plumber Platformer, Pyramid Hopper,
+  NYT Mini Crossword, and Atari Adventure all passed `check_component_usage.mjs`
+  through the socket tunnel.
+- Visual screenshot spot checks passed for Candy Match and Chess after adding
+  their golden assemblies.
 
 ## Current Families
 

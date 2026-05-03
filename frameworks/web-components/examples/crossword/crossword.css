@@ -1,0 +1,193 @@
+:root {
+  --cw-bg: #101019;
+  --cw-panel: #191927;
+  --cw-text: #fff8e8;
+  --cw-muted: #d3d0e8;
+  --cw-line: rgba(255, 255, 255, 0.14);
+  --cw-accent: #facc15;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  color: var(--cw-text);
+  background:
+    radial-gradient(circle at 14% 8%, rgba(250, 204, 21, 0.15), transparent 24rem),
+    radial-gradient(circle at 86% 18%, rgba(147, 197, 253, 0.16), transparent 24rem),
+    linear-gradient(145deg, #080810, var(--cw-bg));
+  font-family: "Avenir Next", "Trebuchet MS", sans-serif;
+}
+
+button {
+  font: inherit;
+}
+
+.crossword-shell {
+  width: min(980px, 100%);
+  margin: 0 auto;
+  padding: 12px;
+  display: grid;
+  gap: 12px;
+}
+
+.hero,
+.puzzle {
+  border: 1px solid var(--cw-line);
+  border-radius: 30px;
+  background: rgba(25, 25, 39, 0.92);
+  box-shadow: 0 28px 90px rgba(0, 0, 0, 0.32);
+}
+
+.hero {
+  padding: 18px;
+  text-align: center;
+}
+
+.eyebrow {
+  margin: 0 0 8px;
+  color: var(--cw-accent);
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+h1 {
+  margin: 0;
+  font-size: clamp(2.4rem, 8vw, 5.3rem);
+  line-height: 0.92;
+}
+
+.brief {
+  max-width: 720px;
+  margin: 10px auto 0;
+  color: var(--cw-muted);
+  font-size: 1.02rem;
+}
+
+.puzzle {
+  padding: 14px;
+}
+
+.hud {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) 130px auto auto;
+  gap: 8px;
+}
+
+.mchatai-scoreboard {
+  display: flex;
+  gap: 8px;
+}
+
+.mchatai-scoreboard__item,
+.hud-card,
+.hud button {
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--cw-muted);
+  font-size: 0.76rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.mchatai-scoreboard__value,
+.hud-card strong {
+  display: block;
+  margin-top: 2px;
+  color: var(--cw-text);
+  font-size: 1.15rem;
+  letter-spacing: 0;
+}
+
+.hud button {
+  background: var(--cw-accent);
+  color: #211a00;
+}
+
+.puzzle-layout {
+  display: grid;
+  grid-template-columns: minmax(280px, 410px) 1fr;
+  gap: 18px;
+  margin-top: 14px;
+  align-items: start;
+}
+
+.crossword-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(44px, 1fr));
+  gap: 4px;
+}
+
+.cell {
+  position: relative;
+  aspect-ratio: 1;
+  border: 0;
+  border-radius: 8px;
+  background: #fffdf4;
+  color: #111827;
+  font-size: clamp(1.2rem, 5vw, 2rem);
+  font-weight: 900;
+}
+
+.cell[data-block="true"] {
+  background: #020617;
+}
+
+.cell[data-selected="true"] {
+  outline: 4px solid var(--cw-accent);
+}
+
+.cell small {
+  position: absolute;
+  left: 6px;
+  top: 4px;
+  font-size: 0.6rem;
+}
+
+.clues {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.clues h2 {
+  margin: 0 0 8px;
+  color: var(--cw-accent);
+  font-size: 0.95rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.clues ol {
+  margin: 0;
+  padding-left: 22px;
+  color: var(--cw-muted);
+}
+
+.clues li {
+  margin-bottom: 8px;
+}
+
+.message {
+  margin: 12px 0 0;
+  padding: 11px 12px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.08);
+  text-align: center;
+}
+
+@media (max-width: 760px) {
+  .hud,
+  .puzzle-layout,
+  .clues {
+    grid-template-columns: 1fr;
+  }
+}
