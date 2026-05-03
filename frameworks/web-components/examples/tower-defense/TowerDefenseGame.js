@@ -367,12 +367,15 @@ export class TowerDefenseGame {
     const scaleY = HEIGHT / rect.height;
     const x = (event.clientX - rect.left) * scaleX;
     const y = (event.clientY - rect.top) * scaleY;
-    const pad = this.pads.find((c) => Math.hypot(c.x - x, c.y - y) < 28);
-    if (!pad) return;
-    if (this.turrets.some((t) => Math.hypot(t.x - pad.x, t.y - pad.y) < 8)) {
-      this.message.textContent = "That pad already has a turret.";
+    // Click on existing turret → upgrade
+    const existing = this.turrets.find((t) => Math.hypot(t.x - x, t.y - y) < 22);
+    if (existing) {
+      this._tryUpgrade(existing);
       return;
     }
+    // Click on a pad → place new turret
+    const pad = this.pads.find((c) => Math.hypot(c.x - x, c.y - y) < 28);
+    if (!pad) return;
     const variant = this.selectedVariant || "basic";
     const VariantClass = TURRET_VARIANTS[variant] || TURRET_VARIANTS.basic;
     const cost = new VariantClass().cost;
@@ -382,8 +385,24 @@ export class TowerDefenseGame {
     }
     this.scrap -= cost;
     this.seedTurret(pad, variant);
-    this.message.textContent = `Built a ${variant} turret for ${cost} scrap.`;
+    this.message.textContent = `Built ${variant} turret for ${cost}. Click an existing turret to upgrade.`;
     this.audio.beep({ freq: 520, duration: 0.07, type: "triangle" });
+  }
+
+  _tryUpgrade(turret) {
+    if (turret.tier >= 3) {
+      this.message.textContent = `${turret.label} is already at max tier (III).`;
+      return;
+    }
+    const cost = turret.upgradeCost();
+    if (this.scrap < cost) {
+      this.message.textContent = `Need ${cost} scrap to upgrade ${turret.label} to tier ${turret.tier + 1}. You have ${this.scrap}.`;
+      return;
+    }
+    this.scrap -= cost;
+    turret.upgrade();
+    this.message.textContent = `${turret.label} upgraded to tier ${turret.tier} (range ${Math.round(turret.range)}, dmg ${turret.damage.toFixed(1)}).`;
+    this.audio.beep({ freq: 720, duration: 0.1, type: "triangle" });
   }
 
   update(dt) {
@@ -583,14 +602,32 @@ export class TowerDefenseGame {
   }
 
   _drawTurretRanges(ctx) {
-    // Draw a faint range circle for each placed turret so the player can plan.
     ctx.save();
+    // Existing turrets — faint white range circles
     for (const turret of this.turrets) {
-      ctx.strokeStyle = "rgba(255,255,255,0.12)";
+      ctx.strokeStyle = "rgba(255,255,255,0.14)";
       ctx.lineWidth = 1;
       ctx.beginPath();
       ctx.arc(turret.x, turret.y, turret.range, 0, Math.PI * 2);
       ctx.stroke();
+    }
+    // Placement preview — show the SELECTED variant's range on every empty pad
+    const variant = this.selectedVariant || "basic";
+    const VariantClass = TURRET_VARIANTS[variant];
+    if (VariantClass) {
+      const sample = new VariantClass();
+      const previewRange = sample.range;
+      ctx.strokeStyle = "rgba(34, 197, 94, 0.22)";
+      ctx.lineWidth = 1;
+      ctx.setLineDash([4, 4]);
+      for (const pad of this.pads) {
+        const occupied = this.turrets.some((t) => Math.hypot(t.x - pad.x, t.y - pad.y) < 8);
+        if (occupied) continue;
+        ctx.beginPath();
+        ctx.arc(pad.x, pad.y, previewRange, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      ctx.setLineDash([]);
     }
     ctx.restore();
   }

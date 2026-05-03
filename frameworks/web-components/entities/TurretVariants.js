@@ -15,41 +15,85 @@
 //   const turret = new BasicTurret({ x: 200, y: 150, faction: "player", projectileFactory });
 
 import { Turret } from "./Turret.js";
-import { drawSprite } from "../resources/SpriteRenderer.js";
 import {
-  TURRET_BASIC, TURRET_BASIC_PALETTE,
-  TURRET_CANNON, TURRET_CANNON_PALETTE,
-  TURRET_FROST, TURRET_FROST_PALETTE,
-  TURRET_BEAM, TURRET_BEAM_PALETTE
-} from "../resources/SpritePresets.js";
+  drawTurretBasic,
+  drawTurretCannon,
+  drawTurretFrost,
+  drawTurretBeam
+} from "../resources/VectorSprites.js";
 
 class SpriteTurret extends Turret {
   constructor(options = {}) {
     super(options);
-    this.spriteGrid = options.spriteGrid;
-    this.spritePalette = options.spritePalette;
-    this.spriteScale = options.spriteScale ?? 3;
+    this.vectorRenderer = options.vectorRenderer || null;
+    this.spriteScale = options.spriteScale ?? 1;
     this.barrelLength = options.barrelLength ?? this.radius + 12;
     this.cost = options.cost ?? 50;
     this.damage = options.damage ?? 1;
     this.label = options.label || "Turret";
+    this.tier = 1;
+    this._lastFireMs = 0;
+    // Wrap projectileFactory so we can stamp a fire timestamp for the muzzle flash.
+    const userFactory = this.projectileFactory;
+    if (typeof userFactory === "function") {
+      this.projectileFactory = (tower, target) => {
+        tower._lastFireMs = (typeof performance !== "undefined" ? performance.now() : Date.now());
+        return userFactory(tower, target);
+      };
+    }
+  }
+
+  upgrade() {
+    if (this.tier >= 3) return false;
+    this.tier += 1;
+    this.damage = (this.damage || 1) * 1.4;
+    this.range = (this.range || 200) * 1.15;
+    this.cooldown = Math.max(0.05, (this.cooldown || 0.6) * 0.85);
+    if (typeof this.splashRadius === "number") this.splashRadius *= 1.15;
+    return true;
+  }
+
+  upgradeCost() {
+    return Math.round((this.cost || 50) * (this.tier === 1 ? 0.6 : 0.9));
   }
 
   draw(ctx) {
-    if (!this.spriteGrid || !this.spritePalette) {
+    if (!this.vectorRenderer) {
       super.draw(ctx);
       return;
     }
     ctx.save();
     ctx.translate(this.x, this.y);
     ctx.rotate(this.angle);
-    drawSprite(ctx, this.spriteGrid, this.spritePalette, {
-      x: 0,
-      y: 0,
-      scale: this.spriteScale,
-      anchor: "center"
-    });
+    this.vectorRenderer(ctx, 0, 0, { scale: this.spriteScale });
+    // Muzzle flash if fired in the last 90ms (rotated frame, drawn at barrel tip).
+    const now = (typeof performance !== "undefined" ? performance.now() : Date.now());
+    if (this._lastFireMs && now - this._lastFireMs < 90) {
+      const tipX = this.barrelLength;
+      ctx.fillStyle = "rgba(255, 240, 120, 0.95)";
+      ctx.beginPath();
+      ctx.arc(tipX, 0, 6 + (this.tier - 1) * 1.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "rgba(255, 200, 80, 0.55)";
+      ctx.beginPath();
+      ctx.arc(tipX + 2, 0, 10 + (this.tier - 1) * 2, 0, Math.PI * 2);
+      ctx.fill();
+    }
     ctx.restore();
+    // Tier pips drawn outside the rotated frame so they stay upright.
+    if (this.tier > 1) {
+      ctx.save();
+      for (let i = 0; i < this.tier - 1; i += 1) {
+        ctx.fillStyle = "#fbbf24";
+        ctx.strokeStyle = "#000";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.arc(this.x - 12 + i * 6, this.y + 18, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
   }
 }
 
@@ -59,10 +103,10 @@ export class BasicTurret extends SpriteTurret {
       label: "Basic",
       cost: 50,
       damage: 1,
-      range: 180,
-      cooldown: 0.6,
-      spriteGrid: TURRET_BASIC,
-      spritePalette: TURRET_BASIC_PALETTE,
+      range: 260,
+      cooldown: 0.55,
+      vectorRenderer: drawTurretBasic,
+      barrelLength: 24,
       ...options
     });
   }
@@ -74,14 +118,14 @@ export class CannonTurret extends SpriteTurret {
       label: "Cannon",
       cost: 120,
       damage: 4,
-      range: 140,
-      cooldown: 1.4,
-      splashRadius: options.splashRadius ?? 40,
-      spriteGrid: TURRET_CANNON,
-      spritePalette: TURRET_CANNON_PALETTE,
+      range: 220,
+      cooldown: 1.3,
+      splashRadius: options.splashRadius ?? 50,
+      vectorRenderer: drawTurretCannon,
+      barrelLength: 26,
       ...options
     });
-    this.splashRadius = options.splashRadius ?? 40;
+    this.splashRadius = options.splashRadius ?? 50;
   }
 }
 
@@ -91,16 +135,16 @@ export class FrostTurret extends SpriteTurret {
       label: "Frost",
       cost: 90,
       damage: 1,
-      range: 160,
-      cooldown: 0.9,
-      slowFactor: options.slowFactor ?? 0.5,
-      slowDuration: options.slowDuration ?? 1.5,
-      spriteGrid: TURRET_FROST,
-      spritePalette: TURRET_FROST_PALETTE,
+      range: 240,
+      cooldown: 0.85,
+      slowFactor: options.slowFactor ?? 0.45,
+      slowDuration: options.slowDuration ?? 1.6,
+      vectorRenderer: drawTurretFrost,
+      barrelLength: 21,
       ...options
     });
-    this.slowFactor = options.slowFactor ?? 0.5;
-    this.slowDuration = options.slowDuration ?? 1.5;
+    this.slowFactor = options.slowFactor ?? 0.45;
+    this.slowDuration = options.slowDuration ?? 1.6;
   }
 
   // Frost turret applies a slow effect to its target instead of (or in addition to) damage.
@@ -121,11 +165,11 @@ export class BeamTurret extends SpriteTurret {
     super({
       label: "Beam",
       cost: 180,
-      damage: 0.4,
-      range: 220,
+      damage: 0.5,
+      range: 320,
       cooldown: 0.05,
-      spriteGrid: TURRET_BEAM,
-      spritePalette: TURRET_BEAM_PALETTE,
+      vectorRenderer: drawTurretBeam,
+      barrelLength: 22,
       ...options
     });
     this._beamTarget = null;

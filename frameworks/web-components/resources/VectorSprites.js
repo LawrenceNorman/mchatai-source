@@ -747,6 +747,215 @@ export function drawBase(ctx, x, y, options = {}) {
 }
 
 // ===========================================================================
+// TURRETS — top-down vector sprites for tower-defense variants. Each is
+// drawn with the barrel pointing right (angle 0); rotate the canvas before
+// calling to aim. Coordinate origin = turret center.
+// ===========================================================================
+export function drawTurretBasic(ctx, x, y, options = {}) {
+  withTransform(ctx, x, y, options, () => {
+    // Sandbag base (octagonal pile)
+    ctx.fillStyle = "#a3a380";
+    ctx.strokeStyle = "#5a4a2a";
+    ctx.lineWidth = 1.5;
+    for (let i = 0; i < 8; i += 1) {
+      const a = (i / 8) * Math.PI * 2;
+      const sx = Math.cos(a) * 14;
+      const sy = Math.sin(a) * 14;
+      ctx.beginPath();
+      ctx.ellipse(sx, sy, 5, 3.5, a, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+    }
+    // Turret housing
+    ctx.fillStyle = "#475569";
+    ctx.strokeStyle = "#0f172a";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(0, 0, 11, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    // Top hatch
+    ctx.fillStyle = "#1f2937";
+    ctx.beginPath();
+    ctx.arc(0, 0, 7, 0, Math.PI * 2);
+    ctx.fill();
+    // Rivets
+    ctx.fillStyle = "#fbbf24";
+    for (let i = 0; i < 6; i += 1) {
+      const a = (i / 6) * Math.PI * 2;
+      ctx.beginPath();
+      ctx.arc(Math.cos(a) * 9, Math.sin(a) * 9, 1, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    // Barrel
+    ctx.fillStyle = "#1f2937";
+    ctx.fillRect(0, -3, 22, 6);
+    ctx.strokeStyle = "#0a0a0a";
+    ctx.strokeRect(0, -3, 22, 6);
+    // Barrel tip
+    ctx.fillStyle = "#0a0a0a";
+    ctx.fillRect(20, -2, 4, 4);
+  });
+}
+
+export function drawTurretCannon(ctx, x, y, options = {}) {
+  withTransform(ctx, x, y, options, () => {
+    // Wide brass base
+    ctx.fillStyle = "#a16207";
+    ctx.strokeStyle = "#3d1f08";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(0, 0, 16, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    // Wood deck
+    ctx.fillStyle = "#5a3a1c";
+    ctx.beginPath();
+    ctx.arc(0, 0, 13, 0, Math.PI * 2);
+    ctx.fill();
+    // Cannon mount
+    ctx.fillStyle = "#3d2418";
+    ctx.fillRect(-8, -8, 14, 16);
+    ctx.strokeRect(-8, -8, 14, 16);
+    // Big barrel
+    ctx.fillStyle = "#1f2937";
+    ctx.beginPath();
+    ctx.moveTo(0, -7);
+    ctx.lineTo(24, -8);
+    ctx.lineTo(26, -5);
+    ctx.lineTo(26, 5);
+    ctx.lineTo(24, 8);
+    ctx.lineTo(0, 7);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = "#0a0a0a";
+    ctx.stroke();
+    // Cannon rim
+    ctx.fillStyle = "#a16207";
+    ctx.fillRect(22, -8, 4, 16);
+    // Bore (hole)
+    ctx.fillStyle = "#000";
+    ctx.beginPath();
+    ctx.ellipse(25, 0, 1.5, 4, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Brass rim ring
+    ctx.strokeStyle = "#fbbf24";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(0, 0, 14, 0, Math.PI * 2);
+    ctx.stroke();
+  });
+}
+
+export function drawTurretFrost(ctx, x, y, options = {}) {
+  withTransform(ctx, x, y, options, () => {
+    // Icy base
+    ctx.fillStyle = "#67e8f9";
+    ctx.strokeStyle = "#155e75";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(0, 0, 14, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    // Crystal facets around the base
+    ctx.fillStyle = "#cffafe";
+    for (let i = 0; i < 6; i += 1) {
+      const a = (i / 6) * Math.PI * 2;
+      const cx = Math.cos(a) * 11;
+      const cy = Math.sin(a) * 11;
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.lineTo(cx + Math.cos(a) * 4, cy + Math.sin(a) * 4);
+      ctx.lineTo(cx + Math.cos(a + 0.4) * 2, cy + Math.sin(a + 0.4) * 2);
+      ctx.closePath();
+      ctx.fill();
+    }
+    // Central crystal column (cross-section)
+    ctx.fillStyle = "#22d3ee";
+    ctx.strokeStyle = "#0e7490";
+    ctx.beginPath();
+    ctx.moveTo(-5, -8);
+    ctx.lineTo(5, -8);
+    ctx.lineTo(7, 0);
+    ctx.lineTo(5, 8);
+    ctx.lineTo(-5, 8);
+    ctx.lineTo(-7, 0);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    // Glowing core
+    ctx.fillStyle = "#fff";
+    ctx.shadowColor = "#67e8f9";
+    ctx.shadowBlur = 6;
+    ctx.beginPath();
+    ctx.arc(0, 0, 3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    // Frost emitter (right-facing)
+    ctx.fillStyle = "#155e75";
+    ctx.fillRect(7, -3, 12, 6);
+    ctx.strokeRect(7, -3, 12, 6);
+    ctx.fillStyle = "#67e8f9";
+    ctx.fillRect(17, -2, 4, 4);
+  });
+}
+
+export function drawTurretBeam(ctx, x, y, options = {}) {
+  withTransform(ctx, x, y, options, () => {
+    // Dark base ring
+    ctx.fillStyle = "#1f0a3d";
+    ctx.strokeStyle = "#0a0419";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(0, 0, 14, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    // Tech panels
+    ctx.fillStyle = "#581c87";
+    for (let i = 0; i < 3; i += 1) {
+      const a = (i / 3) * Math.PI * 2 + Math.PI / 6;
+      ctx.save();
+      ctx.rotate(a);
+      ctx.fillRect(8, -3, 5, 6);
+      ctx.strokeRect(8, -3, 5, 6);
+      ctx.restore();
+    }
+    // Inner ring
+    ctx.fillStyle = "#7e22ce";
+    ctx.beginPath();
+    ctx.arc(0, 0, 9, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    // Energy core (pulsing)
+    ctx.shadowColor = "#c084fc";
+    ctx.shadowBlur = 10;
+    ctx.fillStyle = "#fae8ff";
+    ctx.beginPath();
+    ctx.arc(0, 0, 5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#a855f7";
+    ctx.beginPath();
+    ctx.arc(0, 0, 3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    // Beam emitter (right-facing prism)
+    ctx.fillStyle = "#581c87";
+    ctx.beginPath();
+    ctx.moveTo(8, -4);
+    ctx.lineTo(20, -2);
+    ctx.lineTo(22, 0);
+    ctx.lineTo(20, 2);
+    ctx.lineTo(8, 4);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = "#0a0419";
+    ctx.stroke();
+    ctx.fillStyle = "#c084fc";
+    ctx.fillRect(20, -1.5, 3, 3);
+  });
+}
+
+// ===========================================================================
 // REGISTRY
 // ===========================================================================
 export const VECTOR_SPRITES = {
@@ -759,7 +968,11 @@ export const VECTOR_SPRITES = {
   zombieFast: drawZombieFast,
   zombieBrute: drawZombieBrute,
   zombieSwarm: drawZombieSwarm,
-  base: drawBase
+  base: drawBase,
+  turretBasic: drawTurretBasic,
+  turretCannon: drawTurretCannon,
+  turretFrost: drawTurretFrost,
+  turretBeam: drawTurretBeam
 };
 
 export function drawVectorSprite(ctx, name, x, y, options = {}) {

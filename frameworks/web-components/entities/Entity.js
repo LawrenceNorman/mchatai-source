@@ -19,6 +19,7 @@ export class Entity {
     this.tags = Array.isArray(options.tags) ? options.tags.slice() : [];
     this.damping = options.damping ?? 0;
     this.maxSpeed = options.maxSpeed ?? Infinity;
+    this.faction = options.faction;
     this.game = null;
   }
 
