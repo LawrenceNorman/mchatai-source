@@ -128,21 +128,93 @@ struct CrosswordEngine: Codable, Equatable, Sendable {
 }
 
 enum MiniCrosswordSeed {
+    /// Picks one of the curated NYT-style mini puzzles based on the day-of-year so
+    /// users see a fresh puzzle each day instead of the same letters every session.
+    static func daily(referenceDate: Date = Date()) -> CrosswordEngine {
+        let bank = [puzzleA, puzzleB, puzzleC]
+        let day = Calendar.current.ordinality(of: .day, in: .year, for: referenceDate) ?? 1
+        return bank[abs(day - 1) % bank.count]()
+    }
+
+    /// Backwards-compatible entry point used by older glue code; routes to `daily()`.
     static func nytStyleFiveByFive() -> CrosswordEngine {
+        daily()
+    }
+
+    /// Puzzle A — corner-blocked 5x5, every Across and Down a real common word.
+    /// Layout (`#` = block):
+    ///     # # P E P
+    ///     S C A L E
+    ///     P O I S E
+    ///     I N N E R
+    ///     N E T # #
+    static func puzzleA() -> CrosswordEngine {
         CrosswordEngine(
             rows: 5,
             columns: 5,
             entries: [
-                CrosswordEntry(id: "1A", number: 1, direction: .across, start: PuzzlePoint(row: 0, col: 0), answer: "APPLE", clue: "Fruit in a laptop logo"),
-                CrosswordEntry(id: "6A", number: 6, direction: .across, start: PuzzlePoint(row: 1, col: 0), answer: "ROAST", clue: "Coffee preparation"),
-                CrosswordEntry(id: "7A", number: 7, direction: .across, start: PuzzlePoint(row: 2, col: 0), answer: "CADET", clue: "Academy student"),
-                CrosswordEntry(id: "8A", number: 8, direction: .across, start: PuzzlePoint(row: 3, col: 0), answer: "EAGER", clue: "Very keen"),
-                CrosswordEntry(id: "9A", number: 9, direction: .across, start: PuzzlePoint(row: 4, col: 0), answer: "STEEL", clue: "Strong alloy"),
-                CrosswordEntry(id: "1D", number: 1, direction: .down, start: PuzzlePoint(row: 0, col: 0), answer: "ARCES", clue: "Grid spine letters"),
-                CrosswordEntry(id: "2D", number: 2, direction: .down, start: PuzzlePoint(row: 0, col: 1), answer: "POAAT", clue: "Practice fill"),
-                CrosswordEntry(id: "3D", number: 3, direction: .down, start: PuzzlePoint(row: 0, col: 2), answer: "PADGE", clue: "Practice fill"),
-                CrosswordEntry(id: "4D", number: 4, direction: .down, start: PuzzlePoint(row: 0, col: 3), answer: "LSEEE", clue: "Practice fill"),
-                CrosswordEntry(id: "5D", number: 5, direction: .down, start: PuzzlePoint(row: 0, col: 4), answer: "ETTRL", clue: "Practice fill")
+                CrosswordEntry(id: "1A", number: 1, direction: .across, start: PuzzlePoint(row: 0, col: 2), answer: "PEP", clue: "Energy and enthusiasm"),
+                CrosswordEntry(id: "4A", number: 4, direction: .across, start: PuzzlePoint(row: 1, col: 0), answer: "SCALE", clue: "Bathroom weighing device"),
+                CrosswordEntry(id: "8A", number: 8, direction: .across, start: PuzzlePoint(row: 2, col: 0), answer: "POISE", clue: "Composure under pressure"),
+                CrosswordEntry(id: "9A", number: 9, direction: .across, start: PuzzlePoint(row: 3, col: 0), answer: "INNER", clue: "Most interior"),
+                CrosswordEntry(id: "10A", number: 10, direction: .across, start: PuzzlePoint(row: 4, col: 0), answer: "NET", clue: "Tennis or fishing essential"),
+                CrosswordEntry(id: "2D", number: 2, direction: .down, start: PuzzlePoint(row: 1, col: 0), answer: "SPIN", clue: "Bowler's English"),
+                CrosswordEntry(id: "3D", number: 3, direction: .down, start: PuzzlePoint(row: 1, col: 1), answer: "CONE", clue: "Pine or traffic shape"),
+                CrosswordEntry(id: "1D", number: 1, direction: .down, start: PuzzlePoint(row: 0, col: 2), answer: "PAINT", clue: "What you load into a roller"),
+                CrosswordEntry(id: "5D", number: 5, direction: .down, start: PuzzlePoint(row: 0, col: 3), answer: "ELSE", clue: "Otherwise"),
+                CrosswordEntry(id: "6D", number: 6, direction: .down, start: PuzzlePoint(row: 0, col: 4), answer: "PEER", clue: "Equal or contemporary")
+            ]
+        )
+    }
+
+    /// Puzzle B — same shape, alternate words. Trickier vocab than A.
+    /// Layout:
+    ///     # # R I M
+    ///     S P O R E
+    ///     L A B O R
+    ///     A L O N E
+    ///     P E T # #
+    static func puzzleB() -> CrosswordEngine {
+        CrosswordEngine(
+            rows: 5,
+            columns: 5,
+            entries: [
+                CrosswordEntry(id: "1A", number: 1, direction: .across, start: PuzzlePoint(row: 0, col: 2), answer: "RIM", clue: "Wheel's outer edge"),
+                CrosswordEntry(id: "4A", number: 4, direction: .across, start: PuzzlePoint(row: 1, col: 0), answer: "SPORE", clue: "Mushroom seed"),
+                CrosswordEntry(id: "8A", number: 8, direction: .across, start: PuzzlePoint(row: 2, col: 0), answer: "LABOR", clue: "Hard work"),
+                CrosswordEntry(id: "9A", number: 9, direction: .across, start: PuzzlePoint(row: 3, col: 0), answer: "ALONE", clue: "By oneself"),
+                CrosswordEntry(id: "10A", number: 10, direction: .across, start: PuzzlePoint(row: 4, col: 0), answer: "PET", clue: "Family dog or cat"),
+                CrosswordEntry(id: "2D", number: 2, direction: .down, start: PuzzlePoint(row: 1, col: 0), answer: "SLAP", clue: "Open-handed strike"),
+                CrosswordEntry(id: "3D", number: 3, direction: .down, start: PuzzlePoint(row: 1, col: 1), answer: "PALE", clue: "Lacking color"),
+                CrosswordEntry(id: "1D", number: 1, direction: .down, start: PuzzlePoint(row: 0, col: 2), answer: "ROBOT", clue: "WALL-E or R2-D2"),
+                CrosswordEntry(id: "5D", number: 5, direction: .down, start: PuzzlePoint(row: 0, col: 3), answer: "IRON", clue: "Element with symbol Fe"),
+                CrosswordEntry(id: "6D", number: 6, direction: .down, start: PuzzlePoint(row: 0, col: 4), answer: "MERE", clue: "Nothing more than")
+            ]
+        )
+    }
+
+    /// Puzzle C — A's variant with STALE swapped in for SCALE (T vs C in col 1).
+    /// Layout:
+    ///     # # P E P
+    ///     S T A L E
+    ///     P O I S E
+    ///     I N N E R
+    ///     N E T # #
+    static func puzzleC() -> CrosswordEngine {
+        CrosswordEngine(
+            rows: 5,
+            columns: 5,
+            entries: [
+                CrosswordEntry(id: "1A", number: 1, direction: .across, start: PuzzlePoint(row: 0, col: 2), answer: "PEP", clue: "Vim and vigor"),
+                CrosswordEntry(id: "4A", number: 4, direction: .across, start: PuzzlePoint(row: 1, col: 0), answer: "STALE", clue: "Past freshness"),
+                CrosswordEntry(id: "8A", number: 8, direction: .across, start: PuzzlePoint(row: 2, col: 0), answer: "POISE", clue: "Calm self-assurance"),
+                CrosswordEntry(id: "9A", number: 9, direction: .across, start: PuzzlePoint(row: 3, col: 0), answer: "INNER", clue: "Innermost"),
+                CrosswordEntry(id: "10A", number: 10, direction: .across, start: PuzzlePoint(row: 4, col: 0), answer: "NET", clue: "Goalie's backstop"),
+                CrosswordEntry(id: "2D", number: 2, direction: .down, start: PuzzlePoint(row: 1, col: 0), answer: "SPIN", clue: "Quick rotation"),
+                CrosswordEntry(id: "3D", number: 3, direction: .down, start: PuzzlePoint(row: 1, col: 1), answer: "TONE", clue: "Audio quality"),
+                CrosswordEntry(id: "1D", number: 1, direction: .down, start: PuzzlePoint(row: 0, col: 2), answer: "PAINT", clue: "House-color verb"),
+                CrosswordEntry(id: "5D", number: 5, direction: .down, start: PuzzlePoint(row: 0, col: 3), answer: "ELSE", clue: "If not, what?"),
+                CrosswordEntry(id: "6D", number: 6, direction: .down, start: PuzzlePoint(row: 0, col: 4), answer: "PEER", clue: "Look closely")
             ]
         )
     }

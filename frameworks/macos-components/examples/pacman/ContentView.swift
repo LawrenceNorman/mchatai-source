@@ -2,13 +2,15 @@ import SwiftUI
 import AppKit
 
 struct ContentView: View {
-    @State private var engine = GridAdventureEngine.mazePelletMap()
+    @State private var engine = GridAdventureEngine.pacmanArcadeMap()
     @State private var ghostsRunning = false
     @State private var status = "Eat pellets and dodge ghosts."
 
-    private let timer = Timer.publish(every: 0.48, on: .main, in: .common).autoconnect()
-    private let cellSize: CGFloat = 70
-    private let cellGap: CGFloat = 4
+    @State private var ghostColorByID: [UUID: Color] = [:]
+
+    private let timer = Timer.publish(every: 0.32, on: .main, in: .common).autoconnect()
+    private let cellSize: CGFloat = 38
+    private let cellGap: CGFloat = 1
 
     var body: some View {
         ZStack(alignment: .topLeading) {
@@ -32,7 +34,7 @@ struct ContentView: View {
             .opacity(0.01)
             .accessibilityHidden(true)
         }
-        .frame(minWidth: 1120, minHeight: 760)
+        .frame(minWidth: 1040, minHeight: 640)
         .background(Color(red: 0.02, green: 0.02, blue: 0.07))
         .onReceive(timer) { _ in
             stepGhosts()
@@ -40,13 +42,13 @@ struct ContentView: View {
     }
 
     private var header: some View {
-        HStack(alignment: .bottom) {
-            VStack(alignment: .leading, spacing: 6) {
-                Text("Native Pac-Man")
-                    .font(.system(size: 40, weight: .black, design: .rounded))
+        HStack(alignment: .firstTextBaseline) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Pac-Man")
+                    .font(.system(size: 20, weight: .bold, design: .rounded))
                     .foregroundStyle(.white)
                 Text(status)
-                    .font(.title3.weight(.bold))
+                    .font(.caption.weight(.semibold))
                     .foregroundStyle(statusColor)
             }
 
@@ -56,6 +58,7 @@ struct ContentView: View {
             statBlock(label: "LIVES", value: "\(engine.lives)")
         }
         .frame(width: boardWidth)
+        .frame(maxHeight: 44)
     }
 
     private var mazeGrid: some View {
@@ -156,12 +159,12 @@ struct ContentView: View {
     }
 
     private func statBlock(label: String, value: String) -> some View {
-        VStack(alignment: .trailing, spacing: 2) {
+        HStack(spacing: 6) {
             Text(label)
-                .font(.caption.weight(.black))
-                .foregroundStyle(.white.opacity(0.52))
+                .font(.caption2.weight(.black))
+                .foregroundStyle(.white.opacity(0.55))
             Text(value)
-                .font(.system(size: 32, weight: .black, design: .rounded))
+                .font(.system(size: 18, weight: .heavy, design: .rounded))
                 .foregroundStyle(.white)
                 .monospacedDigit()
         }
@@ -201,22 +204,33 @@ struct ContentView: View {
             case .hero:
                 PacMouthShape()
                     .fill(Color.yellow.gradient)
-                    .frame(width: 46, height: 46)
+                    .frame(width: cellSize * 0.78, height: cellSize * 0.78)
                     .rotationEffect(rotation(for: actor.direction))
-                    .shadow(color: .yellow.opacity(0.35), radius: 8)
+                    .shadow(color: .yellow.opacity(0.35), radius: 6)
             case .enemy:
+                let color = actor.frightenedTicks > 0 ? Color.blue.opacity(0.75) : ghostColor(actor)
                 GhostShape()
-                    .fill(ghostColor(actor).gradient)
-                    .frame(width: 44, height: 44)
-                    .shadow(color: ghostColor(actor).opacity(0.35), radius: 8)
+                    .fill(color.gradient)
+                    .frame(width: cellSize * 0.74, height: cellSize * 0.74)
+                    .shadow(color: color.opacity(0.4), radius: 6)
             case .pellet:
                 Circle()
-                    .fill(Color.white.opacity(0.9))
-                    .frame(width: 10, height: 10)
+                    .fill(Color.white.opacity(0.92))
+                    .frame(width: 5, height: 5)
+            case .powerPellet:
+                Circle()
+                    .fill(Color.white)
+                    .frame(width: 14, height: 14)
+                    .shadow(color: .white.opacity(0.6), radius: 4)
+            case .fruit:
+                Image(systemName: "applelogo")
+                    .font(.system(size: cellSize * 0.6, weight: .black))
+                    .foregroundStyle(Color.red.gradient)
+                    .shadow(color: .red.opacity(0.45), radius: 4)
             default:
                 Circle()
                     .fill(Color.white)
-                    .frame(width: 16, height: 16)
+                    .frame(width: 12, height: 12)
             }
         }
     }
@@ -229,7 +243,15 @@ struct ContentView: View {
     }
 
     private func ghostColor(_ actor: AdventureActor) -> Color {
-        actor.position.row < 3 ? .red : .purple
+        if let known = ghostColorByID[actor.id] { return known }
+        let palette: [Color] = [.red, .pink, .cyan, .orange]
+        let assigned = palette[ghostColorByID.count % palette.count]
+        DispatchQueue.main.async {
+            if ghostColorByID[actor.id] == nil {
+                ghostColorByID[actor.id] = assigned
+            }
+        }
+        return assigned
     }
 
     private func rotation(for direction: GridDirection) -> Angle {
@@ -283,7 +305,8 @@ struct ContentView: View {
     }
 
     private func reset() {
-        engine = GridAdventureEngine.mazePelletMap()
+        engine = GridAdventureEngine.pacmanArcadeMap()
+        ghostColorByID = [:]
         ghostsRunning = false
         status = "Eat pellets and dodge ghosts."
         print("[PacManExample] reset")
