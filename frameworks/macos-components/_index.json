@@ -224,6 +224,23 @@
       "goodFits": ["NYT mini crossword clone", "mini crossword", "daily crossword"]
     },
     {
+      "id": "crossword.bank",
+      "name": "MiniCrosswordBank",
+      "category": "crossword",
+      "path": "components/crossword/MiniCrosswordBank.swift",
+      "exports": [
+        "MiniCrosswordBank"
+      ],
+      "status": "ready",
+      "summary": "Curated bank of 10 NYT-mini-style crossword puzzles with daily rotation. MiniCrosswordSeed.daily() routes through this bank; the View can also use puzzle(at:) for prev/next navigation and dailyIndex() for a 'Puzzle X of N' HUD.",
+      "tags": ["crossword", "puzzle-bank", "daily-rotation"],
+      "contracts": {
+        "rotation": "Use MiniCrosswordBank.daily(referenceDate:) for the daily puzzle. Use MiniCrosswordBank.dailyIndex() for the (index, total) tuple to render 'Puzzle X of N'.",
+        "navigation": "Use MiniCrosswordBank.puzzle(at:) for prev/next chevron navigation."
+      },
+      "goodFits": ["daily crossword with bank rotation", "NYT mini clone with prev/next navigation"]
+    },
+    {
       "id": "crossword.smoke-tests",
       "name": "CrosswordSmokeTests",
       "category": "crossword",
@@ -673,13 +690,14 @@
       "keywords": ["crossword", "mini crossword", "NYT mini crossword", "nyt mini", "daily crossword", "across clues", "down clues", "crossword clues"],
       "templateIDs": [],
       "existingApps": ["NYT mini crossword clone", "mini crossword"],
-      "starterComponents": ["gridpuzzle.core", "crossword.engine", "crossword.smoke-tests"],
+      "starterComponents": ["gridpuzzle.core", "crossword.engine", "crossword.bank", "crossword.smoke-tests"],
       "assemblyNotes": [
         "Copy the crossword engine verbatim and build the SwiftUI board/clue list as app-specific glue.",
+        "Always include MiniCrosswordBank.swift — it has 10 curated puzzles + daily rotation + prev/next navigation. Use MiniCrosswordSeed.daily() for the initial load (which routes through the bank), and surface 'Puzzle X of N' + chevron prev/next in the View per pz-puzzle-bank-rotation wisdom.",
         "Expose across/down selection, arrow-key movement, letter input, delete, active clue highlighting, and solved feedback.",
         "Call CrosswordSmokeTests.printLaunchReport() from app init()."
       ],
-      "requiredNow": ["gridpuzzle.core", "crossword.engine", "crossword.smoke-tests"],
+      "requiredNow": ["gridpuzzle.core", "crossword.engine", "crossword.bank", "crossword.smoke-tests"],
       "plannedNext": ["crossword-timer", "crossword-streak-store"]
     },
     {
