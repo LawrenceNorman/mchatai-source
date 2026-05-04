@@ -1,6 +1,6 @@
 {
   "packID": "macos-app",
-  "version": 8,
+  "version": 11,
   "displayName": "macOS App Generation Wisdom",
   "description": "Rules for generating executable macOS apps (SwiftUI / AppKit) via Swift Playground. Focused on making the generated binary actually appear as a visible, interactive window \u2014 not a headless background process.",
   "categories": [
@@ -292,6 +292,45 @@
         "WRONG: Setting `game.status = 'GAME OVER score=0'` in the HUD label and stopping the game. User can't restart without using the menu bar.",
         "WRONG: Only the menu-bar shortcut. macOS users don't discover Cmd+N mid-play unless explicitly told.",
         "Real incident 2026-05-04: shipped Lunar Lander had 'GAME OVER score=0' as a static HUD label with no UI button. User reported needing a restart button as fundamental wisdom for all games."
+      ],
+      "appliesTo": "macOSApp"
+    },
+    {
+      "id": "mac-023",
+      "rule": "Do NOT prefix the user-facing app title with 'Native'. e.g. write 'Mastermind', 'Asteroids', 'Hold'em Poker' \u2014 NOT 'Native Mastermind', 'Native Asteroids', 'Native Hold'em Poker'. The word 'Native' is mChatAI's internal-architecture label distinguishing macos-components-built apps from web-mini-apps. End users don't care about that distinction; the prefix just makes every title noisy + samey. The ID/slug can keep 'native-' as a namespace (e.g. recipe ID `recipe.native-word-game` is fine for catalog routing) but the rendered Text(\"...\") in the title bar / hero label / WindowGroup name MUST be the bare product name.",
+      "why": "User feedback 2026-05-04 after reviewing the catalog reference apps: \"The 'Native' word is everywhere in here, it's a bit overkill\". Stripping it across 9 example ContentViews fixed the immediate visual noise, but every NEW catalog example generation could re-introduce it. Locking the rule in wisdom prevents recurrence.",
+      "severity": "medium",
+      "appliesTo": "macOSApp",
+      "examples": [
+        "RIGHT: Text(\"Mastermind\"), WindowGroup(\"Mini Crossword\"), Text(\"Hold'em Poker\")",
+        "WRONG: Text(\"Native Mastermind\"), WindowGroup(\"Native Mini Crossword\"), Text(\"Native Hold'em Poker\")",
+        "OK in identifiers (not user-facing): recipe IDs, target names, bundle identifiers like com.mchatai.wizard.native-poker \u2014 those stay namespaced.",
+        "Real edits: 9 examples in mchatai-source/frameworks/macos-components/examples/ all said Text(\"Native X\") in their hero labels. Stripped 2026-05-04 (commit pending)."
+      ]
+    },
+    {
+      "id": "mac-024",
+      "rule": "When you highlight a selected/active cell in a grid game (crossword, sudoku, minesweeper, board game), pick the cell color and the text color as a PAIR. Either (a) light pale-blue cell with dark/black glyph, or (b) saturated blue cell with white glyph \u2014 but NOT a saturated dark blue cell that the user is supposed to type letters into while the glyph is unreadable. Lawrence's standing preference for puzzle games: lighter palettes (pale-blue selection at ~Color(red:0.85, green:0.92, blue:1.0), very-pale-blue active row/col at ~Color(red:0.93, green:0.96, blue:1.0)) with dark text. The 'fully saturated .blue with .white text' pattern reads like a banner notification, not a typing target.",
+      "why": "User feedback 2026-05-04 on the catalog Mini Crossword: \"verification, lighter colors\". The reference had `cellFill: .blue` for the selected cell + `.white` text \u2014 sharp and readable but visually overwhelming for a puzzle that's mostly about reading clues + typing letters. Switched to pale-blue with dark text 2026-05-04 (commit pending).",
+      "severity": "medium",
+      "appliesTo": "macOSApp",
+      "examples": [
+        "RIGHT (light palette, dark glyphs): selected = Color(red:0.85, green:0.92, blue:1.0) with .black text",
+        "RIGHT (saturated palette, light glyphs): selected = .blue with .white text \u2014 sharp but stays consistent",
+        "WRONG (mixed): selected = .blue cell + .white text where active-row cells are pale-blue + .black text \u2014 the eye does extra work to map active vs selected",
+        "Active-row/col / 'soft highlight' should be a 2x lighter version of the selected color so they read as a subtle hint, not a competing call-to-action."
+      ]
+    },
+    {
+      "id": "mac-025",
+      "rule": "The 'visible on-screen restart button' rule (mac-022 / ag-restart-button) applies to EVERY terminal phase, not just the obvious 'lose' state. Specifically: (a) win \u2014 show 'Play Again' overlay (b) lose \u2014 show 'Play Again' overlay (c) draw / stalemate (in 2-player games) \u2014 show 'Rematch' overlay (d) puzzle-solved \u2014 show 'Next puzzle' or 'Play Again' overlay. If the engine has any phase OTHER than the live 'playing' state, that phase needs a restart UI affordance, not just a status label. Keyboard shortcuts (Cmd+N, R) are an escape hatch but the on-screen button is mandatory.",
+      "why": "User feedback 2026-05-04 on the catalog Minesweeper reference: \"A restart button would be nice (instead of just hitting R)\". The reference had a 'New Game' button hidden in a controls row + an 'R' keyboard shortcut, but no overlay on the win/lose screen. Same pattern slipped through on the original mac-022 review. Extending the rule explicitly so future reviewers know: every non-playing phase needs an overlay button.",
+      "severity": "high",
+      "examples": [
+        "RIGHT: `if engine.state == .won || engine.state == .lost { gameOverOverlay }` with the overlay containing a Button('Play Again') keyboardShortcut(.return) and a status message.",
+        "RIGHT (puzzle): when isSolved becomes true, overlay 'New Puzzle' button. NOT 'press Cmd+N' \u2014 the button is the affordance.",
+        "WRONG: only setting `statusMessage = 'GAME OVER'` and relying on the user to find the small 'New Game' button in a controls row.",
+        "Real incident 2026-05-04: shipped Lunar Lander v1 had 'GAME OVER score=0' as static HUD. Catalog Minesweeper reference had hidden 'New Game' in controls. Same family of misses."
       ],
       "appliesTo": "macOSApp"
     }

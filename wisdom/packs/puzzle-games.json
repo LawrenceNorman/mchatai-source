@@ -1,6 +1,6 @@
 {
   "packID": "puzzle-games",
-  "version": 2,
+  "version": 3,
   "displayName": "Puzzle Game Guidelines",
   "description": "Quality rules for word search, crossword, sudoku, wordle, and other puzzle games.",
   "categories": [
@@ -249,6 +249,18 @@
         "WRONG: Showing 'GAME OVER score=0' in the HUD label and stopping the game loop. User can't restart without quitting and relaunching.",
         "WRONG: Only Cmd+N / menu shortcut. Users don't think to look there mid-play.",
         "Bonus: keyboard shortcut on the button itself (e.g. Space or Return = Play Again) for users who prefer keyboard."
+      ]
+    },
+    {
+      "id": "pz-verify-affordance",
+      "rule": "Every grid/word puzzle (crossword, sudoku, word search, kakuro, picross) MUST expose a 'Check' affordance that lets the solver verify their guesses mid-puzzle. The most common pattern: a toggle button in the controls row that, when ON, paints filled cells with a soft green (correct) or soft red (wrong) tint based on per-letter / per-cell answer comparison. Without a Check, the only feedback the solver gets is 'isSolved == true' at the very end \u2014 which means hitting a wrong guess is invisible until they've already filled the entire grid. The affordance must NOT auto-spoil unsolved cells; only filled cells get the tint.",
+      "why": "User feedback 2026-05-04 on the catalog Mini Crossword reference: \"nice to haves: verification, lighter colors\". The shipped example had `cell.isCorrect` available on the engine but only used it AFTER the full puzzle solved (binary). Added a verifyMode toggle 2026-05-04 (commit pending) that uses the same per-cell isCorrect flag for mid-puzzle feedback.",
+      "severity": "medium",
+      "examples": [
+        "RIGHT pattern: `@State private var verifyMode = false` + Button('Check') { verifyMode.toggle() } + cellFill considers verifyMode and paints pale green/red for filled cells.",
+        "OK alternative: auto-tint after every Enter (per-row verification, like Wordle does) \u2014 same end-result, different UX.",
+        "WRONG: only show correctness when engine.isSolved becomes true. The solver burns an entire round on a wrong guess they couldn't verify.",
+        "WRONG: tinting the answer in unsolved cells (e.g. ghost-text pre-fill). That's a hint, not a check."
       ]
     }
   ],
