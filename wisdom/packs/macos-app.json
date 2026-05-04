@@ -243,6 +243,18 @@
       ]
     },
     {
+      "id": "mac-020",
+      "rule": "Multi-line text inside `String(format: \"...\")`, `print(\"...\")`, or any double-quoted Swift string literal MUST escape newlines as `\\n` — DO NOT put a literal newline inside `\"...\"`. The compiler reports `unterminated string literal`. If you genuinely want multi-line text without escapes, use triple-quoted Swift literals: `\"\"\" line1\\n line2 \"\"\"` (the indentation rules are particular — see Swift's multiline string spec). For `String(format:)` HUD formatting, ALWAYS use `\\n` between lines. Real example that bit Lunar Lander 2026-05-04: `hudLabel.text = String(format: \"ALT %5.0f<newline>VVEL %+6.2f\", alt, vy)` — the compiler hits the literal newline and sees an unterminated string.",
+      "why": "Wave-4 round-6 Lunar Lander L3 canary 2026-05-04: 16 'unterminated string literal' errors at GameScene.swift lines 315-321 because the LLM wrote multi-line `String(format:)` calls with literal newlines instead of `\\n`. Auto-fix didn't resolve. The LLM probably came from Python or another language where literal newlines in strings are fine; Swift doesn't allow that in double-quoted literals.",
+      "severity": "high",
+      "appliesTo": "macOSApp",
+      "examples": [
+        "RIGHT: `String(format: \"ALT %5.0f\\nVVEL %+6.2f\", alt, vy)` — escaped newline.",
+        "RIGHT (multi-line, when really wanting multiple lines): `\"\"\" ALT \\(alt)\\n VVEL \\(vy) \"\"\"`",
+        "WRONG: `String(format: \"ALT %5.0f<actual newline>VVEL %+6.2f\", ...)` — compile error 'unterminated string literal'."
+      ]
+    },
+    {
       "id": "mac-019",
       "rule": "Swift 6 strict concurrency: `SKPhysicsContactDelegate.didBegin(_ contact:)` is `nonisolated` by default, but the typical handler body needs to call `@MainActor`-isolated game state. The contact parameter is task-isolated and cannot be sent into a `Task { @MainActor in }` closure (`error: sending 'contact' risks causing data races`). Fix: capture the SENDABLE data from the contact (node references, categoryBitMask values, position values) BEFORE entering the Task closure. SKPhysicsBody's `node` and `categoryBitMask` are sendable; SKPhysicsContact itself is not. Pattern: `nonisolated func didBegin(_ contact: SKPhysicsContact) { let nodeA = contact.bodyA.node; let nodeB = contact.bodyB.node; let cats = (contact.bodyA.categoryBitMask, contact.bodyB.categoryBitMask); Task { @MainActor in ... use nodeA/nodeB/cats ... } }`.",
       "why": "Wave-4 round-6 Joust canary 2026-05-04 hit this. The auto-fix attempts repeatedly captured `contact` itself into the @MainActor Task closure, which Swift 6 forbids. Capturing only the sendable fields BEFORE the closure unblocks the build. SKNode is @MainActor-isolated for most properties but the reference itself is sendable; same for category bitmasks (UInt32). This pattern works for any nonisolated SKPhysicsContactDelegate or SKSceneDelegate callback that needs to bounce to main actor.",
