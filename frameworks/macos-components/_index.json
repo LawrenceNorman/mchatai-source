@@ -1263,6 +1263,31 @@
       ]
     },
     {
+      "id": "assembly.music-piano.basic",
+      "name": "Native Music Piano Golden Assembly",
+      "summary": "Minimal SwiftUI piano keyboard. PianoEngine drives note metadata + active-note state; click + computer-keyboard input (A W S E D F T G Y H U J) trigger noteOn/noteOff. NSSound.beep() is the placeholder synth — adapt to AVAudioEngine, AudioKit, or AudioUnit at the call site.",
+      "recipeID": "recipe.music-piano",
+      "templateIDs": [],
+      "keywords": [
+        "piano",
+        "keyboard",
+        "music",
+        "synth",
+        "playable notes",
+        "music keyboard"
+      ],
+      "files": [
+        "examples/music-piano/ContentView.swift",
+        "examples/music-piano/ExampleAppInit.swift"
+      ],
+      "notes": [
+        "Treat example files as glue patterns, not components. Adapt visual style (key colors, octave layout, sustain pedal UI), audio backend (AVAudioEngine, AudioKit, AudioUnit), and keyboard mapping to the user's requested product. The patterns to KEEP are: (a) PianoEngine as the source of truth for note metadata + active-note state, (b) tap + computer-keyboard input → engine.noteOn / engine.noteOff, (c) UI highlight bound to engine.activeNotes.contains(note.id).",
+        "PianoEngine is a byte-for-byte canonical copy under Sources/<TargetName>/MChatAIComponents/. Do NOT redefine PianoNote.frequency or override the MIDI math.",
+        "For multi-octave keyboards: instantiate multiple PianoEngine(octave:) — keep them in an array and concatenate notes for rendering. The engine is intentionally per-octave so noteOn/noteOff scoping stays simple.",
+        "For real audio: replace NSSound.beep() in ContentView.strike with an AVAudioEngine sine-wave node tuned to PianoNote.frequency, OR a sampled-piano AUSampler patch."
+      ]
+    },
+    {
       "id": "assembly.spritekit-physics.basic",
       "name": "Native SpriteKit Physics Game Golden Assembly",
       "summary": "Minimal Lunar-Lander-flavored SpriteKit reference: SwiftUI host with SpriteView, GameModel observable, GameScene with SKPhysicsContactDelegate, and a visible game-over restart button (mac-022). Demonstrates the canonical wiring of SpriteKitPhysicsHelpers — gravity preset, makeRectangularBody/makeStaticBody/makeSceneBoundary factories, lunarThrustForce preset for applyForce, and the snapshot(of:)+@MainActor Task pattern for didBegin contact handling.",
@@ -1293,6 +1318,58 @@
         "For Joust-style games, swap lunarGravity for standardGravity and earthThrustForce for the higher per-flap impulse. Keep the makeSceneBoundary edge-loop so mounts can't fly off-screen.",
         "For Marble Madness, replace the lander's rectangular body with makeCircularBody, set allowsRotation = true, and let gravity + tilt drive the marble. Goal becomes the level exit, lava becomes hole-edges via makeStaticBody with category .lava.",
         "Cmd+N keyboard shortcut + on-screen restart button are BOTH required (mac-022 is the on-screen rule; menu shortcut is the keyboard escape hatch)."
+      ]
+    },
+    {
+      "id": "assembly.arcade-adventure.basic",
+      "name": "Native Arcade Adventure Golden Assembly",
+      "summary": "Atari-Adventure-style top-down maze adventure: hero on a tile grid, treasure / keys / enemies, exit tile to win. Driven by GridAdventureEngine.adventureCastleMap() seed. Visible Play Again button on win/loss (mac-022).",
+      "recipeID": "recipe.arcade-adventure",
+      "templateIDs": [],
+      "keywords": [
+        "atari adventure",
+        "adventure clone",
+        "castle adventure",
+        "treasure",
+        "key",
+        "maze adventure",
+        "dragon"
+      ],
+      "files": [
+        "examples/arcade-adventure/ContentView.swift",
+        "examples/arcade-adventure/ExampleAppInit.swift"
+      ],
+      "notes": [
+        "Treat example files as glue patterns, not components. Adapt visual style, sprite art, level layout, sound to the user's requested product. The patterns to KEEP are: (a) GridAdventureEngine seeded via adventureCastleMap() (or your own custom map seed), (b) arrow keys → engine.moveHero(.up/.down/.left/.right), (c) Canvas-based grid renderer iterating engine.map and engine.actors, (d) game-over overlay with VISIBLE 'Play Again' button (mac-022).",
+        "GridAdventureEngine + ArcadeCore.swift + GridPuzzleCore.swift are byte-for-byte canonical copies under Sources/<TargetName>/MChatAIComponents/. Do NOT rewrite tile types, actor kinds, or the moveHero / stepTraffic logic.",
+        "PuzzlePoint uses (row, col) — NOT (column, row). PuzzleGrid uses (rows, columns). The mismatch is by design: points are addressed (row, col) for matrix-style code; grid metadata is exposed as (rows, columns) for readability. Keep the constructor calls in sync.",
+        "For a Frogger-style game, swap the seed for froggerLaneMap() and use stepTraffic() in the per-frame timer. For a Pac-Man-style game, swap to mazePelletMap() / pacmanArcadeMap() — both share GridAdventureEngine."
+      ]
+    },
+    {
+      "id": "assembly.platformer.basic",
+      "name": "Native Platformer Golden Assembly",
+      "summary": "Minimal SwiftUI Canvas-based platformer with PlatformerEngine driving player movement, gravity, jumping, and platform collision. Includes a visible Play Again restart button on game-over (mac-022) and Cmd+N CommandMenu shortcut.",
+      "recipeID": "recipe.platformer",
+      "templateIDs": [],
+      "keywords": [
+        "platformer",
+        "mario",
+        "side-scroller",
+        "side scrolling",
+        "jump",
+        "plumber",
+        "pyramid hopper"
+      ],
+      "files": [
+        "examples/platformer/ContentView.swift",
+        "examples/platformer/ExampleAppInit.swift"
+      ],
+      "notes": [
+        "Treat example files as glue patterns, not components. Adapt visual style, sprite art, level layouts, sound, and tuning to the user's requested product. The patterns to KEEP are: (a) PlatformerEngine driving player + platforms + gravity, (b) ArcadeControls feeding engine.update via per-frame timer, (c) game-over overlay with VISIBLE 'Play Again' button (mac-022), (d) Cmd+N CommandMenu shortcut posting Notification.platformerNewGame.",
+        "PlatformerEngine + ArcadeCore.swift are byte-for-byte canonical copies under Sources/<TargetName>/MChatAIComponents/ — do NOT rewrite player physics, jump impulse, gravity, or platform-resolve logic. If you need different tuning, surface it as input to the engine, not a fork.",
+        "For BurgerTime / Donkey Kong / Mario Bros style games, replace the scene's `coins` with collectibles + add enemy bodies that chase the player (use ArcadeBody.intersects for circle-vs-circle hit detection per mac-018). Keep PlatformerEngine.update as the gravity/jump source of truth.",
+        "For Pyramid Hopper / Q*bert hops, remove the gravity-fall path and lock the player to discrete diamond cells; PlatformerEngine isn't the right engine for that. Use grid-puzzle.core instead."
       ]
     }
   ]
