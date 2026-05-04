@@ -1,0 +1,72 @@
+{
+  "version": 1,
+  "lastUpdated": "2026-05-04",
+  "_source_of_truth": true,
+  "_comment": "Policy for the Catalog Writeback (Phase CW) feature — silent component extraction during user deploy/publish, admin-gated promotion to mchatai-source main. The Mac app reads triggerSignalWeights + extractor restrictions at capture time. The web admin Cloud Functions (runComponentDiscriminator, promoteComponentCandidate) read the rest at promotion time. Mirrors template-promotion-policy.json but routes promoted artifacts to frameworks/<platform>/components/ instead of harness/templates/. See planning doc ah-i-just-had-declarative-glade.md.",
+
+  "minDiscriminatorConfidenceForReview": 0.55,
+  "_minConfidenceComment": "Tighter than the template review threshold (0.50) because catalog corruption is asymmetric in cost — a bad component poisons every future generation that hits its keywords, whereas a bad template just wastes a slot in the catalog list. Web admin can opt-in to lower-confidence candidates via a filter.",
+
+  "triggerSignalWeights": {
+    "deployToWeb": 1.0,
+    "publishToCommunity": 1.5
+  },
+  "_triggerWeightsComment": "Lower than template equivalents (1.5 / 2.0) because component candidates have weaker provenance — the Lego is one extracted slice of a deployed app, not the app itself. Public publish still weighs higher than private deploy because the user committed to sharing the parent app.",
+
+  "targetBaseDirectory": "frameworks",
+  "_targetBaseComment": "Promoted components land at frameworks/<platform>/components/<category>/<slug>.<ext> with a sibling CONTEXT.md in <slug>/. Platform = web-components / macos-components / mobile-components / pipelines.",
+
+  "subdirectoryByPlatform": {
+    "web-components": "web-components",
+    "macos-components": "macos-components",
+    "mobile-components": "mobile-components",
+    "pipelines": "pipelines"
+  },
+  "_subdirComment": "Per-platform parallel directory structure under frameworks/. Renaming a subdir is a content change here + a git mv — no Swift code change required.",
+
+  "extractorProviderAllowList": ["claudeCode", "openAICodex"],
+  "_extractorProviderComment": "HARD allow-list. The component-extraction LLM call is restricted to Claude Code or OpenAI Codex only — lower-tier models produce malformed _index.json patches, broken markers, or weak keywords that pollute the catalog. Adding any other provider here MUST be matched in CW.3's ProposerKind.componentExtraction routing.",
+
+  "discriminatorProvider": "openai",
+  "_discriminatorProviderComment": "The DISCRIMINATOR (run by Cloud Function on the candidate after it lands) can be a smaller model — it's just classifying promote/decline + suggesting slug/category. The EXTRACTOR (run by Mac app to produce the candidate) is restricted by extractorProviderAllowList. Different gates.",
+
+  "discriminatorModelByProvider": {
+    "anthropic": "claude-sonnet-4-6",
+    "openai": "gpt-4o",
+    "google": "gemini-2.5-flash"
+  },
+  "_discriminatorModelComment": "Same models the template discriminator uses. The component discriminator prompt lives at agents/prompts/component-discriminator.md.",
+
+  "autoFilterCategoriesAlreadyAtSize": {
+    "music": 4,
+    "puzzle": 6,
+    "arcade": 8,
+    "card-game": 5,
+    "board-game": 5,
+    "word-game": 4,
+    "crossword": 3
+  },
+  "_autoFilterComment": "If a category already has N components in the live _index.json, any new candidate in it must beat 0.80 discriminator confidence to surface in the default review queue. Prevents catalog bloat in saturated categories. Empty map = no auto-filter.",
+
+  "screeningCapPerInvocation": 5,
+  "_screeningCapComment": "When admin opens the queue or a screening Cloud Function fires, screen at most this many unscreened candidates per call. Bound API spend on an aged backlog.",
+
+  "qualityGate": {
+    "minRubricScore": 13,
+    "maxFixAttempts": 2,
+    "minSameKeywordSessions": 2,
+    "minDaysSinceDeployForUnratedAcceptance": 7
+  },
+  "_qualityGateComment": "Strict gate (per user direction 2026-05-04): only sessions with rubric ≥13/14, ≤2 fix attempts, build clean, and EITHER thumbs-up OR ≥7 days with no negative feedback are eligible for extraction. Cluster threshold (minSameKeywordSessions) requires ≥2 sessions hit the same matcher-miss cluster before extraction fires — one anecdote isn't enough.",
+
+  "validatorRules": [
+    "schema",
+    "id-collision",
+    "mr1-keyword-discipline",
+    "marker-presence",
+    "path-safety",
+    "word-boundary-safety",
+    "component-not-just-glue"
+  ],
+  "_validatorComment": "All 7 rules must pass before a candidate is staged. Failure logs to component-extraction-attempts.jsonl and the candidate is silently dropped. End user is never notified of validator outcomes."
+}
