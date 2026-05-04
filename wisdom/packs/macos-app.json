@@ -190,7 +190,32 @@
         "RIGHT: In GameScene.update after ghost.update: `if dist(ghost.position, pacMan.position) < threshold { if ghost.isFrightened { ghost.isEaten = true; gameState.eatGhost() } else { handlePacManCaught() } }`",
         "WRONG: Writing handlePacManCaught() as a standalone method that requires an external caller but having no caller in the update loop"
       ]
+    },
+    {
+      "id": "mac-015",
+      "rule": "Any `static` method that touches an `@MainActor` (or `@Published`) property — e.g. on an `ObservableObject` `GameState` — MUST itself be annotated `@MainActor`. Otherwise Swift 6 strict concurrency rejects with `main actor-isolated property 'X' can not be referenced from a nonisolated context`. The two most common offenders: (a) `static func draw(in:size:cellSize:game:time:)` on a renderer enum/struct that reads `game.popup`, `game.pacDirection`, etc. — annotate the whole `static func draw(...)` with `@MainActor`. (b) `static func printGameSmoke()` on a smoke-test enum that constructs a `GameState()` and reads its published vars — same fix. The compiler note even spells the fix: `add '@MainActor' to make static method 'draw(in:size:cellSize:game:time:)' part of global actor 'MainActor'`.",
+      "why": "macOS Pac-Man canary 2026-05-03 hit this on TWO files (MazeRenderer.swift static draw + GameState.swift PacManSmokeTests.printGameSmoke) within one generation. The wizard's auto-fix loop didn't squash both within maxTurns=4. The fix is mechanical (one annotation) but the LLM forgets it on first emission whenever the renderer/smoke-test is split out as `enum SomeStatic { static func ... }`. Adding `@MainActor` at the static-function level is cheaper than turning the whole enum into `@MainActor` because most static helpers are pure.",
+      "severity": "high",
+      "appliesTo": "macOSApp",
+      "examples": [
+        "RIGHT: `enum MazeRenderer { @MainActor static func draw(in ctx: inout GraphicsContext, size: CGSize, cellSize: Double, game: GameState, time: TimeInterval) { ... } }`",
+        "RIGHT: `enum PacManSmokeTests { @MainActor static func printGameSmoke() { let game = GameState(); print(game.pacDirection.rawValue) } }`",
+        "WRONG: `enum MazeRenderer { static func draw(..., game: GameState, ...) { _ = game.popup } }` — compile error: 'main actor-isolated property popup can not be referenced from a nonisolated context'.",
+        "Also accept: `@MainActor enum MazeRenderer { ... }` annotates every member at once. Useful when MOST static methods touch the actor — but adds isolation to pure helpers too, which makes them harder to call from non-main contexts. Prefer per-method when in doubt."
+      ]
+    },
+    {
+      "id": "mac-016",
+      "rule": "A `guard <condition> else { ... }` body MUST end with a control-flow exit on EVERY path: `return`, `throw`, `continue`, `break`, `fatalError(...)`, `precondition(false)`. Specifically, do NOT write `guard X else { if Y { setupY() } else { return } }` — the if-branch falls through and the compiler rejects: `'guard' body must not fall through, consider using a 'return' or 'throw' to exit the scope`. If you need 'set up Y, then continue' as the recovery branch, refactor to a plain `if X == .empty { ... }` block (no guard) — guards are for early-exit only. Pattern that bit Pac-Man movePac(): `guard pacDirection != .none else { if pacQueued != .none, isPassable(...) { pacDirection = pacQueued; pacQueued = .none } else { return } }` — the if-branch's intent is 'recover and proceed' but guard syntax forbids that. Replace with: `if pacDirection == .none { if pacQueued != .none, isPassable(...) { pacDirection = pacQueued; pacQueued = .none } else { return } }`.",
+      "why": "Pac-Man canary 2026-05-03 emitted the bad guard pattern in `movePac(dt:)`. The auto-fix loop didn't catch it. Filed so future macOSApp generators recognize 'I want guard for early-exit but I also want a recovery branch' and reach for plain if/else instead.",
+      "severity": "high",
+      "appliesTo": "macOSApp",
+      "examples": [
+        "RIGHT (recovery + continue): `if pacDirection == .none { if pacQueued != .none, canMove(pacQueued) { pacDirection = pacQueued; pacQueued = .none } else { return } }; advance(...)`",
+        "RIGHT (pure early-exit, no recovery): `guard pacDirection != .none else { return }; advance(...)`",
+        "WRONG: `guard pacDirection != .none else { if pacQueued != .none, canMove(pacQueued) { pacDirection = pacQueued } else { return } }` — compile error: 'guard body must not fall through'."
+      ]
     }
   ],
-  "_last_updated": "2026-05-01"
+  "_last_updated": "2026-05-03"
 }

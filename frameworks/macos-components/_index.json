@@ -25,6 +25,7 @@
       "components/board-game/BoardGameCore.swift",
       "components/board-game/CheckersRules.swift",
       "components/board-game/ChessRules.swift",
+      "components/arcade/ArcadeProjectile.swift",
       "components/desktop-shell/MacOSMiniHeader.swift",
       "components/arcade/ArcadeCore.swift",
       "components/arcade/AsteroidsEngine.swift",
@@ -490,15 +491,30 @@
       "name": "TowerDefenseEngine",
       "category": "arcade",
       "path": "components/arcade/TowerDefenseEngine.swift",
-      "exports": ["TowerDefenseEngine", "TowerDefenseEnemy", "TowerDefenseTower"],
+      "exports": ["TowerDefenseEngine", "TowerDefenseEnemy", "TowerDefenseTower", "TowerKind", "EnemyKind", "TowerDefensePreset"],
       "status": "ready",
-      "summary": "Tower-defense model with path-following enemies, tower placement, range targeting, cooldowns, waves, credits, lives, and win/loss phase.",
-      "tags": ["tower defense", "waves", "turrets", "path"],
+      "summary": "Tower-defense model with 4 turret kinds (basic/cannon/frost/beam — mirroring web `entities/TurretVariants.js`), 3 enemy kinds (normal/fast/heavy), splash damage, frost-slow, range targeting, cooldowns, waves, credits, lives, and win/loss phase. Emits ArcadeProjectile records on every fire so renderers can draw tracers, cannon shells, frost pulses, and continuous beams.",
+      "tags": ["tower defense", "waves", "turrets", "path", "splash", "frost", "beam"],
       "contracts": {
-        "input": "Call placeTower(at:) from grid clicks and startWave(count:) from a wave button.",
-        "loop": "Call update(dt:) from the app timer."
+        "input": "Call placeTower(at:kind:) from grid clicks and startWave(count:) from a wave button.",
+        "loop": "Call update(dt:) from the app timer; render `engine.enemies` AND `engine.projectiles` each frame."
       },
-      "goodFits": ["tower defense clone", "waves and turrets"]
+      "goodFits": ["tower defense clone", "waves and turrets", "frost slows + cannon AoE + laser beams"]
+    },
+    {
+      "id": "arcade.projectile",
+      "name": "ArcadeProjectile",
+      "category": "arcade",
+      "path": "components/arcade/ArcadeProjectile.swift",
+      "exports": ["ArcadeProjectile", "ArcadeProjectileKind"],
+      "status": "ready",
+      "summary": "Visual record of an in-flight or beam-active shot. Mirrors web `entities/Projectile.js` plus the beam-draw mode from `entities/TurretVariants.js`. Tower-defense engines append instances on fire; renderers read `engine.projectiles` each frame and draw tracers/cannon-shells/frost-pulses/beams accordingly.",
+      "tags": ["projectile", "shot", "tracer", "beam", "splash", "tower defense"],
+      "contracts": {
+        "state": "Travel-class kinds use `t` (0..1) over `lifetime`; beam kinds have `lifetime=0` and rely on the parent tower's `lastTargetID` to stay alive.",
+        "rendering": "Renderer should fade or clear travel-class projectiles when `t >= 1` and stop drawing beam-class when `live == false`."
+      },
+      "goodFits": ["tower defense", "any 2D arcade game with projectiles"]
     },
     {
       "id": "arcade.smoke-tests",
@@ -784,17 +800,19 @@
     {
       "id": "recipe.tower-defense",
       "name": "Native Tower Defense",
-      "keywords": ["tower defense", "waves", "turret", "creeps", "path", "tower placement"],
+      "keywords": ["tower defense", "waves", "turret", "creeps", "path", "tower placement", "cannon", "frost", "beam"],
       "templateIDs": [],
       "existingApps": ["tower-defense"],
-      "starterComponents": ["arcade.core", "gridpuzzle.core", "arcade.tower-defense", "arcade.smoke-tests"],
+      "starterComponents": ["arcade.core", "gridpuzzle.core", "arcade.tower-defense", "arcade.projectile", "arcade.smoke-tests"],
       "assemblyNotes": [
-        "Use TowerDefenseEngine for pathing, waves, tower placement, targeting, cooldowns, lives, credits, and phase.",
-        "Render the map grid, tower range previews, wave controls, enemies, and economy HUD in app glue.",
-        "Call ArcadeSmokeTests.printLaunchReport() from app init(), and add app-specific stdout that confirms TowerDefenseEngine wiring."
+        "Use TowerDefenseEngine for pathing, waves, 4 turret kinds (basic/cannon/frost/beam), targeting, cooldowns, frost-slow effect, splash damage, lives, credits, and phase.",
+        "Render `engine.enemies` AND `engine.projectiles` every frame in your SwiftUI Canvas/ZStack — tracers (basic) animate origin→target along `t`, cannon shells animate likewise plus an expanding splash ring on impact, frost pulses pulse blue at the impact tile, and beam projectiles draw a continuous glowing line from `originPoint` to the live position of the enemy referenced by `followsEnemyID`.",
+        "Surface a turret-shop toolbar (one button per TowerKind, dimmed when affordability fails) so the player picks BEFORE clicking a build tile. Mirrors `web-components/examples/tower-defense/index.html` UX.",
+        "Render a base marker at `path.last` (a shielded tile, lives = base HP) and a spawn marker at `path.first`.",
+        "Call ArcadeSmokeTests.printLaunchReport() from app init(), and add app-specific stdout confirming TowerDefenseEngine wiring."
       ],
-      "requiredNow": ["arcade.core", "gridpuzzle.core", "arcade.tower-defense", "arcade.smoke-tests"],
-      "plannedNext": ["tower-projectile-visuals", "tower-upgrades"]
+      "requiredNow": ["arcade.core", "gridpuzzle.core", "arcade.tower-defense", "arcade.projectile", "arcade.smoke-tests"],
+      "plannedNext": ["tower-upgrades", "level-pathfinding", "audio-fx"]
     },
     {
       "id": "recipe.blackjack",
