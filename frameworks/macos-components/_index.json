@@ -1261,6 +1261,39 @@
         "The selected components themselves should remain byte-for-byte canonical copies.",
         "Keep ChessRules as the setup, legal-move, check, checkmate, apply, and promotion source of truth; do not hand-roll chess rules in ContentView."
       ]
+    },
+    {
+      "id": "assembly.spritekit-physics.basic",
+      "name": "Native SpriteKit Physics Game Golden Assembly",
+      "summary": "Minimal Lunar-Lander-flavored SpriteKit reference: SwiftUI host with SpriteView, GameModel observable, GameScene with SKPhysicsContactDelegate, and a visible game-over restart button (mac-022). Demonstrates the canonical wiring of SpriteKitPhysicsHelpers — gravity preset, makeRectangularBody/makeStaticBody/makeSceneBoundary factories, lunarThrustForce preset for applyForce, and the snapshot(of:)+@MainActor Task pattern for didBegin contact handling.",
+      "recipeID": "recipe.spritekit-physics",
+      "templateIDs": [],
+      "keywords": [
+        "lunar lander",
+        "lunar landing",
+        "joust",
+        "marble madness",
+        "spritekit physics",
+        "sprite kit physics",
+        "SKPhysicsBody",
+        "SKPhysicsContactDelegate",
+        "SpriteView",
+        "applyForce",
+        "physics game"
+      ],
+      "files": [
+        "examples/spritekit-physics/ContentView.swift",
+        "examples/spritekit-physics/ExampleAppInit.swift",
+        "examples/spritekit-physics/GameModel.swift",
+        "examples/spritekit-physics/GameScene.swift"
+      ],
+      "notes": [
+        "Treat example files as glue patterns, not components. Adapt visual style, sprite art, terrain shapes, control mappings, scoring, and gameplay rules to the user's requested product. The patterns to KEEP are: (a) physicsWorld.contactDelegate wiring, (b) SKPhysicsHelpers factory usage everywhere instead of raw SKPhysicsBody init calls, (c) lunarThrustForce / earthThrustForce presets in applyForce magnitudes, (d) nonisolated didBegin → snapshot(of:) → Task { @MainActor in ... }, (e) game-over overlay with VISIBLE 'Play Again' button (mac-022).",
+        "SpriteKitPhysicsHelpers.swift remains a byte-for-byte canonical copy under Sources/<TargetName>/MChatAIComponents/ — do NOT rewrite or rename it.",
+        "For Joust-style games, swap lunarGravity for standardGravity and earthThrustForce for the higher per-flap impulse. Keep the makeSceneBoundary edge-loop so mounts can't fly off-screen.",
+        "For Marble Madness, replace the lander's rectangular body with makeCircularBody, set allowsRotation = true, and let gravity + tilt drive the marble. Goal becomes the level exit, lava becomes hole-edges via makeStaticBody with category .lava.",
+        "Cmd+N keyboard shortcut + on-screen restart button are BOTH required (mac-022 is the on-screen rule; menu shortcut is the keyboard escape hatch)."
+      ]
     }
   ]
 }
