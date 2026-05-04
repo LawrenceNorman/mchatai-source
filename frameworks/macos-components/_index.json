@@ -1,6 +1,6 @@
 {
   "$schema_version": "1.0.0",
-  "last_updated": "2026-05-02",
+  "last_updated": "2026-05-04",
   "notes": "Catalog for reusable SwiftUI/AppKit macOS Lego components. AIWizard should copy canonical Swift source files into generated macOSApp artifacts before writing app-specific glue.",
   "library": {
     "id": "framework.macos-components",
@@ -36,7 +36,8 @@
       "components/card-game/CardGameCore.swift",
       "components/card-game/BlackjackEngine.swift",
       "components/card-game/PokerHandEvaluator.swift",
-      "components/music/PianoEngine.swift"
+      "components/music/PianoEngine.swift",
+      "components/arcade/SpriteKitPhysicsHelpers.swift"
     ]
   },
   "categories": [
@@ -603,6 +604,22 @@
         "audio": "Use PianoNote.frequency to drive AVAudioEngine or NSSound glue in the generated app."
       },
       "goodFits": ["piano mini-app", "music keyboard", "synth toy"]
+    },
+    {
+      "id": "arcade.spritekit-physics-helpers",
+      "name": "SpriteKitPhysicsHelpers",
+      "category": "arcade",
+      "path": "components/arcade/SpriteKitPhysicsHelpers.swift",
+      "exports": ["SKPhysicsHelpers", "SKPhysicsContactSnapshot", "SKArcadeCategory"],
+      "status": "ready",
+      "summary": "Canonical SpriteKit physics body factories + Swift 6 concurrency-safe SKPhysicsContact snapshot pattern. Replaces hallucinated SKPhysicsBody(ellipseOf:) and provides nonisolated didBegin → @MainActor Task hop without sending non-Sendable contact data across the boundary.",
+      "tags": ["spritekit", "physics", "skphysicsbody", "skphysicscontact", "swift6", "concurrency", "arcade", "joust", "asteroids", "lunar-lander", "marble-madness"],
+      "contracts": {
+        "physics-body": "Use SKPhysicsHelpers.makeCircularBody/makeRectangularBody/makeOvalBody/makeStaticBody/makeSceneBoundary instead of constructing SKPhysicsBody directly. SKPhysicsBody(ellipseOf:) DOES NOT EXIST — use circleOfRadius/rectangleOf/polygonFrom instead (mac-017).",
+        "contact-handler": "In nonisolated didBegin(_ contact:), call SKPhysicsHelpers.snapshot(of: contact) BEFORE entering Task { @MainActor in ... }. The snapshot is Sendable; SKPhysicsContact itself is not, so it cannot cross the actor boundary directly (mac-019).",
+        "categories": "Use SKArcadeCategory.player1/.player2/.enemy/.projectile/.platform/.lava/.pickup/.goal/.wall as your default bitmask values; extend if you need more."
+      },
+      "goodFits": ["Joust (altitude collision rule)", "Lunar Lander (gravity + safe-land)", "Marble Madness", "Asteroids (rotational physics)", "any SpriteKit game with SKPhysicsContactDelegate"]
     }
   ],
   "compositionRecipes": [
