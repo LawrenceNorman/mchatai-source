@@ -1,6 +1,6 @@
 {
   "packID": "macos-app",
-  "version": 12,
+  "version": 13,
   "displayName": "macOS App Generation Wisdom",
   "description": "Rules for generating executable macOS apps (SwiftUI / AppKit) via Swift Playground. Focused on making the generated binary actually appear as a visible, interactive window \u2014 not a headless background process.",
   "categories": [
@@ -386,6 +386,20 @@
         "WRONG: never showing a hint (advanced players don't need it, but new players quit when they're stuck and don't realize valid moves exist)"
       ],
       "appliesTo": "macOSApp"
+    },
+    {
+      "id": "game-tile-id-not-position",
+      "rule": "Tile-based SwiftUI games (match-3, sliding puzzles, Tetris, Bejeweled, Threes, Dominoes, Mahjong tile clears) MUST iterate tiles BY a stable id (UUID), NOT by cell position. The model `struct Tile: Identifiable { var id = UUID() }` survives moves through the grid (collapses, swaps, falls) so when SwiftUI sees the SAME id at a new position, it interpolates the position transition automatically \u2014 the tile visibly slides from its old cell to its new cell. Iterating by `grid.allPoints()` (cell positions) defeats this: SwiftUI sees \"old contents gone, new contents arrived\" and snap-cuts. The user reports it as 'animations are lacking' or 'tiles teleport' \u2014 symptom of a stable-identity miss, not an animation tuning issue.",
+      "why": "User feedback 2026-05-04 on the catalog Match3 v2: 'the jewels don't slide down, the animation is just one image that shows up and goes away, its not real animation' \u2014 even though v2 had withAnimation + spring + transitions. Root cause: the View iterated `ForEach(engine.grid.allPoints(), id: \\.self)` so cells were the identity, not tiles. When the engine collapsed a column, the same Match3Tile UUID landed at a new cell but SwiftUI couldn't tell because it tracked cells. v3 changed to `ForEach(tilesWithPositions(), id: \\.tile.id)` and the slide animation worked correctly without any extra animation code. Universal architectural rule.",
+      "severity": "high",
+      "examples": [
+        "RIGHT: `struct GameTile: Identifiable, Equatable { var id = UUID(); var symbol: String }` + `ForEach(engine.tilesWithPositions(), id: \\.tile.id) { entry in tileView(entry.tile).position(positionFor(entry.point)) }` + `.animation(.spring(...), value: engine.grid)` \u2014 SwiftUI animates each tile's position transition.",
+        "RIGHT pattern for the model: when the engine collapses, PRESERVE existing tile structs (push them onto a stack, pop back into new positions) \u2014 only create new tile structs (with new UUIDs) when REFILLING empty cells from above.",
+        "WRONG: `ForEach(engine.grid.allPoints(), id: \\.self) { point in tileView(at: point) }` \u2014 cells are the identity. When tile content changes at a cell, SwiftUI redraws in place; when cells reshuffle, no animation possible because there's no continuity.",
+        "WRONG: trying to fix bad animation by adding more `.animation()` modifiers, longer durations, or `.transition()`s \u2014 none of those help if SwiftUI can't tell which old element is the new element.",
+        "Real incident 2026-05-04: catalog Match3 v2 had every animation primitive correct (spring, withAnimation, transition: .move(edge: .top), staggered DispatchQueue) but felt teleporty. Switching to tile-id iteration (commit d4a15c1) fixed the slide-down without changing any animation code \u2014 SwiftUI did the work once it had stable identity.",
+        "Bonus: this is the SwiftUI equivalent of React's `key` prop. The principle is identical: stable identity \u2192 smooth transitions. The key insight to take to other tile-based games is that the MODEL needs the ID, not the View."
+      ]
     }
   ],
   "_last_updated": "2026-05-04"
