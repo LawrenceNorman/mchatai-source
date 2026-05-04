@@ -1,7 +1,7 @@
 {
-  "version": 3,
+  "version": 4,
   "surface": "aiwizard",
-  "description": "Context recipe for AIWizard webSPA (React/Vue/Svelte) generation. Phase DF v1 (2026-04-20): webSPA previously fell back to the miniapp recipe, which is optimized for single-file HTML games. This dedicated recipe pins the frontend-skill wisdom pack (priority 82) and keeps wisdom-framework lighter (3500 tokens vs 11000) since framework-specific card-game packs aren't relevant here. layout-reference still fires for webSPA archetypes (webspa-product-landing, webspa-single-screen-app) when those are added in DF.4. When the user-references layer ships (DF.7) it slots in at priority 78.",
+  "description": "Context recipe for AIWizard webSPA (React/Vue/Svelte) generation. Phase DF v1 (2026-04-20): webSPA previously fell back to the miniapp recipe, which is optimized for single-file HTML games. This dedicated recipe pins the frontend-skill wisdom pack (priority 82) and keeps wisdom-framework lighter (3500 tokens vs 11000) since framework-specific card-game packs aren't relevant here. layout-reference still fires for webSPA archetypes (webspa-product-landing, webspa-single-screen-app) when those are added in DF.4. When the user-references layer ships (DF.7) it slots in at priority 78. v4 (2026-05-04): Phase QS.3 — added component-reuse-hints layer at priority 83 so the LLM sees per-component HIGH/MEDIUM/LOW reuse verdicts for any web-components matches.",
   "layers": [
     {
       "id": "active-memory",
@@ -38,6 +38,15 @@
       "loader": "wisdom-framework",
       "priority": 85,
       "maxTokens": 3500
+    },
+    {
+      "id": "component-reuse-hints",
+      "loader": "component-reuse-hints",
+      "priority": 83,
+      "maxTokens": 1500,
+      "options": {
+        "maxHintTokens": 1500
+      }
     },
     {
       "id": "frontend-skill-guidance",
