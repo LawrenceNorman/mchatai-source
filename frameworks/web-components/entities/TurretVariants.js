@@ -129,28 +129,36 @@ export class FrostTurret extends SpriteTurret {
     super({
       label: "Frost",
       cost: 90,
-      damage: 1,
+      damage: 2,
       range: 240,
-      cooldown: 0.85,
+      cooldown: 0.7,
+      splashRadius: options.splashRadius ?? 55,
       slowFactor: options.slowFactor ?? 0.45,
-      slowDuration: options.slowDuration ?? 1.6,
+      slowDuration: options.slowDuration ?? 1.8,
       vectorRenderer: drawTurretFrost,
       barrelLength: 21,
       ...options
     });
+    this.splashRadius = options.splashRadius ?? 55;
     this.slowFactor = options.slowFactor ?? 0.45;
-    this.slowDuration = options.slowDuration ?? 1.6;
+    this.slowDuration = options.slowDuration ?? 1.8;
   }
 
-  // Frost turret applies a slow effect to its target instead of (or in addition to) damage.
-  // Override findTarget to also tag the target with a `slowedUntil` timestamp.
+  // Frost projectiles apply a slow + splash chill on impact. The slow tagging
+  // happens here on every fire, and the splash damage is read by the game's
+  // resolveHits() through projectile.splashRadius (set by createProjectile).
   update(dt, game) {
     super.update(dt, game);
-    const now = (typeof performance !== "undefined" ? performance.now() : Date.now()) / 1000;
-    const target = this.findTarget(game?.entities ?? []);
-    if (target && this.elapsed === 0) {
-      target.slowedUntil = now + this.slowDuration;
-      target.slowFactor = this.slowFactor;
+    if (this.elapsed === 0) {
+      // We just fired this frame. Apply slow to nearby enemies in range.
+      const now = (typeof performance !== "undefined" ? performance.now() : Date.now()) / 1000;
+      const entities = game?.entities ?? [];
+      for (const e of entities) {
+        if (!e || e.faction === this.faction || typeof e.x !== "number") continue;
+        if (Math.hypot(e.x - this.x, e.y - this.y) > this.range) continue;
+        e.slowedUntil = now + this.slowDuration;
+        e.slowFactor = this.slowFactor;
+      }
     }
   }
 }
