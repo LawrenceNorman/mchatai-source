@@ -51,6 +51,23 @@ struct ArcadeBody: Codable, Equatable, Identifiable, Sendable {
     func intersects(_ other: ArcadeBody) -> Bool {
         (position - other.position).length <= radius + other.radius
     }
+
+    /// AABB ↔ circle hit test. Use this when one of the bodies is logically
+    /// a rectangle (paddle, brick, platform, ship hull) — circle-vs-circle
+    /// `intersects(_:)` is WRONG for rectangular bodies because it treats
+    /// the rect as a wide bounding-circle, so a Pong ball appears to bounce
+    /// off the corner of the paddle's circumscribed circle (in empty space)
+    /// instead of the paddle's actual rectangular edge. Caller passes the
+    /// rectangle as (center, halfWidth, halfHeight). Returns true when the
+    /// closest point on the rectangle to this body's position is inside
+    /// this body's radius.
+    func intersects(rectCenter: ArcadeVector, halfWidth: Double, halfHeight: Double) -> Bool {
+        let closestX = max(rectCenter.x - halfWidth, min(position.x, rectCenter.x + halfWidth))
+        let closestY = max(rectCenter.y - halfHeight, min(position.y, rectCenter.y + halfHeight))
+        let dx = position.x - closestX
+        let dy = position.y - closestY
+        return (dx * dx + dy * dy) <= (radius * radius)
+    }
 }
 
 struct ArcadePlayfield: Codable, Equatable, Sendable {

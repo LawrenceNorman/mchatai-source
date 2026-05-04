@@ -1,6 +1,6 @@
 {
   "packID": "macos-app",
-  "version": 6,
+  "version": 7,
   "displayName": "macOS App Generation Wisdom",
   "description": "Rules for generating executable macOS apps (SwiftUI / AppKit) via Swift Playground. Focused on making the generated binary actually appear as a visible, interactive window \u2014 not a headless background process.",
   "categories": [
@@ -265,6 +265,19 @@
         "WRONG: ```nonisolated func didBegin(_ contact: SKPhysicsContact) { Task { @MainActor in let nodeA = contact.bodyA.node /* error: sending 'contact' risks data races */ } }```",
         "Also: `didEnd(_:)`, `update(_:)`, and any other SKScene/SKPhysicsContactDelegate callback follows the same rule \u2014 capture sendable fields before the @MainActor hop.",
         "Alternative: mark the whole class `@MainActor` (drop the `nonisolated`). Works for small games but loses parallelism; pre-capture is cleaner."
+      ]
+    },
+    {
+      "id": "mac-021",
+      "rule": "Card-game UI MUST use PlayingCardSuit.glyph (Unicode suit chars) and PlayingCardSuit.rgb to render cards \u2014 NOT first-letter substring like 'C' / 'D' / 'H' / 'S'. The catalog component cardgame.core exposes both `glyph: String` and `rgb: (Double, Double, Double)` for exactly this reason. 'C' and 'D' are ambiguous (Card? Diamond?) and look amateurish. Same applies to other unicode-rich domains: chess pieces (use the chess unicode block), checkers (filled vs hollow circles), playing dice, etc. \u2014 when the catalog component provides a `glyph` accessor, use it.",
+      "why": "User feedback 2026-05-04 on shipped Native Blackjack: \"the cards use C for clubs and D for diamonds\". The LLM picked PlayingCardSuit.rawValue.first because there was no canonical display API on the suit enum. Adding `glyph` to PlayingCardSuit + this wisdom rule together prevent the regression.",
+      "severity": "medium",
+      "appliesTo": "macOSApp",
+      "examples": [
+        "RIGHT: `Text(card.suit.glyph)` (renders Unicode suit char)",
+        "WRONG: `Text(String(card.suit.rawValue.prefix(1).uppercased()))` (renders 'C' for clubs \u2014 ambiguous + unprofessional)",
+        "RIGHT (color): `let c = card.suit.rgb; Color(red: c.red, green: c.green, blue: c.blue)` \u2014 diamonds/hearts get red, clubs/spades get black.",
+        "Note: PlayingCardSuit.glyph + .rgb were added to cardgame.core 2026-05-04. If your generated app says these accessors don't exist, you're using a stale catalog snapshot \u2014 refresh via tunnel refreshMchataisourceCache."
       ]
     }
   ],
