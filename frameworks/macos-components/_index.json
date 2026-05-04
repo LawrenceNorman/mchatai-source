@@ -937,12 +937,13 @@
       "existingApps": ["joust", "lunar-lander", "marble-madness"],
       "starterComponents": ["arcade.spritekit-physics-helpers"],
       "assemblyNotes": [
-        "Import SpriteKit. Use SKPhysicsHelpers.makeCircularBody / makeRectangularBody / makeOvalBody / makeStaticBody / makeSceneBoundary instead of constructing SKPhysicsBody directly.",
-        "SKPhysicsBody(ellipseOf:) DOES NOT EXIST. Use SKPhysicsHelpers.makeCircularBody for round entities (knights, ghosts, marbles), makeRectangularBody for boxy entities (bricks, ships), or makeOvalBody (uses polygonFrom: with an ellipse path) only when an oval body is genuinely required.",
-        "In nonisolated SKPhysicsContactDelegate.didBegin(_ contact:), call SKPhysicsHelpers.snapshot(of: contact) BEFORE entering Task { @MainActor in ... }. SKPhysicsContact itself is task-isolated and cannot cross the actor boundary; the snapshot captures sendable node references and category bitmasks.",
-        "Use SKArcadeCategory.player1 / .player2 / .enemy / .projectile / .platform / .lava / .pickup / .goal / .wall as default bitmask values; extend if you need more.",
+        "MANDATORY: copy the canonical SpriteKitPhysicsHelpers.swift VERBATIM into Sources/<TargetName>/MChatAIComponents/SpriteKitPhysicsHelpers.swift (preserve the BEGIN/END markers). Then COMPOSE it from app-specific code by calling at least one of: SKPhysicsHelpers.makeCircularBody, SKPhysicsHelpers.makeRectangularBody, SKPhysicsHelpers.makeOvalBody, SKPhysicsHelpers.makeStaticBody, SKPhysicsHelpers.makeSceneBoundary, SKPhysicsHelpers.snapshot(of:), or reference SKArcadeCategory.<name> / SKPhysicsContactSnapshot. Copying without composing fails the Lego provenance gate.",
+        "Replace EVERY raw `SKPhysicsBody(...)` call in your scene code with the corresponding `SKPhysicsHelpers.make<Shape>Body(...)` factory. Don't keep half-and-half — the gate scans for SKPhysicsHelpers usage as the composition signal.",
+        "SKPhysicsBody(ellipseOf:) DOES NOT EXIST. Use SKPhysicsHelpers.makeCircularBody for round entities (knights, ghosts, marbles), makeRectangularBody for boxy entities (bricks, ships, landers), or makeOvalBody (which internally uses polygonFrom: with an ellipse CGPath) only when an oval body is genuinely required.",
+        "In nonisolated SKPhysicsContactDelegate.didBegin(_ contact:), call SKPhysicsHelpers.snapshot(of: contact) BEFORE entering Task { @MainActor in ... }. SKPhysicsContact itself is task-isolated and cannot cross the actor boundary; the snapshot captures sendable node references and category bitmasks. Reference SKPhysicsContactSnapshot in the @MainActor closure.",
+        "Use SKArcadeCategory.player1 / .player2 / .enemy / .projectile / .platform / .lava / .pickup / .goal / .wall as default bitmask values when assigning categoryBitMask. Reference at least one SKArcadeCategory member directly to satisfy the composition signal.",
         "Set physicsWorld.contactDelegate = self in didMove(to:) and physicsWorld.gravity = SKPhysicsHelpers.standardGravity (or .lunarGravity for floaty games).",
-        "App-specific glue (scene setup, sprite drawing, control input handling, HUD, command menu) goes in separate files (GameScene.swift, ContentView.swift, App.swift)."
+        "App-specific glue (scene setup, sprite drawing, control input handling, HUD, command menu) goes in separate files (GameScene.swift, ContentView.swift, App.swift). Do NOT define a local replacement type called SKPhysicsHelpers — that defeats the purpose of the catalog and fails the gate."
       ],
       "requiredNow": ["arcade.spritekit-physics-helpers"],
       "plannedNext": ["spritekit-camera-helper", "spritekit-particle-helpers"]
