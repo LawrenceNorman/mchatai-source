@@ -1,6 +1,6 @@
 {
   "packID": "macos-app",
-  "version": 4,
+  "version": 5,
   "displayName": "macOS App Generation Wisdom",
   "description": "Rules for generating executable macOS apps (SwiftUI / AppKit) via Swift Playground. Focused on making the generated binary actually appear as a visible, interactive window \u2014 not a headless background process.",
   "categories": [
@@ -215,7 +215,46 @@
         "RIGHT (pure early-exit, no recovery): `guard pacDirection != .none else { return }; advance(...)`",
         "WRONG: `guard pacDirection != .none else { if pacQueued != .none, canMove(pacQueued) { pacDirection = pacQueued } else { return } }` — compile error: 'guard body must not fall through'."
       ]
+    },
+    {
+      "id": "mac-017",
+      "rule": "`SKPhysicsBody(ellipseOf:)` DOES NOT EXIST. SpriteKit's SKPhysicsBody public initializers are: `init(circleOfRadius:)`, `init(circleOfRadius:center:)`, `init(rectangleOf:)`, `init(rectangleOf:center:)`, `init(polygonFrom:)` (CGPath), `init(edgeChainFrom:)`, `init(edgeFrom:to:)`, `init(edgeLoopFrom:)`, `init(texture:size:)`, `init(texture:alphaThreshold:size:)`, `init(bodies:)`. There is NO ellipse/oval initializer. If you want an oval/ellipse body shape, use `init(polygonFrom:)` with a CGPath of an ellipse — but for almost all game characters (knights, ostriches, ghosts, etc.) `circleOfRadius:` or `rectangleOf:` is correct and cheaper. The compiler reports: `incorrect argument label in call (have 'ellipseOf:', expected 'rectangleOf:')` — Xcode's fixit suggests rectangleOf which is usually what you want.",
+      "why": "Wave-4 round-6 Joust canary 2026-05-04 hit this in MountNode.swift: `SKPhysicsBody(ellipseOf: CGSize(width:38,height:30))`. The LLM hallucinated the `ellipseOf:` initializer — probably from Core Graphics' `NSBezierPath(ovalIn:)` or `CGPath.addEllipse(in:)` which DO exist. SpriteKit's body API is more limited. Auto-fix attempts misread the fixit and tried 'rectangleOf' which works. Adding to wisdom so the LLM emits the right form on first try.",
+      "severity": "high",
+      "appliesTo": "macOSApp",
+      "examples": [
+        "RIGHT (round body — knights, ghosts, marbles): `let body = SKPhysicsBody(circleOfRadius: 19)`",
+        "RIGHT (rectangular body — bricks, platforms, ships): `let body = SKPhysicsBody(rectangleOf: CGSize(width: 38, height: 30))`",
+        "RIGHT (custom shape — ostrich+knight outline): `let path = CGMutablePath(); path.addEllipse(in: CGRect(x: -19, y: -15, width: 38, height: 30)); let body = SKPhysicsBody(polygonFrom: path)`",
+        "WRONG: `SKPhysicsBody(ellipseOf: CGSize(width:38,height:30))` — initializer doesn't exist; compiler gives 'incorrect argument label, expected rectangleOf:'."
+      ]
+    },
+    {
+      "id": "mac-018",
+      "rule": "When a class has implicitly-unwrapped optional (IUO) property like `var p2Mount: MountNode!`, a ternary or if-expression that returns it OR another non-optional value (e.g. `let node = (player == .one) ? p1Mount : p2Mount`) infers `MountNode?` (NOT `MountNode!` and NOT `MountNode`), because Swift type inference unifies branches as Optional in expressions. Pass-through to a non-optional argument fails: `value of optional type 'MountNode?' must be unwrapped to a value of type 'MountNode'`. Fix: explicitly annotate the binding's type — `let node: MountNode = (player == .one) ? p1Mount : p2Mount` — which lets Swift force-unwrap the IUO at the call site. Alternative: force-unwrap with `!` at usage. AVOID making both branches return Optional and then unwrapping later — that's noisier and risks crashes if either branch becomes nil.",
+      "why": "Wave-4 round-6 Joust canary 2026-05-04 hit this in JoustGameScene.respawnMount: `let node = (player == .one) ? p1Mount : p2Mount` — both p1Mount and p2Mount are `MountNode!` IUOs but Swift inferred `node: MountNode?`. Two compile errors at addChild(node) and placeMount(node, ...). Auto-fix didn't recognize the IUO/ternary interaction (a Swift idiom most LLMs miss). Add explicit type annotation as the canonical fix.",
+      "severity": "high",
+      "appliesTo": "macOSApp",
+      "examples": [
+        "RIGHT: `let node: MountNode = (player == .one) ? p1Mount : p2Mount; addChild(node)` — explicit type forces IUO unwrap.",
+        "RIGHT (force-unwrap inline): `addChild((player == .one) ? p1Mount! : p2Mount!)` — verbose but works.",
+        "WRONG: `let node = (player == .one) ? p1Mount : p2Mount; addChild(node)` — node inferred as MountNode?; addChild fails.",
+        "Also applies to: `if/else` returning IUOs, `switch` returning IUOs — same Swift inference rule. Always annotate the binding type when mixing IUOs in branching expressions."
+      ]
+    },
+    {
+      "id": "mac-019",
+      "rule": "Swift 6 strict concurrency: `SKPhysicsContactDelegate.didBegin(_ contact:)` is `nonisolated` by default, but the typical handler body needs to call `@MainActor`-isolated game state. The contact parameter is task-isolated and cannot be sent into a `Task { @MainActor in }` closure (`error: sending 'contact' risks causing data races`). Fix: capture the SENDABLE data from the contact (node references, categoryBitMask values, position values) BEFORE entering the Task closure. SKPhysicsBody's `node` and `categoryBitMask` are sendable; SKPhysicsContact itself is not. Pattern: `nonisolated func didBegin(_ contact: SKPhysicsContact) { let nodeA = contact.bodyA.node; let nodeB = contact.bodyB.node; let cats = (contact.bodyA.categoryBitMask, contact.bodyB.categoryBitMask); Task { @MainActor in ... use nodeA/nodeB/cats ... } }`.",
+      "why": "Wave-4 round-6 Joust canary 2026-05-04 hit this. The auto-fix attempts repeatedly captured `contact` itself into the @MainActor Task closure, which Swift 6 forbids. Capturing only the sendable fields BEFORE the closure unblocks the build. SKNode is @MainActor-isolated for most properties but the reference itself is sendable; same for category bitmasks (UInt32). This pattern works for any nonisolated SKPhysicsContactDelegate or SKSceneDelegate callback that needs to bounce to main actor.",
+      "severity": "high",
+      "appliesTo": "macOSApp",
+      "examples": [
+        "RIGHT: ```nonisolated func didBegin(_ contact: SKPhysicsContact) { let nodeA = contact.bodyA.node; let nodeB = contact.bodyB.node; let cats = (contact.bodyA.categoryBitMask, contact.bodyB.categoryBitMask); Task { @MainActor in if cats.0 == Cat.lava, let mn = nodeB as? MountNode { await self.killMount(mn.player) } } }```",
+        "WRONG: ```nonisolated func didBegin(_ contact: SKPhysicsContact) { Task { @MainActor in let nodeA = contact.bodyA.node /* error: sending 'contact' risks data races */ } }```",
+        "Also: `didEnd(_:)`, `update(_:)`, and any other SKScene/SKPhysicsContactDelegate callback follows the same rule — capture sendable fields before the @MainActor hop.",
+        "Alternative: mark the whole class `@MainActor` (drop the `nonisolated`). Works for small games but loses parallelism; pre-capture is cleaner."
+      ]
     }
   ],
-  "_last_updated": "2026-05-03"
+  "_last_updated": "2026-05-04"
 }
