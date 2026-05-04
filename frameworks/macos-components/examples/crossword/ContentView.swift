@@ -3,9 +3,12 @@ import AppKit
 
 struct ContentView: View {
     @State private var engine = MiniCrosswordSeed.daily()
+    @State private var puzzleIndex = MiniCrosswordSeed.dailyIndex().index
     @State private var elapsedSeconds = 0
     @State private var verifyMode = false  // "Check" toggle: highlights wrong letters
     @FocusState private var hasKeyboardFocus: Bool
+
+    private let totalPuzzles = MiniCrosswordSeed.dailyIndex().total
 
     private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
@@ -83,11 +86,30 @@ struct ContentView: View {
         HStack(alignment: .firstTextBaseline, spacing: 12) {
             Text("Mini Crossword")
                 .font(.system(size: 18, weight: .semibold, design: .rounded))
+            // Puzzle counter: "Puzzle 5 of 10" — tells the user there's a
+            // bank of curated puzzles + how far through they are.
+            Text("Puzzle \(puzzleIndex + 1) of \(totalPuzzles)")
+                .font(.caption.weight(.semibold))
+                .padding(.horizontal, 8)
+                .padding(.vertical, 3)
+                .background(Color.secondary.opacity(0.15))
+                .clipShape(Capsule())
             Text(statusText)
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(engine.isSolved ? .green : .secondary)
                 .lineLimit(1)
             Spacer()
+            // Prev / Next buzzword navigation
+            Button(action: { goToPuzzle(puzzleIndex - 1) }) {
+                Image(systemName: "chevron.left")
+            }
+            .buttonStyle(.bordered)
+            .help("Previous puzzle")
+            Button(action: { goToPuzzle(puzzleIndex + 1) }) {
+                Image(systemName: "chevron.right")
+            }
+            .buttonStyle(.bordered)
+            .help("Next puzzle")
             HStack(spacing: 6) {
                 Text("TIME")
                     .font(.caption2.weight(.black))
@@ -98,6 +120,14 @@ struct ContentView: View {
             }
         }
         .frame(maxHeight: 44)
+    }
+
+    private func goToPuzzle(_ rawIndex: Int) {
+        let idx = ((rawIndex % totalPuzzles) + totalPuzzles) % totalPuzzles
+        puzzleIndex = idx
+        engine = MiniCrosswordSeed.puzzle(at: idx)
+        elapsedSeconds = 0
+        focusKeyboardInput()
     }
 
     private var crosswordBoard: some View {
