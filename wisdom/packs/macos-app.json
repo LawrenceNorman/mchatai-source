@@ -1,6 +1,6 @@
 {
   "packID": "macos-app",
-  "version": 7,
+  "version": 8,
   "displayName": "macOS App Generation Wisdom",
   "description": "Rules for generating executable macOS apps (SwiftUI / AppKit) via Swift Playground. Focused on making the generated binary actually appear as a visible, interactive window \u2014 not a headless background process.",
   "categories": [
@@ -279,6 +279,21 @@
         "RIGHT (color): `let c = card.suit.rgb; Color(red: c.red, green: c.green, blue: c.blue)` \u2014 diamonds/hearts get red, clubs/spades get black.",
         "Note: PlayingCardSuit.glyph + .rgb were added to cardgame.core 2026-05-04. If your generated app says these accessors don't exist, you're using a stale catalog snapshot \u2014 refresh via tunnel refreshMchataisourceCache."
       ]
+    },
+    {
+      "id": "mac-022",
+      "rule": "Every game MUST present a VISIBLE on-screen restart/play-again button when the game ends (game-over, you-win, level-complete). Do NOT rely solely on a menu shortcut like Cmd+N or 'Game > New Game' \u2014 users don't discover those mid-play. The restart UI must: (a) appear automatically when the terminal phase is reached, (b) be visually distinct (colored button or large tappable area), (c) clearly say 'Restart' / 'Play Again' / 'New Game' (not just 'OK' or unlabeled), (d) when tapped, fully reset all game state (score, lives, level, score-multiplier, fuel, terrain \u2014 anything that accumulated during play). Keep the menu-bar shortcut too (e.g. Cmd+N), but the on-screen button is the primary affordance.",
+      "why": "User feedback 2026-05-04 on shipped Lunar Lander: 'There is no restart button for the game: That should be a fundamental wisdom rule to all games if we don't have that already.' The shipped Lunar Lander rendered 'GAME OVER score=0' as static HUD text with no UI affordance. Users had to discover Cmd+N from the menu bar. Same pattern was hit by earlier shipped Pong, BurgerTime, Joust \u2014 they all have the menu shortcut but lack a tappable on-screen restart. This is the single most common 'it's a great game but UX feels rough' complaint.",
+      "severity": "high",
+      "examples": [
+        "RIGHT (SwiftUI overlay over SpriteKit scene): `if game.phase == .gameOver { VStack { Text('GAME OVER').font(.largeTitle); Text('Score: \\(game.score)'); Button('Play Again') { game.requestNewMission() }.keyboardShortcut(.return).buttonStyle(.borderedProminent).controlSize(.large) }.padding(40).background(.ultraThinMaterial).cornerRadius(20) }",
+        "RIGHT (SpriteKit-only): on phase change, addChild an SKShapeNode container with SKLabelNode children, set userInteractionEnabled, handle mouseDown to call scene.startNewMission(resetTerrain: true).",
+        "RIGHT pair pattern: keep the CommandMenu 'New Game' Cmd+N as a redundant shortcut, but the on-screen button is the primary affordance.",
+        "WRONG: Setting `game.status = 'GAME OVER score=0'` in the HUD label and stopping the game. User can't restart without using the menu bar.",
+        "WRONG: Only the menu-bar shortcut. macOS users don't discover Cmd+N mid-play unless explicitly told.",
+        "Real incident 2026-05-04: shipped Lunar Lander had 'GAME OVER score=0' as a static HUD label with no UI button. User reported needing a restart button as fundamental wisdom for all games."
+      ],
+      "appliesTo": "macOSApp"
     }
   ],
   "_last_updated": "2026-05-04"

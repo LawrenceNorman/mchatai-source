@@ -1,6 +1,6 @@
 {
   "packID": "board-games",
-  "version": 1,
+  "version": 2,
   "displayName": "Board Game Guidelines",
   "description": "Quality rules for chess, checkers, tic-tac-toe, and other board/grid games.",
   "categories": [
@@ -23,7 +23,7 @@
     {
       "id": "bg-001",
       "rule": "The human player clicks/taps to make moves. AI opponent moves automatically AFTER the human. Never auto-play both sides.",
-      "why": "Same as card games — the #1 bug is auto-playing both players.",
+      "why": "Same as card games \u2014 the #1 bug is auto-playing both players.",
       "severity": "critical",
       "appliesTo": "board-games",
       "examples": [
@@ -67,15 +67,15 @@
     },
     {
       "id": "bg-005",
-      "rule": "If the game has a human player, there MUST be at least one AI/computer opponent to play against. Never generate a game where the user has to play both sides manually. For web mini-apps using Lego components, mount one of the provided AI components — `entities/ChessAI` for chess, `entities/CheckersAI` for checkers, or `entities/SimpleOpponent` (random legal moves) as the universal fallback for any TurnBasedManager-driven game. After the human moves, schedule the AI's reply via `setTimeout(() => { const m = ai.pickMove(board, aiColor); if (m) applyMove(m); }, 350)` — the small delay sells 'thinking' and gives the human time to register their own move. ChessAI default depth is 2; raise to 3 for stronger play. CheckersAI default depth is 3.",
-      "why": "Users ask for a 'playable' game expecting someone to play against. A board with no opponent forces the user to move pieces for both sides, which is not a game — it's a demo. Until 2026-05-02 our chess/checkers golden assemblies HAD this bug — the user moved white and the board froze waiting for them to also move black. Adding the AI components and this rule together closes the loop. The marker check `requiresAIOpponent` now refuses to publish a 2-player game without one of the registered AI components OR an inline `selectComputerMove`/`cpuTurn`/equivalent function.",
+      "rule": "If the game has a human player, there MUST be at least one AI/computer opponent to play against. Never generate a game where the user has to play both sides manually. For web mini-apps using Lego components, mount one of the provided AI components \u2014 `entities/ChessAI` for chess, `entities/CheckersAI` for checkers, or `entities/SimpleOpponent` (random legal moves) as the universal fallback for any TurnBasedManager-driven game. After the human moves, schedule the AI's reply via `setTimeout(() => { const m = ai.pickMove(board, aiColor); if (m) applyMove(m); }, 350)` \u2014 the small delay sells 'thinking' and gives the human time to register their own move. ChessAI default depth is 2; raise to 3 for stronger play. CheckersAI default depth is 3.",
+      "why": "Users ask for a 'playable' game expecting someone to play against. A board with no opponent forces the user to move pieces for both sides, which is not a game \u2014 it's a demo. Until 2026-05-02 our chess/checkers golden assemblies HAD this bug \u2014 the user moved white and the board froze waiting for them to also move black. Adding the AI components and this rule together closes the loop. The marker check `requiresAIOpponent` now refuses to publish a 2-player game without one of the registered AI components OR an inline `selectComputerMove`/`cpuTurn`/equivalent function.",
       "severity": "critical",
       "appliesTo": "board-games",
       "examples": [
         "GOOD (Lego): import { ChessAI } from '../../entities/ChessAI.js'; const ai = new ChessAI({ rules, depth: 2 }); after human move: setTimeout(() => ai.playMove(board, 'black'), 350);",
-        "GOOD fallback: import { SimpleOpponent } from '../../entities/SimpleOpponent.js'; — random legal moves are still better than no opponent.",
-        "BAD: chess game where after white moves the board says 'BLACK to move' but never moves anything — the human has to click for both colors. This is the bug the wisdom rule was added to prevent.",
-        "Tic-tac-toe: build a small inline minimax (depth ≤9 is fast on the 3x3 board) for perfect play, or use SimpleOpponent for easy mode."
+        "GOOD fallback: import { SimpleOpponent } from '../../entities/SimpleOpponent.js'; \u2014 random legal moves are still better than no opponent.",
+        "BAD: chess game where after white moves the board says 'BLACK to move' but never moves anything \u2014 the human has to click for both colors. This is the bug the wisdom rule was added to prevent.",
+        "Tic-tac-toe: build a small inline minimax (depth \u22649 is fast on the 3x3 board) for perfect play, or use SimpleOpponent for easy mode."
       ]
     },
     {
@@ -92,15 +92,30 @@
     },
     {
       "id": "bg-007",
-      "rule": "If `window.mChatAI?.cloud?.isAvailable()` is true, offer a 'Strong AI' difficulty toggle that calls `window.mChatAI.cloud.llm()` for move selection instead of the built-in heuristic. Label it '⚡ Strong AI' with a token cost badge. Fall back to built-in AI if the call fails or is not available.",
+      "rule": "If `window.mChatAI?.cloud?.isAvailable()` is true, offer a 'Strong AI' difficulty toggle that calls `window.mChatAI.cloud.llm()` for move selection instead of the built-in heuristic. Label it '\u26a1 Strong AI' with a token cost badge. Fall back to built-in AI if the call fails or is not available.",
       "why": "Cloud AI opponents dramatically improve the game experience for serious players. The local AI (random/minimax-depth-3) can be beaten easily. Cloud LLM move selection provides human-level challenge without bloating the app bundle.",
       "severity": "recommended",
       "appliesTo": "board-games",
       "examples": [
-        "Difficulty selector: [Easy] [Medium] [⚡ Strong AI (1 token/game)]",
+        "Difficulty selector: [Easy] [Medium] [\u26a1 Strong AI (1 token/game)]",
         "Cloud move: window.mChatAI.cloud.llm({ prompt: 'You are a chess grandmaster. Board FEN: ' + fen + '. What is the best move? Respond with only the move in algebraic notation.' }).then(move => makeMove(move.trim()))",
         "Fallback: if cloud call fails or times out >3s, use local AI and show toast 'Using local AI'"
       ]
+    },
+    {
+      "id": "bg-restart-button",
+      "rule": "Every game MUST present a VISIBLE on-screen restart/play-again button when the game ends (game-over, you-win, level-complete). Do NOT rely solely on a menu shortcut like Cmd+N or 'Game > New Game' \u2014 users don't discover those mid-play. The restart UI must: (a) appear automatically when the terminal phase is reached, (b) be visually distinct (colored button or large tappable area), (c) clearly say 'Restart' / 'Play Again' / 'New Game' (not just 'OK' or unlabeled), (d) when tapped, fully reset all game state (score, lives, level, score-multiplier, fuel, terrain \u2014 anything that accumulated during play). Keep the menu-bar shortcut too (e.g. Cmd+N), but the on-screen button is the primary affordance.",
+      "why": "User feedback 2026-05-04 on shipped Lunar Lander: 'There is no restart button for the game: That should be a fundamental wisdom rule to all games if we don't have that already.' The shipped Lunar Lander rendered 'GAME OVER score=0' as static HUD text with no UI affordance. Users had to discover Cmd+N from the menu bar. Same pattern was hit by earlier shipped Pong, BurgerTime, Joust \u2014 they all have the menu shortcut but lack a tappable on-screen restart. This is the single most common 'it's a great game but UX feels rough' complaint.",
+      "severity": "high",
+      "examples": [
+        "RIGHT (SwiftUI overlay): When phase becomes .gameOver, render `VStack { Text('GAME OVER').font(.largeTitle); Text('Score: \\(score)'); Button('Play Again') { restart() }.buttonStyle(.borderedProminent) }.padding(20).background(...).overlay(...)`",
+        "RIGHT (SpriteKit overlay): On game-over, add an SKShapeNode panel with 'Game Over' label + an SKLabelNode 'Tap to Restart' that the scene's touchesBegan/mouseDown handler responds to.",
+        "RIGHT (HTML game): On game-over, show a centered modal with 'Play Again' button. The modal is dismissable only by clicking the button (don't auto-dismiss).",
+        "WRONG: Showing 'GAME OVER score=0' in the HUD label and stopping the game loop. User can't restart without quitting and relaunching.",
+        "WRONG: Only Cmd+N / menu shortcut. Users don't think to look there mid-play.",
+        "Bonus: keyboard shortcut on the button itself (e.g. Space or Return = Play Again) for users who prefer keyboard."
+      ]
     }
-  ]
+  ],
+  "_last_updated": "2026-05-04"
 }

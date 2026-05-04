@@ -32,6 +32,18 @@ enum SKPhysicsHelpers {
     /// Lighter gravity for "lunar" / floaty games.
     static let lunarGravity = CGVector(dx: 0, dy: -1.6)
 
+    /// Game-tuned thrust force presets. SKPhysicsBody.applyForce uses Newtons
+    /// integrated per simulation step, so `force / mass` = acceleration in pts/s².
+    /// These presets assume default mass (0.5) and a 600-700 wide window.
+    /// Filed 2026-05-04 after Lunar Lander shipped with mag=22 (too weak combined
+    /// with rotation: when the lander tilts the y-component of thrust drops by
+    /// cos(zRotation), so straight-line thrust must be much higher than minimum
+    /// hover force to leave the user enough authority to recover from spins).
+    /// Rule of thumb: thrustForce should provide >= 10× the y-acceleration of
+    /// gravity so even a 70°-tilted lander still has 3.4× hover authority.
+    static let lunarThrustForce: CGFloat = 80   // 80/0.5 = 160 pts/s² up vs 1.6 gravity = 100× hover force
+    static let earthThrustForce: CGFloat = 200  // 200/0.5 = 400 pts/s² up vs 9.8 gravity = 40× hover force
+
     /// Make a circular body for round entities (knights, ghosts, pellets, marbles).
     /// CORRECT alternative to the hallucinated `SKPhysicsBody(ellipseOf:)` initializer.
     static func makeCircularBody(radius: CGFloat,

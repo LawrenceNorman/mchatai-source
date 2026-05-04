@@ -1,6 +1,6 @@
 {
   "packID": "arcade-games",
-  "version": 6,
+  "version": 7,
   "displayName": "Arcade Game Guidelines",
   "description": "Quality rules for arcade-style action games \u2014 sprite anatomy (ag-016), attack animations (ag-017), keyboard input, rAF loop, collision, off-screen spawn (ag-018). Covers named-game canaries: Frogger, Pac-Man, Joust, Defender, Galaxian, Asteroids, Centipede, Q*bert, Kaboom, BurgerTime, Lode Runner, Spy Hunter, Pole Position, Skee-Ball, Pinball, Tempest, Adventure, Boxing, Snake, Breakout, Pong, Tetris.",
   "categories": [
@@ -469,7 +469,22 @@
       "example": "// closest-in-range targeting\\nfunction pickTarget(tower, enemies) {\\n  return enemies\\n    .filter(e => dist(tower, e) <= tower.range)\\n    .sort((a, b) => b.pathProgress - a.pathProgress)[0]; // most-progressed first\\n}",
       "severity": "blocking",
       "learnedFrom": "TD canary failures: model produces grid + enemies but skips waves (continuous enemy spawn) OR towers don't target (just placeholders) OR no gold economy."
+    },
+    {
+      "id": "ag-restart-button",
+      "rule": "Every game MUST present a VISIBLE on-screen restart/play-again button when the game ends (game-over, you-win, level-complete). Do NOT rely solely on a menu shortcut like Cmd+N or 'Game > New Game' \u2014 users don't discover those mid-play. The restart UI must: (a) appear automatically when the terminal phase is reached, (b) be visually distinct (colored button or large tappable area), (c) clearly say 'Restart' / 'Play Again' / 'New Game' (not just 'OK' or unlabeled), (d) when tapped, fully reset all game state (score, lives, level, score-multiplier, fuel, terrain \u2014 anything that accumulated during play). Keep the menu-bar shortcut too (e.g. Cmd+N), but the on-screen button is the primary affordance.",
+      "why": "User feedback 2026-05-04 on shipped Lunar Lander: 'There is no restart button for the game: That should be a fundamental wisdom rule to all games if we don't have that already.' The shipped Lunar Lander rendered 'GAME OVER score=0' as static HUD text with no UI affordance. Users had to discover Cmd+N from the menu bar. Same pattern was hit by earlier shipped Pong, BurgerTime, Joust \u2014 they all have the menu shortcut but lack a tappable on-screen restart. This is the single most common 'it's a great game but UX feels rough' complaint.",
+      "severity": "high",
+      "examples": [
+        "RIGHT (SwiftUI overlay): When phase becomes .gameOver, render `VStack { Text('GAME OVER').font(.largeTitle); Text('Score: \\(score)'); Button('Play Again') { restart() }.buttonStyle(.borderedProminent) }.padding(20).background(...).overlay(...)`",
+        "RIGHT (SpriteKit overlay): On game-over, add an SKShapeNode panel with 'Game Over' label + an SKLabelNode 'Tap to Restart' that the scene's touchesBegan/mouseDown handler responds to.",
+        "RIGHT (HTML game): On game-over, show a centered modal with 'Play Again' button. The modal is dismissable only by clicking the button (don't auto-dismiss).",
+        "WRONG: Showing 'GAME OVER score=0' in the HUD label and stopping the game loop. User can't restart without quitting and relaunching.",
+        "WRONG: Only Cmd+N / menu shortcut. Users don't think to look there mid-play.",
+        "Bonus: keyboard shortcut on the button itself (e.g. Space or Return = Play Again) for users who prefer keyboard."
+      ]
     }
   ],
-  "lastUpdated": "2026-04-30"
+  "lastUpdated": "2026-04-30",
+  "_last_updated": "2026-05-04"
 }
