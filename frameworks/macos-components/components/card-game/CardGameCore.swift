@@ -6,6 +6,29 @@ enum PlayingCardSuit: String, Codable, CaseIterable, Sendable {
     case diamonds
     case hearts
     case spades
+
+    /// Unicode glyph for the suit. Use this in card-rendering UI instead of
+    /// the enum case name's first letter ("C", "D"). The first-letter fallback
+    /// is ambiguous (clubs vs. card?) and looks unprofessional. Filed 2026-05-04
+    /// after user reported shipped Native Blackjack used "C"/"D" for clubs/diamonds.
+    var glyph: String {
+        switch self {
+        case .clubs:    return "♣"
+        case .diamonds: return "♦"
+        case .hearts:   return "♥"
+        case .spades:   return "♠"
+        }
+    }
+
+    /// Conventional card-suit color: black for clubs/spades, red for diamonds/hearts.
+    /// Returned as a triple `(red, green, blue)` in 0...1 so this stays UI-framework
+    /// agnostic (works with SwiftUI Color, NSColor, CGColor — wrap at the call site).
+    var rgb: (red: Double, green: Double, blue: Double) {
+        switch self {
+        case .clubs, .spades:    return (0.0, 0.0, 0.0)
+        case .diamonds, .hearts: return (0.85, 0.10, 0.10)
+        }
+    }
 }
 
 enum PlayingCardRank: Int, Codable, CaseIterable, Comparable, Sendable {
