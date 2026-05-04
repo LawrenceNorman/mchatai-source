@@ -423,13 +423,12 @@ struct ContentView: View {
     }
 
     private func attemptSwap(origin: PuzzlePoint, target: PuzzlePoint) {
+        // Phase 1: try the swap. Wrapped in withAnimation so the two tiles
+        // slide into each other's cells via the .position animation key
+        // hooked to engine.grid.
         var didSwap = false
-
-        // Wrap the engine mutation in withAnimation so the position
-        // changes (each tile's row/col) animate smoothly via the spring
-        // animation hooked to engine.grid.
         withAnimation(.spring(response: 0.30, dampingFraction: 0.78)) {
-            didSwap = engine.swap(origin, target)
+            didSwap = engine.swapOnly(origin, target)
         }
 
         moves -= 1
@@ -442,7 +441,54 @@ struct ContentView: View {
             return
         }
 
-        animateCascades()
+        // Phase 2 + 3: stepwise cascade. Each clearMatches() + collapseAndRefill()
+        // pair is its own SwiftUI render cycle — that's what gives SwiftUI
+        // intermediate states to animate. swap() (legacy all-in-one) collapsed
+        // every phase into a single render and produced snap-cuts.
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 200_000_000)  // 0.20s for swap to settle
+            await runCascadeLoop()
+        }
+    }
+
+    @MainActor
+    private func runCascadeLoop() async {
+        var totalPoints = 0
+        var maxCombo = 0
+        var iterations = 0
+        let cascadeFlashDuration: UInt64 = 350_000_000  // 0.35s
+
+        while true {
+            // Step A: clear matches. Triggers pop+fade for the matched tiles
+            // (their symbol becomes "" so they're no longer in tilesWithPositions).
+            var events: [Match3MatchEvent] = []
+            withAnimation(.easeOut(duration: 0.22)) {
+                events = engine.clearMatches()
+            }
+            if events.isEmpty { break }
+
+            iterations += 1
+            maxCombo = max(maxCombo, iterations)
+            totalPoints += events.reduce(0) { $0 + $1.pointsAwarded }
+            totalCleared += events.reduce(0) { $0 + $1.points.count }
+            combo = iterations
+            status = combo > 1 ? "Combo x\(combo)!" : "Nice match!"
+
+            // Wait for the pop animation to play before sliding.
+            try? await Task.sleep(nanoseconds: cascadeFlashDuration)
+
+            // Step B: collapse + refill. The same tile UUIDs that were
+            // ABOVE empty cells now move DOWN — SwiftUI animates the
+            // y-translation because the tile.id is stable. New tiles get
+            // fresh UUIDs and appear at the top.
+            withAnimation(.spring(response: 0.42, dampingFraction: 0.75)) {
+                engine.collapseAndRefill()
+            }
+
+            // Wait for the slide before checking for new cascade matches.
+            try? await Task.sleep(nanoseconds: 380_000_000)
+        }
+
         checkBoardHealth()
     }
 
