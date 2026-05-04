@@ -902,6 +902,50 @@
       ],
       "requiredNow": ["music.piano"],
       "plannedNext": ["native-audio-engine", "recording-mode"]
+    },
+    {
+      "id": "recipe.spritekit-physics",
+      "name": "Native SpriteKit Physics Game",
+      "keywords": [
+        "SpriteKit",
+        "SKPhysicsBody",
+        "SKPhysicsContact",
+        "SKPhysicsContactDelegate",
+        "SKShapeNode",
+        "SKSpriteNode",
+        "SKPhysicsWorld",
+        "physics body",
+        "physics contact",
+        "joust",
+        "flap-mount",
+        "lunar lander",
+        "lunar landing",
+        "marble madness",
+        "marble physics",
+        "rolling marble",
+        "didBegin",
+        "physicsWorld.contactDelegate",
+        "categoryBitMask",
+        "contactTestBitMask",
+        "collisionBitMask",
+        "applyForce",
+        "applyImpulse",
+        "circleOfRadius",
+        "rectangleOf"
+      ],
+      "templateIDs": [],
+      "existingApps": ["joust", "lunar-lander", "marble-madness"],
+      "starterComponents": ["arcade.spritekit-physics-helpers"],
+      "assemblyNotes": [
+        "Import SpriteKit. Use SKPhysicsHelpers.makeCircularBody / makeRectangularBody / makeOvalBody / makeStaticBody / makeSceneBoundary instead of constructing SKPhysicsBody directly.",
+        "SKPhysicsBody(ellipseOf:) DOES NOT EXIST. Use SKPhysicsHelpers.makeCircularBody for round entities (knights, ghosts, marbles), makeRectangularBody for boxy entities (bricks, ships), or makeOvalBody (uses polygonFrom: with an ellipse path) only when an oval body is genuinely required.",
+        "In nonisolated SKPhysicsContactDelegate.didBegin(_ contact:), call SKPhysicsHelpers.snapshot(of: contact) BEFORE entering Task { @MainActor in ... }. SKPhysicsContact itself is task-isolated and cannot cross the actor boundary; the snapshot captures sendable node references and category bitmasks.",
+        "Use SKArcadeCategory.player1 / .player2 / .enemy / .projectile / .platform / .lava / .pickup / .goal / .wall as default bitmask values; extend if you need more.",
+        "Set physicsWorld.contactDelegate = self in didMove(to:) and physicsWorld.gravity = SKPhysicsHelpers.standardGravity (or .lunarGravity for floaty games).",
+        "App-specific glue (scene setup, sprite drawing, control input handling, HUD, command menu) goes in separate files (GameScene.swift, ContentView.swift, App.swift)."
+      ],
+      "requiredNow": ["arcade.spritekit-physics-helpers"],
+      "plannedNext": ["spritekit-camera-helper", "spritekit-particle-helpers"]
     }
   ],
   "goldenAssemblies": [
