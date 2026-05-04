@@ -304,14 +304,16 @@ export class TowerDefenseGame {
       // Determine facing from velocity
       const facingLeft = (this.vx ?? 0) < -0.5;
       this._renderer(ctx, this.x, this.y, { scale: this._renderScale, flipX: facingLeft });
-      // Health bar (only when damaged)
-      if (this.hp < this.maxHp) {
+      // Health bar (only when damaged). Clamp ratio so a momentary negative hp
+      // never draws a leftward leak.
+      if (this.hp < this.maxHp && this.hp > 0) {
+        const ratio = Math.max(0, Math.min(1, this.hp / this.maxHp));
         const w = this.radius * 2.4;
         const hbY = this.y - this.radius - 8;
         ctx.fillStyle = "rgba(0,0,0,0.7)";
         ctx.fillRect(this.x - w / 2, hbY, w, 3);
-        ctx.fillStyle = this.hp / this.maxHp > 0.4 ? "#22c55e" : "#dc2626";
-        ctx.fillRect(this.x - w / 2, hbY, w * (this.hp / this.maxHp), 3);
+        ctx.fillStyle = ratio > 0.4 ? "#22c55e" : "#dc2626";
+        ctx.fillRect(this.x - w / 2, hbY, w * ratio, 3);
       }
     };
     this.enemies.push(enemy);
@@ -416,7 +418,19 @@ export class TowerDefenseGame {
         this.audio.beep({ freq: 140, duration: 0.1, type: "square" });
         return false;
       }
-      if (enemy.active === false || enemy.hp <= 0) return false;
+      // CRITICAL: must call destroy() so the entity is removed from engine.entities,
+      // not just from our local enemies list. Otherwise it keeps drawing every frame
+      // (with hp going more negative each frame from beam damage) — visible as a
+      // red horizontal line stretching from the zombie's position because fillRect
+      // with negative width draws leftward.
+      if (enemy.active === false || enemy.hp <= 0) {
+        if (enemy.hp <= 0 && typeof enemy.reward === "number") {
+          this.scrap += enemy.reward;
+          this.scoreboard.add(enemy.reward);
+        }
+        if (enemy.active !== false) enemy.destroy();
+        return false;
+      }
       return true;
     });
     this.projectiles = this.projectiles.filter((p) => p.active !== false);
