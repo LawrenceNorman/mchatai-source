@@ -1,6 +1,6 @@
 {
   "packID": "arcade-games",
-  "version": 7,
+  "version": 8,
   "displayName": "Arcade Game Guidelines",
   "description": "Quality rules for arcade-style action games \u2014 sprite anatomy (ag-016), attack animations (ag-017), keyboard input, rAF loop, collision, off-screen spawn (ag-018). Covers named-game canaries: Frogger, Pac-Man, Joust, Defender, Galaxian, Asteroids, Centipede, Q*bert, Kaboom, BurgerTime, Lode Runner, Spy Hunter, Pole Position, Skee-Ball, Pinball, Tempest, Adventure, Boxing, Snake, Breakout, Pong, Tetris.",
   "categories": [
@@ -482,6 +482,18 @@
         "WRONG: Showing 'GAME OVER score=0' in the HUD label and stopping the game loop. User can't restart without quitting and relaunching.",
         "WRONG: Only Cmd+N / menu shortcut. Users don't think to look there mid-play.",
         "Bonus: keyboard shortcut on the button itself (e.g. Space or Return = Play Again) for users who prefer keyboard."
+      ]
+    },
+    {
+      "id": "ag-restart-button-all-phases",
+      "rule": "The 'visible on-screen restart button' rule (mac-022 / ag-restart-button) applies to EVERY terminal phase, not just the obvious 'lose' state. Specifically: (a) win \u2014 show 'Play Again' overlay (b) lose \u2014 show 'Play Again' overlay (c) draw / stalemate (in 2-player games) \u2014 show 'Rematch' overlay (d) puzzle-solved \u2014 show 'Next puzzle' or 'Play Again' overlay. If the engine has any phase OTHER than the live 'playing' state, that phase needs a restart UI affordance, not just a status label. Keyboard shortcuts (Cmd+N, R) are an escape hatch but the on-screen button is mandatory.",
+      "why": "User feedback 2026-05-04 on the catalog Minesweeper reference: \"A restart button would be nice (instead of just hitting R)\". The reference had a 'New Game' button hidden in a controls row + an 'R' keyboard shortcut, but no overlay on the win/lose screen. Same pattern slipped through on the original mac-022 review. Extending the rule explicitly so future reviewers know: every non-playing phase needs an overlay button.",
+      "severity": "high",
+      "examples": [
+        "RIGHT: `if engine.state == .won || engine.state == .lost { gameOverOverlay }` with the overlay containing a Button('Play Again') keyboardShortcut(.return) and a status message.",
+        "RIGHT (puzzle): when isSolved becomes true, overlay 'New Puzzle' button. NOT 'press Cmd+N' \u2014 the button is the affordance.",
+        "WRONG: only setting `statusMessage = 'GAME OVER'` and relying on the user to find the small 'New Game' button in a controls row.",
+        "Real incident 2026-05-04: shipped Lunar Lander v1 had 'GAME OVER score=0' as static HUD. Catalog Minesweeper reference had hidden 'New Game' in controls. Same family of misses."
       ]
     }
   ],

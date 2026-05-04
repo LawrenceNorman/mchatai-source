@@ -19,6 +19,17 @@ struct ContentView: View {
             }
             .padding(28)
 
+            // Game-over overlay with prominent Play Again button (mac-022).
+            // Pre-fix: when the game ended, the only restart paths were the
+            // small "New Game" button hidden in the controls row OR the
+            // "R" keyboard shortcut. Neither was discoverable mid-play —
+            // the Match3-cluster feedback applies here too: every game
+            // needs a VISIBLE on-screen restart affordance when terminal.
+            if engine.state == .won || engine.state == .lost {
+                gameOverOverlay
+                    .transition(.opacity)
+            }
+
             MinesweeperKeyboardCaptureView(
                 onReveal: activateSelected,
                 onFlag: toggleSelectedFlag,
@@ -38,10 +49,44 @@ struct ContentView: View {
         }
     }
 
+    @ViewBuilder
+    private var gameOverOverlay: some View {
+        ZStack {
+            Color.black.opacity(0.7)
+            VStack(spacing: 14) {
+                Text(engine.state == .won ? "BOARD CLEARED" : "BOOM")
+                    .font(.system(size: 44, weight: .black, design: .rounded))
+                    .foregroundStyle(engine.state == .won ? .green : .red)
+                Text(engine.state == .won
+                    ? "Cleared in \(timeText)"
+                    : "Mine triggered. Better luck next sweep.")
+                    .font(.title3)
+                    .foregroundStyle(.white.opacity(0.9))
+                Button {
+                    newGame()
+                } label: {
+                    Text("Play Again")
+                        .font(.title3.bold())
+                        .padding(.horizontal, 28)
+                        .padding(.vertical, 8)
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+                .keyboardShortcut(.return, modifiers: [])
+                Text("Press Return to restart")
+                    .font(.caption)
+                    .foregroundStyle(.white.opacity(0.5))
+            }
+            .padding(36)
+            .background(Color.black.opacity(0.85))
+            .clipShape(RoundedRectangle(cornerRadius: 18))
+        }
+    }
+
     private var header: some View {
         HStack(alignment: .bottom) {
             VStack(alignment: .leading, spacing: 6) {
-                Text("Native Minesweeper")
+                Text("Minesweeper")
                     .font(.system(size: 38, weight: .black, design: .rounded))
                     .foregroundStyle(.white)
                 Text(statusText)

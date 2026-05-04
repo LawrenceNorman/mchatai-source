@@ -24,7 +24,7 @@ struct ContentView: View {
     private var header: some View {
         HStack(alignment: .firstTextBaseline) {
             VStack(alignment: .leading, spacing: 4) {
-                Text("Native Blackjack")
+                Text("Blackjack")
                     .font(.system(size: 32, weight: .black, design: .rounded))
                 Text(engine.status)
                     .font(.headline)

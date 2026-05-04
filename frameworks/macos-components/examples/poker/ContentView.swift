@@ -30,7 +30,7 @@ struct ContentView: View {
     private var header: some View {
         HStack(alignment: .firstTextBaseline) {
             VStack(alignment: .leading, spacing: 4) {
-                Text("Native Hold'em Poker")
+                Text("Texas Hold'em Poker")
                     .font(.system(size: 32, weight: .black, design: .rounded))
                 Text(table.status)
                     .font(.headline)

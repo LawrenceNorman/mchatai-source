@@ -51,7 +51,7 @@ struct ContentView: View {
     private var header: some View {
         HStack(alignment: .bottom) {
             VStack(alignment: .leading, spacing: 6) {
-                Text("Native Frogger")
+                Text("Frogger")
                     .font(.system(size: 40, weight: .black, design: .rounded))
                     .foregroundStyle(.white)
                 Text(status)

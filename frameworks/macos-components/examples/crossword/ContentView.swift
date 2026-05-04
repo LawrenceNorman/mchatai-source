@@ -4,6 +4,7 @@ import AppKit
 struct ContentView: View {
     @State private var engine = MiniCrosswordSeed.daily()
     @State private var elapsedSeconds = 0
+    @State private var verifyMode = false  // "Check" toggle: highlights wrong letters
     @FocusState private var hasKeyboardFocus: Bool
 
     private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
@@ -137,13 +138,25 @@ struct ContentView: View {
                 focusKeyboardInput()
             }
 
+            // Check toggle — when ON, every filled cell shows a soft red
+            // tint if wrong or a soft green tint if correct (per-letter,
+            // not waiting for the full puzzle to be solved). Per user
+            // feedback 2026-05-04: "verification" was missing — solver
+            // had no way to know if a guess was right until the whole
+            // puzzle was solved.
+            Button(verifyMode ? "Hide Check" : "Check") {
+                verifyMode.toggle()
+                focusKeyboardInput()
+            }
+            .tint(verifyMode ? .green : .accentColor)
+
             Button("Reset") {
                 resetPuzzle()
             }
 
             Spacer()
 
-            Text("Type letters · arrows move")
+            Text("Type letters · arrows move · Check verifies")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
@@ -271,16 +284,28 @@ struct ContentView: View {
     }
 
     private func cellFill(cell: CrosswordCell, isSelected: Bool, isActive: Bool) -> Color {
-        if cell.isBlock { return .black }
-        if isSelected { return .blue }
-        if isActive { return .blue.opacity(0.24) }
-        if engine.isSolved { return .green.opacity(0.2) }
-        return .white.opacity(0.94)
+        if cell.isBlock { return Color(white: 0.18) }      // softer than pure black
+
+        // Verify mode: per-letter feedback when Check is toggled on.
+        // Soft green for correct, soft red for wrong. Empty cells stay white.
+        if verifyMode, !cell.isBlock, cell.guess != nil {
+            if cell.isCorrect { return Color(red: 0.78, green: 0.95, blue: 0.78) }  // pale green
+            return Color(red: 0.99, green: 0.82, blue: 0.82)                         // pale red
+        }
+
+        if isSelected { return Color(red: 0.85, green: 0.92, blue: 1.0) }  // pale blue (was solid blue — too dark)
+        if isActive   { return Color(red: 0.93, green: 0.96, blue: 1.0) }  // very pale blue (highlight the row/col)
+        if engine.isSolved { return Color(red: 0.85, green: 0.97, blue: 0.85) }
+        return Color(white: 0.99)  // near-white instead of off-white
     }
 
     private func cellTextColor(cell: CrosswordCell, isSelected: Bool) -> Color {
-        if isSelected { return .white }
-        if cell.isCorrect { return .green }
+        // Always-readable dark text on the lightened backgrounds.
+        // Correct letters in verify-mode get a slightly bolder dark green.
+        if verifyMode, cell.guess != nil, !cell.isBlock {
+            return cell.isCorrect ? Color(red: 0.10, green: 0.45, blue: 0.18) : Color(red: 0.55, green: 0.10, blue: 0.10)
+        }
+        if cell.isCorrect && engine.isSolved { return Color(red: 0.18, green: 0.55, blue: 0.20) }
         return .black
     }
 

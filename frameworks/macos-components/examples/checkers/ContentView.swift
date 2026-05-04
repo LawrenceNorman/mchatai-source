@@ -98,7 +98,7 @@ struct ContentView: View {
     private var sidePanel: some View {
         VStack(alignment: .leading, spacing: 18) {
             VStack(alignment: .leading, spacing: 5) {
-                Text("Native Checkers")
+                Text("Checkers")
                     .font(.system(size: 32, weight: .black, design: .rounded))
                 Text(game.status)
                     .font(.headline)
