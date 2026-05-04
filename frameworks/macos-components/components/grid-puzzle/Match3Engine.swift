@@ -1,7 +1,14 @@
 // BEGIN mChatAI macOS Component: gridpuzzle.match3 (components/grid-puzzle/Match3Engine.swift)
 import Foundation
 
-struct Match3Tile: Codable, Equatable, Sendable {
+struct Match3Tile: Codable, Equatable, Sendable, Identifiable {
+    /// Stable identity that persists across swap / collapse / refill.
+    /// The View uses this to animate a single candy as it slides DOWN
+    /// when the column collapses — without an ID, SwiftUI can't tell
+    /// "the candy at (4,3) is the same one that was at (2,3) a frame ago"
+    /// and the slide animation collapses to a snap-cut. Filed 2026-05-04
+    /// after user feedback that animations were lacking.
+    var id: UUID = UUID()
     var symbol: String
 }
 
