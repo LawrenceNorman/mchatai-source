@@ -128,12 +128,22 @@ struct CrosswordEngine: Codable, Equatable, Sendable {
 }
 
 enum MiniCrosswordSeed {
-    /// Picks one of the curated NYT-style mini puzzles based on the day-of-year so
-    /// users see a fresh puzzle each day instead of the same letters every session.
+    /// Picks one of the curated NYT-style mini puzzles based on day-of-year so
+    /// users see a fresh puzzle each day. Routes through MiniCrosswordBank
+    /// which has 10 curated puzzles (vs the original 3) — adding more is a
+    /// matter of appending to MiniCrosswordBank.allPuzzles.
     static func daily(referenceDate: Date = Date()) -> CrosswordEngine {
-        let bank = [puzzleA, puzzleB, puzzleC]
-        let day = Calendar.current.ordinality(of: .day, in: .year, for: referenceDate) ?? 1
-        return bank[abs(day - 1) % bank.count]()
+        MiniCrosswordBank.daily(referenceDate: referenceDate)
+    }
+
+    /// Today's puzzle index — for a "Puzzle 5 of 10" style HUD.
+    static func dailyIndex(referenceDate: Date = Date()) -> (index: Int, total: Int) {
+        MiniCrosswordBank.dailyIndex(referenceDate: referenceDate)
+    }
+
+    /// Specific puzzle by index — for previous/next navigation.
+    static func puzzle(at index: Int) -> CrosswordEngine {
+        MiniCrosswordBank.puzzle(at: index)
     }
 
     /// Backwards-compatible entry point used by older glue code; routes to `daily()`.

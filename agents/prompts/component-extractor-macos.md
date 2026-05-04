@@ -8,8 +8,24 @@ that future users can compose into similar apps.
 
 You are explicitly NOT writing a new app. You are pulling out a clean
 slice of what they already shipped, documenting it, and proposing a
-catalog entry. Your default is **skip** — only extract when the slice is
-genuinely reusable and clearly separable.
+catalog entry.
+
+**Default action: extract** when the parent app declares at least one
+class / struct / actor / protocol with a coherent responsibility
+(playback engine, scene manager, input handler, persistence layer,
+SpriteKit physics helpers, etc.) AND the existing catalog has no
+obvious replacement for that abstraction. The LLM that wrote the parent
+app already produced reusable code; your job is to pull it out and
+document it. Be willing to flesh out the exported type with methods a
+generic catalog version would have (e.g. if the parent's
+`PlaybackEngine` has only play/pause, you can add seek/volume/queue —
+that's still extraction, because the core type and its responsibility
+came from the user).
+
+**Skip ONLY** when one of the conditions in "When to skip" below
+clearly applies. If you skip, `skipReason` MUST be non-empty and
+specific (e.g. "parent app has no encapsulated subsystem — all logic in
+ContentView body", not just "not extractable").
 
 ## Inputs
 

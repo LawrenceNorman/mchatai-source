@@ -1,6 +1,6 @@
 {
   "packID": "card-games",
-  "version": 2,
+  "version": 3,
   "displayName": "Card Game Guidelines",
   "description": "Quality rules for poker, blackjack, solitaire, and other card games.",
   "categories": [
@@ -303,6 +303,55 @@
         "WRONG: Showing 'GAME OVER score=0' in the HUD label and stopping the game loop. User can't restart without quitting and relaunching.",
         "WRONG: Only Cmd+N / menu shortcut. Users don't think to look there mid-play.",
         "Bonus: keyboard shortcut on the button itself (e.g. Space or Return = Play Again) for users who prefer keyboard."
+      ]
+    },
+    {
+      "id": "game-warm-gradient-background",
+      "rule": "Game backgrounds MUST be warm/atmospheric \u2014 radial-gradient or layered linear-gradient with at least one color highlight per corner. NOT pure black, NOT plain solid color. The web Candy Match reference uses a layered gradient: base purple (#1f1026) + radial yellow glow at top-left + radial cyan glow at top-right. Same pattern works for any game: pick a primary color matching the game's theme (purple for candy, dark blue for space, dark green for forest), add 1-2 radial corner glows in complementary colors. SwiftUI: use ZStack { Color + RadialGradient + RadialGradient }.ignoresSafeArea(). The warmth makes the game feel like a finished product instead of a wireframe.",
+      "why": "User feedback 2026-05-04 on the catalog Match3: 'The black background is lame'. Switched to layered radial-gradient (purple base + yellow + cyan corners) per the web Candy Match reference. The atmosphere is the difference between a play-test prototype and a polished app \u2014 and it costs ~12 lines of SwiftUI to add. Apply broadly: arcade games, board games, card games, puzzles all benefit.",
+      "severity": "medium",
+      "examples": [
+        "RIGHT (SwiftUI): ZStack { Color(red: 0.12, green: 0.06, blue: 0.15).ignoresSafeArea(); RadialGradient(gradient: Gradient(colors: [Color.yellow.opacity(0.22), .clear]), center: UnitPoint(x: 0.2, y: 0.1), startRadius: 0, endRadius: 360); RadialGradient(...) }",
+        "RIGHT (HTML/CSS): background: radial-gradient(circle at 20% 10%, rgba(250,204,21,0.22), transparent 28rem), radial-gradient(circle at 80% 0%, rgba(34,211,238,0.16), transparent 26rem), linear-gradient(145deg, #170b1c 0%, #1f1026 48%, #35141d 100%);",
+        "WRONG: backgroundColor = .black, .ignoresSafeArea(), nothing else. Reads like a debug build.",
+        "Board game color picks: chess = warm beige + dark walnut accents; checkers = forest green felt + tan corner glow; poker = dark green felt + brass corner highlights."
+      ]
+    },
+    {
+      "id": "game-tile-shine-and-gradient",
+      "rule": "Every clickable/interactive tile in a game (candy in match-3, card in solitaire, key on a piano keyboard, etc.) MUST have: (a) a vertical or 145\u00b0 linear-gradient fill, NOT a flat color. (b) An inner highlight \u2014 a rotated semi-transparent white blob or arc, inset ~12% from the edges, that gives the tile a 3D / glossy appearance. (c) A subtle 1.5pt white-with-low-opacity stroke for definition. (d) A drop-shadow whose color is the tile's BOTTOM gradient color so the tile feels grounded. The web Candy Match reference does this in CSS with `.tile::before { inset: 12%; background: rgba(255,255,255,0.22); transform: rotate(18deg) }`. SwiftUI equivalent: ZStack { RoundedRectangle.fill(LinearGradient(top, bottom)); RoundedRectangle.fill(.white.opacity(0.22)).scaleEffect(0.62).rotationEffect(.degrees(-18)); RoundedRectangle.stroke(.white.opacity(0.28), lineWidth: 1.5) }.shadow(color: bottomColor.opacity(0.5), radius: 6, y: 4).",
+      "why": "User feedback 2026-05-04 on the catalog Match3: 'The jewels look kind of lame, the graphics are very flat and boring.' Adding the gradient + inner shine + colored shadow makes a flat shape look like a candy-shop jewel without bundling any art assets. Same trick works for cards (gradient front + back), keys (white-to-cream gradient + shine), pieces (color-toned gradient + shadow).",
+      "severity": "medium",
+      "examples": [
+        "RIGHT (Match3 candy): see /Users/lawrencenorman/mystuff/src/mchatai_platform/mchatai-source/frameworks/macos-components/examples/match3/ContentView.swift (function candyTileBody) \u2014 gradient + inner shine + stroke + colored shadow",
+        "RIGHT (web Candy Match): see frameworks/web-components/examples/candy-match/candy-match.css \u2014 .tile + .tile::before + .tile.kind-N gradient classes",
+        "WRONG: RoundedRectangle.fill(Color.red) + Image(systemName: 'sparkle') with no gradient, no shine, no shadow \u2014 reads as a wireframe placeholder",
+        "Reskin guidance: when the user asks for a different theme (e.g. 'space-themed match-3'), keep the gradient+shine+stroke STRUCTURE, only swap the gradient color pairs."
+      ]
+    },
+    {
+      "id": "game-animation-choreography",
+      "rule": "Every game state transition that the player triggers MUST have a visible animation, not a snap-cut. Specifically: (1) Tile/piece moves: spring-animation (response: 0.25-0.35, dampingFraction: 0.7) with offset interpolation. (2) Tile-swap (match-3, sliding puzzles): both tiles slide simultaneously toward each other, then settle. (3) Tile/piece removal: scale to 1.3\u00d7 + fade-out (.easeOut, 0.18s). (4) Refill / collapse (match-3, tetris): new tiles slide DOWN from above using SwiftUI .transition(.asymmetric(insertion: .move(edge: .top).combined(with: .opacity), removal: .opacity)). (5) Cascade chain: stagger animations by 0.20-0.25s per chain pass so the player can see each step. (6) Score increment: animate with .contentTransition(.numericText()) or a brief scale-pulse on the score number. NEVER use snap-cuts on user-initiated state changes \u2014 even 0.1s of motion is the difference between 'game' and 'spreadsheet'.",
+      "why": "User feedback 2026-05-04 on the catalog Match3: 'the animations are still pretty lame, the jewels don't slide down, there is no pulsing hints, nothing.' Borrowing the web Candy Match's animation choreography (swap glide + pop+fade match + slide-from-top refill) made the game feel alive instead of teleporty. Apply broadly: chess piece moves should glide, card flips should rotate, hop-games should arc, everything you click should respond visibly.",
+      "severity": "high",
+      "examples": [
+        "RIGHT (swap glide): withAnimation(.easeInOut(duration: 0.18)) { tileOffsets[a] = ...; tileOffsets[b] = ... }; DispatchQueue.main.asyncAfter(deadline: .now() + 0.20) { engine.swap(a, b); tileOffsets[a] = .zero; tileOffsets[b] = .zero }",
+        "RIGHT (pop fade): withAnimation(.easeOut(duration: 0.20)) { poppingTiles.formUnion(matched); ... } -> tile body uses .scaleEffect(isPopping ? 1.3 : 1.0).opacity(isPopping ? 0 : 1)",
+        "RIGHT (cascade stagger): for (i, event) in events.enumerated() { DispatchQueue.main.asyncAfter(deadline: .now() + Double(i) * 0.24) { ... } }",
+        "WRONG: engine.swap(a, b); engine.findMatches(); engine.collapse(); engine.refill() \u2014 all in one synchronous frame; the user sees the board jump from old state to new state with zero feedback.",
+        "Anti-pattern: rendering NEW tiles in their final position. They should slide IN from off-screen / above. Use transitions: .move(edge: .top).combined(with: .opacity)."
+      ]
+    },
+    {
+      "id": "game-idle-hint-pulse",
+      "rule": "After ~5 seconds of player idleness in a game with valid-move gameplay (match-3, sudoku, mahjong-tile-matching, etc.), the game MUST surface a hint by visibly pulsing one valid move. The hint should: (a) compute a real valid move via the engine's findPossibleSwap / findPossibleMove API, (b) animate the involved tiles with a soft scale (1.05x) + glow pulse on a 1s ease-in-out cycle, (c) cancel the hint as soon as the player makes any move. This is the difference between 'I'm stuck' and 'this game wants me to figure it out alone.' Cap idle threshold at 5-8s \u2014 any longer feels like punishment.",
+      "why": "User feedback 2026-05-04 on the catalog Match3: 'no pulsing hints, nothing'. The web Candy Match doesn't have this either, but it's a UX standard for tile-swap puzzlers. Added to Match3 with a Timer.publish(every: 1) ticker + lastMoveAt tracking + findPossibleSwap helper. Same pattern works for Mahjong (highlight a matchable pair), Sudoku (highlight a cell with only one valid digit), Solitaire (highlight a moveable card).",
+      "severity": "medium",
+      "examples": [
+        "RIGHT (idle threshold + scale-pulse): @State var lastMoveAt = Date(); Timer.publish(every: 1) { if Date.now - lastMoveAt > 5 { hintPair = engine.findPossibleSwap(); withAnimation(...) { hintPulse.toggle() } } }",
+        "RIGHT (cancel on move): when the player commits any swap/move, set hintPair = nil; lastMoveAt = Date()",
+        "WRONG: showing the hint immediately after every move (turns it into a tutorial mode the player can't disable)",
+        "WRONG: never showing a hint (advanced players don't need it, but new players quit when they're stuck and don't realize valid moves exist)"
       ]
     }
   ],
