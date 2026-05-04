@@ -1,6 +1,6 @@
 {
   "packID": "macos-app",
-  "version": 5,
+  "version": 6,
   "displayName": "macOS App Generation Wisdom",
   "description": "Rules for generating executable macOS apps (SwiftUI / AppKit) via Swift Playground. Focused on making the generated binary actually appear as a visible, interactive window \u2014 not a headless background process.",
   "categories": [
@@ -180,7 +180,7 @@
     },
     {
       "id": "mac-014",
-      "rule": "SpriteKit games MUST wire all game-event callbacks in the `update(_ currentTime:)` loop or via `didBeginContact` — do NOT write standalone score/collect/eat/collision functions without calling them. Every class that 'owns' a game-event function MUST also be the place it is called. Common missing wires: (1) Pac-Man / collect-dot: `GameScene.update` must call `if scene.tiles[tile.row][tile.col] == .dot { scene.dotNodes[tile.row][tile.col]?.removeFromParent(); scene.gameState.eatDot() }` after `pacMan.update`. (2) Ghost-player collision: after `ghost.update`, check `distanceSq(ghost.position, pacMan.position) < collisionRadius*collisionRadius`. (3) Power-pellet: same check against pellet node positions. (4) Ghost-eat: check if ghost is frightened AND close to Pac-Man. If you generate a `GameState.eatDot()` method but never call it from the update loop, the score never changes and dots never disappear.",
+      "rule": "SpriteKit games MUST wire all game-event callbacks in the `update(_ currentTime:)` loop or via `didBeginContact` \u2014 do NOT write standalone score/collect/eat/collision functions without calling them. Every class that 'owns' a game-event function MUST also be the place it is called. Common missing wires: (1) Pac-Man / collect-dot: `GameScene.update` must call `if scene.tiles[tile.row][tile.col] == .dot { scene.dotNodes[tile.row][tile.col]?.removeFromParent(); scene.gameState.eatDot() }` after `pacMan.update`. (2) Ghost-player collision: after `ghost.update`, check `distanceSq(ghost.position, pacMan.position) < collisionRadius*collisionRadius`. (3) Power-pellet: same check against pellet node positions. (4) Ghost-eat: check if ghost is frightened AND close to Pac-Man. If you generate a `GameState.eatDot()` method but never call it from the update loop, the score never changes and dots never disappear.",
       "why": "Wave-4 round-3 macOS Pac-Man shipped with correct GameState methods (eatDot, eatPowerPellet, eatGhost) and correct dot/ghost node structures, but PacManNode.update() had zero calls back to GameState and zero dot-removal code. Result: dots never disappeared, ghosts were never triggered. The LLM correctly wrote the individual building blocks but missed the glue. Rule filed 2026-05-01.",
       "severity": "high",
       "appliesTo": "macOSApp",
@@ -193,65 +193,65 @@
     },
     {
       "id": "mac-015",
-      "rule": "Any `static` method that touches an `@MainActor` (or `@Published`) property — e.g. on an `ObservableObject` `GameState` — MUST itself be annotated `@MainActor`. Otherwise Swift 6 strict concurrency rejects with `main actor-isolated property 'X' can not be referenced from a nonisolated context`. The two most common offenders: (a) `static func draw(in:size:cellSize:game:time:)` on a renderer enum/struct that reads `game.popup`, `game.pacDirection`, etc. — annotate the whole `static func draw(...)` with `@MainActor`. (b) `static func printGameSmoke()` on a smoke-test enum that constructs a `GameState()` and reads its published vars — same fix. The compiler note even spells the fix: `add '@MainActor' to make static method 'draw(in:size:cellSize:game:time:)' part of global actor 'MainActor'`.",
+      "rule": "Any `static` method that touches an `@MainActor` (or `@Published`) property \u2014 e.g. on an `ObservableObject` `GameState` \u2014 MUST itself be annotated `@MainActor`. Otherwise Swift 6 strict concurrency rejects with `main actor-isolated property 'X' can not be referenced from a nonisolated context`. The two most common offenders: (a) `static func draw(in:size:cellSize:game:time:)` on a renderer enum/struct that reads `game.popup`, `game.pacDirection`, etc. \u2014 annotate the whole `static func draw(...)` with `@MainActor`. (b) `static func printGameSmoke()` on a smoke-test enum that constructs a `GameState()` and reads its published vars \u2014 same fix. The compiler note even spells the fix: `add '@MainActor' to make static method 'draw(in:size:cellSize:game:time:)' part of global actor 'MainActor'`.",
       "why": "macOS Pac-Man canary 2026-05-03 hit this on TWO files (MazeRenderer.swift static draw + GameState.swift PacManSmokeTests.printGameSmoke) within one generation. The wizard's auto-fix loop didn't squash both within maxTurns=4. The fix is mechanical (one annotation) but the LLM forgets it on first emission whenever the renderer/smoke-test is split out as `enum SomeStatic { static func ... }`. Adding `@MainActor` at the static-function level is cheaper than turning the whole enum into `@MainActor` because most static helpers are pure.",
       "severity": "high",
       "appliesTo": "macOSApp",
       "examples": [
         "RIGHT: `enum MazeRenderer { @MainActor static func draw(in ctx: inout GraphicsContext, size: CGSize, cellSize: Double, game: GameState, time: TimeInterval) { ... } }`",
         "RIGHT: `enum PacManSmokeTests { @MainActor static func printGameSmoke() { let game = GameState(); print(game.pacDirection.rawValue) } }`",
-        "WRONG: `enum MazeRenderer { static func draw(..., game: GameState, ...) { _ = game.popup } }` — compile error: 'main actor-isolated property popup can not be referenced from a nonisolated context'.",
-        "Also accept: `@MainActor enum MazeRenderer { ... }` annotates every member at once. Useful when MOST static methods touch the actor — but adds isolation to pure helpers too, which makes them harder to call from non-main contexts. Prefer per-method when in doubt."
+        "WRONG: `enum MazeRenderer { static func draw(..., game: GameState, ...) { _ = game.popup } }` \u2014 compile error: 'main actor-isolated property popup can not be referenced from a nonisolated context'.",
+        "Also accept: `@MainActor enum MazeRenderer { ... }` annotates every member at once. Useful when MOST static methods touch the actor \u2014 but adds isolation to pure helpers too, which makes them harder to call from non-main contexts. Prefer per-method when in doubt."
       ]
     },
     {
       "id": "mac-016",
-      "rule": "A `guard <condition> else { ... }` body MUST end with a control-flow exit on EVERY path: `return`, `throw`, `continue`, `break`, `fatalError(...)`, `precondition(false)`. Specifically, do NOT write `guard X else { if Y { setupY() } else { return } }` — the if-branch falls through and the compiler rejects: `'guard' body must not fall through, consider using a 'return' or 'throw' to exit the scope`. If you need 'set up Y, then continue' as the recovery branch, refactor to a plain `if X == .empty { ... }` block (no guard) — guards are for early-exit only. Pattern that bit Pac-Man movePac(): `guard pacDirection != .none else { if pacQueued != .none, isPassable(...) { pacDirection = pacQueued; pacQueued = .none } else { return } }` — the if-branch's intent is 'recover and proceed' but guard syntax forbids that. Replace with: `if pacDirection == .none { if pacQueued != .none, isPassable(...) { pacDirection = pacQueued; pacQueued = .none } else { return } }`.",
+      "rule": "A `guard <condition> else { ... }` body MUST end with a control-flow exit on EVERY path: `return`, `throw`, `continue`, `break`, `fatalError(...)`, `precondition(false)`. Specifically, do NOT write `guard X else { if Y { setupY() } else { return } }` \u2014 the if-branch falls through and the compiler rejects: `'guard' body must not fall through, consider using a 'return' or 'throw' to exit the scope`. If you need 'set up Y, then continue' as the recovery branch, refactor to a plain `if X == .empty { ... }` block (no guard) \u2014 guards are for early-exit only. Pattern that bit Pac-Man movePac(): `guard pacDirection != .none else { if pacQueued != .none, isPassable(...) { pacDirection = pacQueued; pacQueued = .none } else { return } }` \u2014 the if-branch's intent is 'recover and proceed' but guard syntax forbids that. Replace with: `if pacDirection == .none { if pacQueued != .none, isPassable(...) { pacDirection = pacQueued; pacQueued = .none } else { return } }`.",
       "why": "Pac-Man canary 2026-05-03 emitted the bad guard pattern in `movePac(dt:)`. The auto-fix loop didn't catch it. Filed so future macOSApp generators recognize 'I want guard for early-exit but I also want a recovery branch' and reach for plain if/else instead.",
       "severity": "high",
       "appliesTo": "macOSApp",
       "examples": [
         "RIGHT (recovery + continue): `if pacDirection == .none { if pacQueued != .none, canMove(pacQueued) { pacDirection = pacQueued; pacQueued = .none } else { return } }; advance(...)`",
         "RIGHT (pure early-exit, no recovery): `guard pacDirection != .none else { return }; advance(...)`",
-        "WRONG: `guard pacDirection != .none else { if pacQueued != .none, canMove(pacQueued) { pacDirection = pacQueued } else { return } }` — compile error: 'guard body must not fall through'."
+        "WRONG: `guard pacDirection != .none else { if pacQueued != .none, canMove(pacQueued) { pacDirection = pacQueued } else { return } }` \u2014 compile error: 'guard body must not fall through'."
       ]
     },
     {
       "id": "mac-017",
-      "rule": "`SKPhysicsBody(ellipseOf:)` DOES NOT EXIST — but `SKShapeNode(ellipseOf:)` DOES. Don't confuse them. SpriteKit's SKPhysicsBody public initializers are: `init(circleOfRadius:)`, `init(circleOfRadius:center:)`, `init(rectangleOf:)`, `init(rectangleOf:center:)`, `init(polygonFrom:)` (CGPath), `init(edgeChainFrom:)`, `init(edgeFrom:to:)`, `init(edgeLoopFrom:)`, `init(texture:size:)`, `init(texture:alphaThreshold:size:)`, `init(bodies:)`. There is NO ellipse/oval initializer ON SKPhysicsBody. SKShapeNode by contrast DOES expose `init(ellipseOf:)`, `init(ellipseIn:)` for visual oval shapes — those are correct and you should keep them. The compiler reports: `SKPhysicsBody: incorrect argument label in call (have 'ellipseOf:', expected 'rectangleOf:')` — Xcode's fixit suggests rectangleOf which is usually what you want for the physics body. If you want an oval physics body shape, use `SKPhysicsBody(polygonFrom:)` with a CGPath of an ellipse — but for almost all game characters (knights, ostriches, ghosts, etc.) `circleOfRadius:` or `rectangleOf:` is correct and cheaper.",
-      "why": "Wave-4 round-6 Joust canary 2026-05-04 hit this in MountNode.swift: `SKPhysicsBody(ellipseOf: CGSize(width:38,height:30))`. The LLM hallucinated the `ellipseOf:` initializer — probably from Core Graphics' `NSBezierPath(ovalIn:)` or `CGPath.addEllipse(in:)` which DO exist. SpriteKit's body API is more limited. Auto-fix attempts misread the fixit and tried 'rectangleOf' which works. Adding to wisdom so the LLM emits the right form on first try.",
+      "rule": "`SKPhysicsBody(ellipseOf:)` DOES NOT EXIST \u2014 but `SKShapeNode(ellipseOf:)` DOES. Don't confuse them. SpriteKit's SKPhysicsBody public initializers are: `init(circleOfRadius:)`, `init(circleOfRadius:center:)`, `init(rectangleOf:)`, `init(rectangleOf:center:)`, `init(polygonFrom:)` (CGPath), `init(edgeChainFrom:)`, `init(edgeFrom:to:)`, `init(edgeLoopFrom:)`, `init(texture:size:)`, `init(texture:alphaThreshold:size:)`, `init(bodies:)`. There is NO ellipse/oval initializer ON SKPhysicsBody. SKShapeNode by contrast DOES expose `init(ellipseOf:)`, `init(ellipseIn:)` for visual oval shapes \u2014 those are correct and you should keep them. The compiler reports: `SKPhysicsBody: incorrect argument label in call (have 'ellipseOf:', expected 'rectangleOf:')` \u2014 Xcode's fixit suggests rectangleOf which is usually what you want for the physics body. If you want an oval physics body shape, use `SKPhysicsBody(polygonFrom:)` with a CGPath of an ellipse \u2014 but for almost all game characters (knights, ostriches, ghosts, etc.) `circleOfRadius:` or `rectangleOf:` is correct and cheaper.",
+      "why": "Wave-4 round-6 Joust canary 2026-05-04 hit this in MountNode.swift: `SKPhysicsBody(ellipseOf: CGSize(width:38,height:30))`. The LLM hallucinated the `ellipseOf:` initializer \u2014 probably from Core Graphics' `NSBezierPath(ovalIn:)` or `CGPath.addEllipse(in:)` which DO exist. SpriteKit's body API is more limited. Auto-fix attempts misread the fixit and tried 'rectangleOf' which works. Adding to wisdom so the LLM emits the right form on first try.",
       "severity": "high",
       "appliesTo": "macOSApp",
       "examples": [
-        "RIGHT (round body — knights, ghosts, marbles): `let body = SKPhysicsBody(circleOfRadius: 19)`",
-        "RIGHT (rectangular body — bricks, platforms, ships): `let body = SKPhysicsBody(rectangleOf: CGSize(width: 38, height: 30))`",
-        "RIGHT (custom shape — ostrich+knight outline): `let path = CGMutablePath(); path.addEllipse(in: CGRect(x: -19, y: -15, width: 38, height: 30)); let body = SKPhysicsBody(polygonFrom: path)`",
-        "WRONG: `SKPhysicsBody(ellipseOf: CGSize(width:38,height:30))` — initializer doesn't exist; compiler gives 'incorrect argument label, expected rectangleOf:'."
+        "RIGHT (round body \u2014 knights, ghosts, marbles): `let body = SKPhysicsBody(circleOfRadius: 19)`",
+        "RIGHT (rectangular body \u2014 bricks, platforms, ships): `let body = SKPhysicsBody(rectangleOf: CGSize(width: 38, height: 30))`",
+        "RIGHT (custom shape \u2014 ostrich+knight outline): `let path = CGMutablePath(); path.addEllipse(in: CGRect(x: -19, y: -15, width: 38, height: 30)); let body = SKPhysicsBody(polygonFrom: path)`",
+        "WRONG: `SKPhysicsBody(ellipseOf: CGSize(width:38,height:30))` \u2014 initializer doesn't exist; compiler gives 'incorrect argument label, expected rectangleOf:'."
       ]
     },
     {
       "id": "mac-018",
-      "rule": "When a class has implicitly-unwrapped optional (IUO) property like `var p2Mount: MountNode!`, a ternary or if-expression that returns it OR another non-optional value (e.g. `let node = (player == .one) ? p1Mount : p2Mount`) infers `MountNode?` (NOT `MountNode!` and NOT `MountNode`), because Swift type inference unifies branches as Optional in expressions. Pass-through to a non-optional argument fails: `value of optional type 'MountNode?' must be unwrapped to a value of type 'MountNode'`. Fix: explicitly annotate the binding's type — `let node: MountNode = (player == .one) ? p1Mount : p2Mount` — which lets Swift force-unwrap the IUO at the call site. Alternative: force-unwrap with `!` at usage. AVOID making both branches return Optional and then unwrapping later — that's noisier and risks crashes if either branch becomes nil.",
-      "why": "Wave-4 round-6 Joust canary 2026-05-04 hit this in JoustGameScene.respawnMount: `let node = (player == .one) ? p1Mount : p2Mount` — both p1Mount and p2Mount are `MountNode!` IUOs but Swift inferred `node: MountNode?`. Two compile errors at addChild(node) and placeMount(node, ...). Auto-fix didn't recognize the IUO/ternary interaction (a Swift idiom most LLMs miss). Add explicit type annotation as the canonical fix.",
+      "rule": "When a class has implicitly-unwrapped optional (IUO) property like `var p2Mount: MountNode!`, a ternary or if-expression that returns it OR another non-optional value (e.g. `let node = (player == .one) ? p1Mount : p2Mount`) infers `MountNode?` (NOT `MountNode!` and NOT `MountNode`), because Swift type inference unifies branches as Optional in expressions. Pass-through to a non-optional argument fails: `value of optional type 'MountNode?' must be unwrapped to a value of type 'MountNode'`. Fix: explicitly annotate the binding's type \u2014 `let node: MountNode = (player == .one) ? p1Mount : p2Mount` \u2014 which lets Swift force-unwrap the IUO at the call site. Alternative: force-unwrap with `!` at usage. AVOID making both branches return Optional and then unwrapping later \u2014 that's noisier and risks crashes if either branch becomes nil.",
+      "why": "Wave-4 round-6 Joust canary 2026-05-04 hit this in JoustGameScene.respawnMount: `let node = (player == .one) ? p1Mount : p2Mount` \u2014 both p1Mount and p2Mount are `MountNode!` IUOs but Swift inferred `node: MountNode?`. Two compile errors at addChild(node) and placeMount(node, ...). Auto-fix didn't recognize the IUO/ternary interaction (a Swift idiom most LLMs miss). Add explicit type annotation as the canonical fix.",
       "severity": "high",
       "appliesTo": "macOSApp",
       "examples": [
-        "RIGHT: `let node: MountNode = (player == .one) ? p1Mount : p2Mount; addChild(node)` — explicit type forces IUO unwrap.",
-        "RIGHT (force-unwrap inline): `addChild((player == .one) ? p1Mount! : p2Mount!)` — verbose but works.",
-        "WRONG: `let node = (player == .one) ? p1Mount : p2Mount; addChild(node)` — node inferred as MountNode?; addChild fails.",
-        "Also applies to: `if/else` returning IUOs, `switch` returning IUOs — same Swift inference rule. Always annotate the binding type when mixing IUOs in branching expressions."
+        "RIGHT: `let node: MountNode = (player == .one) ? p1Mount : p2Mount; addChild(node)` \u2014 explicit type forces IUO unwrap.",
+        "RIGHT (force-unwrap inline): `addChild((player == .one) ? p1Mount! : p2Mount!)` \u2014 verbose but works.",
+        "WRONG: `let node = (player == .one) ? p1Mount : p2Mount; addChild(node)` \u2014 node inferred as MountNode?; addChild fails.",
+        "Also applies to: `if/else` returning IUOs, `switch` returning IUOs \u2014 same Swift inference rule. Always annotate the binding type when mixing IUOs in branching expressions."
       ]
     },
     {
       "id": "mac-020",
-      "rule": "Multi-line text inside `String(format: \"...\")`, `print(\"...\")`, or any double-quoted Swift string literal MUST escape newlines as `\\n` — DO NOT put a literal newline inside `\"...\"`. The compiler reports `unterminated string literal`. If you genuinely want multi-line text without escapes, use triple-quoted Swift literals: `\"\"\" line1\\n line2 \"\"\"` (the indentation rules are particular — see Swift's multiline string spec). For `String(format:)` HUD formatting, ALWAYS use `\\n` between lines. Real example that bit Lunar Lander 2026-05-04: `hudLabel.text = String(format: \"ALT %5.0f<newline>VVEL %+6.2f\", alt, vy)` — the compiler hits the literal newline and sees an unterminated string.",
+      "rule": "Multi-line text inside `String(format: \"...\")`, `print(\"...\")`, or any double-quoted Swift string literal MUST escape newlines as `\\n` \u2014 DO NOT put a literal newline inside `\"...\"`. The compiler reports `unterminated string literal`. If you genuinely want multi-line text without escapes, use triple-quoted Swift literals: `\"\"\" line1\\n line2 \"\"\"` (the indentation rules are particular \u2014 see Swift's multiline string spec). For `String(format:)` HUD formatting, ALWAYS use `\\n` between lines. Real example that bit Lunar Lander 2026-05-04: `hudLabel.text = String(format: \"ALT %5.0f<newline>VVEL %+6.2f\", alt, vy)` \u2014 the compiler hits the literal newline and sees an unterminated string.",
       "why": "Wave-4 round-6 Lunar Lander L3 canary 2026-05-04: 16 'unterminated string literal' errors at GameScene.swift lines 315-321 because the LLM wrote multi-line `String(format:)` calls with literal newlines instead of `\\n`. Auto-fix didn't resolve. The LLM probably came from Python or another language where literal newlines in strings are fine; Swift doesn't allow that in double-quoted literals.",
       "severity": "high",
       "appliesTo": "macOSApp",
       "examples": [
-        "RIGHT: `String(format: \"ALT %5.0f\\nVVEL %+6.2f\", alt, vy)` — escaped newline.",
+        "RIGHT: `String(format: \"ALT %5.0f\\nVVEL %+6.2f\", alt, vy)` \u2014 escaped newline.",
         "RIGHT (multi-line, when really wanting multiple lines): `\"\"\" ALT \\(alt)\\n VVEL \\(vy) \"\"\"`",
-        "WRONG: `String(format: \"ALT %5.0f<actual newline>VVEL %+6.2f\", ...)` — compile error 'unterminated string literal'."
+        "WRONG: `String(format: \"ALT %5.0f<actual newline>VVEL %+6.2f\", ...)` \u2014 compile error 'unterminated string literal'."
       ]
     },
     {
@@ -263,7 +263,7 @@
       "examples": [
         "RIGHT: ```nonisolated func didBegin(_ contact: SKPhysicsContact) { let nodeA = contact.bodyA.node; let nodeB = contact.bodyB.node; let cats = (contact.bodyA.categoryBitMask, contact.bodyB.categoryBitMask); Task { @MainActor in if cats.0 == Cat.lava, let mn = nodeB as? MountNode { await self.killMount(mn.player) } } }```",
         "WRONG: ```nonisolated func didBegin(_ contact: SKPhysicsContact) { Task { @MainActor in let nodeA = contact.bodyA.node /* error: sending 'contact' risks data races */ } }```",
-        "Also: `didEnd(_:)`, `update(_:)`, and any other SKScene/SKPhysicsContactDelegate callback follows the same rule — capture sendable fields before the @MainActor hop.",
+        "Also: `didEnd(_:)`, `update(_:)`, and any other SKScene/SKPhysicsContactDelegate callback follows the same rule \u2014 capture sendable fields before the @MainActor hop.",
         "Alternative: mark the whole class `@MainActor` (drop the `nonisolated`). Works for small games but loses parallelism; pre-capture is cleaner."
       ]
     }
