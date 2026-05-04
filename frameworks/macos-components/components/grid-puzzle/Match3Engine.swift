@@ -58,6 +58,12 @@ struct Match3Engine: Codable, Equatable, Sendable {
     /// Attempts to swap two ADJACENT cells. Returns true if the swap
     /// produced any matches (kept), false if it didn't (rolled back).
     /// On success, lastResolvedMatches contains the per-match events.
+    /// This is the LEGACY all-in-one entry point: swap + resolve all
+    /// cascades synchronously. New View code should use the stepwise
+    /// API (swapOnly / clearMatches / collapseAndRefill) so each phase
+    /// can be animated separately. Filed 2026-05-04 after slide-down
+    /// animations failed because every cascade phase happened in one
+    /// SwiftUI render — there were no intermediate states to animate.
     mutating func swap(_ a: PuzzlePoint, _ b: PuzzlePoint) -> Bool {
         guard grid.contains(a), grid.contains(b), areAdjacent(a, b) else { return false }
         let first = grid[a]
@@ -75,6 +81,86 @@ struct Match3Engine: Codable, Equatable, Sendable {
         lastResolvedMatches = []
         _ = resolveCascades()
         return true
+    }
+
+    // MARK: - Stepwise API for animated views
+    //
+    // Use these instead of swap() when you want each phase of the cascade
+    // to be a SEPARATE SwiftUI render cycle so animations actually fire:
+    //
+    //   1. swapOnly(a, b)        — commits the swap (no resolve). Returns true if it matches.
+    //   2. clearMatches()         — clears matched cells (sets symbol = "" so they fade out).
+    //                               Returns the events. Empty array = no more matches.
+    //   3. collapseAndRefill()    — collapses columns + refills empty cells from the top.
+    //
+    // Typical View choreography:
+    //   withAnimation(.spring) { engine.swapOnly(a, b) }            // tiles slide into swap positions
+    //   await Task.sleep(0.18s)
+    //   loop {
+    //     events = engine.clearMatches();  if events.isEmpty break
+    //     withAnimation(.easeOut) { /* trigger pop animation by tracking event ids */ }
+    //     await Task.sleep(0.20s)
+    //     withAnimation(.spring) { engine.collapseAndRefill() }     // tiles slide DOWN
+    //     await Task.sleep(0.30s)
+    //   }
+
+    /// Phase 1: just the swap, no match resolution. Caller can render the
+    /// swap animation, then call clearMatches() / collapseAndRefill().
+    /// Returns true if the swap produced matches (caller should proceed
+    /// with cascade); false if it didn't (caller should rollback).
+    mutating func swapOnly(_ a: PuzzlePoint, _ b: PuzzlePoint) -> Bool {
+        guard grid.contains(a), grid.contains(b), areAdjacent(a, b) else { return false }
+        let first = grid[a]
+        grid[a] = grid[b]
+        grid[b] = first
+
+        let matches = findMatchGroups()
+        if matches.isEmpty {
+            let rollback = grid[a]
+            grid[a] = grid[b]
+            grid[b] = rollback
+            return false
+        }
+        // Reset event log; the View will accumulate events as it calls
+        // clearMatches() in a loop.
+        lastResolvedMatches = []
+        return true
+    }
+
+    /// Phase 2: clears matched cells (sets symbol = ""). Returns events
+    /// for the View to play pop / score animations. Empty array means
+    /// the cascade has settled — caller should stop the loop.
+    @discardableResult
+    mutating func clearMatches() -> [Match3MatchEvent] {
+        let groups = findMatchGroups()
+        guard !groups.isEmpty else { return [] }
+        var events: [Match3MatchEvent] = []
+        let depth = lastResolvedMatches.last?.cascadeDepth.advanced(by: 1) ?? 0
+        for group in groups {
+            let kind = matchKind(for: group.count)
+            let pts = pointsForGroup(count: group.count, cascadeDepth: depth)
+            score += pts
+            let event = Match3MatchEvent(
+                kind: kind,
+                points: group,
+                pointsAwarded: pts,
+                symbol: grid[group.first!].symbol,
+                cascadeDepth: depth
+            )
+            events.append(event)
+            lastResolvedMatches.append(event)
+            for point in group { grid[point].symbol = "" }
+        }
+        return events
+    }
+
+    /// Phase 3: collapses columns (existing tiles slide DOWN to fill empty
+    /// cells below them, preserving tile UUIDs) + refills empty cells with
+    /// fresh tiles. After this, caller should call clearMatches() again
+    /// to detect cascade matches; if it returns empty, the cascade is done.
+    mutating func collapseAndRefill() {
+        collapseColumns()
+        refillEmpty()
     }
 
     /// Resolves all match cascades, recording events per pass.
