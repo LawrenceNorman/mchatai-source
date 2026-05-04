@@ -1,6 +1,6 @@
 {
   "$schema_version": "1.0.0",
-  "last_updated": "2026-05-02",
+  "last_updated": "2026-05-04",
   "notes": "Catalog for reusable SwiftUI/AppKit macOS Lego components. AIWizard should copy canonical Swift source files into generated macOSApp artifacts before writing app-specific glue.",
   "library": {
     "id": "framework.macos-components",
@@ -25,6 +25,7 @@
       "components/board-game/BoardGameCore.swift",
       "components/board-game/CheckersRules.swift",
       "components/board-game/ChessRules.swift",
+      "components/arcade/ArcadeProjectile.swift",
       "components/desktop-shell/MacOSMiniHeader.swift",
       "components/arcade/ArcadeCore.swift",
       "components/arcade/AsteroidsEngine.swift",
@@ -35,7 +36,8 @@
       "components/card-game/CardGameCore.swift",
       "components/card-game/BlackjackEngine.swift",
       "components/card-game/PokerHandEvaluator.swift",
-      "components/music/PianoEngine.swift"
+      "components/music/PianoEngine.swift",
+      "components/arcade/SpriteKitPhysicsHelpers.swift"
     ]
   },
   "categories": [
@@ -490,15 +492,30 @@
       "name": "TowerDefenseEngine",
       "category": "arcade",
       "path": "components/arcade/TowerDefenseEngine.swift",
-      "exports": ["TowerDefenseEngine", "TowerDefenseEnemy", "TowerDefenseTower"],
+      "exports": ["TowerDefenseEngine", "TowerDefenseEnemy", "TowerDefenseTower", "TowerKind", "EnemyKind", "TowerDefensePreset"],
       "status": "ready",
-      "summary": "Tower-defense model with path-following enemies, tower placement, range targeting, cooldowns, waves, credits, lives, and win/loss phase.",
-      "tags": ["tower defense", "waves", "turrets", "path"],
+      "summary": "Tower-defense model with 4 turret kinds (basic/cannon/frost/beam — mirroring web `entities/TurretVariants.js`), 3 enemy kinds (normal/fast/heavy), splash damage, frost-slow, range targeting, cooldowns, waves, credits, lives, and win/loss phase. Emits ArcadeProjectile records on every fire so renderers can draw tracers, cannon shells, frost pulses, and continuous beams.",
+      "tags": ["tower defense", "waves", "turrets", "path", "splash", "frost", "beam"],
       "contracts": {
-        "input": "Call placeTower(at:) from grid clicks and startWave(count:) from a wave button.",
-        "loop": "Call update(dt:) from the app timer."
+        "input": "Call placeTower(at:kind:) from grid clicks and startWave(count:) from a wave button.",
+        "loop": "Call update(dt:) from the app timer; render `engine.enemies` AND `engine.projectiles` each frame."
       },
-      "goodFits": ["tower defense clone", "waves and turrets"]
+      "goodFits": ["tower defense clone", "waves and turrets", "frost slows + cannon AoE + laser beams"]
+    },
+    {
+      "id": "arcade.projectile",
+      "name": "ArcadeProjectile",
+      "category": "arcade",
+      "path": "components/arcade/ArcadeProjectile.swift",
+      "exports": ["ArcadeProjectile", "ArcadeProjectileKind"],
+      "status": "ready",
+      "summary": "Visual record of an in-flight or beam-active shot. Mirrors web `entities/Projectile.js` plus the beam-draw mode from `entities/TurretVariants.js`. Tower-defense engines append instances on fire; renderers read `engine.projectiles` each frame and draw tracers/cannon-shells/frost-pulses/beams accordingly.",
+      "tags": ["projectile", "shot", "tracer", "beam", "splash", "tower defense"],
+      "contracts": {
+        "state": "Travel-class kinds use `t` (0..1) over `lifetime`; beam kinds have `lifetime=0` and rely on the parent tower's `lastTargetID` to stay alive.",
+        "rendering": "Renderer should fade or clear travel-class projectiles when `t >= 1` and stop drawing beam-class when `live == false`."
+      },
+      "goodFits": ["tower defense", "any 2D arcade game with projectiles"]
     },
     {
       "id": "arcade.smoke-tests",
@@ -587,6 +604,22 @@
         "audio": "Use PianoNote.frequency to drive AVAudioEngine or NSSound glue in the generated app."
       },
       "goodFits": ["piano mini-app", "music keyboard", "synth toy"]
+    },
+    {
+      "id": "arcade.spritekit-physics-helpers",
+      "name": "SpriteKitPhysicsHelpers",
+      "category": "arcade",
+      "path": "components/arcade/SpriteKitPhysicsHelpers.swift",
+      "exports": ["SKPhysicsHelpers", "SKPhysicsContactSnapshot", "SKArcadeCategory"],
+      "status": "ready",
+      "summary": "Canonical SpriteKit physics body factories + Swift 6 concurrency-safe SKPhysicsContact snapshot pattern. Replaces hallucinated SKPhysicsBody(ellipseOf:) and provides nonisolated didBegin → @MainActor Task hop without sending non-Sendable contact data across the boundary.",
+      "tags": ["spritekit", "physics", "skphysicsbody", "skphysicscontact", "swift6", "concurrency", "arcade", "joust", "asteroids", "lunar-lander", "marble-madness"],
+      "contracts": {
+        "physics-body": "Use SKPhysicsHelpers.makeCircularBody/makeRectangularBody/makeOvalBody/makeStaticBody/makeSceneBoundary instead of constructing SKPhysicsBody directly. SKPhysicsBody(ellipseOf:) DOES NOT EXIST — use circleOfRadius/rectangleOf/polygonFrom instead (mac-017).",
+        "contact-handler": "In nonisolated didBegin(_ contact:), call SKPhysicsHelpers.snapshot(of: contact) BEFORE entering Task { @MainActor in ... }. The snapshot is Sendable; SKPhysicsContact itself is not, so it cannot cross the actor boundary directly (mac-019).",
+        "categories": "Use SKArcadeCategory.player1/.player2/.enemy/.projectile/.platform/.lava/.pickup/.goal/.wall as your default bitmask values; extend if you need more."
+      },
+      "goodFits": ["Joust (altitude collision rule)", "Lunar Lander (gravity + safe-land)", "Marble Madness", "Asteroids (rotational physics)", "any SpriteKit game with SKPhysicsContactDelegate"]
     }
   ],
   "compositionRecipes": [
@@ -637,7 +670,7 @@
     {
       "id": "recipe.native-crossword",
       "name": "Native Mini Crossword",
-      "keywords": ["crossword", "mini crossword", "NYT mini crossword", "nyt mini", "daily crossword", "clues", "across", "down"],
+      "keywords": ["crossword", "mini crossword", "NYT mini crossword", "nyt mini", "daily crossword", "across clues", "down clues", "crossword clues"],
       "templateIDs": [],
       "existingApps": ["NYT mini crossword clone", "mini crossword"],
       "starterComponents": ["gridpuzzle.core", "crossword.engine", "crossword.smoke-tests"],
@@ -784,17 +817,19 @@
     {
       "id": "recipe.tower-defense",
       "name": "Native Tower Defense",
-      "keywords": ["tower defense", "waves", "turret", "creeps", "path", "tower placement"],
+      "keywords": ["tower defense", "waves", "turret", "creeps", "path", "tower placement", "cannon", "frost", "beam"],
       "templateIDs": [],
       "existingApps": ["tower-defense"],
-      "starterComponents": ["arcade.core", "gridpuzzle.core", "arcade.tower-defense", "arcade.smoke-tests"],
+      "starterComponents": ["arcade.core", "gridpuzzle.core", "arcade.tower-defense", "arcade.projectile", "arcade.smoke-tests"],
       "assemblyNotes": [
-        "Use TowerDefenseEngine for pathing, waves, tower placement, targeting, cooldowns, lives, credits, and phase.",
-        "Render the map grid, tower range previews, wave controls, enemies, and economy HUD in app glue.",
-        "Call ArcadeSmokeTests.printLaunchReport() from app init(), and add app-specific stdout that confirms TowerDefenseEngine wiring."
+        "Use TowerDefenseEngine for pathing, waves, 4 turret kinds (basic/cannon/frost/beam), targeting, cooldowns, frost-slow effect, splash damage, lives, credits, and phase.",
+        "Render `engine.enemies` AND `engine.projectiles` every frame in your SwiftUI Canvas/ZStack — tracers (basic) animate origin→target along `t`, cannon shells animate likewise plus an expanding splash ring on impact, frost pulses pulse blue at the impact tile, and beam projectiles draw a continuous glowing line from `originPoint` to the live position of the enemy referenced by `followsEnemyID`.",
+        "Surface a turret-shop toolbar (one button per TowerKind, dimmed when affordability fails) so the player picks BEFORE clicking a build tile. Mirrors `web-components/examples/tower-defense/index.html` UX.",
+        "Render a base marker at `path.last` (a shielded tile, lives = base HP) and a spawn marker at `path.first`.",
+        "Call ArcadeSmokeTests.printLaunchReport() from app init(), and add app-specific stdout confirming TowerDefenseEngine wiring."
       ],
-      "requiredNow": ["arcade.core", "gridpuzzle.core", "arcade.tower-defense", "arcade.smoke-tests"],
-      "plannedNext": ["tower-projectile-visuals", "tower-upgrades"]
+      "requiredNow": ["arcade.core", "gridpuzzle.core", "arcade.tower-defense", "arcade.projectile", "arcade.smoke-tests"],
+      "plannedNext": ["tower-upgrades", "level-pathfinding", "audio-fx"]
     },
     {
       "id": "recipe.blackjack",
@@ -867,6 +902,50 @@
       ],
       "requiredNow": ["music.piano"],
       "plannedNext": ["native-audio-engine", "recording-mode"]
+    },
+    {
+      "id": "recipe.spritekit-physics",
+      "name": "Native SpriteKit Physics Game",
+      "keywords": [
+        "SpriteKit",
+        "SKPhysicsBody",
+        "SKPhysicsContact",
+        "SKPhysicsContactDelegate",
+        "SKShapeNode",
+        "SKSpriteNode",
+        "SKPhysicsWorld",
+        "physics body",
+        "physics contact",
+        "joust",
+        "flap-mount",
+        "lunar lander",
+        "lunar landing",
+        "marble madness",
+        "marble physics",
+        "rolling marble",
+        "didBegin",
+        "physicsWorld.contactDelegate",
+        "categoryBitMask",
+        "contactTestBitMask",
+        "collisionBitMask",
+        "applyForce",
+        "applyImpulse",
+        "circleOfRadius",
+        "rectangleOf"
+      ],
+      "templateIDs": [],
+      "existingApps": ["joust", "lunar-lander", "marble-madness"],
+      "starterComponents": ["arcade.spritekit-physics-helpers"],
+      "assemblyNotes": [
+        "Import SpriteKit. Use SKPhysicsHelpers.makeCircularBody / makeRectangularBody / makeOvalBody / makeStaticBody / makeSceneBoundary instead of constructing SKPhysicsBody directly.",
+        "SKPhysicsBody(ellipseOf:) DOES NOT EXIST. Use SKPhysicsHelpers.makeCircularBody for round entities (knights, ghosts, marbles), makeRectangularBody for boxy entities (bricks, ships), or makeOvalBody (uses polygonFrom: with an ellipse path) only when an oval body is genuinely required.",
+        "In nonisolated SKPhysicsContactDelegate.didBegin(_ contact:), call SKPhysicsHelpers.snapshot(of: contact) BEFORE entering Task { @MainActor in ... }. SKPhysicsContact itself is task-isolated and cannot cross the actor boundary; the snapshot captures sendable node references and category bitmasks.",
+        "Use SKArcadeCategory.player1 / .player2 / .enemy / .projectile / .platform / .lava / .pickup / .goal / .wall as default bitmask values; extend if you need more.",
+        "Set physicsWorld.contactDelegate = self in didMove(to:) and physicsWorld.gravity = SKPhysicsHelpers.standardGravity (or .lunarGravity for floaty games).",
+        "App-specific glue (scene setup, sprite drawing, control input handling, HUD, command menu) goes in separate files (GameScene.swift, ContentView.swift, App.swift)."
+      ],
+      "requiredNow": ["arcade.spritekit-physics-helpers"],
+      "plannedNext": ["spritekit-camera-helper", "spritekit-particle-helpers"]
     }
   ],
   "goldenAssemblies": [
