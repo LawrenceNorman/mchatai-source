@@ -34,6 +34,34 @@ struct ContentView: View {
     @State private var status = "Pick a tower, then click a green tile to build."
     @State private var ghostColorByID: [UUID: Color] = [:]
 
+    /// Animation tuning — TD is strategic with bursts of action, .standard.
+    private let intensity: AnimationIntensity = .standard
+
+    /// SFX engine. Tower placed = chip-place, enemy killed = explosion,
+    /// wave cleared = victory, base breached = game-over, boss spawn =
+    /// power-up.
+    @ObservedObject private var sound = SoundEngine.shared
+
+    /// LevelManager — tracks wave-completion progression for boss-wave
+    /// injection at L5/L10 (every 5th wave). engine.wave is the
+    /// game-tracked counter; LevelManager mirrors it for boss detection.
+    @StateObject private var levels = LevelManager(
+        gameID: "tower-defense",
+        baseTarget: 1,
+        baseMovesAllowed: 0,
+        curve: .standard
+    )
+
+    /// Personal-best tracker — score = furthest wave reached. Surfaces
+    /// only on game-over panel.
+    @StateObject private var highScores = HighScoreManager(gameID: "tower-defense")
+
+    @State private var lastObservedEnemyCount = 0
+    @State private var lastObservedLives = 0
+    @State private var lastObservedWave = 0
+    @State private var showGameOver = false
+    @State private var gameOverAnnounced = false
+
     private let timer = Timer.publish(every: 0.12, on: .main, in: .common).autoconnect()
     private let cellSize: CGFloat = 56
     private let cellGap: CGFloat = 4
@@ -74,6 +102,8 @@ struct ContentView: View {
             .opacity(0.01)
             .accessibilityHidden(true)
         }
+        // Game-over panel overlay (per score-show-personal-best-on-game-over).
+        .overlay { gameOverPanel }
         .onReceive(timer) { _ in tick() }
     }
 
@@ -645,27 +675,87 @@ struct ContentView: View {
 
         if engine.placeTower(at: point, kind: pickedKind) {
             status = "\(towerLabel(pickedKind)) tower placed."
+            sound.play(.chipPlace, volume: 0.6)
             print("[TowerDefenseExample] tower kind=\(pickedKind.rawValue) row=\(point.row) col=\(point.col) credits=\(engine.credits)")
+        } else {
+            sound.play(.uiError, volume: 0.4)
         }
     }
 
     private func startWave() {
         guard engine.phase != .playing, engine.phase != .lost else { return }
-        engine.startWave(count: 7 + engine.wave)
-        status = "Wave \(engine.wave) incoming — defend the base!"
-        print("[TowerDefenseExample] start wave=\(engine.wave) enemies=\(engine.enemies.count)")
+
+        // Boss-wave injection: at boss levels (every 5th), bias the wave
+        // composition toward heavies and increase total enemy count for a
+        // distinct boss feel. LevelManager.isBossLevel signals which.
+        let nextWave = engine.wave + 1
+        let isBoss = nextWave > 0 && nextWave % 5 == 0
+        if isBoss {
+            // Heavy-dominated boss wave — fewer fast enemies, lots of heavies.
+            engine.startWave(composition: [
+                (.normal, 5),
+                (.heavy, 6),       // extra heavies — the boss-wave signature
+                (.fast, 2)
+            ])
+            sound.play(.arcadePowerUp, volume: 0.7)
+            status = "BOSS WAVE \(engine.wave) — heavy assault incoming!"
+        } else {
+            engine.startWave(count: 7 + engine.wave)
+            sound.play(.uiButtonTap, volume: 0.5)
+            status = "Wave \(engine.wave) incoming — defend the base!"
+        }
+        lastObservedEnemyCount = engine.enemies.count
+        print("[TowerDefenseExample] start wave=\(engine.wave) boss=\(isBoss) enemies=\(engine.enemies.count)")
     }
 
     private func tick() {
-        guard engine.phase == .playing else { return }
+        guard engine.phase == .playing, !showGameOver else { return }
+        let preLives = engine.lives
+        let preEnemyCount = engine.enemies.count
         engine.update(dt: 0.12)
+        let postLives = engine.lives
+        let postEnemyCount = engine.enemies.count
+
+        // Enemy killed — count went down. Distinguish "killed by tower" from
+        // "reached the base" by checking if lives went down too.
+        let killedThisTick = preEnemyCount - postEnemyCount
+        let livesLost = preLives - postLives
+        // Most enemies that disappear are tower-kills. Lives-lost = enemies
+        // that reached the base. So tower kills = killedThisTick - livesLost.
+        let towerKills = max(0, killedThisTick - livesLost)
+        if towerKills > 0 {
+            sound.play(.arcadeExplosion, volume: 0.5)
+        }
+        if livesLost > 0 {
+            sound.play(.uiError, volume: 0.6)
+        }
+
         switch engine.phase {
         case .won:
+            // Wave cleared
+            if !gameOverAnnounced || engine.wave > lastObservedWave {
+                lastObservedWave = engine.wave
+                sound.play(.victory, volume: 0.8)
+                Task { @MainActor in
+                    try? await Task.sleep(nanoseconds: 350_000_000)
+                    sound.play(.levelUp, pitchSemitones: 2)
+                }
+                levels.advance()
+                // Update high score = furthest wave reached.
+                highScores.commit(score: engine.wave)
+            }
             status = "Wave \(engine.wave) cleared. \(engine.lives) lives, $\(engine.credits) gold."
-            print("[TowerDefenseExample] wave cleared credits=\(engine.credits) lives=\(engine.lives)")
         case .lost:
+            if !gameOverAnnounced {
+                gameOverAnnounced = true
+                highScores.commit(score: engine.wave)
+                sound.play(.gameOver)
+                Task { @MainActor in
+                    try? await Task.sleep(nanoseconds: 600_000_000)
+                    withAnimation(.easeOut(duration: 0.30)) { showGameOver = true }
+                }
+            }
             status = "Base breached! Press R to reset."
-            print("[TowerDefenseExample] lost wave=\(engine.wave)")
         default:
             let normals = engine.enemies.filter { $0.kind == .normal }.count
             let fasts = engine.enemies.filter { $0.kind == .fast }.count
@@ -677,6 +767,8 @@ struct ContentView: View {
             let breakdown = parts.isEmpty ? "no enemies left" : parts.joined(separator: " · ")
             status = "Wave \(engine.wave): \(breakdown)."
         }
+        lastObservedEnemyCount = postEnemyCount
+        lastObservedLives = postLives
     }
 
     private func moveSelection(_ direction: GridDirection) {
@@ -691,8 +783,75 @@ struct ContentView: View {
         engine = TowerDefenseEngine(path: TowerDefenseBoard.defaultPath)
         selected = nil
         pickedKind = .basic
+        showGameOver = false
+        gameOverAnnounced = false
+        lastObservedEnemyCount = 0
+        lastObservedLives = engine.lives
+        lastObservedWave = 0
+        levels.reset()
         status = "New game. Pick a tower, then click a green tile to build."
+        sound.play(.uiButtonTap, volume: 0.5)
         print("[TowerDefenseExample] new game")
+    }
+
+    @ViewBuilder
+    private var gameOverPanel: some View {
+        if showGameOver {
+            ZStack {
+                Color.black.opacity(0.7)
+                VStack(spacing: 14) {
+                    Text(highScores.celebratingNewBest ? "NEW BEST!" : "BASE BREACHED")
+                        .font(.system(size: 32, weight: .black, design: .rounded))
+                        .kerning(2)
+                        .foregroundStyle(highScores.celebratingNewBest
+                            ? Color(red: 1.0, green: 0.85, blue: 0.30)
+                            : .red)
+                    VStack(spacing: 4) {
+                        Text("Reached")
+                            .font(.system(size: 11, weight: .black))
+                            .kerning(1.2)
+                            .foregroundStyle(.white.opacity(0.55))
+                        Text("Wave \(engine.wave)")
+                            .font(.system(size: 44, weight: .black, design: .rounded))
+                            .foregroundStyle(.white)
+                    }
+                    if highScores.bestScore > 0 {
+                        HStack(spacing: 6) {
+                            Image(systemName: "trophy.fill")
+                                .foregroundStyle(Color(red: 1.0, green: 0.85, blue: 0.30))
+                            Text("Best: Wave \(highScores.bestScore)")
+                                .font(.system(size: 14, weight: .heavy, design: .rounded))
+                                .foregroundStyle(.white.opacity(0.85))
+                        }
+                    }
+                    Button {
+                        sound.play(.uiButtonTap)
+                        newGame()
+                    } label: {
+                        Text("PLAY AGAIN")
+                            .font(.system(size: 14, weight: .heavy))
+                            .kerning(1.4)
+                            .padding(.horizontal, 28)
+                            .padding(.vertical, 12)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .padding(.top, 4)
+                }
+                .padding(28)
+                .background(
+                    RoundedRectangle(cornerRadius: 22)
+                        .fill(Color.black.opacity(0.85))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 22).stroke(
+                                highScores.celebratingNewBest
+                                    ? Color(red: 1.0, green: 0.85, blue: 0.30).opacity(0.6)
+                                    : .white.opacity(0.18),
+                                lineWidth: 1
+                            )
+                        )
+                )
+            }
+        }
     }
 
     private func cellCenter(_ point: PuzzlePoint) -> CGPoint {

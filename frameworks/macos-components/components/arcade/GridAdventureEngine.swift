@@ -22,11 +22,40 @@ struct AdventureActor: Codable, Identifiable, Equatable, Sendable {
         case fruit
     }
 
+    /// Ghost AI personality for Pac-Man-style chasers. Each personality
+    /// produces a different direction-picking strategy when the ghost is
+    /// at an intersection. Diversity is what makes Pacman's classic
+    /// 4-ghost dynamic feel alive — homogeneous random ghosts feel like
+    /// a swarm; differentiated personalities create distinct threats.
+    /// Filed 2026-05-04 with the Pacman v2 polish pass.
+    enum Personality: String, Codable, Sendable {
+        /// Default — random walkable direction (legacy behavior).
+        case random
+        /// Direct chaser — picks the direction that minimizes Manhattan
+        /// distance to the hero. Original Pacman's "Blinky."
+        case chaser
+        /// Ambusher — targets a tile 4 squares ahead of the hero in the
+        /// hero's current direction. Original Pacman's "Pinky."
+        case ambusher
+        /// Patrol — chases when far from the hero, scatters when close
+        /// (>5 tiles = chase, ≤5 = random). Original Pacman's "Clyde."
+        case patrol
+        /// Boss — chaser, but takes multiple hits and moves slower.
+        case boss
+    }
+
     var id = UUID()
     var kind: Kind
     var position: PuzzlePoint
     var direction: GridDirection = .right
     var frightenedTicks: Int = 0
+    /// AI personality (only meaningful for `.enemy` kind). Default `.random`
+    /// preserves legacy behavior for callers that don't set personality.
+    var personality: Personality = .random
+    /// Hits remaining for boss enemies. Regular enemies = 1; boss = 3-5.
+    /// Decremented on hero collision when frightened (or by power-pellet
+    /// pursuit, depending on map rules).
+    var hitsRemaining: Int = 1
 }
 
 struct GridAdventureEngine: Codable, Equatable, Sendable {
@@ -45,6 +74,17 @@ struct GridAdventureEngine: Codable, Equatable, Sendable {
         actors.first { $0.kind == .hero }
     }
 
+    /// Convert one of the existing ghosts to a boss. Called by the View
+    /// at boss levels (typically every 5th level via LevelManager.isBossLevel).
+    /// Picks the first .enemy actor and swaps its personality to .boss with
+    /// 3 hits remaining. The View should render boss enemies with a
+    /// distinct color/size + health-pip indicator.
+    mutating func upgradeGhostToBoss() {
+        guard let idx = actors.firstIndex(where: { $0.kind == .enemy }) else { return }
+        actors[idx].personality = .boss
+        actors[idx].hitsRemaining = 3
+    }
+
     mutating func moveHero(_ direction: GridDirection) {
         guard phase == .playing,
               let heroIndex = actors.firstIndex(where: { $0.kind == .hero }) else { return }
@@ -57,11 +97,23 @@ struct GridAdventureEngine: Codable, Equatable, Sendable {
     }
 
     mutating func stepTraffic() {
+        // Snapshot hero state for personality-aware enemy AI. Computed
+        // once per tick instead of per-enemy.
+        let heroSnapshot = actors.first(where: { $0.kind == .hero })
+
         for index in actors.indices where actors[index].kind == .vehicle || actors[index].kind == .enemy || actors[index].kind == .log {
             if actors[index].frightenedTicks > 0 {
                 actors[index].frightenedTicks -= 1
             }
             let previous = actors[index].position
+            // Enemies pick direction at every step (so they react to the
+            // hero), vehicles/logs only re-pick at walls.
+            if actors[index].kind == .enemy {
+                actors[index].direction = pickEnemyDirection(
+                    for: actors[index],
+                    hero: heroSnapshot
+                )
+            }
             var next = actors[index].position.moved(actors[index].direction)
             if !map.contains(next) || map[next] == .wall {
                 actors[index].direction = pickGhostDirection(from: actors[index].position, avoiding: actors[index].direction)
@@ -77,6 +129,92 @@ struct GridAdventureEngine: Codable, Equatable, Sendable {
         }
         resolveHeroTile()
         resolveActorCollisions()
+    }
+
+    /// Personality-aware enemy direction picker. Picks the next direction
+    /// at the actor's current position based on its personality. All
+    /// personalities respect walls / out-of-bounds — they pick from
+    /// walkable candidates only, with personality-specific ordering.
+    /// Frightened enemies always reverse-flee (random walkable away
+    /// from hero). See AdventureActor.Personality enum docs.
+    private func pickEnemyDirection(for actor: AdventureActor, hero: AdventureActor?) -> GridDirection {
+        // Frightened enemies always flee the hero (Pacman power-pellet rule).
+        // Implementation: pick the direction that MAXIMIZES Manhattan
+        // distance to the hero (rather than tile-targeting logic).
+        let isFrightened = actor.frightenedTicks > 0
+        let walkable = walkableDirections(from: actor.position, avoiding: opposite(of: actor.direction))
+        guard !walkable.isEmpty else { return actor.direction }
+
+        guard let hero = hero else {
+            // No hero on map — fall back to random walkable.
+            return walkable.randomElement() ?? actor.direction
+        }
+
+        if isFrightened {
+            // Maximize distance from hero
+            return walkable.max(by: { manhattan(actor.position.moved($0), hero.position) <
+                                      manhattan(actor.position.moved($1), hero.position) })
+                ?? actor.direction
+        }
+
+        switch actor.personality {
+        case .random:
+            return walkable.randomElement() ?? actor.direction
+
+        case .chaser, .boss:
+            // Minimize Manhattan distance to hero.
+            return walkable.min(by: { manhattan(actor.position.moved($0), hero.position) <
+                                       manhattan(actor.position.moved($1), hero.position) })
+                ?? actor.direction
+
+        case .ambusher:
+            // Target 4 tiles ahead of hero in hero's current direction.
+            let target = projectedTarget(from: hero.position, direction: hero.direction, distance: 4)
+            return walkable.min(by: { manhattan(actor.position.moved($0), target) <
+                                       manhattan(actor.position.moved($1), target) })
+                ?? actor.direction
+
+        case .patrol:
+            // Chase if far (>5), random if close.
+            let distance = manhattan(actor.position, hero.position)
+            if distance > 5 {
+                return walkable.min(by: { manhattan(actor.position.moved($0), hero.position) <
+                                           manhattan(actor.position.moved($1), hero.position) })
+                    ?? actor.direction
+            } else {
+                return walkable.randomElement() ?? actor.direction
+            }
+        }
+    }
+
+    private func walkableDirections(from point: PuzzlePoint, avoiding back: GridDirection) -> [GridDirection] {
+        let candidates: [GridDirection] = [.left, .right, .up, .down].filter { $0 != back }
+        return candidates.filter { dir in
+            let p = point.moved(dir)
+            return map.contains(p) && map[p] != .wall
+        }
+    }
+
+    private func opposite(of direction: GridDirection) -> GridDirection {
+        switch direction {
+        case .left: return .right
+        case .right: return .left
+        case .up: return .down
+        case .down: return .up
+        }
+    }
+
+    private func manhattan(_ a: PuzzlePoint, _ b: PuzzlePoint) -> Int {
+        abs(a.row - b.row) + abs(a.col - b.col)
+    }
+
+    private func projectedTarget(from origin: PuzzlePoint, direction: GridDirection, distance: Int) -> PuzzlePoint {
+        switch direction {
+        case .left:  return PuzzlePoint(row: origin.row, col: origin.col - distance)
+        case .right: return PuzzlePoint(row: origin.row, col: origin.col + distance)
+        case .up:    return PuzzlePoint(row: origin.row - distance, col: origin.col)
+        case .down:  return PuzzlePoint(row: origin.row + distance, col: origin.col)
+        }
     }
 
     private func pickGhostDirection(from point: PuzzlePoint, avoiding back: GridDirection) -> GridDirection {
@@ -199,8 +337,22 @@ struct GridAdventureEngine: Codable, Equatable, Sendable {
             AdventureActor(kind: .hero, position: heroStart, direction: .left)
         ]
         let ghostDirections: [GridDirection] = [.right, .left, .right, .left]
+        // Each of the 4 starting ghosts gets a different personality so
+        // the player faces meaningfully different threats. Mirrors the
+        // canonical Pacman pattern (Blinky/Pinky/Inky/Clyde).
+        let personalities: [AdventureActor.Personality] = [
+            .chaser,    // Blinky — direct chase
+            .ambusher,  // Pinky — projects 4 ahead of hero
+            .patrol,    // Clyde — chases far / random near
+            .random     // Sue — pure random for visual variety
+        ]
         for (i, point) in ghostStarts.enumerated() where grid[point] != .wall {
-            actors.append(AdventureActor(kind: .enemy, position: point, direction: ghostDirections[i % ghostDirections.count]))
+            actors.append(AdventureActor(
+                kind: .enemy,
+                position: point,
+                direction: ghostDirections[i % ghostDirections.count],
+                personality: personalities[i % personalities.count]
+            ))
         }
         actors.append(AdventureActor(kind: .fruit, position: fruitPoint))
         for point in powerPelletPoints where grid[point] != .wall {

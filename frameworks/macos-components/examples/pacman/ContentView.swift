@@ -8,6 +8,31 @@ struct ContentView: View {
 
     @State private var ghostColorByID: [UUID: Color] = [:]
 
+    /// Animation tuning — Pacman is mechanics-driven, .standard preset.
+    private let intensity: AnimationIntensity = .standard
+
+    /// SFX engine. Pellet = soft tick, power pellet = "power up" chord,
+    /// fruit = victory ping, ghost eaten = burst, hero death = explosion,
+    /// maze clear = victory + level-up.
+    @ObservedObject private var sound = SoundEngine.shared
+
+    /// LevelManager — tracks current level (= maze clear count). Each
+    /// level the game gets harder via boss ghost insertion at L5/L10.
+    @StateObject private var levels = LevelManager(
+        gameID: "pacman",
+        baseTarget: 1,
+        baseMovesAllowed: 0,
+        curve: .standard
+    )
+
+    /// Personal-best tracker — surfaces only on game-over panel.
+    @StateObject private var highScores = HighScoreManager(gameID: "pacman")
+
+    @State private var lastObservedLives = 3
+    @State private var lastObservedScore = 0
+    @State private var showGameOver = false
+    @State private var gameOverAnnounced = false
+
     private let timer = Timer.publish(every: 0.32, on: .main, in: .common).autoconnect()
     private let cellSize: CGFloat = 38
     private let cellGap: CGFloat = 1
@@ -33,6 +58,10 @@ struct ContentView: View {
             .frame(width: 1, height: 1)
             .opacity(0.01)
             .accessibilityHidden(true)
+
+            // Game-over panel — only visible when game ends. High-score
+            // surfaces here per score-show-personal-best-on-game-over.
+            gameOverPanel
         }
         .frame(minWidth: 1040, minHeight: 640)
         .background(Color(red: 0.02, green: 0.02, blue: 0.07))
@@ -268,39 +297,161 @@ struct ContentView: View {
     }
 
     private func moveHero(_ direction: GridDirection) {
-        guard engine.phase == .playing else { return }
+        guard engine.phase == .playing, !showGameOver else { return }
         let scoreBefore = engine.score
         let livesBefore = engine.lives
         ghostsRunning = true
         engine.moveHero(direction)
-
-        if engine.phase == .won {
-            ghostsRunning = false
-            status = "Maze cleared."
-        } else if engine.phase == .lost {
-            ghostsRunning = false
-            status = "No lives left."
-        } else if engine.lives < livesBefore {
-            status = "Ghost hit. Respawned."
-        } else if engine.score > scoreBefore {
-            status = "Pellet eaten. Score \(engine.score)."
-        } else {
-            status = "Keep moving."
-        }
-        print("[PacManExample] move \(direction.rawValue) score=\(engine.score) lives=\(engine.lives) pellets=\(pelletCount)")
+        handleGameStateAfterTick(scoreBefore: scoreBefore, livesBefore: livesBefore, isMove: true)
     }
 
     private func stepGhosts() {
-        guard ghostsRunning, engine.phase == .playing else { return }
+        guard ghostsRunning, engine.phase == .playing, !showGameOver else { return }
         let livesBefore = engine.lives
+        let scoreBefore = engine.score
         engine.stepTraffic()
-        if engine.phase == .lost {
+        handleGameStateAfterTick(scoreBefore: scoreBefore, livesBefore: livesBefore, isMove: false)
+    }
+
+    /// Centralized post-tick handler — runs after every moveHero or
+    /// stepGhosts so SFX, status text, level-up, and game-over fire
+    /// from one place. (audio-debounce-events-not-renders: keyed off
+    /// state deltas, not render frames.)
+    private func handleGameStateAfterTick(scoreBefore: Int, livesBefore: Int, isMove: Bool) {
+        let scoreDelta = engine.score - scoreBefore
+
+        // Score-driven SFX. The engine awards different points per pickup
+        // kind, so the score delta tells us what was eaten:
+        //   pellet      = 10 pts → soft pop
+        //   power pellet = 50 pts → power-up SFX
+        //   fruit       = 100 pts → victory ping
+        //   ghost eaten (frightened) = ~200 pts → burst
+        if scoreDelta > 0 {
+            if scoreDelta >= 200 {
+                sound.play(.match3Burst, volume: 0.7)
+            } else if scoreDelta >= 100 {
+                sound.play(.victory, volume: 0.5, pitchSemitones: 4)
+            } else if scoreDelta >= 50 {
+                sound.play(.arcadePowerUp, volume: 0.5)
+            } else if scoreDelta >= 10 {
+                sound.play(.match3Pop, volume: 0.35)
+            }
+        }
+
+        // Hero died this tick (lives went down).
+        if engine.lives < livesBefore {
+            sound.play(.arcadeExplosionBig, volume: 0.7)
+        }
+
+        // Win condition — maze cleared.
+        if engine.phase == .won && !gameOverAnnounced {
+            gameOverAnnounced = true
             ghostsRunning = false
-            status = "No lives left."
-        } else if engine.lives < livesBefore {
+            status = "Maze cleared!"
+            sound.play(.victory, volume: 0.9)
+            highScores.commit(score: engine.score)
+            // Advance level for the NEXT play-through; on Play Again
+            // the maze regenerates and inherits the new level state
+            // (boss ghost on L5/L10 — see resetForNextLevel()).
+            levels.advance()
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 600_000_000)
+                sound.play(.levelUp, pitchSemitones: 2)
+                withAnimation(.easeOut(duration: 0.30)) {
+                    showGameOver = true
+                }
+            }
+            return
+        }
+
+        // Loss — out of lives.
+        if engine.phase == .lost && !gameOverAnnounced {
+            gameOverAnnounced = true
+            ghostsRunning = false
+            status = "Game over."
+            highScores.commit(score: engine.score)
+            sound.play(.gameOver)
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 600_000_000)
+                withAnimation(.easeOut(duration: 0.30)) {
+                    showGameOver = true
+                }
+            }
+            return
+        }
+
+        // Status text (only updated for tick-relevant cases).
+        if engine.lives < livesBefore {
             status = "Ghost collision. Respawned."
-        } else {
-            status = "Ghosts are moving."
+        } else if scoreDelta > 0 {
+            status = "Score \(engine.score) · pellets left \(pelletCount)"
+        }
+    }
+
+    @ViewBuilder
+    private var gameOverPanel: some View {
+        if showGameOver {
+            ZStack {
+                Color.black.opacity(0.7)
+                VStack(spacing: 14) {
+                    let won = engine.phase == .won
+                    Text(highScores.celebratingNewBest ? "NEW BEST!" : (won ? "MAZE CLEARED" : "GAME OVER"))
+                        .font(.system(size: 32, weight: .black, design: .rounded))
+                        .kerning(2)
+                        .foregroundStyle(highScores.celebratingNewBest
+                            ? Color(red: 1.0, green: 0.85, blue: 0.30)
+                            : (won ? .yellow : .red))
+
+                    VStack(spacing: 4) {
+                        Text("Your run")
+                            .font(.system(size: 11, weight: .black))
+                            .kerning(1.2)
+                            .foregroundStyle(.white.opacity(0.55))
+                        Text(HighScoreManager.formatNumber(engine.score))
+                            .font(.system(size: 44, weight: .black, design: .rounded))
+                            .foregroundStyle(.white)
+                        Text("Level \(levels.currentLevel) reached")
+                            .font(.system(size: 13, weight: .heavy, design: .rounded))
+                            .foregroundStyle(.white.opacity(0.7))
+                    }
+
+                    if highScores.bestScore > 0 {
+                        HStack(spacing: 6) {
+                            Image(systemName: "trophy.fill")
+                                .foregroundStyle(Color(red: 1.0, green: 0.85, blue: 0.30))
+                            Text("Best: \(HighScoreManager.formatNumber(highScores.bestScore))")
+                                .font(.system(size: 14, weight: .heavy, design: .rounded))
+                                .foregroundStyle(.white.opacity(0.85))
+                        }
+                    }
+
+                    Button {
+                        sound.play(.uiButtonTap)
+                        dismissAndRestartForNextRun()
+                    } label: {
+                        Text(won ? "NEXT LEVEL" : "PLAY AGAIN")
+                            .font(.system(size: 14, weight: .heavy))
+                            .kerning(1.4)
+                            .padding(.horizontal, 28)
+                            .padding(.vertical, 12)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .padding(.top, 4)
+                }
+                .padding(28)
+                .background(
+                    RoundedRectangle(cornerRadius: 22)
+                        .fill(Color.black.opacity(0.85))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 22).stroke(
+                                highScores.celebratingNewBest
+                                    ? Color(red: 1.0, green: 0.85, blue: 0.30).opacity(0.6)
+                                    : .white.opacity(0.18),
+                                lineWidth: 1
+                            )
+                        )
+                )
+            }
         }
     }
 
@@ -308,8 +459,37 @@ struct ContentView: View {
         engine = GridAdventureEngine.pacmanArcadeMap()
         ghostColorByID = [:]
         ghostsRunning = false
+        showGameOver = false
+        gameOverAnnounced = false
         status = "Eat pellets and dodge ghosts."
-        print("[PacManExample] reset")
+        levels.reset()  // explicit reset → drop to L1
+        sound.play(.uiButtonTap, volume: 0.5)
+    }
+
+    /// Restart for next level (after maze clear). Bumps engine to a fresh
+    /// maze AND inherits the level-driven boss-ghost upgrade if applicable.
+    /// At L5/L10 boss levels, swap one ghost's personality to .boss + bump
+    /// hitsRemaining so the player feels the difficulty step.
+    private func dismissAndRestartForNextRun() {
+        engine = GridAdventureEngine.pacmanArcadeMap()
+        // Boss ghost injection: at boss levels, find one ghost and convert
+        // it to boss kind. The visual + AI difference signals 'this level
+        // is harder.' Done via a method on the engine that the View calls
+        // explicitly so engine state stays Codable + deterministic.
+        if levels.isBossLevel {
+            engine.upgradeGhostToBoss()
+        }
+        ghostColorByID = [:]
+        ghostsRunning = false
+        showGameOver = false
+        gameOverAnnounced = false
+        if engine.phase == .lost {
+            // After full game-over: also drop level back to 1
+            levels.reset()
+        }
+        status = levels.isBossLevel
+            ? "Boss ghost on the loose!"
+            : "Level \(levels.currentLevel) — eat all pellets."
     }
 }
 

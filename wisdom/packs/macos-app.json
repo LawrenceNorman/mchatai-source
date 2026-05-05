@@ -1,6 +1,6 @@
 {
   "packID": "macos-app",
-  "version": 21,
+  "version": 22,
   "displayName": "macOS App Generation Wisdom",
   "description": "Rules for generating executable macOS apps (SwiftUI / AppKit) via Swift Playground. Focused on making the generated binary actually appear as a visible, interactive window \u2014 not a headless background process.",
   "categories": [
@@ -752,7 +752,55 @@
         "RIGHT: regular saucer = cyan oval, hunter = red triangle, mothership = pink/magenta hex. Boss-wave toast = red. Regular wave-up toast = blue.",
         "WRONG: same color/shape for boss as regular, just bigger. Boss reads as 'big saucer,' not 'BOSS.'"
       ]
+    },
+    {
+      "id": "game-grid-ai-personalities-not-uniform-random",
+      "rule": "Grid-based pursuit games (Pacman, dungeon crawlers, top-down chase games) MUST give enemies DIFFERENT AI personalities, not all-random direction picking. Define a `Personality` enum on the actor with at least 3-4 archetypes: `.chaser` (minimize Manhattan distance to player), `.ambusher` (target the tile 4 squares ahead of the player in the player's current direction), `.patrol` (chase when far/scatter when close \u2014 usually distance > 5 = chase, \u2264 5 = random), `.random` (legacy walkable-pick). Implementation pattern: `func pickEnemyDirection(for actor: Actor, hero: Actor?) -> Direction` returns a personality-specific choice from the walkable-direction set. Frightened/power-pellet mode flips ALL personalities to flee-from-hero (maximize Manhattan distance). Without personality differentiation, 4 ghosts feel like 'a swarm with random noise' instead of 'four distinct threats with reading-able patterns.'",
+      "why": "Filed 2026-05-04 with the Pacman v2 personality rollout. The original Pacman ghost AI is iconic precisely BECAUSE the four ghosts have different personalities \u2014 Blinky (chase), Pinky (ambush), Inky (vector), Clyde (patrol). Players unconsciously learn to read each ghost's pattern and play around them. Uniform random picks make the gameplay 'noisy random' rather than 'pattern-based.' Generalizes to any pursuit game on a grid \u2014 dungeon crawlers, hide-and-seek, top-down chase games. Different from arcade-action's jitter rule (game-bot-ai-jitter-not-laser-accurate), which applies to free-2D AI with continuous aim.",
+      "severity": "high",
+      "appliesTo": "gridPursuitGame",
+      "examples": [
+        "RIGHT (Pacman): enum Personality { case chaser, ambusher, patrol, random }; on each enemy tick, pickEnemyDirection() switches on personality. Blinky = chaser, Pinky = ambusher, Clyde = patrol, Sue = random.",
+        "RIGHT (ambusher target projection): `let target = projectedTarget(from: hero.position, direction: hero.direction, distance: 4)`; pick walkable that minimizes Manhattan to target.",
+        "RIGHT (frightened override): all personalities flip to maximize-distance-from-hero when actor.frightenedTicks > 0.",
+        "WRONG: all ghosts use the same `pickGhostDirection()` random walkable. They feel like a swarm \u2014 players don't develop the 'oh, the orange one is dumb so I can run past it' intuition."
+      ]
+    },
+    {
+      "id": "game-boss-wave-composition-injection",
+      "rule": "Tower-defense / wave-based games SHOULD inject a DIFFERENT enemy mix on boss waves, not just 'same composition + 1 boss enemy.' Pattern: when `LevelManager.isBossLevel` is true, call `engine.startWave(composition:)` with a heavy-tank-dominated mix (e.g. 5 normal + 6 heavy + 2 fast) instead of the default `startWave(count:)` that uses the engine's progressive default. Heavy-dominated boss waves require fundamentally different tower placement strategy (more cannons / fewer fast-tracking) \u2014 that's what makes the boss wave feel special vs 'wave 5 has 1 extra enemy.' Pair with a distinct entry SFX (arcadePowerUp) and a 'BOSS WAVE' label in status text. Without composition injection, the boss-wave concept reduces to a number on a screen.",
+      "why": "Filed 2026-05-04 with TowerDefense v2 polish. TowerDefenseEngine already had `startWave(composition: [(EnemyKind, Int)])` as a public API but no example used it for boss-flavored waves. The View now invokes the composition variant on every 5th wave. Generalizes to any wave-based game with multiple enemy types \u2014 Plants vs Zombies (lots of conehead zombies on round 5), Bloons (more lead bloons on the round-5 boss), Kingdom Rush, etc.",
+      "severity": "medium",
+      "appliesTo": "waveBasedGame",
+      "examples": [
+        "RIGHT: if levels.isBossLevel { engine.startWave(composition: [(.normal, 5), (.heavy, 6), (.fast, 2)]) } else { engine.startWave(count: 7 + engine.wave) }",
+        "RIGHT (visual): boss-wave status text reads 'BOSS WAVE 5 \u2014 heavy assault incoming' and the entry SFX is arcadePowerUp instead of uiButtonTap.",
+        "WRONG: boss wave = same composition + 1 extra enemy. Players feel no strategic difference."
+      ]
+    },
+    {
+      "id": "game-tick-driven-sfx-pre-post-snapshot",
+      "rule": "When wiring SFX to a game-engine tick (Asteroids/Pong/Pacman/Frogger/TowerDefense pattern), use the pre/post snapshot model: capture `preLives = engine.lives` / `preScore = engine.score` / `preEnemyCount = engine.enemies.count` BEFORE calling `engine.update()`, then compare against post-update values. Diff > 0 = an event occurred this tick \u2192 fire the appropriate SFX. This is the View-side complement to the engine `lastEvent` / `consumeLastEvent()` pattern (game-engine-event-consumer-pattern) \u2014 pre/post snapshot is for engines that don't expose discrete events but DO have observable scalar state (score, lives, enemy count). Critical: do this BEFORE `if engine.phase == .playing` checks since some events (game-over, win) are themselves the phase change.",
+      "why": "Filed 2026-05-04 from Pacman/Frogger/TD v2 wiring. Earlier ContentView code had `engine.update()` followed by status text mutation, with no SFX hook. The pre/post snapshot pattern surfaces all discrete events the engine produces without requiring an `Event` enum. Tower kills + base breaches in TD: postEnemyCount < preEnemyCount tells you something disappeared; livesLost = preLives - postLives. Tower kills = (enemies that disappeared) - (enemies that reached the base). Composable, debounce-friendly, and works across any tick-based game.",
+      "severity": "medium",
+      "appliesTo": "gameEngine",
+      "examples": [
+        "RIGHT: let preLives = engine.lives; let preEnemyCount = engine.enemies.count; engine.update(dt: dt); let livesLost = preLives - engine.lives; let killedThisTick = preEnemyCount - engine.enemies.count; let towerKills = max(0, killedThisTick - livesLost); if towerKills > 0 { sound.play(.arcadeExplosion) }; if livesLost > 0 { sound.play(.uiError) }",
+        "RIGHT (Pacman): scoreDelta = engine.score - scoreBefore; if scoreDelta >= 200 { sound.play(.match3Burst) /* ghost eaten */ } else if scoreDelta >= 100 { sound.play(.victory, pitchSemitones: 4) /* fruit */ } else if scoreDelta >= 50 { sound.play(.arcadePowerUp) /* power pellet */ } else if scoreDelta >= 10 { sound.play(.match3Pop) /* pellet */ }",
+        "WRONG: trying to detect events by polling state every render frame \u2014 you can't tell *which tick* a delta happened on, debounce becomes impossible."
+      ]
+    },
+    {
+      "id": "game-shared-engine-different-flavors",
+      "rule": "Reference apps that share a game engine (e.g. Pacman + Frogger both using `GridAdventureEngine`) MUST configure the engine via STATIC FACTORY METHODS that return distinct configurations, NOT by hardcoded conditionals inside the engine. Pattern: `static func froggerLaneMap() -> Engine` and `static func pacmanArcadeMap() -> Engine` \u2014 each returns a fully-configured engine with the appropriate map, actor roster, and per-actor properties (e.g. ghost personalities). The engine itself stays game-agnostic \u2014 it doesn't know whether it's Pacman or Frogger. View-level differences (cell size, color palette, status text) live in the View. This separation lets the same engine power 5+ reference apps with different feels without engine bloat.",
+      "why": "Filed 2026-05-04 with Pacman/Frogger v2. GridAdventureEngine has factory methods for adventure-castle / frogger-lane / maze-pellet / pacman-arcade maps. Each returns a distinct engine state. Without this pattern, a single ContentView would have to construct + populate the engine inline (200+ lines of map data per game) and any engine API changes would break all factories silently. With factory methods, the engine evolves cleanly and new games are just new factories.",
+      "severity": "low",
+      "appliesTo": "sharedEngine",
+      "examples": [
+        "RIGHT: GridAdventureEngine.pacmanArcadeMap() returns engine with maze + 4 ghosts (each with personality), pellets, fruit, power pellets. froggerLaneMap() returns same engine type with road/water tiles + vehicle/log actors.",
+        "WRONG: GridAdventureEngine has `var gameMode: GameMode` field and switches behavior on it. Engine becomes a god object that handles every game type."
+      ]
     }
   ],
-  "_last_updated": "2026-05-04"
+  "_last_updated": "2026-05-05"
 }
