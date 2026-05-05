@@ -1627,12 +1627,14 @@
         "applySwatchVariables"
       ],
       "status": "ready",
-      "summary": "Theme tokens and CSS variable helper for re-skinning gameplay HUDs and canvases without changing logic.",
+      "summary": "Design tokens (color + radius + spacing + typography + fonts) and CSS variable helper for re-skinning gameplay HUDs, layout, and canvases without changing logic. Apply once on init; consume tokens via var(--mchat-*) in CSS or this.swatch.tokens.* in canvas paint.",
       "tags": [
         "swatch",
         "theme",
         "design-tokens",
-        "reskin"
+        "reskin",
+        "spacing",
+        "typography"
       ],
       "contracts": {
         "css": [
@@ -1643,7 +1645,44 @@
           "retro-neon",
           "vector-noir",
           "sunset-arcade"
-        ]
+        ],
+        "tokens": {
+          "color": [
+            "--mchat-background",
+            "--mchat-surface",
+            "--mchat-text",
+            "--mchat-accent",
+            "--mchat-accentWarm",
+            "--mchat-stroke",
+            "--mchat-shadow"
+          ],
+          "radius": [
+            "--mchat-radius-sm",
+            "--mchat-radius-md",
+            "--mchat-radius-lg",
+            "--mchat-radius-pill"
+          ],
+          "space": [
+            "--mchat-space-1",
+            "--mchat-space-2",
+            "--mchat-space-3",
+            "--mchat-space-4",
+            "--mchat-space-5",
+            "--mchat-space-6"
+          ],
+          "type": [
+            "--mchat-type-xs",
+            "--mchat-type-sm",
+            "--mchat-type-md",
+            "--mchat-type-lg",
+            "--mchat-type-xl"
+          ],
+          "font": [
+            "--mchat-font-ui",
+            "--mchat-font-display",
+            "--mchat-font-mono"
+          ]
+        }
       },
       "goodFits": [
         "asteroids",
@@ -2900,6 +2939,35 @@
       "notes": [
         "Use this as the canonical wiring example for a Chess clone: visible 8x8 board, standard setup, piece selection, legal move highlights, captures, turn tracking, check/checkmate/stalemate status, and reset control.",
         "Generated variants should compose with ChessRules.setupStandardBoard(), ChessRules.legalMoves(), ChessRules.applyMove(), Board8x8.cellToAlgebraic(), and TurnBasedManager.nextTurn(). Do not invent APIs such as initialize()."
+      ]
+    },
+    {
+      "id": "assembly.tic-tac-toe.playable-core",
+      "name": "Tic-Tac-Toe Golden Assembly",
+      "summary": "Runnable Tic-Tac-Toe vs AI clone composed from MiniHeader, RestartOverlay, Leaderboard, CloudAIToggle, TurnBasedManager, TicTacToeRules + TicTacToeAI (perfect-play depth-9 minimax), swatches, and audio modules.",
+      "recipeID": "recipe.tic-tac-toe",
+      "templateIDs": [
+        "tic-tac-toe-vs-ai"
+      ],
+      "keywords": [
+        "tic-tac-toe",
+        "tic tac toe",
+        "tictactoe",
+        "noughts and crosses",
+        "xs and os",
+        "3 in a row",
+        "playable tic-tac-toe"
+      ],
+      "files": [
+        "examples/tic-tac-toe/index.html",
+        "examples/tic-tac-toe/tic-tac-toe.css",
+        "examples/tic-tac-toe/main.js",
+        "examples/tic-tac-toe/TicTacToeGame.js"
+      ],
+      "notes": [
+        "Use this as the canonical wiring for a Tic-Tac-Toe vs AI clone: 3x3 grid as 9 buttons, click handler dispatches game.handleHumanMove(index), perfect-play AI from TicTacToeAI(depth=9 minimax), RestartOverlay on terminal phase, Leaderboard score submit, CloudAIToggle for difficulty.",
+        "Generated variants must import { TicTacToeRules, TicTacToeAI, emptyBoard } from './web-components/entities/TicTacToeRules.js'. Do NOT inline a custom rules engine — TicTacToeAI is depth-9 perfect and self-contained.",
+        "Wire: human click → rules.applyMove(board, idx, 'x') → rules.winner(board) → if not terminal, ai.pickMove(board, 'o') → rules.applyMove(...) → rules.winner(board) → if terminal, RestartOverlay.show() + Leaderboard.submitFinal()."
       ]
     },
     {
