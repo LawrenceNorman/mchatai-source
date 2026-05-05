@@ -33,9 +33,23 @@ struct ContentView: View {
     @State private var showGameOver = false
     @State private var gameOverAnnounced = false
 
-    private let timer = Timer.publish(every: 0.32, on: .main, in: .common).autoconnect()
+    /// Game tick rate. 0.32s = 3 tiles/sec was the original — felt sluggish
+    /// and glitchy because the player's intent (key press → move) was
+    /// gated by a slow tick. Web Pacman runs at ~6-8 tiles/sec which feels
+    /// responsive. Filed as wisdom rule game-tile-step-cadence-not-too-slow.
+    private let timer = Timer.publish(every: 0.13, on: .main, in: .common).autoconnect()
     private let cellSize: CGFloat = 38
     private let cellGap: CGFloat = 1
+
+    /// Pending direction queue. Web Pacman pattern: arrow key sets the
+    /// player's "desired next direction"; on each tick the engine pivots
+    /// the hero IF that direction is walkable, otherwise keeps moving in
+    /// the previous direction. So a single press can carry the player
+    /// across the maze — no tap-spam required. Without this queue, every
+    /// tile of motion needs its own press, which feels broken.
+    /// Filed as wisdom rule game-keypress-direction-queue.
+    @State private var pendingDirection: GridDirection? = nil
+    @State private var lastHeroDirection: GridDirection = .left
 
     var body: some View {
         ZStack(alignment: .topLeading) {
@@ -66,8 +80,47 @@ struct ContentView: View {
         .frame(minWidth: 1040, minHeight: 640)
         .background(Color(red: 0.02, green: 0.02, blue: 0.07))
         .onReceive(timer) { _ in
-            stepGhosts()
+            tick()
         }
+    }
+
+    /// Single tick: advance the hero in the queued/persistent direction
+    /// (pivoting if pendingDirection is walkable, otherwise continuing
+    /// in lastHeroDirection), then step ghosts. Mirrors the web Pacman
+    /// loop pattern.
+    private func tick() {
+        guard engine.phase == .playing, !showGameOver else { return }
+        // Decide the hero's next move. Try the queued direction first; if
+        // it leads into a wall, continue in the prior direction. If THAT
+        // is also blocked (corner case), no-op (hero stays put).
+        let candidates: [GridDirection] = {
+            if let pending = pendingDirection { return [pending, lastHeroDirection] }
+            return [lastHeroDirection]
+        }()
+        for dir in candidates {
+            if isWalkable(direction: dir) {
+                let scoreBefore = engine.score
+                let livesBefore = engine.lives
+                ghostsRunning = true
+                engine.moveHero(dir)
+                lastHeroDirection = dir
+                if dir == pendingDirection { pendingDirection = nil }
+                handleGameStateAfterTick(scoreBefore: scoreBefore, livesBefore: livesBefore, isMove: true)
+                break
+            }
+        }
+        // Ghosts always tick on every step regardless of hero blocked state.
+        stepGhosts()
+    }
+
+    /// Returns true if the hero can move one cell in the given direction
+    /// without hitting a wall. Used by tick() to decide between pending
+    /// and persistent direction.
+    private func isWalkable(direction: GridDirection) -> Bool {
+        guard let hero = engine.hero else { return false }
+        let target = hero.position.moved(direction)
+        guard engine.map.contains(target) else { return false }
+        return engine.map[target] != .wall
     }
 
     private var header: some View {
@@ -296,13 +349,14 @@ struct ContentView: View {
         engine.actors.filter { $0.position == point }
     }
 
+    /// Key press handler — does NOT directly move; just queues the direction.
+    /// The next tick() call will read pendingDirection and pivot the hero
+    /// at the soonest legal opportunity. This is the web-Pacman pattern
+    /// that makes single key presses persist across many tiles.
     private func moveHero(_ direction: GridDirection) {
         guard engine.phase == .playing, !showGameOver else { return }
-        let scoreBefore = engine.score
-        let livesBefore = engine.lives
+        pendingDirection = direction
         ghostsRunning = true
-        engine.moveHero(direction)
-        handleGameStateAfterTick(scoreBefore: scoreBefore, livesBefore: livesBefore, isMove: true)
     }
 
     private func stepGhosts() {
@@ -461,6 +515,8 @@ struct ContentView: View {
         ghostsRunning = false
         showGameOver = false
         gameOverAnnounced = false
+        pendingDirection = nil
+        lastHeroDirection = .left
         status = "Eat pellets and dodge ghosts."
         levels.reset()  // explicit reset → drop to L1
         sound.play(.uiButtonTap, volume: 0.5)

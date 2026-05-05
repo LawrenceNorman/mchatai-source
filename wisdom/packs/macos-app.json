@@ -1,6 +1,6 @@
 {
   "packID": "macos-app",
-  "version": 22,
+  "version": 23,
   "displayName": "macOS App Generation Wisdom",
   "description": "Rules for generating executable macOS apps (SwiftUI / AppKit) via Swift Playground. Focused on making the generated binary actually appear as a visible, interactive window \u2014 not a headless background process.",
   "categories": [
@@ -799,6 +799,57 @@
       "examples": [
         "RIGHT: GridAdventureEngine.pacmanArcadeMap() returns engine with maze + 4 ghosts (each with personality), pellets, fruit, power pellets. froggerLaneMap() returns same engine type with road/water tiles + vehicle/log actors.",
         "WRONG: GridAdventureEngine has `var gameMode: GameMode` field and switches behavior on it. Engine becomes a god object that handles every game type."
+      ]
+    },
+    {
+      "id": "game-tile-step-cadence-not-too-slow",
+      "rule": "Tile-grid games (Pacman, Frogger, dungeon crawlers, Snake) on macOS MUST step the game logic at 6-10 tiles/sec (timer interval 0.10-0.16s). The reflex of using `Timer.publish(every: 0.32, ...)` (3 fps) \u2014 visible in the original Pacman/Frogger ContentViews \u2014 produces sluggish, glitchy gameplay where the player feels delays between intent and action. Web reference apps use requestAnimationFrame at 60fps with a separate game-step counter, which feels instant. macOS has no equivalent of RAF for SwiftUI, but Timer.publish at 0.13s (\u22487.7 fps) is the practical sweet spot \u2014 fast enough to feel responsive, slow enough that the engine doesn't burn CPU. For continuous-motion games (Asteroids, Pong) use 1.0/60 = 0.0166s and run physics at full 60fps.",
+      "why": "Filed 2026-05-05 after user feedback 'Pacman rendering is very slow and glitchy.' Root cause: original ContentView used 0.32s tick (3 fps). Web Pacman uses RAF 60fps + tile-step every ~150ms. Fixed by lowering Timer interval to 0.13s. Generalizes to ALL tile-grid games \u2014 Frogger had the same issue (0.55s = 1.8fps). The macOS reflex of 'use a slow timer to keep CPU low' produces an experience markedly worse than the same game on web.",
+      "severity": "high",
+      "appliesTo": "tileGridGame",
+      "examples": [
+        "RIGHT (tile-grid game): private let timer = Timer.publish(every: 0.13, on: .main, in: .common).autoconnect() \u2014 ~7.7 tiles/sec, responsive.",
+        "RIGHT (continuous-motion game): private let timer = Timer.publish(every: 1.0/60.0, on: .main, in: .common).autoconnect() \u2014 60fps physics.",
+        "WRONG: Timer.publish(every: 0.32, ...) in Pacman/Frogger \u2014 3 fps tile stepping, feels glitchy.",
+        "WRONG: Timer.publish(every: 0.55, ...) in Frogger \u2014 1.8 fps, traffic stutters."
+      ]
+    },
+    {
+      "id": "game-keypress-direction-queue",
+      "rule": "Tile-grid games where the player has continuous motion (Pacman, Snake, Bomberman) MUST use a direction-QUEUE pattern, not direct-on-keypress movement. Each arrow key press sets a `pendingDirection: GridDirection?` state variable. On every game tick, the engine reads pendingDirection and pivots the hero IF that direction is walkable, otherwise continues in the previous direction (`lastHeroDirection`). Single press persists across many tiles \u2014 the player doesn't have to tap-spam. This is the canonical web-Pacman pattern. Direct-on-keypress (call `engine.moveHero(direction)` from the keyboard handler) requires one press per tile of motion \u2014 feels broken and is what users will complain about as 'have to single step the arrow keys.'",
+      "why": "Filed 2026-05-05 from Pacman v3 feedback. User said 'I have to single step the arrow keys rather than having it be able to hold the key down.' Hold-to-repeat (phases [.down, .repeat]) is one solution but feels like Asteroids steering, not Pacman pursuit. The pendingDirection queue is what the original arcade Pacman + every web port use \u2014 single press = hero pivots when possible, continues otherwise. The pattern decouples 'player intent' from 'engine timing.'",
+      "severity": "high",
+      "appliesTo": "tileGridGame",
+      "examples": [
+        "RIGHT: @State var pendingDirection: GridDirection? = nil; @State var lastHeroDirection: GridDirection = .left; key press \u2192 pendingDirection = direction; on tick \u2192 if isWalkable(pendingDirection) { move + clear pendingDirection } else if isWalkable(lastHeroDirection) { move }",
+        "RIGHT: queue persists until the move actually fires \u2014 player can press 'up' before reaching the intersection and Pacman will turn there automatically.",
+        "WRONG: key press \u2192 engine.moveHero(direction) directly. One key per tile of motion. Feels like single-stepping a debugger.",
+        "WRONG: phases [.down, .repeat] hold-to-move on a tile-grid pursuit game \u2014 produces Asteroids-style continuous input which doesn't fit the maze-pivot model."
+      ]
+    },
+    {
+      "id": "game-reference-from-web-templates",
+      "rule": "Before designing a macOS reference app's gameplay or rendering from scratch, CHECK `harness/templates/miniapps/` for an existing web template of the same genre. Working production templates exist for arcade-pacman-v1, arcade-frogger, arcade-alien-abduction, board-checkers-mono, chess-game-board, connect-four-board-game, match-three-puzzle-game, simple-calculator-ui, texas-holdem-poker, word-puzzle-game, and more. These templates are HAND-CURATED FROM PRODUCTION HUB URLS \u2014 they encode hundreds of tuning decisions (lane count, speed multipliers, vehicle types, color palettes, key handling) that took real users + iteration to get right. Read the web template's render loop, key handlers, and visual setup BEFORE writing the macOS equivalent. The web Frogger has 5 traffic lanes with truck/sedan/sports variants; if the macOS Frogger uses 2 lanes of generic vehicles, that's not a creative choice \u2014 that's the engine being underspecified relative to a known-working reference.",
+      "why": "Filed 2026-05-05 after user said: 'It seems a little crazy to me that the web versions of these games look and feel so much better than the macOS versions. ... This seems very ground hog day for me, didn't we work on this before?' Real incident: the macOS Frogger has 2 traffic lanes + 1 log row, but a 1456-line working web Frogger template existed in `harness/templates/miniapps/arcade-frogger/reference.html` with 5 lanes + 3 log lanes + truck/sedan/sports vehicle variants. I built the macOS version against the underspecified engine instead of consulting the web reference. Same applies to Pacman (2029-line web template existed). Wisdom rule's purpose: the next time someone (me or a generator) is about to build/polish a macOS game, point them at the web template first.",
+      "severity": "high",
+      "appliesTo": "macOSReferenceApp",
+      "examples": [
+        "RIGHT: about to polish macOS Frogger? `ls harness/templates/miniapps/arcade-frogger/` \u2014 read reference.html for lane count, vehicle types, log lengths. Match those structurally.",
+        "RIGHT: building Snake from scratch? Check if `harness/templates/miniapps/arcade-snake-*/` exists \u2014 if yes, mirror its render loop + apple-spawn rules.",
+        "WRONG: 'macOS Frogger should have 2 lanes of generic vehicles' \u2014 invented from the engine's stub map (`froggerLaneMap()`), not validated against the working web template that has 5 lanes + 3 vehicle types."
+      ]
+    },
+    {
+      "id": "game-vector-sprites-not-circles-and-emoji",
+      "rule": "Game enemies / vehicles / units MUST be rendered with VECTOR SPRITES (Path/Canvas drawing with curves + multi-color fill), NOT as colored circles or emoji glyphs. A circle with a letter inside reads as 'placeholder graphic.' A multi-shape SVG-style sprite reads as a real game piece. The web codebase has `frameworks/web-components/resources/VectorSprites.js` with canvas-path drawDragon/drawSpaceship/drawCar functions \u2014 these patterns translate directly to SwiftUI Path + GraphicsContext.fill (Canvas view). For tower-defense enemies in particular: a 'normal' enemy circle next to a 'heavy' enemy circle next to a 'fast' enemy circle reads as three colored dots; the same enemies as articulated walker / tank / sprinter sprites read as different threats. Threat-level diversity (game-enemy-diversity-by-kind-table) is necessary but not sufficient \u2014 VISUAL distinction is the other half.",
+      "why": "Filed 2026-05-05 from user feedback 'Tower defense needs more turrets visual definition and the enemies need to be more than blobs.' Already filed game-boss-color-distinct-from-regular about color hierarchy, but that doesn't help if the base shape is a circle. The web codebase already solved this (VectorSprites.js); the macOS catalog hasn't yet. Until a Swift VectorSprites Lego exists, individual reference apps SHOULD draw distinct multi-shape sprites inline (per drawAsteroidsEnemy patterns in arcade.asteroids). When the Swift Lego ships, refactor to it.",
+      "severity": "medium",
+      "appliesTo": "gameRendering",
+      "examples": [
+        "RIGHT: drawTankEnemy(at: point, color: .red) renders body rect + turret rect + tracks rect \u2014 recognizable as a tank silhouette.",
+        "RIGHT: Asteroids hunter = arrowhead pointed at player (multi-line stroke) \u2014 distinct from saucer's oval+dome (multi-fill).",
+        "WRONG: Circle().fill(.red) + Text('T') for 'tank' enemy. Reads as a colored dot with a letter, not a tank.",
+        "WRONG: emoji glyph inside a circle (\"\\u{1F47D}\" for ghost). Emoji inherit system font rendering; they look like UI chrome, not game pieces."
       ]
     }
   ],
