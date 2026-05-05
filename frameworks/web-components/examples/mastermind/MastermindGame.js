@@ -3,6 +3,8 @@ import { GridBoard } from "../../entities/GridBoard.js";
 import { MastermindLogic } from "../../entities/MastermindLogic.js";
 import { KeyboardInput } from "../../ui/KeyboardInput.js";
 import { ScoreBoard } from "../../ui/ScoreBoard.js";
+import { RestartOverlay } from "../../ui/RestartOverlay.js";
+import { Leaderboard } from "../../ui/Leaderboard.js";
 import { applySwatchVariables, getSwatchByID } from "../../resources/Swatches.js";
 import { AudioManager } from "../../resources/AudioManager.js";
 
@@ -66,6 +68,12 @@ export class MastermindGame {
     this.history = [];
     this.finished = false;
     this.controlsBound = false;
+
+    this.restart = new RestartOverlay({
+      host: this.root.querySelector?.("[data-app]") || this.root.body,
+      onRestart: () => this.newGame()
+    });
+    this.rankCardHost = this.root.querySelector?.("#rankCard") || null;
   }
 
   start() {
@@ -82,6 +90,8 @@ export class MastermindGame {
     this.finished = false;
     this.turns.reset({ phase: "guessing" });
     this.scoreboard.reset(0);
+    this.restart?.hide();
+    if (this.rankCardHost) this.rankCardHost.innerHTML = "";
     this.setMessage("Pick four colors, then submit.");
     this.render();
   }
@@ -143,11 +153,25 @@ export class MastermindGame {
       this.turns.setPhase("won");
       this.setMessage(`Code cracked in ${turnNumber} turn${turnNumber === 1 ? "" : "s"}. Bonus +${bonus}.`);
       this.audio.beep({ freq: 620, slideTo: 1180, duration: 0.16, type: "sine" });
+      this._endGame({
+        title: "Code cracked!",
+        subtitle: `Solved in ${turnNumber} turn${turnNumber === 1 ? "" : "s"}. Final score: ${this.scoreboard.score}.`,
+        score: this.scoreboard.score,
+        result: "won",
+        turns: turnNumber
+      });
     } else if (turnNumber >= this.maxTurns) {
       this.finished = true;
       this.turns.setPhase("lost");
       this.setMessage("Code locked. The secret is revealed. Start a new code.");
       this.audio.noise({ duration: 0.15, volume: 0.045 });
+      this._endGame({
+        title: "Code locked",
+        subtitle: `Out of turns. Score: ${this.scoreboard.score}.`,
+        score: this.scoreboard.score,
+        result: "lost",
+        turns: turnNumber
+      });
     } else {
       this.turns.nextTurn({ feedback });
       this.setMessage(`${feedback.exact} exact, ${feedback.colorOnly} color-only. Try another code.`);
@@ -162,6 +186,16 @@ export class MastermindGame {
     current?.classList.remove("shake");
     requestAnimationFrame(() => current?.classList.add("shake"));
     this.audio.beep({ freq: 180, duration: 0.07, type: "square" });
+  }
+
+  _endGame({ title, subtitle, score, result, turns }) {
+    this.restart?.show({ title, subtitle, buttonLabel: "New Code" });
+    if (result === "won" && this.rankCardHost) {
+      this.rankCardHost.innerHTML = "";
+      Leaderboard.submitFinal(score, { result, turns, codeLength: this.codeLength }).then((rank) => {
+        if (rank) Leaderboard.renderRankCard(this.rankCardHost, rank);
+      });
+    }
   }
 
   bindControls() {

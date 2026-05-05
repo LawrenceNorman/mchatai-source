@@ -45,16 +45,21 @@
       "entities/CheckersAI.js",
       "entities/PongAI.js",
       "entities/TurretVariants.js",
+      "entities/CloudOpponent.js",
       "ui/MiniHeader.js",
       "ui/ScoreBoard.js",
       "ui/VirtualJoystick.js",
       "ui/PianoKeyboard.js",
       "ui/KeyboardInput.js",
+      "ui/RestartOverlay.js",
+      "ui/Leaderboard.js",
+      "ui/CloudAIToggle.js",
       "resources/Swatches.js",
       "resources/AudioManager.js",
       "resources/SpriteRenderer.js",
       "resources/SpritePresets.js",
-      "resources/VectorSprites.js"
+      "resources/VectorSprites.js",
+      "resources/SpriteRig.js"
     ]
   },
   "categories": [
@@ -1221,6 +1226,83 @@
       ]
     },
     {
+      "id": "entities.cloud-opponent",
+      "name": "CloudOpponent",
+      "category": "entities",
+      "path": "entities/CloudOpponent.js",
+      "exports": [
+        "CloudOpponent"
+      ],
+      "status": "ready",
+      "summary": "Drop-in async opponent that calls window.mChatAI.cloud.llm() for move selection. Same pickMove(board, color) API as ChessAI/CheckersAI/SimpleOpponent — async-only. Falls back to a passed-in local AI on any failure (cloud absent, parse error, timeout, token budget). Pairs with ui/CloudAIToggle for the 'Strong' difficulty tier per wisdom rule bg-007.",
+      "dependencies": [],
+      "tags": [
+        "ai",
+        "cloud",
+        "llm",
+        "opponent",
+        "fallback",
+        "async"
+      ],
+      "contracts": {
+        "factory": "new CloudOpponent({ rules, fallback, promptBuilder, parseMove, timeoutMs?, onError?, onFallback? })",
+        "helpers": [
+          "async pickMove(board, color) -> move | null"
+        ],
+        "bridge": "window.mChatAI.cloud.llm({ prompt }) -> Promise<string>"
+      },
+      "goodFits": [
+        "chess",
+        "checkers",
+        "tic-tac-toe",
+        "any-board-game-with-strong-tier"
+      ]
+    },
+    {
+      "id": "resources.sprite-rig",
+      "name": "SpriteRig",
+      "category": "resources",
+      "path": "resources/SpriteRig.js",
+      "exports": [
+        "SpriteRig",
+        "SpriteAnimationStep",
+        "attackAnimations"
+      ],
+      "status": "ready",
+      "summary": "Multi-part composite sprite framework with attack-animation helpers. A rig is a tree of named parts (head/torso/arm-left/arm-right/...), each with its own draw(ctx) and animatable transform. Includes stock animations: extendArm, flinchHead, whiteFlash, popText, punchCombo. Mandated by ag-016 (multi-part anatomy) + ag-017 (visible attack animations) for Boxing, Joust, fighting games, etc.",
+      "tags": [
+        "sprite",
+        "rig",
+        "animation",
+        "multi-part",
+        "attack",
+        "punch",
+        "ag-016",
+        "ag-017"
+      ],
+      "contracts": {
+        "factory": "new SpriteRig({ parts: [{ name, draw, anchor?, zOrder? }] })",
+        "runtime": [
+          "play(stepOrSteps)",
+          "update(dt)",
+          "draw(ctx, x, y, { scale?, flipX?, alpha? })"
+        ],
+        "stockAnimations": [
+          "attackAnimations.extendArm(partName, distancePx, durationMs)",
+          "attackAnimations.flinchHead(partName, distancePx, durationMs)",
+          "attackAnimations.whiteFlash(durationMs, color?)",
+          "attackAnimations.popText(text, durationMs, options?)",
+          "attackAnimations.punchCombo(partName, options?) -> [extend, flash, pop]"
+        ]
+      },
+      "goodFits": [
+        "boxing",
+        "joust",
+        "fighting-games",
+        "any-game-with-attack-animation"
+      ]
+    },
+    {
       "id": "ui.mini-header",
       "name": "MiniHeader",
       "category": "ui",
@@ -1255,6 +1337,121 @@
         "every-game",
         "tools",
         "trackers"
+      ]
+    },
+    {
+      "id": "ui.restart-overlay",
+      "name": "RestartOverlay",
+      "category": "ui",
+      "path": "ui/RestartOverlay.js",
+      "exports": [
+        "RestartOverlay",
+        "mountRestartOverlay"
+      ],
+      "status": "ready",
+      "summary": "Centered modal overlay for game-over / play-again. Mobile-first (button ≥ 60×200px), keyboard-bindable (Enter/Space), self-injecting CSS, mounts against any host. Mandatory for every game with a terminal phase per wisdom rule u-029. Marker check `requiresRestartButton: true` enforces presence.",
+      "tags": [
+        "ui",
+        "game-over",
+        "restart",
+        "play-again",
+        "modal",
+        "mobile-first"
+      ],
+      "contracts": {
+        "factory": "new RestartOverlay({ host, onRestart })",
+        "static": "mountRestartOverlay(host, onRestart)",
+        "runtime": [
+          "show({ title, subtitle, buttonLabel })",
+          "hide()",
+          "isVisible()",
+          "destroy()"
+        ]
+      },
+      "goodFits": [
+        "every-game-with-game-over",
+        "tower-defense",
+        "chess",
+        "checkers",
+        "pong",
+        "asteroids",
+        "frogger",
+        "platformer",
+        "any-game"
+      ]
+    },
+    {
+      "id": "ui.leaderboard",
+      "name": "Leaderboard",
+      "category": "ui",
+      "path": "ui/Leaderboard.js",
+      "exports": [
+        "Leaderboard",
+        "submitAndShowRank"
+      ],
+      "status": "ready",
+      "summary": "Global leaderboard wiring — submitFinal(score, metadata), renderRankCard(host, result), renderTopList(host, count). All methods no-op safe when window.mChatAI.leaderboard bridge is absent (offline / signed-out). Mandatory wiring for board games (bg-006) and arcade games (ag-010) with a final score.",
+      "dependencies": [],
+      "tags": [
+        "ui",
+        "leaderboard",
+        "score",
+        "rank-card",
+        "competitive",
+        "bridge-aware"
+      ],
+      "contracts": {
+        "static": [
+          "Leaderboard.submitFinal(score, metadata) -> Promise<{ rank, percentile, played } | null>",
+          "Leaderboard.renderRankCard(host, result, options?) -> DOM node | null",
+          "Leaderboard.renderTopList(host, count, options?) -> Promise<DOM node | null>",
+          "Leaderboard.getTop(count) -> Promise<Array | null>",
+          "Leaderboard.isAvailable() -> boolean",
+          "submitAndShowRank(host, score, metadata?, options?) -> Promise<DOM node | null>"
+        ],
+        "bridge": "window.mChatAI.leaderboard.submit/getTop"
+      },
+      "goodFits": [
+        "every-scoring-game",
+        "arcade",
+        "board-games",
+        "puzzle-games",
+        "trivia"
+      ]
+    },
+    {
+      "id": "ui.cloud-ai-toggle",
+      "name": "CloudAIToggle",
+      "category": "ui",
+      "path": "ui/CloudAIToggle.js",
+      "exports": [
+        "CloudAIToggle"
+      ],
+      "status": "ready",
+      "summary": "Three-button difficulty selector (Easy / Medium / ⚡ Strong). The Strong tier is auto-disabled when window.mChatAI.cloud is unavailable. Pairs with entities/CloudOpponent. Wisdom rule bg-007.",
+      "dependencies": [],
+      "tags": [
+        "ui",
+        "difficulty",
+        "cloud-ai",
+        "toggle",
+        "compute-token",
+        "bridge-aware"
+      ],
+      "contracts": {
+        "factory": "new CloudAIToggle({ target, defaultLevel?, tokenCost?, tokenCostUnit?, onChange })",
+        "runtime": [
+          "getLevel() -> 'easy' | 'medium' | 'strong'",
+          "setLevel(level)",
+          "destroy()"
+        ]
+      },
+      "goodFits": [
+        "chess",
+        "checkers",
+        "tic-tac-toe",
+        "connect-four",
+        "any-board-game-with-difficulty"
       ]
     },
     {
@@ -1993,6 +2190,8 @@
       ],
       "starterComponents": [
         "ui.mini-header",
+        "ui.restart-overlay",
+        "ui.leaderboard",
         "core.turn-based-manager",
         "entities.grid-board",
         "entities.mastermind-logic",
@@ -2001,9 +2200,13 @@
         "resources.swatches",
         "resources.audio-manager"
       ],
+      "requiresRestartButton": true,
+      "requiresLeaderboardSubmit": true,
       "assemblyNotes": [
         "Use MastermindLogic for code generation and feedback pegs; do not ask the model to reinvent exact/color-only scoring.",
-        "Use ScoreBoard.setScore(), ScoreBoard.add(), or ScoreBoard.reset(); there is no ScoreBoard.update() API."
+        "Use ScoreBoard.setScore(), ScoreBoard.add(), or ScoreBoard.reset(); there is no ScoreBoard.update() API.",
+        "On win OR turns-exhausted, call RestartOverlay.show() with a clear title (e.g. 'Code cracked!' / 'Code locked'). Wire onRestart to newGame().",
+        "On win, submit the final score via Leaderboard.submitFinal(score, { result, turns, codeLength }) and renderRankCard against a #rankCard host."
       ]
     },
     {
@@ -2028,6 +2231,8 @@
       ],
       "starterComponents": [
         "ui.mini-header",
+        "ui.restart-overlay",
+        "ui.leaderboard",
         "core.turn-based-manager",
         "entities.grid-board",
         "entities.reveal-logic",
@@ -2035,8 +2240,12 @@
         "resources.swatches",
         "resources.audio-manager"
       ],
+      "requiresRestartButton": true,
+      "requiresLeaderboardSubmit": true,
+      "requiresGenreInvariants": "ag-006",
       "assemblyNotes": [
-        "Use RevealLogic for mine seeding, adjacency counts, flags, and flood reveal; generate board size/difficulty settings only."
+        "Use RevealLogic for mine seeding, adjacency counts, flags, and flood reveal; generate board size/difficulty settings only.",
+        "On win OR mine-hit, call RestartOverlay.show() with title/subtitle. On win, submit final score via Leaderboard.submitFinal(score, { result, time_seconds, mines, rows, cols })."
       ]
     },
     {
@@ -2165,6 +2374,8 @@
       ],
       "starterComponents": [
         "ui.mini-header",
+        "ui.restart-overlay",
+        "ui.leaderboard",
         "core.turn-based-manager",
         "entities.grid-board",
         "entities.board8x8",
@@ -2175,6 +2386,8 @@
         "resources.audio-manager"
       ],
       "requiresAIOpponent": true,
+      "requiresRestartButton": true,
+      "requiresLeaderboardSubmit": true,
       "aiOpponentComponents": [
         "entities.checkers-ai",
         "entities.simple-opponent"
@@ -2209,6 +2422,8 @@
       ],
       "starterComponents": [
         "ui.mini-header",
+        "ui.restart-overlay",
+        "ui.leaderboard",
         "core.turn-based-manager",
         "entities.grid-board",
         "entities.board8x8",
@@ -2219,6 +2434,8 @@
         "resources.audio-manager"
       ],
       "requiresAIOpponent": true,
+      "requiresRestartButton": true,
+      "requiresLeaderboardSubmit": true,
       "aiOpponentComponents": [
         "entities.chess-ai",
         "entities.simple-opponent"
@@ -2228,6 +2445,50 @@
         "Wire ChessAI to play one color (default: 'black'). After every human move, schedule the AI's reply via setTimeout (~350ms for thinking-feel). Never let the user play both sides.",
         "ChessAI default depth is 2 (move under ~1s on typical hardware); raise to 3 for stronger play if you can afford up to ~3s thinking time.",
         "Do not invent lifecycle APIs such as initialize(). Render a visible 8x8 board, selectable pieces, legal move highlights, turn/status HUD, and reset control."
+      ]
+    },
+    {
+      "id": "recipe.tic-tac-toe",
+      "name": "Tic-Tac-Toe vs AI",
+      "cloneTarget": "Tic-Tac-Toe / Noughts and Crosses with single-player AI",
+      "brandedAs": "Tic-Tac-Toe",
+      "promptName": "Tic-tac-toe vs AI",
+      "keywords": [
+        "tic tac toe",
+        "tic-tac-toe",
+        "tictactoe",
+        "noughts and crosses",
+        "xs and os",
+        "3 in a row"
+      ],
+      "templateIDs": [
+        "tic-tac-toe-vs-ai"
+      ],
+      "existingGames": [
+        "tic-tac-toe"
+      ],
+      "starterComponents": [
+        "ui.mini-header",
+        "ui.restart-overlay",
+        "ui.leaderboard",
+        "ui.cloud-ai-toggle",
+        "core.turn-based-manager",
+        "resources.swatches",
+        "resources.audio-manager"
+      ],
+      "requiresAIOpponent": true,
+      "aiOpponentComponents": [
+        "entities.simple-opponent"
+      ],
+      "requiresRestartButton": true,
+      "requiresLeaderboardSubmit": true,
+      "requiresGenreInvariants": "ag-tic-tac-toe-invariants",
+      "assemblyNotes": [
+        "Tic-tac-toe is the H3.1 acceptance test for the H2.7 universal lifts. Wire RestartOverlay, Leaderboard, and CloudAIToggle from the start — they're inexpensive on a 3x3 game and prove the contract for harder games.",
+        "Inline minimax (depth ≤ 9) gives perfect play on a 3x3 board and runs instantly. Don't use entities/MinimaxAI here — it's overkill and adds dependency weight.",
+        "After human move: pickAIMove(board, 'o') → applyMove → check winner → if game-over, RestartOverlay.show() + Leaderboard.submitFinal().",
+        "Score deltas: +100 for perfect-difficulty win, +50 for easy win, +25 for draw. Loss = 0 (don't submit). Adjust if you want stricter ranking math.",
+        "Inline 3x3 board as 9 buttons (CSS grid 3x3). Click handler dispatches to game.handleHumanMove(index). Easier than a generic GridBoard for this size."
       ]
     },
     {
