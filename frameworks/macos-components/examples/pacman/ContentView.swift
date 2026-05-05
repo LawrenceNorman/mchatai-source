@@ -8,6 +8,10 @@ struct ContentView: View {
         // so the engine should NOT auto-teleport the hero on collision.
         // See engine.deferRespawn docs.
         e.deferRespawn = true
+        // Same for ghost-death: engine flags eaten ghosts dead and
+        // freezes them; the View runs a 3-stage float-home + pen-pause
+        // + materialize animation, then calls respawnEatenGhost.
+        e.deferGhostRespawn = true
         return e
     }()
     @State private var ghostsRunning = false
@@ -61,16 +65,26 @@ struct ContentView: View {
     @State private var pelletPositionsBeforeTick: Set<PuzzlePoint> = []
     @State private var powerPelletPositionsBeforeTick: Set<PuzzlePoint> = []
 
-    /// Ghosts the engine just "ate" (when Pac munches a frightened ghost).
-    /// Engine teleports the ghost back to the pen instantly; the View
-    /// renders an "eyes only" floating-home animation for ~1.6s before
-    /// allowing the engine ghost to act normally again. Each entry is
-    /// the ghost id + the eaten-at time.
-    @State private var eatenGhosts: [UUID: Date] = [:]
-    /// Ghosts present in engine.actors at the start of the tick + their
-    /// pre-tick positions. Used to detect "ghost eaten" via Pac munching
-    /// a frightened one.
-    @State private var ghostPositionsBeforeTick: [UUID: PuzzlePoint] = [:]
+    /// Ghosts that were eaten (engine.deferGhostRespawn=true so the engine
+    /// flagged them dead but didn't move them). The View runs a 3-stage
+    /// animation per ghost:
+    ///   stage 1 (0–1.5s): eyes float from contact tile → pen tile
+    ///   stage 2 (1.5–3.0s): eyes pause in the pen
+    ///   stage 3 (3.0–3.5s): full ghost body fades back in (materialize)
+    ///   then 3.5s+: View calls engine.respawnEatenGhost(id:) and the
+    ///   ghost re-enters normal AI flow.
+    /// Filed 2026-05-05 from user feedback: "the respawn should take at
+    /// least 3 seconds and start back at the box. There should be an
+    /// animation that goes into the box showing the ghost getting
+    /// respawned."
+    @State private var deadGhostStartedAt: [UUID: Date] = [:]
+    private let ghostFloatHomeSeconds: Double = 1.5
+    private let ghostPenPauseSeconds: Double = 1.5
+    private let ghostMaterializeSeconds: Double = 0.5
+    /// Total death-respawn cycle = float (1.5s) + pause (1.5s) + materialize (0.5s) = 3.5s.
+    private var ghostDeathTotalSeconds: Double {
+        ghostFloatHomeSeconds + ghostPenPauseSeconds + ghostMaterializeSeconds
+    }
 
     /// Death-sequence state. The engine collisions are instantaneous —
     /// without a View-level pause, the hero teleports to spawn and the
@@ -267,20 +281,17 @@ struct ContentView: View {
         var snapshot: [UUID: PuzzlePoint] = [:]
         var pelletsBefore: Set<PuzzlePoint> = []
         var powerPelletsBefore: Set<PuzzlePoint> = []
-        var ghostsBefore: [UUID: PuzzlePoint] = [:]
         for actor in engine.actors {
             snapshot[actor.id] = actor.position
             switch actor.kind {
             case .pellet: pelletsBefore.insert(actor.position)
             case .powerPellet: powerPelletsBefore.insert(actor.position)
-            case .enemy: ghostsBefore[actor.id] = actor.position
             default: break
             }
         }
         previousActorPositions = snapshot
         pelletPositionsBeforeTick = pelletsBefore
         powerPelletPositionsBeforeTick = powerPelletsBefore
-        ghostPositionsBeforeTick = ghostsBefore
         previousHeroDirection = lastHeroDirection
         let now = Date()
         lastTickTime = now
@@ -315,12 +326,10 @@ struct ContentView: View {
         // just eaten.
         var pelletsAfter: Set<PuzzlePoint> = []
         var powerPelletsAfter: Set<PuzzlePoint> = []
-        var aliveGhostsAfter: [UUID: PuzzlePoint] = [:]
         for actor in engine.actors {
             switch actor.kind {
             case .pellet: pelletsAfter.insert(actor.position)
             case .powerPellet: powerPelletsAfter.insert(actor.position)
-            case .enemy: aliveGhostsAfter[actor.id] = actor.position
             default: break
             }
         }
@@ -336,24 +345,23 @@ struct ContentView: View {
         let pelletFadeWindow = currentTickInterval * 1.2
         fadingPellets.removeAll { nowDate.timeIntervalSince($0.eatenAt) > pelletFadeWindow }
 
-        // Detect eaten ghost: in `ghostsBefore` Pac was about to move
-        // toward a frightened ghost; if that ghost teleported to a pen
-        // tile this tick, mark it "eaten" for the View animation.
-        // Heuristic: ghost previously was at the hero's destination tile
-        // AND the ghost's new position is far away (pen).
-        if let heroPos = engine.hero?.position {
-            for (gid, prevGhostPos) in ghostsBefore where prevGhostPos == heroPos {
-                if let postPos = aliveGhostsAfter[gid], postPos != heroPos {
-                    // Ghost was at Pac's collision tile and was moved
-                    // elsewhere → must have been eaten (frightened). Mark
-                    // it for the dissolve+float-home animation.
-                    eatenGhosts[gid] = nowDate
-                }
+        // Engine.deferGhostRespawn=true → the engine populates deadGhostIDs
+        // when Pac eats a frightened ghost (instead of teleporting it to
+        // the pen). The View tracks the ANIMATION START TIME for each
+        // dead ghost, runs a 3-stage anim (float-home + pen-pause +
+        // materialize), then calls engine.respawnEatenGhost(id:) to put
+        // it back in play.
+        for ghostID in engine.deadGhostIDs where deadGhostStartedAt[ghostID] == nil {
+            deadGhostStartedAt[ghostID] = nowDate
+        }
+        // Drive the respawn — once any ghost has been dead long enough
+        // for the full anim cycle, tell the engine to put it back in play.
+        for (ghostID, startedAt) in deadGhostStartedAt {
+            if nowDate.timeIntervalSince(startedAt) >= ghostDeathTotalSeconds {
+                engine.respawnEatenGhost(id: ghostID)
+                deadGhostStartedAt.removeValue(forKey: ghostID)
             }
         }
-        // GC eaten-ghost tracking after the float-home window elapses.
-        let ghostEatWindow: TimeInterval = 1.6
-        eatenGhosts = eatenGhosts.filter { nowDate.timeIntervalSince($0.value) < ghostEatWindow }
     }
 
     /// Returns true if the hero can move one cell in the given direction
@@ -507,11 +515,12 @@ struct ContentView: View {
             case .hero:
                 drawHero(context: &context, actor: actor, t: t)
             case .enemy:
-                if let eatenAt = eatenGhosts[actor.id] {
-                    drawEatenGhostFloatHome(
+                if engine.deadGhostIDs.contains(actor.id),
+                   let startedAt = deadGhostStartedAt[actor.id] {
+                    drawEatenGhostThreeStage(
                         context: &context,
                         actor: actor,
-                        eatenAt: eatenAt
+                        startedAt: startedAt
                     )
                 } else {
                     drawGhost(context: &context, actor: actor, t: t)
@@ -523,51 +532,104 @@ struct ContentView: View {
         }
     }
 
-    /// Draw an eaten ghost as "eyes only" floating from the contact tile
-    /// to its current pen position. The eyes move on a continuous lerp
-    /// from contactTile (recorded as previousActorPositions[id] at the
-    /// moment of eat — that's where Pac caught the ghost) to actor.position
-    /// (the pen tile the engine teleported it to). Animation lasts ~1.6s.
-    /// During this window the ghost can't damage Pac (engine respects
-    /// frightenedTicks=0 at this point and the body collision is gated
-    /// on visual ghosts). Filed 2026-05-05 from user feedback: "When the
-    /// monster dies there is no transition, its body is just moved to
-    /// the box and starts over."
-    private func drawEatenGhostFloatHome(
+    /// Draw an eaten ghost across the 3-stage death-respawn animation:
+    ///   stage 1 (0 - ghostFloatHomeSeconds): eyes only, lerp from the
+    ///     CONTACT TILE (where Pac caught it, stored in
+    ///     engine.deadGhostContactTiles) to the PEN TILE
+    ///     (engine.ghostPenTile(for:))
+    ///   stage 2 (ghostFloatHomeSeconds - ghostFloatHomeSeconds+ghostPenPauseSeconds):
+    ///     eyes pause in the pen, slight bob, building anticipation
+    ///   stage 3 (last ghostMaterializeSeconds): full ghost body fades
+    ///     in (alpha 0 → 1) at the pen, signaling re-emergence
+    /// After ghostDeathTotalSeconds, tick() calls engine.respawnEatenGhost
+    /// which clears the dead state and the ghost re-enters normal AI.
+    /// Filed 2026-05-05 from user feedback: "the respawn should take at
+    /// least 3 seconds and start back at the box. There should be an
+    /// animation that goes into the box showing the ghost getting respawned."
+    private func drawEatenGhostThreeStage(
         context: inout GraphicsContext,
         actor: AdventureActor,
-        eatenAt: Date
+        startedAt: Date
     ) {
-        let elapsed = Date().timeIntervalSince(eatenAt)
-        let total: TimeInterval = 1.6
-        let p = max(0, min(1, elapsed / total))
-        // Where the ghost was eaten — captured in previousActorPositions
-        // at the moment of eat. Falls back to current pen tile if missing.
-        let eatTile = previousActorPositions[actor.id] ?? actor.position
-        let from = visualCenter(for: eatTile, t: 1, previous: eatTile)
-        let to = visualCenter(for: actor.position, t: 1, previous: actor.position)
-        let center = CGPoint(
-            x: from.x + (to.x - from.x) * p,
-            y: from.y + (to.y - from.y) * p
-        )
-        // Slight bob during the float-home for a touch of life.
-        let bob = sin(elapsed * 9) * 1.2
-        let centerBobbed = CGPoint(x: center.x, y: center.y + bob)
+        let elapsed = Date().timeIntervalSince(startedAt)
+        // Anchor positions
+        let contactTile = engine.deadGhostContactTiles[actor.id] ?? actor.position
+        let penTile = engine.ghostPenTile(for: actor.id)
+        let contactPos = visualCenter(for: contactTile, t: 1, previous: contactTile)
+        let penPos = visualCenter(for: penTile, t: 1, previous: penTile)
 
-        // Eyes only — no body. Two large white sclerae + dark blue pupils
-        // looking toward the destination (the pen).
+        if elapsed < ghostFloatHomeSeconds {
+            // STAGE 1: float home as eyes only
+            let p = max(0, min(1, elapsed / ghostFloatHomeSeconds))
+            // Ease-in-out for the float so eyes accelerate then settle.
+            let eased = p * p * (3 - 2 * p)
+            let center = CGPoint(
+                x: contactPos.x + (penPos.x - contactPos.x) * eased,
+                y: contactPos.y + (penPos.y - contactPos.y) * eased
+            )
+            let bob = sin(elapsed * 9) * 1.5
+            drawGhostEyesOnly(
+                context: &context,
+                center: CGPoint(x: center.x, y: center.y + bob),
+                lookAt: penPos,
+                alpha: 1.0
+            )
+        } else if elapsed < ghostFloatHomeSeconds + ghostPenPauseSeconds {
+            // STAGE 2: eyes parked in pen, gentle anticipation bob
+            let stage2Elapsed = elapsed - ghostFloatHomeSeconds
+            let bob = sin(stage2Elapsed * 6) * 1.2
+            drawGhostEyesOnly(
+                context: &context,
+                center: CGPoint(x: penPos.x, y: penPos.y + bob),
+                lookAt: nil,  // looking forward (no destination yet)
+                alpha: 1.0
+            )
+        } else {
+            // STAGE 3: full ghost body materializes (fades in)
+            let stage3Elapsed = elapsed - ghostFloatHomeSeconds - ghostPenPauseSeconds
+            let p = max(0, min(1, stage3Elapsed / ghostMaterializeSeconds))
+            // Fade body in. Eyes also still visible (continuous from stage 2).
+            drawGhostBodyAt(
+                context: &context,
+                center: penPos,
+                color: ghostColor(actor),
+                alpha: p
+            )
+            drawGhostEyesOnly(
+                context: &context,
+                center: penPos,
+                lookAt: nil,
+                alpha: 1.0
+            )
+        }
+    }
+
+    /// Helper: draw just the eyes (white sclerae + dark blue pupils) at
+    /// the given center. Used by stages 1 and 2 of ghost respawn. If
+    /// `lookAt` is provided, pupils offset toward that point; otherwise
+    /// they look forward (down).
+    private func drawGhostEyesOnly(
+        context: inout GraphicsContext,
+        center: CGPoint,
+        lookAt: CGPoint?,
+        alpha: Double
+    ) {
         let eyeR = cellSize * 0.10
         let eyeOffsetX = cellSize * 0.13
         let pupilR = eyeR * 0.55
-        let dx = to.x - center.x
-        let dy = to.y - center.y
-        let dist = max(0.001, sqrt(dx * dx + dy * dy))
-        let pupilOffsetX = (dx / dist) * eyeR * 0.45
-        let pupilOffsetY = (dy / dist) * eyeR * 0.45
+        var pupilOffsetX: CGFloat = 0
+        var pupilOffsetY: CGFloat = eyeR * 0.25
+        if let target = lookAt {
+            let dx = target.x - center.x
+            let dy = target.y - center.y
+            let dist = max(0.001, sqrt(dx * dx + dy * dy))
+            pupilOffsetX = (dx / dist) * eyeR * 0.45
+            pupilOffsetY = (dy / dist) * eyeR * 0.45
+        }
         for sign: CGFloat in [-1, 1] {
-            let eyeC = CGPoint(x: centerBobbed.x + sign * eyeOffsetX, y: centerBobbed.y - cellSize * 0.04)
+            let eyeC = CGPoint(x: center.x + sign * eyeOffsetX, y: center.y - cellSize * 0.04)
             let eyeRect = CGRect(x: eyeC.x - eyeR, y: eyeC.y - eyeR, width: eyeR * 2, height: eyeR * 2)
-            context.fill(Path(ellipseIn: eyeRect), with: .color(.white))
+            context.fill(Path(ellipseIn: eyeRect), with: .color(Color.white.opacity(alpha)))
             let pupilC = CGPoint(x: eyeC.x + pupilOffsetX, y: eyeC.y + pupilOffsetY)
             let pupilRect = CGRect(
                 x: pupilC.x - pupilR,
@@ -575,8 +637,48 @@ struct ContentView: View {
                 width: pupilR * 2,
                 height: pupilR * 2
             )
-            context.fill(Path(ellipseIn: pupilRect), with: .color(Color(red: 0.10, green: 0.20, blue: 0.65)))
+            context.fill(Path(ellipseIn: pupilRect), with: .color(Color(red: 0.10, green: 0.20, blue: 0.65).opacity(alpha)))
         }
+    }
+
+    /// Helper: draw just the ghost body silhouette (no eyes — caller adds
+    /// those separately if desired). Used by stage 3 of respawn (body
+    /// fades in over the eyes).
+    private func drawGhostBodyAt(
+        context: inout GraphicsContext,
+        center: CGPoint,
+        color: Color,
+        alpha: Double
+    ) {
+        let ghostSize = cellSize * 0.72
+        let halfW = ghostSize / 2
+        let domeRadius = halfW
+        let baseY = center.y + halfW * 0.55
+        let bottomY = center.y + halfW
+
+        var body = Path()
+        body.move(to: CGPoint(x: center.x - halfW, y: center.y))
+        body.addArc(
+            center: CGPoint(x: center.x, y: center.y),
+            radius: domeRadius,
+            startAngle: .degrees(180),
+            endAngle: .degrees(360),
+            clockwise: false
+        )
+        body.addLine(to: CGPoint(x: center.x + halfW, y: baseY))
+        let bumpWidth = ghostSize / 3
+        for i in 0..<3 {
+            let baseX = center.x + halfW - CGFloat(i) * bumpWidth
+            let midX = baseX - bumpWidth / 2
+            let endX = baseX - bumpWidth
+            body.addQuadCurve(
+                to: CGPoint(x: endX, y: baseY),
+                control: CGPoint(x: midX, y: bottomY)
+            )
+        }
+        body.addLine(to: CGPoint(x: center.x - halfW, y: center.y))
+        body.closeSubpath()
+        context.fill(body, with: .color(color.opacity(alpha)))
     }
 
     /// Compute the visual center point for an actor at interpolation t.
@@ -1182,7 +1284,9 @@ struct ContentView: View {
     private func reset() {
         var fresh = GridAdventureEngine.pacmanArcadeMap()
         fresh.deferRespawn = true
+        fresh.deferGhostRespawn = true
         engine = fresh
+        deadGhostStartedAt = [:]
         ghostColorByID = [:]
         ghostsRunning = false
         showGameOver = false
@@ -1204,7 +1308,9 @@ struct ContentView: View {
     private func dismissAndRestartForNextRun() {
         var fresh = GridAdventureEngine.pacmanArcadeMap()
         fresh.deferRespawn = true
+        fresh.deferGhostRespawn = true
         engine = fresh
+        deadGhostStartedAt = [:]
         // Boss ghost injection: at boss levels, find one ghost and convert
         // it to boss kind. The visual + AI difference signals 'this level
         // is harder.' Done via a method on the engine that the View calls
