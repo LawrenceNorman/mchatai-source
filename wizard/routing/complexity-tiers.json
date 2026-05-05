@@ -50,16 +50,28 @@
   "auto_classify": {
     "enabled": true,
     "defaults_to": "L2",
+    "_l1_signals_comment": "Goals that classify as L1 fast-path: 1 LLM call, no autofix. Trimmed on 2026-05-04 — removed 'simple' / 'tiny' / 'basic' / 'one-file' / 'single page' / 'list' / 'display' / 'show' because those words appear in game prompts ('tiny snake', 'basic pong', 'simple maze') and were funneling games into the no-autofix path where broken APIs silently shipped (gotchas_lego_gate_passes_broken_apps.md). Kept narrow utility-shape words only.",
     "l1_keyword_signals": [
-      "simple", "tiny", "basic", "one-file", "single page",
-      "hello world", "counter", "list", "display", "show",
-      "calculator", "converter", "timer"
+      "hello world", "counter", "calculator", "converter", "timer",
+      "stopwatch", "tip calculator", "color picker", "todo list", "shopping list"
+    ],
+    "_force_l2_comment": "Anti-L1 override (resolution: L3 → force_l2 → L1 → defaults_to). Goals that match these phrases NEVER classify as L1 even if they also match an L1 signal. Use for anything that needs real runtime evaluation: games, interactive state, canvas animation, anything with a loop. Added 2026-05-04 after L1 fast-path skipped the console-error gate on a snake game whose imported components had hallucinated APIs — preview was empty but evaluator reported 0 console errors.",
+    "force_l2_keyword_signals": [
+      "game", "snake", "pong", "tetris", "asteroids", "breakout",
+      "pac-man", "pacman", "minesweeper", "2048",
+      "match 3", "match-3", "tic tac toe", "tic-tac-toe", "connect four",
+      "chess", "checkers", "blackjack", "poker", "solitaire", "memory game",
+      "puzzle", "arcade", "platformer", "shooter", "maze",
+      "rpg", "roguelike", "tower defense",
+      "physics", "drag and drop", "drag-and-drop", "drag/drop",
+      "canvas animation", "real-time", "realtime"
     ],
     "l3_keyword_signals": [
       "3d", "shader", "webgl", "audio graph", "synthesizer", "polyphonic",
-      "game engine", "multi-agent", "real-time", "websocket",
-      "deep learning", "neural network", "ray tracing", "physics"
+      "game engine", "multi-agent", "websocket",
+      "deep learning", "neural network", "ray tracing"
     ],
+    "_l3_signals_comment": "Heavy-domain. Note: 'real-time' moved from L3 to force_l2_keyword_signals on 2026-05-04 — most real-time UI work is L2 territory; the L3 signal-set should be reserved for genuinely heavyweight (3D, audio synthesis, ML, etc).",
     "notes": "Used ONLY when the caller does not pass an explicit difficulty. Catalog-based flywheel runs always pass difficulty explicitly and bypass this."
   }
 }
