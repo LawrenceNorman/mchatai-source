@@ -1,6 +1,6 @@
 {
   "packID": "macos-app",
-  "version": 24,
+  "version": 25,
   "displayName": "macOS App Generation Wisdom",
   "description": "Rules for generating executable macOS apps (SwiftUI / AppKit) via Swift Playground. Focused on making the generated binary actually appear as a visible, interactive window \u2014 not a headless background process.",
   "categories": [
@@ -864,6 +864,91 @@
         "RIGHT (interpolated draw): center = lerp(previousCenter, currentCenter, t) \u2014 actor visuals slide smoothly between cells.",
         "WRONG: LazyVGrid(columns: ...) { ForEach(engine.map.allPoints()) { point in cell(point) } } where cell(point) reads engine.map[point] + actors at point. Every tick re-instantiates dozens of cell views; SwiftUI flickers them.",
         "WRONG: per-actor view in a ZStack with .position(...) tied to engine.actor.position only \u2014 actor teleports tile-to-tile because there's no fractional interpolation between ticks. Looks like a strobe at any tick rate fast enough to be playable."
+      ]
+    },
+    {
+      "id": "game-engine-spawn-anchor-not-heuristic",
+      "rule": "Game engines that auto-respawn entities (heroes after death, ghosts after eat, vehicles after exit) MUST persist a SPAWN ANCHOR set by the factory method, not pick respawn locations from heuristics like '(rows-1, columns/2)' or 'first walkable floor in row-major order.' Heuristics break silently when the map's bottom-middle is a wall (Pacman arcade layout) \u2014 respawn falls through to allPoints().first { .floor } which is the top-left interior, producing a 'hyperspace teleport' bug. Pattern: factory builds the engine, captures heroStart in a `private(set) var heroSpawn: PuzzlePoint?`, respawnHero() prefers heroSpawn first, then falls back to a heuristic, then a last-resort walkable-cell scan. Same applies to ghost pen positions (deadGhostContactTiles + ghostPenTile API), enemy spawn waves, etc.",
+      "why": "Filed 2026-05-05 from Pacman v5 hyperspace bug. respawnHero() in GridAdventureEngine had `preferred = (rows-1, columns/2)` \u2014 but Pacman's arcade map has the entire bottom row as wall. The heuristic fell through to the row-major fallback which landed on (1,1) \u2014 top-left interior. User reported teleport-on-collision; took 1 session to find, would have been zero with an explicit anchor. Generalizes to any game engine with respawn semantics on a non-trivial map.",
+      "severity": "high",
+      "appliesTo": "gameEngine",
+      "examples": [
+        "RIGHT: GridAdventureEngine has `private(set) var heroSpawn: PuzzlePoint?` set in init() from `actors.first { $0.kind == .hero }?.position`. respawnHero() checks heroSpawn FIRST, only falls through to heuristics if nil.",
+        "RIGHT (ghost variant): deadGhostContactTiles records WHERE the ghost was eaten (as opposed to inferring from previousActorPositions). View uses contact-tile as the float-home animation source.",
+        "WRONG: respawnHero uses `(rows-1, columns/2)` as the 'preferred' point. Maps with solid bottom rows fail silently. User experiences a teleport bug."
+      ]
+    },
+    {
+      "id": "game-engine-defer-state-mutations-for-animations",
+      "rule": "When a game engine resolves a transient event (collision, eat, kill), the engine should expose a flag (`deferRespawn: Bool`, `deferEnemyRespawn: Bool`) that lets the View OPT INTO controlling the animation timing. With `defer*=true`: the engine still updates discrete state (decrements lives, marks ghost dead, awards score) but DOES NOT teleport entities away from the contact tile. The View runs whatever animation it wants (death-shrink, eyes-float-home, materialize-in-pen) and then calls `engine.respawnHeroToStart()` / `engine.respawnEatenGhost(id:)` to commit the position change. Without this flag, the engine teleports the entity instantly \u2014 and the View can't draw a death animation at the contact tile because the engine already moved it. (User-perceived as 'I died from a tile away' or 'ghost teleports to pen with no transition.')",
+      "why": "Filed 2026-05-05 from Pacman v7 + v9 bugs. v7: ghost collision \u2192 engine.loseLife \u2192 respawnHero teleports Pac to spawn \u2192 View tries to animate death-shrink at previousActorPositions[hero] (PRE-tick) which was 1 tile away from the actual contact. v9: same problem for ghost-eaten \u2014 engine teleported eaten ghost to pen instantly, View animation lerped from previousActorPositions which was the ghost's pre-tick tile, not the contact tile. Both fixed by adding defer flags + explicit contact-tile fields (deadGhostContactTiles) to the engine. Generalizes to ANY engine with auto-respawn that wants to support a richer animation layer.",
+      "severity": "high",
+      "appliesTo": "gameEngine",
+      "examples": [
+        "RIGHT (engine API): `public var deferRespawn: Bool = false` (opt-in); on collision, if deferRespawn=true, leave entity on contact tile + flag dead + record contact tile. Public `respawnHeroToStart()` / `respawnEatenGhost(id:)` for View-controlled commit.",
+        "RIGHT (View pattern): on detecting lives drop, capture death-start time \u2192 run animation (shrink, eyes-float, materialize) \u2192 at end of pause, call engine.respawnX() to commit teleport.",
+        "WRONG: View uses previousActorPositions to guess where the contact happened. Pre-tick position is one step earlier than contact tile, so the animation freezes in the wrong place."
+      ]
+    },
+    {
+      "id": "game-tile-grid-fading-eaten-items",
+      "rule": "Tile-grid games where the engine eats items on-tile (Pacman pellets, Bomberman explosions clearing crates) should keep the just-eaten item RENDERED AT FADING OPACITY for one tick interval \u2014 otherwise the visual lerp lags the engine state and items vanish 'from a tile away.' Pattern: View snapshots the set of items present BEFORE engine.update; after engine.update, diffs against the new set; items in the diff enter a `fadingItems: [(point, kind, eatenAt)]` collection; the renderer draws them at decreasing opacity over the tick interval. When the player visually arrives at the tile (t=1), the item has faded to 0 alpha \u2014 the item disappears at the moment of contact, not at the moment of intent.",
+      "why": "Filed 2026-05-05 from Pacman v8 fix. User reported 'I eat a pellet before I'm fully over it as well, so maybe the collision bubble around the pacman is too big?' Root cause: engine eats pellets on-tile (instant when Pac arrives via engine.moveHero), but the View's visual lerp lasts a full tickInterval \u2014 so the pellet vanished when Pac was visually still mid-lerp toward it. Fix: render eaten pellets at fading opacity over the tickInterval. Generalizes to any per-tile pickup/collectible with a moving collector.",
+      "severity": "medium",
+      "appliesTo": "tileGridGame",
+      "examples": [
+        "RIGHT: tick() snapshots `pelletPositionsBeforeTick`, runs engine.update, then diffs `before - after` to find newly-eaten pellets. Each enters `fadingPellets: [(point, kind, eatenAt: Date)]`. drawMaze renders them at alpha 1 - (now - eatenAt) / tickInterval.",
+        "RIGHT (multiple kinds): track power-pellet positions separately from regular pellets so the larger fading sprite renders correctly.",
+        "WRONG: pellet vanishes the instant engine.removes it. Player sees 'ate from a tile away.'"
+      ]
+    },
+    {
+      "id": "game-multi-stage-respawn-animation",
+      "rule": "Entity respawn (after death, eaten, exhausted) in arcade games SHOULD play a 3-stage animation rather than instant teleport: (1) FLOAT-HOME (1.0\u20131.5s) \u2014 the dead entity lerps from contact tile \u2192 respawn tile, often as a stripped-down visual (eyes only for ghosts, ship outline for spaceships, soul for RPG creatures); (2) PEN-PAUSE (1.0\u20132.0s) \u2014 entity sits at respawn tile in stripped state, building anticipation; (3) MATERIALIZE (0.3\u20130.6s) \u2014 full body fades back in (alpha 0\u21921) at the respawn tile, signaling 'back in play.' Total cycle 2.5\u20134s. Without the multi-stage anim, the respawn feels like a glitch. Pair with engine.deferEntityRespawn flag so the engine doesn't teleport prematurely.",
+      "why": "Filed 2026-05-05 after Pacman v9. Original v8 implementation was a single-stage 1.6s eyes-float; user reported 'no delay between the respawn the respawn should take at least 3 seconds and start back at the box. There should be an animation that goes into the box showing the ghost getting respawned.' v9 split into 3 stages totaling 3.5s. Generalizes to: spaceships exploding+drifting+rebuilding, RPG creatures dying+ghost-floating+resurrecting, etc.",
+      "severity": "medium",
+      "appliesTo": "arcadeGame",
+      "examples": [
+        "RIGHT: 3-stage animation (1.5s float + 1.5s pause + 0.5s materialize), View tracks startedAt per entity, draws stage-appropriate visuals based on (now - startedAt).",
+        "RIGHT: stripped-down visual during stages 1+2 (eyes only / wireframe / silhouette) signals 'not yet alive,' full body during stage 3 signals 're-entering play.'",
+        "WRONG: instant respawn \u2014 entity teleports back at full body, looks like a glitch."
+      ]
+    },
+    {
+      "id": "game-progressive-speed-two-axis",
+      "rule": "Game speed/difficulty ramp should use TWO axes: an INTRA-LEVEL ramp (time on current level, e.g. 0\u201360s) AND an INTER-LEVEL boost (per LevelManager.currentLevel). The intra-level ramp gives the player time to acclimate at level start ('start slow, get faster'); the inter-level boost means each new level starts MEASURABLY harder than the previous level's start. Use clamps: a `tickIntervalFloor` so even L20 doesn't go below playable. Formula: `effective = max(floor, intraLevelInterp(start \u2192 endL1, t) - levelBoost(currentLevel))`. Without two axes, designers either ramp too fast within L1 (player overwhelmed) OR don't ramp at all (L5 feels like L1 with bigger numbers).",
+      "why": "Filed 2026-05-05 after Pacman v6 \u2192 v10 iteration. User feedback at each step ('starts off at a great pace, but it needs to be a bit more gradual,' 'by the time I'm reaching the end of level 1, it is really going too fast for this just to be a level 1 game'). The two-axis model lets you tune L1 to feel comfortable while still making L5 frantic \u2014 without those being the same parameter.",
+      "severity": "medium",
+      "appliesTo": "progressionGame",
+      "examples": [
+        "RIGHT: `currentTickInterval = max(floor, lerp(start, endL1, intraT) - min(maxBoost, (level-1) * 0.01))`. L1 ranges start\u2192endL1 over levelSpeedRampSeconds. L5+ caps at floor.",
+        "RIGHT (Pacman v10): start=0.30s, endL1=0.24s, ramp=90s, perLevelBoost=0.01s capped at 0.05s, floor=0.13s. L1 = 3.3\u21924.2 tiles/sec; L5 = ~5.3 tiles/sec; L9+ caps at 7.7 tiles/sec.",
+        "WRONG: single-axis ramp \u2014 `tickInterval = max(floor, start - level * X)`. L1 doesn't ramp (instantly at the L1 cap), L5 jumps to frantic.",
+        "WRONG: only intra-level ramp \u2014 every level identical."
+      ]
+    },
+    {
+      "id": "game-tile-grid-bfs-connectivity-test",
+      "rule": "Tile-grid games (Pacman, dungeon crawlers, Sokoban, Frogger, any maze/grid layout) MUST include a BFS connectivity smoke test that runs at app launch (or in unit tests). Test: from the hero spawn, BFS through all non-wall cells; assert `reachable.count == floor.count`. Layouts authored by hand WILL have unreachable cells \u2014 closed inner rings, stranded fruit tiles, walls that should have been gaps. Catching this at launch (rather than first-play user complaint) is a 30-line check that pays for itself the first time it fires. Also assert that all non-hero actors (ghosts, fruit, power pellets) are reachable from the hero spawn \u2014 these are the highest-priority isolation bugs.",
+      "why": "Filed 2026-05-05 after shipping Pacman v10 with L3 having unbroken concentric inner rings \u2014 fruit + 53 cells unreachable. User noticed within 5 seconds of switching to L3. A 30-line BFS check would have caught this at build time. ArcadeSmokeTests.verifyPacmanLayoutsConnected() now exists; ExampleAppInit prints the report on every launch. Generalizes to any tile-grid layout shipped as code.",
+      "severity": "high",
+      "appliesTo": "tileGridGame",
+      "examples": [
+        "RIGHT: ArcadeSmokeTests.verifyPacmanLayoutsConnected() iterates all maze factory methods, BFS from hero, asserts reachable.count == floor.count + every actor reachable. Called from ExampleAppInit.init().",
+        "RIGHT (output format): '[ArcadeSmoke] L3 OK: 107 floor cells all reachable' or '[ArcadeSmoke] L3 FAIL: 53 unreachable, isolated actors=[fruit@(6,8)]'.",
+        "WRONG: ship hand-authored layouts with no connectivity check. User finds the dead zones; you spend a session iterating."
+      ]
+    },
+    {
+      "id": "game-layout-builder-with-character-codes",
+      "rule": "Tile-grid game maps with multiple actor placements (hero, enemies, pickups, exits) should be authored as STRING ARRAYS with character codes for each actor type, then parsed by a single shared `buildEngine(layout:)` helper. Pacman pattern: `'#'` = wall, `'.'` = floor + pellet, `'o'` = power pellet, `'H'` = hero, `'G'` = ghost, `'F'` = fruit, `' '` = floor (no pellet). Adding a new map is just defining another 17\u00d713 string array. Without this pattern, each map duplicates ~50 lines of 'place hero at X, place ghosts at Y, place pellets at every other cell, except Z' code \u2014 error-prone, hard to scan visually, hard to compare.",
+      "why": "Filed 2026-05-05 from Pacman v10. The original pacmanArcadeMap was 50 lines of hardcoded point sets. Adding 4 more mazes that way would have been 200 lines of repetition. The character-code approach: 13 strings + 50 lines of buildPacmanEngine helper, and every new map is just a new string array. Made the L3-bug fix a 1-line edit.",
+      "severity": "low",
+      "appliesTo": "tileGridGame",
+      "examples": [
+        "RIGHT: layout = [\"#################\", \"#G.o.........o.G#\", ...]; buildPacmanEngine(layout) parses chars in one pass.",
+        "RIGHT (visual review): looking at the string array, you can SEE the maze layout. Walls stand out, hero spawn is visible, ghost spawn corners are obvious.",
+        "WRONG: map factory has 'let heroStart = PuzzlePoint(row: 11, col: 8); let ghostStarts = [...]' followed by a long for-loop over allPoints() inserting walls. Hard to verify by eye."
       ]
     }
   ],

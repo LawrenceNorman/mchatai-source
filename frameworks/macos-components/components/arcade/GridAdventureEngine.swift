@@ -507,22 +507,25 @@ struct GridAdventureEngine: Codable, Equatable, Sendable {
         return buildPacmanEngine(layout)
     }
 
-    /// L3: concentric rings. An inner ring of walls inside the outer
-    /// ring with 4 break-throughs at the cardinal midpoints. Two
-    /// concentric racetracks for ghosts to chase Pac through.
+    /// L3: concentric rings with cardinal-midpoint gaps. Each ring has
+    /// breaks at top/bottom so Pac and ghosts can traverse all three
+    /// "racetracks." Validated by GridAdventureEngineSmokeTests.testAllPacmanLayoutsConnected.
+    /// (Earlier v10 design had unbroken inner rings — fruit and 53 cells
+    /// were unreachable. User caught it on first play. Filed as wisdom
+    /// rule game-tile-grid-bfs-connectivity-test.)
     static func pacmanLevel3Map() -> GridAdventureEngine {
         let layout: [String] = [
             "#################",
             "#G.o.........o.G#",
-            "#.#############.#",
+            "#.#####...#####.#",
             "#.#...........#.#",
-            "#.#.#########.#.#",
+            "#.#.#####.#####.#",
             "#.#.#.......#.#.#",
-            "#.#.#...F...#.#.#",
+            "#.#...#.F.#...#.#",
             "#.#.#.......#.#.#",
-            "#.#.#########.#.#",
+            "#.#.#####.#####.#",
             "#.#...........#.#",
-            "#.#############.#",
+            "#.#####...#####.#",
             "#G.o....H....o.G#",
             "#################"
         ]
