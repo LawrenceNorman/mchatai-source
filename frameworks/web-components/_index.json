@@ -1069,6 +1069,43 @@
       ]
     },
     {
+      "id": "entities.tic-tac-toe-rules",
+      "name": "TicTacToeRules",
+      "category": "entities",
+      "path": "entities/TicTacToeRules.js",
+      "exports": [
+        "TicTacToeRules",
+        "TicTacToeAI",
+        "emptyBoard"
+      ],
+      "status": "ready",
+      "summary": "3x3 tic-tac-toe rules + inline depth-9 minimax AI. Board is a 9-element array; cells are 'x', 'o', or null. TicTacToeAI.pickMove(board, color) returns the perfect-play move index. Use this instead of MinimaxAI for tic-tac-toe — depth-9 inline is tractable and self-contained.",
+      "tags": [
+        "tic-tac-toe",
+        "noughts-and-crosses",
+        "rules",
+        "ai",
+        "minimax",
+        "3x3"
+      ],
+      "contracts": {
+        "helpers": [
+          "emptyBoard()",
+          "rules.legalMoves(board)",
+          "rules.applyMove(board, move, color)",
+          "rules.winner(board) -> 'x' | 'o' | 'draw' | null",
+          "rules.winningLine(board) -> [a,b,c] | null",
+          "ai.pickMove(board, color) -> moveIndex"
+        ],
+        "scope": "Self-contained 3x3 game logic. AI difficulty is 'perfect' (depth-9 minimax) or 'easy' (random legal). For larger boards or harder games, use entities.minimax-ai with a custom evalFn instead."
+      },
+      "goodFits": [
+        "tic-tac-toe",
+        "noughts-and-crosses",
+        "playable-tic-tac-toe"
+      ]
+    },
+    {
       "id": "entities.minimax-ai",
       "name": "MinimaxAI",
       "category": "entities",
@@ -2473,11 +2510,13 @@
         "ui.leaderboard",
         "ui.cloud-ai-toggle",
         "core.turn-based-manager",
+        "entities.tic-tac-toe-rules",
         "resources.swatches",
         "resources.audio-manager"
       ],
       "requiresAIOpponent": true,
       "aiOpponentComponents": [
+        "entities.tic-tac-toe-rules",
         "entities.simple-opponent"
       ],
       "requiresRestartButton": true,
@@ -2485,8 +2524,9 @@
       "requiresGenreInvariants": "ag-tic-tac-toe-invariants",
       "assemblyNotes": [
         "Tic-tac-toe is the H3.1 acceptance test for the H2.7 universal lifts. Wire RestartOverlay, Leaderboard, and CloudAIToggle from the start — they're inexpensive on a 3x3 game and prove the contract for harder games.",
-        "Inline minimax (depth ≤ 9) gives perfect play on a 3x3 board and runs instantly. Don't use entities/MinimaxAI here — it's overkill and adds dependency weight.",
-        "After human move: pickAIMove(board, 'o') → applyMove → check winner → if game-over, RestartOverlay.show() + Leaderboard.submitFinal().",
+        "Use entities.tic-tac-toe-rules for the rules + AI. It exports TicTacToeRules, TicTacToeAI (perfect-play depth-9 minimax inline), and emptyBoard(). Do NOT roll your own rules engine — the catalog component is depth-9-perfect and battle-tested in the example.",
+        "Don't use entities.minimax-ai here — TicTacToeAI is already optimal at depth 9 and self-contained. MinimaxAI is for larger search trees (chess, checkers).",
+        "After human move: ai.pickMove(board, 'o') → rules.applyMove(board, move, 'o') → rules.winner(board) → if game-over, RestartOverlay.show() + Leaderboard.submitFinal().",
         "Score deltas: +100 for perfect-difficulty win, +50 for easy win, +25 for draw. Loss = 0 (don't submit). Adjust if you want stricter ranking math.",
         "Inline 3x3 board as 9 buttons (CSS grid 3x3). Click handler dispatches to game.handleHumanMove(index). Easier than a generic GridBoard for this size."
       ]
