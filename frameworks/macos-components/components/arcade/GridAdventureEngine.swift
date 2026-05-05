@@ -87,6 +87,27 @@ struct GridAdventureEngine: Codable, Equatable, Sendable {
     /// previous-position drew him 1 tile away from the actual contact.
     public var deferRespawn: Bool = false
 
+    /// When true, an eaten frightened ghost is NOT auto-teleported to the
+    /// pen — instead the engine flags it as "dead" via deadGhostIDs and
+    /// removes it from the chase pool so it stops moving. The View runs
+    /// a 3-stage animation (float-eyes-home → pause-in-pen → materialize)
+    /// then calls `respawnEatenGhost(id:)` to put it back in play at the
+    /// pen. Filed 2026-05-05 from user feedback that v8's ghost-eat had
+    /// no pause: "the respawn should take at least 3 seconds and start
+    /// back at the box."
+    public var deferGhostRespawn: Bool = false
+
+    /// IDs of ghosts that were eaten and are awaiting View-controlled
+    /// respawn. While in this set, the engine SKIPS them in stepTraffic
+    /// (so they don't roam) and skips them in collision resolution (so
+    /// they can't kill Pac during the death animation).
+    public private(set) var deadGhostIDs: Set<UUID> = []
+
+    /// Where each dead ghost was caught (the contact tile). The View uses
+    /// this as the "from" anchor for its float-home animation. Engine
+    /// records it at eat-time before any other state mutation.
+    public private(set) var deadGhostContactTiles: [UUID: PuzzlePoint] = [:]
+
     init(map: PuzzleGrid<AdventureTile>, actors: [AdventureActor], heroSpawn: PuzzlePoint? = nil) {
         self.map = map
         self.actors = actors
@@ -156,6 +177,12 @@ struct GridAdventureEngine: Codable, Equatable, Sendable {
         let heroSnapshot = actors.first(where: { $0.kind == .hero })
 
         for index in actors.indices where actors[index].kind == .vehicle || actors[index].kind == .enemy || actors[index].kind == .log {
+            // Skip dead ghosts — they're frozen on the contact tile while
+            // the View runs the eyes-float-home animation. respawnEatenGhost
+            // will clear them from deadGhostIDs and put them back at the pen.
+            if actors[index].kind == .enemy && deadGhostIDs.contains(actors[index].id) {
+                continue
+            }
             if actors[index].frightenedTicks > 0 {
                 actors[index].frightenedTicks -= 1
             }
@@ -462,10 +489,26 @@ struct GridAdventureEngine: Codable, Equatable, Sendable {
                 if actor.frightenedTicks > 0 {
                     score += 200
                     if let idx = actors.firstIndex(where: { $0.id == actor.id }) {
+                        let ghostID = actors[idx].id
                         actors[idx].frightenedTicks = 0
-                        actors[idx].position = ghostPenPoint(for: idx)
+                        if deferGhostRespawn {
+                            // Mark the ghost as dead — View will run the
+                            // float-eyes-home + pen-pause + materialize
+                            // sequence and call respawnEatenGhost(id:)
+                            // when ready. Record the contact tile so the
+                            // View's eyes-only render starts there.
+                            deadGhostIDs.insert(ghostID)
+                            deadGhostContactTiles[ghostID] = actors[idx].position
+                            // Don't move the ghost — leave it on the
+                            // contact tile so the View can lerp from there.
+                        } else {
+                            // Legacy: instant teleport to pen.
+                            actors[idx].position = ghostPenPoint(for: idx)
+                        }
                     }
-                } else {
+                } else if !deadGhostIDs.contains(actor.id) {
+                    // Skip collision with already-dead ghosts so they
+                    // can't kill Pac during the death animation.
                     loseLife()
                 }
             case .vehicle:
@@ -501,6 +544,31 @@ struct GridAdventureEngine: Codable, Equatable, Sendable {
     /// animation code can trigger respawn at the right moment.
     public mutating func respawnHeroToStart() {
         respawnHero()
+    }
+
+    /// Bring a dead-and-animating ghost back into play AT THE PEN. Called
+    /// by the View after the float-home + pen-pause + materialize
+    /// animation finishes (typically ~3.5s after the eat). Clears the
+    /// ghost from deadGhostIDs (so it resumes AI), teleports it to the
+    /// pen tile, resets direction. If the ID isn't in deadGhostIDs (e.g.
+    /// View bug or duplicate call), this is a no-op.
+    public mutating func respawnEatenGhost(id: UUID) {
+        guard deadGhostIDs.contains(id) else { return }
+        guard let idx = actors.firstIndex(where: { $0.id == id }) else { return }
+        actors[idx].position = ghostPenPoint(for: idx)
+        actors[idx].direction = .right
+        actors[idx].frightenedTicks = 0
+        deadGhostIDs.remove(id)
+        deadGhostContactTiles.removeValue(forKey: id)
+    }
+
+    /// Pen tile a respawning ghost should END UP at — the View uses this
+    /// during its float-home animation as the destination point.
+    public func ghostPenTile(for ghostID: UUID) -> PuzzlePoint {
+        guard let idx = actors.firstIndex(where: { $0.id == ghostID }) else {
+            return PuzzlePoint(row: map.rows / 2, col: map.columns / 2)
+        }
+        return ghostPenPoint(for: idx)
     }
 
     private mutating func respawnHero() {
