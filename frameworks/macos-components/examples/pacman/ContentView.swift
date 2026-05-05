@@ -2,7 +2,14 @@ import SwiftUI
 import AppKit
 
 struct ContentView: View {
-    @State private var engine = GridAdventureEngine.pacmanArcadeMap()
+    @State private var engine: GridAdventureEngine = {
+        var e = GridAdventureEngine.pacmanArcadeMap()
+        // The View runs its own death-animation pause + manual respawn,
+        // so the engine should NOT auto-teleport the hero on collision.
+        // See engine.deferRespawn docs.
+        e.deferRespawn = true
+        return e
+    }()
     @State private var ghostsRunning = false
     @State private var status = "Eat pellets and dodge ghosts."
 
@@ -63,12 +70,17 @@ struct ContentView: View {
     /// the end of level 1, it is really going too fast for this just to
     /// be a level 1 game (we should be on like level 10 for this type
     /// of frantic speed)."
-    private let tickIntervalStart: Double = 0.26
-    private let tickIntervalEndL1: Double = 0.18
+    /// Tick-interval bounds. v7 (2026-05-05): widened the L1 range to
+    /// be MUCH gentler — start ≈ 3.6 tiles/sec, end-of-L1 ≈ 4.5 tiles/sec.
+    /// User said v6's L1 ramp "starts off at a great pace, but it needs
+    /// to be a bit more gradual about the overall speed."
+    private let tickIntervalStart: Double = 0.28
+    private let tickIntervalEndL1: Double = 0.22
     /// Seconds of play (on the current level) over which the tick interval
     /// linearly interpolates from start → end. After this, the tick stays
-    /// at end (level-capped).
-    private let levelSpeedRampSeconds: Double = 60.0
+    /// at end (level-capped). Stretched to 90s so the ramp feels
+    /// gradual rather than rushed.
+    private let levelSpeedRampSeconds: Double = 90.0
     /// Floor — even the highest level can't tick faster than this.
     private let tickIntervalFloor: Double = 0.13
     /// Wall-clock time when the current level started (re-stamped on level
@@ -198,10 +210,13 @@ struct ContentView: View {
     }
 
     /// Resume normal play after the death pause. Reset ghosts to their
-    /// pen positions, clear the pending direction queue, restart the
-    /// engine-tick clock so the player gets a clean tile-step.
+    /// pen positions, manually respawn the hero (since deferRespawn is
+    /// true the engine left him on the collision tile during the pause),
+    /// clear the pending direction queue, and restart the engine-tick
+    /// clock so the player gets a clean tile-step.
     private func finishDeathSequence() {
         dyingUntil = nil
+        engine.respawnHeroToStart()         // teleport hero to spawn now
         engine.respawnGhostsToPen()
         pendingDirection = nil
         lastHeroDirection = .left
@@ -412,10 +427,11 @@ struct ContentView: View {
 
     private func drawHero(context: inout GraphicsContext, actor: AdventureActor, t: Double) {
         let prevPos = previousActorPositions[actor.id] ?? actor.position
-        // During death sequence, FREEZE the visual position (don't lerp
-        // toward a new spawn tile while we're animating the death).
+        // During the death sequence, FREEZE at actor.position (the
+        // collision tile — engine.deferRespawn=true means the hero stays
+        // there until finishDeathSequence). Otherwise, lerp from prev → curr.
         let center = (dyingUntil != nil)
-            ? visualCenter(for: prevPos, t: 1, previous: prevPos)
+            ? visualCenter(for: actor.position, t: 1, previous: actor.position)
             : visualCenter(for: actor.position, t: t, previous: prevPos)
         let baseRadius = cellSize * 0.39
 
@@ -990,7 +1006,9 @@ struct ContentView: View {
     }
 
     private func reset() {
-        engine = GridAdventureEngine.pacmanArcadeMap()
+        var fresh = GridAdventureEngine.pacmanArcadeMap()
+        fresh.deferRespawn = true
+        engine = fresh
         ghostColorByID = [:]
         ghostsRunning = false
         showGameOver = false
@@ -1010,7 +1028,9 @@ struct ContentView: View {
     /// At L5/L10 boss levels, swap one ghost's personality to .boss + bump
     /// hitsRemaining so the player feels the difficulty step.
     private func dismissAndRestartForNextRun() {
-        engine = GridAdventureEngine.pacmanArcadeMap()
+        var fresh = GridAdventureEngine.pacmanArcadeMap()
+        fresh.deferRespawn = true
+        engine = fresh
         // Boss ghost injection: at boss levels, find one ghost and convert
         // it to boss kind. The visual + AI difference signals 'this level
         // is harder.' Done via a method on the engine that the View calls
