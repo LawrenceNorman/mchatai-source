@@ -1,6 +1,6 @@
 {
   "packID": "puzzle-games",
-  "version": 11,
+  "version": 12,
   "displayName": "Puzzle Game Guidelines",
   "description": "Quality rules for word search, crossword, sudoku, wordle, and other puzzle games.",
   "categories": [
@@ -608,6 +608,20 @@
         "RIGHT: Text(HighScoreManager.formatNumber(totalScore)) \u2192 '12,450'",
         "RIGHT: Text(\"+\\(HighScoreManager.formatNumber(delta)) ahead\") \u2192 '+1,200 ahead'",
         "WRONG: Text(\"\\(totalScore)\") \u2192 '12450' (no separator)"
+      ]
+    },
+    {
+      "id": "game-atomic-state-transitions-not-async",
+      "rule": "Game state transitions (level-up, game-over, round-restart, board reseed) MUST be SYNCHRONOUS and ATOMIC. Do NOT split state mutation across `Task { try await Task.sleep(...) }` segments where the visual celebration runs in parallel with state-resetting code. While the user waits for sleeps to complete, they can swap / fire / tap, and the next render-driven turn reads HALF-MUTATED state \u2014 causing a cluster of bugs: score resets to 0 (new turn reads stale baseTotalForLevel), counters don't refresh (UI bound to var that hasn't been reassigned yet), RESTART takes you to the wrong level (level-number advanced but engine hasn't been swapped). The fix: do all state mutation in ONE turn (typically inside one `withAnimation` block), and run the celebration banner via a parallel @Published value (e.g. LevelManager.celebrationProgress) that the View animates from independently. SFX is fine to fire as a delayed Task \u2014 audio-only, no state mutation, can't race.",
+      "why": "Filed 2026-05-04 from Match3 v9 \u2192 v9.2 incident. v9 split level-up across two `try await Task.sleep` segments (450ms + 650ms) with state-resets happening AFTER the sleeps. User reported three distinct bugs that were all the same race: 'my score went back to 0 at a certain level' (next cascade read stale baseTotalForLevel), 'moves didn't reset after some levels' (UI bound to moves var that hadn't been reassigned yet), 'RESTART only takes me back to the previous level' (RESTART read half-mutated state \u2014 level number advanced but engine not yet swapped). v9.2 made the entire transition atomic in one withAnimation block; banner animation runs from levels.celebrationProgress which advances on its own.",
+      "severity": "high",
+      "appliesTo": "stateTransition",
+      "examples": [
+        "RIGHT (atomic): when level target hit \u2192 run all in one turn: `levels.advance(); engine = newEngine; moves = levels.currentMovesAllowed; baseTotalForLevel = totalScore; victoryAnnounced = false`. The banner animates from levels.celebrationProgress (a @Published 0\u21921\u21920 value the controller advances internally). SFX fires as a one-shot Task \u2014 audio only.",
+        "RIGHT (visual delay decoupled from state): celebration banner reads `if levels.celebratingLevelUp { ... .opacity(Double(levels.celebrationProgress)) }`. Banner can take 3 seconds to fade out \u2014 gameplay state is already consistent at frame 1.",
+        "WRONG: `Task { try await Task.sleep(450ms); levels.advance(); try await Task.sleep(650ms); engine = newEngine; moves = newMoves }`. During the sleeps, user input lands on stale state.",
+        "WRONG: setting `victoryAnnounced = false` inside an async withAnimation that runs LATER than other state mutations \u2014 gives the next turn's runCascadeLoop() permission to re-fire the win condition before the engine has been swapped.",
+        "Acceptable async (audio only): `Task { try await Task.sleep(350ms); sound.play(.levelUp) }` \u2014 no state mutation, no race possible."
       ]
     }
   ],

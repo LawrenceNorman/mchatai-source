@@ -958,51 +958,67 @@ struct ContentView: View {
             }
         }
 
-        // Level-up: target hit → advance the LevelManager. Bumps to next
-        // level, fires the celebration window (banner pulse + SFX), grows
-        // suggestedPaletteSize / spawn-rate / animation-intensity for the
-        // next level. We re-zero the engine.score for the new level via
-        // a fresh Match3Engine so progress reads "0 / newTarget."
+        // Level-up: target hit. CRITICAL — do all state mutation atomically
+        // (no async sleeps that interleave with subsequent runCascadeLoop()
+        // calls). Previously the state-reset was split across `try await
+        // Task.sleep`s, which caused: (a) totalScore reset to 0 if the user
+        // swapped during the sleep window because baseTotalForLevel was
+        // stale, (b) moves not refreshing because the moves= line ran later,
+        // (c) RESTART during the celebration leaving inconsistent state
+        // since both paths fought for the same vars.
+        // Fix: bump level + reset state SYNCHRONOUSLY in this turn. SFX +
+        // banner are independent (banner is driven by levels.celebrationProgress
+        // which advances on its own; SFX is a one-shot async play). The
+        // gameplay state is consistent the moment level-up fires.
         if !victoryAnnounced && engine.score >= levels.currentTarget {
             victoryAnnounced = true
-            // Carry the level's earned score into totalScore (cumulative
-            // across the session). engine.score will be zeroed on level
-            // re-seed below; baseTotalForLevel snapshots the cumulative
-            // floor so the HUD's TOTAL = baseTotalForLevel + engine.score
-            // equation works correctly within the new level too.
+
+            // 1. Carry the level's earned score into totalScore + commit
+            //    to high-score storage (commit only updates if new best).
             totalScore = baseTotalForLevel + engine.score
-            // Persist the new total — commit() returns true if it set a
-            // new personal best, which fires the celebration window.
-            highScores.commit(score: totalScore)
+            // Note: highScores.commit() is moved to the game-over path
+            // only — see wisdom rule score-show-personal-best-on-game-over.
+            // During play we just track totalScore; no commit until run ends.
+
+            // 2. Advance the level number — bumps levels.currentLevel,
+            //    fires the celebration banner, persists to UserDefaults.
             sound.play(.victory, volume: 1.0)
-            // Slight delay so victory SFX rings out before levelUp chord.
+            levels.advance()
+            // Schedule the level-up SFX as a delayed one-shot (does NOT
+            // mutate state — purely audio).
             Task { @MainActor in
-                try? await Task.sleep(nanoseconds: 450_000_000)
+                try? await Task.sleep(nanoseconds: 350_000_000)
                 sound.play(.levelUp, pitchSemitones: 2)
-                levels.advance()
-                // Re-seed the board for the new level. Carry totalScore
-                // forward (cumulative across levels), but engine.score
-                // restarts at 0 since it tracks only THIS level's progress
-                // toward the new currentTarget. baseTotalForLevel updates
-                // to the carried-forward total so TOTAL = base + level-score.
-                try? await Task.sleep(nanoseconds: 650_000_000)
-                seed = UInt64.random(in: 1...100_000)
-                let newPalette = Array(["A","B","C","D","E","F","G","H"].prefix(levels.suggestedPaletteSize))
-                var newEngine = Match3Engine(rows: 8, columns: 8, seed: seed)
-                newEngine.symbols = newPalette
-                withAnimation(.easeInOut(duration: 0.6)) {
-                    engine = newEngine
-                    baseTotalForLevel = totalScore
-                    moves = levels.currentMovesAllowed
-                    combo = 1
-                    totalCleared = 0
-                    victoryAnnounced = false
-                    status = "Level \(levels.currentLevel) — target \(levels.currentTarget)"
-                }
             }
+
+            // 3. Atomically swap to the new level's engine + state. Reading
+            //    levels.suggestedPaletteSize / currentMovesAllowed here
+            //    gives the NEW level's values since levels.advance() ran
+            //    above.
+            seed = UInt64.random(in: 1...100_000)
+            let newPalette = Array(["A","B","C","D","E","F","G","H"]
+                .prefix(levels.suggestedPaletteSize))
+            var newEngine = Match3Engine(rows: 8, columns: 8, seed: seed)
+            newEngine.symbols = newPalette
+            withAnimation(.easeInOut(duration: 0.6)) {
+                engine = newEngine
+                baseTotalForLevel = totalScore   // carry running total forward
+                moves = levels.currentMovesAllowed
+                combo = 1
+                totalCleared = 0
+                victoryAnnounced = false
+                status = "Level \(levels.currentLevel) — target \(levels.currentTarget)"
+            }
+
+            // 4. Bail out of the score-sync line below. engine.score is
+            //    now 0 (fresh engine) and totalScore was just set to the
+            //    correct carried-forward value — re-running the line
+            //    would clobber it back to baseTotalForLevel + 0.
+            return
         }
 
-        // Keep totalScore in sync within the current level.
+        // Keep totalScore in sync within the current level (only when no
+        // level-up fired this turn — see early return above).
         totalScore = baseTotalForLevel + engine.score
 
         // Game-over check: out of moves AND didn't hit the level target.
