@@ -1104,6 +1104,35 @@
         "Puzzle games with grid expansion (suggestedPaletteSize doubles as 'symbol set size')",
         "Any game where animation intensity should bump as levels rise (suggestedAnimationIntensity returns 'subtle'/'standard'/'punchy')"
       ]
+    },
+    {
+      "id": "effects.high-score-manager",
+      "name": "HighScoreManager",
+      "category": "effects",
+      "path": "components/effects/HighScoreManager.swift",
+      "exports": [
+        "HighScoreManager"
+      ],
+      "status": "ready",
+      "summary": "Personal-best score tracker. Persists best + last score per gameID via UserDefaults; exposes isAheadOfBest / deltaToBest / bestScoreDisplay helpers for live HUD readouts. commit(score:) returns true on a new best and fires a celebration window (celebratingNewBest + celebrationProgress). Multi-mode games use compound gameID (e.g. 'match3.easy' / 'match3.hard').",
+      "tags": [
+        "score",
+        "high-score",
+        "personal-best",
+        "persistence",
+        "userdefaults",
+        "macos",
+        "swiftui"
+      ],
+      "contracts": {
+        "input": "@StateObject private var highScores = HighScoreManager(gameID: \"<game>\"). UI reads bestScore, bestScoreDisplay, isAheadOfBest(currentScore:), deltaToBest(currentScore:), celebratingNewBest, celebrationProgress.",
+        "output": "@Published bestScore (Int), lastScore (Int), celebratingNewBest (Bool), celebrationProgress (CGFloat 0\u21921\u21920 over ~2.5s after a new best). Persists 'HighScoreManager.<gameID>.bestScore' and '.lastScore' in UserDefaults."
+      },
+      "useCases": [
+        "Match-3 / arcade / puzzle games (BEST pill shows personal best, live delta vs current)",
+        "Multi-mode games (gameID 'asteroids.classic' vs 'asteroids.endless')",
+        "Score-attack games where the only goal is beating your own record"
+      ]
     }
   ],
   "compositionRecipes": [
@@ -1131,7 +1160,8 @@
         "wordgame.engine",
         "wordgame.keyboard-handling",
         "wordgame.smoke-tests",
-        "effects.animation-intensity"
+        "effects.animation-intensity",
+        "effects.high-score-manager"
       ],
       "assemblyNotes": [
         "Copy all selected component files verbatim under Sources/<TargetName>/MChatAIComponents/.",
@@ -1213,7 +1243,8 @@
         "gridpuzzle.mastermind-smoke-tests",
         "effects.animation-intensity",
         "effects.sound-engine",
-        "effects.level-manager"
+        "effects.level-manager",
+        "effects.high-score-manager"
       ],
       "assemblyNotes": [
         "Use MastermindEngine for duplicate-safe scoring. Do not rewrite exact/color-only peg logic in ContentView.",
@@ -1285,7 +1316,8 @@
         "gridpuzzle.match3-smoke-tests",
         "effects.animation-intensity",
         "effects.sound-engine",
-        "effects.level-manager"
+        "effects.level-manager",
+        "effects.high-score-manager"
       ],
       "assemblyNotes": [
         "Use Match3Engine for adjacent swaps, match detection, collapse, refill, cascades, and score.",
@@ -1508,7 +1540,8 @@
         "arcade.platformer",
         "arcade.smoke-tests",
         "effects.sound-engine",
-        "effects.level-manager"
+        "effects.level-manager",
+        "effects.high-score-manager"
       ],
       "assemblyNotes": [
         "Use PlatformerEngine for movement, gravity, jumping, platform collision, coins, score, and loss state.",
@@ -1792,7 +1825,8 @@
         "arcade.spritekit-physics-helpers",
         "effects.animation-intensity",
         "effects.sound-engine",
-        "effects.level-manager"
+        "effects.level-manager",
+        "effects.high-score-manager"
       ],
       "assemblyNotes": [
         "MANDATORY: copy the canonical SpriteKitPhysicsHelpers.swift VERBATIM into Sources/<TargetName>/MChatAIComponents/SpriteKitPhysicsHelpers.swift (preserve the BEGIN/END markers). Then COMPOSE it from app-specific code by calling at least one of: SKPhysicsHelpers.makeCircularBody, SKPhysicsHelpers.makeRectangularBody, SKPhysicsHelpers.makeOvalBody, SKPhysicsHelpers.makeStaticBody, SKPhysicsHelpers.makeSceneBoundary, SKPhysicsHelpers.snapshot(of:), or reference SKArcadeCategory.<name> / SKPhysicsContactSnapshot. Copying without composing fails the Lego provenance gate.",

@@ -132,6 +132,19 @@ struct ContentView: View {
     @State private var status = "Drag a candy onto an adjacent candy."
     @State private var victoryAnnounced = false
 
+    /// Cumulative score across ALL levels played in THIS session. Carries
+    /// from level to level so the player sees their session-long progress
+    /// (level score zeroes per-level via engine.score). This is the value
+    /// HighScoreManager compares against the persisted personal best.
+    @State private var totalScore: Int = 0
+    /// Engine's score at the START of the current level. We snapshot here
+    /// so totalScore = baseTotalForLevel + (engine.score - 0). Without
+    /// this we can't show "you're ahead/behind your previous best" mid-level.
+    @State private var baseTotalForLevel: Int = 0
+    /// High-score manager — persists per-game best totalScore via UserDefaults.
+    /// Drives the HUD's "BEST" pill so the player knows the target to beat.
+    @StateObject private var highScores = HighScoreManager(gameID: "match3")
+
     /// Per-tile animation state. Drives squash/stretch + bulge/shrink phases
     /// per the 12 principles of animation (anticipation, squash-stretch,
     /// follow-through). Real Candy Crush match clears go BULGE (1.25x over
@@ -218,6 +231,11 @@ struct ContentView: View {
             let palette = Array(["A","B","C","D","E","F","G","H"].prefix(levels.suggestedPaletteSize))
             engine.symbols = palette
             moves = levels.currentMovesAllowed
+            // totalScore restarts at 0 each session — high score persists
+            // separately via HighScoreManager. baseTotalForLevel anchors
+            // the cumulative total at the current level's floor.
+            totalScore = 0
+            baseTotalForLevel = 0
             status = "Level \(levels.currentLevel) — target \(levels.currentTarget)"
         }
     }
@@ -269,7 +287,17 @@ struct ContentView: View {
 
     private var hud: some View {
         HStack(alignment: .center, spacing: 14) {
-            statBlock(label: "SCORE", value: "\(engine.score)")
+            // Left column: TOTAL (cumulative across levels) + BEST (personal
+            // best, persisted) + LEVEL score (this level's progress).
+            // Three-tier readout so the player can see (a) where they stand
+            // vs their personal best, (b) cumulative progress, (c) progress
+            // toward THIS level's target.
+            VStack(alignment: .leading, spacing: 6) {
+                statBlock(label: "TOTAL", value: HighScoreManager.formatNumber(totalScore))
+                bestPill
+                statBlock(label: "LEVEL SCORE", value: HighScoreManager.formatNumber(engine.score))
+            }
+            .scaleEffect(1.0 + highScores.celebrationProgress * 0.10)
 
             VStack(spacing: 6) {
                 Text("LEVEL \(levels.currentLevel)")
@@ -335,6 +363,56 @@ struct ContentView: View {
                           Int(Double(targetScore) * 0.7),
                           targetScore]
         return engine.score >= thresholds[i]
+    }
+
+    /// "BEST" pill showing personal best + live delta vs current totalScore.
+    /// When ahead of best: gold "+1,234 ahead!". When behind: white delta.
+    /// During the new-best celebration window: glowing "NEW BEST!" flourish.
+    @ViewBuilder
+    private var bestPill: some View {
+        let ahead = highScores.isAheadOfBest(currentScore: totalScore)
+        let delta = highScores.deltaToBest(currentScore: totalScore)
+        VStack(alignment: .leading, spacing: 2) {
+            HStack(spacing: 6) {
+                Image(systemName: "trophy.fill")
+                    .font(.system(size: 11, weight: .black))
+                    .foregroundStyle(Color(red: 1.0, green: 0.85, blue: 0.30))
+                Text("BEST")
+                    .font(.system(size: 11, weight: .black))
+                    .kerning(1.4)
+                    .foregroundStyle(.white.opacity(0.65))
+            }
+            Text(highScores.bestScoreDisplay)
+                .font(.system(size: 16, weight: .black, design: .rounded))
+                .foregroundStyle(.white)
+            if highScores.celebratingNewBest {
+                Text("NEW BEST!")
+                    .font(.system(size: 11, weight: .black, design: .rounded))
+                    .kerning(1.2)
+                    .foregroundStyle(Color(red: 1.0, green: 0.85, blue: 0.30))
+                    .opacity(Double(highScores.celebrationProgress))
+            } else if ahead && totalScore > 0 {
+                Text("+\(HighScoreManager.formatNumber(delta)) ahead")
+                    .font(.system(size: 11, weight: .heavy))
+                    .foregroundStyle(Color(red: 1.0, green: 0.85, blue: 0.30))
+            } else if highScores.bestScore > 0 && totalScore > 0 {
+                Text("\(HighScoreManager.formatNumber(-delta)) to beat")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.6))
+            }
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .background(
+            RoundedRectangle(cornerRadius: 10)
+                .fill(Color.white.opacity(highScores.celebratingNewBest ? 0.15 : 0.05))
+                .overlay(RoundedRectangle(cornerRadius: 10).stroke(
+                    highScores.celebratingNewBest
+                        ? Color(red: 1.0, green: 0.85, blue: 0.30).opacity(0.6)
+                        : Color.white.opacity(0.10),
+                    lineWidth: 1
+                ))
+        )
     }
 
     private func statBlock(label: String, value: String) -> some View {
@@ -650,6 +728,15 @@ struct ContentView: View {
     }
 
     private func attemptSwap(origin: PuzzlePoint, target: PuzzlePoint) {
+        // Floor at 0 — without this, rapid-fire swaps before the
+        // game-over state catches up could push moves negative. Reject
+        // the swap with a soft error if we're already out of moves.
+        guard moves > 0 else {
+            status = "Out of moves — RESTART to try this level again."
+            sound.play(.uiError)
+            return
+        }
+
         // Phase 1: try the swap. Wrapped in withAnimation so the two tiles
         // slide into each other's cells via the .position animation key
         // hooked to engine.grid.
@@ -658,16 +745,19 @@ struct ContentView: View {
             didSwap = engine.swapOnly(origin, target)
         }
 
-        moves -= 1
         lastMoveAt = Date()
         hintPair = nil
 
         if !didSwap {
+            // Bad swap (non-matching) — DON'T charge a move. Players who
+            // mistime a drag shouldn't be punished by the move counter.
             status = "No match — try a different swap."
-            moves += 1  // refund the bad move
             sound.play(.uiError)
             return
         }
+
+        // Successful swap — charge exactly one move (floor at 0).
+        moves = max(0, moves - 1)
 
         // SFX: a soft button-tap on every successful swap commit. Confirms
         // the action without overshadowing the match-clear SFX that follows.
@@ -836,14 +926,26 @@ struct ContentView: View {
         // a fresh Match3Engine so progress reads "0 / newTarget."
         if !victoryAnnounced && engine.score >= levels.currentTarget {
             victoryAnnounced = true
+            // Carry the level's earned score into totalScore (cumulative
+            // across the session). engine.score will be zeroed on level
+            // re-seed below; baseTotalForLevel snapshots the cumulative
+            // floor so the HUD's TOTAL = baseTotalForLevel + engine.score
+            // equation works correctly within the new level too.
+            totalScore = baseTotalForLevel + engine.score
+            // Persist the new total — commit() returns true if it set a
+            // new personal best, which fires the celebration window.
+            highScores.commit(score: totalScore)
             sound.play(.victory, volume: 1.0)
             // Slight delay so victory SFX rings out before levelUp chord.
             Task { @MainActor in
                 try? await Task.sleep(nanoseconds: 450_000_000)
                 sound.play(.levelUp, pitchSemitones: 2)
                 levels.advance()
-                // Re-seed the board for the new level. Carry no score over;
-                // the new target is fresh. Moves budget refreshes too.
+                // Re-seed the board for the new level. Carry totalScore
+                // forward (cumulative across levels), but engine.score
+                // restarts at 0 since it tracks only THIS level's progress
+                // toward the new currentTarget. baseTotalForLevel updates
+                // to the carried-forward total so TOTAL = base + level-score.
                 try? await Task.sleep(nanoseconds: 650_000_000)
                 seed = UInt64.random(in: 1...100_000)
                 let newPalette = Array(["A","B","C","D","E","F","G","H"].prefix(levels.suggestedPaletteSize))
@@ -851,6 +953,7 @@ struct ContentView: View {
                 newEngine.symbols = newPalette
                 withAnimation(.easeInOut(duration: 0.6)) {
                     engine = newEngine
+                    baseTotalForLevel = totalScore
                     moves = levels.currentMovesAllowed
                     combo = 1
                     totalCleared = 0
@@ -859,6 +962,10 @@ struct ContentView: View {
                 }
             }
         }
+
+        // Keep totalScore in sync within the current level (so the HUD's
+        // BEST comparison reflects live progress, not just commits).
+        totalScore = baseTotalForLevel + engine.score
 
         checkBoardHealth()
     }
@@ -969,8 +1076,11 @@ struct ContentView: View {
             Button {
                 // RESTART = retry current level (NOT drop to L1). Per wisdom
                 // rule level-replay-not-demote: a player who runs out of
-                // moves should keep their level, just retry. Score zeroes,
-                // moves budget refreshes from levels.currentMovesAllowed.
+                // moves should keep their level, just retry. Engine.score
+                // zeroes via the new Match3Engine init; totalScore drops
+                // back to baseTotalForLevel (you lose the in-progress
+                // level score, but your cumulative carry-in from prior
+                // levels is preserved).
                 seed = UInt64.random(in: 1...100_000)
                 let palette = Array(["A","B","C","D","E","F","G","H"].prefix(levels.suggestedPaletteSize))
                 var newEngine = Match3Engine(rows: 8, columns: 8, seed: seed)
@@ -980,6 +1090,7 @@ struct ContentView: View {
                 combo = 1
                 totalCleared = 0
                 victoryAnnounced = false
+                totalScore = baseTotalForLevel
                 status = "Level \(levels.currentLevel) — target \(levels.currentTarget)"
                 hintPair = nil
                 lastMoveAt = Date()
