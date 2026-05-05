@@ -461,6 +461,9 @@ struct ContentView: View {
         lastObservedLives = 3
         lastObservedRocksCount = engine.rocks.count
         lastObservedWave = engine.wave
+        lastObservedEnemyCount = 0
+        lastObservedEnemyShotCount = 0
+        lastBossToastForWave = 0
         levels.reset()  // explicit user reset → drop back to L1
     }
 
@@ -477,6 +480,9 @@ struct ContentView: View {
         lastObservedLives = 3
         lastObservedRocksCount = engine.rocks.count
         lastObservedWave = engine.wave
+        lastObservedEnemyCount = 0
+        lastObservedEnemyShotCount = 0
+        lastBossToastForWave = 0
         // Note: NOT calling levels.reset() — per level-replay-not-demote
         // wisdom rule, dying shouldn't drop your wave count. Only the
         // explicit Reset button calls levels.reset().
@@ -556,8 +562,8 @@ struct ContentView: View {
             context.fill(Path(ellipseIn: domeRect), with: .color(Color.cyan.opacity(0.55)))
         case .hunter:
             // Aggressive arrowhead pointed toward the player.
-            let dx = ship.position.x - enemy.body.position.x
-            let dy = ship.position.y - enemy.body.position.y
+            let dx = engine.ship.position.x - enemy.body.position.x
+            let dy = engine.ship.position.y - enemy.body.position.y
             let aim = atan2(dy, dx)
             let nose = point(from: center, angle: aim, distance: radius * 1.1)
             let left = point(from: center, angle: aim + 2.55, distance: radius * 0.9)

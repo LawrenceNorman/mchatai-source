@@ -151,6 +151,20 @@ public final class LevelManager: ObservableObject {
         min(3.0, 1.0 + Double(currentLevel - 1) * 0.10)
     }
 
+    /// True when the current level is a "boss" level. By default every 5th
+    /// level (5, 10, 15, ...) is a boss level. Game logic uses this to
+    /// gate special encounters: spawn a multi-hit boss enemy, change
+    /// background, play distinct entry SFX, suppress wave-advance until
+    /// the boss is dead. Set `bossLevelInterval` to override (e.g. 3 for
+    /// short games, 10 for endurance games).
+    public var isBossLevel: Bool {
+        currentLevel > 0 && currentLevel % bossLevelInterval == 0
+    }
+
+    /// Configurable boss-level cadence. Default 5: bosses at L5, L10, L15...
+    /// Set 0 to disable boss levels entirely.
+    public var bossLevelInterval: Int = 5
+
     // MARK: - Advance / reset
 
     /// Call when the player has met the current target. Bumps level,
