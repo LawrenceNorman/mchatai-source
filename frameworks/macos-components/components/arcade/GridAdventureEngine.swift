@@ -64,10 +64,22 @@ struct GridAdventureEngine: Codable, Equatable, Sendable {
     private(set) var score = 0
     private(set) var lives = 3
     private(set) var phase: ArcadePhase = .playing
+    /// Anchor point the hero respawns to after losing a life. If nil,
+    /// `respawnHero()` falls back to a heuristic. Factory methods
+    /// (pacmanArcadeMap / froggerLaneMap / etc.) set this so the hero
+    /// returns to its starting tile, NOT to a "bottom-middle" guess
+    /// that may land in a wall on layouts where the bottom row is solid.
+    /// Filed 2026-05-05 after Pacman v4 hyperspace-respawn bug:
+    /// preferred = (rows-1, columns/2) was a wall in the arcade maze
+    /// layout, so respawn fell through to allPoints().first { .floor }
+    /// which is the top-left interior — Pac teleported there on every
+    /// ghost collision.
+    private(set) var heroSpawn: PuzzlePoint?
 
-    init(map: PuzzleGrid<AdventureTile>, actors: [AdventureActor]) {
+    init(map: PuzzleGrid<AdventureTile>, actors: [AdventureActor], heroSpawn: PuzzlePoint? = nil) {
         self.map = map
         self.actors = actors
+        self.heroSpawn = heroSpawn ?? actors.first(where: { $0.kind == .hero })?.position
     }
 
     var hero: AdventureActor? {
@@ -441,12 +453,22 @@ struct GridAdventureEngine: Codable, Equatable, Sendable {
 
     private mutating func respawnHero() {
         guard let heroIndex = actors.firstIndex(where: { $0.kind == .hero }) else { return }
+        // Prefer the explicit heroSpawn anchor set by the factory (e.g.
+        // pacmanArcadeMap stamps row 11, col 8). The previous "bottom-
+        // middle heuristic" assumed all factories had a floor cell at
+        // (rows-1, columns/2), which is FALSE for the arcade Pacman
+        // layout (bottom row is all walls). When the heuristic missed,
+        // respawn fell through to allPoints().first { .floor } which is
+        // top-left interior — produced the "hyperspace teleport" bug.
+        if let anchor = heroSpawn, map.contains(anchor), map[anchor] != .wall {
+            actors[heroIndex].position = anchor
+            return
+        }
         let preferred = PuzzlePoint(row: max(0, map.rows - 1), col: map.columns / 2)
         if map.contains(preferred), map[preferred] != .wall {
             actors[heroIndex].position = preferred
             return
         }
-
         if let fallback = map.allPoints().first(where: { map[$0] == .floor }) {
             actors[heroIndex].position = fallback
         }
