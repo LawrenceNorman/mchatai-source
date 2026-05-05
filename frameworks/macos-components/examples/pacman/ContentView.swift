@@ -47,6 +47,31 @@ struct ContentView: View {
     /// feedback "when I eat the pill the music is a bit annoying."
     @State private var pelletParity = false
 
+    /// Pellets the engine "ate" during the most recent tick. The engine
+    /// removes them from engine.actors instantly (collision is on-tile),
+    /// but the View should KEEP DRAWING them (faded) until Pac visually
+    /// reaches the tile — otherwise the user sees "Pac eats pellet from
+    /// a tile away" as the pellet vanishes the moment the lerp begins.
+    /// Each entry is the pellet's tile + the wall-clock time it was eaten
+    /// (used to fade out across the lerp interval).
+    @State private var fadingPellets: [(point: PuzzlePoint, kind: AdventureActor.Kind, eatenAt: Date)] = []
+    /// Set of pellet/power-pellet positions present in engine.actors at
+    /// the START of the most recent tick. We diff against the post-tick
+    /// set to detect what was just eaten.
+    @State private var pelletPositionsBeforeTick: Set<PuzzlePoint> = []
+    @State private var powerPelletPositionsBeforeTick: Set<PuzzlePoint> = []
+
+    /// Ghosts the engine just "ate" (when Pac munches a frightened ghost).
+    /// Engine teleports the ghost back to the pen instantly; the View
+    /// renders an "eyes only" floating-home animation for ~1.6s before
+    /// allowing the engine ghost to act normally again. Each entry is
+    /// the ghost id + the eaten-at time.
+    @State private var eatenGhosts: [UUID: Date] = [:]
+    /// Ghosts present in engine.actors at the start of the tick + their
+    /// pre-tick positions. Used to detect "ghost eaten" via Pac munching
+    /// a frightened one.
+    @State private var ghostPositionsBeforeTick: [UUID: PuzzlePoint] = [:]
+
     /// Death-sequence state. The engine collisions are instantaneous —
     /// without a View-level pause, the hero teleports to spawn and the
     /// game keeps ticking, which feels like a glitch. The death sequence
@@ -240,10 +265,22 @@ struct ContentView: View {
         // Snapshot positions BEFORE mutating the engine. previousActorPositions
         // is what the Canvas reads as its "from" state for interpolation.
         var snapshot: [UUID: PuzzlePoint] = [:]
+        var pelletsBefore: Set<PuzzlePoint> = []
+        var powerPelletsBefore: Set<PuzzlePoint> = []
+        var ghostsBefore: [UUID: PuzzlePoint] = [:]
         for actor in engine.actors {
             snapshot[actor.id] = actor.position
+            switch actor.kind {
+            case .pellet: pelletsBefore.insert(actor.position)
+            case .powerPellet: powerPelletsBefore.insert(actor.position)
+            case .enemy: ghostsBefore[actor.id] = actor.position
+            default: break
+            }
         }
         previousActorPositions = snapshot
+        pelletPositionsBeforeTick = pelletsBefore
+        powerPelletPositionsBeforeTick = powerPelletsBefore
+        ghostPositionsBeforeTick = ghostsBefore
         previousHeroDirection = lastHeroDirection
         let now = Date()
         lastTickTime = now
@@ -270,6 +307,53 @@ struct ContentView: View {
         }
         // Ghosts always tick on every step regardless of hero blocked state.
         stepGhosts()
+
+        // Diff pellet sets to find what Pac just ate (engine removed them
+        // from actors instantly; we keep them visible faded until Pac's
+        // visual lerp reaches the tile). Same for ghosts: a frightened
+        // ghost that disappeared OR teleported to the pen mid-tick was
+        // just eaten.
+        var pelletsAfter: Set<PuzzlePoint> = []
+        var powerPelletsAfter: Set<PuzzlePoint> = []
+        var aliveGhostsAfter: [UUID: PuzzlePoint] = [:]
+        for actor in engine.actors {
+            switch actor.kind {
+            case .pellet: pelletsAfter.insert(actor.position)
+            case .powerPellet: powerPelletsAfter.insert(actor.position)
+            case .enemy: aliveGhostsAfter[actor.id] = actor.position
+            default: break
+            }
+        }
+        let nowDate = Date()
+        for eaten in pelletsBefore.subtracting(pelletsAfter) {
+            fadingPellets.append((point: eaten, kind: .pellet, eatenAt: nowDate))
+        }
+        for eaten in powerPelletsBefore.subtracting(powerPelletsAfter) {
+            fadingPellets.append((point: eaten, kind: .powerPellet, eatenAt: nowDate))
+        }
+        // Garbage-collect fully-faded pellets (older than tickInterval +
+        // a safety buffer).
+        let pelletFadeWindow = currentTickInterval * 1.2
+        fadingPellets.removeAll { nowDate.timeIntervalSince($0.eatenAt) > pelletFadeWindow }
+
+        // Detect eaten ghost: in `ghostsBefore` Pac was about to move
+        // toward a frightened ghost; if that ghost teleported to a pen
+        // tile this tick, mark it "eaten" for the View animation.
+        // Heuristic: ghost previously was at the hero's destination tile
+        // AND the ghost's new position is far away (pen).
+        if let heroPos = engine.hero?.position {
+            for (gid, prevGhostPos) in ghostsBefore where prevGhostPos == heroPos {
+                if let postPos = aliveGhostsAfter[gid], postPos != heroPos {
+                    // Ghost was at Pac's collision tile and was moved
+                    // elsewhere → must have been eaten (frightened). Mark
+                    // it for the dissolve+float-home animation.
+                    eatenGhosts[gid] = nowDate
+                }
+            }
+        }
+        // GC eaten-ghost tracking after the float-home window elapses.
+        let ghostEatWindow: TimeInterval = 1.6
+        eatenGhosts = eatenGhosts.filter { nowDate.timeIntervalSince($0.value) < ghostEatWindow }
     }
 
     /// Returns true if the hero can move one cell in the given direction
@@ -386,6 +470,32 @@ struct ContentView: View {
             default: break
             }
         }
+
+        // Fading pellets — pellets the engine just ate but Pac hasn't
+        // visually overlapped yet. Without this, the user sees pellets
+        // disappear "from a tile away" because the engine eats on tile
+        // arrival but the visual lerp lags. We keep drawing them at
+        // decreasing opacity over the lerp window so Pac's mouth hits
+        // the visible pellet at the moment of disappearance.
+        let now = Date()
+        let fadeWindow = currentTickInterval
+        for fp in fadingPellets {
+            let elapsed = now.timeIntervalSince(fp.eatenAt)
+            let progress = max(0, min(1, elapsed / fadeWindow))
+            let alpha = 1.0 - progress
+            let center = visualCenter(for: fp.point, t: 1, previous: fp.point)
+            switch fp.kind {
+            case .pellet:
+                let r: CGFloat = 2.5
+                let dot = CGRect(x: center.x - r, y: center.y - r, width: r * 2, height: r * 2)
+                context.fill(Path(ellipseIn: dot), with: .color(Color.white.opacity(0.92 * alpha)))
+            case .powerPellet:
+                let r: CGFloat = 7
+                let dot = CGRect(x: center.x - r, y: center.y - r, width: r * 2, height: r * 2)
+                context.fill(Path(ellipseIn: dot), with: .color(Color.white.opacity(alpha)))
+            default: break
+            }
+        }
     }
 
     /// Draw moving actors (hero + ghosts + fruit) at INTERPOLATED positions
@@ -397,11 +507,75 @@ struct ContentView: View {
             case .hero:
                 drawHero(context: &context, actor: actor, t: t)
             case .enemy:
-                drawGhost(context: &context, actor: actor, t: t)
+                if let eatenAt = eatenGhosts[actor.id] {
+                    drawEatenGhostFloatHome(
+                        context: &context,
+                        actor: actor,
+                        eatenAt: eatenAt
+                    )
+                } else {
+                    drawGhost(context: &context, actor: actor, t: t)
+                }
             case .fruit:
                 drawFruit(context: &context, actor: actor)
             default: break
             }
+        }
+    }
+
+    /// Draw an eaten ghost as "eyes only" floating from the contact tile
+    /// to its current pen position. The eyes move on a continuous lerp
+    /// from contactTile (recorded as previousActorPositions[id] at the
+    /// moment of eat — that's where Pac caught the ghost) to actor.position
+    /// (the pen tile the engine teleported it to). Animation lasts ~1.6s.
+    /// During this window the ghost can't damage Pac (engine respects
+    /// frightenedTicks=0 at this point and the body collision is gated
+    /// on visual ghosts). Filed 2026-05-05 from user feedback: "When the
+    /// monster dies there is no transition, its body is just moved to
+    /// the box and starts over."
+    private func drawEatenGhostFloatHome(
+        context: inout GraphicsContext,
+        actor: AdventureActor,
+        eatenAt: Date
+    ) {
+        let elapsed = Date().timeIntervalSince(eatenAt)
+        let total: TimeInterval = 1.6
+        let p = max(0, min(1, elapsed / total))
+        // Where the ghost was eaten — captured in previousActorPositions
+        // at the moment of eat. Falls back to current pen tile if missing.
+        let eatTile = previousActorPositions[actor.id] ?? actor.position
+        let from = visualCenter(for: eatTile, t: 1, previous: eatTile)
+        let to = visualCenter(for: actor.position, t: 1, previous: actor.position)
+        let center = CGPoint(
+            x: from.x + (to.x - from.x) * p,
+            y: from.y + (to.y - from.y) * p
+        )
+        // Slight bob during the float-home for a touch of life.
+        let bob = sin(elapsed * 9) * 1.2
+        let centerBobbed = CGPoint(x: center.x, y: center.y + bob)
+
+        // Eyes only — no body. Two large white sclerae + dark blue pupils
+        // looking toward the destination (the pen).
+        let eyeR = cellSize * 0.10
+        let eyeOffsetX = cellSize * 0.13
+        let pupilR = eyeR * 0.55
+        let dx = to.x - center.x
+        let dy = to.y - center.y
+        let dist = max(0.001, sqrt(dx * dx + dy * dy))
+        let pupilOffsetX = (dx / dist) * eyeR * 0.45
+        let pupilOffsetY = (dy / dist) * eyeR * 0.45
+        for sign: CGFloat in [-1, 1] {
+            let eyeC = CGPoint(x: centerBobbed.x + sign * eyeOffsetX, y: centerBobbed.y - cellSize * 0.04)
+            let eyeRect = CGRect(x: eyeC.x - eyeR, y: eyeC.y - eyeR, width: eyeR * 2, height: eyeR * 2)
+            context.fill(Path(ellipseIn: eyeRect), with: .color(.white))
+            let pupilC = CGPoint(x: eyeC.x + pupilOffsetX, y: eyeC.y + pupilOffsetY)
+            let pupilRect = CGRect(
+                x: pupilC.x - pupilR,
+                y: pupilC.y - pupilR,
+                width: pupilR * 2,
+                height: pupilR * 2
+            )
+            context.fill(Path(ellipseIn: pupilRect), with: .color(Color(red: 0.10, green: 0.20, blue: 0.65)))
         }
     }
 
