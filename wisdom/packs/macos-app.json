@@ -1,6 +1,6 @@
 {
   "packID": "macos-app",
-  "version": 20,
+  "version": 21,
   "displayName": "macOS App Generation Wisdom",
   "description": "Rules for generating executable macOS apps (SwiftUI / AppKit) via Swift Playground. Focused on making the generated binary actually appear as a visible, interactive window \u2014 not a headless background process.",
   "categories": [
@@ -676,6 +676,81 @@
         "WRONG: `Task { try await Task.sleep(450ms); levels.advance(); try await Task.sleep(650ms); engine = newEngine; moves = newMoves }`. During the sleeps, user input lands on stale state.",
         "WRONG: setting `victoryAnnounced = false` inside an async withAnimation that runs LATER than other state mutations \u2014 gives the next turn's runCascadeLoop() permission to re-fire the win condition before the engine has been swapped.",
         "Acceptable async (audio only): `Task { try await Task.sleep(350ms); sound.play(.levelUp) }` \u2014 no state mutation, no race possible."
+      ]
+    },
+    {
+      "id": "game-bot-ai-jitter-not-laser-accurate",
+      "rule": "Enemy / bot / NPC AI in arcade-action games MUST NOT aim with laser-perfect accuracy at the player. Add aim-jitter (\u00b115-30\u00b0 of randomness on each shot, kind-dependent) so enemies miss often enough to be enjoyable, not punishing. Pattern: when firing, compute the ideal aim angle to the player, then perturb it by `Double.random(in: -jitter...jitter)` where jitter is a per-enemy-kind constant (e.g. casual saucer = 0.45 rad \u2248 \u00b125\u00b0, aggressive hunter = 0.18 rad \u2248 \u00b110\u00b0, boss = 0.30 rad). Same principle for enemy MOVEMENT: don't beeline toward the player \u2014 drift toward periodic waypoints that orbit the player's position with random offset, refreshed every 1-3 seconds. Without jitter, the enemy plays a perfect game theorist; the player feels like the dice are loaded against them and quits. With kind-tuned jitter, the player can dodge skillfully and feels rewarded.",
+      "why": "Filed 2026-05-04 with the Asteroids enemy-ship rollout. The natural instinct in implementation is `aim = atan2(player.y - enemy.y, player.x - enemy.x)` and fire \u2014 produces a frustrating game where the player can never escape. Real arcade enemies (Galaga, Asteroids original, Geometry Wars, even Space Invaders' descend pattern) all build in randomness so the player has agency. Tuned per-enemy jitter is also how you create archetypal threats (drone < soldier < elite) without coding entirely separate behavior.",
+      "severity": "high",
+      "appliesTo": "arcadeGame",
+      "examples": [
+        "RIGHT (per-kind table): enum EnemyKind { var aimJitter: Double { switch self { case .saucer: 0.45; case .hunter: 0.18; case .boss: 0.30 } } } \u2014 wider jitter for casual enemies, narrower for elite.",
+        "RIGHT (movement): enemies pick a random waypoint near the player every ~2.5s, steer toward it. Hunters refresh every ~1s for tighter pursuit; bosses every ~3s for slower drift.",
+        "RIGHT (per-shot jitter): aimAngle += Double.random(in: -jitter...jitter); fire shot at aimAngle.",
+        "WRONG: aimAngle = atan2(player.y - enemy.y, player.x - enemy.x); fire \u2014 perfect-aim sniper enemies. Player gets shot the instant they're visible.",
+        "WRONG: enemy.position = lerp(enemy.position, player.position, 0.1) \u2014 enemies path-find directly to player. Player can't outrun them, ever."
+      ]
+    },
+    {
+      "id": "game-boss-encounters-every-n-levels",
+      "rule": "Progression-flavored games SHOULD include boss encounters every 5-10 levels (LevelManager.isBossLevel + LevelManager.bossLevelInterval = 5 by default). A boss encounter has: (a) distinct entry messaging \u2014 'BOSS WAVE' toast in red, distinct SFX (arcadePowerUp / level-up chord), (b) a multi-hit boss enemy with visible health indicator (pip bar above the enemy), (c) higher score reward (3-5\u00d7 a regular enemy), (d) wave/level advance is GATED on the boss being dead, not just the regular enemies, (e) a satisfying death payoff \u2014 the boss spawns 2-3 minor enemies on death so the player has to clean up (creates a 'and another thing!' moment). Skipping boss waves makes progression feel monotonous; level 7 looks just like level 6 just slightly faster. Boss waves are the rhythm-marker that breaks up the gameplay loop.",
+      "why": "Filed 2026-05-04 alongside the Asteroids boss/mothership pattern. User said: 'it's good to have a boss level or something like that occasionally.' Universal arcade/RPG/roguelike pattern \u2014 every game with progression that engages players for >30 minutes uses boss-rhythm to break monotony. LevelManager exposes isBossLevel as the cadence helper so generators don't have to invent the math.",
+      "severity": "medium",
+      "appliesTo": "progressionGame",
+      "examples": [
+        "RIGHT (engine): if levels.isBossLevel { spawnMothership() } else { spawnRegularEnemies() }. Wave-clear gate: rocks.isEmpty && !enemies.contains(where: { $0.kind == .boss })",
+        "RIGHT (visual): boss has distinct shape (hex disc vs saucer/triangle) + health pips above its body + entry banner in different color (red vs blue for regular waves)",
+        "RIGHT (death payoff): on boss death, spawn 2-3 minor enemies near the boss position. score += 1000 (vs 250 for a regular enemy). Player cleans them up before wave advance.",
+        "WRONG: every level identical. Wave 7 looks like wave 6 but spawns 1 more rock. Player perceives 'just slower to finish.'",
+        "WRONG: boss uses the same model + behavior as regular enemies. No visual cue of threat level."
+      ]
+    },
+    {
+      "id": "game-enemy-diversity-by-kind-table",
+      "rule": "Don't ship a game with one enemy archetype that scales with level. Define an `EnemyKind` enum with at least 2-3 archetypes (casual / aggressive / elite or boss), each with a per-kind table of behavior constants: radius, moveSpeed, fireInterval, aimJitter, pointValue, maxHits. The game spawns DIFFERENT KIND mixes per wave/level (e.g. wave 3 = saucers only, wave 6 = saucers + 1 hunter, wave 5 = boss). This produces visually + mechanically distinct experiences that the player learns to read at a glance \u2014 'oh a hunter, I need to dodge faster' vs 'a saucer, I can take my time.' Implementation pattern: `enum EnemyKind { var radius: Double { switch self {...} }; var moveSpeed: Double { ... }; var fireInterval: Double { ... }; var aimJitter: Double { ... }; var pointValue: Int { ... }; var maxHits: Int { ... } }` \u2014 all behavior comes from the kind, no per-instance flags scattered through the engine.",
+      "why": "Filed 2026-05-04. User feedback after first Asteroids enemy pass: 'diversity of enemies and levels is good.' Universal arcade-action pattern \u2014 Galaga's bosses + escorts + drones, Asteroids original's small/medium/large rocks + saucers, Space Invaders' three alien rows. The kind-table approach makes adding a new enemy archetype a single enum case + lookup-table extension, no engine refactor. Mirrors how AnimationIntensity / SoundIntensity work \u2014 preset by kind, not per-instance tuning.",
+      "severity": "medium",
+      "appliesTo": "arcadeGame",
+      "examples": [
+        "RIGHT (Asteroids v3): enum AsteroidsEnemyKind { case saucer, hunter, mothership } with computed properties for radius/moveSpeed/fireInterval/aimJitter/pointValue/maxHits. Different waves spawn different mixes.",
+        "RIGHT (Space Invaders pattern): enum InvaderKind { case octopus, crab, squid, ufo } each with score / fire-pattern / row-position.",
+        "WRONG: one Enemy struct with a `level: Int` field and behavior switching on level \u2014 produces 'fast-saucer' rather than 'hunter,' visually identical."
+      ]
+    },
+    {
+      "id": "game-engine-event-consumer-pattern",
+      "rule": "When a game engine produces transient events that the View needs to react to (paddle-hit, enemy-killed, ball-bounced, level-cleared, etc.), expose them via a `lastEvent` property + `mutating func consumeLastEvent() -> EventEnum?` rather than making the View reverse-engineer events from state diffs. Pattern: engine sets `lastEvent = .paddleHit` inside the relevant private function; the View calls `if let event = engine.consumeLastEvent() { switch event { ... } }` once per tick. Single-shot consumption (read clears it) ensures SFX fire exactly once per event. Without this pattern, the View has to diff `engine.score` / `engine.lives` / `engine.rocks.count` between frames and infer 'wait, that 50-point bump means a small rock died' \u2014 brittle, false-positives on every score change, breaks if the engine adds new score sources.",
+      "why": "Filed 2026-05-04 from PongEngine + AsteroidsEngine event handling. PongEngine's `lastEvent: PongEvent?` + `consumeLastEvent()` is the canonical implementation \u2014 paddle-hit, wall-bounce, leftScored, rightScored. Earlier Asteroids implementation tried to detect wave-clear by 'rocks count grew between ticks' and false-fired on every rock split (50 points = small split? or wave-clear-bonus 50? unrecoverable without additional state). Engine-as-event-source is much cleaner.",
+      "severity": "medium",
+      "appliesTo": "gameEngine",
+      "examples": [
+        "RIGHT: enum PongEvent { case paddleHit, wallBounce, leftScored, rightScored }; engine has `private(set) var lastEvent: PongEvent?` + `mutating func consumeLastEvent() -> PongEvent? { let e = lastEvent; lastEvent = nil; return e }`. View: `if let e = engine.consumeLastEvent() { switch e { case .paddleHit: sound.play(.match3Pop) } }`",
+        "WRONG: View tracks `lastObservedScore` and tries to deduce 'oh, score jumped 500 = wave clear' \u2014 fails when other score sources exist (achievements, bonuses, multipliers)",
+        "WRONG: engine fires SFX directly via @ObservableObject hooks \u2014 couples engine to audio framework, breaks unit tests, breaks Codable round-trips."
+      ]
+    },
+    {
+      "id": "game-multi-hit-enemies-need-health-indicator",
+      "rule": "Enemies that take more than one hit MUST have a visible health indicator. The simplest pattern: a row of `maxHits` small pips (filled rectangles) above the enemy body, where `hitsRemaining` of them are filled (yellow/gold) and the rest are empty (white at low opacity). Without a visible health bar, the player can't tell why their shots aren't killing the enemy \u2014 they assume they're missing or that the game is broken. The pip count communicates 'this is a tougher enemy' AND 'you're making progress.' For very-many-hit bosses (>10 hits), use a continuous bar instead of discrete pips. Layout: 14-18px above the enemy body, total width = 1.6\u00d7 enemy radius.",
+      "why": "Filed 2026-05-04 from Asteroids mothership pattern (maxHits = 5). Universal arcade rule. Galaga capital ships, R-Type bosses, Geometry Wars elite enemies \u2014 every multi-hit enemy has a health indicator. Without it the player thinks the enemy is invincible, gets frustrated, quits. Pip count also tunes engagement: 3 pips = 'tougher' / 5 pips = 'a fight' / 10+ pips = 'use a continuous bar instead.'",
+      "severity": "medium",
+      "appliesTo": "arcadeGame",
+      "examples": [
+        "RIGHT (3-5 hits): row of N small filled rectangles, `hitsRemaining` of them gold, rest at low-opacity white. 14px above enemy.",
+        "RIGHT (>10 hits): continuous bar with `hitsRemaining / maxHits` width filled.",
+        "WRONG: no visual indicator \u2014 player shoots boss 4 times, sees no change, concludes 'this enemy is broken' or 'I'm missing.'"
+      ]
+    },
+    {
+      "id": "game-boss-color-distinct-from-regular",
+      "rule": "Boss visual must be distinctly colored from regular enemies. Players need to read 'this is the boss' at a glance \u2014 not by examining the health bar or counting hit-points. Use a different shape (regular = saucer; boss = large hex), a different palette (regular = blue/cyan; boss = magenta/pink/red \u2014 'warning' colors), and a noticeably larger radius (1.5-2.5\u00d7 regular). Same for the boss-wave entry toast \u2014 different color than the regular wave-up toast. The visual hierarchy communicates threat level before the player reads any text.",
+      "why": "Filed 2026-05-04 with Asteroids mothership ship. Universal game-design rule rooted in colorblind-friendly threat-signaling: red/magenta = elite/boss, blue/cyan = regular, green = friendly/health. The shape distinction also handles colorblind cases (a hex looks different from a saucer regardless of palette).",
+      "severity": "low",
+      "appliesTo": "arcadeGame",
+      "examples": [
+        "RIGHT: regular saucer = cyan oval, hunter = red triangle, mothership = pink/magenta hex. Boss-wave toast = red. Regular wave-up toast = blue.",
+        "WRONG: same color/shape for boss as regular, just bigger. Boss reads as 'big saucer,' not 'BOSS.'"
       ]
     }
   ],
