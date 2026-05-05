@@ -6,6 +6,24 @@ struct ContentView: View {
     @State private var trafficRunning = false
     @State private var status = "Use arrow keys to cross."
 
+    /// Animation tuning — Frogger is hop-and-dodge action, .standard preset.
+    private let intensity: AnimationIntensity = .standard
+    /// SFX engine. Hop = soft pop, hazard hit = explosion, win =
+    /// victory, log riding = ui-toggle ambient.
+    @ObservedObject private var sound = SoundEngine.shared
+    /// LevelManager — each successful crossing bumps level. Higher levels
+    /// = more vehicles + faster traffic via the engine.tick speed-up
+    /// hook in the timer (drives the autoconnect timer interval).
+    @StateObject private var levels = LevelManager(
+        gameID: "frogger",
+        baseTarget: 1,
+        baseMovesAllowed: 0,
+        curve: .standard
+    )
+    @StateObject private var highScores = HighScoreManager(gameID: "frogger")
+    @State private var showGameOver = false
+    @State private var gameOverAnnounced = false
+
     private let timer = Timer.publish(every: 0.55, on: .main, in: .common).autoconnect()
     private let cellSize: CGFloat = 64
     private let cellGap: CGFloat = 4
@@ -31,6 +49,9 @@ struct ContentView: View {
             .frame(width: 1, height: 1)
             .opacity(0.01)
             .accessibilityHidden(true)
+
+            // Game-over panel overlay (per score-show-personal-best-on-game-over).
+            gameOverPanel
         }
         .frame(minWidth: 980, minHeight: 700)
         .background(
@@ -266,25 +287,53 @@ struct ContentView: View {
     }
 
     private func moveHero(_ direction: GridDirection) {
-        guard engine.phase == .playing else { return }
+        guard engine.phase == .playing, !showGameOver else { return }
         let livesBefore = engine.lives
+        let scoreBefore = engine.score
         trafficRunning = true
         engine.moveHero(direction)
+        // Hop SFX — exactly one per move regardless of outcome.
+        sound.play(.match3Pop, volume: 0.4)
+        handleGameStateAfterTick(scoreBefore: scoreBefore, livesBefore: livesBefore)
+    }
 
-        if engine.phase == .won {
+    private func handleGameStateAfterTick(scoreBefore: Int, livesBefore: Int) {
+        if engine.phase == .won && !gameOverAnnounced {
+            gameOverAnnounced = true
             trafficRunning = false
-            status = "Home safe. Score \(engine.score)."
-        } else if engine.phase == .lost {
+            status = "Home safe!"
+            sound.play(.victory)
+            highScores.commit(score: engine.score)
+            levels.advance()
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 600_000_000)
+                sound.play(.levelUp, pitchSemitones: 2)
+                withAnimation(.easeOut(duration: 0.30)) { showGameOver = true }
+            }
+            return
+        }
+        if engine.phase == .lost && !gameOverAnnounced {
+            gameOverAnnounced = true
             trafficRunning = false
-            status = "No lives left."
-        } else if engine.lives < livesBefore {
+            status = "Game over."
+            highScores.commit(score: engine.score)
+            sound.play(.gameOver)
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 600_000_000)
+                withAnimation(.easeOut(duration: 0.30)) { showGameOver = true }
+            }
+            return
+        }
+        if engine.lives < livesBefore {
+            sound.play(.arcadeExplosionBig, volume: 0.7)
             status = "Hit hazard. Respawned with \(engine.lives) lives."
+        } else if engine.score > scoreBefore {
+            status = "Score \(engine.score)"
         } else if heroOnLog {
             status = "Riding a moving log."
         } else {
             status = "Keep crossing."
         }
-        print("[FroggerExample] move \(direction.rawValue) score=\(engine.score) lives=\(engine.lives) phase=\(engine.phase.rawValue)")
     }
 
     private var heroOnLog: Bool {
@@ -293,26 +342,94 @@ struct ContentView: View {
     }
 
     private func stepTraffic() {
-        guard trafficRunning, engine.phase == .playing else { return }
+        guard trafficRunning, engine.phase == .playing, !showGameOver else { return }
         let livesBefore = engine.lives
+        let scoreBefore = engine.score
         engine.stepTraffic()
-        if engine.phase == .lost {
-            trafficRunning = false
-            status = "No lives left."
-        } else if engine.lives < livesBefore {
-            status = "Hazard collision. Respawned."
-        } else if heroOnLog {
-            status = "Log carried you sideways."
-        } else {
-            status = "Traffic is moving."
-        }
+        handleGameStateAfterTick(scoreBefore: scoreBefore, livesBefore: livesBefore)
     }
 
     private func reset() {
         engine = GridAdventureEngine.froggerLaneMap()
         trafficRunning = false
+        showGameOver = false
+        gameOverAnnounced = false
         status = "Use arrow keys to cross."
-        print("[FroggerExample] reset")
+        levels.reset()
+        sound.play(.uiButtonTap, volume: 0.5)
+    }
+
+    private func dismissAndRestartForNextRun() {
+        engine = GridAdventureEngine.froggerLaneMap()
+        trafficRunning = false
+        showGameOver = false
+        gameOverAnnounced = false
+        if engine.phase == .lost { levels.reset() }
+        status = "Level \(levels.currentLevel) — cross the lanes."
+    }
+
+    @ViewBuilder
+    private var gameOverPanel: some View {
+        if showGameOver {
+            ZStack {
+                Color.black.opacity(0.7)
+                VStack(spacing: 14) {
+                    let won = engine.phase == .won
+                    Text(highScores.celebratingNewBest ? "NEW BEST!" : (won ? "HOME SAFE" : "GAME OVER"))
+                        .font(.system(size: 32, weight: .black, design: .rounded))
+                        .kerning(2)
+                        .foregroundStyle(highScores.celebratingNewBest
+                            ? Color(red: 1.0, green: 0.85, blue: 0.30)
+                            : (won ? .green : .red))
+                    VStack(spacing: 4) {
+                        Text("Your run")
+                            .font(.system(size: 11, weight: .black))
+                            .kerning(1.2)
+                            .foregroundStyle(.white.opacity(0.55))
+                        Text(HighScoreManager.formatNumber(engine.score))
+                            .font(.system(size: 44, weight: .black, design: .rounded))
+                            .foregroundStyle(.white)
+                        Text("Level \(levels.currentLevel)")
+                            .font(.system(size: 13, weight: .heavy, design: .rounded))
+                            .foregroundStyle(.white.opacity(0.7))
+                    }
+                    if highScores.bestScore > 0 {
+                        HStack(spacing: 6) {
+                            Image(systemName: "trophy.fill")
+                                .foregroundStyle(Color(red: 1.0, green: 0.85, blue: 0.30))
+                            Text("Best: \(HighScoreManager.formatNumber(highScores.bestScore))")
+                                .font(.system(size: 14, weight: .heavy, design: .rounded))
+                                .foregroundStyle(.white.opacity(0.85))
+                        }
+                    }
+                    Button {
+                        sound.play(.uiButtonTap)
+                        dismissAndRestartForNextRun()
+                    } label: {
+                        Text(won ? "NEXT LEVEL" : "PLAY AGAIN")
+                            .font(.system(size: 14, weight: .heavy))
+                            .kerning(1.4)
+                            .padding(.horizontal, 28)
+                            .padding(.vertical, 12)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .padding(.top, 4)
+                }
+                .padding(28)
+                .background(
+                    RoundedRectangle(cornerRadius: 22)
+                        .fill(Color.black.opacity(0.85))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 22).stroke(
+                                highScores.celebratingNewBest
+                                    ? Color(red: 1.0, green: 0.85, blue: 0.30).opacity(0.6)
+                                    : .white.opacity(0.18),
+                                lineWidth: 1
+                            )
+                        )
+                )
+            }
+        }
     }
 }
 
