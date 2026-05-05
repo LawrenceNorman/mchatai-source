@@ -50,9 +50,14 @@ struct Match3Engine: Codable, Equatable, Sendable {
         refillAll()
         _ = resolveCascades()
         // Resolved cascades from the initial board fill don't count for
-        // the user — clear the event log so the UI's "what just happened"
-        // panel stays empty until the player makes a swap.
+        // the user — clear BOTH the event log AND the score that
+        // resolveCascades just credited. Without zeroing score, a fresh
+        // game / new-level board starts at 200-1000 points instead of 0,
+        // depending on how many random initial-fill matches the seed
+        // happened to produce. Filed 2026-05-04 after user reported
+        // "my score never starts at 0" on level transitions.
         lastResolvedMatches = []
+        score = 0
     }
 
     /// Attempts to swap two ADJACENT cells. Returns true if the swap
