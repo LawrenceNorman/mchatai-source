@@ -48,6 +48,13 @@ struct ContentView: View {
     /// the View can fire its level-up SFX + banner exactly once per
     /// real wave clear, no false positives from rock splits.
     @State private var lastObservedWave = 1
+    /// Last-observed enemy count + enemy shot count. Used to detect
+    /// enemy-killed and enemy-fired events for SFX.
+    @State private var lastObservedEnemyCount = 0
+    @State private var lastObservedEnemyShotCount = 0
+    /// Whether we've already emitted the BOSS WAVE toast for the current
+    /// wave (we suppress re-firing each tick during the wave).
+    @State private var lastBossToastForWave = 0
     /// Tracks whether we've already announced game-over for THIS run, so
     /// we don't replay the chord every frame after lives hit 0.
     @State private var gameOverAnnounced = false
@@ -210,26 +217,28 @@ struct ContentView: View {
         }
     }
 
-    /// Wave-up toast — small corner notification when a wave is cleared.
-    /// Toned WAY down from the Match3-style centered banner (full-screen
-    /// inflating banner is right for "beat a level target" moments;
-    /// asteroids waves clear every 30s so the banner has to be subtle —
-    /// a small fade-in toast in the upper-right corner).
+    /// Wave-up toast — small corner notification on wave entry. Boss
+    /// waves get a distinct red "BOSS WAVE" toast so the player knows
+    /// what's coming. Toned-down style (NOT a centered Match3-style banner)
+    /// since waves change every ~30s.
     @ViewBuilder
     private var waveUpBanner: some View {
         if levels.celebratingLevelUp {
+            let isBoss = engine.isBossWave
             VStack {
                 HStack {
                     Spacer()
-                    Text("WAVE \(levels.currentLevel)")
-                        .font(.system(size: 14, weight: .black, design: .rounded))
-                        .kerning(1.4)
+                    Text(isBoss ? "BOSS WAVE" : "WAVE \(engine.wave)")
+                        .font(.system(size: isBoss ? 16 : 14, weight: .black, design: .rounded))
+                        .kerning(isBoss ? 2.0 : 1.4)
                         .foregroundStyle(.white)
-                        .padding(.horizontal, 14)
+                        .padding(.horizontal, isBoss ? 18 : 14)
                         .padding(.vertical, 6)
                         .background(
                             Capsule()
-                                .fill(Color(red: 0.18, green: 0.55, blue: 0.95).opacity(0.85))
+                                .fill((isBoss
+                                    ? Color(red: 0.95, green: 0.20, blue: 0.45)
+                                    : Color(red: 0.18, green: 0.55, blue: 0.95)).opacity(0.85))
                         )
                         .padding(.top, 36)
                         .padding(.trailing, 36)
@@ -343,12 +352,41 @@ struct ContentView: View {
 
         let preLives = engine.lives
         let preRocksCount = engine.rocks.count
+        let preEnemyCount = engine.enemies.count
+        let preEnemyShotCount = engine.enemyShots.count
         engine.update(dt: dt, controls: controls)
 
         // SFX hooks — observe state deltas and fire SFX.
         let postScore = engine.score
         let postLives = engine.lives
         let postRocksCount = engine.rocks.count
+        let postEnemyCount = engine.enemies.count
+        let postEnemyShotCount = engine.enemyShots.count
+
+        // Enemy fired a shot — count of enemy shots increased. Lower-pitched
+        // laser SFX so the player can audibly distinguish enemy fire from
+        // their own. (audio-debounce-events-not-renders: this is a count
+        // delta, not a render-loop trigger.)
+        if postEnemyShotCount > preEnemyShotCount {
+            sound.play(.arcadeLaser, volume: 0.4, pitchSemitones: -4)
+        }
+
+        // Enemy destroyed — count went down (and not because they all left
+        // the playfield, since enemies wrap rather than despawn). Big-
+        // explosion SFX, like a rock split.
+        if postEnemyCount < preEnemyCount {
+            sound.play(.arcadeExplosionBig, volume: 0.7)
+        }
+
+        // Boss wave entry toast — fire when wave # changed AND new wave
+        // is a boss wave. Distinct red toast so the player knows what's
+        // coming.
+        if engine.isBossWave && lastBossToastForWave != engine.wave {
+            lastBossToastForWave = engine.wave
+            sound.play(.arcadePowerUp, volume: 0.7)
+        }
+        lastObservedEnemyCount = postEnemyCount
+        lastObservedEnemyShotCount = postEnemyShotCount
 
         // Rock destroyed → explosion SFX (debounced). The score delta isn't
         // a perfect signal since wave-clear bonuses also bump score, but
@@ -478,11 +516,81 @@ struct ContentView: View {
             context.fill(Path(ellipseIn: rect), with: .color(.cyan))
         }
 
+        // Enemy shots — drawn in red so the player can instantly distinguish
+        // their own cyan shots from incoming threats.
+        for shot in engine.enemyShots {
+            let point = transform.point(shot.body.position)
+            let radius = max(CGFloat(shot.body.radius) * transform.scale, 2.5)
+            let rect = CGRect(x: point.x - radius, y: point.y - radius, width: radius * 2, height: radius * 2)
+            context.fill(Path(ellipseIn: rect), with: .color(.red))
+        }
+
+        // Enemy ships — different shape per kind so the player can read
+        // threat-level at a glance. Saucer = oval/disc, Hunter = triangle
+        // pointed at the player, Mothership = large hex.
+        for enemy in engine.enemies {
+            drawEnemy(enemy, context: &context, transform: transform)
+        }
+
         if engine.phase != .lost {
             drawShip(context: &context, transform: transform)
             drawShield(context: &context, transform: transform)
         } else {
             drawExplosion(context: &context, transform: transform)
+        }
+    }
+
+    private func drawEnemy(_ enemy: AsteroidsEnemy, context: inout GraphicsContext, transform: PlayfieldTransform) {
+        let center = transform.point(enemy.body.position)
+        let radius = CGFloat(enemy.body.radius) * transform.scale
+
+        switch enemy.kind {
+        case .saucer:
+            // Classic UFO: wide oval body with a smaller dome on top.
+            let bodyRect = CGRect(x: center.x - radius, y: center.y - radius * 0.4,
+                                  width: radius * 2, height: radius * 0.8)
+            context.fill(Path(ellipseIn: bodyRect), with: .color(Color(red: 0.55, green: 0.85, blue: 1.0).opacity(0.85)))
+            context.stroke(Path(ellipseIn: bodyRect), with: .color(.cyan), lineWidth: max(1.5, 2 * transform.scale))
+            let domeRect = CGRect(x: center.x - radius * 0.55, y: center.y - radius * 0.85,
+                                  width: radius * 1.1, height: radius * 0.7)
+            context.fill(Path(ellipseIn: domeRect), with: .color(Color.cyan.opacity(0.55)))
+        case .hunter:
+            // Aggressive arrowhead pointed toward the player.
+            let dx = ship.position.x - enemy.body.position.x
+            let dy = ship.position.y - enemy.body.position.y
+            let aim = atan2(dy, dx)
+            let nose = point(from: center, angle: aim, distance: radius * 1.1)
+            let left = point(from: center, angle: aim + 2.55, distance: radius * 0.9)
+            let right = point(from: center, angle: aim - 2.55, distance: radius * 0.9)
+            var path = Path()
+            path.move(to: nose); path.addLine(to: left); path.addLine(to: right); path.closeSubpath()
+            context.fill(path, with: .color(Color(red: 1.0, green: 0.45, blue: 0.45).opacity(0.85)))
+            context.stroke(path, with: .color(.red), lineWidth: max(1.5, 2 * transform.scale))
+        case .mothership:
+            // Large six-sided disc with a glowing core. Multi-hit boss —
+            // the visual emphasis communicates "this one takes effort."
+            var hex = Path()
+            for i in 0..<6 {
+                let angle = Double(i) / 6.0 * .pi * 2
+                let p = point(from: center, angle: angle, distance: radius)
+                if i == 0 { hex.move(to: p) } else { hex.addLine(to: p) }
+            }
+            hex.closeSubpath()
+            context.fill(hex, with: .color(Color(red: 0.85, green: 0.30, blue: 0.55).opacity(0.85)))
+            context.stroke(hex, with: .color(Color(red: 1.0, green: 0.55, blue: 0.85)), lineWidth: max(2, 3 * transform.scale))
+            // Health-pip indicator: a small bar above the boss showing
+            // remaining hits as filled segments.
+            let pips = enemy.kind.maxHits
+            let alive = enemy.hitsRemaining
+            let pipWidth = (radius * 1.6) / CGFloat(pips)
+            for i in 0..<pips {
+                let pipX = center.x - radius * 0.8 + CGFloat(i) * pipWidth + 2
+                let pipRect = CGRect(x: pipX, y: center.y - radius - 14,
+                                     width: pipWidth - 4, height: 5)
+                let filled = i < alive
+                context.fill(Path(roundedRect: pipRect, cornerRadius: 2),
+                             with: .color(filled ? .yellow : .white.opacity(0.18)))
+            }
         }
     }
 
