@@ -33,11 +33,15 @@ struct ContentView: View {
     @State private var showGameOver = false
     @State private var gameOverAnnounced = false
 
-    /// Game tick rate. 0.32s = 3 tiles/sec was the original — felt sluggish
-    /// and glitchy because the player's intent (key press → move) was
-    /// gated by a slow tick. Web Pacman runs at ~6-8 tiles/sec which feels
-    /// responsive. Filed as wisdom rule game-tile-step-cadence-not-too-slow.
-    private let timer = Timer.publish(every: 0.13, on: .main, in: .common).autoconnect()
+    /// Logic-tick rate. The ENGINE steps once per tickInterval (a tile-
+    /// step happens here). The RENDER runs at 60fps via TimelineView
+    /// and INTERPOLATES actor positions between their previous tile and
+    /// current tile across the tick interval — so motion is smooth
+    /// even though the engine is discrete-tile.
+    /// 0.18s = ~5.5 tiles/sec is the original arcade Pacman feel — slow
+    /// enough to be playable, fast enough to feel alive.
+    private let tickInterval: Double = 0.18
+    private let timer = Timer.publish(every: 0.18, on: .main, in: .common).autoconnect()
     private let cellSize: CGFloat = 38
     private let cellGap: CGFloat = 1
 
@@ -51,12 +55,26 @@ struct ContentView: View {
     @State private var pendingDirection: GridDirection? = nil
     @State private var lastHeroDirection: GridDirection = .left
 
+    /// Per-actor previous tile positions, captured BEFORE the most recent
+    /// engine.update. Used by the Canvas renderer to interpolate visual
+    /// position between (previousTile → currentTile) as `t` goes 0 → 1
+    /// across the tickInterval. Without this, Pacman + ghosts strobe-jump
+    /// from cell to cell at the engine's logic rate (looks broken).
+    @State private var previousActorPositions: [UUID: PuzzlePoint] = [:]
+    /// Wall-clock time of the most recent engine tick. The Canvas reads
+    /// `(currentTime - lastTickTime) / tickInterval` to compute t for
+    /// interpolation. Re-stamped at every tick.
+    @State private var lastTickTime: Date = .now
+    /// Hero direction at the previous tick (so the Canvas can rotate the
+    /// PacMouthShape smoothly during turns rather than snapping).
+    @State private var previousHeroDirection: GridDirection = .left
+
     var body: some View {
         ZStack(alignment: .topLeading) {
             HStack(spacing: 24) {
                 VStack(alignment: .leading, spacing: 18) {
                     header
-                    mazeGrid
+                    mazeCanvas
                     controls
                 }
 
@@ -84,12 +102,23 @@ struct ContentView: View {
         }
     }
 
-    /// Single tick: advance the hero in the queued/persistent direction
-    /// (pivoting if pendingDirection is walkable, otherwise continuing
-    /// in lastHeroDirection), then step ghosts. Mirrors the web Pacman
-    /// loop pattern.
+    /// Single tick: snapshot all actor positions FIRST (so the Canvas can
+    /// interpolate from the now-snapshot to the post-tick position over
+    /// the next tickInterval), then advance the hero + ghosts. Mirrors
+    /// the web Pacman loop pattern.
     private func tick() {
         guard engine.phase == .playing, !showGameOver else { return }
+
+        // Snapshot positions BEFORE mutating the engine. previousActorPositions
+        // is what the Canvas reads as its "from" state for interpolation.
+        var snapshot: [UUID: PuzzlePoint] = [:]
+        for actor in engine.actors {
+            snapshot[actor.id] = actor.position
+        }
+        previousActorPositions = snapshot
+        previousHeroDirection = lastHeroDirection
+        lastTickTime = .now
+
         // Decide the hero's next move. Try the queued direction first; if
         // it leads into a wall, continue in the prior direction. If THAT
         // is also blocked (corner case), no-op (hero stays put).
@@ -143,20 +172,236 @@ struct ContentView: View {
         .frame(maxHeight: 44)
     }
 
-    private var mazeGrid: some View {
-        let columns = Array(repeating: GridItem(.fixed(cellSize), spacing: cellGap), count: engine.map.columns)
-        return LazyVGrid(columns: columns, spacing: cellGap) {
-            ForEach(engine.map.allPoints(), id: \.self) { point in
-                cell(point)
+    /// Single-Canvas + TimelineView renderer at 60fps. Every frame:
+    ///   1. Compute t = (now - lastTickTime) / tickInterval, clamped 0...1.
+    ///      t=0 is the moment the engine just stepped; t=1 is when it's
+    ///      about to step again. So t IS the visual interpolation parameter.
+    ///   2. For each actor, draw at lerp(previousTile, currentTile, t)
+    ///      so motion is smooth between tile-steps.
+    ///   3. Draw the entire maze (walls + floor) in one pass — no SwiftUI
+    ///      per-cell child views. Eliminates the per-tick re-layout flicker
+    ///      that was making the LazyVGrid version look like a strobe.
+    /// This pattern (Canvas + TimelineView) is the macOS analogue of the
+    /// web's requestAnimationFrame loop and produces visually smooth
+    /// gameplay even with a slow logic-tick. Filed as wisdom rule
+    /// game-tile-grid-canvas-timelineview-not-lazyvgrid.
+    private var mazeCanvas: some View {
+        let mazeWidth = CGFloat(engine.map.columns) * cellSize + CGFloat(engine.map.columns - 1) * cellGap
+        let mazeHeight = CGFloat(engine.map.rows) * cellSize + CGFloat(engine.map.rows - 1) * cellGap
+        return TimelineView(.animation(minimumInterval: 1.0 / 60.0)) { timeline in
+            Canvas { context, size in
+                // Visual interpolation parameter. Clamped to [0,1] so we
+                // never overshoot when frames render slightly after the
+                // next tick is already due.
+                let elapsed = timeline.date.timeIntervalSince(lastTickTime)
+                let t = max(0, min(1, elapsed / tickInterval))
+                drawMaze(context: &context)
+                drawActors(context: &context, t: t)
             }
+            .frame(width: mazeWidth, height: mazeHeight)
         }
+        .frame(width: mazeWidth, height: mazeHeight)
         .padding(12)
-        .fixedSize()
         .background(Color.black)
         .clipShape(RoundedRectangle(cornerRadius: 12))
         .overlay {
             RoundedRectangle(cornerRadius: 12)
                 .stroke(Color.blue.opacity(0.8), lineWidth: 2)
+        }
+    }
+
+    /// Draw the static maze layer. Walls are filled rounded-rectangles in
+    /// arcade-blue; floor is black; pellets/power-pellets render here as
+    /// well since they don't move. Single Canvas pass = no flicker.
+    private func drawMaze(context: inout GraphicsContext) {
+        let stride = cellSize + cellGap
+        // Floor is the black background — no fill needed (Canvas inherits
+        // the black .background). Walls are filled blocks.
+        for r in 0..<engine.map.rows {
+            for c in 0..<engine.map.columns {
+                let point = PuzzlePoint(row: r, col: c)
+                let tile = engine.map[point]
+                let cellRect = CGRect(
+                    x: CGFloat(c) * stride,
+                    y: CGFloat(r) * stride,
+                    width: cellSize,
+                    height: cellSize
+                )
+                if tile == .wall {
+                    let path = Path(roundedRect: cellRect, cornerRadius: 6)
+                    context.fill(path, with: .color(Color(red: 0.10, green: 0.18, blue: 0.62)))
+                    context.stroke(path, with: .color(Color(red: 0.32, green: 0.58, blue: 1.0)), lineWidth: 1.5)
+                } else if tile == .exit {
+                    let path = Path(roundedRect: cellRect.insetBy(dx: 8, dy: 8), cornerRadius: 4)
+                    context.fill(path, with: .color(Color.green.opacity(0.35)))
+                }
+            }
+        }
+
+        // Stationary pellets + power-pellets — drawn here so they're behind
+        // moving actors (consistent depth ordering).
+        for actor in engine.actors {
+            switch actor.kind {
+            case .pellet:
+                let center = visualCenter(for: actor.position, t: 1, previous: actor.position)
+                let r: CGFloat = 2.5
+                let dot = CGRect(x: center.x - r, y: center.y - r, width: r * 2, height: r * 2)
+                context.fill(Path(ellipseIn: dot), with: .color(Color.white.opacity(0.92)))
+            case .powerPellet:
+                let center = visualCenter(for: actor.position, t: 1, previous: actor.position)
+                let r: CGFloat = 7
+                let dot = CGRect(x: center.x - r, y: center.y - r, width: r * 2, height: r * 2)
+                context.fill(Path(ellipseIn: dot), with: .color(.white))
+            default: break
+            }
+        }
+    }
+
+    /// Draw moving actors (hero + ghosts + fruit) at INTERPOLATED positions
+    /// based on t. Hero pose rotates smoothly through the turn by lerping
+    /// the rotation angle over t.
+    private func drawActors(context: inout GraphicsContext, t: Double) {
+        for actor in engine.actors {
+            switch actor.kind {
+            case .hero:
+                drawHero(context: &context, actor: actor, t: t)
+            case .enemy:
+                drawGhost(context: &context, actor: actor, t: t)
+            case .fruit:
+                let center = visualCenter(for: actor.position, t: 1, previous: actor.position)
+                let resolved = context.resolve(Image(systemName: "applelogo"))
+                context.draw(resolved, in: CGRect(
+                    x: center.x - cellSize * 0.3,
+                    y: center.y - cellSize * 0.3,
+                    width: cellSize * 0.6,
+                    height: cellSize * 0.6
+                ))
+            default: break
+            }
+        }
+    }
+
+    /// Compute the visual center point for an actor at interpolation t.
+    /// previous: the tile the actor occupied at t=0 (last tick). current:
+    /// the tile they occupy now (this tick). Visual position is the linear
+    /// blend.
+    private func visualCenter(for current: PuzzlePoint, t: Double, previous: PuzzlePoint) -> CGPoint {
+        let stride = cellSize + cellGap
+        let prevCenter = CGPoint(
+            x: CGFloat(previous.col) * stride + cellSize / 2,
+            y: CGFloat(previous.row) * stride + cellSize / 2
+        )
+        let curCenter = CGPoint(
+            x: CGFloat(current.col) * stride + cellSize / 2,
+            y: CGFloat(current.row) * stride + cellSize / 2
+        )
+        return CGPoint(
+            x: prevCenter.x + (curCenter.x - prevCenter.x) * t,
+            y: prevCenter.y + (curCenter.y - prevCenter.y) * t
+        )
+    }
+
+    private func drawHero(context: inout GraphicsContext, actor: AdventureActor, t: Double) {
+        let prevPos = previousActorPositions[actor.id] ?? actor.position
+        let center = visualCenter(for: actor.position, t: t, previous: prevPos)
+        let radius = cellSize * 0.39
+        // Mouth angle — animated open/closed via timeline.date for that
+        // classic Pac-Man chomp. Period = 0.20s for a satisfying chomp rhythm.
+        let chompPhase = sin(Date().timeIntervalSince1970 * 14) * 0.5 + 0.5  // 0..1
+        let mouthHalf = 0.05 + chompPhase * 0.55  // 0.05 to 0.60 radians half-mouth
+        let dirAngle = directionAngle(actor.direction)
+
+        var path = Path()
+        path.move(to: center)
+        let startAngle = dirAngle + mouthHalf
+        let endAngle = dirAngle - mouthHalf + 2 * .pi
+        path.addArc(
+            center: center,
+            radius: radius,
+            startAngle: .radians(startAngle),
+            endAngle: .radians(endAngle),
+            clockwise: false
+        )
+        path.closeSubpath()
+        context.fill(path, with: .color(Color(red: 1.0, green: 0.85, blue: 0.10)))
+    }
+
+    private func drawGhost(context: inout GraphicsContext, actor: AdventureActor, t: Double) {
+        let prevPos = previousActorPositions[actor.id] ?? actor.position
+        let center = visualCenter(for: actor.position, t: t, previous: prevPos)
+        let radius = cellSize * 0.36
+        let isFrightened = actor.frightenedTicks > 0
+        let bodyColor = isFrightened ? Color.blue.opacity(0.85) : ghostColor(actor)
+
+        // Ghost silhouette: dome on top + 3 wave bumps on bottom.
+        var body = Path()
+        let top = CGPoint(x: center.x, y: center.y - radius)
+        body.move(to: CGPoint(x: center.x - radius, y: center.y))
+        body.addArc(
+            center: top,
+            radius: radius,
+            startAngle: .degrees(180),
+            endAngle: .degrees(360),
+            clockwise: false
+        )
+        let bottom = center.y + radius * 0.85
+        body.addLine(to: CGPoint(x: center.x + radius, y: bottom))
+        // 3 wave bumps along the bottom edge.
+        let bumpWidth = (radius * 2) / 3
+        for i in 0..<3 {
+            let baseX = center.x + radius - CGFloat(i) * bumpWidth
+            let midX = baseX - bumpWidth / 2
+            let endX = baseX - bumpWidth
+            body.addQuadCurve(
+                to: CGPoint(x: endX, y: bottom),
+                control: CGPoint(x: midX, y: bottom + radius * 0.25)
+            )
+        }
+        body.closeSubpath()
+        context.fill(body, with: .color(bodyColor))
+
+        // Eyes: white circles + black pupils. Pupil offset signals the
+        // direction the ghost is "looking" (= traveling).
+        let eyeR: CGFloat = radius * 0.22
+        let eyeOffsetX: CGFloat = radius * 0.32
+        let eyeY = center.y - radius * 0.18
+        let leftEye = CGPoint(x: center.x - eyeOffsetX, y: eyeY)
+        let rightEye = CGPoint(x: center.x + eyeOffsetX, y: eyeY)
+        for ec in [leftEye, rightEye] {
+            let eyeRect = CGRect(x: ec.x - eyeR, y: ec.y - eyeR, width: eyeR * 2, height: eyeR * 2)
+            context.fill(Path(ellipseIn: eyeRect), with: .color(.white))
+            // Pupil (small black) offset by direction.
+            let pupilR = eyeR * 0.5
+            let dirVec = directionVector(actor.direction)
+            let pupilCenter = CGPoint(
+                x: ec.x + dirVec.dx * eyeR * 0.4,
+                y: ec.y + dirVec.dy * eyeR * 0.4
+            )
+            let pupilRect = CGRect(
+                x: pupilCenter.x - pupilR,
+                y: pupilCenter.y - pupilR,
+                width: pupilR * 2,
+                height: pupilR * 2
+            )
+            context.fill(Path(ellipseIn: pupilRect), with: .color(.black))
+        }
+    }
+
+    private func directionAngle(_ dir: GridDirection) -> Double {
+        switch dir {
+        case .right: return 0
+        case .down:  return .pi / 2
+        case .left:  return .pi
+        case .up:    return -.pi / 2
+        }
+    }
+
+    private func directionVector(_ dir: GridDirection) -> CGVector {
+        switch dir {
+        case .right: return CGVector(dx: 1, dy: 0)
+        case .left:  return CGVector(dx: -1, dy: 0)
+        case .up:    return CGVector(dx: 0, dy: -1)
+        case .down:  return CGVector(dx: 0, dy: 1)
         }
     }
 

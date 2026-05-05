@@ -1,6 +1,6 @@
 {
   "packID": "macos-app",
-  "version": 23,
+  "version": 24,
   "displayName": "macOS App Generation Wisdom",
   "description": "Rules for generating executable macOS apps (SwiftUI / AppKit) via Swift Playground. Focused on making the generated binary actually appear as a visible, interactive window \u2014 not a headless background process.",
   "categories": [
@@ -850,6 +850,20 @@
         "RIGHT: Asteroids hunter = arrowhead pointed at player (multi-line stroke) \u2014 distinct from saucer's oval+dome (multi-fill).",
         "WRONG: Circle().fill(.red) + Text('T') for 'tank' enemy. Reads as a colored dot with a letter, not a tank.",
         "WRONG: emoji glyph inside a circle (\"\\u{1F47D}\" for ghost). Emoji inherit system font rendering; they look like UI chrome, not game pieces."
+      ]
+    },
+    {
+      "id": "game-tile-grid-canvas-timelineview-not-lazyvgrid",
+      "rule": "Tile-grid games with moving actors (Pacman, Frogger, Snake, dungeon crawlers, sokoban-with-enemies) MUST render via a SINGLE Canvas view inside a TimelineView(.animation), NOT via LazyVGrid with per-cell SwiftUI child views. The LazyVGrid pattern (one View per cell, each reading engine.map[point] + actors at point) rebuilds dozens or hundreds of child views every time the engine state changes \u2014 SwiftUI's diffing flashes/transitions cells in and out, producing a strobe-flicker effect that looks broken. The TimelineView+Canvas pattern paints the entire playfield in ONE draw pass at 60fps, and the engine's discrete tile-step state is INTERPOLATED visually: snapshot each actor's previousTile before engine.update, then in the Canvas closure compute `t = elapsed / tickInterval` (clamped 0..1) and draw at `lerp(previousTile, currentTile, t)`. The result: smooth continuous motion between tile-steps, no flicker, true 60fps render even though the game logic ticks at 5-8 Hz.",
+      "why": "Filed 2026-05-05 from Pacman v3\u2192v4. v3 had the tick rate fix (0.32s \u2192 0.13s) but still looked seizure-inducing because every tick the LazyVGrid rebuilt 17\u00d713 = 221 cells, each with its own actor child views, and SwiftUI's diff-driven re-render produced visible flicker on every cell that changed contents. User: 'now is just fast, the game play should be challenging but smooth from one frame to the next so it doesn't look like a blinking flashing seizure inducing game.' v4 replaces the entire grid with a single Canvas that paints walls + pellets + actors in one pass, 60fps via TimelineView, and interpolates actor positions. Smooth even at slow logic tick.",
+      "severity": "high",
+      "appliesTo": "tileGridGame",
+      "examples": [
+        "RIGHT (architecture): TimelineView(.animation(minimumInterval: 1/60)) { timeline in Canvas { context, size in let t = (timeline.date.timeIntervalSince(lastTickTime) / tickInterval).clamped(0...1); drawMaze(context); drawActors(context, t: t) } }",
+        "RIGHT (snapshot): on each engine tick, capture `var snapshot: [UUID: TilePoint] = [:]; for actor in engine.actors { snapshot[actor.id] = actor.position }; previousActorPositions = snapshot; lastTickTime = .now` BEFORE engine.update().",
+        "RIGHT (interpolated draw): center = lerp(previousCenter, currentCenter, t) \u2014 actor visuals slide smoothly between cells.",
+        "WRONG: LazyVGrid(columns: ...) { ForEach(engine.map.allPoints()) { point in cell(point) } } where cell(point) reads engine.map[point] + actors at point. Every tick re-instantiates dozens of cell views; SwiftUI flickers them.",
+        "WRONG: per-actor view in a ZStack with .position(...) tied to engine.actor.position only \u2014 actor teleports tile-to-tile because there's no fractional interpolation between ticks. Looks like a strobe at any tick rate fast enough to be playable."
       ]
     }
   ],
