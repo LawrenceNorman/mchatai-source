@@ -1,6 +1,6 @@
 {
   "packID": "arcade-games",
-  "version": 12,
+  "version": 13,
   "displayName": "Arcade Game Guidelines",
   "description": "Quality rules for arcade-style action games \u2014 sprite anatomy (ag-016), attack animations (ag-017), keyboard input, rAF loop, collision, off-screen spawn (ag-018). Covers named-game canaries: Frogger, Pac-Man, Joust, Defender, Galaxian, Asteroids, Centipede, Q*bert, Kaboom, BurgerTime, Lode Runner, Spy Hunter, Pole Position, Skee-Ball, Pinball, Tempest, Adventure, Boxing, Snake, Breakout, Pong, Tetris.",
   "categories": [
@@ -699,6 +699,77 @@
       "examples": [
         "RIGHT: sound.loop(.puzzleAmbient, fadeIn: 1.5) on game start; sound.stopMusic(fadeOut: 1.0) on game-over screen.",
         "WRONG: musicPlayer.play() / musicPlayer.stop() without fade. Listener hears the abrupt cut."
+      ]
+    },
+    {
+      "id": "level-use-level-manager-component",
+      "rule": "Progression-flavored games (match-3, arcade-with-waves, puzzles-with-difficulty-tiers, runners, idle clickers, platformers with progressing stages) MUST use the `effects.level-manager` Lego component instead of inventing target-score / progression math from scratch. LevelManager provides: difficulty curves (.casual 1.5\u00d7 / .standard 1.4\u00d7 / .hardcore 1.3\u00d7 / .accelerating / .custom), per-level moves budget, suggestedPaletteSize / suggestedSpawnRateMultiplier / suggestedAnimationIntensity helpers, persistent currentLevel via UserDefaults, and a celebration window (`celebratingLevelUp` / `celebrationProgress`) for the banner + SFX. Wire it as `@StateObject private var levels = LevelManager(gameID: \"<game>\", baseTarget: <num>, baseMovesAllowed: <num>, curve: .standard)`.",
+      "why": "Filed 2026-05-04 alongside LevelManager ship. Without a shared component, every progression game writes ad-hoc 'targetScore *= 1.5' arithmetic, forgets to persist current level, and has no celebration moment \u2014 users finish level 1, see the same screen, and lose engagement. LevelManager + the celebration window turn 'beat target' into a reward.",
+      "severity": "high",
+      "appliesTo": "progressionGame",
+      "examples": [
+        "RIGHT: @StateObject private var levels = LevelManager(gameID: \"match3\", baseTarget: 1500, baseMovesAllowed: 30, curve: .standard); HUD reads `Text(\"LEVEL \\(levels.currentLevel)\")` and `Text(\"\\(levels.currentTarget)\")`. On target hit: `levels.advance()`.",
+        "RIGHT (UI): scaleEffect on level pill = `1.0 + levels.celebrationProgress * 0.20`; level-up banner opacity = `Double(levels.celebrationProgress)`.",
+        "RIGHT (palette growth): `engine.symbols = Array([\"A\",\"B\",\"C\",\"D\",\"E\",\"F\",\"G\",\"H\"].prefix(levels.suggestedPaletteSize))` \u2014 palette starts at 5 colors, grows by +1 every 5 levels, capped at 8.",
+        "WRONG: hardcoded `private let targetScore = 1500`, no progression. User beats it, sees nothing change, exits app, never returns.",
+        "WRONG: ad-hoc `if score >= 1500 { score = 0; targetScore = 2500 }` \u2014 no curve, no persistence, no celebration."
+      ]
+    },
+    {
+      "id": "level-celebrate-the-level-up-moment",
+      "rule": "When a player advances a level, the UI MUST acknowledge it with a 1-3 second celebration: (a) a prominent 'LEVEL N' banner that inflates and fades, (b) a level-up SFX (SoundEngine.play(.levelUp) \u2014 pitch-shift +2 semitones for stronger effect), (c) a brief scale/glow pulse on the level pill / score readout, (d) a tactile pause (~0.5\u20131s) before the new board / wave is presented. Skipping the celebration means the player isn't told they accomplished something \u2014 and the dopamine hit of progression is the entire reason to play. LevelManager provides `celebratingLevelUp: Bool` and `celebrationProgress: CGFloat` (0\u21921\u21920 across the window) \u2014 bind animations to these.",
+      "why": "Universal game-design principle. Filed 2026-05-04 with LevelManager ship. Without celebration, a level-up feels like a level-down \u2014 the user hits the target and the game just changes the number. With celebration (banner + SFX + pulse), the user FEELS the win. Match3 v8 implementation: level pill scaleEffect(1.0 + celebrationProgress * 0.20), banner Text scaleEffect(0.7 + celebrationProgress * 0.6) + opacity(celebrationProgress), levelUp SFX with +2 pitch.",
+      "severity": "high",
+      "examples": [
+        "RIGHT: levels.advance() triggers celebrationProgress ramp 0\u21921 over 0.5s, plateau 0.5s, 1\u21920 over 2s. View binds banner opacity/scale to celebrationProgress; SFX plays at the start.",
+        "RIGHT (audio sequence): on target hit \u2192 sound.play(.victory) \u2192 450ms pause \u2192 sound.play(.levelUp, pitchSemitones: 2) \u2192 levels.advance() triggers banner.",
+        "WRONG: levels.advance() called silently with no UI reaction. Player isn't sure if anything happened.",
+        "WRONG: instant snap-cut to next level (no banner, no SFX, no delay). Feels like a glitch."
+      ]
+    },
+    {
+      "id": "level-replay-not-demote",
+      "rule": "When a player fails a level (out of moves, lives depleted, time up), the game MUST allow replay of the SAME level \u2014 never auto-demote to a lower level or back to L1. Save the player's progression at all times. RESTART buttons should reset score/moves WITHIN the current level, not bump levels.currentLevel down. Players who hit a hard level will replay it many times; demoting them would be a punishment that destroys engagement. The only way to drop a level should be a deliberate user action (e.g. a 'Reset Progress' settings toggle, never the in-game RESTART button).",
+      "why": "Filed 2026-05-04 alongside LevelManager. Hardcoded into LevelManager API: `replayCurrentLevel()` is a no-op on persistence; only `reset()` (explicit reset-progress action) resets currentLevel to 1. Universal UX rule \u2014 applied incorrectly, players quit the game forever after one rage-fail.",
+      "severity": "high",
+      "examples": [
+        "RIGHT: RESTART button rebuilds engine, refreshes moves to levels.currentMovesAllowed, but does NOT touch levels.currentLevel.",
+        "RIGHT: 'Reset Progress' in settings menu calls levels.reset() \u2014 opt-in only.",
+        "WRONG: RESTART resets currentLevel to 1. Player who beat 5 levels and rage-quit on L6 has to redo all 5."
+      ]
+    },
+    {
+      "id": "level-grow-difficulty-via-multiple-knobs",
+      "rule": "Higher levels should feel different across MULTIPLE dimensions, not just 'higher target number.' For tile/match games: grow the symbol palette (LevelManager.suggestedPaletteSize: 5\u21926 at L5, 7 at L10, 8 at L15), shrink moves budget if pacing demands it (.accelerating curve), bump animation intensity (LevelManager.suggestedAnimationIntensity: 'subtle' L1-4 \u2192 'standard' L5-9 \u2192 'punchy' L10+). For arcade games: spawn-rate (LevelManager.suggestedSpawnRateMultiplier: 1.0\u00d7 \u2192 3.0\u00d7 capped at L20+), enemy variety, projectile speed, intermittent boss waves at L5/L10/L15. The TARGET getting larger is just one knob \u2014 alone, it produces 'same game, takes longer.' Multi-knob progression produces 'this level FEELS different.'",
+      "why": "Filed 2026-05-04 with LevelManager ship. Real Candy Crush / Bejeweled / etc. grow many things per level (board shape, special-tile generation rate, blockers, mission types). Reference apps in the catalog should at minimum grow palette + intensity for tile games, spawn-rate + intensity for arcade games. LevelManager exposes the suggested helpers so generators don't have to invent them.",
+      "severity": "medium",
+      "appliesTo": "progressionGame",
+      "examples": [
+        "RIGHT (match-3): L1: 5 colors, .standard intensity. L5: 6 colors, .standard. L10: 7 colors, .punchy. L15: 8 colors, .punchy. Each level feels harder for a NEW reason.",
+        "RIGHT (arcade): L1: 2 enemies, slow projectiles, .standard intensity. L5: 4 enemies, faster projectiles, .standard. L10: 6 enemies + occasional bomb-spawn, .punchy.",
+        "WRONG: every level identical except target=basicTarget*1.4^N. Player perceives 'same game just slower to finish' \u2014 no surprise, no novelty, drops off."
+      ]
+    },
+    {
+      "id": "level-pick-curve-by-game-pace",
+      "rule": "Choose LevelCurve by intended play session length: `.casual` (1.5\u00d7 per level, fast ramp) for short kid-friendly sessions where players should reach high levels in 10-15 minutes. `.standard` (1.4\u00d7) for mechanics-driven games (match-3, minesweeper) where 30-60 min sessions are typical. `.hardcore` (1.3\u00d7, slow ramp) for endurance/idle/score-attack games designed for long-term engagement. `.accelerating` (gentle 1.3\u00d7 early, climbs to 1.6\u00d7 by L20+) for games that should onboard easily but become a real challenge \u2014 typical for puzzle franchises. `.custom` for games with non-monotonic difficulty (boss levels, breather levels, jumps).",
+      "why": "Filed 2026-05-04. Same generator-mental-model pattern as AnimationIntensity / SoundIntensity \u2014 pick a preset by game pace, not by inventing arithmetic. Wrong curve = engagement disaster: hardcore curve on a casual game = players quit at L4; casual curve on hardcore = players hit L99 in an hour and have nothing left.",
+      "severity": "medium",
+      "examples": [
+        "RIGHT: LevelManager(gameID: \"kid-game\", curve: .casual) \u2014 fast progression, frequent level-up celebrations.",
+        "RIGHT: LevelManager(gameID: \"match3\", curve: .standard) \u2014 balanced.",
+        "RIGHT: LevelManager(gameID: \"score-attack\", curve: .hardcore) \u2014 slow ramp.",
+        "WRONG: pick a curve based on coin flip / didn't think about pace; ship a casual-curve match-3 (player ceiling-hits at L20) or hardcore-curve casual game (player gives up at L4)."
+      ]
+    },
+    {
+      "id": "level-persist-level-not-score",
+      "rule": "Persist `currentLevel` (the structural progression) via UserDefaults. Do NOT persist `currentScore` (the within-level progress) \u2014 it should reset on app launch. Players don't expect to resume a partially-played level mid-game; they expect to come back, see their level number, and start that level fresh. LevelManager handles the level persistence under key 'LevelManager.<gameID>.currentLevel'. SoundEngine.muted is also persisted (separately). Anything else (current score, board state, current cascade depth, hint pair) is ephemeral.",
+      "why": "Filed 2026-05-04 with LevelManager. Saving mid-level state is high-effort + low-value: requires Codable engine state, can desync if engine impl changes, players have to mentally context-switch back into a half-finished puzzle. Saving level-only is what users expect from casual-game UX.",
+      "severity": "medium",
+      "examples": [
+        "RIGHT: LevelManager persists currentLevel automatically. App launches \u2192 onAppear sets engine.symbols based on suggestedPaletteSize, moves = currentMovesAllowed, status = 'Level N \u2014 target M'. Score starts at 0.",
+        "WRONG: persist current Match3Engine state across launches. Brittle, annoying for users, breaks when engine model evolves."
       ]
     }
   ],

@@ -117,6 +117,16 @@ struct ContentView: View {
     @State private var engine = Match3Engine(rows: 8, columns: 8, seed: 300)
     @State private var seed: UInt64 = 300
     @State private var moves: Int = 30
+    /// Level / progression manager. Match-3 uses .standard curve (1.4× per
+    /// level). currentLevel persists across app launches via UserDefaults.
+    /// Drives currentTarget (was hardcoded targetScore=1500), suggested
+    /// palette size growth, and the level-up celebration (banner + SFX).
+    @StateObject private var levels = LevelManager(
+        gameID: "match3",
+        baseTarget: 1500,
+        baseMovesAllowed: 30,
+        curve: .standard
+    )
     @State private var combo: Int = 1
     @State private var totalCleared: Int = 0
     @State private var status = "Drag a candy onto an adjacent candy."
@@ -167,7 +177,9 @@ struct ContentView: View {
 
     private let cellSize: CGFloat = 56
     private let gapSize: CGFloat = 6
-    private let targetScore = 1500
+    /// Legacy target — read from levels.currentTarget instead. Kept here
+    /// only as a fallback for any code paths not yet migrated.
+    private var targetScore: Int { levels.currentTarget }
 
     /// Animation tuning — pick a preset based on game pace. Match-3 lives in
     /// the middle (mechanics-driven feedback) so `.standard` is correct.
@@ -191,9 +203,47 @@ struct ContentView: View {
             }
             .padding(28)
             .frame(minWidth: 760, minHeight: 800)
+            // Level-up celebration banner — only visible during the ~3s
+            // celebration window driven by LevelManager.
+            levelUpBanner
         }
         .onReceive(hintTimer) { _ in
             updateHint()
+        }
+        .onAppear {
+            // Sync engine palette + moves budget with the persisted level
+            // (LevelManager restores currentLevel from UserDefaults).
+            // First-launch is L1 with 6 colors / 30 moves; returning players
+            // resume their level with its palette size and moves budget.
+            let palette = Array(["A","B","C","D","E","F","G","H"].prefix(levels.suggestedPaletteSize))
+            engine.symbols = palette
+            moves = levels.currentMovesAllowed
+            status = "Level \(levels.currentLevel) — target \(levels.currentTarget)"
+        }
+    }
+
+    /// "Level Up!" celebration banner overlaid on top of the board during
+    /// the celebration window. Pulls scale + opacity from
+    /// levels.celebrationProgress so the banner inflates and fades.
+    @ViewBuilder
+    private var levelUpBanner: some View {
+        if levels.celebratingLevelUp {
+            VStack(spacing: 4) {
+                Text("LEVEL \(levels.currentLevel)")
+                    .font(.system(size: 56, weight: .black, design: .rounded))
+                    .foregroundStyle(LinearGradient(
+                        colors: [Color(red: 1.00, green: 0.85, blue: 0.30),
+                                 Color(red: 0.95, green: 0.27, blue: 0.55)],
+                        startPoint: .leading, endPoint: .trailing
+                    ))
+                    .shadow(color: Color(red: 1.0, green: 0.85, blue: 0.3).opacity(0.6), radius: 22)
+                Text("New target: \(levels.currentTarget)")
+                    .font(.system(size: 18, weight: .heavy, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.92))
+            }
+            .scaleEffect(0.7 + levels.celebrationProgress * 0.6)
+            .opacity(Double(levels.celebrationProgress))
+            .allowsHitTesting(false)
         }
     }
 
@@ -222,7 +272,7 @@ struct ContentView: View {
             statBlock(label: "SCORE", value: "\(engine.score)")
 
             VStack(spacing: 6) {
-                Text("LEVEL 1")
+                Text("LEVEL \(levels.currentLevel)")
                     .font(.system(size: 14, weight: .black, design: .rounded))
                     .foregroundStyle(.white)
                     .padding(.horizontal, 14)
@@ -234,6 +284,10 @@ struct ContentView: View {
                             startPoint: .leading, endPoint: .trailing
                         ))
                     )
+                    // Pulse the level pill when celebrating a level-up.
+                    // Driven by levels.celebrationProgress (0→1→0 over 3s).
+                    .scaleEffect(1.0 + levels.celebrationProgress * 0.20)
+                    .shadow(color: Color(red: 1.0, green: 0.85, blue: 0.3).opacity(Double(levels.celebrationProgress)), radius: 18)
 
                 HStack(spacing: 8) {
                     Text("Target")
@@ -775,12 +829,35 @@ struct ContentView: View {
             }
         }
 
-        // Win SFX: fire once per game when score crosses targetScore.
-        // Tracked via @State `victoryAnnounced` so we don't replay every
-        // subsequent cascade if user keeps playing past the goal.
-        if !victoryAnnounced && engine.score >= targetScore {
+        // Level-up: target hit → advance the LevelManager. Bumps to next
+        // level, fires the celebration window (banner pulse + SFX), grows
+        // suggestedPaletteSize / spawn-rate / animation-intensity for the
+        // next level. We re-zero the engine.score for the new level via
+        // a fresh Match3Engine so progress reads "0 / newTarget."
+        if !victoryAnnounced && engine.score >= levels.currentTarget {
             victoryAnnounced = true
-            sound.play(.victory)
+            sound.play(.victory, volume: 1.0)
+            // Slight delay so victory SFX rings out before levelUp chord.
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 450_000_000)
+                sound.play(.levelUp, pitchSemitones: 2)
+                levels.advance()
+                // Re-seed the board for the new level. Carry no score over;
+                // the new target is fresh. Moves budget refreshes too.
+                try? await Task.sleep(nanoseconds: 650_000_000)
+                seed = UInt64.random(in: 1...100_000)
+                let newPalette = Array(["A","B","C","D","E","F","G","H"].prefix(levels.suggestedPaletteSize))
+                var newEngine = Match3Engine(rows: 8, columns: 8, seed: seed)
+                newEngine.symbols = newPalette
+                withAnimation(.easeInOut(duration: 0.6)) {
+                    engine = newEngine
+                    moves = levels.currentMovesAllowed
+                    combo = 1
+                    totalCleared = 0
+                    victoryAnnounced = false
+                    status = "Level \(levels.currentLevel) — target \(levels.currentTarget)"
+                }
+            }
         }
 
         checkBoardHealth()
@@ -890,13 +967,20 @@ struct ContentView: View {
     private var controls: some View {
         HStack(spacing: 12) {
             Button {
+                // RESTART = retry current level (NOT drop to L1). Per wisdom
+                // rule level-replay-not-demote: a player who runs out of
+                // moves should keep their level, just retry. Score zeroes,
+                // moves budget refreshes from levels.currentMovesAllowed.
                 seed = UInt64.random(in: 1...100_000)
-                engine = Match3Engine(rows: 8, columns: 8, seed: seed)
-                moves = 30
+                let palette = Array(["A","B","C","D","E","F","G","H"].prefix(levels.suggestedPaletteSize))
+                var newEngine = Match3Engine(rows: 8, columns: 8, seed: seed)
+                newEngine.symbols = palette
+                engine = newEngine
+                moves = levels.currentMovesAllowed
                 combo = 1
                 totalCleared = 0
                 victoryAnnounced = false
-                status = "Drag a candy onto an adjacent candy."
+                status = "Level \(levels.currentLevel) — target \(levels.currentTarget)"
                 hintPair = nil
                 lastMoveAt = Date()
                 sound.play(.uiButtonTap)

@@ -1072,6 +1072,38 @@
         "frameworks/macos-components/assets/sfx/*.m4a (25 CC0 SFX from Kenney UI/Casino/SciFi/Impact packs)",
         "App must copy needed SFX into Contents/Resources/SFX/ at build time. SwiftPM: declare `resources: [.copy(\"SFX\")]` on the target."
       ]
+    },
+    {
+      "id": "effects.level-manager",
+      "name": "LevelManager",
+      "category": "effects",
+      "path": "components/effects/LevelManager.swift",
+      "exports": [
+        "LevelManager",
+        "LevelCurve"
+      ],
+      "status": "ready",
+      "summary": "Game-flavor level / progression manager. Encapsulates target-score curves (.casual/.standard/.hardcore/.accelerating/.custom), per-level resource budgets, suggested palette/spawn-rate/animation-intensity bumps, level-up celebration window (banner + SFX trigger), and persistent currentLevel via UserDefaults. Game-specific UI binds to currentLevel / currentTarget / celebratingLevelUp / celebrationProgress.",
+      "tags": [
+        "progression",
+        "levels",
+        "difficulty",
+        "curves",
+        "effects",
+        "macos",
+        "swiftui",
+        "userdefaults"
+      ],
+      "contracts": {
+        "input": "Game view declares `@StateObject private var levels = LevelManager(gameID: \"<gameid>\", baseTarget: 1500, baseMovesAllowed: 30, curve: .standard)`. UI reads levels.currentLevel / levels.currentTarget / levels.suggestedPaletteSize / levels.celebratingLevelUp / levels.celebrationProgress.",
+        "output": "@Published currentLevel (1..maxLevel), currentTarget (Int), currentMovesAllowed (Int), celebrationProgress (CGFloat 0\u21921\u21920 over ~3s after advance()). Persists currentLevel under 'LevelManager.<gameID>.currentLevel' in UserDefaults."
+      },
+      "useCases": [
+        "Match-3 progression (target 1500 \u2192 2100 \u2192 2940 \u2192 ... at .standard 1.4\u00d7 curve, palette 5 \u2192 6 at L5 \u2192 7 at L10 \u2192 8 at L15)",
+        "Arcade games with waves (spawn-rate bumps via suggestedSpawnRateMultiplier)",
+        "Puzzle games with grid expansion (suggestedPaletteSize doubles as 'symbol set size')",
+        "Any game where animation intensity should bump as levels rise (suggestedAnimationIntensity returns 'subtle'/'standard'/'punchy')"
+      ]
     }
   ],
   "compositionRecipes": [
@@ -1180,7 +1212,8 @@
         "gridpuzzle.mastermind",
         "gridpuzzle.mastermind-smoke-tests",
         "effects.animation-intensity",
-        "effects.sound-engine"
+        "effects.sound-engine",
+        "effects.level-manager"
       ],
       "assemblyNotes": [
         "Use MastermindEngine for duplicate-safe scoring. Do not rewrite exact/color-only peg logic in ContentView.",
@@ -1251,7 +1284,8 @@
         "gridpuzzle.match3",
         "gridpuzzle.match3-smoke-tests",
         "effects.animation-intensity",
-        "effects.sound-engine"
+        "effects.sound-engine",
+        "effects.level-manager"
       ],
       "assemblyNotes": [
         "Use Match3Engine for adjacent swaps, match detection, collapse, refill, cascades, and score.",
@@ -1473,7 +1507,8 @@
         "gridpuzzle.core",
         "arcade.platformer",
         "arcade.smoke-tests",
-        "effects.sound-engine"
+        "effects.sound-engine",
+        "effects.level-manager"
       ],
       "assemblyNotes": [
         "Use PlatformerEngine for movement, gravity, jumping, platform collision, coins, score, and loss state.",
@@ -1756,7 +1791,8 @@
       "starterComponents": [
         "arcade.spritekit-physics-helpers",
         "effects.animation-intensity",
-        "effects.sound-engine"
+        "effects.sound-engine",
+        "effects.level-manager"
       ],
       "assemblyNotes": [
         "MANDATORY: copy the canonical SpriteKitPhysicsHelpers.swift VERBATIM into Sources/<TargetName>/MChatAIComponents/SpriteKitPhysicsHelpers.swift (preserve the BEGIN/END markers). Then COMPOSE it from app-specific code by calling at least one of: SKPhysicsHelpers.makeCircularBody, SKPhysicsHelpers.makeRectangularBody, SKPhysicsHelpers.makeOvalBody, SKPhysicsHelpers.makeStaticBody, SKPhysicsHelpers.makeSceneBoundary, SKPhysicsHelpers.snapshot(of:), or reference SKArcadeCategory.<name> / SKPhysicsContactSnapshot. Copying without composing fails the Lego provenance gate.",
