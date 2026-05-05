@@ -1,6 +1,6 @@
 {
   "packID": "puzzle-games",
-  "version": 10,
+  "version": 11,
   "displayName": "Puzzle Game Guidelines",
   "description": "Quality rules for word search, crossword, sudoku, wordle, and other puzzle games.",
   "categories": [
@@ -553,16 +553,16 @@
       ]
     },
     {
-      "id": "score-show-personal-best-in-hud",
-      "rule": "Any game with a score MUST show the player's personal best alongside the current score in the always-visible HUD. Use the `effects.high-score-manager` Lego component \u2014 it persists best per-game in UserDefaults, exposes live `isAheadOfBest` / `deltaToBest` helpers, and broadcasts a celebration event on new bests. The HUD should show: (a) BEST pill with trophy/medal icon + persisted value, (b) live delta \u2014 '\\(N) to beat' when behind, '+N ahead' in gold when ahead, (c) glowing 'NEW BEST!' flourish during the celebration window. Without a visible best, the player has no idea if this run is meaningful \u2014 they're just playing in a vacuum.",
-      "why": "Filed 2026-05-04 after user feedback 'How do I know if I'm going to hit my highscore this game vs the last?' Universal game-design principle. Personal best is the strongest engagement loop in solo games (no competitor needed \u2014 you compete against yourself). HighScoreManager Lego standardizes the persistence + comparison helpers + celebration window so generators don't reinvent.",
+      "id": "score-show-personal-best-on-game-over",
+      "rule": "Personal best / high-score should be surfaced in the GAME-OVER (or run-summary) panel, NOT in the always-visible in-play HUD. During active play, in-play high-score chrome (BEST pills, live 'X to beat' / '+N ahead' deltas) is visual noise that distracts from the actual gameplay \u2014 players are mid-decision and don't want a constant comparison ticker. The end-of-run panel is when the comparison is meaningful: it's a single moment, the player has earned their score, and seeing 'Best: 12,450' alongside 'Your run: 11,200' creates the natural motivation to play again. Use HighScoreManager.commit(score:) at game-over \u2192 it returns true on a new best, fires celebrationProgress for a 'NEW BEST!' flourish on the panel. The in-play HUD shows ONLY the active counters (score / level / moves / time).",
+      "why": "Filed 2026-05-04. Initial implementation v9 put BEST + live delta + 'NEW BEST!' chrome in the always-visible HUD. User feedback: 'why did you go so overboard with the highscore thing? this is a super ugly header. have you seen a high score on a game, it shouldn't show up until the game is done so the user doesn't get so distracted.' Established games (Candy Crush, Bejeweled, Threes, every console arcade game) put high score in the game-over screen \u2014 never as constant in-play chrome. v9.1 moved it to a modal that appears only at moves==0.",
       "severity": "high",
       "appliesTo": "scoredGame",
       "examples": [
-        "RIGHT: @StateObject var highScores = HighScoreManager(gameID: \"match3\"); HUD shows BEST pill with `Text(highScores.bestScoreDisplay)` + delta line `Text(\"\\(formatNumber(-delta)) to beat\")`",
-        "RIGHT: on level-up / game-over: `highScores.commit(score: totalScore)` \u2192 returns true if new best \u2192 celebrationProgress ramps 0\u21921\u21920 \u2192 HUD pill glows.",
-        "WRONG: score shown alone, no best. Player has no benchmark.",
-        "WRONG: best shown but never updated/persisted (just an in-memory @State). Lost on app close."
+        "RIGHT: in-play HUD = SCORE | LEVEL | MOVES (just active counters). Game-over panel = OUT OF MOVES / NEW BEST! header, big run-total readout, 'Best: 12,450' line with trophy icon, PLAY AGAIN button.",
+        "RIGHT: highScores.commit(totalScore) at moves==0 OR game-end \u2192 returns true on new best \u2192 panel header flips to 'NEW BEST!' with gold styling.",
+        "WRONG: BEST pill always visible in the HUD with live 'N to beat' / '+N ahead' delta during play. Distracts from the gameplay decision.",
+        "WRONG: 'NEW BEST!' celebration that fires DURING play (e.g. mid-cascade). Save it for the game-over moment so it's a clean reward."
       ]
     },
     {
