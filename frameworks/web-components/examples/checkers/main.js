@@ -12,6 +12,8 @@ const game = new CheckersGame({
   capturedTarget: "#captured",
   messageTarget: "#message",
   resetButton: "#resetButton",
+  restartHostTarget: "[data-app]",
+  rankCardHostTarget: "#rankCard",
   humanColor: "red",
   ai: new CheckersAI({ rules: new CheckersRules(), depth: 3 })
 });

@@ -12,6 +12,8 @@ const game = new ChessGame({
   capturedTarget: "#captured",
   messageTarget: "#message",
   resetButton: "#resetButton",
+  restartHostTarget: "[data-app]",
+  rankCardHostTarget: "#rankCard",
   humanColor: "white",
   ai: new ChessAI({ rules: new ChessRules(), depth: 2 })
 });
