@@ -86,6 +86,37 @@ struct GridAdventureEngine: Codable, Equatable, Sendable {
         actors.first { $0.kind == .hero }
     }
 
+    /// Respawn all enemy actors back to the ghost pen (4-corner candidate
+    /// region around map center). Called by the View AFTER a death-pause
+    /// elapses so ghosts re-emerge from the pen, giving the player a
+    /// fresh chance instead of being immediately re-killed by ghosts that
+    /// happened to be on the spawn tile. Filed 2026-05-05 from user
+    /// feedback: "When I die there is no break or reset, it just hyperspaces
+    /// me back to the beginning... the monsters re-emerge from the the
+    /// box and I have a fresh chance to chew some pellets."
+    mutating func respawnGhostsToPen() {
+        let centerRow = max(0, map.rows / 2)
+        let centerCol = max(0, map.columns / 2)
+        // 4 candidate pen tiles around the map center, picked greedily
+        // (skip wall tiles). Mirrors the layout used at maze construction.
+        let penCandidates: [PuzzlePoint] = [
+            PuzzlePoint(row: centerRow, col: centerCol),
+            PuzzlePoint(row: centerRow, col: centerCol - 1),
+            PuzzlePoint(row: centerRow, col: centerCol + 1),
+            PuzzlePoint(row: centerRow - 1, col: centerCol),
+            PuzzlePoint(row: centerRow + 1, col: centerCol),
+        ]
+        let walkablePen = penCandidates.filter { map.contains($0) && map[$0] != .wall }
+        guard !walkablePen.isEmpty else { return }
+        var penIndex = 0
+        for actorIndex in actors.indices where actors[actorIndex].kind == .enemy {
+            actors[actorIndex].position = walkablePen[penIndex % walkablePen.count]
+            actors[actorIndex].direction = .right
+            actors[actorIndex].frightenedTicks = 0
+            penIndex += 1
+        }
+    }
+
     /// Convert one of the existing ghosts to a boss. Called by the View
     /// at boss levels (typically every 5th level via LevelManager.isBossLevel).
     /// Picks the first .enemy actor and swaps its personality to .boss with

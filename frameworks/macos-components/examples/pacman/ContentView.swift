@@ -40,19 +40,37 @@ struct ContentView: View {
     /// feedback "when I eat the pill the music is a bit annoying."
     @State private var pelletParity = false
 
-    /// Logic-tick interval bounds. Game starts SLOW (0.24s ≈ 4.2 tiles/sec)
-    /// to give the player time to learn the maze, and gradually speeds up
-    /// to a max of 0.13s (~7.7 tiles/sec) over ~45 seconds on the level.
-    /// This produces "gradually increasing pressure" — the canonical
-    /// arcade pacing without dumping max difficulty on the first second.
-    /// Filed 2026-05-05 from user feedback that v4's flat 0.18s was
-    /// "still kind of too fast" at the very start.
-    private let tickIntervalStart: Double = 0.24
-    private let tickIntervalEnd: Double = 0.13
+    /// Death-sequence state. The engine collisions are instantaneous —
+    /// without a View-level pause, the hero teleports to spawn and the
+    /// game keeps ticking, which feels like a glitch. The death sequence
+    /// works as: detect lives-decremented → set dyingUntil = now + 1.5s
+    /// → freeze ticks until dyingUntil → reset ghosts to pen + clear
+    /// state. The Canvas reads `deathProgress` (0→1 across the pause)
+    /// to draw a shrinking-and-fading hero.
+    @State private var dyingUntil: Date? = nil
+    /// Wall-clock when the death sequence started (for animation interp).
+    @State private var deathStartedAt: Date = .now
+    private let deathPauseSeconds: Double = 1.5
+
+    /// Logic-tick interval bounds — INTRA-level ramp (start → end as the
+    /// player spends time on the current level) PLUS an inter-level boost
+    /// applied per LevelManager.currentLevel. The total is:
+    ///   tickIntervalStart  - levelBoost(currentLevel)  → start of level
+    ///   tickIntervalEndL1  - levelBoost(currentLevel)  → end of level
+    /// where levelBoost(N) shaves ~0.01s per level (capped at 0.05s) so
+    /// L1 caps at 0.18s, L5 caps at ~0.13s, L10+ caps at 0.13s.
+    /// Filed 2026-05-05 from user feedback: "by the time I'm reaching
+    /// the end of level 1, it is really going too fast for this just to
+    /// be a level 1 game (we should be on like level 10 for this type
+    /// of frantic speed)."
+    private let tickIntervalStart: Double = 0.26
+    private let tickIntervalEndL1: Double = 0.18
     /// Seconds of play (on the current level) over which the tick interval
     /// linearly interpolates from start → end. After this, the tick stays
-    /// at end (max speed).
-    private let levelSpeedRampSeconds: Double = 45.0
+    /// at end (level-capped).
+    private let levelSpeedRampSeconds: Double = 60.0
+    /// Floor — even the highest level can't tick faster than this.
+    private let tickIntervalFloor: Double = 0.13
     /// Wall-clock time when the current level started (re-stamped on level
     /// transitions and resets). Drives the ramp.
     @State private var levelStartTime: Date = .now
@@ -65,12 +83,19 @@ struct ContentView: View {
     /// `now - lastEngineTick >= currentTickInterval` before stepping.
     @State private var lastEngineTick: Date = .now
 
-    /// Currently-effective tick interval, ramping from start → end based
-    /// on time elapsed on this level. Read on every render-frame check.
+    /// Currently-effective tick interval, combining:
+    ///   - intra-level ramp: as time on level increases, tick speeds up
+    ///     from tickIntervalStart toward tickIntervalEndL1
+    ///   - inter-level boost: each level number shaves ~0.01s further
+    ///     until clamped at tickIntervalFloor (0.13s)
+    /// So L1 ramps 0.26 → 0.18 over 60s. L5 ramps ~0.22 → 0.14. L10+ caps
+    /// at 0.13. Computed every render frame.
     private var currentTickInterval: Double {
         let elapsed = Date().timeIntervalSince(levelStartTime)
         let t = max(0, min(1, elapsed / levelSpeedRampSeconds))
-        return tickIntervalStart + (tickIntervalEnd - tickIntervalStart) * t
+        let intraLevel = tickIntervalStart + (tickIntervalEndL1 - tickIntervalStart) * t
+        let interLevelBoost = min(0.05, Double(max(0, levels.currentLevel - 1)) * 0.01)
+        return max(tickIntervalFloor, intraLevel - interLevelBoost)
     }
     private let cellSize: CGFloat = 38
     private let cellGap: CGFloat = 1
@@ -128,6 +153,15 @@ struct ContentView: View {
         .frame(minWidth: 1040, minHeight: 640)
         .background(Color(red: 0.02, green: 0.02, blue: 0.07))
         .onReceive(timer) { _ in
+            // If a death sequence is active, all engine ticks are paused
+            // until dyingUntil elapses. The render layer keeps animating
+            // (so the death-shrink animation continues to draw).
+            if let until = dyingUntil {
+                if Date() >= until {
+                    finishDeathSequence()
+                }
+                return
+            }
             // Render-tick fires at 60Hz. Only step the ENGINE if enough
             // wall-clock time has elapsed since the last engine tick to
             // satisfy the (level-progressive) currentTickInterval.
@@ -135,6 +169,50 @@ struct ContentView: View {
                 tick()
             }
         }
+    }
+
+    /// Death-progress 0→1 across deathPauseSeconds. Used by the Canvas to
+    /// draw a shrinking-and-fading Pac during the pause, plus an expanding
+    /// orange burst behind him for one moment of arcade flair. 0 = just
+    /// died, 1 = ready to respawn.
+    private var deathProgress: Double {
+        guard dyingUntil != nil else { return 0 }
+        let elapsed = Date().timeIntervalSince(deathStartedAt)
+        return max(0, min(1, elapsed / deathPauseSeconds))
+    }
+
+    /// Begin the death sequence. Called from handleGameStateAfterTick when
+    /// engine.lives drops. Plays death SFX, freezes ticks, and (after the
+    /// pause) calls finishDeathSequence which respawns ghosts to the pen.
+    private func startDeathSequence() {
+        let now = Date()
+        deathStartedAt = now
+        dyingUntil = now.addingTimeInterval(deathPauseSeconds)
+        // Death SFX — the iconic descending tone substitute. Layered
+        // explosion + lower-pitch game-over chord.
+        sound.play(.arcadeExplosionBig, volume: 0.7)
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 350_000_000)
+            sound.play(.gameOver, volume: 0.55, pitchSemitones: 4)
+        }
+    }
+
+    /// Resume normal play after the death pause. Reset ghosts to their
+    /// pen positions, clear the pending direction queue, restart the
+    /// engine-tick clock so the player gets a clean tile-step.
+    private func finishDeathSequence() {
+        dyingUntil = nil
+        engine.respawnGhostsToPen()
+        pendingDirection = nil
+        lastHeroDirection = .left
+        let now = Date()
+        lastEngineTick = now
+        lastTickTime = now
+        // Snapshot positions so the renderer doesn't lerp from the
+        // pre-death position to spawn (would look like a flying snap-back).
+        var snap: [UUID: PuzzlePoint] = [:]
+        for actor in engine.actors { snap[actor.id] = actor.position }
+        previousActorPositions = snap
     }
 
     /// Single tick: snapshot all actor positions FIRST (so the Canvas can
@@ -334,8 +412,59 @@ struct ContentView: View {
 
     private func drawHero(context: inout GraphicsContext, actor: AdventureActor, t: Double) {
         let prevPos = previousActorPositions[actor.id] ?? actor.position
-        let center = visualCenter(for: actor.position, t: t, previous: prevPos)
-        let radius = cellSize * 0.39
+        // During death sequence, FREEZE the visual position (don't lerp
+        // toward a new spawn tile while we're animating the death).
+        let center = (dyingUntil != nil)
+            ? visualCenter(for: prevPos, t: 1, previous: prevPos)
+            : visualCenter(for: actor.position, t: t, previous: prevPos)
+        let baseRadius = cellSize * 0.39
+
+        // Death animation: Pac shrinks, his mouth opens wide (>180°),
+        // and an expanding orange burst fades out behind him.
+        if dyingUntil != nil {
+            let dp = deathProgress  // 0 → 1 across deathPauseSeconds
+            // Burst — a fading orange ring expanding outward.
+            let burstR = baseRadius * (1.0 + dp * 1.6)
+            let burstAlpha = max(0, 0.65 - dp * 0.65)
+            if burstAlpha > 0 {
+                let burstRect = CGRect(
+                    x: center.x - burstR,
+                    y: center.y - burstR,
+                    width: burstR * 2,
+                    height: burstR * 2
+                )
+                context.stroke(
+                    Path(ellipseIn: burstRect),
+                    with: .color(Color(red: 1.0, green: 0.55, blue: 0.10).opacity(burstAlpha)),
+                    lineWidth: 3
+                )
+            }
+            // Pac shrinks AND his mouth opens wide (clamps to a thin
+            // crescent then disappears).
+            let scale = max(0, 1.0 - dp)
+            let radius = baseRadius * scale
+            // Mouth opens from 0.55 to ~3.0 radians half-angle as we die.
+            let mouthHalf = 0.55 + dp * 2.4
+            let dirAngle = directionAngle(actor.direction)
+            var path = Path()
+            path.move(to: center)
+            let startAngle = dirAngle + mouthHalf
+            let endAngle = dirAngle - mouthHalf + 2 * .pi
+            if startAngle < endAngle && radius > 0.5 {
+                path.addArc(
+                    center: center,
+                    radius: radius,
+                    startAngle: .radians(startAngle),
+                    endAngle: .radians(endAngle),
+                    clockwise: false
+                )
+                path.closeSubpath()
+                context.fill(path, with: .color(Color(red: 1.0, green: 0.85, blue: 0.10).opacity(scale)))
+            }
+            return
+        }
+
+        let radius = baseRadius
         // Mouth angle — animated open/closed via timeline.date for that
         // classic Pac-Man chomp. Period = 0.20s for a satisfying chomp rhythm.
         let chompPhase = sin(Date().timeIntervalSince1970 * 14) * 0.5 + 0.5  // 0..1
@@ -359,7 +488,12 @@ struct ContentView: View {
 
     private func drawGhost(context: inout GraphicsContext, actor: AdventureActor, t: Double) {
         let prevPos = previousActorPositions[actor.id] ?? actor.position
-        let center = visualCenter(for: actor.position, t: t, previous: prevPos)
+        // During death sequence, ghosts FREEZE on their pre-death tiles
+        // (they don't keep marching over the dying Pac). After the pause
+        // finishes, finishDeathSequence() resets them to the pen.
+        let center = (dyingUntil != nil)
+            ? visualCenter(for: prevPos, t: 1, previous: prevPos)
+            : visualCenter(for: actor.position, t: t, previous: prevPos)
         // Ghost geometry — fit cleanly inside one cell. ghostSize is the
         // FULL height (and width); previously the bottom-bumps extended
         // BELOW the dome's circle, making total height larger than a tile,
@@ -736,9 +870,12 @@ struct ContentView: View {
             }
         }
 
-        // Hero died this tick (lives went down).
-        if engine.lives < livesBefore {
-            sound.play(.arcadeExplosionBig, volume: 0.7)
+        // Hero died this tick (lives went down). If they have lives
+        // remaining, run the death-sequence pause + animation; if not,
+        // fall through to the .lost branch below for the game-over panel.
+        if engine.lives < livesBefore && engine.phase != .lost {
+            startDeathSequence()
+            status = "Caught! Respawning..."
         }
 
         // Win condition — maze cleared.
@@ -779,9 +916,8 @@ struct ContentView: View {
         }
 
         // Status text (only updated for tick-relevant cases).
-        if engine.lives < livesBefore {
-            status = "Ghost collision. Respawned."
-        } else if scoreDelta > 0 {
+        // (lives-decrement status is set by startDeathSequence above.)
+        if engine.lives >= livesBefore && scoreDelta > 0 {
             status = "Score \(engine.score) · pellets left \(pelletCount)"
         }
     }
