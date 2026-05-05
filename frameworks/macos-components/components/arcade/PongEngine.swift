@@ -1,6 +1,16 @@
 // BEGIN mChatAI macOS Component: arcade.pong (components/arcade/PongEngine.swift)
 import Foundation
 
+/// Discrete events the View can observe each tick — for SFX hooks.
+/// Cleared after the View reads `lastEvent`. Without this, the View has
+/// to reverse-engineer collisions by diffing velocity, which is brittle.
+enum PongEvent: String, Codable, Sendable {
+    case paddleHit
+    case wallBounce
+    case leftScored      // player scored — bigger SFX
+    case rightScored     // AI scored — quieter "miss" SFX
+}
+
 struct PongEngine: Codable, Equatable, Sendable {
     var playfield = ArcadePlayfield(width: 900, height: 560)
     /// Paddle is rendered as a tall thin rectangle (paddleHalfWidth × paddleHalfHeight).
@@ -15,6 +25,24 @@ struct PongEngine: Codable, Equatable, Sendable {
     private(set) var rightScore = 0
     var winningScore = 7
     private(set) var phase: ArcadePhase = .playing
+    /// Ball-speed multiplier — applied each tick. The View bumps this on
+    /// rally wins so the ball accelerates as the game progresses (1.0×
+    /// at start → up to 2.0× by end). Default 1.0 preserves legacy behavior.
+    var ballSpeedMultiplier: Double = 1.0
+    /// Last paddle/wall hit signal for SFX. Cleared each tick by the
+    /// View after observation. Set by bounceIfNeeded + the wall-bounce
+    /// branch in update() — gives a clean event-driven signal so the
+    /// View doesn't have to reverse-engineer collisions from velocity.
+    private(set) var lastEvent: PongEvent?
+
+    /// Read + clear the last observed event. Returns nil if nothing
+    /// happened on the most recent tick. Single-shot consumer pattern
+    /// so SFX fire exactly once per event.
+    mutating func consumeLastEvent() -> PongEvent? {
+        let event = lastEvent
+        lastEvent = nil
+        return event
+    }
 
     mutating func update(dt: Double, leftDirection: Double, rightDirection: Double? = nil) {
         guard phase == .playing else { return }
@@ -22,18 +50,24 @@ struct PongEngine: Codable, Equatable, Sendable {
         let aiDirection = rightDirection ?? (ball.position.y > rightPaddle.position.y ? 1 : -1)
         rightPaddle = movedPaddle(rightPaddle, direction: aiDirection, dt: dt, playfieldHeight: playfield.height)
 
-        ball.integrate(dt: dt)
+        // Apply speed multiplier WITHOUT mutating velocity itself (which
+        // is integrated each frame) — scale the dt instead. Equivalent
+        // result, no compounding drift.
+        ball.integrate(dt: dt * ballSpeedMultiplier)
         if ball.position.y < ball.radius || ball.position.y > playfield.height - ball.radius {
             ball.velocity.y *= -1
+            lastEvent = .wallBounce
         }
         bounceIfNeeded(paddle: leftPaddle, direction: 1)
         bounceIfNeeded(paddle: rightPaddle, direction: -1)
 
         if ball.position.x < 0 {
             rightScore += 1
+            lastEvent = .rightScored
             resetBall(direction: -1)
         } else if ball.position.x > playfield.width {
             leftScore += 1
+            lastEvent = .leftScored
             resetBall(direction: 1)
         }
 
@@ -56,11 +90,6 @@ struct PongEngine: Codable, Equatable, Sendable {
 
     private mutating func bounceIfNeeded(paddle: ArcadeBody, direction: Double) {
         let isMovingTowardPaddle = direction > 0 ? ball.velocity.x < 0 : ball.velocity.x > 0
-        // AABB-vs-circle: the paddle is logically a rectangle, so use the
-        // rect-aware intersects helper. Circle-vs-circle (`ball.intersects(paddle)`)
-        // would treat the paddle's tall radius as a wide bounding circle, causing
-        // the ball to bounce in empty space ~30px in front of the paddle's actual
-        // edge. Filed 2026-05-04 after user feedback on shipped Native Pong.
         guard ball.intersects(rectCenter: paddle.position,
                               halfWidth: Self.paddleHalfWidth,
                               halfHeight: Self.paddleHalfHeight),
@@ -72,6 +101,7 @@ struct PongEngine: Codable, Equatable, Sendable {
         }
         ball.velocity.x = abs(ball.velocity.x) * direction
         ball.velocity.y += (ball.position.y - paddle.position.y) * 5
+        lastEvent = .paddleHit
     }
 }
 // END mChatAI macOS Component: arcade.pong

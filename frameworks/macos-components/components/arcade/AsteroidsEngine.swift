@@ -49,6 +49,10 @@ struct AsteroidsEngine: Codable, Equatable, Sendable {
     private(set) var lives = 3
     private(set) var phase: ArcadePhase = .ready
     private(set) var respawnShield: Double = 1.6
+    /// Current wave number, 1-indexed. Auto-increments when the engine
+    /// detects all rocks have been cleared and resetWave() fires for the
+    /// next wave. Drives spawn count + speed via resetWave(wave:).
+    private(set) var wave: Int = 1
 
     init() {
         resetWave()
@@ -89,7 +93,8 @@ struct AsteroidsEngine: Codable, Equatable, Sendable {
         resolveShipHits()
         if rocks.isEmpty {
             score += 500
-            resetWave()
+            wave += 1
+            resetWave(wave: wave)
         }
     }
 
@@ -101,13 +106,51 @@ struct AsteroidsEngine: Codable, Equatable, Sendable {
         shots.append(AsteroidsShot(body: body))
     }
 
-    mutating func resetWave() {
+    /// Reset to a fresh wave of asteroids. `wave` (1-indexed) controls
+    /// difficulty: large-rock count grows by 1 every 2 waves (cap 8),
+    /// medium starters added from wave 3 (cap 3), velocity scales 1.0×→2.0×
+    /// by wave 10 then caps. Default wave=1 preserves the original "3 rocks"
+    /// behavior for legacy callers / smoke tests.
+    mutating func resetWave(wave: Int = 1) {
         phase = .playing
-        rocks = [
-            AsteroidsRock(position: ArcadeVector(x: 120, y: 110), velocity: ArcadeVector(x: 42, y: 34), size: .large),
-            AsteroidsRock(position: ArcadeVector(x: 760, y: 180), velocity: ArcadeVector(x: -30, y: 48), size: .large),
-            AsteroidsRock(position: ArcadeVector(x: 620, y: 500), velocity: ArcadeVector(x: -50, y: -28), size: .medium)
-        ]
+        let level = max(1, min(20, wave))
+        // Rock count: 2 large at wave 1, +1 per 2 waves, capped at 8.
+        let largeCount = min(8, 2 + (level - 1) / 2)
+        // Bonus medium starters from wave 3 onward.
+        let mediumCount = level >= 3 ? min(3, 1 + (level - 3) / 4) : 0
+        // Velocity multiplier: 1.0× at wave 1, 2.0× by wave 10, capped.
+        let speedMul = min(2.0, 1.0 + Double(level - 1) * 0.11)
+
+        var spawned: [AsteroidsRock] = []
+        // Distribute large rocks around the perimeter at evenly spaced
+        // angles so they spawn away from ship-center.
+        for i in 0..<largeCount {
+            let angle = Double(i) / Double(max(1, largeCount)) * .pi * 2
+            let pos = ArcadeVector(
+                x: playfield.center.x + cos(angle) * 320,
+                y: playfield.center.y + sin(angle) * 220
+            )
+            let vx = sin(angle) * 38 * speedMul + Double(i % 2 == 0 ? 6 : -10)
+            let vy = -cos(angle) * 38 * speedMul + Double(i % 2 == 0 ? -8 : 12)
+            spawned.append(AsteroidsRock(
+                position: pos,
+                velocity: ArcadeVector(x: vx, y: vy),
+                size: .large
+            ))
+        }
+        for i in 0..<mediumCount {
+            let angle = Double(i) / Double(max(1, mediumCount)) * .pi * 2 + .pi / 4
+            let pos = ArcadeVector(
+                x: playfield.center.x + cos(angle) * 180,
+                y: playfield.center.y + sin(angle) * 140
+            )
+            spawned.append(AsteroidsRock(
+                position: pos,
+                velocity: ArcadeVector(x: cos(angle) * 60 * speedMul, y: sin(angle) * 60 * speedMul),
+                size: .medium
+            ))
+        }
+        rocks = spawned
         shots.removeAll()
     }
 

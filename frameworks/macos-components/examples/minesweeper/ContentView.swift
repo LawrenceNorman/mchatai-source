@@ -8,7 +8,40 @@ struct ContentView: View {
     @State private var elapsedSeconds = 0
     @State private var seed: UInt64 = 7
 
+    /// Animation tuning — Minesweeper is a focus-puzzle game, so .subtle
+    /// (calmer audio, smaller flashes — animations are punctuation, not
+    /// the show).
+    private let intensity: AnimationIntensity = .subtle
+
+    /// Sound effects engine. Tile reveal = soft pop. Flag toggle = ui-toggle.
+    /// Mine explosion = arcade-explosion-big. Win chime = victory.
+    /// Honors persistent UserDefaults mute toggle (visible button in controls).
+    @ObservedObject private var sound = SoundEngine.shared
+
+    /// Per intensity preset: scale all SFX volumes uniformly. Subtle =
+    /// 0.35 sfxVolume, low intrusion. Override on init.
+    @State private var didConfigureSound = false
+
+    /// Personal-best score tracker. For Minesweeper, "score" = how fast
+    /// you cleared the board. Higher score = faster solve = better.
+    /// Surfaced ONLY in the game-over panel (per
+    /// score-show-personal-best-on-game-over wisdom rule). Does NOT
+    /// appear in the in-play HUD.
+    @StateObject private var highScores = HighScoreManager(gameID: "minesweeper.beginner")
+
+    /// Tracks state transitions so SFX fire on EVENT, not on render
+    /// (per audio-debounce-events-not-renders).
+    @State private var lastObservedRevealedCount = 0
+    @State private var lastObservedState: MinesweeperState = .ready
+    @State private var gameEndAnnounced = false
+
     private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
+
+    /// Per-game baseline. A perfect-no-time clear scores `perfectTimeBudget`;
+    /// each second cuts the bonus. Score floors at 1 so even a slow win
+    /// is non-zero (and a loss commits 0). For 9x9/10-mines, an expert
+    /// clear is ~25-40s; budget=180 gives 140-155 score for a good time.
+    private let perfectTimeBudget = 180
 
     var body: some View {
         ZStack(alignment: .topLeading) {
@@ -42,10 +75,74 @@ struct ContentView: View {
         }
         .frame(minWidth: 620, minHeight: 760)
         .background(Color(red: 0.08, green: 0.1, blue: 0.12))
+        .onAppear {
+            if !didConfigureSound {
+                // Apply the .subtle preset on first appearance so SFX volume
+                // is calibrated to a focus-puzzle game (low intrusion).
+                sound.intensity = .subtle
+                didConfigureSound = true
+            }
+            lastObservedState = engine.state
+            lastObservedRevealedCount = revealedCount
+        }
         .onReceive(timer) { _ in
             if engine.state == .playing {
                 elapsedSeconds += 1
             }
+        }
+        // Fire SFX + commit high-score on STATE TRANSITIONS — not in
+        // the render loop. (audio-debounce-events-not-renders)
+        .onChange(of: engine.state) { _, newState in
+            handleStateTransition(to: newState)
+        }
+        // Reveal SFX: fires when the revealed-cell count grows. Cascade
+        // reveals (clicking a 0-cell that flood-fills) only play once
+        // per click since they all happen in a single state mutation.
+        .onChange(of: revealedCount) { oldCount, newCount in
+            if newCount > oldCount && engine.state == .playing {
+                sound.play(.match3Pop, volume: 0.6)
+            }
+            lastObservedRevealedCount = newCount
+        }
+    }
+
+    private var revealedCount: Int {
+        engine.grid.cells.filter(\.isRevealed).count
+    }
+
+    /// Score for a cleared board: higher is better. Faster wins beat slower.
+    /// Loss commits 0 (still tracked as `lastScore` so "you played" counts,
+    /// but never beats a real win).
+    private var winScore: Int {
+        max(1, perfectTimeBudget - elapsedSeconds)
+    }
+
+    /// One-shot SFX + high-score handling on game-state changes. Called
+    /// from .onChange(of: engine.state) so it fires exactly once per
+    /// transition (not on render).
+    private func handleStateTransition(to newState: MinesweeperState) {
+        guard newState != lastObservedState else { return }
+        lastObservedState = newState
+        switch newState {
+        case .won:
+            guard !gameEndAnnounced else { return }
+            gameEndAnnounced = true
+            // Commit only on WIN — losses score 0 and aren't worth tracking.
+            highScores.commit(score: winScore)
+            sound.play(.victory)
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 350_000_000)
+                sound.play(.levelUp, pitchSemitones: 2)
+            }
+        case .lost:
+            guard !gameEndAnnounced else { return }
+            gameEndAnnounced = true
+            sound.play(.arcadeExplosionBig, volume: 0.8)
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 600_000_000)
+                sound.play(.gameOver)
+            }
+        default: break
         }
     }
 
@@ -54,14 +151,38 @@ struct ContentView: View {
         ZStack {
             Color.black.opacity(0.7)
             VStack(spacing: 14) {
-                Text(engine.state == .won ? "BOARD CLEARED" : "BOOM")
-                    .font(.system(size: 44, weight: .black, design: .rounded))
-                    .foregroundStyle(engine.state == .won ? .green : .red)
+                // "NEW BEST!" banner takes priority over BOARD CLEARED
+                // when a personal best was just set (gold styling). Loss
+                // → "BOOM" red. Win → "BOARD CLEARED" green.
+                if engine.state == .won && highScores.celebratingNewBest {
+                    Text("NEW BEST!")
+                        .font(.system(size: 44, weight: .black, design: .rounded))
+                        .foregroundStyle(Color(red: 1.0, green: 0.85, blue: 0.30))
+                } else {
+                    Text(engine.state == .won ? "BOARD CLEARED" : "BOOM")
+                        .font(.system(size: 44, weight: .black, design: .rounded))
+                        .foregroundStyle(engine.state == .won ? .green : .red)
+                }
                 Text(engine.state == .won
                     ? "Cleared in \(timeText)"
                     : "Mine triggered. Better luck next sweep.")
                     .font(.title3)
                     .foregroundStyle(.white.opacity(0.9))
+
+                // High-score row — surfaced ONLY on win (per
+                // score-show-personal-best-on-game-over). Losses don't
+                // commit a score, so showing the best on a loss is just
+                // demoralizing chrome.
+                if engine.state == .won && highScores.bestScore > 0 {
+                    HStack(spacing: 6) {
+                        Image(systemName: "trophy.fill")
+                            .foregroundStyle(Color(red: 1.0, green: 0.85, blue: 0.30))
+                        Text("Best: \(HighScoreManager.formatNumber(highScores.bestScore))")
+                            .font(.system(size: 14, weight: .heavy, design: .rounded))
+                            .foregroundStyle(.white.opacity(0.85))
+                    }
+                }
+
                 Button {
                     newGame()
                 } label: {
@@ -80,6 +201,12 @@ struct ContentView: View {
             .padding(36)
             .background(Color.black.opacity(0.85))
             .clipShape(RoundedRectangle(cornerRadius: 18))
+            .shadow(
+                color: highScores.celebratingNewBest && engine.state == .won
+                    ? Color(red: 1.0, green: 0.85, blue: 0.30).opacity(0.5)
+                    : .black.opacity(0.5),
+                radius: 24
+            )
         }
     }
 
@@ -133,6 +260,15 @@ struct ContentView: View {
             Button("New Game") {
                 newGame()
             }
+
+            // Mute toggle — required by audio-always-mute-toggle wisdom rule.
+            Button {
+                sound.muted.toggle()
+                if !sound.muted { sound.play(.uiToggle, volume: 0.4) }
+            } label: {
+                Image(systemName: sound.muted ? "speaker.slash.fill" : "speaker.wave.2.fill")
+            }
+            .help(sound.muted ? "Unmute" : "Mute")
 
             Spacer()
 
@@ -254,6 +390,7 @@ struct ContentView: View {
     private func flag(_ point: PuzzlePoint) {
         selected = point
         engine.toggleFlag(at: point)
+        sound.play(.uiToggle, volume: 0.5)
         print("[MinesweeperExample] flag row=\(point.row) col=\(point.col) remaining=\(minesRemaining)")
     }
 
@@ -281,6 +418,10 @@ struct ContentView: View {
         selected = PuzzlePoint(row: 0, col: 0)
         elapsedSeconds = 0
         flagMode = false
+        gameEndAnnounced = false
+        lastObservedState = engine.state
+        lastObservedRevealedCount = 0
+        sound.play(.uiButtonTap, volume: 0.5)
         print("[MinesweeperExample] new game seed=\(seed)")
     }
 
