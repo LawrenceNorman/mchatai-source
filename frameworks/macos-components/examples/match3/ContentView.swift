@@ -120,6 +120,7 @@ struct ContentView: View {
     @State private var combo: Int = 1
     @State private var totalCleared: Int = 0
     @State private var status = "Drag a candy onto an adjacent candy."
+    @State private var victoryAnnounced = false
 
     /// Per-tile animation state. Drives squash/stretch + bulge/shrink phases
     /// per the 12 principles of animation (anticipation, squash-stretch,
@@ -173,6 +174,11 @@ struct ContentView: View {
     /// To adjust feel: switch to `.subtle` (calmer, productivity-flavored)
     /// or `.punchy` (arcade, kid-friendly). Or override individual knobs.
     private let intensity: AnimationIntensity = .standard
+
+    /// Sound effects. .standard preset; muted state persists in UserDefaults.
+    /// SFX use case: pop on 3-match, burst on 4-match, bomb on 5-match,
+    /// pitch-shifted cascade chord on chain-reactions, victory on target.
+    @ObservedObject private var sound = SoundEngine.shared
     private let hintTimer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     var body: some View {
@@ -605,8 +611,13 @@ struct ContentView: View {
         if !didSwap {
             status = "No match — try a different swap."
             moves += 1  // refund the bad move
+            sound.play(.uiError)
             return
         }
+
+        // SFX: a soft button-tap on every successful swap commit. Confirms
+        // the action without overshadowing the match-clear SFX that follows.
+        sound.play(.uiButtonTap, volume: 0.5)
 
         // Phase 2 + 3: stepwise cascade. Each clearMatches() + collapseAndRefill()
         // pair is its own SwiftUI render cycle — that's what gives SwiftUI
@@ -670,14 +681,24 @@ struct ContentView: View {
                 self.activeFlashes.append(FlashEffect(
                     kind: event.kind, center: center, symbol: event.symbol
                 ))
-                // Neighbor jiggle: 4-match shakes radius 2, 5-match shakes radius 3.
-                if event.kind == .four || event.kind == .five {
-                    // Neighbor jiggle removed — it read as "whole board
-                    // vibrates" no matter how tightly we scoped it. The
-                    // bulge-shrink pop + slide-down + landing squash already
-                    // sell the impact.
-                    _ = event
+                // SFX per match kind. Cascade chord: each follow-on cascade
+                // depth bumps pitch +2 semitones for the satisfying ascending
+                // arpeggio Candy Crush is famous for.
+                let pitchBump = event.cascadeDepth * 2
+                switch event.kind {
+                case .three:
+                    sound.play(.match3Pop, pitchSemitones: pitchBump)
+                case .four:
+                    sound.play(.match3Burst, pitchSemitones: pitchBump)
+                case .five:
+                    sound.play(.match3Bomb, pitchSemitones: pitchBump)
                 }
+                // Neighbor jiggle removed — it read as "whole board vibrates"
+                // no matter how tightly we scoped it.
+            }
+            // Extra cascade chord layer on chain reactions (depth >= 1).
+            if (previewEvents.first?.cascadeDepth ?? 0) >= 1 {
+                sound.play(.puzzleCascade, pitchSemitones: (previewEvents.first?.cascadeDepth ?? 1) * 2)
             }
 
             // STEP D: FOLLOW-THROUGH — shrink to 0 + fade (100ms ease-in).
@@ -752,6 +773,14 @@ struct ContentView: View {
                     self.activeFlashes.removeAll { flashIDsToRemove.contains($0.id) }
                 }
             }
+        }
+
+        // Win SFX: fire once per game when score crosses targetScore.
+        // Tracked via @State `victoryAnnounced` so we don't replay every
+        // subsequent cascade if user keeps playing past the goal.
+        if !victoryAnnounced && engine.score >= targetScore {
+            victoryAnnounced = true
+            sound.play(.victory)
         }
 
         checkBoardHealth()
@@ -866,9 +895,11 @@ struct ContentView: View {
                 moves = 30
                 combo = 1
                 totalCleared = 0
+                victoryAnnounced = false
                 status = "Drag a candy onto an adjacent candy."
                 hintPair = nil
                 lastMoveAt = Date()
+                sound.play(.uiButtonTap)
             } label: {
                 Text("RESTART")
                     .font(.system(size: 14, weight: .heavy))
@@ -879,6 +910,22 @@ struct ContentView: View {
             .buttonStyle(.borderedProminent)
             .tint(Color(red: 0.40, green: 0.20, blue: 0.55))
 
+            // Mute toggle — wisdom rule audio-always-mute-toggle says any
+            // game with sound MUST expose a visible mute button. SF Symbol
+            // toggles between speaker.wave.2.fill and speaker.slash.fill.
+            Button {
+                sound.muted.toggle()
+                if !sound.muted { sound.play(.uiToggle) }  // confirm un-mute audibly
+            } label: {
+                Image(systemName: sound.muted ? "speaker.slash.fill" : "speaker.wave.2.fill")
+                    .font(.system(size: 16, weight: .bold))
+                    .frame(width: 36, height: 36)
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(Color(red: 0.40, green: 0.20, blue: 0.55))
+            .help(sound.muted ? "Unmute (M)" : "Mute (M)")
+            .keyboardShortcut("m", modifiers: [])
+
             Spacer()
             Text(status)
                 .font(.system(size: 13, weight: .semibold))
@@ -888,6 +935,7 @@ struct ContentView: View {
             Button {
                 hintPair = findPossibleSwap()
                 withAnimation(.easeInOut(duration: 0.5)) { hintPulse.toggle() }
+                sound.play(.uiButtonTap, volume: 0.5)
             } label: {
                 Text("HINT")
                     .font(.system(size: 14, weight: .heavy))

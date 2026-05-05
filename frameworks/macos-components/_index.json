@@ -1032,6 +1032,46 @@
         "Arcade games (punchy preset for action feedback)",
         "Any game with squash-stretch tile animations that needs to be re-tuned without hunting magic numbers"
       ]
+    },
+    {
+      "id": "effects.sound-engine",
+      "name": "SoundEngine",
+      "category": "effects",
+      "path": "components/effects/SoundEngine.swift",
+      "exports": [
+        "SoundEngine",
+        "SFX",
+        "Music",
+        "SoundIntensity"
+      ],
+      "status": "ready",
+      "summary": "Game-flavor sound effects engine. Loads CC0-licensed Kenney SFX bundled in `assets/sfx/`. Pooled AVAudioPlayer instances for low-latency overlap, debounced playback, music fade in/out, persistent UserDefaults mute, intensity preset matching AnimationIntensity. SFX referenced by semantic enum case (SFX.match3Pop, SFX.arcadeExplosion, etc.) so the underlying audio file can change without touching every game.",
+      "tags": [
+        "sound",
+        "audio",
+        "sfx",
+        "music",
+        "effects",
+        "kenney",
+        "cc0",
+        "macos",
+        "avfoundation"
+      ],
+      "contracts": {
+        "input": "Game view declares `@ObservedObject private var sound = SoundEngine.shared`. Plays via `sound.play(.match3Pop)`, `sound.play(.match3Pop, pitchSemitones: 4)`, `sound.loop(.puzzleAmbient, fadeIn: 1.5)`, `sound.stopMusic(fadeOut: 1.0)`. Mute toggle: `sound.muted.toggle()`.",
+        "output": "Asynchronously plays via AVAudioPlayer pool. Honors mute, debounce window, intensity volume scaling. Music persists across UI updates; SFX are one-shot."
+      },
+      "useCases": [
+        "Match-3 (pop on 3-match, burst on 4-match, bomb on 5-match, ascending pitch on cascades)",
+        "Arcade games (laser/explosion/thruster/shield/power-up/game-over)",
+        "Card games (slide/shove/dice-throw/chip-place)",
+        "Puzzle games (UI button-tap, error, toggle, victory chime)",
+        "ANY game needing sound. Productivity/utility apps OPT OUT \u2014 don't import SoundEngine."
+      ],
+      "assetDependencies": [
+        "frameworks/macos-components/assets/sfx/*.m4a (25 CC0 SFX from Kenney UI/Casino/SciFi/Impact packs)",
+        "App must copy needed SFX into Contents/Resources/SFX/ at build time. SwiftPM: declare `resources: [.copy(\"SFX\")]` on the target."
+      ]
     }
   ],
   "compositionRecipes": [
@@ -1139,7 +1179,8 @@
       "starterComponents": [
         "gridpuzzle.mastermind",
         "gridpuzzle.mastermind-smoke-tests",
-        "effects.animation-intensity"
+        "effects.animation-intensity",
+        "effects.sound-engine"
       ],
       "assemblyNotes": [
         "Use MastermindEngine for duplicate-safe scoring. Do not rewrite exact/color-only peg logic in ContentView.",
@@ -1209,7 +1250,8 @@
         "gridpuzzle.core",
         "gridpuzzle.match3",
         "gridpuzzle.match3-smoke-tests",
-        "effects.animation-intensity"
+        "effects.animation-intensity",
+        "effects.sound-engine"
       ],
       "assemblyNotes": [
         "Use Match3Engine for adjacent swaps, match detection, collapse, refill, cascades, and score.",
@@ -1430,7 +1472,8 @@
         "arcade.core",
         "gridpuzzle.core",
         "arcade.platformer",
-        "arcade.smoke-tests"
+        "arcade.smoke-tests",
+        "effects.sound-engine"
       ],
       "assemblyNotes": [
         "Use PlatformerEngine for movement, gravity, jumping, platform collision, coins, score, and loss state.",
@@ -1712,7 +1755,8 @@
       ],
       "starterComponents": [
         "arcade.spritekit-physics-helpers",
-        "effects.animation-intensity"
+        "effects.animation-intensity",
+        "effects.sound-engine"
       ],
       "assemblyNotes": [
         "MANDATORY: copy the canonical SpriteKitPhysicsHelpers.swift VERBATIM into Sources/<TargetName>/MChatAIComponents/SpriteKitPhysicsHelpers.swift (preserve the BEGIN/END markers). Then COMPOSE it from app-specific code by calling at least one of: SKPhysicsHelpers.makeCircularBody, SKPhysicsHelpers.makeRectangularBody, SKPhysicsHelpers.makeOvalBody, SKPhysicsHelpers.makeStaticBody, SKPhysicsHelpers.makeSceneBoundary, SKPhysicsHelpers.snapshot(of:), or reference SKArcadeCategory.<name> / SKPhysicsContactSnapshot. Copying without composing fails the Lego provenance gate.",
