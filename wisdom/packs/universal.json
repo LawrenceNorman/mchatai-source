@@ -355,6 +355,19 @@
         "miniApp",
         "webSPA"
       ]
+    },
+    {
+      "id": "u-029",
+      "rule": "Every game with a terminal phase (game-over / you-win / level-complete / mission-failed / bunker-overrun) MUST display a visible on-screen restart affordance. For Lego web-component artifacts, mount `ui/RestartOverlay` (path: `ui/RestartOverlay.js`, export: `RestartOverlay`) and call `overlay.show({ title, subtitle, buttonLabel, onRestart })` when the terminal phase is reached. For non-Lego artifacts, render a centered modal with a button ≥ 60px tall and ≥ 200px wide, labeled clearly ('Restart' / 'Play Again' / 'New Game' — NOT 'OK' or unlabeled), that fully resets game state when tapped. Keyboard support (Enter/Space) is required. Menu-bar shortcuts (Cmd+N, Ctrl+N) are a power-user nicety, NOT a substitute for the on-screen button.",
+      "why": "User feedback 2026-05-04 on Lunar Lander: 'There is no restart button for the game: That should be a fundamental wisdom rule to all games if we don't have that already.' Same pattern hit shipped Pong, BurgerTime, Joust, Tower Defense — they have menu shortcuts but lack a tappable on-screen affordance. This is the single most common 'great game but UX feels rough' complaint. Marker check `requiresRestartButton` enforces presence of the component import OR an inline restart-element with text matching `restart|play again|new game` that becomes visible during a terminal phase.",
+      "severity": "critical",
+      "appliesTo": "all",
+      "examples": [
+        "GOOD (Lego): import { RestartOverlay } from '../../ui/RestartOverlay.js'; const restart = new RestartOverlay({ host: '[data-app]', onRestart: () => game.reset() }); /* on game-over */ restart.show({ title: 'Game Over', subtitle: `Score: ${score}`, buttonLabel: 'Play Again' });",
+        "GOOD (non-Lego): a centered <div> overlay with backdrop blur and a single <button onclick='restart()'>Play Again</button> that's ≥60×200px, focusable, Enter-bindable.",
+        "BAD: rendering 'GAME OVER score=0' as static HUD text and waiting for the user to discover Cmd+N from the menu bar.",
+        "BAD: a tiny 24-pixel reset icon in the corner that's easy to miss mid-play."
+      ]
     }
   ]
 }

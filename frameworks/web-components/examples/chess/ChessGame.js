@@ -3,6 +3,8 @@ import { Board8x8 } from "../../entities/Board8x8.js";
 import { ChessRules } from "../../entities/ChessRules.js";
 import { AudioManager } from "../../resources/AudioManager.js";
 import { applySwatchVariables, getSwatchByID } from "../../resources/Swatches.js";
+import { RestartOverlay } from "../../ui/RestartOverlay.js";
+import { Leaderboard } from "../../ui/Leaderboard.js";
 
 const PIECES = {
   white: {
@@ -51,6 +53,9 @@ export class ChessGame {
     this.ai = options.ai || null;
     this.aiThinkDelay = typeof options.aiThinkDelay === "number" ? options.aiThinkDelay : 350;
     this._aiPending = false;
+    this.restartHostEl = chessTarget(options.restartHostTarget) || document.querySelector("[data-app]") || document.body;
+    this.rankCardHostEl = chessTarget(options.rankCardHostTarget);
+    this.restart = new RestartOverlay({ host: this.restartHostEl, onRestart: () => this.reset() });
 
     applySwatchVariables(document.documentElement, getSwatchByID("retro-neon"));
     this.bindControls();
@@ -92,10 +97,44 @@ export class ChessGame {
     this.moveCount = 0;
     this.capturedCount = 0;
     this._aiPending = false;
+    this.restart?.hide();
+    if (this.rankCardHostEl) this.rankCardHostEl.innerHTML = "";
     this.setMessage("White to move.");
     this.render();
     // If the AI plays White (human chose Black), kick off its first move.
     this._maybeScheduleAIMove();
+  }
+
+  _endGame({ result, winnerColor }) {
+    let title;
+    let subtitle;
+    let scoreDelta = 0;
+    if (result === "checkmate") {
+      const playerWon = winnerColor === this.humanColor;
+      title = playerWon ? "Checkmate — you win!" : "Checkmate — you lose";
+      subtitle = `${colorName(winnerColor)} wins in ${this.moveCount} moves.`;
+      if (playerWon) scoreDelta = 100 + Math.max(0, 60 - this.moveCount) * 3 + this.capturedCount * 8;
+    } else if (result === "stalemate") {
+      title = "Stalemate";
+      subtitle = `${this.moveCount} moves, no winner. Draw.`;
+      scoreDelta = 25;
+    } else {
+      title = "Game over";
+      subtitle = "";
+    }
+    this.restart?.show({ title, subtitle, buttonLabel: "Play Again" });
+    if (scoreDelta > 0 && this.rankCardHostEl) {
+      this.rankCardHostEl.innerHTML = "";
+      Leaderboard.submitFinal(scoreDelta, {
+        result,
+        winnerColor,
+        moves: this.moveCount,
+        captures: this.capturedCount,
+        opponent: "local-ai"
+      }).then((rank) => {
+        if (rank) Leaderboard.renderRankCard(this.rankCardHostEl, rank);
+      });
+    }
   }
 
   handleSquare(row, col) {
@@ -147,10 +186,12 @@ export class ChessGame {
       this.turns.setPhase("checkmate");
       this.setMessage(`Checkmate. ${colorName(currentColor)} wins.`);
       this.audio.beep({ freq: 520, slideTo: 920, duration: 0.18, type: "triangle" });
+      this._endGame({ result: "checkmate", winnerColor: currentColor });
     } else if (this.rules.isStalemate(this.board, nextColor)) {
       this.turns.setPhase("stalemate");
       this.setMessage("Stalemate.");
       this.audio.beep({ freq: 220, duration: 0.14, type: "sine" });
+      this._endGame({ result: "stalemate", winnerColor: null });
     } else {
       this.turns.nextTurn();
       const check = this.rules.isKingInCheck(this.board, nextColor) ? " Check." : "";

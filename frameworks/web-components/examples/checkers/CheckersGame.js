@@ -3,6 +3,8 @@ import { Board8x8 } from "../../entities/Board8x8.js";
 import { CheckersRules } from "../../entities/CheckersRules.js";
 import { AudioManager } from "../../resources/AudioManager.js";
 import { applySwatchVariables, getSwatchByID } from "../../resources/Swatches.js";
+import { RestartOverlay } from "../../ui/RestartOverlay.js";
+import { Leaderboard } from "../../ui/Leaderboard.js";
 
 function checkersTarget(target) {
   return typeof target === "string" ? document.querySelector(target) : target;
@@ -32,6 +34,9 @@ export class CheckersGame {
     this.ai = options.ai || null;
     this.aiThinkDelay = typeof options.aiThinkDelay === "number" ? options.aiThinkDelay : 350;
     this._aiPending = false;
+    this.restartHostEl = checkersTarget(options.restartHostTarget) || document.querySelector("[data-app]") || document.body;
+    this.rankCardHostEl = checkersTarget(options.rankCardHostTarget);
+    this.restart = new RestartOverlay({ host: this.restartHostEl, onRestart: () => this.reset() });
 
     applySwatchVariables(document.documentElement, getSwatchByID("retro-neon"));
     this.bindControls();
@@ -83,6 +88,8 @@ export class CheckersGame {
     this.moveCount = 0;
     this.capturedCount = 0;
     this._aiPending = false;
+    this.restart?.hide();
+    if (this.rankCardHostEl) this.rankCardHostEl.innerHTML = "";
     this.setMessage("Red to move.");
     this.render();
     this._maybeScheduleAIMove();
@@ -134,6 +141,7 @@ export class CheckersGame {
       this.turns.setPhase("gameover");
       this.setMessage(`${titleColor(currentColor)} wins.`);
       this.audio.beep({ freq: 520, slideTo: 880, duration: 0.18, type: "triangle" });
+      this._endGame(currentColor);
     } else {
       this.turns.nextTurn();
       this.setMessage(`${titleColor(nextColor)} to move.`);
@@ -141,6 +149,27 @@ export class CheckersGame {
     }
     this.render();
     this._maybeScheduleAIMove();
+  }
+
+  _endGame(winnerColor) {
+    const playerWon = winnerColor === this.humanColor;
+    const title = playerWon ? "You win!" : "You lose";
+    const subtitle = playerWon
+      ? `${titleColor(winnerColor)} won the board in ${this.moveCount} moves.`
+      : `${titleColor(winnerColor)} took the board. Try again?`;
+    this.restart?.show({ title, subtitle, buttonLabel: "Play Again" });
+    if (playerWon && this.rankCardHostEl) {
+      this.rankCardHostEl.innerHTML = "";
+      const score = 100 + this.capturedCount * 25 + Math.max(0, 60 - this.moveCount) * 2;
+      Leaderboard.submitFinal(score, {
+        result: "win",
+        moves: this.moveCount,
+        captures: this.capturedCount,
+        opponent: "local-ai"
+      }).then((rank) => {
+        if (rank) Leaderboard.renderRankCard(this.rankCardHostEl, rank);
+      });
+    }
   }
 
   _maybeScheduleAIMove() {
