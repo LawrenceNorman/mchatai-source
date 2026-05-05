@@ -76,6 +76,17 @@ struct GridAdventureEngine: Codable, Equatable, Sendable {
     /// ghost collision.
     private(set) var heroSpawn: PuzzlePoint?
 
+    /// When true (default), `loseLife()` immediately respawns the hero
+    /// at heroSpawn. When false, the engine just decrements lives and
+    /// LEAVES THE HERO ON THE COLLISION TILE — the View is responsible
+    /// for displaying a death animation and then calling
+    /// `respawnHeroToStart()` once the pause completes. Filed 2026-05-05
+    /// from user feedback that the death animation looked like Pac was
+    /// "nearby but not in contact" with the ghost — root cause was that
+    /// the engine teleported him away mid-tick, so the View's freeze-at-
+    /// previous-position drew him 1 tile away from the actual contact.
+    public var deferRespawn: Bool = false
+
     init(map: PuzzleGrid<AdventureTile>, actors: [AdventureActor], heroSpawn: PuzzlePoint? = nil) {
         self.map = map
         self.actors = actors
@@ -477,9 +488,19 @@ struct GridAdventureEngine: Codable, Equatable, Sendable {
         lives -= 1
         if lives <= 0 {
             phase = .lost
-        } else {
+        } else if !deferRespawn {
             respawnHero()
         }
+        // If deferRespawn is true, the View runs a death animation while
+        // the hero stays on the collision tile, then calls
+        // respawnHeroToStart() to teleport him to spawn after the pause.
+    }
+
+    /// Public entry point for the View-controlled respawn flow. Mirrors
+    /// the private respawnHero() but is callable externally so death-
+    /// animation code can trigger respawn at the right moment.
+    public mutating func respawnHeroToStart() {
+        respawnHero()
     }
 
     private mutating func respawnHero() {
