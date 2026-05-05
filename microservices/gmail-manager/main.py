@@ -110,15 +110,73 @@ def run_gws(args: List[str], timeout: int = 30) -> Any:
 
 # ── Endpoints ──
 
+async def _fetch_message_metadata(message_id: str) -> Dict[str, Any]:
+    """Per-message follow-up call that returns Gmail's `snippet`, `labelIds`,
+    `threadId`. The bulk `+triage` endpoint omits those fields, but the AI
+    Inbox UX is unreadable without snippet previews and the triage logic
+    needs labels to classify. Cheaper than fetching full bodies (METADATA
+    format skips the MIME parts).
+    """
+    try:
+        rc, stdout, _ = await run_gws_raw_async(
+            [
+                "gmail", "users", "messages", "get",
+                "--params", json.dumps({
+                    "userId": "me",
+                    "id": message_id,
+                    "format": "METADATA",
+                    "metadataHeaders": ["Subject", "From", "Date"],
+                }),
+            ],
+            timeout=15,
+        )
+        if rc != 0 or not stdout:
+            return {}
+        parsed = json.loads(stdout)
+        return {
+            "snippet": parsed.get("snippet", "") or "",
+            "labelIds": parsed.get("labelIds", []) or [],
+            "threadId": parsed.get("threadId", message_id),
+            "internalDate": parsed.get("internalDate"),
+        }
+    except (json.JSONDecodeError, Exception):
+        return {}
+
+
 @router.get("/emails/unread", response_model=EmailsOutput)
 async def fetch_unread(max_results: int = 15):
-    """Fetch unread emails via gws gmail +triage."""
+    """Fetch unread emails via `gws gmail +triage`, then parallel-fetch
+    METADATA per message so each row has a snippet + labels for the UI.
+
+    Total calls: 1 list + N metadata. asyncio.gather runs them concurrently
+    so 15 messages take ~1 round trip's worth of wallclock, not 15.
+    """
     data = run_gws(["gmail", "+triage", "--max", str(max_results)])
+
     if isinstance(data, list):
-        return EmailsOutput(emails=data)
-    if isinstance(data, dict) and "messages" in data:
-        return EmailsOutput(emails=data["messages"])
-    return EmailsOutput(emails=[data] if data else [])
+        emails = data
+    elif isinstance(data, dict) and "messages" in data:
+        emails = data["messages"]
+    elif data:
+        emails = [data]
+    else:
+        emails = []
+
+    # Enrich each email with snippet + labelIds + threadId.
+    ids = [e.get("id") for e in emails if isinstance(e, dict) and e.get("id")]
+    if ids:
+        metas = await asyncio.gather(*(_fetch_message_metadata(i) for i in ids))
+        meta_by_id = dict(zip(ids, metas))
+        for email in emails:
+            if not isinstance(email, dict):
+                continue
+            extra = meta_by_id.get(email.get("id")) or {}
+            for k, v in extra.items():
+                # Don't clobber existing fields if +triage already set them
+                # (it doesn't today, but cheap insurance for forward-compat).
+                email.setdefault(k, v)
+
+    return EmailsOutput(emails=emails)
 
 
 @router.get("/emails/search", response_model=EmailsOutput)
@@ -189,6 +247,31 @@ async def auth_status():
             "OAuth client not configured. Run `gws auth setup` (needs gcloud) or "
             "save a client_secret.json to ~/.config/gws/."
         )
+
+    # gws v0.22's `auth status` doesn't include the user's email — only the
+    # storage backend state. To answer "which inbox am I connected to?" we
+    # call `gmail.users.getProfile(userId=me)` which is the cheapest
+    # authoritative source. Skipping when not authenticated avoids a wasted
+    # call that would error with "no credentials".
+    if authenticated and not account:
+        try:
+            rc2, out2, _ = await run_gws_raw_async(
+                [
+                    "gmail", "users", "getProfile",
+                    "--params", json.dumps({"userId": "me"}),
+                ],
+                timeout=10,
+            )
+            if rc2 == 0 and out2:
+                try:
+                    profile = json.loads(out2)
+                    account = profile.get("emailAddress") or account
+                except json.JSONDecodeError:
+                    pass
+        except Exception:
+            # account stays None — UI will fall back to "Connected" without
+            # an email rather than fail the whole status call.
+            pass
 
     return AuthStatus(
         gws_installed=True,

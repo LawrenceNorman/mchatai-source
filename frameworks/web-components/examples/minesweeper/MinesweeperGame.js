@@ -2,6 +2,8 @@ import { TurnBasedManager } from "../../core/TurnBasedManager.js";
 import { GridBoard } from "../../entities/GridBoard.js";
 import { RevealLogic } from "../../entities/RevealLogic.js";
 import { ScoreBoard } from "../../ui/ScoreBoard.js";
+import { RestartOverlay } from "../../ui/RestartOverlay.js";
+import { Leaderboard } from "../../ui/Leaderboard.js";
 import { getSwatchByID, applySwatchVariables } from "../../resources/Swatches.js";
 import { AudioManager } from "../../resources/AudioManager.js";
 
@@ -32,7 +34,12 @@ export class MinesweeperGame {
     this.modeElement = document.querySelector("#modeLabel");
     this.flagModeButton = document.querySelector("#flagModeButton");
     this.newGameButton = document.querySelector("#newGameButton");
+    this.rankCardHostEl = document.querySelector("#rankCard");
     applySwatchVariables(document.documentElement, getSwatchByID("retro-neon"));
+    this.restart = new RestartOverlay({
+      host: document.querySelector("[data-app]") || document.body,
+      onRestart: () => this.reset()
+    });
   }
 
   start() {
@@ -62,6 +69,8 @@ export class MinesweeperGame {
     this.gameOver = false;
     this.turns.reset({ phase: "playing" });
     this.scoreboard.reset(0);
+    this.restart?.hide();
+    if (this.rankCardHostEl) this.rankCardHostEl.innerHTML = "";
     this.setMessage("Reveal a cell to start. Right-click or use Flag Mode to mark mines.");
     this.renderBoard();
     this.renderStatus();
@@ -173,9 +182,31 @@ export class MinesweeperGame {
       this.audio.beep({ freq: 760, slideTo: 1040, duration: 0.16 });
       this.setMessage(`Board cleared in ${this.elapsed}s. New field ready when you are.`);
       this.turns.setPhase("won");
+      this.restart?.show({
+        title: "Field cleared!",
+        subtitle: `Cleared in ${this.elapsed}s with ${this.mineCount} mines avoided.`,
+        buttonLabel: "New Field"
+      });
+      if (this.rankCardHostEl) {
+        this.rankCardHostEl.innerHTML = "";
+        Leaderboard.submitFinal(this.scoreboard.score, {
+          result: "win",
+          time_seconds: this.elapsed,
+          mines: this.mineCount,
+          rows: this.rows,
+          cols: this.cols
+        }).then((rank) => {
+          if (rank) Leaderboard.renderRankCard(this.rankCardHostEl, rank);
+        });
+      }
     } else {
       this.setMessage("Mine hit. Study the field and start a new game.");
       this.turns.setPhase("lost");
+      this.restart?.show({
+        title: "Mine!",
+        subtitle: "The field is lost. Tap New Field to try again.",
+        buttonLabel: "New Field"
+      });
     }
     this.renderBoard();
     this.renderStatus();

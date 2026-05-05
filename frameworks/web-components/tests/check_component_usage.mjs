@@ -178,7 +178,14 @@ if (missingCanonicalSources.length > 0) {
 // opponent logic (a function name like `selectComputerMove`, `cpuTurn`,
 // `opponentMove`, etc.). Without this gate, the LLM can ship a 2-player game
 // where the human plays both sides — see wisdom rule u-010 / bg-005.
-const recipes = Array.isArray(catalog.recipes) ? catalog.recipes : [];
+//
+// The catalog uses `compositionRecipes` (legacy key), or `recipes` if
+// re-indexed. We check both so future renames don't silently disable the gate.
+const recipes = Array.isArray(catalog.compositionRecipes)
+  ? catalog.compositionRecipes
+  : Array.isArray(catalog.recipes)
+    ? catalog.recipes
+    : [];
 const recipeMeta = recipes.find((r) => r && r.id === marker.recipe);
 if (recipeMeta && recipeMeta.requiresAIOpponent === true) {
   const expected = Array.isArray(recipeMeta.aiOpponentComponents) && recipeMeta.aiOpponentComponents.length > 0
@@ -192,7 +199,11 @@ if (recipeMeta && recipeMeta.requiresAIOpponent === true) {
     /\bcpuPlayTurn\s*\(/,
     /\baiMove\s*\(/,
     /\bplayAITurn\s*\(/,
-    /\bcomputerMove\s*\(/
+    /\bcomputerMove\s*\(/,
+    // Inline AI classes — match any `class FooAI` definition or `new FooAI(`
+    // construction. Catches example-local AI implementations not in the catalog.
+    /\bclass\s+\w*AI\b/,
+    /\bnew\s+\w+AI\s*\(/
   ];
   const hasInline = inlineMarkers.some((re) => re.test(sourceText));
   if (!hasComponent && !hasInline) {
@@ -207,6 +218,58 @@ if (recipeMeta && recipeMeta.requiresAIOpponent === true) {
     );
   }
 }
+
+// Restart-button presence check. Opt-in per recipe: only enforced when a
+// recipe explicitly sets `requiresRestartButton: true`. As recipes are wired
+// to mount `ui.restart-overlay` (or carry inline restart UI), flip the flag
+// to enable the check. See wisdom rule u-029 + bg-restart-button.
+if (recipeMeta && recipeMeta.requiresRestartButton === true) {
+  const hasComponent = marker.components.includes("ui.restart-overlay");
+  const inlineRestartPatterns = [
+    /\bRestartOverlay\b/,
+    /\bonRestart\b/,
+    /textContent\s*=\s*["'`](?:Play Again|Restart|New Game|Try Again)/i,
+    /innerHTML\s*=[^;]*(?:Play Again|Restart|New Game|Try Again)/i,
+    /<button[^>]*>(?:\s|<[^>]+>)*(?:Play Again|Restart|New Game|Try Again)/i,
+    /\bplayAgain\b/,
+    /\brestartGame\b/,
+    /\bresetGame\b/,
+    /\bnewGame\s*\(/
+  ];
+  const hasInline = inlineRestartPatterns.some((re) => re.test(sourceText));
+  if (!hasComponent && !hasInline) {
+    fail(
+      "Recipe with a terminal phase requires a visible restart affordance, but neither ui.restart-overlay nor an inline restart button was found. See wisdom rules u-029 / bg-restart-button / ag-restart-button.",
+      {
+        recipe: marker.recipe,
+        markerComponents: marker.components,
+        inlinePatterns: inlineRestartPatterns.map((re) => re.source)
+      }
+    );
+  }
+}
+
+// Leaderboard-submit info check. Recipes flagged `requiresLeaderboardSubmit: true`
+// SHOULD wire `window.mChatAI.leaderboard.submit(...)` somewhere — but this is
+// info-level only (warn, don't fail) since some game variants may legitimately
+// skip it. See wisdom rules bg-006 / ag-010 / u-018.
+const leaderboardWarnings = [];
+if (recipeMeta && recipeMeta.requiresLeaderboardSubmit === true) {
+  const wiresLeaderboard =
+    /window\s*\.\s*mChatAI\s*\.\s*leaderboard|mChatAI\?\.\s*leaderboard|Leaderboard\s*\.\s*submitFinal|submitAndShowRank/.test(
+      sourceText
+    );
+  if (!wiresLeaderboard) {
+    leaderboardWarnings.push(
+      "Recipe is flagged requiresLeaderboardSubmit but no leaderboard.submit() call was found. Recommend importing ui/Leaderboard or calling window.mChatAI?.leaderboard?.submit on game-over."
+    );
+  }
+}
+
+// Genre-invariants info check. Recipes flagged `requiresGenreInvariants: <id>`
+// (e.g. "ag-pacman-invariants") report which wisdom checklist applies. We don't
+// parse the rule body; we just surface the hint so QA agents can manually verify.
+const genreInvariantNote = recipeMeta?.requiresGenreInvariants || null;
 
 // User-visible jargon scan. Architecture terms must not leak into DOM text.
 // We strip <script>, <style>, and tag attributes, then case-insensitive search the remaining text.
@@ -252,7 +315,10 @@ console.log(
       mode: marker.mode || "unspecified",
       componentCount: marker.components.length,
       components: marker.components,
-      jargonScan: "clean"
+      jargonScan: "clean",
+      restartCheck: recipeMeta?.requiresRestartButton === true ? "passed" : "skipped",
+      leaderboardWarnings,
+      genreInvariantNote
     },
     null,
     2
