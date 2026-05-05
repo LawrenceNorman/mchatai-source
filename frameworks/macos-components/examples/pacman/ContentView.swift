@@ -33,15 +33,45 @@ struct ContentView: View {
     @State private var showGameOver = false
     @State private var gameOverAnnounced = false
 
-    /// Logic-tick rate. The ENGINE steps once per tickInterval (a tile-
-    /// step happens here). The RENDER runs at 60fps via TimelineView
-    /// and INTERPOLATES actor positions between their previous tile and
-    /// current tile across the tick interval — so motion is smooth
-    /// even though the engine is discrete-tile.
-    /// 0.18s = ~5.5 tiles/sec is the original arcade Pacman feel — slow
-    /// enough to be playable, fast enough to feel alive.
-    private let tickInterval: Double = 0.18
-    private let timer = Timer.publish(every: 0.18, on: .main, in: .common).autoconnect()
+    /// Alternates per pellet so consecutive pellet-pop SFX ring at
+    /// different pitches — produces the iconic "wakka-wakka" alternation
+    /// instead of a single repeated tone. Without this, eating a row of
+    /// pellets sounds like a stuck robot. Filed 2026-05-05 from user
+    /// feedback "when I eat the pill the music is a bit annoying."
+    @State private var pelletParity = false
+
+    /// Logic-tick interval bounds. Game starts SLOW (0.24s ≈ 4.2 tiles/sec)
+    /// to give the player time to learn the maze, and gradually speeds up
+    /// to a max of 0.13s (~7.7 tiles/sec) over ~45 seconds on the level.
+    /// This produces "gradually increasing pressure" — the canonical
+    /// arcade pacing without dumping max difficulty on the first second.
+    /// Filed 2026-05-05 from user feedback that v4's flat 0.18s was
+    /// "still kind of too fast" at the very start.
+    private let tickIntervalStart: Double = 0.24
+    private let tickIntervalEnd: Double = 0.13
+    /// Seconds of play (on the current level) over which the tick interval
+    /// linearly interpolates from start → end. After this, the tick stays
+    /// at end (max speed).
+    private let levelSpeedRampSeconds: Double = 45.0
+    /// Wall-clock time when the current level started (re-stamped on level
+    /// transitions and resets). Drives the ramp.
+    @State private var levelStartTime: Date = .now
+
+    /// Render-time-tick driver. Fixed at 60Hz refresh; the engine reads
+    /// `currentTickInterval` to decide when to step (variable cadence).
+    private let timer = Timer.publish(every: 1.0 / 60.0, on: .main, in: .common).autoconnect()
+    /// Wall-clock time of the most-recent ENGINE tick (not render tick).
+    /// Set when tick() runs; the `onReceive(timer)` handler checks
+    /// `now - lastEngineTick >= currentTickInterval` before stepping.
+    @State private var lastEngineTick: Date = .now
+
+    /// Currently-effective tick interval, ramping from start → end based
+    /// on time elapsed on this level. Read on every render-frame check.
+    private var currentTickInterval: Double {
+        let elapsed = Date().timeIntervalSince(levelStartTime)
+        let t = max(0, min(1, elapsed / levelSpeedRampSeconds))
+        return tickIntervalStart + (tickIntervalEnd - tickIntervalStart) * t
+    }
     private let cellSize: CGFloat = 38
     private let cellGap: CGFloat = 1
 
@@ -98,7 +128,12 @@ struct ContentView: View {
         .frame(minWidth: 1040, minHeight: 640)
         .background(Color(red: 0.02, green: 0.02, blue: 0.07))
         .onReceive(timer) { _ in
-            tick()
+            // Render-tick fires at 60Hz. Only step the ENGINE if enough
+            // wall-clock time has elapsed since the last engine tick to
+            // satisfy the (level-progressive) currentTickInterval.
+            if Date().timeIntervalSince(lastEngineTick) >= currentTickInterval {
+                tick()
+            }
         }
     }
 
@@ -117,7 +152,9 @@ struct ContentView: View {
         }
         previousActorPositions = snapshot
         previousHeroDirection = lastHeroDirection
-        lastTickTime = .now
+        let now = Date()
+        lastTickTime = now
+        lastEngineTick = now
 
         // Decide the hero's next move. Try the queued direction first; if
         // it leads into a wall, continue in the prior direction. If THAT
@@ -192,9 +229,10 @@ struct ContentView: View {
             Canvas { context, size in
                 // Visual interpolation parameter. Clamped to [0,1] so we
                 // never overshoot when frames render slightly after the
-                // next tick is already due.
+                // next tick is already due. Uses currentTickInterval so
+                // the visual easing stays in sync as the level speeds up.
                 let elapsed = timeline.date.timeIntervalSince(lastTickTime)
-                let t = max(0, min(1, elapsed / tickInterval))
+                let t = max(0, min(1, elapsed / currentTickInterval))
                 drawMaze(context: &context)
                 drawActors(context: &context, t: t)
             }
@@ -268,14 +306,7 @@ struct ContentView: View {
             case .enemy:
                 drawGhost(context: &context, actor: actor, t: t)
             case .fruit:
-                let center = visualCenter(for: actor.position, t: 1, previous: actor.position)
-                let resolved = context.resolve(Image(systemName: "applelogo"))
-                context.draw(resolved, in: CGRect(
-                    x: center.x - cellSize * 0.3,
-                    y: center.y - cellSize * 0.3,
-                    width: cellSize * 0.6,
-                    height: cellSize * 0.6
-                ))
+                drawFruit(context: &context, actor: actor)
             default: break
             }
         }
@@ -329,42 +360,57 @@ struct ContentView: View {
     private func drawGhost(context: inout GraphicsContext, actor: AdventureActor, t: Double) {
         let prevPos = previousActorPositions[actor.id] ?? actor.position
         let center = visualCenter(for: actor.position, t: t, previous: prevPos)
-        let radius = cellSize * 0.36
+        // Ghost geometry — fit cleanly inside one cell. ghostSize is the
+        // FULL height (and width); previously the bottom-bumps extended
+        // BELOW the dome's circle, making total height larger than a tile,
+        // which made ghosts look too tall and overlap walls. Now the
+        // body fits inside a `ghostSize × ghostSize` square centered on
+        // the cell.
+        let ghostSize = cellSize * 0.72
+        let halfW = ghostSize / 2
+        let domeRadius = halfW                        // top dome = full half-width
+        let topY = center.y - halfW                   // top of dome
+        let baseY = center.y + halfW * 0.55           // where bumps START curving
+        let bottomY = center.y + halfW                // furthest the bumps drop to
+
         let isFrightened = actor.frightenedTicks > 0
         let bodyColor = isFrightened ? Color.blue.opacity(0.85) : ghostColor(actor)
 
-        // Ghost silhouette: dome on top + 3 wave bumps on bottom.
+        // Silhouette: dome on top, 3 wave bumps along the bottom. Total
+        // bounding box = ghostSize × ghostSize.
         var body = Path()
-        let top = CGPoint(x: center.x, y: center.y - radius)
-        body.move(to: CGPoint(x: center.x - radius, y: center.y))
+        body.move(to: CGPoint(x: center.x - halfW, y: center.y))
         body.addArc(
-            center: top,
-            radius: radius,
+            center: CGPoint(x: center.x, y: center.y),
+            radius: domeRadius,
             startAngle: .degrees(180),
             endAngle: .degrees(360),
             clockwise: false
         )
-        let bottom = center.y + radius * 0.85
-        body.addLine(to: CGPoint(x: center.x + radius, y: bottom))
-        // 3 wave bumps along the bottom edge.
-        let bumpWidth = (radius * 2) / 3
+        body.addLine(to: CGPoint(x: center.x + halfW, y: baseY))
+        // 3 wave bumps along the bottom — alternate between baseY (peaks)
+        // and bottomY (valleys) for the iconic ghost-skirt silhouette.
+        let bumpWidth = ghostSize / 3
         for i in 0..<3 {
-            let baseX = center.x + radius - CGFloat(i) * bumpWidth
+            let baseX = center.x + halfW - CGFloat(i) * bumpWidth
             let midX = baseX - bumpWidth / 2
             let endX = baseX - bumpWidth
+            // Quad-curve dipping down to bottomY at midpoint, returning to baseY.
             body.addQuadCurve(
-                to: CGPoint(x: endX, y: bottom),
-                control: CGPoint(x: midX, y: bottom + radius * 0.25)
+                to: CGPoint(x: endX, y: baseY),
+                control: CGPoint(x: midX, y: bottomY)
             )
         }
+        body.addLine(to: CGPoint(x: center.x - halfW, y: center.y))
         body.closeSubpath()
         context.fill(body, with: .color(bodyColor))
 
         // Eyes: white circles + black pupils. Pupil offset signals the
-        // direction the ghost is "looking" (= traveling).
-        let eyeR: CGFloat = radius * 0.22
-        let eyeOffsetX: CGFloat = radius * 0.32
-        let eyeY = center.y - radius * 0.18
+        // ghost's travel direction. Sized relative to ghostSize so they
+        // scale with the ghost.
+        let eyeR = ghostSize * 0.11
+        let eyeOffsetX = ghostSize * 0.18
+        let eyeY = center.y - ghostSize * 0.08
         let leftEye = CGPoint(x: center.x - eyeOffsetX, y: eyeY)
         let rightEye = CGPoint(x: center.x + eyeOffsetX, y: eyeY)
         for ec in [leftEye, rightEye] {
@@ -385,6 +431,51 @@ struct ContentView: View {
             )
             context.fill(Path(ellipseIn: pupilRect), with: .color(.black))
         }
+    }
+
+    /// Draw the bonus fruit as a classic Pac-Man cherry: two red circles
+    /// joined by a green stem. Replaces the SF Symbol applelogo, which
+    /// rendered in dark-on-dark tint on the blue maze background — user
+    /// reported it was invisible. This vector cherry stays bright red
+    /// with a clear contrast against the floor.
+    private func drawFruit(context: inout GraphicsContext, actor: AdventureActor) {
+        let center = visualCenter(for: actor.position, t: 1, previous: actor.position)
+        let cherryR = cellSize * 0.18
+        // Two cherry bodies, side by side.
+        let leftCenter = CGPoint(x: center.x - cherryR * 0.7, y: center.y + cherryR * 0.55)
+        let rightCenter = CGPoint(x: center.x + cherryR * 0.7, y: center.y + cherryR * 0.55)
+        for c in [leftCenter, rightCenter] {
+            let rect = CGRect(x: c.x - cherryR, y: c.y - cherryR, width: cherryR * 2, height: cherryR * 2)
+            // Body fill + a glossy highlight.
+            context.fill(Path(ellipseIn: rect), with: .color(Color(red: 0.95, green: 0.20, blue: 0.20)))
+            let highlightR = cherryR * 0.35
+            let hRect = CGRect(
+                x: c.x - cherryR * 0.55,
+                y: c.y - cherryR * 0.55,
+                width: highlightR * 2,
+                height: highlightR * 2
+            )
+            context.fill(Path(ellipseIn: hRect), with: .color(Color.white.opacity(0.55)))
+        }
+        // Stems — two diagonal green lines meeting at a point above.
+        let stemTop = CGPoint(x: center.x, y: center.y - cherryR * 1.0)
+        var stems = Path()
+        stems.move(to: leftCenter); stems.addLine(to: stemTop)
+        stems.move(to: rightCenter); stems.addLine(to: stemTop)
+        context.stroke(stems, with: .color(Color(red: 0.30, green: 0.70, blue: 0.25)), lineWidth: 2.5)
+        // Tiny leaf on the stem
+        var leaf = Path()
+        leaf.move(to: stemTop)
+        leaf.addQuadCurve(
+            to: CGPoint(x: center.x + cherryR * 0.6, y: center.y - cherryR * 1.4),
+            control: CGPoint(x: center.x + cherryR * 0.5, y: center.y - cherryR * 1.0)
+        )
+        leaf.addQuadCurve(
+            to: stemTop,
+            control: CGPoint(x: center.x + cherryR * 0.2, y: center.y - cherryR * 1.5)
+        )
+        leaf.closeSubpath()
+        context.fill(leaf, with: .color(Color(red: 0.30, green: 0.70, blue: 0.25)))
     }
 
     private func directionAngle(_ dir: GridDirection) -> Double {
@@ -633,7 +724,15 @@ struct ContentView: View {
             } else if scoreDelta >= 50 {
                 sound.play(.arcadePowerUp, volume: 0.5)
             } else if scoreDelta >= 10 {
-                sound.play(.match3Pop, volume: 0.35)
+                // Pellet munch — quiet + alternating pitch (Pacman's
+                // classic "wakka-wakka" feel comes from alternating two
+                // notes, not a single repeated tone). pelletParity flips
+                // every tick so consecutive pellets ring at different
+                // pitches. Volume kept very low (0.18) so the constant
+                // pellet stream isn't fatiguing — user feedback v4 said
+                // "when I eat the pill the music is a bit annoying."
+                sound.play(.match3Pop, volume: 0.18, pitchSemitones: pelletParity ? 0 : -3)
+                pelletParity.toggle()
             }
         }
 
@@ -762,6 +861,9 @@ struct ContentView: View {
         gameOverAnnounced = false
         pendingDirection = nil
         lastHeroDirection = .left
+        levelStartTime = .now      // restart the level-speed ramp
+        lastEngineTick = .now
+        lastTickTime = .now
         status = "Eat pellets and dodge ghosts."
         levels.reset()  // explicit reset → drop to L1
         sound.play(.uiButtonTap, volume: 0.5)
@@ -788,6 +890,12 @@ struct ContentView: View {
             // After full game-over: also drop level back to 1
             levels.reset()
         }
+        // Restart the level-speed ramp on every transition.
+        levelStartTime = .now
+        lastEngineTick = .now
+        lastTickTime = .now
+        pendingDirection = nil
+        lastHeroDirection = .left
         status = levels.isBossLevel
             ? "Boss ghost on the loose!"
             : "Level \(levels.currentLevel) — eat all pellets."
