@@ -369,65 +369,79 @@ struct GridAdventureEngine: Codable, Equatable, Sendable {
         return pacmanArcadeMap()
     }
 
-    static func pacmanArcadeMap() -> GridAdventureEngine {
-        // 17 cols x 13 rows arcade-style maze. '#' wall, '.' floor.
-        // Designed so every floor cell is reachable: outer ring corridor, two
-        // vertical mid-passages keep middle band connected to top/bottom rows.
-        // Center has a 3-wide ghost pen with one opening up + one opening down.
-        let layout: [String] = [
-            "#################",
-            "#...............#",
-            "#.##.###.###.##.#",
-            "#.##.###.###.##.#",
-            "#...............#",
-            "#.##.#.###.#.##.#",
-            "#....#..#..#....#",
-            "#.##.#.###.#.##.#",
-            "#...............#",
-            "#.##.###.###.##.#",
-            "#.##.###.###.##.#",
-            "#...............#",
-            "#################"
-        ]
+    /// Pick a maze layout based on the current level. Cycles through 5
+    /// distinct 17×13 layouts (level 1-5), then repeats with the same
+    /// rotation for higher levels. Generators that want a specific maze
+    /// can call the named factory directly.
+    static func pacmanMapForLevel(_ level: Int) -> GridAdventureEngine {
+        let n = max(1, level)
+        let idx = ((n - 1) % 5) + 1
+        switch idx {
+        case 1: return pacmanArcadeMap()
+        case 2: return pacmanLevel2Map()
+        case 3: return pacmanLevel3Map()
+        case 4: return pacmanLevel4Map()
+        default: return pacmanLevel5Map()
+        }
+    }
+
+    /// Shared builder for Pacman-style mazes. Layout characters:
+    ///   '#' — wall
+    ///   '.' — floor + pellet
+    ///   'o' — floor + power pellet
+    ///   ' ' (space) — floor, NO pellet (use for pen interior + paths)
+    ///   'H' — hero spawn (also floor, no pellet at this tile)
+    ///   'G' — ghost spawn (also floor, no pellet)
+    ///   'F' — fruit spawn (also floor, no pellet)
+    /// All layouts must be 17×13 (constant cell-size in the View).
+    /// 4 ghost spawns (G) are required; if more than 4 exist, only the
+    /// first 4 are used (with personalities chaser/ambusher/patrol/random).
+    private static func buildPacmanEngine(_ layout: [String]) -> GridAdventureEngine {
         let rows = layout.count
         let columns = layout[0].count
         var grid = PuzzleGrid(rows: rows, columns: columns, fill: AdventureTile.floor)
+        var heroStart: PuzzlePoint = PuzzlePoint(row: rows - 2, col: columns / 2)
+        var ghostStarts: [PuzzlePoint] = []
+        var powerPelletPoints: Set<PuzzlePoint> = []
+        var fruitPoint: PuzzlePoint? = nil
+        var nonPelletFloors: Set<PuzzlePoint> = []  // floors that should NOT spawn a pellet
+
         for r in 0..<rows {
             let chars = Array(layout[r])
-            for c in 0..<columns where chars[c] == "#" {
-                grid[PuzzlePoint(row: r, col: c)] = .wall
+            for c in 0..<columns {
+                let p = PuzzlePoint(row: r, col: c)
+                let ch = chars[c]
+                switch ch {
+                case "#":
+                    grid[p] = .wall
+                case "o":
+                    powerPelletPoints.insert(p)
+                    nonPelletFloors.insert(p)
+                case "H":
+                    heroStart = p
+                    nonPelletFloors.insert(p)
+                case "G":
+                    ghostStarts.append(p)
+                    nonPelletFloors.insert(p)
+                case "F":
+                    fruitPoint = p
+                    nonPelletFloors.insert(p)
+                case " ":
+                    nonPelletFloors.insert(p)
+                default:
+                    break  // '.' is floor + pellet (default)
+                }
             }
         }
-        let heroStart = PuzzlePoint(row: 11, col: 8)
-        let ghostStarts = [
-            PuzzlePoint(row: 1, col: 1),
-            PuzzlePoint(row: 1, col: columns - 2),
-            PuzzlePoint(row: rows - 2, col: 1),
-            PuzzlePoint(row: rows - 2, col: columns - 2)
-        ]
-        let powerPelletPoints: Set<PuzzlePoint> = [
-            PuzzlePoint(row: 1, col: 2),
-            PuzzlePoint(row: 1, col: columns - 3),
-            PuzzlePoint(row: rows - 2, col: 2),
-            PuzzlePoint(row: rows - 2, col: columns - 3)
-        ]
-        let fruitPoint = PuzzlePoint(row: 4, col: 8)
-        let occupied: Set<PuzzlePoint> = Set(ghostStarts).union([heroStart, fruitPoint])
 
         var actors: [AdventureActor] = [
             AdventureActor(kind: .hero, position: heroStart, direction: .left)
         ]
         let ghostDirections: [GridDirection] = [.right, .left, .right, .left]
-        // Each of the 4 starting ghosts gets a different personality so
-        // the player faces meaningfully different threats. Mirrors the
-        // canonical Pacman pattern (Blinky/Pinky/Inky/Clyde).
         let personalities: [AdventureActor.Personality] = [
-            .chaser,    // Blinky — direct chase
-            .ambusher,  // Pinky — projects 4 ahead of hero
-            .patrol,    // Clyde — chases far / random near
-            .random     // Sue — pure random for visual variety
+            .chaser, .ambusher, .patrol, .random
         ]
-        for (i, point) in ghostStarts.enumerated() where grid[point] != .wall {
+        for (i, point) in ghostStarts.prefix(4).enumerated() where grid[point] != .wall {
             actors.append(AdventureActor(
                 kind: .enemy,
                 position: point,
@@ -435,16 +449,128 @@ struct GridAdventureEngine: Codable, Equatable, Sendable {
                 personality: personalities[i % personalities.count]
             ))
         }
-        actors.append(AdventureActor(kind: .fruit, position: fruitPoint))
+        if let fp = fruitPoint {
+            actors.append(AdventureActor(kind: .fruit, position: fp))
+        }
         for point in powerPelletPoints where grid[point] != .wall {
             actors.append(AdventureActor(kind: .powerPellet, position: point))
         }
-
-        for point in grid.allPoints() where grid[point] != .wall && !occupied.contains(point) && !powerPelletPoints.contains(point) {
+        for point in grid.allPoints() where grid[point] != .wall && !nonPelletFloors.contains(point) {
             actors.append(AdventureActor(kind: .pellet, position: point))
         }
-
         return GridAdventureEngine(map: grid, actors: actors)
+    }
+
+    static func pacmanArcadeMap() -> GridAdventureEngine {
+        // L1: classic 4-block arcade. Designed so every floor cell is
+        // reachable: outer ring corridor, two vertical mid-passages keep
+        // middle band connected to top/bottom rows. Ghosts spawn in the
+        // 4 corners; power pellets adjacent to ghost spawns; fruit at
+        // mid-top (above the central 3-wide gap).
+        let layout: [String] = [
+            "#################",
+            "#G.o.........o.G#",
+            "#.##.###.###.##.#",
+            "#.##.###.###.##.#",
+            "#.......F.......#",
+            "#.##.#.###.#.##.#",
+            "#....#..#..#....#",
+            "#.##.#.###.#.##.#",
+            "#...............#",
+            "#.##.###.###.##.#",
+            "#.##.###.###.##.#",
+            "#G.o....H....o.G#",
+            "#################"
+        ]
+        return buildPacmanEngine(layout)
+    }
+
+    /// L2: cross-corridors. A wide central plus-shape with corner pockets.
+    /// Open feel (more sight-lines), but corner pockets give Pac places
+    /// to dodge. Ghosts spawn in the 4 corner pockets.
+    static func pacmanLevel2Map() -> GridAdventureEngine {
+        let layout: [String] = [
+            "#################",
+            "#G.o.........o.G#",
+            "#.###.#####.###.#",
+            "#...............#",
+            "#.#.###.F.###.#.#",
+            "#.#.....#.....#.#",
+            "#.#.###.#.###.#.#",
+            "#.#.....#.....#.#",
+            "#.#.###...###.#.#",
+            "#...............#",
+            "#.###.#####.###.#",
+            "#G.o....H....o.G#",
+            "#################"
+        ]
+        return buildPacmanEngine(layout)
+    }
+
+    /// L3: concentric rings. An inner ring of walls inside the outer
+    /// ring with 4 break-throughs at the cardinal midpoints. Two
+    /// concentric racetracks for ghosts to chase Pac through.
+    static func pacmanLevel3Map() -> GridAdventureEngine {
+        let layout: [String] = [
+            "#################",
+            "#G.o.........o.G#",
+            "#.#############.#",
+            "#.#...........#.#",
+            "#.#.#########.#.#",
+            "#.#.#.......#.#.#",
+            "#.#.#...F...#.#.#",
+            "#.#.#.......#.#.#",
+            "#.#.#########.#.#",
+            "#.#...........#.#",
+            "#.#############.#",
+            "#G.o....H....o.G#",
+            "#################"
+        ]
+        return buildPacmanEngine(layout)
+    }
+
+    /// L4: vertical-stripe alleys. Long vertical corridors split by
+    /// horizontal connectors. Lots of ambush points for Pinky-style
+    /// AI; chasers can dead-end Pac in long corridors.
+    static func pacmanLevel4Map() -> GridAdventureEngine {
+        let layout: [String] = [
+            "#################",
+            "#G.o.........o.G#",
+            "#.#.#.#.#.#.#.#.#",
+            "#.#.#.#.#.#.#.#.#",
+            "#...............#",
+            "#.#.#.#.#.#.#.#.#",
+            "#.#.#.#.F.#.#.#.#",
+            "#.#.#.#.#.#.#.#.#",
+            "#...............#",
+            "#.#.#.#.#.#.#.#.#",
+            "#.#.#.#.#.#.#.#.#",
+            "#G.o....H....o.G#",
+            "#################"
+        ]
+        return buildPacmanEngine(layout)
+    }
+
+    /// L5: pillar grid. Many small wall pillars scattered through. High
+    /// pursuit complexity (lots of pivot points), no long corridors.
+    /// Hardest of the cycle — frantic feel.
+    static func pacmanLevel5Map() -> GridAdventureEngine {
+        let layout: [String] = [
+            "#################",
+            "#G.o.........o.G#",
+            "#.#.#.#.#.#.#.#.#",
+            "#...............#",
+            "#.#.#.#.#.#.#.#.#",
+            "#.#.#.#.#.#.#.#.#",
+            "#.#.#.#.F.#.#.#.#",
+            "#.#.#.#.#.#.#.#.#",
+            "#.#.#.#.#.#.#.#.#",
+            "#...............#",
+            "#.#.#.#.#.#.#.#.#",
+            "#G.o....H....o.G#",
+            "#################"
+        ]
+        return buildPacmanEngine(layout)
     }
 
     private mutating func resolveHeroTile() {

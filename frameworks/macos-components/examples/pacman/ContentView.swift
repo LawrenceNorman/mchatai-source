@@ -113,8 +113,8 @@ struct ContentView: View {
     /// be MUCH gentler — start ≈ 3.6 tiles/sec, end-of-L1 ≈ 4.5 tiles/sec.
     /// User said v6's L1 ramp "starts off at a great pace, but it needs
     /// to be a bit more gradual about the overall speed."
-    private let tickIntervalStart: Double = 0.28
-    private let tickIntervalEndL1: Double = 0.22
+    private let tickIntervalStart: Double = 0.30
+    private let tickIntervalEndL1: Double = 0.24
     /// Seconds of play (on the current level) over which the tick interval
     /// linearly interpolates from start → end. After this, the tick stays
     /// at end (level-capped). Stretched to 90s so the ramp feels
@@ -177,15 +177,10 @@ struct ContentView: View {
 
     var body: some View {
         ZStack(alignment: .topLeading) {
-            HStack(spacing: 24) {
-                VStack(alignment: .leading, spacing: 18) {
-                    header
-                    mazeCanvas
-                    controls
-                }
-
-                sidePanel
-                    .frame(width: 280)
+            VStack(alignment: .leading, spacing: 18) {
+                header
+                mazeCanvas
+                controls
             }
             .padding(28)
 
@@ -201,7 +196,7 @@ struct ContentView: View {
             // surfaces here per score-show-personal-best-on-game-over.
             gameOverPanel
         }
-        .frame(minWidth: 1040, minHeight: 640)
+        .frame(minWidth: 720, minHeight: 640)
         .background(Color(red: 0.02, green: 0.02, blue: 0.07))
         .onReceive(timer) { _ in
             // If a death sequence is active, all engine ticks are paused
@@ -1282,7 +1277,9 @@ struct ContentView: View {
     }
 
     private func reset() {
-        var fresh = GridAdventureEngine.pacmanArcadeMap()
+        levels.reset()  // explicit reset → drop to L1 (call FIRST so the
+                        // map picker sees the right level)
+        var fresh = GridAdventureEngine.pacmanMapForLevel(levels.currentLevel)
         fresh.deferRespawn = true
         fresh.deferGhostRespawn = true
         engine = fresh
@@ -1297,7 +1294,6 @@ struct ContentView: View {
         lastEngineTick = .now
         lastTickTime = .now
         status = "Eat pellets and dodge ghosts."
-        levels.reset()  // explicit reset → drop to L1
         sound.play(.uiButtonTap, volume: 0.5)
     }
 
@@ -1306,7 +1302,11 @@ struct ContentView: View {
     /// At L5/L10 boss levels, swap one ghost's personality to .boss + bump
     /// hitsRemaining so the player feels the difficulty step.
     private func dismissAndRestartForNextRun() {
-        var fresh = GridAdventureEngine.pacmanArcadeMap()
+        // Pick the maze for the level we're about to play. After a win,
+        // levels.advance() has already bumped currentLevel, so this picks
+        // the NEXT maze. After a loss, levels was reset earlier in
+        // handleGameStateAfterTick so we get L1 again.
+        var fresh = GridAdventureEngine.pacmanMapForLevel(levels.currentLevel)
         fresh.deferRespawn = true
         fresh.deferGhostRespawn = true
         engine = fresh
