@@ -142,8 +142,12 @@ struct ContentView: View {
     /// this we can't show "you're ahead/behind your previous best" mid-level.
     @State private var baseTotalForLevel: Int = 0
     /// High-score manager — persists per-game best totalScore via UserDefaults.
-    /// Drives the HUD's "BEST" pill so the player knows the target to beat.
+    /// Surfaced ONLY in the game-over panel (after a run ends), per user
+    /// feedback that in-play high-score chrome is distracting.
     @StateObject private var highScores = HighScoreManager(gameID: "match3")
+    /// Set true when the player runs out of moves without hitting the
+    /// level target. Drives the gameOverPanel overlay.
+    @State private var showGameOver = false
 
     /// Per-tile animation state. Drives squash/stretch + bulge/shrink phases
     /// per the 12 principles of animation (anticipation, squash-stretch,
@@ -219,6 +223,9 @@ struct ContentView: View {
             // Level-up celebration banner — only visible during the ~3s
             // celebration window driven by LevelManager.
             levelUpBanner
+            // Game-over panel — only visible after moves run out without
+            // hitting the target. Shows the run summary + persisted best.
+            gameOverPanel
         }
         .onReceive(hintTimer) { _ in
             updateHint()
@@ -287,17 +294,7 @@ struct ContentView: View {
 
     private var hud: some View {
         HStack(alignment: .center, spacing: 14) {
-            // Left column: TOTAL (cumulative across levels) + BEST (personal
-            // best, persisted) + LEVEL score (this level's progress).
-            // Three-tier readout so the player can see (a) where they stand
-            // vs their personal best, (b) cumulative progress, (c) progress
-            // toward THIS level's target.
-            VStack(alignment: .leading, spacing: 6) {
-                statBlock(label: "TOTAL", value: HighScoreManager.formatNumber(totalScore))
-                bestPill
-                statBlock(label: "LEVEL SCORE", value: HighScoreManager.formatNumber(engine.score))
-            }
-            .scaleEffect(1.0 + highScores.celebrationProgress * 0.10)
+            statBlock(label: "SCORE", value: "\(engine.score)")
 
             VStack(spacing: 6) {
                 Text("LEVEL \(levels.currentLevel)")
@@ -365,54 +362,96 @@ struct ContentView: View {
         return engine.score >= thresholds[i]
     }
 
-    /// "BEST" pill showing personal best + live delta vs current totalScore.
-    /// When ahead of best: gold "+1,234 ahead!". When behind: white delta.
-    /// During the new-best celebration window: glowing "NEW BEST!" flourish.
+    /// Game-over panel — only surfaces when the player runs out of moves
+    /// without hitting the level target. Shows the run summary (TOTAL across
+    /// session) and personal best so the player has a target to chase next
+    /// run, plus the "NEW BEST!" flourish if applicable. Hidden during
+    /// active play — kept off the always-visible HUD per user feedback that
+    /// in-play high-score chrome was distracting.
     @ViewBuilder
-    private var bestPill: some View {
-        let ahead = highScores.isAheadOfBest(currentScore: totalScore)
-        let delta = highScores.deltaToBest(currentScore: totalScore)
-        VStack(alignment: .leading, spacing: 2) {
-            HStack(spacing: 6) {
-                Image(systemName: "trophy.fill")
-                    .font(.system(size: 11, weight: .black))
-                    .foregroundStyle(Color(red: 1.0, green: 0.85, blue: 0.30))
-                Text("BEST")
-                    .font(.system(size: 11, weight: .black))
-                    .kerning(1.4)
-                    .foregroundStyle(.white.opacity(0.65))
+    private var gameOverPanel: some View {
+        if showGameOver {
+            VStack(spacing: 14) {
+                Text(highScores.celebratingNewBest ? "NEW BEST!" : "OUT OF MOVES")
+                    .font(.system(size: 28, weight: .black, design: .rounded))
+                    .kerning(2)
+                    .foregroundStyle(highScores.celebratingNewBest
+                        ? Color(red: 1.0, green: 0.85, blue: 0.30)
+                        : .white)
+
+                VStack(spacing: 4) {
+                    Text("Your run")
+                        .font(.system(size: 11, weight: .black))
+                        .kerning(1.2)
+                        .foregroundStyle(.white.opacity(0.55))
+                    Text(HighScoreManager.formatNumber(totalScore))
+                        .font(.system(size: 44, weight: .black, design: .rounded))
+                        .foregroundStyle(.white)
+                }
+
+                if highScores.bestScore > 0 {
+                    HStack(spacing: 6) {
+                        Image(systemName: "trophy.fill")
+                            .foregroundStyle(Color(red: 1.0, green: 0.85, blue: 0.30))
+                        Text("Best: \(HighScoreManager.formatNumber(highScores.bestScore))")
+                            .font(.system(size: 14, weight: .heavy, design: .rounded))
+                            .foregroundStyle(.white.opacity(0.85))
+                    }
+                }
+
+                Button {
+                    sound.play(.uiButtonTap)
+                    dismissGameOverAndRestart()
+                } label: {
+                    Text("PLAY AGAIN")
+                        .font(.system(size: 14, weight: .heavy))
+                        .kerning(1.4)
+                        .padding(.horizontal, 28)
+                        .padding(.vertical, 12)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(Color(red: 0.40, green: 0.20, blue: 0.55))
+                .padding(.top, 4)
             }
-            Text(highScores.bestScoreDisplay)
-                .font(.system(size: 16, weight: .black, design: .rounded))
-                .foregroundStyle(.white)
-            if highScores.celebratingNewBest {
-                Text("NEW BEST!")
-                    .font(.system(size: 11, weight: .black, design: .rounded))
-                    .kerning(1.2)
-                    .foregroundStyle(Color(red: 1.0, green: 0.85, blue: 0.30))
-                    .opacity(Double(highScores.celebrationProgress))
-            } else if ahead && totalScore > 0 {
-                Text("+\(HighScoreManager.formatNumber(delta)) ahead")
-                    .font(.system(size: 11, weight: .heavy))
-                    .foregroundStyle(Color(red: 1.0, green: 0.85, blue: 0.30))
-            } else if highScores.bestScore > 0 && totalScore > 0 {
-                Text("\(HighScoreManager.formatNumber(-delta)) to beat")
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.6))
-            }
+            .padding(28)
+            .background(
+                RoundedRectangle(cornerRadius: 22)
+                    .fill(Color.black.opacity(0.78))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 22).stroke(
+                            highScores.celebratingNewBest
+                                ? Color(red: 1.0, green: 0.85, blue: 0.30).opacity(0.6)
+                                : .white.opacity(0.18),
+                            lineWidth: 1
+                        )
+                    )
+                    .shadow(
+                        color: highScores.celebratingNewBest
+                            ? Color(red: 1.0, green: 0.85, blue: 0.30).opacity(0.5)
+                            : .black.opacity(0.5),
+                        radius: 24
+                    )
+            )
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 6)
-        .background(
-            RoundedRectangle(cornerRadius: 10)
-                .fill(Color.white.opacity(highScores.celebratingNewBest ? 0.15 : 0.05))
-                .overlay(RoundedRectangle(cornerRadius: 10).stroke(
-                    highScores.celebratingNewBest
-                        ? Color(red: 1.0, green: 0.85, blue: 0.30).opacity(0.6)
-                        : Color.white.opacity(0.10),
-                    lineWidth: 1
-                ))
-        )
+    }
+
+    private func dismissGameOverAndRestart() {
+        showGameOver = false
+        // Same logic as the RESTART button — retry current level with a
+        // fresh seed, keep currentLevel + carried-forward totalScore.
+        seed = UInt64.random(in: 1...100_000)
+        let palette = Array(["A","B","C","D","E","F","G","H"].prefix(levels.suggestedPaletteSize))
+        var newEngine = Match3Engine(rows: 8, columns: 8, seed: seed)
+        newEngine.symbols = palette
+        engine = newEngine
+        moves = levels.currentMovesAllowed
+        combo = 1
+        totalCleared = 0
+        victoryAnnounced = false
+        totalScore = baseTotalForLevel
+        status = "Level \(levels.currentLevel) — target \(levels.currentTarget)"
+        hintPair = nil
+        lastMoveAt = Date()
     }
 
     private func statBlock(label: String, value: String) -> some View {
@@ -963,9 +1002,27 @@ struct ContentView: View {
             }
         }
 
-        // Keep totalScore in sync within the current level (so the HUD's
-        // BEST comparison reflects live progress, not just commits).
+        // Keep totalScore in sync within the current level.
         totalScore = baseTotalForLevel + engine.score
+
+        // Game-over check: out of moves AND didn't hit the level target.
+        // (If we did hit the target, the level-up branch above already
+        // re-seeded the board with fresh moves.)
+        if moves == 0 && !victoryAnnounced && !showGameOver {
+            // Commit the run total to high-score storage. commit() returns
+            // true on a new best and fires the celebrationProgress ramp,
+            // which the gameOverPanel reads for the NEW BEST styling.
+            highScores.commit(score: totalScore)
+            sound.play(.gameOver)
+            // Brief delay so the cascade SFX rings out before the panel
+            // appears.
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 600_000_000)
+                withAnimation(.easeOut(duration: 0.30)) {
+                    showGameOver = true
+                }
+            }
+        }
 
         checkBoardHealth()
     }
