@@ -122,6 +122,16 @@ struct ContentView: View {
     @State private var status = "Drag a candy onto an adjacent candy."
 
     @State private var poppingTiles: Set<UUID> = []  // by tile-id, not point
+    /// Per-kind flash overlays (sparkle / burst / lightning) drawn on top
+    /// of the board for each resolved match. Active for ~0.4s per event.
+    @State private var activeFlashes: [FlashEffect] = []
+
+    private struct FlashEffect: Identifiable, Equatable {
+        let id: UUID = UUID()
+        let kind: Match3Kind
+        let center: CGPoint
+        let symbol: String
+    }
     @State private var dragOrigin: PuzzlePoint?
     @State private var dragTranslation: CGSize = .zero
     @State private var lastMoveAt = Date()
@@ -273,9 +283,57 @@ struct ContentView: View {
                 candyTile(tile: entry.tile, point: entry.point)
                     .position(positionFor(entry.point))
             }
+
+            // Per-kind cascade flash overlays. Each FlashEffect has its
+            // own UUID id so transitions add/remove cleanly when SwiftUI
+            // diffs the array. 3-match = sparkle, 4-match = burst flash,
+            // 5-match = lightning + circle ring.
+            ForEach(activeFlashes) { flash in
+                flashView(flash)
+                    .position(flash.center)
+                    .allowsHitTesting(false)
+                    .transition(.scale.combined(with: .opacity))
+            }
         }
         .frame(width: total + 36, height: total + 36)
         .animation(.spring(response: 0.45, dampingFraction: 0.78), value: engine.grid)
+    }
+
+    @ViewBuilder
+    private func flashView(_ flash: FlashEffect) -> some View {
+        let candy = CandyType.forSymbol(flash.symbol)
+        switch flash.kind {
+        case .three:
+            Image(systemName: "sparkles")
+                .font(.system(size: 56, weight: .black))
+                .foregroundStyle(candy.topColor)
+                .shadow(color: candy.topColor, radius: 26)
+        case .four:
+            ZStack {
+                Image(systemName: "burst.fill")
+                    .font(.system(size: 92, weight: .black))
+                    .foregroundStyle(candy.topColor)
+                    .shadow(color: candy.topColor, radius: 38)
+                Text("+\(80)")
+                    .font(.system(size: 22, weight: .black, design: .rounded))
+                    .foregroundStyle(.white)
+            }
+        case .five:
+            ZStack {
+                Circle()
+                    .fill(candy.topColor)
+                    .frame(width: 150, height: 150)
+                    .shadow(color: candy.topColor, radius: 60)
+                    .blur(radius: 4)
+                Image(systemName: "bolt.fill")
+                    .font(.system(size: 96, weight: .black))
+                    .foregroundStyle(.white)
+                Text("⚡ 5-MATCH ⚡")
+                    .font(.system(size: 16, weight: .black, design: .rounded))
+                    .foregroundStyle(.yellow)
+                    .offset(y: 60)
+            }
+        }
     }
 
     /// Returns one entry per occupied cell with the tile and its current point.
@@ -301,6 +359,16 @@ struct ContentView: View {
     private func positionFor(_ point: PuzzlePoint) -> CGPoint {
         let x = CGFloat(point.col) * (cellSize + gapSize) + cellSize / 2 + 18
         let y = CGFloat(point.row) * (cellSize + gapSize) + cellSize / 2 + 18
+        return CGPoint(x: x, y: y)
+    }
+
+    /// Average position of a group of matched cells — used to anchor the
+    /// flash overlay (sparkle / burst / lightning) at the visual center
+    /// of the match.
+    private func centerOfGroup(_ points: Set<PuzzlePoint>) -> CGPoint {
+        let positions = points.map { positionFor($0) }
+        let x = positions.map { $0.x }.reduce(0, +) / CGFloat(max(1, positions.count))
+        let y = positions.map { $0.y }.reduce(0, +) / CGFloat(max(1, positions.count))
         return CGPoint(x: x, y: y)
     }
 
@@ -473,6 +541,27 @@ struct ContentView: View {
             totalCleared += events.reduce(0) { $0 + $1.points.count }
             combo = iterations
             status = combo > 1 ? "Combo x\(combo)!" : "Nice match!"
+
+            // Spawn per-kind flash overlays at the center of each match group.
+            // 3-match = sparkle, 4-match = burst+score, 5-match = lightning ring.
+            withAnimation(.easeOut(duration: 0.30)) {
+                for event in events {
+                    let center = self.centerOfGroup(event.points)
+                    self.activeFlashes.append(FlashEffect(
+                        kind: event.kind,
+                        center: center,
+                        symbol: event.symbol
+                    ))
+                }
+            }
+            // Auto-remove flashes after they've played.
+            let flashIDsToRemove = self.activeFlashes.suffix(events.count).map(\.id)
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 700_000_000)
+                withAnimation(.easeIn(duration: 0.20)) {
+                    self.activeFlashes.removeAll { flashIDsToRemove.contains($0.id) }
+                }
+            }
 
             // Wait for the pop animation to play before sliding.
             try? await Task.sleep(nanoseconds: cascadeFlashDuration)

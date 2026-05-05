@@ -1,6 +1,6 @@
 {
   "packID": "macos-app",
-  "version": 13,
+  "version": 14,
   "displayName": "macOS App Generation Wisdom",
   "description": "Rules for generating executable macOS apps (SwiftUI / AppKit) via Swift Playground. Focused on making the generated binary actually appear as a visible, interactive window \u2014 not a headless background process.",
   "categories": [
@@ -399,6 +399,19 @@
         "WRONG: trying to fix bad animation by adding more `.animation()` modifiers, longer durations, or `.transition()`s \u2014 none of those help if SwiftUI can't tell which old element is the new element.",
         "Real incident 2026-05-04: catalog Match3 v2 had every animation primitive correct (spring, withAnimation, transition: .move(edge: .top), staggered DispatchQueue) but felt teleporty. Switching to tile-id iteration (commit d4a15c1) fixed the slide-down without changing any animation code \u2014 SwiftUI did the work once it had stable identity.",
         "Bonus: this is the SwiftUI equivalent of React's `key` prop. The principle is identical: stable identity \u2192 smooth transitions. The key insight to take to other tile-based games is that the MODEL needs the ID, not the View."
+      ]
+    },
+    {
+      "id": "mac-catalog-app-relaunch-after-rebuild",
+      "rule": "When the user is validating an iteratively-rebuilt .app bundle (e.g. /tmp/catalog-builds/<recipe>/build/<App>.app or any path-stable .app you keep overwriting), `open <path>` will ONLY launch the new binary if no existing process is still running with that bundle path. macOS treats `open` as 'bring forward if already open' \u2014 it does NOT respawn a new process when one already exists for the bundle. So the user sees the OLD UI no matter how many times you rebuild + cache-sync. The clean validation loop is `pkill -f \"<App>.app/Contents/MacOS/<App>\"; open <path>` so the stale process dies and the fresh binary launches. Tell the user this once they hit the symptom: 'I don't see any change' = stale process. Do NOT spend cycles diagnosing animation logic / build settings / cache sync until you've confirmed `ps aux | grep <App> | grep -v grep` shows zero pre-rebuild processes.",
+      "why": "Real incident 2026-05-04: Match3 v2/v3/v4 all rebuilt cleanly + cache-synced + committed, but the user kept reporting 'I don't see anything changed'. ps aux showed two stale Match3 processes from earlier in the session \u2014 every `open Match3.app` just brought the v2 window forward. The new binaries on disk were correct; the live process wasn't. Burned ~30min of back-and-forth animation work that wasn't actually broken. The fix is a one-line `pkill` before `open`, but it has to be in the loop or the symptom recurs.",
+      "severity": "high",
+      "appliesTo": "macOSApp",
+      "examples": [
+        "RIGHT (validation loop after a rebuild): `pkill -f 'Match3.app/Contents/MacOS/Match3'; open /tmp/catalog-builds/recipe-match3/build/Match3.app` \u2014 kills any stale instance, launches the fresh binary.",
+        "RIGHT (sanity check before claiming a new build is running): `ps aux | grep -i Match3 | grep -v grep | awk '{print $2, $9}'` \u2014 every PID shown is a stale process unless its start time is AFTER your most-recent rebuild timestamp.",
+        "WRONG: `open Match3.app` after a rebuild without checking for stale processes. The user sees old UI; you see your new code on disk; both are correct in isolation; the symptom is a stale process, not a code bug.",
+        "Sister rule for users: when a catalog app's behavior 'doesn't match the new code', the FIRST debugging step is `ps aux | grep <App>` + check timestamps, not 'is the build correct'. The build is almost always correct \u2014 the running process is stale."
       ]
     }
   ],
