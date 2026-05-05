@@ -1,6 +1,6 @@
 {
   "packID": "card-games",
-  "version": 6,
+  "version": 7,
   "displayName": "Card Game Guidelines",
   "description": "Quality rules for poker, blackjack, solitaire, and other card games.",
   "categories": [
@@ -544,6 +544,64 @@
       "examples": [
         "RIGHT: LevelManager persists currentLevel automatically. App launches \u2192 onAppear sets engine.symbols based on suggestedPaletteSize, moves = currentMovesAllowed, status = 'Level N \u2014 target M'. Score starts at 0.",
         "WRONG: persist current Match3Engine state across launches. Brittle, annoying for users, breaks when engine model evolves."
+      ]
+    },
+    {
+      "id": "score-show-personal-best-in-hud",
+      "rule": "Any game with a score MUST show the player's personal best alongside the current score in the always-visible HUD. Use the `effects.high-score-manager` Lego component \u2014 it persists best per-game in UserDefaults, exposes live `isAheadOfBest` / `deltaToBest` helpers, and broadcasts a celebration event on new bests. The HUD should show: (a) BEST pill with trophy/medal icon + persisted value, (b) live delta \u2014 '\\(N) to beat' when behind, '+N ahead' in gold when ahead, (c) glowing 'NEW BEST!' flourish during the celebration window. Without a visible best, the player has no idea if this run is meaningful \u2014 they're just playing in a vacuum.",
+      "why": "Filed 2026-05-04 after user feedback 'How do I know if I'm going to hit my highscore this game vs the last?' Universal game-design principle. Personal best is the strongest engagement loop in solo games (no competitor needed \u2014 you compete against yourself). HighScoreManager Lego standardizes the persistence + comparison helpers + celebration window so generators don't reinvent.",
+      "severity": "high",
+      "appliesTo": "scoredGame",
+      "examples": [
+        "RIGHT: @StateObject var highScores = HighScoreManager(gameID: \"match3\"); HUD shows BEST pill with `Text(highScores.bestScoreDisplay)` + delta line `Text(\"\\(formatNumber(-delta)) to beat\")`",
+        "RIGHT: on level-up / game-over: `highScores.commit(score: totalScore)` \u2192 returns true if new best \u2192 celebrationProgress ramps 0\u21921\u21920 \u2192 HUD pill glows.",
+        "WRONG: score shown alone, no best. Player has no benchmark.",
+        "WRONG: best shown but never updated/persisted (just an in-memory @State). Lost on app close."
+      ]
+    },
+    {
+      "id": "score-cumulative-vs-per-level",
+      "rule": "Multi-level games MUST track BOTH a cumulative score (carries across levels in the session) AND a per-level score (zeros each level for progress-toward-target). Surface BOTH in the HUD: TOTAL = cumulative session score (this is what you compare against personal best); LEVEL SCORE = this level's progress, drives the level-progress bar / star thresholds / level-up trigger. Wiring: `totalScore = baseTotalForLevel + engine.score`. On level-up: `baseTotalForLevel = totalScore` (anchor the new level's floor), then re-seed engine (engine.score back to 0). Without two-tier scores, players who beat 5 levels see 'their score' reset on level transitions and lose the sense of session progress.",
+      "why": "Filed 2026-05-04 after user feedback 'after going to a new level my score gets reset to 0 instead of setting some additional point goal.' Same conceptual error as level-replay-not-demote \u2014 UX should never feel like progress was wiped. Match-3 / RPG / arcade-with-waves / endless-mode all benefit. Two-score model is also what HighScoreManager.commit(score:) should be called with \u2014 the cumulative TOTAL, not the per-level score.",
+      "severity": "high",
+      "appliesTo": "progressionGame",
+      "examples": [
+        "RIGHT: HUD shows TOTAL: 12,450 prominently; LEVEL SCORE: 320 / 3,000 below it. On level-up, TOTAL stays at 12,450 + earnings; LEVEL SCORE flips to 0 / 4,200 for the new level.",
+        "RIGHT: highScores.commit(score: totalScore) \u2014 commits cumulative session total, not per-level.",
+        "WRONG: only show engine.score, which resets every level. User thinks they're starting over each time.",
+        "WRONG: commit per-level score to HighScoreManager \u2014 your 'best' becomes 'highest single level' instead of 'longest run.'"
+      ]
+    },
+    {
+      "id": "score-floor-mutating-counters-at-zero",
+      "rule": "Mutable in-game counters (moves remaining, lives, ammo, time) MUST be guarded by `max(0, \u2026)` and gated at their entry points. A `moves -= 1` followed by a refund-on-fail pattern can race or compound \u2014 multiple events firing close together can push the counter negative. Pattern: `guard moves > 0 else { /* show out-of-moves UI */; return }` BEFORE the action, then `moves = max(0, moves - 1)` only after the action commits successfully. Failed actions (bad swap / missed shot / etc.) should NOT charge the counter \u2014 players punished for mis-timing input churn out fast.",
+      "why": "Filed 2026-05-04 after user reported 'somehow I managed to get to -1 moves' in catalog Match3 v8. Bug was: `moves -= 1` ran before the swap-success check; refund only happened on the mis-input path. Fixed with explicit guard at entry + max(0,\u2026) on the decrement + don't-charge-bad-swaps. Universal pattern for any decrementing counter.",
+      "severity": "high",
+      "examples": [
+        "RIGHT: guard moves > 0 else { status = \"Out of moves \u2014 RESTART to retry\"; sound.play(.uiError); return }; ... if !didSwap { sound.play(.uiError); return /* don't charge */ }; moves = max(0, moves - 1)",
+        "WRONG: moves -= 1; if !didSwap { moves += 1; return }  \u2014 racy under rapid input, can bottom out below 0.",
+        "WRONG: charge a move on failed actions. Player who mis-drags loses count for nothing."
+      ]
+    },
+    {
+      "id": "score-engine-init-must-zero-score",
+      "rule": "Game engines that run `resolveCascades()` / equivalent setup logic during init MUST explicitly zero the score at the end of init. Initial-fill cascades produce score increments that are NOT user-earned. Without explicit zeroing, fresh games + level-up board re-seeds start at 200-1000+ ghost score depending on seed luck. Pattern in init: `_ = resolveCascades(); lastResolvedMatches = []; score = 0`. Engine.swap() / engine.advance() \u2014 the user-driven entry points \u2014 are the only paths that should award score.",
+      "why": "Filed 2026-05-04 from real bug in catalog Match3Engine. init() called resolveCascades() to clear initial-fill matches before showing the board, which awarded score for each cascade. Only the event log was cleared, not the score. User report: 'my score never starts at 0.' Same pattern applies to Tetris (initial cleared rows during piece-spawn-warmup), RPG (XP from seed-creation enemies), any game with auto-resolve in init.",
+      "severity": "high",
+      "examples": [
+        "RIGHT: init() { ... refillAll(); _ = resolveCascades(); lastResolvedMatches = []; score = 0 }",
+        "WRONG: init() runs resolveCascades() (which awards score), then only clears event log \u2014 fresh games start at 200-1000 'ghost' points."
+      ]
+    },
+    {
+      "id": "score-format-with-thousands-separators",
+      "rule": "Score readouts \u22651000 MUST use thousands separators ('12,450' not '12450'; '1,234,567' not '1234567'). Numeric readability drops sharply past 4 digits without separators. HighScoreManager.formatNumber(_:) provides the canonical formatter (uses NumberFormatter with .decimal style); use it for ALL score-like numbers (current score, best score, target, total, delta). Targets that are still 4-digit (like '1500') can be unformatted but consistency is better \u2014 format everything once you cross the threshold.",
+      "why": "Filed 2026-05-04 with HighScoreManager ship. Universal readability rule. '125000' is a wall of digits; '125,000' is instantly parseable. Costs nothing, consistency is high-value.",
+      "severity": "low",
+      "examples": [
+        "RIGHT: Text(HighScoreManager.formatNumber(totalScore)) \u2192 '12,450'",
+        "RIGHT: Text(\"+\\(HighScoreManager.formatNumber(delta)) ahead\") \u2192 '+1,200 ahead'",
+        "WRONG: Text(\"\\(totalScore)\") \u2192 '12450' (no separator)"
       ]
     }
   ],
