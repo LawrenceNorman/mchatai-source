@@ -1,6 +1,6 @@
 {
   "packID": "puzzle-games",
-  "version": 6,
+  "version": 7,
   "displayName": "Puzzle Game Guidelines",
   "description": "Quality rules for word search, crossword, sudoku, wordle, and other puzzle games.",
   "categories": [
@@ -337,6 +337,82 @@
         "WRONG: trying to fix bad animation by adding more `.animation()` modifiers, longer durations, or `.transition()`s \u2014 none of those help if SwiftUI can't tell which old element is the new element.",
         "Real incident 2026-05-04: catalog Match3 v2 had every animation primitive correct (spring, withAnimation, transition: .move(edge: .top), staggered DispatchQueue) but felt teleporty. Switching to tile-id iteration (commit d4a15c1) fixed the slide-down without changing any animation code \u2014 SwiftUI did the work once it had stable identity.",
         "Bonus: this is the SwiftUI equivalent of React's `key` prop. The principle is identical: stable identity \u2192 smooth transitions. The key insight to take to other tile-based games is that the MODEL needs the ID, not the View."
+      ]
+    },
+    {
+      "id": "anim-squash-stretch-falling-landing",
+      "rule": "Falling tiles in tile-based games (match-3, Tetris, sliding-tile, Bejeweled, Threes) MUST deform: stretch vertically (sx\u22480.92, sy\u22481.12) while falling, squash horizontally (sx\u22481.18, sy\u22480.86) for ~130ms when they land. This is principle #1 of the 12 Disney principles (squash-and-stretch) \u2014 the difference between 'graphic moves' and 'candy lands.' Tiles that scale uniformly or just translate feel weightless and stickered onto the board. The squash is volume-preserving (sx*sy\u22481.0).",
+      "why": "Real Candy Crush production animations validated 2026-05-04 via web research + Match3 catalog reference rebuild (v6). Without squash-stretch the user said 'they feel like pngs that are just being animated.' With it the tiles read as having weight.",
+      "severity": "high",
+      "appliesTo": "tileBasedGame",
+      "examples": [
+        "RIGHT: phaseScales(.falling) returns (0.92, 1.12); phaseScales(.squashing) returns (1.18, 0.86); driven by AnimationIntensity.fallStretch and .squashAmount.",
+        "RIGHT (with AnimationIntensity): use the `effects.animation-intensity` Lego component \u2014 one struct field controls both stretch and squash, presets handle game pace.",
+        "WRONG: tiles use a uniform scale (1.0,1.0) the entire fall; reads as weightless icons sliding."
+      ]
+    },
+    {
+      "id": "anim-bulge-shrink-not-flat-fade",
+      "rule": "Match clears (or any 'item disappears with feedback' moment) MUST bulge before they shrink \u2014 anticipation (12 principles #4) + follow-through (#5). Sequence: (a) scale up 1.20\u20131.30\u00d7 over 60\u2013100ms with easeOut, (b) shrink to 0 + fade with easeIn over 80\u2013110ms. A flat fade (just opacity 1\u21920) feels mechanical; bulge-shrink feels satisfying. The eye registers 'something is about to happen' (bulge) BEFORE the disappearance (shrink). The whole motion takes ~180ms.",
+      "why": "v3/v4/v5 of the catalog Match3 used flat fades and the user reported 'animations are lacking, feels flat.' v6 with bulge-shrink read as 'satisfying pop.' Universal animation principle \u2014 applies to card flips, item pickups, balloon pops, any binary disappear event.",
+      "severity": "high",
+      "examples": [
+        "RIGHT: withAnimation(.easeOut(duration: 0.08)) { phase = .bulging }; sleep 80ms; withAnimation(.easeIn(duration: 0.10)) { phase = .shrinking }; commit clear after shrink.",
+        "RIGHT (with AnimationIntensity): bulgeAmount=0.25, bulgeDuration=0.08, shrinkDuration=0.11 are the standard preset.",
+        "WRONG: withAnimation(.easeOut) { tile.opacity = 0; tile.scale = 0 }  \u2014 single-phase fade-shrink, no anticipation, feels mechanical."
+      ]
+    },
+    {
+      "id": "anim-per-phase-curves-not-one-global",
+      "rule": "Tile-based games MUST use DIFFERENT animation curves for different phases. Bulging = .easeOut(0.08) (fast pop). Shrinking = .easeIn(0.10) (accelerate as it disappears). Landing = .spring(response:0.18, dampingFraction:0.45) (bouncy). Idle restore = .spring(0.20, 0.78) (settle). One global animation curve for everything reads as 'boring spring on everything' \u2014 different timings per phase is what separates 'alive' from 'sterile.'",
+      "why": "Real Candy Crush uses different curves per phase (researched 2026-05-04). v3/v4/v5 of catalog Match3 used one global spring; user feedback was 'feels flat.' v6 with per-phase curves was the first one that 'felt like candy.' Universal \u2014 applies to any squash-stretch animated UI.",
+      "severity": "high",
+      "examples": [
+        "RIGHT: animationFor(.bulging) returns .easeOut(0.08); animationFor(.shrinking) returns .easeIn(0.10); animationFor(.squashing) returns .spring(response:0.18, dampingFraction:0.45). Apply each via .animation(animationFor(phase), value: phase) on the tile.",
+        "WRONG: withAnimation(.spring) wrapping the entire match-resolve cycle \u2014 every phase rides one curve, feels uniform."
+      ]
+    },
+    {
+      "id": "anim-squash-only-tiles-that-moved",
+      "rule": "When applying a 'landing squash' after a column collapse, squash ONLY the tiles whose row actually changed (or brand-new tiles entering from above). Squashing every tile on the board creates the symptom 'the whole board is vibrating after every match' even if the match was in one corner. Snapshot pre-collapse positions (UUID \u2192 row), then after the collapse diff against new positions and squash only the tiles with row != preCollapseRow[id]. Tiles that didn't move stay perfectly still.",
+      "why": "Real bug 2026-05-04 in catalog Match3 v6.0\u2013v6.2: squash applied to all 64 tiles after every cascade pass \u2192 user reported 'the whole thing still feels like it's vibrating' even after the neighbor-jiggle was fully removed. Fix in v6.3 was diff-by-UUID-row. Same trap applies to ANY game with a collapse + squash-on-land animation. Sister bug pattern: any 'apply effect to all tiles' after a localized event needs to be 'apply effect to only AFFECTED tiles.'",
+      "severity": "high",
+      "examples": [
+        "RIGHT: var preCollapseRow: [UUID: Int] = [:]; for entry in tilesWithPositions() { preCollapseRow[entry.tile.id] = entry.point.row }; engine.collapseAndRefill(); let landed = tilesWithPositions().compactMap { entry in let id = entry.tile.id; if let oldRow = preCollapseRow[id] { return oldRow != entry.point.row ? id : nil } else { return id } }; for id in landed { phase[id] = .squashing }",
+        "WRONG: let landedTileIDs = tilesWithPositions().map { $0.tile.id }; for id in landedTileIDs { phase[id] = .squashing }  \u2014 squashes EVERY tile, reads as global board vibration."
+      ]
+    },
+    {
+      "id": "anim-neighbor-jiggle-default-off",
+      "rule": "Neighbor-jiggle (secondary motion = surrounding tiles wobble when a 4/5-match clears) should default to FALSE. Despite being the canonical 'secondary motion' (12 principles #6), in practice it almost ALWAYS reads as 'the whole board is vibrating' regardless of how tightly you scope radius/amplitude/phase. The bulge-shrink pop + slide-down + landing-squash already sell the explosion. Only enable neighbor-jiggle if you've validated it doesn't read as global shake on the user's actual hardware/render rate.",
+      "why": "Real attempt 2026-05-04 in catalog Match3: started at radius 2, amplitude 2.5\u20134.0, shared sin() clock. User: 'the whole set of candies vibrate.' Tightened to radius 1 orthogonal-only, amplitude 1.1\u20131.6, per-tile random phase offset. User STILL: 'all neighbors vibrating.' Removed entirely. Took multiple iterations to learn that the symptom isn't a tuning problem \u2014 it's that neighbor-jiggle is fundamentally hard to localize on a dense grid. AnimationIntensity defaults `enableNeighborJiggle = false` enforced this lesson.",
+      "severity": "medium",
+      "examples": [
+        "RIGHT: AnimationIntensity.standard.enableNeighborJiggle = false; rely on bulge-shrink + slide + landing-squash for impact feedback.",
+        "RIGHT (if you really want to try): radius 1 orthogonal only, amplitude \u2264 1.5, per-tile random phase, decay \u2264 200ms \u2014 and validate live with the user before committing.",
+        "WRONG: radius 2+ on dense grid \u2192 reads as global. Shared sin() clock for all jiggling tiles \u2192 phase-locked board shake."
+      ]
+    },
+    {
+      "id": "anim-use-animation-intensity-preset",
+      "rule": "Game generators creating tile-based or arcade games SHOULD use the `effects.animation-intensity` Lego component instead of hardcoding squash/bulge/spring magic numbers in ContentView. Pick a preset based on game pace: `.subtle` for productivity-flavored puzzles (crossword/word/sudoku/utility), `.standard` for mechanics-driven games (match-3/minesweeper/breakout), `.punchy` for arcade-action (asteroids/pacman/plants-vs-zombies/kids-games). One preset switch rescales every effect together; individual fields can be overridden for fine-tuning. Stamp the preset choice into a `// AnimationIntensity: subtle` comment near the property declaration so it's scannable.",
+      "why": "Without a shared knob struct, tuning means hunting for magic numbers across the View; copying numbers from one game to another forgets to scale them for pace. AnimationIntensity centralizes the tuning surface. Filed 2026-05-04 after Match3 v6 work + user request 'might almost be nice to define controls that allow us to dial up and down some of this stuff so we can quickly tune a given game or app.'",
+      "severity": "medium",
+      "examples": [
+        "RIGHT: `private let intensity: AnimationIntensity = .standard  // AnimationIntensity: standard (match-3 = mechanics-driven feedback)` then use `intensity.bulgeAmount`, `intensity.flashScale`, etc. throughout the View.",
+        "RIGHT (override individual): `var i = AnimationIntensity.standard; i.flashScale = 0.5; i.flashOpacity = 0.4 // dial flashes back further` and assign to `intensity`.",
+        "WRONG: hardcoded `.scaleEffect(1.25)`, `.font(.system(size: 92))`, `.spring(response: 0.18, dampingFraction: 0.45)` scattered across the View \u2014 impossible to retune as a unit."
+      ]
+    },
+    {
+      "id": "anim-flash-overlays-transparent-not-solid",
+      "rule": "Per-event flash overlays (sparkle for 3-match, burst for 4-match, lightning for 5-match \u2014 and any equivalent 'event happened here' visual) should be SCALED DOWN and SEMI-TRANSPARENT, not full-size solid graphics. Rule of thumb: glyph size ~60% of cell size, opacity 0.4\u20130.6, halo radius modest. Overly large/solid flash overlays read as 'sticker pasted on top of the gameplay' rather than 'effect emanating from the gameplay.' Real production overlays are accents, not centerpieces. Avoid giant text labels like '\u26a1 5-MATCH \u26a1' \u2014 the game-mechanic feedback (score increment, board change) is the centerpiece; the flash is punctuation.",
+      "why": "User feedback 2026-05-04 on catalog Match3 v6.3: 'the animation with the star and the lightning bolt are a bit too big and should probably be a little more transparent.' v6.4 flashes use scale=0.6 + opacity=0.55 + halo=18, removed text labels \u2014 and the flashes still register but no longer dominate. AnimationIntensity captures this as `flashScale: 0.6, flashOpacity: 0.55` in the standard preset.",
+      "severity": "medium",
+      "examples": [
+        "RIGHT: Image(systemName: \"sparkles\").font(.system(size: 56 * intensity.flashScale, weight: .black)).foregroundStyle(color.opacity(intensity.flashOpacity)).shadow(color: color.opacity(intensity.flashOpacity * 0.8), radius: intensity.flashHaloRadius)",
+        "RIGHT: NO 'YOU DID IT' / '5-MATCH' text labels \u2014 the score increment + board change communicates the event.",
+        "WRONG: opaque 96pt bolt.fill + 150pt circle + 60pt halo + giant Text('\u26a1 5-MATCH \u26a1') label centered on top of the board. Reads as 'graphic asset' not 'effect.'"
       ]
     }
   ],
