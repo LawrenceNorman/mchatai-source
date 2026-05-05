@@ -140,11 +140,15 @@ Emit ONE JSON code block (and nothing else outside it):
 
 Emit `{"proposalKind": "skip", "skipReason": "..."}` when:
 
-- The mini-app is a single inline IIFE with no separable subsystem.
-- An equivalent Lego already exists in `EXISTING_INDEX_JSON`.
+- An equivalent Lego already exists in `EXISTING_INDEX_JSON` (cite the
+  matching componentID in `skipReason`).
 - The reusable slice would be smaller than ~30 LOC.
-- The slice is heavily DOM-coupled to the user's exact markup (would
-  not work in a different mini-app's HTML).
+- Every function references specific DOM ids and there's no event-loop /
+  state-machine / domain-logic abstraction to lift out.
+
+A single-file IIFE is NOT a reason to skip. Lift the logic out of the
+inline `<script>` block into an exported ES class. Treat IIFE parent
+code as raw material to refactor.
 
 ## Style mimic
 
