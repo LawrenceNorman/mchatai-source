@@ -1,6 +1,6 @@
 {
   "packID": "productivity",
-  "version": 1,
+  "version": 2,
   "displayName": "Productivity App Guidelines",
   "description": "Quality rules for trackers, timers, calculators, and other productivity tools.",
   "categories": [
@@ -61,25 +61,25 @@
     {
       "id": "pr-004",
       "rule": "Expense/budget trackers MUST show a running total and a clear breakdown by category. Color-code categories. Show a balance (income minus expenses) prominently. Support adding both income and expense entries.",
-      "why": "An expense tracker that doesn't show totals or category breakdowns is just a list — it provides no value over a notes app.",
+      "why": "An expense tracker that doesn't show totals or category breakdowns is just a list \u2014 it provides no value over a notes app.",
       "severity": "critical",
       "appliesTo": "productivity",
       "examples": [
         "Bar or donut chart for category breakdown",
-        "Running balance: Income $2400 − Expenses $1850 = +$550",
+        "Running balance: Income $2400 \u2212 Expenses $1850 = +$550",
         "Color: food=orange, transport=blue, entertainment=purple, income=green"
       ]
     },
     {
       "id": "pr-005",
-      "rule": "Flashcard / study apps MUST implement spaced repetition or at minimum show cards in random order with self-rated difficulty (Easy/Hard). Show progress: X of N cards reviewed. Include a flip animation (rotateY 0→180deg) to reveal the answer.",
+      "rule": "Flashcard / study apps MUST implement spaced repetition or at minimum show cards in random order with self-rated difficulty (Easy/Hard). Show progress: X of N cards reviewed. Include a flip animation (rotateY 0\u2192180deg) to reveal the answer.",
       "why": "Flashcard apps that just scroll through cards in order don't aid memorization. The flip is the defining UX of the genre.",
       "severity": "critical",
       "appliesTo": "productivity",
       "examples": [
         "Card flip: .card { transform-style: preserve-3d } .card.flipped { transform: rotateY(180deg) }",
         "Front face: question. Back face: answer (rotateY 180deg initially)",
-        "After each flip: show 'Easy' and 'Hard' buttons — Hard cards requeue, Easy moves to next"
+        "After each flip: show 'Easy' and 'Hard' buttons \u2014 Hard cards requeue, Easy moves to next"
       ]
     },
     {
@@ -96,7 +96,7 @@
     },
     {
       "id": "pr-007",
-      "rule": "Password strength checkers MUST evaluate: length (>=8, >=12, >=16), uppercase, lowercase, numbers, symbols. Show a colored strength bar (red→orange→yellow→green) and specific improvement tips. Never store or transmit the password.",
+      "rule": "Password strength checkers MUST evaluate: length (>=8, >=12, >=16), uppercase, lowercase, numbers, symbols. Show a colored strength bar (red\u2192orange\u2192yellow\u2192green) and specific improvement tips. Never store or transmit the password.",
       "why": "Checkers that only use a regex for 'has uppercase+number' miss the most important factor (length). Users need actionable feedback.",
       "severity": "important",
       "appliesTo": "productivity",
@@ -105,6 +105,19 @@
         "Bar: 0-2=red, 3-4=orange, 5=yellow, 6=green, 7=bright-green",
         "Tip: 'Add symbols like !@#$%' shown only if symbols missing"
       ]
+    },
+    {
+      "id": "audio-productivity-apps-no-sound",
+      "rule": "Productivity, utility, and tool-flavored mini-apps (file pickers, code generators, calculators, note-takers, todos, timers, dashboards, spreadsheets, chat UIs) MUST NOT bundle SoundEngine or trigger SFX. The SFX framework is GAME-only. Sound in a focus tool = annoyance the user will mute and never re-enable, defeating the point. The exception is a single subtle confirmation tone for completed long-running tasks (build done, export finished) \u2014 even then, prefer NSUserNotification with the OS sound choice rather than embedded SFX. Background music is doubly forbidden in productivity contexts.",
+      "why": "Filed 2026-05-04 with the SoundEngine ship to keep the framework scoped. Real risk: the matcher might pull effects.sound-engine into a productivity app because some recipe metadata included 'click' or 'feedback'. Explicit opt-out at the matcher decision-point.",
+      "severity": "high",
+      "examples": [
+        "RIGHT (productivity app): no `import effects.sound-engine`; no SoundEngine references.",
+        "RIGHT (long-running task done): NSUserNotification with default sound, not in-app SFX.",
+        "WRONG: Note-taking app with 'whoosh' SFX on every save. Calculator with 'tick' on every digit. Todo app with chime on every checkbox.",
+        "WRONG: ANY background music in a productivity app \u2014 competes with the user's own music + costs CPU/battery."
+      ]
     }
-  ]
+  ],
+  "_last_updated": "2026-05-04"
 }

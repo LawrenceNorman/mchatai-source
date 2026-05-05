@@ -1,6 +1,6 @@
 {
   "packID": "card-games",
-  "version": 4,
+  "version": 5,
   "displayName": "Card Game Guidelines",
   "description": "Quality rules for poker, blackjack, solitaire, and other card games.",
   "categories": [
@@ -407,6 +407,72 @@
         "RIGHT: Image(systemName: \"sparkles\").font(.system(size: 56 * intensity.flashScale, weight: .black)).foregroundStyle(color.opacity(intensity.flashOpacity)).shadow(color: color.opacity(intensity.flashOpacity * 0.8), radius: intensity.flashHaloRadius)",
         "RIGHT: NO 'YOU DID IT' / '5-MATCH' text labels \u2014 the score increment + board change communicates the event.",
         "WRONG: opaque 96pt bolt.fill + 150pt circle + 60pt halo + giant Text('\u26a1 5-MATCH \u26a1') label centered on top of the board. Reads as 'graphic asset' not 'effect.'"
+      ]
+    },
+    {
+      "id": "audio-use-sound-engine-component",
+      "rule": "Game-flavor mini-apps (arcade, match-3, card, puzzle, board games \u2014 anything in the 'game' bucket) SHOULD use the `effects.sound-engine` Lego component instead of building their own AVAudioPlayer plumbing. SoundEngine provides pooled players (low-latency overlap), debounced playback, music fade in/out, persistent UserDefaults mute, semantic SFX enum (match3Pop / arcadeLaser / cardSlide / etc.), and intensity presets (.subtle/.standard/.punchy/.soft). 25 CC0 SFX from Kenney are bundled in `assets/sfx/*.m4a`. Generated apps should declare `@ObservedObject private var sound = SoundEngine.shared` and call `sound.play(.match3Pop)`. Add `resources: [.copy(\"SFX\")]` to the SwiftPM target.",
+      "why": "Filed 2026-05-04 after building SoundEngine component for catalog Match3 v7. User feedback: 'sound effects really add to the overall game experience.' Without a shared engine, every game reinvents pool management, debouncing, mute toggle, music fades \u2014 and gets 2-3 of them wrong (jarring volumes, no fade, plays on every render).",
+      "severity": "high",
+      "examples": [
+        "RIGHT: import effects.sound-engine; @ObservedObject private var sound = SoundEngine.shared; on match-clear: sound.play(.match3Pop, pitchSemitones: cascadeDepth * 2)",
+        "RIGHT (mute button): Button { sound.muted.toggle() } label: { Image(systemName: sound.muted ? \"speaker.slash.fill\" : \"speaker.wave.2.fill\") } \u2014 required by audio-always-mute-toggle rule.",
+        "WRONG: build AVAudioPlayer pool ad-hoc in ContentView; reinvent debouncing; forget mute persistence; skip music fades."
+      ]
+    },
+    {
+      "id": "audio-always-mute-toggle",
+      "rule": "Any game with sound MUST expose a visible, persistent mute toggle in the always-visible UI (not hidden in a settings menu). Default state: unmuted at modest volume (intensity.standard.sfxVolume = 0.65). Mute state MUST persist across app restarts via UserDefaults. Use SF Symbols `speaker.wave.2.fill` (unmuted) / `speaker.slash.fill` (muted). Optional but recommended: bind to keyboard shortcut 'M'. SoundEngine.muted handles the persistence \u2014 just observe `sound.muted` for the icon swap.",
+      "why": "Universal UX rule. Users tab between games, take calls, share screens. Burying mute deep in a settings menu means the next time they alt-tab in, the SFX surprise everyone in the room. Filed 2026-05-04 alongside SoundEngine ship \u2014 incorporated as default behavior in the engine itself but the visible-button is a View-level requirement that can't be enforced by the Lego.",
+      "severity": "high",
+      "examples": [
+        "RIGHT: speaker icon in the bottom controls bar, always visible. Tap \u2192 mute persists.",
+        "RIGHT: keyboardShortcut(\"m\", modifiers: []) for power-users + .help() tooltip.",
+        "WRONG: mute hidden in a 'Preferences' menu / hamburger / kebab. Surfacing-cost too high."
+      ]
+    },
+    {
+      "id": "audio-pitch-shift-cascades",
+      "rule": "For match-3 / cascade / chain-reaction games, pitch-shift the SFX +2 semitones per cascade depth (depth 0 = neutral, depth 1 = +2, depth 2 = +4, etc.). Creates the satisfying ascending arpeggio Candy Crush is famous for. Use `sound.play(sfx, pitchSemitones: depth * 2)`. SoundEngine supports this via `enableRate = true` on the underlying AVAudioPlayer pool. Cap at depth 6 (= +12 semitones = double pitch) \u2014 beyond that AVAudioPlayer artifacts become obvious. Apply same pattern to: combo counters in arcade games (each combo bumps pitch), enemy-streak-kills, multi-line-clear in Tetris.",
+      "why": "Real Candy Crush production behavior validated 2026-05-04 via web research + Match3 v7 implementation. Without pitch-shift, every cascade pop sounds identical \u2192 user can't tell they're chaining. With pitch-shift, the ear hears 'thing 1, thing 2, thing 3' as ascending tones and the cascade feels satisfying. Universal \u2014 applies to any game with chainable events.",
+      "severity": "medium",
+      "appliesTo": "tileBasedGame, arcadeGame, puzzleGame",
+      "examples": [
+        "RIGHT: sound.play(.match3Pop, pitchSemitones: cascadeDepth * 2) \u2014 direct swap = neutral, first cascade = +2, second = +4, etc.",
+        "RIGHT (combos): sound.play(.arcadeExplosion, pitchSemitones: min(comboCount, 6) * 2)",
+        "WRONG: same flat tone on every cascade pop \u2014 user can't tell they're chaining."
+      ]
+    },
+    {
+      "id": "audio-debounce-events-not-renders",
+      "rule": "Sound effects must fire on DISCRETE GAME EVENTS (match resolved, button tapped, enemy hit, level up), NOT inside SwiftUI render or `body` evaluation. SoundEngine debounces internally (30ms window per SFX), but if you call `sound.play(.x)` from a `.onAppear` / `body` getter / @State observer that fires on every render, you'll hammer the engine \u2014 and the debounce will silently drop most of them but the ones that DO play will be misaligned with what the user did. Place SFX calls inside the action handlers: `Button(action: { sound.play(.uiButtonTap); ...real action... })` or inside the engine-event loop where matches resolve.",
+      "why": "Same anti-pattern as 'wrote tile content into ForEach Text() body' \u2014 render-time side effects = unpredictable. Filed 2026-05-04 after wiring Match3: original instinct was to call sound.play(.match3Pop) inside the `flashView` ViewBuilder. That would have fired on every flash render, not just when the flash was created. Moved into the cascade-loop where events.kind is known once per resolution.",
+      "severity": "high",
+      "examples": [
+        "RIGHT: in the cascade loop where match events resolve, exactly once per event: `for event in previewEvents { sound.play(matchSFX(for: event.kind), pitchSemitones: event.cascadeDepth * 2) }`",
+        "WRONG: `var body: some View { Text(\"\\(score)\").onAppear { sound.play(.scoreTick) } }` \u2014 fires every render.",
+        "WRONG: `.onChange(of: engine.score) { sound.play(.coinPickup) }` triggers on EVERY score change including the +30 from a 3-match \u2192 could fire 6+ times in a single cascade. Either debounce upstream or fire on the discrete match event, not the score derivative."
+      ]
+    },
+    {
+      "id": "audio-pick-intensity-by-game-pace",
+      "rule": "Same pattern as AnimationIntensity: pick a SoundIntensity preset by game pace. `.subtle` (sfxVol=0.35, musicVol=0.15) for productivity-flavored puzzles where audio is light punctuation. `.standard` (0.65/0.35) for mechanics-driven games (match-3, minesweeper). `.punchy` (0.85/0.55) for arcade-action (asteroids, pacman, plants-vs-zombies, kids/casual). `.soft` (0.5/0.45) for relaxing/idle/ambient (solitaire, pattern matchers). Stamp the choice in a comment near the SoundEngine declaration: `// SoundIntensity: standard (match-3 mechanics-driven feedback)`.",
+      "why": "Without a shared knob struct, generators copy-paste a volume float and forget to scale for pace. Match-3 at .punchy is too loud; arcade at .subtle disappears. Presets capture the calibration. Mirrors the AnimationIntensity pattern intentionally so generators learn one mental model.",
+      "severity": "medium",
+      "examples": [
+        "RIGHT: SoundEngine.shared.intensity = .standard  // SoundIntensity: standard (match-3)",
+        "RIGHT (override): var i = SoundIntensity.standard; i.sfxVolume = 0.5; i.musicVolume = 0.25; SoundEngine.shared.intensity = i",
+        "WRONG: hardcoded `sound.play(.match3Pop, volume: 0.7)` everywhere \u2014 impossible to retune as a unit."
+      ]
+    },
+    {
+      "id": "audio-music-fades-not-cuts",
+      "rule": "Background music tracks MUST fade in (1.0\u20131.5s) and fade out (1.0s) \u2014 NEVER hard-cut. Hard cuts are jarring and feel like a glitch. SoundEngine.loop(_:fadeIn:) handles this: `sound.loop(.puzzleAmbient, fadeIn: 1.5)`. Track switches: stopMusic(fadeOut: 0.3) THEN loop(.next, fadeIn: 1.0) \u2014 for a clean crossfade-via-stop. App-quit / sheet-dismiss / scene-change: stopMusic(fadeOut: 1.0) before transition. SFX are exempt \u2014 they're already short, fade is built into the sound itself.",
+      "why": "Universal audio production rule. Hard cuts on long-form audio = listener notices the seam = breaks immersion. Filed 2026-05-04 with SoundEngine ship \u2014 the engine enforces fade defaults so hard cuts only happen if a generator explicitly passes 0.",
+      "severity": "medium",
+      "examples": [
+        "RIGHT: sound.loop(.puzzleAmbient, fadeIn: 1.5) on game start; sound.stopMusic(fadeOut: 1.0) on game-over screen.",
+        "WRONG: musicPlayer.play() / musicPlayer.stop() without fade. Listener hears the abrupt cut."
       ]
     }
   ],
