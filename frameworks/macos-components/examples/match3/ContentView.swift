@@ -121,10 +121,36 @@ struct ContentView: View {
     @State private var totalCleared: Int = 0
     @State private var status = "Drag a candy onto an adjacent candy."
 
-    @State private var poppingTiles: Set<UUID> = []  // by tile-id, not point
+    /// Per-tile animation state. Drives squash/stretch + bulge/shrink phases
+    /// per the 12 principles of animation (anticipation, squash-stretch,
+    /// follow-through). Real Candy Crush match clears go BULGE (1.25x over
+    /// 80ms) then SHRINK to 0 + fade (100ms) — that's anticipation +
+    /// follow-through, not a flat fade. Tiles that just landed get a brief
+    /// squash-y to feel like they have weight.
+    @State private var tileAnimationPhase: [UUID: TileAnimationPhase] = [:]
+    /// Tiles within blast radius of a 4/5-match jiggle briefly. Secondary
+    /// motion (12 principles #6) — neighbor reaction sells the explosion
+    /// as a real impact instead of a sticker on top of the board.
+    @State private var jigglingTiles: [UUID: CGFloat] = [:]
+    /// Per-tile random phase offset so neighbor jiggle reads as INDEPENDENT
+    /// wobbles, not a phase-locked board-wide shake. Without this every
+    /// jiggling tile moves in unison (sin of the same shared clock) and the
+    /// effect feels global/disorienting.
+    @State private var jigglePhase: [UUID: Double] = [:]
     /// Per-kind flash overlays (sparkle / burst / lightning) drawn on top
     /// of the board for each resolved match. Active for ~0.4s per event.
     @State private var activeFlashes: [FlashEffect] = []
+
+    /// Per-tile animation state machine. `idle` is the resting state.
+    /// Match clears go .bulging -> .shrinking. New refilled tiles enter
+    /// in .falling and squash-land via .squashing.
+    private enum TileAnimationPhase: Equatable {
+        case idle
+        case bulging      // pre-clear anticipation: scale up to 1.25, ~80ms
+        case shrinking    // follow-through: scale to 0 + fade, ~100ms
+        case falling      // mid-fall: stretched vertically (1.0 wide × 1.15 tall)
+        case squashing    // just-landed: squashed (1.15 wide × 0.85 tall) for one frame
+    }
 
     private struct FlashEffect: Identifiable, Equatable {
         let id: UUID = UUID()
@@ -141,6 +167,12 @@ struct ContentView: View {
     private let cellSize: CGFloat = 56
     private let gapSize: CGFloat = 6
     private let targetScore = 1500
+
+    /// Animation tuning — pick a preset based on game pace. Match-3 lives in
+    /// the middle (mechanics-driven feedback) so `.standard` is correct.
+    /// To adjust feel: switch to `.subtle` (calmer, productivity-flavored)
+    /// or `.punchy` (arcade, kid-friendly). Or override individual knobs.
+    private let intensity: AnimationIntensity = .standard
     private let hintTimer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     var body: some View {
@@ -302,36 +334,34 @@ struct ContentView: View {
     @ViewBuilder
     private func flashView(_ flash: FlashEffect) -> some View {
         let candy = CandyType.forSymbol(flash.symbol)
+        // All flash sizes scale uniformly through intensity.flashScale —
+        // tuning one knob rescales sparkle, burst, and lightning together
+        // so they stay visually consistent. Intensity also controls
+        // opacity (additive accent vs solid graphic) and halo radius.
+        let scale = intensity.flashScale
+        let alpha = intensity.flashOpacity
+        let halo = intensity.flashHaloRadius
         switch flash.kind {
         case .three:
             Image(systemName: "sparkles")
-                .font(.system(size: 56, weight: .black))
-                .foregroundStyle(candy.topColor)
-                .shadow(color: candy.topColor, radius: 26)
+                .font(.system(size: 56 * scale, weight: .black))
+                .foregroundStyle(candy.topColor.opacity(alpha))
+                .shadow(color: candy.topColor.opacity(alpha * 0.8), radius: halo)
         case .four:
-            ZStack {
-                Image(systemName: "burst.fill")
-                    .font(.system(size: 92, weight: .black))
-                    .foregroundStyle(candy.topColor)
-                    .shadow(color: candy.topColor, radius: 38)
-                Text("+\(80)")
-                    .font(.system(size: 22, weight: .black, design: .rounded))
-                    .foregroundStyle(.white)
-            }
+            Image(systemName: "burst.fill")
+                .font(.system(size: 92 * scale, weight: .black))
+                .foregroundStyle(candy.topColor.opacity(alpha))
+                .shadow(color: candy.topColor.opacity(alpha * 0.8), radius: halo * 1.4)
         case .five:
             ZStack {
                 Circle()
-                    .fill(candy.topColor)
-                    .frame(width: 150, height: 150)
-                    .shadow(color: candy.topColor, radius: 60)
+                    .fill(candy.topColor.opacity(alpha * 0.6))
+                    .frame(width: 150 * scale, height: 150 * scale)
+                    .shadow(color: candy.topColor.opacity(alpha * 0.7), radius: halo * 2)
                     .blur(radius: 4)
                 Image(systemName: "bolt.fill")
-                    .font(.system(size: 96, weight: .black))
-                    .foregroundStyle(.white)
-                Text("⚡ 5-MATCH ⚡")
-                    .font(.system(size: 16, weight: .black, design: .rounded))
-                    .foregroundStyle(.yellow)
-                    .offset(y: 60)
+                    .font(.system(size: 96 * scale, weight: .black))
+                    .foregroundStyle(Color.white.opacity(alpha + 0.15))
             }
         }
     }
@@ -375,19 +405,48 @@ struct ContentView: View {
     private func candyTile(tile: Match3Tile, point: PuzzlePoint) -> some View {
         let candy = CandyType.forSymbol(tile.symbol)
         let isDragOrigin = dragOrigin == point
-        let isPopping = poppingTiles.contains(tile.id)
         let isHinted = hintPair.map { $0.0 == point || $0.1 == point } ?? false
         let dragOffset: CGSize = isDragOrigin ? clampedTranslation(dragTranslation) : .zero
+        let phase = tileAnimationPhase[tile.id] ?? .idle
+        let jiggleAmount = jigglingTiles[tile.id] ?? 0
+
+        // Squash-stretch: scaleX vs scaleY computed per phase. Volume-preserving.
+        // Real Candy Crush feel: bulge anticipation before clear, vertical
+        // stretch while falling, horizontal squash on landing. (12 principles
+        // of animation #1: squash-and-stretch.)
+        let (sx, sy) = phaseScales(phase: phase, isDragOrigin: isDragOrigin, isHinted: isHinted && hintPulse)
+
+        // Per-cell shadow intensity flips up briefly when a tile lands —
+        // makes the "hit the floor" moment land visually.
+        let shadowRadius: CGFloat = phase == .squashing ? 14 : (isHinted && hintPulse ? 18 : 7)
+
+        // Neighbor jiggle disabled — it consistently read as "the whole board
+        // is vibrating" no matter how localized we made the radius/amplitude/
+        // phase. Real Candy Crush doesn't actually jiggle neighbors on a
+        // baseline match; the satisfying feedback comes from the bulge-shrink
+        // pop on the matched tiles + the slide-down + the squash-on-landing.
+        // Keeping the state vars in case we want to revisit for special
+        // matches (bomb/lightning) later, but they currently no-op.
+        _ = jiggleAmount
+        let jiggleX: CGFloat = 0
+        let jiggleRotation: CGFloat = 0
 
         return candyShape(candy: candy)
             .frame(width: cellSize, height: cellSize)
-            .scaleEffect(isPopping ? 1.4 : (isDragOrigin ? 1.10 : (isHinted && hintPulse ? 1.07 : 1.0)))
-            .opacity(isPopping ? 0 : 1)
-            .shadow(color: candy.bottomColor.opacity(0.55), radius: isHinted && hintPulse ? 18 : 7, x: 0, y: 4)
-            .offset(dragOffset)
-            .animation(.easeOut(duration: 0.22), value: isPopping)
+            .scaleEffect(x: sx, y: sy, anchor: .center)
+            .rotationEffect(.degrees(jiggleRotation))
+            .opacity(phase == .shrinking ? 0 : 1)
+            .shadow(color: candy.bottomColor.opacity(0.55), radius: shadowRadius, x: 0, y: 4)
+            .offset(x: dragOffset.width + jiggleX, y: dragOffset.height)
+            // Animate transitions per PHASE — NOT one global animation. Each
+            // animation has its own duration matching real Candy Crush:
+            //   bulging  = 80ms  (anticipation pop)
+            //   shrinking = 100ms (follow-through)
+            //   squashing = 130ms (landing impact, bouncy spring)
+            .animation(animationFor(phase: phase), value: phase)
             .animation(.easeInOut(duration: 0.6), value: hintPulse)
             .animation(.interactiveSpring(response: 0.30, dampingFraction: 0.7), value: dragOffset)
+            .animation(.easeInOut(duration: 0.08), value: jiggleAmount)
             .gesture(
                 DragGesture(minimumDistance: 5)
                     .onChanged { value in
@@ -404,6 +463,46 @@ struct ContentView: View {
                         dragTranslation = .zero
                     }
             )
+    }
+
+    /// Volume-preserving squash/stretch scales per animation phase.
+    /// Returns (scaleX, scaleY). All amounts driven by AnimationIntensity
+    /// — switch the `intensity` preset to rescale them all together.
+    private func phaseScales(phase: TileAnimationPhase, isDragOrigin: Bool, isHinted: Bool) -> (CGFloat, CGFloat) {
+        let bulge = 1.0 + intensity.bulgeAmount
+        let squashX = 1.0 + intensity.squashAmount
+        let squashY = 1.0 - intensity.squashAmount
+        let fallX = 1.0 - intensity.fallStretch
+        let fallY = 1.0 + intensity.fallStretch
+        switch phase {
+        case .bulging:    return (bulge, bulge)               // pre-clear pop
+        case .shrinking:  return (0.0, 0.0)                   // collapses to nothing
+        case .falling:    return (fallX, fallY)               // vertical stretch (gravity)
+        case .squashing:  return (squashX, squashY)           // landing impact squash
+        case .idle:
+            if isDragOrigin { return (1.10, 1.10) }
+            if isHinted     { return (1.07, 1.07) }
+            return (1.0, 1.0)
+        }
+    }
+
+    /// Per-phase animation curves. Different phases NEED different timings —
+    /// this is what gives the game its "alive" feel vs everything moving at
+    /// the same boring spring. Durations + spring params come from intensity.
+    private func animationFor(phase: TileAnimationPhase) -> Animation {
+        switch phase {
+        case .bulging:    return .easeOut(duration: intensity.bulgeDuration)
+        case .shrinking:  return .easeIn(duration: intensity.shrinkDuration)
+        case .falling:    return .easeIn(duration: 0.18)               // gravity ease-in
+        case .squashing:  return .spring(
+                            response: intensity.fallSpringResponse,
+                            dampingFraction: intensity.fallSpringDamping
+                          )
+        case .idle:       return .spring(
+                            response: intensity.landSpringResponse,
+                            dampingFraction: intensity.landSpringDamping + 0.08  // slightly snappier on idle restore
+                          )
+        }
     }
 
     @ViewBuilder
@@ -521,64 +620,187 @@ struct ContentView: View {
 
     @MainActor
     private func runCascadeLoop() async {
-        var totalPoints = 0
-        var maxCombo = 0
         var iterations = 0
-        let cascadeFlashDuration: UInt64 = 350_000_000  // 0.35s
 
         while true {
-            // Step A: clear matches. Triggers pop+fade for the matched tiles
-            // (their symbol becomes "" so they're no longer in tilesWithPositions).
-            var events: [Match3MatchEvent] = []
-            withAnimation(.easeOut(duration: 0.22)) {
-                events = engine.clearMatches()
-            }
-            if events.isEmpty { break }
+            // STEP A: detect matches WITHOUT clearing yet. We need the tile-IDs
+            // about to be cleared so we can drive their bulge → shrink anticipation.
+            let groups = engine.findMatchGroups()
+            if groups.isEmpty { break }
 
             iterations += 1
-            maxCombo = max(maxCombo, iterations)
-            totalPoints += events.reduce(0) { $0 + $1.pointsAwarded }
-            totalCleared += events.reduce(0) { $0 + $1.points.count }
             combo = iterations
             status = combo > 1 ? "Combo x\(combo)!" : "Nice match!"
 
-            // Spawn per-kind flash overlays at the center of each match group.
-            // 3-match = sparkle, 4-match = burst+score, 5-match = lightning ring.
-            withAnimation(.easeOut(duration: 0.30)) {
-                for event in events {
-                    let center = self.centerOfGroup(event.points)
-                    self.activeFlashes.append(FlashEffect(
-                        kind: event.kind,
-                        center: center,
-                        symbol: event.symbol
-                    ))
+            // Map: which tile.ids are about to disappear (so we can phase them)
+            var doomedTileIDs: [UUID] = []
+            for group in groups {
+                for p in group {
+                    let t = engine.grid[p]
+                    if !t.symbol.isEmpty { doomedTileIDs.append(t.id) }
                 }
             }
+
+            // Compute synthetic events so we can preview the kind/center
+            // (engine doesn't expose them publicly until clearMatches() commits).
+            var previewEvents: [Match3MatchEvent] = []
+            for group in groups {
+                let kind: Match3Kind = group.count >= 5 ? .five : (group.count == 4 ? .four : .three)
+                let firstSymbol = engine.grid[group.first!].symbol
+                previewEvents.append(Match3MatchEvent(
+                    kind: kind, points: group, pointsAwarded: 0,
+                    symbol: firstSymbol, cascadeDepth: iterations - 1
+                ))
+            }
+
+            // STEP B: ANTICIPATION — bulge the doomed tiles (1.25x over 80ms).
+            // This is principle #1 (squash-stretch) + principle #4 (anticipation):
+            // tiles get bigger before they explode, so the eye knows what's coming.
+            withAnimation(.easeOut(duration: 0.08)) {
+                for id in doomedTileIDs { tileAnimationPhase[id] = .bulging }
+            }
+            try? await Task.sleep(nanoseconds: 80_000_000)
+
+            // STEP C: spawn the per-kind flashes + jiggle the neighbors of
+            // big matches (secondary motion — surrounding candies REACT to
+            // the explosion). Run these in parallel with the shrink so the
+            // explosion lands as one event.
+            for event in previewEvents {
+                let center = self.centerOfGroup(event.points)
+                self.activeFlashes.append(FlashEffect(
+                    kind: event.kind, center: center, symbol: event.symbol
+                ))
+                // Neighbor jiggle: 4-match shakes radius 2, 5-match shakes radius 3.
+                if event.kind == .four || event.kind == .five {
+                    // Neighbor jiggle removed — it read as "whole board
+                    // vibrates" no matter how tightly we scoped it. The
+                    // bulge-shrink pop + slide-down + landing squash already
+                    // sell the impact.
+                    _ = event
+                }
+            }
+
+            // STEP D: FOLLOW-THROUGH — shrink to 0 + fade (100ms ease-in).
+            // Tiles disappear with a satisfying "pop down" not a flat fade.
+            withAnimation(.easeIn(duration: 0.10)) {
+                for id in doomedTileIDs { tileAnimationPhase[id] = .shrinking }
+            }
+            try? await Task.sleep(nanoseconds: 110_000_000)
+
+            // STEP E: commit the clear in the engine. Matched tiles now have
+            // symbol = "" so they're filtered out of tilesWithPositions.
+            withAnimation(.linear(duration: 0.001)) {
+                _ = engine.clearMatches()
+            }
+            for id in doomedTileIDs { tileAnimationPhase.removeValue(forKey: id) }
+            totalCleared += doomedTileIDs.count
+
+            // STEP F: COLLAPSE + REFILL. The existing tiles fall DOWN into
+            // empty cells; new tiles enter from above. We use the engine's
+            // collapseAndRefill which preserves UUIDs for falling tiles
+            // (they animate via .position because tile.id is stable) and
+            // creates fresh UUIDs for new tiles (they enter via transition).
+            //
+            // Snapshot pre-collapse positions per tile UUID so STEP G can
+            // squash ONLY the tiles that actually moved. Squashing every
+            // tile (the bug in v6.0–v6.2) reads as "the whole board is
+            // vibrating after every match" — even for matches in just one
+            // corner. Tiles that didn't fall must stay completely still.
+            var preCollapseRow: [UUID: Int] = [:]
+            for entry in self.tilesWithPositions() {
+                preCollapseRow[entry.tile.id] = entry.point.row
+            }
+
+            // Per-tile fall stagger: since the spring animation is on the
+            // grid as a whole, all tiles in the same column fall together.
+            // Real Candy Crush staggers by column (cols delay 30ms each)
+            // but our spring already gives a satisfying ripple feel, so v6
+            // sticks with a single spring + ease-in for landing punch.
+            withAnimation(.easeIn(duration: 0.18)) {
+                engine.collapseAndRefill()
+            }
+
+            // STEP G: SQUASH-LAND — after the fall, briefly squash ONLY the
+            // tiles that actually moved (different row than before collapse,
+            // OR brand-new tiles that entered from above). Tiles that were
+            // already in their final position get NO squash, so an isolated
+            // match in one corner doesn't ripple visual noise across the
+            // whole board.
+            try? await Task.sleep(nanoseconds: 180_000_000)
+            let landedTileIDs: [UUID] = self.tilesWithPositions().compactMap { entry in
+                let id = entry.tile.id
+                if let oldRow = preCollapseRow[id] {
+                    return oldRow != entry.point.row ? id : nil  // moved
+                } else {
+                    return id  // new tile (entered from above)
+                }
+            }
+            withAnimation(.spring(response: 0.18, dampingFraction: 0.45)) {
+                for id in landedTileIDs { tileAnimationPhase[id] = .squashing }
+            }
+            try? await Task.sleep(nanoseconds: 130_000_000)
+            withAnimation(.spring(response: 0.20, dampingFraction: 0.7)) {
+                for id in landedTileIDs { tileAnimationPhase[id] = .idle }
+            }
+
             // Auto-remove flashes after they've played.
-            let flashIDsToRemove = self.activeFlashes.suffix(events.count).map(\.id)
+            let flashCount = previewEvents.count
+            let flashIDsToRemove = self.activeFlashes.suffix(flashCount).map(\.id)
             Task { @MainActor in
-                try? await Task.sleep(nanoseconds: 700_000_000)
+                try? await Task.sleep(nanoseconds: 600_000_000)
                 withAnimation(.easeIn(duration: 0.20)) {
                     self.activeFlashes.removeAll { flashIDsToRemove.contains($0.id) }
                 }
             }
-
-            // Wait for the pop animation to play before sliding.
-            try? await Task.sleep(nanoseconds: cascadeFlashDuration)
-
-            // Step B: collapse + refill. The same tile UUIDs that were
-            // ABOVE empty cells now move DOWN — SwiftUI animates the
-            // y-translation because the tile.id is stable. New tiles get
-            // fresh UUIDs and appear at the top.
-            withAnimation(.spring(response: 0.42, dampingFraction: 0.75)) {
-                engine.collapseAndRefill()
-            }
-
-            // Wait for the slide before checking for new cascade matches.
-            try? await Task.sleep(nanoseconds: 380_000_000)
         }
 
         checkBoardHealth()
+    }
+
+    /// Secondary-motion neighbor jiggle. When a 4/5-match clears, the IMMEDIATE
+    /// neighbors (radius 1, orthogonal only — not diagonals) briefly shake —
+    /// sells the explosion as a real impact without making the whole board
+    /// feel like it's vibrating. v6.1 tightened from radius 2/3 → radius 1
+    /// after user feedback that the jiggle radiated too far and felt global.
+    /// 5-match keeps a slightly larger amplitude but same radius — bigger
+    /// matches feel stronger via amplitude, NOT spread.
+    private func triggerNeighborJiggle(around matchedPoints: Set<PuzzlePoint>, kind: Match3Kind) {
+        // Radius 1, orthogonal only. Diagonals make the cluster feel boxy
+        // and also expand the affected count from ~4 to ~8 per matched cell.
+        let amount: CGFloat = kind == .five ? 1.6 : 1.1
+        var neighborIDs: Set<UUID> = []
+        let offsets: [(Int, Int)] = [(-1, 0), (1, 0), (0, -1), (0, 1)]
+
+        for matched in matchedPoints {
+            for (dr, dc) in offsets {
+                let p = PuzzlePoint(row: matched.row + dr, col: matched.col + dc)
+                guard engine.grid.contains(p) else { continue }
+                if matchedPoints.contains(p) { continue }
+                let t = engine.grid[p]
+                if !t.symbol.isEmpty { neighborIDs.insert(t.id) }
+            }
+        }
+
+        // Seed a per-tile random phase offset so each neighbor wobbles
+        // out-of-sync. Without this they all sin() the same shared clock and
+        // appear locked in unison — reads as board-shake, not localized impact.
+        for id in neighborIDs where jigglePhase[id] == nil {
+            jigglePhase[id] = Double.random(in: 0..<(2 * .pi))
+        }
+
+        withAnimation(.easeInOut(duration: 0.06)) {
+            for id in neighborIDs { jigglingTiles[id] = amount }
+        }
+        // Decay over 200ms — quick wobble, not a sustained shake.
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 200_000_000)
+            withAnimation(.easeOut(duration: 0.14)) {
+                for id in neighborIDs {
+                    jigglingTiles.removeValue(forKey: id)
+                    jigglePhase.removeValue(forKey: id)
+                }
+            }
+        }
     }
 
     private func animateCascades() {
