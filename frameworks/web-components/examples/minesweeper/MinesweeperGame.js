@@ -34,7 +34,6 @@ export class MinesweeperGame {
     this.messageElement = document.querySelector("#message");
     this.timerElement = document.querySelector("#timer");
     this.minesLeftElement = document.querySelector("#minesLeft");
-    this.modeElement = document.querySelector("#modeLabel");
     this.flagModeButton = document.querySelector("#flagModeButton");
     this.newGameButton = document.querySelector("#newGameButton");
     this.rankCardHostEl = document.querySelector("#rankCard");
@@ -247,8 +246,8 @@ export class MinesweeperGame {
     const flags = this.countFlags();
     this.timerElement.textContent = String(this.elapsed);
     this.minesLeftElement.textContent = String(Math.max(0, this.mineCount - flags));
-    this.modeElement.textContent = this.flagMode ? "Flag" : "Reveal";
     this.flagModeButton.classList.toggle("is-active", this.flagMode);
+    this.flagModeButton.textContent = this.flagMode ? "Flag Mode (on)" : "Flag Mode";
   }
 
   renderCells() {
