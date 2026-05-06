@@ -6,6 +6,9 @@ import { RestartOverlay } from "../../ui/RestartOverlay.js";
 import { Leaderboard } from "../../ui/Leaderboard.js";
 import { getSwatchByID, applySwatchVariables } from "../../resources/Swatches.js";
 import { AudioManager } from "../../resources/AudioManager.js";
+import { BoardShake } from "../../effects/BoardShake.js";
+import { PopBurst } from "../../effects/PopBurst.js";
+import { ScoreRise } from "../../effects/ScoreRise.js";
 
 export class MinesweeperGame {
   constructor(options = {}) {
@@ -38,6 +41,9 @@ export class MinesweeperGame {
     if (typeof applySwatchVariables === "function" && typeof getSwatchByID === "function") {
       applySwatchVariables(document.documentElement, getSwatchByID("retro-neon"));
     }
+    if (typeof BoardShake?.injectCss === "function") BoardShake.injectCss();
+    if (typeof PopBurst?.injectCss === "function") PopBurst.injectCss();
+    if (typeof ScoreRise?.injectCss === "function") ScoreRise.injectCss();
     this.restart = (typeof RestartOverlay === "function") ? new RestartOverlay({
       host: document.querySelector("[data-app]") || document.body,
       onRestart: () => this.reset()
@@ -145,12 +151,20 @@ export class MinesweeperGame {
     this.turns.record({ type: "reveal", row, col, count: result.revealed.length });
     if (result.hitMine) {
       this.audio.noise({ duration: 0.18, volume: 0.08 });
+      const mineCell = this.boardElement?.querySelector(`[data-row="${row}"][data-col="${col}"]`);
+      if (mineCell) PopBurst?.spawn?.(mineCell, { color: "#ff5b6e", size: 1.4 });
+      BoardShake?.shake?.(this.boardElement, { intensity: "strong" });
       this.finish(false);
       return;
     }
 
-    this.scoreboard.add(result.revealed.length * 10);
+    const points = result.revealed.length * 10;
+    this.scoreboard.add(points);
     this.audio.beep({ freq: 520, duration: 0.04 });
+    if (result.revealed.length >= 4) {
+      const clickedCell = this.boardElement?.querySelector(`[data-row="${row}"][data-col="${col}"]`);
+      if (clickedCell) ScoreRise?.show?.(clickedCell, `+${points}`, { color: "#7ee787", fontSize: 14 });
+    }
     if (this.hasWon()) {
       this.finish(true);
       return;
@@ -180,8 +194,13 @@ export class MinesweeperGame {
     });
     if (won) {
       const bonus = Math.max(0, 300 - this.elapsed * 3);
-      this.scoreboard.add(500 + bonus);
+      const winPoints = 500 + bonus;
+      this.scoreboard.add(winPoints);
       this.audio.beep({ freq: 760, slideTo: 1040, duration: 0.16 });
+      ScoreRise?.show?.(this.boardElement || this.root, `+${winPoints}${bonus > 0 ? " ⏱️" : ""}`, {
+        color: "#ffd766",
+        fontSize: 22
+      });
       this.setMessage(`Board cleared in ${this.elapsed}s. New field ready when you are.`);
       this.turns.setPhase("won");
       this.restart?.show({
