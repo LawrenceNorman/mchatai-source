@@ -1,6 +1,6 @@
 {
   "packID": "macos-app",
-  "version": 26,
+  "version": 27,
   "displayName": "macOS App Generation Wisdom",
   "description": "Rules for generating executable macOS apps (SwiftUI / AppKit) via Swift Playground. Focused on making the generated binary actually appear as a visible, interactive window \u2014 not a headless background process.",
   "categories": [
@@ -333,6 +333,41 @@
         "Real incident 2026-05-04: shipped Lunar Lander v1 had 'GAME OVER score=0' as static HUD. Catalog Minesweeper reference had hidden 'New Game' in controls. Same family of misses."
       ],
       "appliesTo": "macOSApp"
+    },
+    {
+      "id": "mac-027",
+      "rule": "Every HUD pill / always-visible counter MUST answer a question the player is actively asking right now. If a value is constant, near-zero, or only meaningful at game-over, it does NOT belong in the always-on HUD. Specifically: (a) BEST/HIGH-SCORE — game-over panel only, never in-play (also see score-show-personal-best-on-game-over). (b) COMBO when current value is 1 (i.e. no combo active) — drop it; surface only DURING a chain via a transient `Combo x3!` flash overlay, then hide. (c) CLEARED-counter / kills-counter / matches-counter when value is 0 — drop until first event. (d) DIFFICULTY label that doesn't change mid-game — move to a settings sheet. (e) Tutorial helper text after the player has made N moves — fade out. The gold reference is a 3-pill HUD: SCORE | LEVEL+TARGET+PROGRESS+STARS | MOVES. Anything more is noise; anything less may starve the player of feedback. Acid test for each pill: 'in the next 5 seconds will this number change in a way that affects my decision?' — if no, remove it.",
+      "why": "Web side filed `u-hud-minimalism-meaningful-only` (universal pack v4, 2026-05-06) after Lawrence pushed back on shipped candy-match HUD: `[SCORE 60] [BEST 240] [MOVES 22] [COMBO X1] [CLEARED 0]` — 3 of 5 pills were noise. Same anti-pattern shows up on macOS (Match3 v9 had constant in-play 'NEW BEST!' chrome before being walked back). The rule generalizes verbatim from miniApp to macOSApp; HUD minimalism is a SwiftUI choice, not a CSS one. Counterpoint: Sudoku timer / Tetris next-piece preview DO belong in HUD because they change meaningfully every second. Distinct from `score-show-personal-best-on-game-over` (which is more specific to BEST) — mac-027 is the broader rule it instantiates.",
+      "severity": "high",
+      "appliesTo": "macOSApp",
+      "examples": [
+        "RIGHT (compact 3-pill match-3): HStack { ScorePill('1,200') ; LevelPill(level: 3, target: 5_000, progress: 0.42, stars: 2) ; MovesPill(22) } — answers 'how am I doing? what am I aiming at? how much time left?'",
+        "RIGHT (combo as transient): when chain depth >=3, briefly fly `Combo x3!` SwiftUI Text from the affected tile center using .scaleEffect + .opacity transitions; never as a persistent pill that says `Combo X1`.",
+        "WRONG: in-play HUD with `[SCORE 60] [BEST 240] [MOVES 22] [COMBO X1] [CLEARED 0]` — 3 of 5 are noise. BEST belongs in game-over panel (mac-022 + score-show-personal-best-on-game-over), COMBO×1 is meaningless, CLEARED 0 is meaningless until first match.",
+        "WRONG: showing `Difficulty: Medium` always-on; it never changes mid-game. Move to a Settings sheet or Toolbar item.",
+        "Counter-example (HUD-belongs): Sudoku elapsed timer, Tetris next-piece preview, Pong score-to-7 pip indicator — change meaningfully and inform decisions."
+      ]
+    },
+    {
+      "id": "mac-028",
+      "rule": "Every visible game event (match clear, score award, invalid input, tile spawn, score milestone, level up, kill, hit, bounce) MUST have a corresponding animation OR sound — and ideally both. For macOS Lego games, USE the existing effects Legos: `effects.animation-intensity` for tunable per-event curves (sparkle / burst / lightning overlays, squash-stretch, bulge-shrink), `effects.sound-engine` for SFX with debouncing + pitch-shift on cascades, `effects.high-score-manager` for milestone celebrations, `effects.level-manager` for level-up banners. Do NOT use `withAnimation { … }` ad-hoc with hand-tuned numbers — pick a preset on the Intensity component and let the Lego own the curve. A board with no animations on match/swap/score/spawn events is missing required juice, not 'minimal-by-design.'",
+      "why": "Web side just filed `vq-anim-feedback-on-every-event` (visual-quality v3, 2026-05-06) after a candy-match canary landed with imported Legos but no per-event animations. macOS has the equivalent gap, except the Legos are already in `effects/` (AnimationIntensity, SoundEngine, HighScoreManager, LevelManager). The wisdom rules `anim-bulge-shrink-not-flat-fade`, `anim-flash-overlays-transparent-not-solid`, `audio-debounce-events-not-renders`, `audio-pitch-shift-cascades`, `level-celebrate-the-level-up-moment` already cover specific event types — mac-028 is the umbrella rule that says 'every event needs ONE of these': don't ship a silent / motionless game.",
+      "severity": "high",
+      "appliesTo": "macOSApp",
+      "lego_pointers": [
+        "effects.animation-intensity",
+        "effects.sound-engine",
+        "effects.high-score-manager",
+        "effects.level-manager"
+      ],
+      "examples": [
+        "RIGHT (Match3): on tile-clear → AnimationIntensity.bulgeShrink(tile) + SoundEngine.play(.match, pitch: cascadeDepth * 1.06) + ScorePill update. On invalid swap → AnimationIntensity.boardShake() + SoundEngine.play(.invalid). On level up → LevelManager.celebrate() banner + SoundEngine.play(.levelUp).",
+        "RIGHT (Asteroids): on hit → AnimationIntensity.flash(.sparkle, color: .yellow) + SoundEngine.play(.hit). On boss enter → LevelManager.bossBanner() + SoundEngine.play(.bossIntro).",
+        "WRONG: tile clears with no scale/opacity transition (board feels silent). Cleared tile just disappears.",
+        "WRONG: invalid swap snaps back to original positions with no shake — player can't tell input failed.",
+        "WRONG: score number jumps from 60 → 110 instantly with no '+50' floating from the action site. Use AnimationIntensity.scoreRise(at: tilePoint, text: '+50').",
+        "WRONG: hand-rolling `withAnimation(.easeOut(duration: 0.42)) { … }` on every event — bypasses AnimationIntensity preset which gates intensity per game pace (subtle / medium / bold)."
+      ]
     },
     {
       "id": "mac-026",
@@ -966,5 +1001,5 @@
       ]
     }
   ],
-  "_last_updated": "2026-05-06 mac-026 added (NotificationCenter observer cleanup must use willMove/onDisappear, not deinit, under Swift 6 strict concurrency)"
+  "_last_updated": "2026-05-06 mac-027 (HUD minimalism) + mac-028 (anim-feedback on every event) added — macOS analogs of web u-hud-minimalism + vq-anim-feedback rules"
 }
