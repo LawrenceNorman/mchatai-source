@@ -370,6 +370,19 @@
       ]
     },
     {
+      "id": "u-031",
+      "rule": "The Web Components catalog index in the prompt lists every component's id, summary, exports, and path. Component SOURCE is NOT pre-loaded in the prompt — fetch it on demand before importing. Two ways: (1) call the `mchatai-web-components` MCP `read_component(<id>)` if available; (2) read the file at `./web-components/<path>` directly from your work dir. Do NOT invent the component's API from its name alone — the catalog index gives you exports, but verifying signatures against the actual source prevents hallucinated APIs (e.g. inventing `gameManager.initialize()` when only `gameManager.start()` exists). Once verified, declare the component in the marker block and import it normally.",
+      "why": "Phase LF.1 (2026-05-05) trimmed the web-components context layer from ~50KB to ~5KB by emitting only the catalog index instead of full source. The save unlocks ~30-50KB of headroom for planner spec, recent history, and reference assets on complex multi-component apps. The risk is that the LLM hallucinates APIs from component names alone; this rule mandates source verification. Claude Code, Codex, and Gemini all run with cwd = the artifact's work dir, so direct file Read works for all three; the MCP path is preferred when installed because it returns CONTEXT.md alongside source.",
+      "severity": "high",
+      "appliesTo": "miniApp",
+      "examples": [
+        "GOOD: catalog says `entities.chess-rules` exports `ChessRules`. LLM reads `./web-components/entities/ChessRules.js`, sees `setupStandardBoard(board)`, `legalMoves(board, row, col)`, `applyMove(board, move)`. Imports and uses those exact signatures.",
+        "GOOD (with MCP): tool-call `mchatai-web-components.read_component('entities.chess-rules')` → returns source + CONTEXT.md → LLM uses verified signatures.",
+        "BAD: catalog mentions `core.game-manager`. LLM imports it and calls `gameManager.initialize()` (invented) instead of `gameManager.start()` (real). Source was right there in `./web-components/core/GameManager.js` but never read.",
+        "BAD: LLM ignores the catalog index entirely and writes a self-contained monolith. Validator rejects via missing-marker gate."
+      ]
+    },
+    {
       "id": "u-game-default-vs-cpu",
       "rule": "All games default to single-player vs CPU/AI unless the user explicitly says 'two-player', 'multiplayer', 'split-screen', '2P', 'PvP', or names a specific opponent. The CPU/AI plays the opposing role with reasonable competence (beatable but not trivial). For games without a natural opponent (Snake, Tetris, 2048, Breakout solo-mode), the CPU rule doesn't apply \u2014 but for any duel/match-up game (Pong, Connect Four, Tic-Tac-Toe, Checkers, Chess, Poker, Blackjack, Battleship, Air Hockey, Tennis, fighting games, racing games), single-player-vs-CPU is the canonical default. NEVER ship a game that requires two humans on one keyboard/screen by default.",
       "why": "Filed 2026-05-04. End user playing solo can't enjoy a forced-2-player game \u2014 the other paddle/piece/hand just sits idle. Default 2P makes the app feel broken. PvP is opt-in via UI toggle, not the default. Generalizes a Pong-specific incident to all duel/match games.",

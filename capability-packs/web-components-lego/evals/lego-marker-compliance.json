@@ -1,0 +1,62 @@
+{
+  "id": "lego-marker-compliance",
+  "name": "Lego Marker Compliance",
+  "version": "0.1.0",
+  "summary": "Validates that a generated miniApp artifact declares its Lego recipe via the canonical mchatai-web-components-used marker block, lists every required component, and uses a supported composition mode.",
+  "appliesTo": ["miniApp"],
+  "checks": [
+    {
+      "id": "marker-present",
+      "name": "Marker block present",
+      "severity": "critical",
+      "description": "The HTML must contain a <script type=\"application/json\" id=\"mchatai-web-components-used\"> block. Without it the artifact is treated as a markerless monolith and rejected (or repaired via golden-assembly fallback if available).",
+      "rule": "html.contains('id=\"mchatai-web-components-used\"')"
+    },
+    {
+      "id": "marker-recipe-matches",
+      "name": "Marker declares the recipe matched by the matcher",
+      "severity": "critical",
+      "description": "The marker's `recipe` field must equal the recipe id selected by the harness matcher (e.g. recipe.chess for a chess goal).",
+      "rule": "marker.recipe == matcher.selectedRecipeId"
+    },
+    {
+      "id": "required-components-listed",
+      "name": "All requiredComponents present in marker",
+      "severity": "critical",
+      "description": "Every component listed in the recipe's requiredComponents must appear in the marker's components array. Optional components are allowed but not required.",
+      "rule": "set(recipe.requiredComponents).issubset(set(marker.components))"
+    },
+    {
+      "id": "mode-supported",
+      "name": "Composition mode is module-imports or single-file-inline",
+      "severity": "high",
+      "description": "Marker.mode must be one of module-imports (preferred) or single-file-inline (fallback). Other values fail the gate.",
+      "rule": "marker.mode in ['module-imports', 'single-file-inline']"
+    },
+    {
+      "id": "imports-resolve-or-inline-fenced",
+      "name": "Module-imports resolve to component paths OR inline blocks are properly fenced",
+      "severity": "high",
+      "description": "For module-imports mode, every component listed in marker must have a matching `import ... from \"./web-components/<path>\"` line. For single-file-inline mode, every component must be fenced by BEGIN/END comments with its component-id.",
+      "rule": "if marker.mode == 'module-imports': all(html.contains(component.path) for component in marker.components); else: all(html.contains('BEGIN mChatAI Web Component: ' + cid) for cid in marker.components)"
+    },
+    {
+      "id": "no-banned-jargon-in-user-text",
+      "name": "No internal architecture jargon in user-visible content",
+      "severity": "high",
+      "description": "User-visible content (titles, headings, instructions, prompts, placeholder text) must not contain phrases like 'Lego blocks', 'mini-app', 'web-component', 'mchatai-source', or other internal terminology.",
+      "rule": "userVisibleText not contains banned-jargon vocabulary"
+    },
+    {
+      "id": "restart-affordance-present",
+      "name": "Game with terminal phase shows visible restart affordance",
+      "severity": "critical",
+      "description": "For any game with game-over / you-win / level-complete / mission-failed states, the UI must show a tappable restart button (≥60×200px, labeled clearly) when the terminal phase is reached. Not a menu shortcut, not a tiny corner icon.",
+      "rule": "if recipe.requiresRestartButton: html.contains restart-affordance pattern"
+    }
+  ],
+  "notes": [
+    "These checks mirror what `frameworks/web-components/tests/check_component_usage.mjs` enforces today. As of LF.4 the validator distinguishes requiredComponents (must be in marker) from optionalComponents (allowed but not required) so games can omit nice-to-have layers like audio without failing the gate.",
+    "Phase LF.0a (2026-05-05): added Swift skeleton support for nested-dict contracts in component definitions so future content additions (typography vocab, sprite atlas metadata) don't silently break catalog decode. Confirmed via diagWebComponentMatch tunnel command."
+  ]
+}

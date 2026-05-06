@@ -4,7 +4,7 @@ import { applySwatchVariables, getSwatchByID } from "../../resources/Swatches.js
 import { RestartOverlay } from "../../ui/RestartOverlay.js";
 import { Leaderboard } from "../../ui/Leaderboard.js";
 import { CloudAIToggle } from "../../ui/CloudAIToggle.js";
-import { TicTacToeRules, TicTacToeAI, emptyBoard } from "./TicTacToeRules.js";
+import { TicTacToeRules, TicTacToeAI, emptyBoard } from "../../entities/TicTacToeRules.js";
 
 const HUMAN = "x";
 const AI = "o";
