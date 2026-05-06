@@ -1583,7 +1583,7 @@
         "cancel": "hints.cancel() \u2014 abort countdown, remove glow",
         "now": "hints.now(holdMs?) \u2014 explicit hint button trigger; auto-fades after holdMs",
         "dispose": "hints.dispose() \u2014 tear down on game-over / unmount",
-        "css": ".hint class is toggled on found cells; supply your own pulse keyframes"
+        "css": "Call HintPulse.injectCss() once on init for the default .hint pulse keyframes; or override hintClass to bring your own."
       },
       "goodFits": [
         "candy-match",
@@ -1592,6 +1592,140 @@
         "solitaire",
         "matching-pairs",
         "tile-swap-puzzles"
+      ]
+    },
+    {
+      "id": "effects.pop-burst",
+      "name": "PopBurst",
+      "category": "effects",
+      "path": "effects/PopBurst.js",
+      "exports": [
+        "PopBurst"
+      ],
+      "status": "ready",
+      "summary": "Radial light flash for tile-destroyed / matched / cleared feedback. Drop-in for match-3, mahjong, jewel-puzzle, line-clear games. Self-contained CSS via PopBurst.injectCss(); spawn(parentEl) creates and auto-removes the overlay.",
+      "tags": [
+        "animation",
+        "effect",
+        "burst",
+        "match",
+        "clear",
+        "feedback"
+      ],
+      "contracts": {
+        "injectCss": "PopBurst.injectCss() — once on init, idempotent",
+        "spawn": "PopBurst.spawn(parentEl, { ttlMs?, className? }) — returns the overlay node (already attached, auto-removed)",
+        "css": "Default .pop-fx class with .pop-fx::before radial gradient; @keyframes popBurst (.5s scale 0.4 → 1.8 + opacity 0)"
+      },
+      "goodFits": [
+        "candy-match",
+        "mahjong",
+        "bejeweled",
+        "line-clear",
+        "tile-clear",
+        "gem-roguelikes",
+        "match-puzzle"
+      ]
+    },
+    {
+      "id": "effects.spawn-drop",
+      "name": "SpawnDrop",
+      "category": "effects",
+      "path": "effects/SpawnDrop.js",
+      "exports": [
+        "SpawnDrop"
+      ],
+      "status": "ready",
+      "summary": "Entry & exit micro-animations for tiles in any grid game. Two CSS classes (.spawn for drop-in, .popping for destroy) with one canonical overshoot curve so every tile game looks juicy without thinking. Auto-removal via SpawnDrop.pop() returns a Promise.",
+      "tags": [
+        "animation",
+        "effect",
+        "spawn",
+        "tile",
+        "drop",
+        "pop",
+        "juice"
+      ],
+      "contracts": {
+        "injectCss": "SpawnDrop.injectCss() — once on init, idempotent",
+        "spawn": "SpawnDrop.spawn(tileEl) — add .spawn class, auto-clears after 360ms",
+        "pop": "await SpawnDrop.pop(tileEl) — add .popping, remove from DOM, resolves when done",
+        "css": "@keyframes spawnPop (cubic-bezier overshoot) and tilePop (scale + rotate + drop-shadow brightness flash)"
+      },
+      "goodFits": [
+        "candy-match",
+        "mahjong",
+        "bejeweled",
+        "solitaire",
+        "tetris",
+        "puyo-puyo",
+        "tile-grid-puzzles"
+      ]
+    },
+    {
+      "id": "effects.score-rise",
+      "name": "ScoreRise",
+      "category": "effects",
+      "path": "effects/ScoreRise.js",
+      "exports": [
+        "ScoreRise"
+      ],
+      "status": "ready",
+      "summary": "Floating '+50' / 'COMBO ×3' popup that rises and fades over a tile or container. Universal positive feedback for any score event in any genre: tile games, breakout, shoot-em-ups, idle clickers, quiz games. Container needs position: relative or absolute.",
+      "tags": [
+        "animation",
+        "effect",
+        "score",
+        "popup",
+        "feedback",
+        "combo"
+      ],
+      "contracts": {
+        "injectCss": "ScoreRise.injectCss() — once on init, idempotent",
+        "show": "ScoreRise.show(parentEl, text, { color?, fontSize?, ttlMs? }) — attaches and auto-removes after ~950ms",
+        "css": ".score-popup absolute-positioned, @keyframes scoreRise (translate -46px + scale + opacity)"
+      },
+      "goodFits": [
+        "candy-match",
+        "breakout",
+        "shoot-em-up",
+        "idle-clicker",
+        "quiz",
+        "trivia",
+        "any-scoring-game"
+      ]
+    },
+    {
+      "id": "effects.board-shake",
+      "name": "BoardShake",
+      "category": "effects",
+      "path": "effects/BoardShake.js",
+      "exports": [
+        "BoardShake"
+      ],
+      "status": "ready",
+      "summary": "Universal 'no-go / wrong answer / illegal move' shake feedback. Works on any container: match-3 board (invalid swap), password input (wrong code), chess square (illegal move), quiz button (wrong answer). Two intensities; auto-cleans the class so subsequent calls retrigger.",
+      "tags": [
+        "animation",
+        "effect",
+        "shake",
+        "error",
+        "invalid",
+        "feedback"
+      ],
+      "contracts": {
+        "injectCss": "BoardShake.injectCss() — once on init, idempotent",
+        "shake": "BoardShake.shake(el, { intensity?: 'normal'|'strong', durationMs? })",
+        "css": "@keyframes shakeFx (~350ms) and shakeFxStrong (~500ms with rotation)"
+      },
+      "goodFits": [
+        "candy-match",
+        "chess",
+        "wordle",
+        "quiz",
+        "trivia",
+        "puzzle-input",
+        "any-validation-feedback"
       ]
     },
     {
@@ -2584,11 +2718,16 @@
         "resources.swatches",
         "resources.audio-manager",
         "ui.svg-shapes",
-        "effects.hint-pulse"
+        "effects.hint-pulse",
+        "effects.pop-burst",
+        "effects.spawn-drop",
+        "effects.score-rise",
+        "effects.board-shake"
       ],
       "assemblyNotes": [
         "Use TileSwapper for selection/swap input and Match3Logic for matches/cascades; generate tile skins and level goals only.",
-        "Do not stop at an import shell. A valid match-three app must render a visible tile board, selectable adjacent swaps, match/cascade resolution, score/combo HUD, and restart/shuffle controls."
+        "Do not stop at an import shell. A valid match-three app must render a visible tile board, selectable adjacent swaps, match/cascade resolution, score/combo HUD, and restart/shuffle controls.",
+        "Adopt the effects/ Legos for visual feedback: SpawnDrop for tile entry/exit, PopBurst on every match, ScoreRise on score events, BoardShake on invalid swaps, HintPulse for idle hints. Each effect exports an injectCss() helper — call once on init so the @keyframes are present. A board with no animations on match/swap/score events should be treated as missing required juice, not 'minimal-by-design'."
       ],
       "requiredComponents": [
         "core.turn-based-manager",

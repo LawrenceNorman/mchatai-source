@@ -25,15 +25,41 @@
 //   hints.now();        // explicit hint button
 //   hints.dispose();    // game over / unmount
 //
-// CSS contract: cells with the `.hint` class should pulse — supply your own
-// keyframes, e.g.:
-//   @keyframes hintPulse {
-//     0%,100% { transform: scale(1); filter: drop-shadow(0 0 0 transparent); }
-//     50%     { transform: scale(1.08); filter: drop-shadow(0 0 12px #ffe066); }
-//   }
-//   .hint { animation: hintPulse 1.1s ease-in-out infinite; }
+// CSS: call `HintPulse.injectCss()` once before constructing instances and
+// the default `.hint` keyframes will be available; or override `hintClass`
+// in the constructor and supply your own.
+
+const CSS = `
+@keyframes hintPulse {
+  0%, 100% {
+    transform: scale(1);
+    filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.5));
+  }
+  50% {
+    transform: scale(1.12);
+    filter: drop-shadow(0 0 10px #fff) drop-shadow(0 0 16px #ffe066);
+  }
+}
+.hint {
+  animation: hintPulse 1.1s ease-in-out infinite;
+}
+`;
+
+let _cssInjected = false;
 
 export class HintPulse {
+  static css = CSS;
+
+  /** Inject default .hint keyframes once. Idempotent. */
+  static injectCss(doc = document) {
+    if (_cssInjected) return;
+    const style = doc.createElement("style");
+    style.dataset.lego = "HintPulse";
+    style.textContent = CSS;
+    doc.head.appendChild(style);
+    _cssInjected = true;
+  }
+
   constructor({ boardEl, findHint, idleMs = 6000, holdMs = 2400, selectorFor, hintClass = "hint" } = {}) {
     if (typeof findHint !== "function") {
       throw new Error("HintPulse: `findHint` callback is required");

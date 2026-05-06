@@ -5,6 +5,10 @@ import { Match3Logic } from "../../entities/Match3Logic.js";
 import { ScoreBoard } from "../../ui/ScoreBoard.js";
 import { SvgShapes } from "../../ui/SvgShapes.js";
 import { HintPulse } from "../../effects/HintPulse.js";
+import { PopBurst } from "../../effects/PopBurst.js";
+import { ScoreRise } from "../../effects/ScoreRise.js";
+import { BoardShake } from "../../effects/BoardShake.js";
+import { SpawnDrop } from "../../effects/SpawnDrop.js";
 import { AudioManager } from "../../resources/AudioManager.js";
 import { applySwatchVariables, getSwatchByID } from "../../resources/Swatches.js";
 
@@ -89,6 +93,18 @@ export class CandyMatchGame {
     if (typeof applySwatchVariables === "function" && typeof getSwatchByID === "function") {
       applySwatchVariables(document.documentElement, getSwatchByID("sunset-arcade"));
     }
+
+    // Effects: each Lego owns its own keyframes and class names. Inject all
+    // CSS once on init; from here on we just call .spawn / .show / .shake /
+    // .pop and the visuals work without us touching CSS again. If the
+    // assembler dropped any Lego, the import becomes a no-op and the call
+    // sites below silently skip — no console errors, no broken layout.
+    if (typeof HintPulse?.injectCss === "function") HintPulse.injectCss();
+    if (typeof PopBurst?.injectCss === "function") PopBurst.injectCss();
+    if (typeof ScoreRise?.injectCss === "function") ScoreRise.injectCss();
+    if (typeof BoardShake?.injectCss === "function") BoardShake.injectCss();
+    if (typeof SpawnDrop?.injectCss === "function") SpawnDrop.injectCss();
+
     this.bindControls();
     this.newGame();
   }
@@ -220,6 +236,9 @@ export class CandyMatchGame {
       this.grid.swap(result.from, result.to);
       this.setMessage("No match there. Try a different adjacent swap.");
       this.audio.beep({ freq: 150, duration: 0.08, type: "sawtooth" });
+      // BoardShake Lego: invalid-swap feedback. Universal pattern — same
+      // call works on any container that needs a "no-go" beat.
+      BoardShake?.shake?.(this.boardEl);
       this.render();
       return;
     }
@@ -236,9 +255,29 @@ export class CandyMatchGame {
 
     while (matches.length) {
       const cleared = this.logic.clearMatches(this.grid, matches);
+      // PopBurst + ScoreRise Legos: visible "thing happened here" feedback
+      // for each cleared cell + a floating score popup at the board level.
+      // Both helpers are no-ops if the Lego was dropped by the assembler.
+      const cellsToBurst = matches.flat ? matches.flat() : matches;
+      if (Array.isArray(cellsToBurst)) {
+        for (const cellRef of cellsToBurst) {
+          const r = cellRef?.row, c = cellRef?.col;
+          if (typeof r === "number" && typeof c === "number") {
+            const el = this.boardEl?.querySelector(`[data-row="${r}"][data-col="${c}"]`);
+            if (el) PopBurst?.spawn?.(el);
+          }
+        }
+      }
+      const points = cleared * 10 * combo;
+      this.scoreboard.add(points);
+      if (this.boardEl && points > 0) {
+        ScoreRise?.show?.(this.boardEl, `+${points}${combo > 1 ? ` ×${combo}` : ""}`, {
+          color: combo > 1 ? "#ffd766" : undefined,
+          fontSize: combo > 1 ? 18 : 14
+        });
+      }
       clearedThisMove += cleared;
       this.totalCleared += cleared;
-      this.scoreboard.add(cleared * 10 * combo);
       this.logic.collapseColumns(this.grid);
       combo += 1;
       matches = this.logic.findMatches(this.grid);
@@ -306,6 +345,10 @@ export class CandyMatchGame {
       }
       tile.innerHTML = _renderTokenGlyph(type);
       this.boardEl.appendChild(tile);
+      // SpawnDrop Lego: every newly-rendered tile gets the .spawn class so
+      // it animates in with the canonical overshoot curve. Auto-cleans
+      // after ~360ms so re-renders don't re-trigger forever.
+      SpawnDrop?.spawn?.(tile);
     });
     if (this.movesEl) {
       this.movesEl.textContent = String(this.moves);
