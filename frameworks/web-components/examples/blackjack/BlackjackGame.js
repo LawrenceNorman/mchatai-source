@@ -48,7 +48,7 @@ export class BlackjackGame {
     this.turns = new TurnBasedManager({ players: ["player", "dealer"], phase: "idle" });
     this.deck = new Deck({ decks: 1, shuffle: true });
     this.rules = new BlackjackRules({ dealerStandSoft17: true });
-    this.audio = (typeof AudioManager === "function") ? new AudioManager({ masterVolume: 0.055 }) : { beep: () => {}, fadeIn: () => {}, fadeOut: () => {}, stop: () => {}, loop: () => {}, stopMusic: () => {}, play: () => {} };
+    this.audio = (typeof AudioManager === "function") ? new AudioManager({ masterVolume: 0.055 }) : { beep: () => {}, noise: () => {}, fadeIn: () => {}, fadeOut: () => {}, stop: () => {}, loop: () => {}, stopMusic: () => {}, play: () => {} };
     this.scoreboard = new ScoreBoard({
       target: blackjackTarget(this.root, "#scoreboard"),
       storageKey: `${this.storagePrefix}.bestBankroll`,
