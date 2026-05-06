@@ -1,0 +1,61 @@
+{
+  "$schema_version": "1.0.0",
+  "last_updated": "2026-05-05",
+  "notes": "Phase TOK follow-up — deterministic adjective→swatch-ID mapping for AIWizard runWizard tunnel handler. When the user's goal text matches keywords below, the harness auto-pins the corresponding swatchID before send() instead of letting the LLM default to retro-neon (the u-028 LLM-soft adjective-mapping miss). Substring matching on the lowercased goal; first match wins (so order matters — put more specific keywords first). To extend: add new keyword to the appropriate swatch list; push to mchatai-source; refreshMchataisourceCache picks it up. Wisdom rule u-028 documents the LLM-soft side; this file is the deterministic guardrail.",
+  "$source_of_truth": true,
+
+  "swatches": {
+    "sunset-arcade": [
+      "deep purple",
+      "purple",
+      "magenta",
+      "violet",
+      "sunset",
+      "amber",
+      "warm orange",
+      "cinematic dark",
+      "moody",
+      "dusk",
+      "twilight",
+      "rose",
+      "burgundy",
+      "wine"
+    ],
+    "vector-noir": [
+      "pure black",
+      "monochrome",
+      "noir",
+      "minimalist",
+      "minimal",
+      "stark",
+      "high contrast",
+      "tron",
+      "blueprint",
+      "wireframe"
+    ],
+    "retro-neon": [
+      "cyan",
+      "teal",
+      "electric",
+      "neon",
+      "synthwave",
+      "vaporwave",
+      "miami",
+      "80s",
+      "retro arcade",
+      "arcade neon"
+    ]
+  },
+
+  "default": "retro-neon",
+
+  "steeringTemplate": "=== SWATCH DECISION (NON-NEGOTIABLE) ===\nUse swatch ID \"{derivedID}\" — derived from theme adjectives in the goal.\nFORBIDDEN: any swatch other than \"{derivedID}\".\nREQUIRED: applySwatchVariables(document.documentElement, getSwatchByID(\"{derivedID}\"))\nREQUIRED: top of CSS :root block must mirror buildSwatchDefaultsCSS(\"{derivedID}\") values verbatim — copy from resources/Swatches.js. The flat color tokens are different per swatch (background/surface/text/accent/accentWarm/stroke/shadow); the structural tokens (radius/space/type/font) are identical across all swatches.\n\n=== USER GOAL ===\n{goal}",
+  "_steeringTemplateNotes": "Prepended to the user goal when deriveSwatchIDFromGoal returns a non-nil match. Placeholders: {derivedID} = matched swatch ID (one of the keys above); {goal} = original user goal text. Tunable from mchatai-source — push + refreshMchataisourceCache + relaunch picks up changes (no Swift rebuild). Empirical note 2026-05-05: even FORBIDDEN/REQUIRED language with prepend placement was ignored by the LLM in TOK.7 canary v2 + v3 — the swatch picked still defaulted to retro-neon despite directive saying 'use sunset-arcade'. Treat this as best-effort LLM-soft guidance; the post-generation patcher (TBD) is the deterministic guarantee. Tune freely without rebuild.",
+
+  "_examples": [
+    "Goal 'Make me a chess game with a deep purple cinematic theme' → 'deep purple' matches → pin swatchID=sunset-arcade",
+    "Goal 'Make me a noir-style mastermind' → 'noir' matches → pin swatchID=vector-noir",
+    "Goal 'Make me a synthwave platformer' → 'synthwave' matches → pin swatchID=retro-neon",
+    "Goal 'Make me a chess game' → no match → no auto-pin (existing behavior; LLM picks or default applies)"
+  ]
+}

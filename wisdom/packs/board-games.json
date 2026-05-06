@@ -1,6 +1,6 @@
 {
   "packID": "board-games",
-  "version": 9,
+  "version": 12,
   "displayName": "Board Game Guidelines",
   "description": "Quality rules for chess, checkers, tic-tac-toe, and other board/grid games.",
   "categories": [
@@ -416,6 +416,89 @@
       ]
     },
     {
+      "id": "bg-board-square-cells-equal-aspect",
+      "rule": "ANY square-grid board game (3x3 tic-tac-toe, 4x4 mastermind, 8x8 chess/checkers, 9x9 sudoku/minesweeper, 19x19 go, etc.) MUST keep cells AT 1:1 aspect ratio at every viewport width — including narrow phone widths and embedded iframe contexts where horizontal/vertical space can mismatch. **Mandatory CSS contract — do all four:** (1) BOTH `grid-template-columns: repeat(N, 1fr)` AND `grid-template-rows: repeat(N, 1fr)` on the board container. Forgetting `grid-template-rows` is THE most common bug — auto-sized rows stretch when the container has spare vertical space. (2) `aspect-ratio: 1 / 1` on the board container itself — locks the board to its width-derived height. (3) `width: 100%; max-width: min(95vw, 95vh, <DESIGN_MAX>px)` on the board so the board can't overshoot viewport height in portrait. (4) `width: 100%; height: 100%; min-width: 0; min-height: 0` on each cell so the grid sizes it; do NOT rely SOLELY on per-cell `aspect-ratio: 1` (it gets overridden when the parent grid auto-sizes rows). All four together is the only combination that produces equal squares deterministically across viewports.",
+      "why": "User feedback 2026-05-05: chess shipped with squished rectangles → fixed via the four-step contract. User feedback 2026-05-06 on shipped TTT: 'when I published it, I see that the grid squares can get squished and not be equal squares when the view gets compressed.' Same root cause — TTT had `aspect-ratio: 1` on board + `repeat(3, 1fr)` columns but NO `grid-template-rows: repeat(3, 1fr)`. When TTT was embedded in the publish frame (different aspect than wizard preview), columns took 1/3 of width but rows took 1/3 of `auto`-sized height. Cells became wider rectangles. The user explicitly asked the rule generalize 'to all square grid board games' — this version captures every member of that class (TTT, mastermind, sudoku, chess, checkers, etc.) and explicitly enumerates all four CSS knobs.",
+      "severity": "critical",
+      "appliesTo": "board-games",
+      "examples": [
+        "RIGHT (TTT 3x3): .tt-board { display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr); width: 100%; max-width: min(95vw, 95vh, 480px); aspect-ratio: 1 / 1; } .ttt-cell { width: 100%; height: 100%; min-width: 0; min-height: 0; }",
+        "RIGHT (chess 8x8): same pattern with repeat(8, 1fr) on rows + cols, max-width 720px.",
+        "RIGHT (sudoku 9x9, mastermind 4-pegs): same pattern with repeat(9, 1fr) or repeat(4, 1fr).",
+        "WRONG: .board { grid-template-columns: repeat(N, 1fr); aspect-ratio: 1; max-width: 480px; } .cell { aspect-ratio: 1; } — missing grid-template-rows AND missing width:100%;height:100%;min-* on cell. Cells squish whenever the publish frame has extra vertical space.",
+        "WRONG: only `aspect-ratio: 1` on the cell, no aspect-ratio on the board — board height stretches to fill parent, rows auto-size to row content not 1fr, cells go rectangular.",
+        "Verification (canary): after generation, run scripts/verify_miniapp.py + open in browser at multiple widths (320px, 412px, 768px, 1024px). Squares must remain visually 1:1 at every width. The publish frame (mchatai.com/hub/<id>/play) is a known stress case — embedded iframe with wide host width but constrained inner height."
+      ]
+    },
+    {
+      "id": "bg-piece-team-color-must-read-clearly",
+      "rule": "In two-color piece games (chess, checkers, go, othello/reversi), the two teams MUST be visually distinguishable at a glance: one team near-white (#fdfcf6 or pure ivory), the other near-black (#0a0907 or true black). Use a contrasting OUTLINE/text-shadow (the OPPOSITE color, ~85% alpha) so each piece reads on BOTH light and dark squares. The outline trick: 4-direction 1px text-shadows in the contrast color give a CSS 'stroke' around the unicode glyph. Without an outline, white pieces vanish on light squares and black pieces vanish on dark squares. The user-facing test: scan the screen — can you tell at a glance which side is which without zooming in? If not, fail.",
+      "why": "User feedback 2026-05-05 on shipped chess: 'me the white player at the bottom of the screen should have white pieces, and the computer player (the black player should have black pieces).' v1 chess.css used `color: #111827` for black pieces with `text-shadow: 0 1px 0 rgba(255,255,255,0.55)` — a single subtle white shadow that washed the dark glyph out on dark squares (#7a4b2d). Both teams visually read as 'whitish silhouettes.' Fixed by going to true-black/true-white fills + 4-direction contrast outlines so each piece carries its own outline regardless of square color.",
+      "severity": "high",
+      "appliesTo": "board-games",
+      "examples": [
+        "RIGHT (white piece): color: #fdfcf6; text-shadow: -1px -1px 0 #1a1208, 1px -1px 0 #1a1208, -1px 1px 0 #1a1208, 1px 1px 0 #1a1208, 0 6px 14px rgba(0,0,0,0.45);",
+        "RIGHT (black piece): color: #0a0907; text-shadow: -1px -1px 0 rgba(255,252,240,0.85), 1px -1px 0 rgba(255,252,240,0.85), -1px 1px 0 rgba(255,252,240,0.85), 1px 1px 0 rgba(255,252,240,0.85), 0 4px 10px rgba(0,0,0,0.55);",
+        "WRONG: color: #111827 (off-black) + a single 1px white-low-alpha shadow — black pieces wash out on dark squares; color: #fffdf6 + a single dark shadow — white pieces wash out on light squares.",
+        "Unicode-glyph reminder: chess uses ♔♕♖♗♘♙ (white outlined glyphs) and ♚♛♜♝♞♟ (black filled glyphs) — these glyphs render as a single fill color, so it's the CSS color (and outline shadow) that distinguishes the two teams — never the unicode codepoint alone."
+      ]
+    },
+    {
+      "id": "bg-human-anchored-at-bottom-ai-at-top",
+      "rule": "Two-player turn-based games (chess, checkers, othello) MUST anchor the human player at the BOTTOM of the screen and the AI/opponent at the TOP. Convention from physical board games: you sit on one side, opponent on the other, your pieces start closest to you. For chess specifically: human=white at the bottom (white starts on rank 1, which renders as the bottom row), AI=black at the top (black starts on rank 8, renders as the top row). Do NOT flip orientation, do NOT randomize. If the human chooses to play black, ROTATE the entire board so their pieces stay at the bottom — don't just give them black at the top. Render loop must iterate row 0 first (top) to row N-1 last (bottom) so DOM order matches visual order.",
+      "why": "User feedback 2026-05-05 on shipped chess: 'me the white player at the bottom of the screen should have white pieces.' Universal physical-board convention. Violating it forces the human to mentally rotate the board on every move, which is a non-trivial cognitive tax. Same rule applies to: checkers (red/black), othello (you=light, opp=dark), go (you=black per tradition or whichever you chose, opp=other), backgammon (your home quadrant at bottom). When humanColor != white in chess, the FIX is to flip the board, not flip the convention.",
+      "severity": "high",
+      "appliesTo": "board-games",
+      "examples": [
+        "RIGHT (chess, human=white): render rows 0..7 → black back-rank at top, white back-rank at bottom. Human clicks at bottom.",
+        "RIGHT (chess, human=black): render rows 7..0 → black back-rank at bottom (the human side), white at top. Algebraic coords still correct, just flipped.",
+        "WRONG: humanColor='black' but render still has black on top — human reaches across the whole board to move their own pieces.",
+        "WRONG: randomized rotation per game session. The user's spatial memory should be stable across plays."
+      ]
+    },
+    {
+      "id": "bg-self-contained-extracts",
+      "rule": "Web-component extracts that may be inlined into single-file mini-apps MUST be self-contained — NEVER `extends` another component, and NEVER reference another component's symbol unguarded in a constructor or top-level statement. The single-file inline assembler (claude-cli, codex, etc.) extracts components verbatim and strips imports. If `entities.board8x8` extends `entities.grid-board`, and the LLM-driven assembler doesn't list grid-board as a selected starter component (or forgets to inline it), the resulting page hits `ReferenceError: GridBoard is not defined` at module-evaluation time → board never renders. Two fixes: (a) STRUCTURAL — inline the parent class's content directly into the child component (eliminate the `extends`); this is the canonical fix for tightly-coupled siblings like Board8x8/GridBoard. (b) DEFENSIVE — wrap optional helper class instantiation in a typeof guard: `(typeof AudioManager === \"function\") ? new AudioManager(...) : { stub }`. Apply (a) when the parent is small enough to inline (<200 lines). Apply (b) for optional helpers (audio, leaderboard, restart-overlay, mini-header).",
+      "why": "Filed 2026-05-05 from chess canary 1: shipped index.html had `class Board8x8 extends GridBoard` but GridBoard was NEVER inlined (the LLM listed 8 of 11 starterComponents; grid-board, swatches, audio-manager dropped). ReferenceError → board empty. The recipe.chess `starterComponents` listed grid-board, but the LLM-driven assembly contract didn't enforce inlining the full set. Fixed by making Board8x8 self-contained (no extends) AND adding defensive guards in ChessGame for AudioManager/Leaderboard/RestartOverlay/MiniHeader. Same pattern applies to checkers (Board8x8 again), othello (Board8x8 + Reversi rules), any future board game leveraging shared infrastructure. Verify with `mchatai_macOS/scripts/verify_miniapp.py <id>` — flags `class X extends Y` where Y is undefined and ungguarded `new Z(...)`.",
+      "severity": "critical",
+      "appliesTo": "web-components-assembly",
+      "examples": [
+        "RIGHT (structural — small parent inlined): export class Board8x8 { constructor(...) { /* all GridBoard methods inlined directly */ } isDarkSquare(row, col) {...} algebraicToCell(...) {...} cellToAlgebraic(...) {...} } — no extends, no transitive import.",
+        "RIGHT (defensive — optional helper): this.audio = (typeof AudioManager === \"function\") ? new AudioManager({...}) : { beep: () => {}, fadeIn: () => {}, fadeOut: () => {}, stop: () => {} };",
+        "RIGHT (defensive — optional UI mount): if (typeof MiniHeader !== \"undefined\" && MiniHeader && typeof MiniHeader.mount === \"function\") { MiniHeader.mount(host, opts); }",
+        "WRONG: export class Board8x8 extends GridBoard { ... } when the inline-assembler doesn't always carry GridBoard.",
+        "WRONG: this.audio = new AudioManager({...}); — direct call, throws if assembler dropped AudioManager.",
+        "Validation rule of thumb: `grep -c 'class .*extends [A-Z]' <installed>/index.html` — every match must have the parent defined as `class Parent` ALSO in the file."
+      ]
+    },
+    {
+      "id": "bg-defensive-swatch-apply-no-throw",
+      "rule": "Glue-code calls to swatch helpers (`applySwatchVariables`, `getSwatchByID` from `resources/Swatches.js`) MUST be guarded so a missing import doesn't crash the constructor and prevent the game from rendering. Pattern: `if (typeof applySwatchVariables === 'function') { const sw = resolveActiveSwatch(); if (sw) applySwatchVariables(document.documentElement, sw); }`. The synchronous `:root { --mchat-* }` fallback CSS block at the top of the stylesheet means the page is still styled even if JS swatch application is skipped. Crashing the constructor over a styling concern is the wrong tradeoff — the user gets an empty board instead of a styled-but-default board.",
+      "why": "User feedback 2026-05-05 on shipped chess: 'the board isn't showing up.' Root cause: the single-file inline assembler dropped the `import { applySwatchVariables, getSwatchByID } from '../../resources/Swatches.js'` line when collapsing module imports, but kept the `applySwatchVariables(document.documentElement, getSwatchByID('retro-neon'))` call in the ChessGame constructor. ReferenceError thrown → constructor never finished → `bindControls` / `reset` / `start` / `render` all skipped → board container stayed empty. Defensive guard means: assembler bug → visible-but-default-styled game; not assembler bug → swatch applied normally. Same pattern applies to any optional resource helper: AudioManager, Leaderboard, RestartOverlay — if the import gets dropped, guarded callers still render.",
+      "severity": "critical",
+      "appliesTo": "web-components-glue",
+      "examples": [
+        "RIGHT: if (typeof applySwatchVariables === 'function') { const sw = resolveActiveSwatch(); if (sw) applySwatchVariables(document.documentElement, sw); }",
+        "RIGHT (resolveActiveSwatch fallback chain): meta[name=mchat-swatch] (inline brief tokens) → meta[name=mchat-swatch-id] (named swatch) → getSwatchByID('retro-neon') default. So the visual director's brief drops in via `<meta>` injection without code changes.",
+        "WRONG: `applySwatchVariables(document.documentElement, getSwatchByID('retro-neon'))` directly in the constructor — if either symbol gets stripped by an inline assembler, the entire game fails to render.",
+        "WRONG: try/catch silently swallowing all errors in the constructor — hides real bugs. Only guard the helper calls; let other errors propagate."
+      ]
+    },
+    {
+      "id": "bg-consume-visual-brief-via-meta-injection",
+      "rule": "When the AI Wizard's Visual Director (VD.7) stages a brief at `<wizard-tmp>/visual-brief/tokens.json`, the generated mini-app HTML MUST consume those tokens, not hardcode a swatch ID. Two patterns: (a) PREFERRED: emit a `<meta name=\"mchat-swatch\" content='{\"tokens\":{...full token tree...}}'>` in `<head>` so the runtime applies them via `applySwatchVariables`; (b) ALTERNATIVE: emit a `<style>:root { --mchat-background: ...; --mchat-accent: ...; ... }</style>` block right after the existing fallback `:root { ... }` block (cascades win). Either pattern will be picked up by the resolveActiveSwatch() helper that reads meta first. Hardcoding `getSwatchByID('retro-neon')` IGNORES the user's chosen visual brief and ships a generic palette no matter what reference style was selected.",
+      "why": "User feedback 2026-05-05 on shipped chess: VD.7 selected nature-organic (sage green sage / cream / Cormorant Garamond serif), staged it correctly to `wizard-tmp/visual-brief/tokens.json`, but the installed mini-app still rendered in the retro-neon (cyan/orange/dark-blue) palette. Cause: the chess assembly source-of-truth had `applySwatchVariables(..., getSwatchByID('retro-neon'))` hardcoded. The VD brief never reached the page. Fix: source code reads meta override; generator/assembler injects meta from staged brief into HTML head. Without this, the entire VD.7 pipeline (mockup, evaluator, picker) is decoration that never reaches the user.",
+      "severity": "critical",
+      "appliesTo": "web-components-assembly",
+      "examples": [
+        "RIGHT (assembler injects meta): <meta name=\"mchat-swatch\" content='{\"id\":\"nature-organic\",\"tokens\":{\"background\":\"#F5F0E8\",\"accent\":\"#B8763E\",...}}'>",
+        "RIGHT (assembler injects style block): <style>:root{--mchat-background:#F5F0E8;--mchat-accent:#B8763E;--mchat-text:#2C2A23;...}</style>",
+        "RIGHT (source-of-truth code): const swatch = resolveActiveSwatch(); applySwatchVariables(document.documentElement, swatch);",
+        "WRONG: applySwatchVariables(document.documentElement, getSwatchByID('retro-neon')) — hardcoded; ignores VD brief.",
+        "Verification (canary): after a wizard run with a non-default brief, `grep mchat-swatch <installed>/index.html` — must find a meta or style override, not just the fallback :root block."
+      ]
+    },
+    {
       "id": "game-atomic-state-transitions-not-async",
       "rule": "Game state transitions (level-up, game-over, round-restart, board reseed) MUST be SYNCHRONOUS and ATOMIC. Do NOT split state mutation across `Task { try await Task.sleep(...) }` segments where the visual celebration runs in parallel with state-resetting code. While the user waits for sleeps to complete, they can swap / fire / tap, and the next render-driven turn reads HALF-MUTATED state \u2014 causing a cluster of bugs: score resets to 0 (new turn reads stale baseTotalForLevel), counters don't refresh (UI bound to var that hasn't been reassigned yet), RESTART takes you to the wrong level (level-number advanced but engine hasn't been swapped). The fix: do all state mutation in ONE turn (typically inside one `withAnimation` block), and run the celebration banner via a parallel @Published value (e.g. LevelManager.celebrationProgress) that the View animates from independently. SFX is fine to fire as a delayed Task \u2014 audio-only, no state mutation, can't race.",
       "why": "Filed 2026-05-04 from Match3 v9 \u2192 v9.2 incident. v9 split level-up across two `try await Task.sleep` segments (450ms + 650ms) with state-resets happening AFTER the sleeps. User reported three distinct bugs that were all the same race: 'my score went back to 0 at a certain level' (next cascade read stale baseTotalForLevel), 'moves didn't reset after some levels' (UI bound to moves var that hadn't been reassigned yet), 'RESTART only takes me back to the previous level' (RESTART read half-mutated state \u2014 level number advanced but engine not yet swapped). v9.2 made the entire transition atomic in one withAnimation block; banner animation runs from levels.celebrationProgress which advances on its own.",
@@ -430,5 +513,5 @@
       ]
     }
   ],
-  "_last_updated": "2026-05-04"
+  "_last_updated": "2026-05-05"
 }

@@ -16,15 +16,15 @@
 //   // optionally show top-N table on game-over screen:
 //   Leaderboard.renderTopList(host, 10);
 //
-// The bridge contract (set by mChatAI+):
+// The leaderboardBridge contract (set by mChatAI+):
 //   window.mChatAI.leaderboard.submit({ score, metadata })
 //     -> Promise<{ rank, percentile, played, topPlayer? }>
 //   window.mChatAI.leaderboard.getTop(count)
 //     -> Promise<Array<{ displayName, score, submittedAt, platform? }>>
 
-const STYLE_ID = "mchatai-leaderboard-styles";
+const LEADERBOARD_STYLE_ID = "mchatai-leaderboard-styles";
 
-const STYLE_CSS = `
+const LEADERBOARD_STYLE_CSS = `
 .mchatai-rank-card {
   display: inline-flex;
   flex-direction: column;
@@ -88,40 +88,40 @@ const STYLE_CSS = `
 }
 `.trim();
 
-function ensureStyles() {
+function leaderboardEnsureStyles() {
   if (typeof document === "undefined") return;
-  if (document.getElementById(STYLE_ID)) return;
+  if (document.getElementById(LEADERBOARD_STYLE_ID)) return;
   const style = document.createElement("style");
-  style.id = STYLE_ID;
-  style.textContent = STYLE_CSS;
+  style.id = LEADERBOARD_STYLE_ID;
+  style.textContent = LEADERBOARD_STYLE_CSS;
   document.head.appendChild(style);
 }
 
-function bridge() {
+function leaderboardBridge() {
   return globalThis?.window?.mChatAI?.leaderboard || null;
 }
 
-function resolveTarget(target) {
+function leaderboardResolveTarget(target) {
   if (!target || typeof document === "undefined") return null;
   return typeof target === "string" ? document.querySelector(target) : target;
 }
 
 export const Leaderboard = {
   /**
-   * Returns true if the bridge is available in this runtime.
+   * Returns true if the leaderboardBridge is available in this runtime.
    */
   isAvailable() {
-    const b = bridge();
+    const b = leaderboardBridge();
     return !!(b && typeof b.submit === "function");
   },
 
   /**
-   * Submit a final score with arbitrary metadata. Resolves to the bridge's
-   * response { rank, percentile, played, topPlayer? } OR null when the bridge
+   * Submit a final score with arbitrary metadata. Resolves to the leaderboardBridge's
+   * response { rank, percentile, played, topPlayer? } OR null when the leaderboardBridge
    * is absent. NEVER throws — caller can `await` without try/catch.
    */
   async submitFinal(score, metadata = {}) {
-    const b = bridge();
+    const b = leaderboardBridge();
     if (!b || typeof b.submit !== "function") return null;
     try {
       const result = await b.submit({ score, metadata });
@@ -133,11 +133,11 @@ export const Leaderboard = {
   },
 
   /**
-   * Fetch top N scores. Resolves to an array (possibly empty) OR null on bridge
-   * absence. Empty array means "bridge is there but board has no entries yet."
+   * Fetch top N scores. Resolves to an array (possibly empty) OR null on leaderboardBridge
+   * absence. Empty array means "leaderboardBridge is there but board has no entries yet."
    */
   async getTop(count = 10) {
-    const b = bridge();
+    const b = leaderboardBridge();
     if (!b || typeof b.getTop !== "function") return null;
     try {
       const list = await b.getTop(count);
@@ -154,8 +154,8 @@ export const Leaderboard = {
    */
   renderRankCard(target, result, options = {}) {
     if (!result || typeof document === "undefined") return null;
-    ensureStyles();
-    const host = resolveTarget(target);
+    leaderboardEnsureStyles();
+    const host = leaderboardResolveTarget(target);
     if (!host) return null;
     const root = document.createElement("div");
     root.className = "mchatai-rank-card";
@@ -179,8 +179,8 @@ export const Leaderboard = {
    */
   async renderTopList(target, count = 10, options = {}) {
     if (typeof document === "undefined") return null;
-    ensureStyles();
-    const host = resolveTarget(target);
+    leaderboardEnsureStyles();
+    const host = leaderboardResolveTarget(target);
     if (!host) return null;
     const root = document.createElement("div");
     root.className = "mchatai-top-list";
@@ -223,7 +223,7 @@ export const Leaderboard = {
 
 /**
  * Convenience composite: submit + render rank card on the same host. Returns
- * the rank-card DOM node (or null on bridge absence).
+ * the rank-card DOM node (or null on leaderboardBridge absence).
  */
 export async function submitAndShowRank(host, score, metadata = {}, options = {}) {
   const result = await Leaderboard.submitFinal(score, metadata);

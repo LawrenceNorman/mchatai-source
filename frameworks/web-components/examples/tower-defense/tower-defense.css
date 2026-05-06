@@ -1,12 +1,34 @@
+/* mchat-swatch-defaults — synchronous FOUC fallback. Mirrors
+   resources/Swatches.js sunset-arcade swatch verbatim (the swatch this example
+   selects via getSwatchByID("sunset-arcade") in TowerDefenseGame.js). See
+   buildSwatchDefaultsCSS. Swatches.applySwatchVariables overrides these via
+   inline style at runtime. */
 :root {
-  --td-bg: #111007;
-  --td-panel: #1f1b10;
-  --td-text: #fff8df;
-  --td-muted: #d6caa5;
-  --td-line: rgba(250, 204, 21, 0.22);
-  --td-accent: #facc15;
-  --td-green: #22c55e;
-  --td-red: #fb7185;
+  --mchat-background: #1f1026;
+  --mchat-surface: #2f1734;
+  --mchat-text: #fff7ed;
+  --mchat-accent: #f97316;
+  --mchat-accentWarm: #facc15;
+  --mchat-stroke: #fde68a;
+  --mchat-shadow: rgba(249, 115, 22, 0.24);
+  --mchat-radius-sm: 6px;
+  --mchat-radius-md: 12px;
+  --mchat-radius-lg: 20px;
+  --mchat-radius-pill: 999px;
+  --mchat-space-1: 4px;
+  --mchat-space-2: 8px;
+  --mchat-space-3: 12px;
+  --mchat-space-4: 16px;
+  --mchat-space-5: 24px;
+  --mchat-space-6: 32px;
+  --mchat-type-xs: clamp(11px, 2.6vw, 12px);
+  --mchat-type-sm: clamp(13px, 3vw, 14px);
+  --mchat-type-md: clamp(15px, 3.4vw, 16px);
+  --mchat-type-lg: clamp(18px, 4.2vw, 22px);
+  --mchat-type-xl: clamp(24px, 6vw, 36px);
+  --mchat-font-ui: -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --mchat-font-display: 'Avenir Next', 'Trebuchet MS', sans-serif;
+  --mchat-font-mono: 'SF Mono', 'Cascadia Mono', monospace;
 }
 
 * {
@@ -16,12 +38,12 @@
 body {
   margin: 0;
   min-height: 100vh;
-  color: var(--td-text);
+  color: var(--mchat-text);
   background:
     radial-gradient(circle at 14% 6%, rgba(34, 197, 94, 0.18), transparent 24rem),
     radial-gradient(circle at 86% 18%, rgba(250, 204, 21, 0.17), transparent 24rem),
-    linear-gradient(145deg, #050705, var(--td-bg));
-  font-family: "Avenir Next", "Trebuchet MS", sans-serif;
+    linear-gradient(145deg, #050705, #111007);
+  font-family: var(--mchat-font-display);
 }
 
 button {
@@ -31,35 +53,35 @@ button {
 .tower-shell {
   width: min(980px, 100%);
   margin: 0 auto;
-  padding: 12px;
+  padding: var(--mchat-space-3);
   display: grid;
-  gap: 12px;
+  gap: var(--mchat-space-3);
 }
 
 .battlefield {
-  padding: 14px;
+  padding: var(--mchat-space-4);
 }
 
 .hud {
   display: grid;
   grid-template-columns: minmax(220px, 1fr) repeat(3, 100px) auto;
-  gap: 8px;
+  gap: var(--mchat-space-2);
   align-items: stretch;
 }
 
 .mchatai-scoreboard {
   display: flex;
-  gap: 8px;
+  gap: var(--mchat-space-2);
 }
 
 .mchatai-scoreboard__item,
 .hud-card,
 #startWaveButton {
-  padding: 10px 12px;
+  padding: var(--mchat-space-2) var(--mchat-space-3);
   border: 0;
-  border-radius: 16px;
+  border-radius: var(--mchat-radius-md);
   background: rgba(255, 255, 255, 0.08);
-  color: var(--td-muted);
+  color: #d6caa5;
   font-size: 0.76rem;
   font-weight: 900;
   letter-spacing: 0.12em;
@@ -70,13 +92,13 @@ button {
 .hud-card strong {
   display: block;
   margin-top: 2px;
-  color: var(--td-text);
+  color: var(--mchat-text);
   font-size: 1.2rem;
   letter-spacing: 0;
 }
 
 #startWaveButton {
-  background: var(--td-accent);
+  background: var(--mchat-accentWarm);
   color: #211a00;
 }
 
@@ -86,18 +108,18 @@ canvas {
   max-width: 1000px;
   height: auto;
   aspect-ratio: 1000 / 620;
-  margin: 8px auto 0;
-  border-radius: 14px;
+  margin: var(--mchat-space-2) auto 0;
+  border-radius: var(--mchat-radius-md);
   background: #10180f;
   box-shadow: inset 0 0 0 2px rgba(250, 204, 21, 0.22);
 }
 
 .message {
-  margin: 10px 0 0;
-  padding: 11px 12px;
-  border-radius: 16px;
+  margin: var(--mchat-space-2) 0 0;
+  padding: var(--mchat-space-3);
+  border-radius: var(--mchat-radius-md);
   background: rgba(255, 255, 255, 0.08);
-  color: var(--td-text);
+  color: var(--mchat-text);
   text-align: center;
 }
 
@@ -105,7 +127,7 @@ canvas {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  margin: 6px 0 8px;
+  margin: 6px 0 var(--mchat-space-2);
 }
 
 .turret-pick {
@@ -113,9 +135,9 @@ canvas {
   min-width: 90px;
   padding: 6px 10px;
   border: 1px solid rgba(250, 204, 21, 0.3);
-  border-radius: 8px;
+  border-radius: var(--mchat-radius-sm);
   background: rgba(255, 255, 255, 0.05);
-  color: var(--td-text);
+  color: var(--mchat-text);
   font-size: 0.78rem;
   font-weight: 700;
   cursor: pointer;
@@ -131,9 +153,9 @@ canvas {
 }
 
 .turret-pick.is-selected {
-  background: var(--td-accent);
+  background: var(--mchat-accentWarm);
   color: #1a1500;
-  border-color: var(--td-accent);
+  border-color: var(--mchat-accentWarm);
 }
 
 @media (max-width: 760px) {

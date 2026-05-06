@@ -3,8 +3,9 @@ import { MiniHeader } from "../../ui/MiniHeader.js";
 import { CheckersRules } from "../../entities/CheckersRules.js";
 import { CheckersAI } from "../../entities/CheckersAI.js";
 
-MiniHeader.mount(document.querySelector("[data-mini-header]"), { title: "Checkers", subtitle: "Select a piece, then a highlighted diagonal move." });
-
+if (typeof MiniHeader !== "undefined" && MiniHeader && typeof MiniHeader.mount === "function") {
+  MiniHeader.mount(document.querySelector("[data-mini-header]"), { title: "Checkers", subtitle: "Select a piece, then a highlighted diagonal move." });
+}
 const game = new CheckersGame({
   boardTarget: "#board",
   turnTarget: "#turn",

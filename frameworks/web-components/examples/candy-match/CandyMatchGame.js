@@ -9,13 +9,18 @@ import { applySwatchVariables, getSwatchByID } from "../../resources/Swatches.js
 const ROWS = 8;
 const COLS = 8;
 const MOVES = 24;
+// Golden version uses color-only candies (gradient + .tile::before shine).
+// Earlier `label: "R"|"O"|"Y"|"G"|"B"|"P"` made the board read as color-coded
+// scrabble tiles — regression from the deployed hub version. Empty label
+// means the render path emits the gradient + shine without a letter centerpiece.
+// `name` is kept for aria-label accessibility.
 const TILE_TYPES = [
-  { id: 0, label: "R", name: "ruby" },
-  { id: 1, label: "O", name: "orange" },
-  { id: 2, label: "Y", name: "lemon" },
-  { id: 3, label: "G", name: "mint" },
-  { id: 4, label: "B", name: "blueberry" },
-  { id: 5, label: "P", name: "plum" }
+  { id: 0, label: "", name: "ruby" },
+  { id: 1, label: "", name: "orange" },
+  { id: 2, label: "", name: "lemon" },
+  { id: 3, label: "", name: "mint" },
+  { id: 4, label: "", name: "blueberry" },
+  { id: 5, label: "", name: "plum" }
 ];
 
 function candyTarget(target) {
@@ -41,7 +46,7 @@ export class CandyMatchGame {
       scoreLabel: "Score",
       highScoreLabel: "Best"
     });
-    this.audio = new AudioManager({ masterVolume: 0.045 });
+    this.audio = (typeof AudioManager === "function") ? new AudioManager({ masterVolume: 0.045 }) : { beep: () => {}, fadeIn: () => {}, fadeOut: () => {}, stop: () => {}, loop: () => {}, stopMusic: () => {}, play: () => {} };
     this.turns = new TurnBasedManager({ players: ["player"], phase: "playing" });
     this.grid = new GridBoard({ rows: ROWS, cols: COLS, fill: 0 });
     this.swapper = new TileSwapper({
@@ -57,7 +62,9 @@ export class CandyMatchGame {
     this.totalCleared = 0;
     this.resolving = false;
 
-    applySwatchVariables(document.documentElement, getSwatchByID("sunset-arcade"));
+    if (typeof applySwatchVariables === "function" && typeof getSwatchByID === "function") {
+      applySwatchVariables(document.documentElement, getSwatchByID("sunset-arcade"));
+    }
     this.bindControls();
     this.newGame();
   }
@@ -240,7 +247,12 @@ export class CandyMatchGame {
       if (this.swapper.selected?.row === row && this.swapper.selected?.col === col) {
         tile.classList.add("selected");
       }
-      tile.innerHTML = `<span>${type.label}</span>`;
+      // Color-only tile: skip the centered glyph entirely. CSS gradient on
+      // `.tile.kind-N` + the shine pseudo-element from `.tile::before` provide
+      // the candy look. Aria-label above carries semantic info for screen readers.
+      if (type.label) {
+        tile.innerHTML = `<span>${type.label}</span>`;
+      }
       this.boardEl.appendChild(tile);
     });
     if (this.movesEl) {

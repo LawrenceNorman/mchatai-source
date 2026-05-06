@@ -2,8 +2,9 @@ import { AdventureGame } from "./AdventureGame.js";
 
 import { MiniHeader } from "../../ui/MiniHeader.js";
 
-MiniHeader.mount(document.querySelector("[data-mini-header]"), { title: "Adventure", subtitle: "Find the key, unlock the gate, dodge the dragon." });
-
+if (typeof MiniHeader !== "undefined" && MiniHeader && typeof MiniHeader.mount === "function") {
+  MiniHeader.mount(document.querySelector("[data-mini-header]"), { title: "Adventure", subtitle: "Find the key, unlock the gate, dodge the dragon." });
+}
 const game = new AdventureGame({
   canvas: document.querySelector("#adventureCanvas"),
   scoreboardTarget: "#scoreboard"

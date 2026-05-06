@@ -47,7 +47,7 @@ export class PacmanGame {
       tileSize: this.tileSize,
       fill: "."
     });
-    this.audio = new AudioManager({ masterVolume: 0.045 });
+    this.audio = (typeof AudioManager === "function") ? new AudioManager({ masterVolume: 0.045 }) : { beep: () => {}, fadeIn: () => {}, fadeOut: () => {}, stop: () => {}, loop: () => {}, stopMusic: () => {}, play: () => {} };
     this.scoreboard = new ScoreBoard({
       target: options.scoreboardTarget,
       storageKey: "mchatai.pacman.best",
@@ -82,7 +82,9 @@ export class PacmanGame {
   }
 
   start() {
-    applySwatchVariables(document.documentElement, getSwatchByID("retro-neon"));
+    if (typeof applySwatchVariables === "function" && typeof getSwatchByID === "function") {
+      applySwatchVariables(document.documentElement, getSwatchByID("retro-neon"));
+    }
     window.addEventListener("keydown", (event) => {
       const dir = DIRS[event.key];
       if (dir) {

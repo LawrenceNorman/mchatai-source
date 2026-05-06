@@ -3,7 +3,11 @@ import { MiniHeader } from "../../ui/MiniHeader.js";
 import { ChessRules } from "../../entities/ChessRules.js";
 import { ChessAI } from "../../entities/ChessAI.js";
 
-MiniHeader.mount(document.querySelector("[data-mini-header]"), { title: "Chess", subtitle: "Select a piece, then a highlighted legal square." });
+// Defensive: MiniHeader is optional. If the inline assembler dropped it,
+// the [data-mini-header] container stays empty and the game still mounts.
+if (typeof MiniHeader !== "undefined" && MiniHeader && typeof MiniHeader.mount === "function") {
+  MiniHeader.mount(document.querySelector("[data-mini-header]"), { title: "Chess", subtitle: "Select a piece, then a highlighted legal square." });
+}
 
 const game = new ChessGame({
   boardTarget: "#board",

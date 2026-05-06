@@ -108,8 +108,9 @@ export class FroggerGame {
     this.rideLog = null;
     this.lastJoystickMove = 0;
 
-    applySwatchVariables(document.documentElement, getSwatchByID("retro-neon"));
-
+    if (typeof applySwatchVariables === "function" && typeof getSwatchByID === "function") {
+      applySwatchVariables(document.documentElement, getSwatchByID("retro-neon"));
+    }
     this.engine = new GameManager({
       canvas: this.canvas,
       width: COLS * TILE,

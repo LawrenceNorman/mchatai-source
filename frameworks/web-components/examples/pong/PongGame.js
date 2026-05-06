@@ -29,7 +29,7 @@ export class PongGame {
       scoreLabel: "Rally",
       highScoreLabel: "Best"
     });
-    this.audio = new AudioManager({ masterVolume: 0.05 });
+    this.audio = (typeof AudioManager === "function") ? new AudioManager({ masterVolume: 0.05 }) : { beep: () => {}, fadeIn: () => {}, fadeOut: () => {}, stop: () => {}, loop: () => {}, stopMusic: () => {}, play: () => {} };
     this.playerScoreEl = pongTarget(options.playerScoreTarget);
     this.cpuScoreEl = pongTarget(options.cpuScoreTarget);
     this.roundEl = pongTarget(options.roundTarget);
@@ -66,7 +66,9 @@ export class PongGame {
     });
 
     this.bindControls();
-    applySwatchVariables(document.documentElement, getSwatchByID("retro-neon"));
+    if (typeof applySwatchVariables === "function" && typeof getSwatchByID === "function") {
+      applySwatchVariables(document.documentElement, getSwatchByID("retro-neon"));
+    }
     this.resetBall();
     this.renderHUD();
     this.engine.step(0);

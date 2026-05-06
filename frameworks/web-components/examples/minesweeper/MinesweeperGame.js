@@ -15,7 +15,7 @@ export class MinesweeperGame {
     this.mineCount = options.mines ?? 10;
     this.turns = new TurnBasedManager({ players: ["player"], phase: "ready" });
     this.logic = new RevealLogic();
-    this.audio = new AudioManager({ masterVolume: 0.05 });
+    this.audio = (typeof AudioManager === "function") ? new AudioManager({ masterVolume: 0.05 }) : { beep: () => {}, fadeIn: () => {}, fadeOut: () => {}, stop: () => {}, loop: () => {}, stopMusic: () => {}, play: () => {} };
     this.scoreboard = new ScoreBoard({
       target: "#scoreboard",
       storageKey: "mchatai.minesweeper99.bestScore",
@@ -35,11 +35,13 @@ export class MinesweeperGame {
     this.flagModeButton = document.querySelector("#flagModeButton");
     this.newGameButton = document.querySelector("#newGameButton");
     this.rankCardHostEl = document.querySelector("#rankCard");
-    applySwatchVariables(document.documentElement, getSwatchByID("retro-neon"));
-    this.restart = new RestartOverlay({
+    if (typeof applySwatchVariables === "function" && typeof getSwatchByID === "function") {
+      applySwatchVariables(document.documentElement, getSwatchByID("retro-neon"));
+    }
+    this.restart = (typeof RestartOverlay === "function") ? new RestartOverlay({
       host: document.querySelector("[data-app]") || document.body,
       onRestart: () => this.reset()
-    });
+    }) : { show: () => {}, hide: () => {} };
   }
 
   start() {

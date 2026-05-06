@@ -25,7 +25,7 @@ export class CheckersGame {
     this.board = new Board8x8();
     this.rules = new CheckersRules();
     this.turns = new TurnBasedManager({ players: ["red", "black"], phase: "playing" });
-    this.audio = new AudioManager({ masterVolume: 0.045 });
+    this.audio = (typeof AudioManager === "function") ? new AudioManager({ masterVolume: 0.045 }) : { beep: () => {}, fadeIn: () => {}, fadeOut: () => {}, stop: () => {}, loop: () => {}, stopMusic: () => {}, play: () => {} };
     this.selected = null;
     this.legalMoves = [];
     this.moveCount = 0;
@@ -36,9 +36,11 @@ export class CheckersGame {
     this._aiPending = false;
     this.restartHostEl = checkersTarget(options.restartHostTarget) || document.querySelector("[data-app]") || document.body;
     this.rankCardHostEl = checkersTarget(options.rankCardHostTarget);
-    this.restart = new RestartOverlay({ host: this.restartHostEl, onRestart: () => this.reset() });
+    this.restart = (typeof RestartOverlay === "function") ? new RestartOverlay({ host: this.restartHostEl, onRestart: () => this.reset() }) : { show: () => {}, hide: () => {} };
 
-    applySwatchVariables(document.documentElement, getSwatchByID("retro-neon"));
+    if (typeof applySwatchVariables === "function" && typeof getSwatchByID === "function") {
+      applySwatchVariables(document.documentElement, getSwatchByID("retro-neon"));
+    }
     this.bindControls();
     this.reset();
   }

@@ -1,6 +1,6 @@
 {
   "packID": "universal",
-  "version": 2,
+  "version": 3,
   "displayName": "Universal Guidelines",
   "description": "Rules that apply to ALL generated apps regardless of category.",
   "categories": [
@@ -396,6 +396,19 @@
       ]
     },
     {
+      "id": "u-cli-no-auto-open-browser",
+      "rule": "When generating a mini-app inside a CLI session (Claude Code, Codex, Gemini CLI), do NOT run `open <file>.html`, `python -m http.server`, `npx serve`, `xdg-open`, or any other shell command that launches the artifact in the user's browser, terminal, or any external app. The host (mChatAI+) installs and previews the artifact in its own webview. A CLI-launched browser tab opens a STALE pre-install copy from the wizard tmp dir (e.g. `~/Library/Containers/com.sevenhillsstudio.mChatAImac/Data/tmp/wizard-<id>/chess.html`), which (a) confuses the user into debugging the wrong file, and (b) misses the recipe-aware install (the tmp file is the bare CLI fallback, not the recipe.<game> assembly that ships). End your turn after writing/replacing the artifact files in the work dir; report what you produced in text. The host takes it from there.",
+      "why": "User feedback 2026-05-05 chess session: after the wizard's API-only path failed and fell back to claude-cli, the CLI opened `/tmp/wizard-3e1f567a-give-me-a/chess.html` in Safari. That file was the bare-HTML CLI fallback (no recipe, no swatch, hardcoded #1a1a2e palette) — totally separate from the recipe.chess assembly that the host then installed and previewed. User saw two chess games at once, thought one was 'broken' and the other 'rogue,' couldn't tell which to debug. Same pattern hits any CLI-fallback session that emits an HTML file. Universal rule because Codex and Gemini CLIs share the same temptation.",
+      "severity": "high",
+      "appliesTo": "all",
+      "examples": [
+        "RIGHT (CLI agent ends turn): write index.html + sidecar files to cwd; respond with 'I've written index.html (8 components, recipe.chess marker). The host will install and preview it.'",
+        "WRONG: write chess.html, then run `open chess.html` — opens stale tmp file in Safari, user sees a different palette and inconsistent layout from what the host previews.",
+        "WRONG: spin up `python3 -m http.server 8080 &` 'so the user can play it' — the host already does this in-process via its webview.",
+        "Acceptable exception: the user EXPLICITLY asks to test in their system browser ('open the file for me'). Default behavior remains do-not-open."
+      ]
+    },
+    {
       "id": "u-game-default-vs-cpu",
       "rule": "All games default to single-player vs CPU/AI unless the user explicitly says 'two-player', 'multiplayer', 'split-screen', '2P', 'PvP', or names a specific opponent. The CPU/AI plays the opposing role with reasonable competence (beatable but not trivial). For games without a natural opponent (Snake, Tetris, 2048, Breakout solo-mode), the CPU rule doesn't apply \u2014 but for any duel/match-up game (Pong, Connect Four, Tic-Tac-Toe, Checkers, Chess, Poker, Blackjack, Battleship, Air Hockey, Tennis, fighting games, racing games), single-player-vs-CPU is the canonical default. NEVER ship a game that requires two humans on one keyboard/screen by default.",
       "why": "Filed 2026-05-04. End user playing solo can't enjoy a forced-2-player game \u2014 the other paddle/piece/hand just sits idle. Default 2P makes the app feel broken. PvP is opt-in via UI toggle, not the default. Generalizes a Pong-specific incident to all duel/match games.",
@@ -410,6 +423,6 @@
       ]
     }
   ],
-  "_last_updated": "2026-05-04 u-game-default-vs-cpu added",
-  "lastUpdated": "2026-05-04"
+  "_last_updated": "2026-05-05 u-cli-no-auto-open-browser added",
+  "lastUpdated": "2026-05-05"
 }
