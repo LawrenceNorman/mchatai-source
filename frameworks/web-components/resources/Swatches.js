@@ -95,6 +95,40 @@ export function applySwatchVariables(element, swatch, options = {}) {
   });
 }
 
+// Read active swatch tokens from a live CSS root. Returns a palette shaped
+// like swatch.tokens — { background, surface, text, accent, accentWarm,
+// stroke, shadow, radius:{...}, space:{...}, type:{...}, font:{...} } — but
+// reflecting whatever applySwatchVariables most recently set (or the synchronous
+// :root fallback block if JS hasn't run yet). Useful for canvas paint code that
+// wants to follow the active swatch instead of using hardcoded hex fallbacks.
+// If no element is provided, defaults to document.documentElement.
+export function getCurrentSwatchPalette(element, prefix = "--mchat") {
+  if (typeof window === "undefined" || typeof getComputedStyle === "undefined") return null;
+  const root = element || document.documentElement;
+  const cs = getComputedStyle(root);
+  const palette = {};
+  ["background", "surface", "text", "accent", "accentWarm", "stroke", "shadow"].forEach((token) => {
+    const v = cs.getPropertyValue(`${prefix}-${token}`).trim();
+    if (v) palette[token] = v;
+  });
+  const groups = {
+    radius: ["sm", "md", "lg", "pill"],
+    space: ["1", "2", "3", "4", "5", "6"],
+    type: ["xs", "sm", "md", "lg", "xl"],
+    font: ["ui", "display", "mono"]
+  };
+  Object.entries(groups).forEach(([group, keys]) => {
+    const sub = {};
+    let any = false;
+    keys.forEach((k) => {
+      const v = cs.getPropertyValue(`${prefix}-${group}-${k}`).trim();
+      if (v) { sub[k] = v; any = true; }
+    });
+    if (any) palette[group] = sub;
+  });
+  return palette;
+}
+
 // CSS string for a synchronous :root { --mchat-* } fallback block. CSS paints
 // before JS modules execute, so without this block the page renders unstyled
 // for one frame (FOUC). Examples include this block verbatim at the top of

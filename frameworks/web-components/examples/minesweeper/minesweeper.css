@@ -1,3 +1,6 @@
+/* mchat-swatch-defaults — synchronous FOUC fallback. Mirrors
+   resources/Swatches.js retro-neon swatch verbatim (see buildSwatchDefaultsCSS).
+   Swatches.applySwatchVariables overrides these via inline style at runtime. */
 :root {
   --mchat-background: #020617;
   --mchat-surface: #08111f;
@@ -6,8 +9,26 @@
   --mchat-accentWarm: #fb923c;
   --mchat-stroke: #e2e8f0;
   --mchat-shadow: rgba(34, 211, 238, 0.24);
+  --mchat-radius-sm: 6px;
+  --mchat-radius-md: 12px;
+  --mchat-radius-lg: 20px;
+  --mchat-radius-pill: 999px;
+  --mchat-space-1: 4px;
+  --mchat-space-2: 8px;
+  --mchat-space-3: 12px;
+  --mchat-space-4: 16px;
+  --mchat-space-5: 24px;
+  --mchat-space-6: 32px;
+  --mchat-type-xs: clamp(11px, 2.6vw, 12px);
+  --mchat-type-sm: clamp(13px, 3vw, 14px);
+  --mchat-type-md: clamp(15px, 3.4vw, 16px);
+  --mchat-type-lg: clamp(18px, 4.2vw, 22px);
+  --mchat-type-xl: clamp(24px, 6vw, 36px);
+  --mchat-font-ui: -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --mchat-font-display: 'Avenir Next', 'Trebuchet MS', sans-serif;
+  --mchat-font-mono: 'SF Mono', 'Cascadia Mono', monospace;
   color-scheme: dark;
-  font-family: "Avenir Next", "Trebuchet MS", sans-serif;
+  font-family: var(--mchat-font-display);
 }
 
 * {
@@ -19,7 +40,7 @@ body {
   min-height: 100vh;
   background:
     radial-gradient(circle at 20% 15%, rgba(34, 211, 238, 0.18), transparent 34rem),
-    linear-gradient(135deg, #020617 0%, #0f172a 58%, #1e293b 100%);
+    linear-gradient(135deg, var(--mchat-background) 0%, #0f172a 58%, #1e293b 100%);
   color: var(--mchat-text);
 }
 
@@ -30,19 +51,19 @@ button {
 .mine-shell {
   width: min(960px, 100%);
   margin: 0 auto;
-  padding: 18px;
+  padding: var(--mchat-space-4);
   display: grid;
-  gap: 18px;
+  gap: var(--mchat-space-4);
 }
 
 .game-panel {
-  padding: 22px;
+  padding: var(--mchat-space-5);
 }
 
 .hud-row {
   display: grid;
   grid-template-columns: minmax(210px, 1fr) repeat(3, minmax(88px, 0.45fr));
-  gap: 12px;
+  gap: var(--mchat-space-3);
   align-items: stretch;
 }
 
@@ -50,15 +71,15 @@ button {
 .stat-card {
   min-height: 68px;
   border: 1px solid rgba(226, 232, 240, 0.14);
-  border-radius: 18px;
+  border-radius: var(--mchat-radius-lg);
   background: rgba(15, 23, 42, 0.82);
-  padding: 12px 14px;
+  padding: var(--mchat-space-3);
 }
 
 .mchatai-scoreboard {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 10px;
+  gap: var(--mchat-space-2);
 }
 
 .mchatai-scoreboard__label,
@@ -74,16 +95,16 @@ button {
 .stat-card strong {
   display: block;
   margin-top: 5px;
-  color: #fff7ed;
+  color: var(--mchat-text);
   font-size: 1.55rem;
 }
 
 .message {
-  margin: 16px 0;
-  border-radius: 16px;
+  margin: var(--mchat-space-4) 0;
+  border-radius: var(--mchat-radius-md);
   background: rgba(34, 211, 238, 0.12);
   color: rgba(248, 250, 252, 0.88);
-  padding: 12px 14px;
+  padding: var(--mchat-space-3);
 }
 
 .mine-board {
@@ -100,9 +121,9 @@ button {
 .mine-cell {
   aspect-ratio: 1;
   border: 1px solid rgba(226, 232, 240, 0.16);
-  border-radius: 12px;
+  border-radius: var(--mchat-radius-md);
   background: linear-gradient(145deg, rgba(30, 41, 59, 0.98), rgba(15, 23, 42, 0.98));
-  color: #fff7ed;
+  color: var(--mchat-text);
   cursor: pointer;
   font-weight: 900;
   font-size: clamp(0.9rem, 3vw, 1.25rem);
@@ -141,20 +162,20 @@ button {
 .actions {
   display: flex;
   justify-content: center;
-  gap: 12px;
-  margin-top: 18px;
+  gap: var(--mchat-space-3);
+  margin-top: var(--mchat-space-4);
   flex-wrap: wrap;
 }
 
 .actions button {
   border: 0;
-  border-radius: 999px;
-  background: #fff7ed;
+  border-radius: var(--mchat-radius-pill);
+  background: var(--mchat-text);
   color: #0f172a;
   cursor: pointer;
   font-weight: 900;
   min-width: 128px;
-  padding: 12px 18px;
+  padding: var(--mchat-space-3) var(--mchat-space-4);
 }
 
 .actions button.is-active {
@@ -163,7 +184,7 @@ button {
 
 @media (max-width: 720px) {
   .mine-shell {
-    padding: 10px;
+    padding: var(--mchat-space-2);
   }
 
   .hud-row {

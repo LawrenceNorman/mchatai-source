@@ -330,6 +330,50 @@ if (jargonHits.length > 0) {
   );
 }
 
+// Phase TOK — synchronous-paint :root token vocabulary check (advisory). See
+// wisdom rule u-030 + memory/project_swatch_token_fouc_pattern.md. Examples
+// and LLM-generated artifacts should declare CSS custom properties at :root
+// scope using only the canonical --mchat-* vocabulary from resources/Swatches.js
+// (color, radius-{sm,md,lg,pill}, space-[1-6], type-{xs,sm,md,lg,xl},
+// font-{ui,display,mono}). Anything else at :root is a "rogue var" — usually
+// the LLM inventing per-app names (--mm-bg, --cw-accent) that route around
+// the swatch system. Reported as informational `rogueRootVars` until all 16
+// framework examples migrate; will become fail-strict in a follow-up pass.
+const CANONICAL_SWATCH_VAR_RE = /^--mchat-(?:background|surface|text|accent|accentWarm|stroke|shadow|radius-(?:sm|md|lg|pill)|space-[1-6]|type-(?:xs|sm|md|lg|xl)|font-(?:ui|display|mono))$/;
+
+function findRogueRootVars(htmlSource, htmlPath) {
+  const baseDir = dirname(htmlPath);
+  const cssChunks = [];
+  const inlineRe = /<style[^>]*>([\s\S]*?)<\/style>/g;
+  let mInline;
+  while ((mInline = inlineRe.exec(htmlSource))) cssChunks.push(mInline[1]);
+  const linkRe = /<link[^>]+rel=["']stylesheet["'][^>]+href=["']([^"']+)["'][^>]*>/g;
+  let mLink;
+  while ((mLink = linkRe.exec(htmlSource))) {
+    const href = mLink[1];
+    if (/^https?:|^\/\//.test(href)) continue;
+    const cssPath = resolve(baseDir, href);
+    if (existsSync(cssPath)) {
+      try { cssChunks.push(readFileSync(cssPath, "utf8")); } catch { /* skip unreadable */ }
+    }
+  }
+  const cssText = cssChunks.join("\n");
+  const rootBlockRe = /:root\s*\{([^{}]*)\}/g;
+  const rogue = [];
+  let mBlock;
+  while ((mBlock = rootBlockRe.exec(cssText))) {
+    const body = mBlock[1];
+    const declRe = /(--[\w-]+)\s*:/g;
+    let mDecl;
+    while ((mDecl = declRe.exec(body))) {
+      if (!CANONICAL_SWATCH_VAR_RE.test(mDecl[1])) rogue.push(mDecl[1]);
+    }
+  }
+  return [...new Set(rogue)];
+}
+
+const rogueRootVars = findRogueRootVars(html, artifactPath);
+
 console.log(
   JSON.stringify(
     {
@@ -340,6 +384,8 @@ console.log(
       components: marker.components,
       jargonScan: "clean",
       restartCheck: recipeMeta?.requiresRestartButton === true ? "passed" : "skipped",
+      rootVarVocabulary: rogueRootVars.length === 0 ? "canonical" : "rogue",
+      rogueRootVars,
       leaderboardWarnings,
       genreInvariantNote
     },

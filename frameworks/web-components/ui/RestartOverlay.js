@@ -56,10 +56,10 @@ const STYLE_CSS = `
 .${ROOT_CLASS}__button {
   min-width: 200px;
   min-height: 60px;
-  padding: 14px 28px;
-  border-radius: 14px;
+  padding: var(--mchat-space-4, 16px) var(--mchat-space-6, 32px);
+  border-radius: var(--mchat-radius-md, 14px);
   border: 0;
-  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+  background: linear-gradient(135deg, var(--mchat-accentWarm, #fbbf24), var(--mchat-accent, #f59e0b));
   color: #1a0e00;
   font-size: 1.1rem;
   font-weight: 800;

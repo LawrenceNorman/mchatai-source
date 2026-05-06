@@ -30,15 +30,15 @@ const LABELS = { easy: "Easy", medium: "Medium", strong: "⚡ Strong" };
 const STYLE_CSS = `
 .${ROOT_CLASS} {
   display: inline-flex;
-  gap: 4px;
-  padding: 4px;
-  border-radius: 999px;
+  gap: var(--mchat-space-1, 4px);
+  padding: var(--mchat-space-1, 4px);
+  border-radius: var(--mchat-radius-pill, 999px);
   background: rgba(255, 255, 255, 0.08);
   border: 1px solid rgba(255, 255, 255, 0.12);
 }
 .${ROOT_CLASS}__btn {
-  padding: 6px 14px;
-  border-radius: 999px;
+  padding: var(--mchat-space-2, 8px) var(--mchat-space-4, 16px);
+  border-radius: var(--mchat-radius-pill, 999px);
   border: 0;
   background: transparent;
   color: inherit;
@@ -48,11 +48,11 @@ const STYLE_CSS = `
   transition: background 120ms ease, color 120ms ease;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--mchat-space-2, 8px);
 }
 .${ROOT_CLASS}__btn:hover { background: rgba(255, 255, 255, 0.06); }
 .${ROOT_CLASS}__btn--active {
-  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+  background: linear-gradient(135deg, var(--mchat-accentWarm, #fbbf24), var(--mchat-accent, #f59e0b));
   color: #1a0e00;
   box-shadow: 0 4px 12px rgba(251, 191, 36, 0.32);
 }

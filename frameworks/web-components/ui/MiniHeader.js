@@ -5,8 +5,8 @@ const STYLE_CSS = `
 .${BASE_CLASS} {
   display: flex;
   align-items: baseline;
-  gap: 8px;
-  padding: 4px 8px;
+  gap: var(--mchat-space-2, 8px);
+  padding: var(--mchat-space-1, 4px) var(--mchat-space-2, 8px);
   margin: 0;
   color: inherit;
   background: transparent;

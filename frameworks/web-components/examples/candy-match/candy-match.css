@@ -1,3 +1,8 @@
+/* mchat-swatch-defaults — synchronous FOUC fallback. Mirrors
+   resources/Swatches.js sunset-arcade swatch verbatim (the swatch this
+   example selects via getSwatchByID("sunset-arcade") in CandyMatchGame.js).
+   See buildSwatchDefaultsCSS. Swatches.applySwatchVariables overrides these
+   via inline style at runtime. */
 :root {
   --mchat-background: #1f1026;
   --mchat-surface: #2f1734;
@@ -6,6 +11,24 @@
   --mchat-accentWarm: #facc15;
   --mchat-stroke: #fde68a;
   --mchat-shadow: rgba(249, 115, 22, 0.24);
+  --mchat-radius-sm: 6px;
+  --mchat-radius-md: 12px;
+  --mchat-radius-lg: 20px;
+  --mchat-radius-pill: 999px;
+  --mchat-space-1: 4px;
+  --mchat-space-2: 8px;
+  --mchat-space-3: 12px;
+  --mchat-space-4: 16px;
+  --mchat-space-5: 24px;
+  --mchat-space-6: 32px;
+  --mchat-type-xs: clamp(11px, 2.6vw, 12px);
+  --mchat-type-sm: clamp(13px, 3vw, 14px);
+  --mchat-type-md: clamp(15px, 3.4vw, 16px);
+  --mchat-type-lg: clamp(18px, 4.2vw, 22px);
+  --mchat-type-xl: clamp(24px, 6vw, 36px);
+  --mchat-font-ui: -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --mchat-font-display: 'Avenir Next', 'Trebuchet MS', sans-serif;
+  --mchat-font-mono: 'SF Mono', 'Cascadia Mono', monospace;
 }
 
 * {
@@ -20,7 +43,7 @@ body {
 body {
   margin: 0;
   color: var(--mchat-text);
-  font-family: "Avenir Next", "Trebuchet MS", sans-serif;
+  font-family: var(--mchat-font-display);
   background:
     radial-gradient(circle at 20% 10%, rgba(250, 204, 21, 0.22), transparent 28rem),
     radial-gradient(circle at 80% 0%, rgba(34, 211, 238, 0.16), transparent 26rem),
@@ -29,8 +52,8 @@ body {
 
 button {
   border: 0;
-  border-radius: 999px;
-  padding: 0.8rem 1.1rem;
+  border-radius: var(--mchat-radius-pill);
+  padding: var(--mchat-space-3) var(--mchat-space-4);
   color: #32120f;
   background: linear-gradient(135deg, #fff7ad, #ff9d4d);
   box-shadow: 0 10px 28px rgba(249, 115, 22, 0.26);
@@ -58,19 +81,19 @@ button:focus-visible,
 .hud {
   display: grid;
   grid-template-columns: 1.45fr repeat(3, minmax(92px, 0.6fr));
-  gap: 0.75rem;
-  margin-bottom: 1rem;
+  gap: var(--mchat-space-3);
+  margin-bottom: var(--mchat-space-4);
 }
 
 .mchatai-scoreboard,
 .hud-card {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.6rem;
+  gap: var(--mchat-space-2);
   align-items: center;
   min-height: 72px;
-  border-radius: 22px;
-  padding: 0.8rem 1rem;
+  border-radius: var(--mchat-radius-lg);
+  padding: var(--mchat-space-3) var(--mchat-space-4);
   background: rgba(255, 255, 255, 0.09);
 }
 
@@ -78,7 +101,7 @@ button:focus-visible,
 .hud-card {
   display: flex;
   flex-direction: column;
-  gap: 0.2rem;
+  gap: var(--mchat-space-1);
 }
 
 .mchatai-scoreboard__label,
@@ -117,7 +140,7 @@ button:focus-visible,
   place-items: center;
   min-height: clamp(40px, 8vw, 68px);
   border: 2px solid rgba(255, 255, 255, 0.18);
-  border-radius: 22px;
+  border-radius: var(--mchat-radius-lg);
   color: rgba(255, 255, 255, 0.95);
   font-size: clamp(1.1rem, 4vw, 2.05rem);
   font-weight: 1000;
@@ -161,10 +184,10 @@ button:focus-visible,
 
 .message {
   min-height: 3.1rem;
-  margin: 1rem auto;
+  margin: var(--mchat-space-4) auto;
   max-width: 680px;
-  border-radius: 18px;
-  padding: 0.9rem 1rem;
+  border-radius: var(--mchat-radius-lg);
+  padding: var(--mchat-space-3) var(--mchat-space-4);
   color: #fffbea;
   text-align: center;
   background: rgba(255, 255, 255, 0.1);
@@ -173,7 +196,7 @@ button:focus-visible,
 .actions {
   display: flex;
   justify-content: center;
-  gap: 0.75rem;
+  gap: var(--mchat-space-3);
   flex-wrap: wrap;
 }
 
@@ -187,6 +210,6 @@ button:focus-visible,
   }
 
   .tile {
-    border-radius: 16px;
+    border-radius: var(--mchat-radius-md);
   }
 }
