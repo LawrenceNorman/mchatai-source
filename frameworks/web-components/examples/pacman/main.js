@@ -2,8 +2,9 @@ import { PacmanGame } from "./PacmanGame.js";
 
 import { MiniHeader } from "../../ui/MiniHeader.js";
 
-MiniHeader.mount(document.querySelector("[data-mini-header]"), { title: "Pac-Man", subtitle: "Eat pellets, dodge ghosts, use power pellets." });
-
+if (typeof MiniHeader !== "undefined" && MiniHeader && typeof MiniHeader.mount === "function") {
+  MiniHeader.mount(document.querySelector("[data-mini-header]"), { title: "Pac-Man", subtitle: "Eat pellets, dodge ghosts, use power pellets." });
+}
 const game = new PacmanGame({
   canvas: document.querySelector("#mazeCanvas"),
   scoreboardTarget: "#scoreboard",

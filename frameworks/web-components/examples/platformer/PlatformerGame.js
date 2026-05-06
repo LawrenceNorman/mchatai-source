@@ -54,7 +54,7 @@ export class PlatformerGame {
       moveSpeed: 235,
       jumpSpeed: 560
     });
-    this.audio = new AudioManager({ masterVolume: 0.055 });
+    this.audio = (typeof AudioManager === "function") ? new AudioManager({ masterVolume: 0.055 }) : { beep: () => {}, fadeIn: () => {}, fadeOut: () => {}, stop: () => {}, loop: () => {}, stopMusic: () => {}, play: () => {} };
     this.scoreboard = new ScoreBoard({
       target: options.scoreboardTarget,
       storageKey: "mchatai.platformer.best",
@@ -82,7 +82,9 @@ export class PlatformerGame {
   }
 
   start() {
-    applySwatchVariables(document.documentElement, getSwatchByID("retro-neon"));
+    if (typeof applySwatchVariables === "function" && typeof getSwatchByID === "function") {
+      applySwatchVariables(document.documentElement, getSwatchByID("retro-neon"));
+    }
     window.addEventListener("keydown", (event) => this.setKey(event, true));
     window.addEventListener("keyup", (event) => this.setKey(event, false));
     platformerQuery("#restartButton").addEventListener("click", () => this.restart());

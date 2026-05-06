@@ -34,7 +34,7 @@ export class CrosswordGame {
     this.root = options.root || document;
     this.board = new GridBoard({ rows: 5, cols: 5, fill: "" });
     this.turns = new TurnBasedManager({ players: ["solver"], phase: "solving" });
-    this.audio = new AudioManager({ masterVolume: 0.045 });
+    this.audio = (typeof AudioManager === "function") ? new AudioManager({ masterVolume: 0.045 }) : { beep: () => {}, fadeIn: () => {}, fadeOut: () => {}, stop: () => {}, loop: () => {}, stopMusic: () => {}, play: () => {} };
     this.scoreboard = new ScoreBoard({
       target: "#scoreboard",
       storageKey: "mchatai.crossword.best",
@@ -61,7 +61,9 @@ export class CrosswordGame {
   }
 
   start() {
-    applySwatchVariables(document.documentElement, getSwatchByID("vector-noir"));
+    if (typeof applySwatchVariables === "function" && typeof getSwatchByID === "function") {
+      applySwatchVariables(document.documentElement, getSwatchByID("vector-noir"));
+    }
     this.renderClues();
     this.renderGrid();
     crosswordQuery(this.root, "#checkButton").addEventListener("click", () => this.check());

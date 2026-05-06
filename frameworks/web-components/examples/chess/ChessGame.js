@@ -6,6 +6,23 @@ import { applySwatchVariables, getSwatchByID } from "../../resources/Swatches.js
 import { RestartOverlay } from "../../ui/RestartOverlay.js";
 import { Leaderboard } from "../../ui/Leaderboard.js";
 
+// Resolve the active swatch with three-tier fallback so a single-file inline
+// assembler that drops the Swatches import still renders (the synchronous :root
+// fallback CSS block kicks in instead of crashing the constructor):
+//   1) <meta name="mchat-swatch" content='{"tokens":{...}}'>   inlined VD brief
+//   2) <meta name="mchat-swatch-id" content="sunset-arcade">   named swatch
+//   3) "retro-neon" default
+function resolveActiveSwatch() {
+  if (typeof document === "undefined") return null;
+  const meta = document.querySelector('meta[name="mchat-swatch"]');
+  if (meta?.content) {
+    try { const parsed = JSON.parse(meta.content); if (parsed?.tokens) return parsed; } catch {}
+  }
+  const idMeta = document.querySelector('meta[name="mchat-swatch-id"]');
+  const fn = typeof getSwatchByID === "function" ? getSwatchByID : null;
+  return fn ? fn(idMeta?.content || "retro-neon") : null;
+}
+
 const PIECES = {
   white: {
     king: "♔",
@@ -44,7 +61,12 @@ export class ChessGame {
     this.board = new Board8x8();
     this.rules = new ChessRules();
     this.turns = new TurnBasedManager({ players: ["white", "black"], phase: "playing" });
-    this.audio = new AudioManager({ masterVolume: 0.045 });
+    // Defensive: AudioManager is optional. If the inline assembler dropped
+    // resources/AudioManager.js, fall back to a silent no-op so the constructor
+    // never throws (board still renders, just silent).
+    this.audio = (typeof AudioManager === "function")
+      ? new AudioManager({ masterVolume: 0.045 })
+      : { beep: () => {}, fadeIn: () => {}, fadeOut: () => {}, stop: () => {} };
     this.selected = null;
     this.legalMoves = [];
     this.moveCount = 0;
@@ -55,9 +77,18 @@ export class ChessGame {
     this._aiPending = false;
     this.restartHostEl = chessTarget(options.restartHostTarget) || document.querySelector("[data-app]") || document.body;
     this.rankCardHostEl = chessTarget(options.rankCardHostTarget);
-    this.restart = new RestartOverlay({ host: this.restartHostEl, onRestart: () => this.reset() });
+    // Defensive: RestartOverlay is optional. If the inline assembler dropped
+    // ui/RestartOverlay.js, fall back to no-op stubs so end-of-game still works
+    // (the user just won't see a visible Play Again overlay — game-over text
+    // in #message is still shown).
+    this.restart = (typeof RestartOverlay === "function")
+      ? new RestartOverlay({ host: this.restartHostEl, onRestart: () => this.reset() })
+      : { show: () => {}, hide: () => {} };
 
-    applySwatchVariables(document.documentElement, getSwatchByID("retro-neon"));
+    if (typeof applySwatchVariables === "function") {
+      const swatch = resolveActiveSwatch();
+      if (swatch) applySwatchVariables(document.documentElement, swatch);
+    }
     this.bindControls();
     this.reset();
   }
@@ -123,7 +154,9 @@ export class ChessGame {
       subtitle = "";
     }
     this.restart?.show({ title, subtitle, buttonLabel: "Play Again" });
-    if (scoreDelta > 0 && this.rankCardHostEl) {
+    // Defensive: Leaderboard is optional. If the inline assembler dropped
+    // ui/Leaderboard.js, the score-submit + rank card silently no-op.
+    if (scoreDelta > 0 && this.rankCardHostEl && typeof Leaderboard === "object" && Leaderboard) {
       this.rankCardHostEl.innerHTML = "";
       Leaderboard.submitFinal(scoreDelta, {
         result,
@@ -133,7 +166,7 @@ export class ChessGame {
         opponent: "local-ai"
       }).then((rank) => {
         if (rank) Leaderboard.renderRankCard(this.rankCardHostEl, rank);
-      });
+      }).catch(() => {});
     }
   }
 

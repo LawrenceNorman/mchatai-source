@@ -186,7 +186,7 @@ export class TowerDefenseGame {
   constructor(options = {}) {
     this.canvas = options.canvas;
     this.ctx = this.canvas.getContext("2d");
-    this.audio = new AudioManager({ masterVolume: 0.05 });
+    this.audio = (typeof AudioManager === "function") ? new AudioManager({ masterVolume: 0.05 }) : { beep: () => {}, fadeIn: () => {}, fadeOut: () => {}, stop: () => {}, loop: () => {}, stopMusic: () => {}, play: () => {} };
     this.scoreboard = new ScoreBoard({
       target: options.scoreboardTarget,
       storageKey: "mchatai.towerDefense.best",
@@ -241,7 +241,9 @@ export class TowerDefenseGame {
   }
 
   start() {
-    applySwatchVariables(document.documentElement, getSwatchByID("sunset-arcade"));
+    if (typeof applySwatchVariables === "function" && typeof getSwatchByID === "function") {
+      applySwatchVariables(document.documentElement, getSwatchByID("sunset-arcade"));
+    }
     tdQuery("#startWaveButton").addEventListener("click", () => this.startWave());
     this.canvas.addEventListener("click", (event) => this.handleBuildClick(event));
     document.querySelectorAll(".turret-pick").forEach((btn) => {

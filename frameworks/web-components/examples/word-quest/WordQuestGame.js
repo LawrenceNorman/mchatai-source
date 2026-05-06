@@ -29,7 +29,7 @@ export class WordQuestGame {
     this.turns = new TurnBasedManager({ players: ["player"], phase: "guessing" });
     this.boardShape = new GridBoard({ rows: this.maxRows, cols: this.wordLength });
     this.grid = new LetterGrid({ rows: this.maxRows, cols: this.wordLength });
-    this.audio = new AudioManager({ masterVolume: 0.06 });
+    this.audio = (typeof AudioManager === "function") ? new AudioManager({ masterVolume: 0.06 }) : { beep: () => {}, fadeIn: () => {}, fadeOut: () => {}, stop: () => {}, loop: () => {}, stopMusic: () => {}, play: () => {} };
     this.scoreboard = new ScoreBoard({
       target: this.root.querySelector("#scoreboard"),
       storageKey: `${this.storagePrefix}.bestScore`,
@@ -55,7 +55,9 @@ export class WordQuestGame {
   }
 
   start() {
-    applySwatchVariables(document.documentElement, getSwatchByID("retro-neon", WEB_COMPONENT_SWATCHES));
+    if (typeof applySwatchVariables === "function" && typeof getSwatchByID === "function") {
+      applySwatchVariables(document.documentElement, getSwatchByID("retro-neon", WEB_COMPONENT_SWATCHES));
+    }
     this.renderKeyboard();
     this.newRound();
   }

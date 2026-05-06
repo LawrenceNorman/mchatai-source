@@ -27,7 +27,7 @@
       "rule": "Write CSS MOBILE-FIRST. Default styles target the smallest viewport (375×812). Use `@media (min-width: 768px)` to UPGRADE the layout for tablet/desktop, never `@media (max-width: 768px)` to DOWNGRADE. Mobile-first scales up cleanly; desktop-first creates compounding overrides that break edge widths.",
       "why": "Desktop-first stylesheets accumulate `max-width` overrides that fight each other on tablet widths (768-1024px), producing broken intermediate layouts. Mobile-first means the simplest layout works everywhere; complexity is opt-in per breakpoint.",
       "severity": "critical",
-      "appliesTo": "miniApp, webspa",
+      "appliesTo": ["miniApp", "fullStackApp"],
       "examples": [
         "GOOD: .grid { display: grid; grid-template-columns: 1fr; gap: 12px; } @media (min-width: 768px) { .grid { grid-template-columns: repeat(3, 1fr); gap: 24px; } }",
         "BAD: .grid { grid-template-columns: repeat(3, 1fr); } @media (max-width: 767px) { .grid { grid-template-columns: 1fr; } }  /* desktop-first — fragile */",
@@ -39,7 +39,7 @@
       "rule": "Use `clamp()` for fluid typography and spacing — NEVER hardcode font-sizes that step jaggedly at breakpoints. Pattern: `font-size: clamp(MIN, PREFERRED-VW, MAX)`. Headlines, body text, and section padding should all scale fluidly. The 'preferred' value is usually a vw unit (`4vw`, `2.5vw`); the min/max clamp prevents extremes.",
       "why": "Stepwise typography (16px on mobile, 18px on tablet, 22px on desktop) jumps visibly at each breakpoint. clamp() interpolates smoothly across the range, so an iPad held in portrait at ~810px doesn't get the awkward 'almost-tablet-but-still-mobile' typography.",
       "severity": "important",
-      "appliesTo": "miniApp, webspa",
+      "appliesTo": ["miniApp", "fullStackApp"],
       "examples": [
         "h1 { font-size: clamp(28px, 6vw, 56px); }   /* scales 28px → 56px between 466px and 933px viewports */",
         "body { font-size: clamp(15px, 1.6vw, 18px); }",
@@ -52,7 +52,7 @@
       "rule": "Layouts must REFLOW below 600px from multi-column to single-column. Sidebars become collapsible drawers. Horizontal nav becomes hamburger or bottom-tab. Multi-column card grids stack. NEVER assume horizontal scroll is acceptable on mobile — set `overflow-x: hidden` on `body` and ensure no element exceeds `100vw`.",
       "why": "A desktop layout shrunk to 375px without reflow produces horizontal scroll, microscopic text, or off-screen controls. Reflow IS the responsive design — fluid scaling alone isn't enough.",
       "severity": "critical",
-      "appliesTo": "miniApp, webspa",
+      "appliesTo": ["miniApp", "fullStackApp"],
       "examples": [
         "Sidebar pattern: <aside class='sidebar'> + @media (max-width: 767px) { .sidebar { position: fixed; left: -100%; transition: left 0.3s; } .sidebar.open { left: 0; } }",
         "Card grid: grid-template-columns: 1fr; @media (min-width: 600px) { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }",
@@ -64,7 +64,7 @@
       "rule": "NO hover-only affordances. Anything reachable by hover MUST also be reachable by tap (mobile) or focus (keyboard). Tooltips that appear only on hover are invisible on touch — use a tap-to-toggle pattern OR show the tooltip text inline below 768px. Dropdowns that open on hover must ALSO open on tap.",
       "why": "Mobile devices have no hover state; iPadOS sometimes simulates one but unreliably. Hover-only menus are dead-end paths for touch users — they tap, nothing happens, they leave. Hybrid devices (Surface, iPad Pro with Magic Keyboard) need both interactions to work.",
       "severity": "critical",
-      "appliesTo": "miniApp, webspa",
+      "appliesTo": ["miniApp", "fullStackApp"],
       "examples": [
         "BAD: .menu:hover .dropdown { display: block; } /* never opens on touch */",
         "GOOD: .menu[aria-expanded='true'] .dropdown, .menu:hover .dropdown { display: block; } /* hover OR explicit toggle */",
@@ -76,7 +76,7 @@
       "rule": "Touch targets are 44×44 minimum on EVERY viewport, not just mobile. Desktop users with imprecise pointing devices (touchpads, touchscreens, accessibility tools) benefit from the same target sizing. Use `min-width: 44px; min-height: 44px;` even on icon buttons in desktop layouts.",
       "why": "Responsive doesn't mean shrinking targets at desktop widths — it means UPGRADING the layout while keeping core ergonomics. A 24×24 close button at 1280px is still hard to hit with a touchscreen Surface or with PointerControl accessibility settings.",
       "severity": "important",
-      "appliesTo": "miniApp, webspa",
+      "appliesTo": ["miniApp", "fullStackApp"],
       "examples": [
         "button.icon-only { min-width: 44px; min-height: 44px; padding: 10px; }",
         "// At desktop sizes, you can ADD padding for visual weight, but don't shrink the hit area below 44.",
@@ -88,7 +88,7 @@
       "rule": "Test at THREE viewports before declaring responsive: 375×812 (smallest current iPhone), 768×1024 (iPad portrait — the 'tablet trap' that breaks most layouts), and 1280×800 (small desktop). The 768px tablet width is the most commonly broken because designers test only 'phone' and 'desktop' and the in-between renders broken.",
       "why": "iPad portrait (768×1024) is the workhorse for productivity; it's not a phone, not a desktop, and a layout that 'works on phone and laptop' frequently has wasted vertical space, oversized hero sections, or a sidebar that appears too narrow. Testing 768px is the single highest-leverage check after 375px.",
       "severity": "important",
-      "appliesTo": "miniApp, webspa",
+      "appliesTo": ["miniApp", "fullStackApp"],
       "examples": [
         "DevTools responsive mode: 375×812, 768×1024, 1280×800 — same content, all three legible without horizontal scroll, all CTAs reachable.",
         "Common 768px bug: sidebar still visible at 240px wide, content area squished to ~520px → cramped text. Fix: collapse sidebar below 1024px, not below 768px."
@@ -99,7 +99,7 @@
       "rule": "Use `100dvh` (dynamic viewport height) for full-screen layouts on ALL viewports, not just mobile. Modern desktop browsers also support dvh and benefit from it on tablets-with-keyboard or windows that resize. Pair with `min-height: 100dvh` (not fixed `height: 100dvh`) when content may exceed the viewport — keeps long-content pages scrollable.",
       "why": "100vh is broken on mobile Safari (includes URL bar) and produces awkward 'page sticks below the fold' on desktop browsers when content overflows. dvh + min-height is the modern correct pattern across the responsive range.",
       "severity": "important",
-      "appliesTo": "miniApp, webspa",
+      "appliesTo": ["miniApp", "fullStackApp"],
       "examples": [
         ".page { min-height: 100dvh; display: flex; flex-direction: column; }",
         "@supports not (height: 100dvh) { .page { min-height: 100vh; } } /* Safari < 16 fallback */",
@@ -111,7 +111,7 @@
       "rule": "Images and media MUST be responsive. Use `max-width: 100%; height: auto;` as the default rule on `img, video, iframe, svg`. For art-directed images that change crop at breakpoints, use `<picture>` with `<source media>`. NEVER serve a 2400px hero image to a 375px phone — use `srcset` with width descriptors.",
       "why": "Fixed-width images break layouts on narrow screens (overflow horizontal scroll) and waste mobile data. The defaults `max-width:100%; height:auto;` cost zero effort and prevent ~80% of responsive image bugs.",
       "severity": "important",
-      "appliesTo": "miniApp, webspa",
+      "appliesTo": ["miniApp", "fullStackApp"],
       "examples": [
         "img, video, iframe, svg { max-width: 100%; height: auto; }",
         "<picture><source media='(min-width: 768px)' srcset='hero-wide.jpg'><img src='hero-mobile.jpg' alt='...'></picture>",
@@ -123,7 +123,7 @@
       "rule": "Avoid layout shift when reflowing across breakpoints. Reserve space for images via aspect-ratio (`aspect-ratio: 16/9`) so the layout doesn't jump as images load. Avoid `display: none` toggles that swap visible content at breakpoints — prefer the same DOM with CSS layout changes. Animate breakpoint transitions sparingly (resizing the browser window shouldn't trigger 12 transitions).",
       "why": "Visible jank during resize or load erodes 'feels-polished' perception. Reserved aspect-ratio + same-DOM-different-CSS keeps breakpoint reflow stable. Transition-on-resize storms feel buggy on desktop where users naturally drag window edges.",
       "severity": "important",
-      "appliesTo": "miniApp, webspa",
+      "appliesTo": ["miniApp", "fullStackApp"],
       "examples": [
         ".hero-img { aspect-ratio: 16 / 9; width: 100%; object-fit: cover; }",
         "// AVOID: <div class='mobile-only'> + <div class='desktop-only'> with display:none toggles — duplicate content, drift risk",
@@ -135,7 +135,7 @@
       "rule": "When a viewport is selected for validation (Mobile, Desktop, or Both), the GENERATED HTML must demonstrably address that viewport. For Both, the screenshot at 375×812 AND the screenshot at 1280×800 must each look polished and complete — not 'mobile is fine, desktop has wasted space' or 'desktop is good, mobile has clipped text'. Both viewports are first-class outputs.",
       "why": "Auto-fix loops that only see one viewport screenshot can declare 'looks good' on the viewport they checked while the other viewport is broken. The validator's job in Both mode is to grade BOTH and report viewport-specific issues per code.",
       "severity": "critical",
-      "appliesTo": "miniApp, webspa",
+      "appliesTo": ["miniApp", "fullStackApp"],
       "examples": [
         "Mobile screenshot must show: no horizontal scroll, all CTAs reachable, text legible at default zoom, no controls under safe-area-inset",
         "Desktop screenshot must show: layout uses the wider canvas (not just centered phone-width content), hover/focus affordances visible where present, no awkward dead zones",

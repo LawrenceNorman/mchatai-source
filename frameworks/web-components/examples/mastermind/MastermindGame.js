@@ -36,7 +36,7 @@ export class MastermindGame {
     });
     this.turns = new TurnBasedManager({ players: ["codebreaker"], phase: "guessing" });
     this.board = new GridBoard({ rows: this.maxTurns, cols: this.codeLength });
-    this.audio = new AudioManager({ masterVolume: 0.055 });
+    this.audio = (typeof AudioManager === "function") ? new AudioManager({ masterVolume: 0.055 }) : { beep: () => {}, fadeIn: () => {}, fadeOut: () => {}, stop: () => {}, loop: () => {}, stopMusic: () => {}, play: () => {} };
     this.scoreboard = new ScoreBoard({
       target: mastermindQuery(this.root, "#scoreboard"),
       storageKey: `${this.storagePrefix}.bestScore`,
@@ -69,15 +69,17 @@ export class MastermindGame {
     this.finished = false;
     this.controlsBound = false;
 
-    this.restart = new RestartOverlay({
+    this.restart = (typeof RestartOverlay === "function") ? new RestartOverlay({
       host: this.root.querySelector?.("[data-app]") || this.root.body,
       onRestart: () => this.newGame()
-    });
+    }) : { show: () => {}, hide: () => {} };
     this.rankCardHost = this.root.querySelector?.("#rankCard") || null;
   }
 
   start() {
-    applySwatchVariables(document.documentElement, getSwatchByID("sunset-arcade"));
+    if (typeof applySwatchVariables === "function" && typeof getSwatchByID === "function") {
+      applySwatchVariables(document.documentElement, getSwatchByID("sunset-arcade"));
+    }
     this.renderPalette();
     this.bindControls();
     this.newGame();

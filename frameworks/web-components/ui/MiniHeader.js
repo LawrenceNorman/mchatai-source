@@ -1,8 +1,8 @@
-const STYLE_ID = "mchatai-mini-header-styles";
-const BASE_CLASS = "mchatai-mini-header";
+const MINI_HEADER_STYLE_ID = "mchatai-mini-header-styles";
+const MINI_HEADER_BASE_CLASS = "mchatai-mini-header";
 
-const STYLE_CSS = `
-.${BASE_CLASS} {
+const MINI_HEADER_STYLE_CSS = `
+.${MINI_HEADER_BASE_CLASS} {
   display: flex;
   align-items: baseline;
   gap: var(--mchat-space-2, 8px);
@@ -13,59 +13,59 @@ const STYLE_CSS = `
   border: 0;
   flex-wrap: wrap;
 }
-.${BASE_CLASS}[hidden] {
+.${MINI_HEADER_BASE_CLASS}[hidden] {
   display: none;
 }
-.${BASE_CLASS}__title {
+.${MINI_HEADER_BASE_CLASS}__title {
   margin: 0;
   font-size: clamp(0.95rem, 3.4vw, 1.2rem);
   line-height: 1.15;
   font-weight: 700;
   letter-spacing: -0.005em;
 }
-.${BASE_CLASS}__subtitle {
+.${MINI_HEADER_BASE_CLASS}__subtitle {
   margin: 0;
   font-size: 0.7rem;
   line-height: 1.2;
   opacity: 0.6;
   font-weight: 400;
 }
-.${BASE_CLASS}__subtitle[hidden] {
+.${MINI_HEADER_BASE_CLASS}__subtitle[hidden] {
   display: none;
 }
 @media (max-width: 520px) {
-  .${BASE_CLASS} {
+  .${MINI_HEADER_BASE_CLASS} {
     padding: 3px 6px;
   }
-  .${BASE_CLASS}__subtitle {
+  .${MINI_HEADER_BASE_CLASS}__subtitle {
     display: none;
   }
 }
 `.trim();
 
-function ensureStyles() {
+function miniHeaderEnsureStyles() {
   if (typeof document === "undefined") return;
-  if (document.getElementById(STYLE_ID)) return;
+  if (document.getElementById(MINI_HEADER_STYLE_ID)) return;
   const style = document.createElement("style");
-  style.id = STYLE_ID;
-  style.textContent = STYLE_CSS;
+  style.id = MINI_HEADER_STYLE_ID;
+  style.textContent = MINI_HEADER_STYLE_CSS;
   document.head.appendChild(style);
 }
 
-function resolveTarget(target) {
+function miniHeaderResolveTarget(target) {
   if (!target || typeof document === "undefined") return null;
   return typeof target === "string" ? document.querySelector(target) : target;
 }
 
 export class MiniHeader {
   constructor(options = {}) {
-    ensureStyles();
+    miniHeaderEnsureStyles();
     this.titleText = options.title || "";
     this.subtitleText = options.subtitle || "";
     this.element = this._create();
-    this.titleEl = this.element.querySelector(`.${BASE_CLASS}__title`);
-    this.subtitleEl = this.element.querySelector(`.${BASE_CLASS}__subtitle`);
-    const mount = resolveTarget(options.target);
+    this.titleEl = this.element.querySelector(`.${MINI_HEADER_BASE_CLASS}__title`);
+    this.subtitleEl = this.element.querySelector(`.${MINI_HEADER_BASE_CLASS}__subtitle`);
+    const mount = miniHeaderResolveTarget(options.target);
     if (mount) {
       // If the host already has the header attribute, render in place; else append.
       if (mount.hasAttribute && mount.hasAttribute("data-mini-header")) {
@@ -95,7 +95,7 @@ export class MiniHeader {
   }
 
   attach(target) {
-    const mount = resolveTarget(target);
+    const mount = miniHeaderResolveTarget(target);
     if (mount) mount.appendChild(this.element);
     return this;
   }
@@ -126,11 +126,11 @@ export class MiniHeader {
       return { querySelector: () => null, remove: () => {}, appendChild: () => {} };
     }
     const root = document.createElement("header");
-    root.className = BASE_CLASS;
+    root.className = MINI_HEADER_BASE_CLASS;
     root.dataset.component = "mini-header";
     root.innerHTML = `
-      <h1 class="${BASE_CLASS}__title"></h1>
-      <p class="${BASE_CLASS}__subtitle" hidden></p>
+      <h1 class="${MINI_HEADER_BASE_CLASS}__title"></h1>
+      <p class="${MINI_HEADER_BASE_CLASS}__subtitle" hidden></p>
     `;
     return root;
   }

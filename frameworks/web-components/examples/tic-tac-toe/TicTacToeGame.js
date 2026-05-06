@@ -25,26 +25,28 @@ export class TicTacToeGame {
     this.rules = new TicTacToeRules();
     this.ai = new TicTacToeAI({ rules: this.rules, difficulty: "perfect" });
     this.turns = new TurnBasedManager({ players: [HUMAN, AI], phase: "playing" });
-    this.audio = new AudioManager({ masterVolume: 0.05 });
+    this.audio = (typeof AudioManager === "function") ? new AudioManager({ masterVolume: 0.05 }) : { beep: () => {}, fadeIn: () => {}, fadeOut: () => {}, stop: () => {}, loop: () => {}, stopMusic: () => {}, play: () => {} };
     this.board = emptyBoard();
     this.score = { wins: 0, losses: 0, draws: 0 };
     this._aiPending = false;
     this._winningLine = null;
     this.difficulty = "perfect";
 
-    this.restart = new RestartOverlay({
+    this.restart = (typeof RestartOverlay === "function") ? new RestartOverlay({
       host: this.restartHostEl,
       onRestart: () => this.reset()
-    });
-    this.toggle = new CloudAIToggle({
+    }) : { show: () => {}, hide: () => {} };
+    this.toggle = (typeof CloudAIToggle === "function") ? new CloudAIToggle({
       target: this.toggleHostEl,
       defaultLevel: "medium",
       tokenCost: 1,
       tokenCostUnit: "/ game",
       onChange: (level) => this._onDifficultyChange(level)
-    });
+    }) : { mount: () => {}, getMode: () => "local", isCloudActive: () => false };
 
-    applySwatchVariables(document.documentElement, getSwatchByID("retro-neon"));
+    if (typeof applySwatchVariables === "function" && typeof getSwatchByID === "function") {
+      applySwatchVariables(document.documentElement, getSwatchByID("retro-neon"));
+    }
     this._bindControls();
   }
 

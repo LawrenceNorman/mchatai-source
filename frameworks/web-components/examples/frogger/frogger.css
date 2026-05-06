@@ -1,15 +1,34 @@
+/* mchat-swatch-defaults — synchronous FOUC fallback. Mirrors
+   resources/Swatches.js retro-neon swatch verbatim (the swatch this example
+   selects via getSwatchByID("retro-neon") in FroggerGame.js). See
+   buildSwatchDefaultsCSS. Swatches.applySwatchVariables overrides these via
+   inline style at runtime. */
 :root {
-  --frog-bg: #07130f;
-  --frog-panel: #10261e;
-  --frog-panel-strong: #173c2d;
-  --frog-road: #20242b;
-  --frog-water: #0a3452;
-  --frog-safe: #1d5d36;
-  --frog-text: #f5ffe8;
-  --frog-muted: #add7bb;
-  --frog-accent: #9cff63;
-  --frog-warm: #ffd166;
-  --frog-danger: #ff5c7a;
+  --mchat-background: #020617;
+  --mchat-surface: #08111f;
+  --mchat-text: #f8fafc;
+  --mchat-accent: #22d3ee;
+  --mchat-accentWarm: #fb923c;
+  --mchat-stroke: #e2e8f0;
+  --mchat-shadow: rgba(34, 211, 238, 0.24);
+  --mchat-radius-sm: 6px;
+  --mchat-radius-md: 12px;
+  --mchat-radius-lg: 20px;
+  --mchat-radius-pill: 999px;
+  --mchat-space-1: 4px;
+  --mchat-space-2: 8px;
+  --mchat-space-3: 12px;
+  --mchat-space-4: 16px;
+  --mchat-space-5: 24px;
+  --mchat-space-6: 32px;
+  --mchat-type-xs: clamp(11px, 2.6vw, 12px);
+  --mchat-type-sm: clamp(13px, 3vw, 14px);
+  --mchat-type-md: clamp(15px, 3.4vw, 16px);
+  --mchat-type-lg: clamp(18px, 4.2vw, 22px);
+  --mchat-type-xl: clamp(24px, 6vw, 36px);
+  --mchat-font-ui: -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --mchat-font-display: 'Avenir Next', 'Trebuchet MS', sans-serif;
+  --mchat-font-mono: 'SF Mono', 'Cascadia Mono', monospace;
 }
 
 * {
@@ -19,11 +38,11 @@
 body {
   margin: 0;
   min-height: 100vh;
-  color: var(--frog-text);
+  color: var(--mchat-text);
   background:
     radial-gradient(circle at 18% 0%, rgba(156, 255, 99, 0.18), transparent 28rem),
-    linear-gradient(145deg, #030806, var(--frog-bg));
-  font-family: "Avenir Next", "Trebuchet MS", sans-serif;
+    linear-gradient(145deg, #030806, #07130f);
+  font-family: var(--mchat-font-display);
 }
 
 button {
@@ -33,14 +52,14 @@ button {
 .frogger-shell {
   width: min(860px, 100%);
   margin: 0 auto;
-  padding: 18px;
+  padding: var(--mchat-space-4);
   display: grid;
-  gap: 16px;
+  gap: var(--mchat-space-4);
 }
 
 .frogger-stage-wrap {
   position: relative;
-  padding: 18px;
+  padding: var(--mchat-space-4);
 }
 
 .frogger-hud {
@@ -48,22 +67,22 @@ button {
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 12px;
+  gap: var(--mchat-space-2);
+  margin-bottom: var(--mchat-space-3);
 }
 
 .mchatai-scoreboard {
   display: flex;
-  gap: 10px;
+  gap: var(--mchat-space-2);
 }
 
 .mchatai-scoreboard__item,
 .hud-pill {
   min-width: 110px;
-  padding: 10px 14px;
-  border-radius: 16px;
+  padding: var(--mchat-space-2) var(--mchat-space-4);
+  border-radius: var(--mchat-radius-md);
   background: rgba(255, 255, 255, 0.1);
-  color: var(--frog-muted);
+  color: #add7bb;
   font-size: 0.78rem;
   font-weight: 800;
   letter-spacing: 0.12em;
@@ -74,7 +93,7 @@ button {
 .hud-pill strong {
   display: block;
   margin-top: 2px;
-  color: var(--frog-text);
+  color: var(--mchat-text);
   font-size: 1.4rem;
   letter-spacing: 0;
 }
@@ -86,18 +105,18 @@ button {
   height: auto;
   margin: 0 auto;
   border: 3px solid rgba(245, 255, 232, 0.22);
-  border-radius: 18px;
+  border-radius: var(--mchat-radius-lg);
   background: #07130f;
 }
 
 .frogger-message {
-  margin: 12px auto 0;
+  margin: var(--mchat-space-3) auto 0;
   max-width: 720px;
   min-height: 46px;
-  padding: 12px 14px;
-  border-radius: 16px;
+  padding: var(--mchat-space-3);
+  border-radius: var(--mchat-radius-md);
   background: rgba(0, 0, 0, 0.28);
-  color: var(--frog-text);
+  color: var(--mchat-text);
   text-align: center;
 }
 
@@ -113,7 +132,7 @@ button {
   width: 112px;
   height: 112px;
   border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 999px;
+  border-radius: var(--mchat-radius-pill);
   background: rgba(255, 255, 255, 0.08);
   backdrop-filter: blur(8px);
 }
@@ -124,38 +143,38 @@ button {
   top: 36px;
   width: 40px;
   height: 40px;
-  border-radius: 999px;
-  background: var(--frog-accent);
+  border-radius: var(--mchat-radius-pill);
+  background: #9cff63;
   box-shadow: 0 0 24px rgba(156, 255, 99, 0.45);
 }
 
 .actions {
-  margin-top: 12px;
+  margin-top: var(--mchat-space-3);
   text-align: center;
 }
 
 .actions button {
   border: 0;
-  border-radius: 999px;
-  padding: 10px 18px;
-  background: var(--frog-warm);
+  border-radius: var(--mchat-radius-pill);
+  padding: var(--mchat-space-2) var(--mchat-space-4);
+  background: #ffd166;
   color: #231b08;
   font-weight: 900;
 }
 
 @media (max-width: 700px) {
   .frogger-shell {
-    padding: 10px;
+    padding: var(--mchat-space-2);
   }
 
   .frogger-stage-wrap {
-    padding: 12px;
+    padding: var(--mchat-space-3);
   }
 
   .joystick-mount {
     position: relative;
     right: auto;
     bottom: auto;
-    margin: 12px auto 0;
+    margin: var(--mchat-space-3) auto 0;
   }
 }

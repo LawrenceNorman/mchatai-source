@@ -13,7 +13,7 @@ function pianoQuery(root, selector) {
 export class PianoGame {
   constructor(options = {}) {
     this.root = options.root || document;
-    this.audio = new AudioManager({ masterVolume: 0.08 });
+    this.audio = (typeof AudioManager === "function") ? new AudioManager({ masterVolume: 0.08 }) : { beep: () => {}, fadeIn: () => {}, fadeOut: () => {}, stop: () => {}, loop: () => {}, stopMusic: () => {}, play: () => {} };
     this.notes = options.notes || NOTES;
     this.trail = [];
     this.currentNote = pianoQuery(this.root, "#currentNote");
@@ -25,7 +25,9 @@ export class PianoGame {
   }
 
   start() {
-    applySwatchVariables(document.documentElement, getSwatchByID("retro-neon"));
+    if (typeof applySwatchVariables === "function" && typeof getSwatchByID === "function") {
+      applySwatchVariables(document.documentElement, getSwatchByID("retro-neon"));
+    }
     this.keyboard = new PianoKeyboard({
       root: pianoQuery(this.root, "#pianoMount"),
       notes: this.notes,

@@ -19,11 +19,11 @@
 // Mobile-first: the button is large (≥60×220px), the overlay dims the canvas so
 // the button is unmistakable, Enter/Space triggers it from keyboard.
 
-const STYLE_ID = "mchatai-restart-overlay-styles";
-const ROOT_CLASS = "mchatai-restart-overlay";
+const RESTART_OVERLAY_STYLE_ID = "mchatai-restart-overlay-styles";
+const RESTART_OVERLAY_ROOT_CLASS = "mchatai-restart-overlay";
 
-const STYLE_CSS = `
-.${ROOT_CLASS} {
+const RESTART_OVERLAY_STYLE_CSS = `
+.${RESTART_OVERLAY_ROOT_CLASS} {
   position: absolute;
   inset: 0;
   display: flex;
@@ -40,20 +40,20 @@ const STYLE_CSS = `
   pointer-events: auto;
   animation: mchatai-restart-fade-in 200ms ease-out both;
 }
-.${ROOT_CLASS}[hidden] { display: none; }
-.${ROOT_CLASS}__title {
+.${RESTART_OVERLAY_ROOT_CLASS}[hidden] { display: none; }
+.${RESTART_OVERLAY_ROOT_CLASS}__title {
   margin: 0;
   font-size: clamp(1.4rem, 5vw, 2.2rem);
   font-weight: 800;
   letter-spacing: -0.01em;
 }
-.${ROOT_CLASS}__subtitle {
+.${RESTART_OVERLAY_ROOT_CLASS}__subtitle {
   margin: 0;
   font-size: clamp(0.95rem, 3vw, 1.15rem);
   opacity: 0.85;
   max-width: 32rem;
 }
-.${ROOT_CLASS}__button {
+.${RESTART_OVERLAY_ROOT_CLASS}__button {
   min-width: 200px;
   min-height: 60px;
   padding: var(--mchat-space-4, 16px) var(--mchat-space-6, 32px);
@@ -67,15 +67,15 @@ const STYLE_CSS = `
   box-shadow: 0 12px 30px rgba(251, 191, 36, 0.32);
   transition: transform 120ms ease, box-shadow 120ms ease;
 }
-.${ROOT_CLASS}__button:hover,
-.${ROOT_CLASS}__button:focus-visible {
+.${RESTART_OVERLAY_ROOT_CLASS}__button:hover,
+.${RESTART_OVERLAY_ROOT_CLASS}__button:focus-visible {
   transform: translateY(-2px);
   box-shadow: 0 16px 36px rgba(251, 191, 36, 0.42);
   outline: 2px solid #fef3c7;
   outline-offset: 3px;
 }
-.${ROOT_CLASS}__button:active { transform: translateY(0); }
-.${ROOT_CLASS}__hint {
+.${RESTART_OVERLAY_ROOT_CLASS}__button:active { transform: translateY(0); }
+.${RESTART_OVERLAY_ROOT_CLASS}__hint {
   margin: 0;
   font-size: 0.78rem;
   opacity: 0.55;
@@ -86,25 +86,25 @@ const STYLE_CSS = `
 }
 `.trim();
 
-function ensureStyles() {
+function restartOverlayEnsureStyles() {
   if (typeof document === "undefined") return;
-  if (document.getElementById(STYLE_ID)) return;
+  if (document.getElementById(RESTART_OVERLAY_STYLE_ID)) return;
   const style = document.createElement("style");
-  style.id = STYLE_ID;
-  style.textContent = STYLE_CSS;
+  style.id = RESTART_OVERLAY_STYLE_ID;
+  style.textContent = RESTART_OVERLAY_STYLE_CSS;
   document.head.appendChild(style);
 }
 
-function resolveTarget(target) {
+function restartOverlayResolveTarget(target) {
   if (!target || typeof document === "undefined") return null;
   return typeof target === "string" ? document.querySelector(target) : target;
 }
 
 export class RestartOverlay {
   constructor(options = {}) {
-    ensureStyles();
+    restartOverlayEnsureStyles();
     this.onRestart = typeof options.onRestart === "function" ? options.onRestart : () => {};
-    this.host = resolveTarget(options.host) || (typeof document !== "undefined" ? document.body : null);
+    this.host = restartOverlayResolveTarget(options.host) || (typeof document !== "undefined" ? document.body : null);
     // Ensure the host can position the overlay absolutely.
     if (this.host && typeof window !== "undefined") {
       const computed = window.getComputedStyle(this.host);
@@ -185,19 +185,19 @@ export class RestartOverlay {
       return { hidden: true, remove() {}, querySelector() { return null; } };
     }
     const root = document.createElement("div");
-    root.className = ROOT_CLASS;
+    root.className = RESTART_OVERLAY_ROOT_CLASS;
     root.dataset.component = "restart-overlay";
     root.setAttribute("role", "dialog");
     root.setAttribute("aria-modal", "true");
     root.innerHTML = `
-      <h2 class="${ROOT_CLASS}__title"></h2>
-      <p class="${ROOT_CLASS}__subtitle"></p>
-      <button type="button" class="${ROOT_CLASS}__button"></button>
-      <p class="${ROOT_CLASS}__hint">Press Enter to play again</p>
+      <h2 class="${RESTART_OVERLAY_ROOT_CLASS}__title"></h2>
+      <p class="${RESTART_OVERLAY_ROOT_CLASS}__subtitle"></p>
+      <button type="button" class="${RESTART_OVERLAY_ROOT_CLASS}__button"></button>
+      <p class="${RESTART_OVERLAY_ROOT_CLASS}__hint">Press Enter to play again</p>
     `;
-    this.titleEl = root.querySelector(`.${ROOT_CLASS}__title`);
-    this.subtitleEl = root.querySelector(`.${ROOT_CLASS}__subtitle`);
-    this.buttonEl = root.querySelector(`.${ROOT_CLASS}__button`);
+    this.titleEl = root.querySelector(`.${RESTART_OVERLAY_ROOT_CLASS}__title`);
+    this.subtitleEl = root.querySelector(`.${RESTART_OVERLAY_ROOT_CLASS}__subtitle`);
+    this.buttonEl = root.querySelector(`.${RESTART_OVERLAY_ROOT_CLASS}__button`);
     if (this.buttonEl) this.buttonEl.addEventListener("click", () => this._fire());
     return root;
   }
