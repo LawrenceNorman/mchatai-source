@@ -1079,7 +1079,7 @@
         "emptyBoard"
       ],
       "status": "ready",
-      "summary": "3x3 tic-tac-toe rules + inline depth-9 minimax AI. Board is a 9-element array; cells are 'x', 'o', or null. TicTacToeAI.pickMove(board, color) returns the perfect-play move index. Use this instead of MinimaxAI for tic-tac-toe — depth-9 inline is tractable and self-contained.",
+      "summary": "3x3 tic-tac-toe rules + inline depth-9 minimax AI. Board is a 9-element array; cells are 'x', 'o', or null. TicTacToeAI.pickMove(board, color) returns the perfect-play move index. Use this instead of MinimaxAI for tic-tac-toe \u2014 depth-9 inline is tractable and self-contained.",
       "tags": [
         "tic-tac-toe",
         "noughts-and-crosses",
@@ -1271,7 +1271,7 @@
         "CloudOpponent"
       ],
       "status": "ready",
-      "summary": "Drop-in async opponent that calls window.mChatAI.cloud.llm() for move selection. Same pickMove(board, color) API as ChessAI/CheckersAI/SimpleOpponent — async-only. Falls back to a passed-in local AI on any failure (cloud absent, parse error, timeout, token budget). Pairs with ui/CloudAIToggle for the 'Strong' difficulty tier per wisdom rule bg-007.",
+      "summary": "Drop-in async opponent that calls window.mChatAI.cloud.llm() for move selection. Same pickMove(board, color) API as ChessAI/CheckersAI/SimpleOpponent \u2014 async-only. Falls back to a passed-in local AI on any failure (cloud absent, parse error, timeout, token budget). Pairs with ui/CloudAIToggle for the 'Strong' difficulty tier per wisdom rule bg-007.",
       "dependencies": [],
       "tags": [
         "ai",
@@ -1386,7 +1386,7 @@
         "mountRestartOverlay"
       ],
       "status": "ready",
-      "summary": "Centered modal overlay for game-over / play-again. Mobile-first (button ≥ 60×200px), keyboard-bindable (Enter/Space), self-injecting CSS, mounts against any host. Mandatory for every game with a terminal phase per wisdom rule u-029. Marker check `requiresRestartButton: true` enforces presence.",
+      "summary": "Centered modal overlay for game-over / play-again. Mobile-first (button \u2265 60\u00d7200px), keyboard-bindable (Enter/Space), self-injecting CSS, mounts against any host. Mandatory for every game with a terminal phase per wisdom rule u-029. Marker check `requiresRestartButton: true` enforces presence.",
       "tags": [
         "ui",
         "game-over",
@@ -1427,7 +1427,7 @@
         "submitAndShowRank"
       ],
       "status": "ready",
-      "summary": "Global leaderboard wiring — submitFinal(score, metadata), renderRankCard(host, result), renderTopList(host, count). All methods no-op safe when window.mChatAI.leaderboard bridge is absent (offline / signed-out). Mandatory wiring for board games (bg-006) and arcade games (ag-010) with a final score.",
+      "summary": "Global leaderboard wiring \u2014 submitFinal(score, metadata), renderRankCard(host, result), renderTopList(host, count). All methods no-op safe when window.mChatAI.leaderboard bridge is absent (offline / signed-out). Mandatory wiring for board games (bg-006) and arcade games (ag-010) with a final score.",
       "dependencies": [],
       "tags": [
         "ui",
@@ -1465,7 +1465,7 @@
         "CloudAIToggle"
       ],
       "status": "ready",
-      "summary": "Three-button difficulty selector (Easy / Medium / ⚡ Strong). The Strong tier is auto-disabled when window.mChatAI.cloud is unavailable. Pairs with entities/CloudOpponent. Wisdom rule bg-007.",
+      "summary": "Three-button difficulty selector (Easy / Medium / \u26a1 Strong). The Strong tier is auto-disabled when window.mChatAI.cloud is unavailable. Pairs with entities/CloudOpponent. Wisdom rule bg-007.",
       "dependencies": [],
       "tags": [
         "ui",
@@ -1913,6 +1913,21 @@
         "Use CameraFollow and world coordinates instead of wraparound screen coordinates.",
         "Use Turret for moon/base installations and Projectile for both player and enemy fire.",
         "Keep Asteroid splitting from the normal Asteroids recipe, but spawn/despawn objects around the camera viewport."
+      ],
+      "requiredComponents": [
+        "core.game-manager",
+        "core.physics2d",
+        "entities.asteroid",
+        "entities.camera-follow",
+        "entities.entity",
+        "entities.projectile",
+        "entities.space-ship",
+        "entities.turret",
+        "ui.mini-header",
+        "ui.scoreboard"
+      ],
+      "optionalComponents": [
+        "resources.swatches"
       ]
     },
     {
@@ -1955,6 +1970,23 @@
       "assemblyNotes": [
         "Write glue code around the shipped engine and entity modules instead of rewriting movement, wrapping, projectile, and scoring logic from scratch.",
         "For open-world Asteroids variants, keep SpaceShip and Projectile but disable world wrapping and add camera/world coordinates in the assembly layer."
+      ],
+      "requiredComponents": [
+        "core.game-manager",
+        "core.physics2d",
+        "entities.asteroid",
+        "entities.space-ship",
+        "ui.scoreboard"
+      ],
+      "optionalComponents": [
+        "entities.camera-follow",
+        "entities.entity",
+        "entities.projectile",
+        "entities.turret",
+        "resources.audio-manager",
+        "resources.swatches",
+        "ui.mini-header",
+        "ui.virtual-joystick"
       ]
     },
     {
@@ -2000,6 +2032,19 @@
         "entities.defender-enemy",
         "entities.rescue-target",
         "entities.terrain-horizon"
+      ],
+      "requiredComponents": [
+        "core.game-manager",
+        "core.physics2d",
+        "entities.camera-follow",
+        "entities.entity",
+        "entities.projectile",
+        "ui.mini-header",
+        "ui.scoreboard"
+      ],
+      "optionalComponents": [
+        "resources.audio-manager",
+        "resources.swatches"
       ]
     },
     {
@@ -2039,6 +2084,19 @@
         "Use Paddle and Ball as fixed rules primitives; only generate scoring rules, input binding, and theme.",
         "Use GameManager callbacks (`onUpdate`, `onDraw`) and `game.start()`; there is no GameManager.update() API.",
         "Use PongAI to drive the CPU paddle. Without delay+error parameters a perfect ball-tracker is unbeatable; defaults (110ms / 12%) make it fun."
+      ],
+      "requiredComponents": [
+        "core.game-manager",
+        "core.physics2d",
+        "entities.ball",
+        "entities.paddle",
+        "entities.pong-ai",
+        "ui.mini-header",
+        "ui.scoreboard"
+      ],
+      "optionalComponents": [
+        "resources.audio-manager",
+        "resources.swatches"
       ]
     },
     {
@@ -2076,6 +2134,21 @@
       ],
       "assemblyNotes": [
         "Use GridBoard for lanes, GridMover for the player, and PathFollower for cars/logs; generate only lane data and collision rules."
+      ],
+      "requiredComponents": [
+        "core.game-manager",
+        "entities.grid-board",
+        "entities.grid-mover",
+        "entities.path-follower",
+        "ui.mini-header",
+        "ui.scoreboard",
+        "ui.virtual-joystick"
+      ],
+      "optionalComponents": [
+        "core.physics2d",
+        "entities.entity",
+        "resources.audio-manager",
+        "resources.swatches"
       ]
     },
     {
@@ -2112,6 +2185,19 @@
       "assemblyNotes": [
         "Use GridBoard for maze walls and pellets, GridMover for player/ghost movement, and AIPathfinder for ghost chase/scatter behavior.",
         "Instantiate documented component constructors directly; there is no framework-level initialize() API."
+      ],
+      "requiredComponents": [
+        "core.game-manager",
+        "entities.ai-pathfinder",
+        "entities.grid-board",
+        "entities.grid-mover",
+        "ui.mini-header",
+        "ui.scoreboard",
+        "ui.virtual-joystick"
+      ],
+      "optionalComponents": [
+        "resources.audio-manager",
+        "resources.swatches"
       ]
     },
     {
@@ -2158,6 +2244,22 @@
       "plannedNext": [
         "entities.platform-tilemap",
         "resources.texture-manager"
+      ],
+      "requiredComponents": [
+        "core.game-manager",
+        "core.physics2d",
+        "entities.camera-follow",
+        "entities.grid-board",
+        "entities.platformer-player",
+        "ui.mini-header",
+        "ui.scoreboard",
+        "ui.virtual-joystick"
+      ],
+      "optionalComponents": [
+        "resources.audio-manager",
+        "resources.sprite-presets",
+        "resources.sprite-renderer",
+        "resources.swatches"
       ]
     },
     {
@@ -2203,6 +2305,23 @@
       ],
       "plannedNext": [
         "entities.health-bar"
+      ],
+      "requiredComponents": [
+        "core.game-manager",
+        "core.physics2d",
+        "entities.path-follower",
+        "entities.projectile",
+        "entities.turret",
+        "entities.turret-variants",
+        "entities.wave-manager",
+        "resources.vector-sprites",
+        "ui.mini-header",
+        "ui.scoreboard"
+      ],
+      "optionalComponents": [
+        "entities.grid-board",
+        "resources.audio-manager",
+        "resources.swatches"
       ]
     },
     {
@@ -2243,6 +2362,18 @@
       "assemblyNotes": [
         "Build Word Quest as a Wordle clone, not a generic word builder: one hidden five-letter answer, six rows of five cells, Enter/Delete/New Word controls, green/yellow/gray feedback, and colored QWERTY keyboard keys.",
         "Use LetterGrid for guesses and feedback; generate dictionary/level content separately from grid scoring."
+      ],
+      "requiredComponents": [
+        "core.turn-based-manager",
+        "entities.grid-board",
+        "entities.letter-grid",
+        "ui.keyboard-input",
+        "ui.mini-header",
+        "ui.scoreboard"
+      ],
+      "optionalComponents": [
+        "resources.audio-manager",
+        "resources.swatches"
       ]
     },
     {
@@ -2283,6 +2414,20 @@
         "Use ScoreBoard.setScore(), ScoreBoard.add(), or ScoreBoard.reset(); there is no ScoreBoard.update() API.",
         "On win OR turns-exhausted, call RestartOverlay.show() with a clear title (e.g. 'Code cracked!' / 'Code locked'). Wire onRestart to newGame().",
         "On win, submit the final score via Leaderboard.submitFinal(score, { result, turns, codeLength }) and renderRankCard against a #rankCard host."
+      ],
+      "requiredComponents": [
+        "core.turn-based-manager",
+        "entities.grid-board",
+        "entities.mastermind-logic",
+        "ui.keyboard-input",
+        "ui.leaderboard",
+        "ui.mini-header",
+        "ui.restart-overlay",
+        "ui.scoreboard"
+      ],
+      "optionalComponents": [
+        "resources.audio-manager",
+        "resources.swatches"
       ]
     },
     {
@@ -2322,6 +2467,19 @@
       "assemblyNotes": [
         "Use RevealLogic for mine seeding, adjacency counts, flags, and flood reveal; generate board size/difficulty settings only.",
         "On win OR mine-hit, call RestartOverlay.show() with title/subtitle. On win, submit final score via Leaderboard.submitFinal(score, { result, time_seconds, mines, rows, cols })."
+      ],
+      "requiredComponents": [
+        "core.turn-based-manager",
+        "entities.grid-board",
+        "entities.reveal-logic",
+        "ui.leaderboard",
+        "ui.mini-header",
+        "ui.restart-overlay",
+        "ui.scoreboard"
+      ],
+      "optionalComponents": [
+        "resources.audio-manager",
+        "resources.swatches"
       ]
     },
     {
@@ -2357,6 +2515,18 @@
       "assemblyNotes": [
         "Use TileSwapper for selection/swap input and Match3Logic for matches/cascades; generate tile skins and level goals only.",
         "Do not stop at an import shell. A valid match-three app must render a visible tile board, selectable adjacent swaps, match/cascade resolution, score/combo HUD, and restart/shuffle controls."
+      ],
+      "requiredComponents": [
+        "core.turn-based-manager",
+        "entities.grid-board",
+        "entities.match3-logic",
+        "entities.tile-swapper",
+        "ui.mini-header",
+        "ui.scoreboard"
+      ],
+      "optionalComponents": [
+        "resources.audio-manager",
+        "resources.swatches"
       ]
     },
     {
@@ -2392,6 +2562,18 @@
       "assemblyNotes": [
         "Use BlackjackRules for hand totals, dealer policy, blackjack checks, and settlement; generate table flow and UI only.",
         "Use ScoreBoard.setScore(), ScoreBoard.add(), or ScoreBoard.reset(); there is no ScoreBoard.update() API."
+      ],
+      "requiredComponents": [
+        "core.turn-based-manager",
+        "entities.blackjack-rules",
+        "entities.card",
+        "entities.deck",
+        "ui.mini-header",
+        "ui.scoreboard"
+      ],
+      "optionalComponents": [
+        "resources.audio-manager",
+        "resources.swatches"
       ]
     },
     {
@@ -2428,6 +2610,18 @@
       "plannedNext": [
         "entities.poker-pot-manager",
         "ui.card-table"
+      ],
+      "requiredComponents": [
+        "core.turn-based-manager",
+        "entities.card",
+        "entities.deck",
+        "entities.poker-hand-evaluator",
+        "ui.mini-header",
+        "ui.scoreboard"
+      ],
+      "optionalComponents": [
+        "resources.audio-manager",
+        "resources.swatches"
       ]
     },
     {
@@ -2472,6 +2666,21 @@
         "Use CheckersRules for diagonal movement, captures, and kinging; generate board UI and turn prompts only.",
         "Wire CheckersAI to play one color (default: 'black'). After every human move, schedule the AI's reply via setTimeout (~350ms for thinking-feel). Never let the user play both sides.",
         "Do not output markerless board-game HTML. Render a visible 8x8 board, selectable pieces, legal move highlights, capture feedback, turn HUD, and reset control."
+      ],
+      "requiredComponents": [
+        "core.turn-based-manager",
+        "entities.board8x8",
+        "entities.checkers-ai",
+        "entities.checkers-rules",
+        "ui.leaderboard",
+        "ui.mini-header",
+        "ui.restart-overlay"
+      ],
+      "optionalComponents": [
+        "entities.grid-board",
+        "entities.minimax-ai",
+        "resources.audio-manager",
+        "resources.swatches"
       ]
     },
     {
@@ -2521,6 +2730,21 @@
         "Wire ChessAI to play one color (default: 'black'). After every human move, schedule the AI's reply via setTimeout (~350ms for thinking-feel). Never let the user play both sides.",
         "ChessAI default depth is 2 (move under ~1s on typical hardware); raise to 3 for stronger play if you can afford up to ~3s thinking time.",
         "Do not invent lifecycle APIs such as initialize(). Render a visible 8x8 board, selectable pieces, legal move highlights, turn/status HUD, and reset control."
+      ],
+      "requiredComponents": [
+        "core.turn-based-manager",
+        "entities.board8x8",
+        "entities.chess-ai",
+        "entities.chess-rules",
+        "ui.leaderboard",
+        "ui.mini-header",
+        "ui.restart-overlay"
+      ],
+      "optionalComponents": [
+        "entities.grid-board",
+        "entities.minimax-ai",
+        "resources.audio-manager",
+        "resources.swatches"
       ]
     },
     {
@@ -2562,12 +2786,24 @@
       "requiresLeaderboardSubmit": true,
       "requiresGenreInvariants": "ag-tic-tac-toe-invariants",
       "assemblyNotes": [
-        "Tic-tac-toe is the H3.1 acceptance test for the H2.7 universal lifts. Wire RestartOverlay, Leaderboard, and CloudAIToggle from the start — they're inexpensive on a 3x3 game and prove the contract for harder games.",
-        "Use entities.tic-tac-toe-rules for the rules + AI. It exports TicTacToeRules, TicTacToeAI (perfect-play depth-9 minimax inline), and emptyBoard(). Do NOT roll your own rules engine — the catalog component is depth-9-perfect and battle-tested in the example.",
-        "Don't use entities.minimax-ai here — TicTacToeAI is already optimal at depth 9 and self-contained. MinimaxAI is for larger search trees (chess, checkers).",
-        "After human move: ai.pickMove(board, 'o') → rules.applyMove(board, move, 'o') → rules.winner(board) → if game-over, RestartOverlay.show() + Leaderboard.submitFinal().",
+        "Tic-tac-toe is the H3.1 acceptance test for the H2.7 universal lifts. Wire RestartOverlay, Leaderboard, and CloudAIToggle from the start \u2014 they're inexpensive on a 3x3 game and prove the contract for harder games.",
+        "Use entities.tic-tac-toe-rules for the rules + AI. It exports TicTacToeRules, TicTacToeAI (perfect-play depth-9 minimax inline), and emptyBoard(). Do NOT roll your own rules engine \u2014 the catalog component is depth-9-perfect and battle-tested in the example.",
+        "Don't use entities.minimax-ai here \u2014 TicTacToeAI is already optimal at depth 9 and self-contained. MinimaxAI is for larger search trees (chess, checkers).",
+        "After human move: ai.pickMove(board, 'o') \u2192 rules.applyMove(board, move, 'o') \u2192 rules.winner(board) \u2192 if game-over, RestartOverlay.show() + Leaderboard.submitFinal().",
         "Score deltas: +100 for perfect-difficulty win, +50 for easy win, +25 for draw. Loss = 0 (don't submit). Adjust if you want stricter ranking math.",
         "Inline 3x3 board as 9 buttons (CSS grid 3x3). Click handler dispatches to game.handleHumanMove(index). Easier than a generic GridBoard for this size."
+      ],
+      "requiredComponents": [
+        "core.turn-based-manager",
+        "entities.tic-tac-toe-rules",
+        "ui.leaderboard",
+        "ui.mini-header",
+        "ui.restart-overlay"
+      ],
+      "optionalComponents": [
+        "resources.audio-manager",
+        "resources.swatches",
+        "ui.cloud-ai-toggle"
       ]
     },
     {
@@ -2602,6 +2838,15 @@
       "plannedNext": [
         "ui.note-display",
         "resources.synth-presets"
+      ],
+      "requiredComponents": [
+        "ui.keyboard-input",
+        "ui.mini-header",
+        "ui.piano-keyboard"
+      ],
+      "optionalComponents": [
+        "resources.audio-manager",
+        "resources.swatches"
       ]
     },
     {
@@ -2641,6 +2886,17 @@
         "entities.crossword-grid",
         "resources.clue-set",
         "ui.crossword-clue-list"
+      ],
+      "requiredComponents": [
+        "core.turn-based-manager",
+        "entities.grid-board",
+        "ui.keyboard-input",
+        "ui.mini-header",
+        "ui.scoreboard"
+      ],
+      "optionalComponents": [
+        "resources.audio-manager",
+        "resources.swatches"
       ]
     },
     {
@@ -2687,6 +2943,21 @@
         "entities.inventory",
         "entities.key-lock",
         "entities.adventure-enemy"
+      ],
+      "requiredComponents": [
+        "core.game-manager",
+        "entities.grid-board",
+        "entities.grid-mover",
+        "resources.vector-sprites",
+        "ui.mini-header",
+        "ui.scoreboard"
+      ],
+      "optionalComponents": [
+        "entities.ai-pathfinder",
+        "resources.audio-manager",
+        "resources.sprite-presets",
+        "resources.sprite-renderer",
+        "resources.swatches"
       ]
     }
   ],
@@ -2966,8 +3237,8 @@
       ],
       "notes": [
         "Use this as the canonical wiring for a Tic-Tac-Toe vs AI clone: 3x3 grid as 9 buttons, click handler dispatches game.handleHumanMove(index), perfect-play AI from TicTacToeAI(depth=9 minimax), RestartOverlay on terminal phase, Leaderboard score submit, CloudAIToggle for difficulty.",
-        "Generated variants must import { TicTacToeRules, TicTacToeAI, emptyBoard } from './web-components/entities/TicTacToeRules.js'. Do NOT inline a custom rules engine — TicTacToeAI is depth-9 perfect and self-contained.",
-        "Wire: human click → rules.applyMove(board, idx, 'x') → rules.winner(board) → if not terminal, ai.pickMove(board, 'o') → rules.applyMove(...) → rules.winner(board) → if terminal, RestartOverlay.show() + Leaderboard.submitFinal()."
+        "Generated variants must import { TicTacToeRules, TicTacToeAI, emptyBoard } from './web-components/entities/TicTacToeRules.js'. Do NOT inline a custom rules engine \u2014 TicTacToeAI is depth-9 perfect and self-contained.",
+        "Wire: human click \u2192 rules.applyMove(board, idx, 'x') \u2192 rules.winner(board) \u2192 if not terminal, ai.pickMove(board, 'o') \u2192 rules.applyMove(...) \u2192 rules.winner(board) \u2192 if terminal, RestartOverlay.show() + Leaderboard.submitFinal()."
       ]
     },
     {
