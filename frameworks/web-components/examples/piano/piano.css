@@ -1,11 +1,32 @@
+/* mchat-swatch-defaults — synchronous FOUC fallback. Mirrors
+   resources/Swatches.js retro-neon swatch verbatim (see buildSwatchDefaultsCSS).
+   Swatches.applySwatchVariables overrides these via inline style at runtime. */
 :root {
-  --piano-bg: #07111f;
-  --piano-panel: #101a2d;
-  --piano-text: #fff8e8;
-  --piano-muted: #b9c7dc;
-  --piano-line: rgba(255, 255, 255, 0.14);
-  --piano-accent: #22d3ee;
-  --piano-warm: #facc15;
+  --mchat-background: #020617;
+  --mchat-surface: #08111f;
+  --mchat-text: #f8fafc;
+  --mchat-accent: #22d3ee;
+  --mchat-accentWarm: #fb923c;
+  --mchat-stroke: #e2e8f0;
+  --mchat-shadow: rgba(34, 211, 238, 0.24);
+  --mchat-radius-sm: 6px;
+  --mchat-radius-md: 12px;
+  --mchat-radius-lg: 20px;
+  --mchat-radius-pill: 999px;
+  --mchat-space-1: 4px;
+  --mchat-space-2: 8px;
+  --mchat-space-3: 12px;
+  --mchat-space-4: 16px;
+  --mchat-space-5: 24px;
+  --mchat-space-6: 32px;
+  --mchat-type-xs: clamp(11px, 2.6vw, 12px);
+  --mchat-type-sm: clamp(13px, 3vw, 14px);
+  --mchat-type-md: clamp(15px, 3.4vw, 16px);
+  --mchat-type-lg: clamp(18px, 4.2vw, 22px);
+  --mchat-type-xl: clamp(24px, 6vw, 36px);
+  --mchat-font-ui: -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --mchat-font-display: 'Avenir Next', 'Trebuchet MS', sans-serif;
+  --mchat-font-mono: 'SF Mono', 'Cascadia Mono', monospace;
 }
 
 * {
@@ -15,12 +36,12 @@
 body {
   margin: 0;
   min-height: 100vh;
-  color: var(--piano-text);
+  color: var(--mchat-text);
   background:
     radial-gradient(circle at 18% 8%, rgba(34, 211, 238, 0.2), transparent 24rem),
     radial-gradient(circle at 84% 18%, rgba(250, 204, 21, 0.14), transparent 24rem),
-    linear-gradient(145deg, #020617, var(--piano-bg));
-  font-family: "Avenir Next", "Trebuchet MS", sans-serif;
+    linear-gradient(145deg, var(--mchat-background), #07111f);
+  font-family: var(--mchat-font-display);
 }
 
 button {
@@ -30,13 +51,13 @@ button {
 .piano-shell {
   width: min(980px, 100%);
   margin: 0 auto;
-  padding: 14px;
+  padding: var(--mchat-space-4);
   display: grid;
-  gap: 14px;
+  gap: var(--mchat-space-4);
 }
 
 .studio {
-  padding: 18px;
+  padding: var(--mchat-space-4);
   background:
     linear-gradient(90deg, rgba(34, 211, 238, 0.08) 1px, transparent 1px),
     linear-gradient(160deg, rgba(16, 26, 45, 0.96), rgba(8, 13, 26, 0.96));
@@ -46,14 +67,14 @@ button {
 .hud {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
+  gap: var(--mchat-space-2);
 }
 
 .hud-card {
-  padding: 12px 14px;
-  border-radius: 18px;
+  padding: var(--mchat-space-3) var(--mchat-space-4);
+  border-radius: var(--mchat-radius-lg);
   background: rgba(255, 255, 255, 0.08);
-  color: var(--piano-muted);
+  color: #b9c7dc;
   font-size: 0.76rem;
   font-weight: 900;
   letter-spacing: 0.14em;
@@ -62,17 +83,17 @@ button {
 
 .hud-card strong {
   display: block;
-  margin-top: 4px;
-  color: var(--piano-text);
+  margin-top: var(--mchat-space-1);
+  color: var(--mchat-text);
   font-size: 1.45rem;
   letter-spacing: 0;
   text-transform: none;
 }
 
 .piano-mount {
-  margin-top: 18px;
-  padding: 18px 12px 12px;
-  border-radius: 26px;
+  margin-top: var(--mchat-space-4);
+  padding: var(--mchat-space-4) var(--mchat-space-3) var(--mchat-space-3);
+  border-radius: var(--mchat-radius-lg);
   background: linear-gradient(180deg, #111827, #030712);
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
 }
@@ -80,7 +101,7 @@ button {
 .wc-piano-keyboard {
   display: grid;
   grid-template-columns: repeat(8, minmax(42px, 1fr));
-  gap: 8px;
+  gap: var(--mchat-space-2);
   min-height: 230px;
   align-items: end;
 }
@@ -88,7 +109,7 @@ button {
 .wc-piano-key {
   min-height: 210px;
   border: 0;
-  border-radius: 0 0 18px 18px;
+  border-radius: 0 0 var(--mchat-radius-lg) var(--mchat-radius-lg);
   background: linear-gradient(180deg, #fffdf4, #dbeafe);
   color: #111827;
   font-weight: 900;
@@ -96,7 +117,7 @@ button {
 }
 
 .wc-piano-key[data-active="true"] {
-  background: linear-gradient(180deg, var(--piano-warm), #fb923c);
+  background: linear-gradient(180deg, var(--mchat-accentWarm), #fb923c);
   transform: translateY(6px);
 }
 
@@ -105,42 +126,42 @@ button {
 .wc-piano-key:nth-child(7) {
   min-height: 170px;
   background: linear-gradient(180deg, #172033, #020617);
-  color: var(--piano-text);
+  color: var(--mchat-text);
 }
 
 .controls {
   display: flex;
   justify-content: center;
-  gap: 10px;
-  margin-top: 16px;
+  gap: var(--mchat-space-2);
+  margin-top: var(--mchat-space-4);
 }
 
 .controls button {
   border: 0;
-  border-radius: 999px;
-  padding: 10px 16px;
-  background: var(--piano-accent);
+  border-radius: var(--mchat-radius-pill);
+  padding: var(--mchat-space-2) var(--mchat-space-4);
+  background: var(--mchat-accent);
   color: #02111a;
   font-weight: 900;
 }
 
 .note-trail {
   min-height: 56px;
-  margin: 16px 0 0;
-  padding: 12px;
-  border-radius: 18px;
+  margin: var(--mchat-space-4) 0 0;
+  padding: var(--mchat-space-3);
+  border-radius: var(--mchat-radius-lg);
   background: rgba(255, 255, 255, 0.08);
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--mchat-space-2);
   list-style: none;
 }
 
 .note-trail li {
-  padding: 8px 10px;
-  border-radius: 999px;
+  padding: var(--mchat-space-2) var(--mchat-space-3);
+  border-radius: var(--mchat-radius-pill);
   background: rgba(34, 211, 238, 0.16);
-  color: var(--piano-text);
+  color: var(--mchat-text);
   font-weight: 800;
 }
 
@@ -159,6 +180,6 @@ button {
   .wc-piano-key:nth-child(4),
   .wc-piano-key:nth-child(7) {
     min-height: 96px;
-    border-radius: 16px;
+    border-radius: var(--mchat-radius-md);
   }
 }
