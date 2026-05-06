@@ -3,25 +3,36 @@ import { GridBoard } from "../../entities/GridBoard.js";
 import { TileSwapper } from "../../entities/TileSwapper.js";
 import { Match3Logic } from "../../entities/Match3Logic.js";
 import { ScoreBoard } from "../../ui/ScoreBoard.js";
+import { SvgShapes } from "../../ui/SvgShapes.js";
+import { HintPulse } from "../../effects/HintPulse.js";
 import { AudioManager } from "../../resources/AudioManager.js";
 import { applySwatchVariables, getSwatchByID } from "../../resources/Swatches.js";
 
 const ROWS = 8;
 const COLS = 8;
 const MOVES = 24;
-// Golden version uses color-only candies (gradient + .tile::before shine).
-// Earlier `label: "R"|"O"|"Y"|"G"|"B"|"P"` made the board read as color-coded
-// scrabble tiles — regression from the deployed hub version. Empty label
-// means the render path emits the gradient + shine without a letter centerpiece.
-// `name` is kept for aria-label accessibility.
-const TILE_TYPES = [
-  { id: 0, label: "", name: "ruby" },
-  { id: 1, label: "", name: "orange" },
-  { id: 2, label: "", name: "lemon" },
-  { id: 3, label: "", name: "mint" },
-  { id: 4, label: "", name: "blueberry" },
-  { id: 5, label: "", name: "plum" }
+// 6-token palette: prefer the SvgShapes Lego for distinct silhouettes; if the
+// inline assembler dropped it, fall back to a flat token list that the render
+// path renders as gradient-only tiles (still readable, just less visual variety).
+const _DEFAULT_FALLBACK_TOKENS = [
+  { id: 0, name: "ruby",      shape: "lozenge",  fill: "#ff5b6e", shine: "#ffc8cf" },
+  { id: 1, name: "orange",    shape: "hexagon",  fill: "#ff9c2e", shine: "#ffd9a3" },
+  { id: 2, name: "lemon",     shape: "star",     fill: "#ffd83a", shine: "#fff0a3" },
+  { id: 3, name: "mint",      shape: "chiclet",  fill: "#5fd24c", shine: "#bdf0b3" },
+  { id: 4, name: "blueberry", shape: "circle",   fill: "#3aa9ff", shine: "#bcdfff" },
+  { id: 5, name: "plum",      shape: "diamond",  fill: "#c084fc", shine: "#e9d2ff" }
 ];
+const TILE_TYPES = (typeof SvgShapes === "object" && SvgShapes && typeof SvgShapes.defaultTokens === "function")
+  ? SvgShapes.defaultTokens()
+  : _DEFAULT_FALLBACK_TOKENS;
+function _renderTokenGlyph(token) {
+  if (typeof SvgShapes === "object" && SvgShapes && typeof SvgShapes.renderToken === "function") {
+    return SvgShapes.renderToken(token);
+  }
+  // No-Lego fallback: use a colored div with a soft inner highlight so the cell
+  // still reads as a candy, not a flat square.
+  return `<span class="candy-fallback" style="background:${token.fill};box-shadow:inset 0 -4px 0 rgba(0,0,0,.15),inset 0 3px 0 ${token.shine};"></span>`;
+}
 
 function candyTarget(target) {
   return typeof target === "string" ? document.querySelector(target) : target;
@@ -62,6 +73,19 @@ export class CandyMatchGame {
     this.totalCleared = 0;
     this.resolving = false;
 
+    // Hint system: per-cell glow on idle inactivity. HintPulse Lego encapsulates
+    // the timer + cell-class toggling so future tile games reuse it. Defensive:
+    // if the inline assembler dropped HintPulse, .hints stays a no-op stub.
+    this.hintButton = candyTarget(options.hintButton);
+    this.hints = (typeof HintPulse === "function")
+      ? new HintPulse({
+          boardEl: this.boardEl,
+          findHint: () => this._findAnyValidSwap(),
+          idleMs: typeof options.idleHintMs === "number" ? options.idleHintMs : 6000,
+          holdMs: 2400
+        })
+      : { schedule: () => {}, cancel: () => {}, now: () => {}, dispose: () => {} };
+
     if (typeof applySwatchVariables === "function" && typeof getSwatchByID === "function") {
       applySwatchVariables(document.documentElement, getSwatchByID("sunset-arcade"));
     }
@@ -95,9 +119,41 @@ export class CandyMatchGame {
     });
     this.shuffleButton?.addEventListener("click", () => this.shuffle());
     this.newGameButton?.addEventListener("click", () => this.newGame());
+    this.hintButton?.addEventListener("click", () => this.hints?.now());
+  }
+
+  _findAnyValidSwap() {
+    // Brute force: try every adjacent pair, see if swap creates a match.
+    for (let r = 0; r < ROWS; r += 1) {
+      for (let c = 0; c < COLS; c += 1) {
+        for (const [dr, dc] of [[0, 1], [1, 0]]) {
+          const r2 = r + dr, c2 = c + dc;
+          if (r2 >= ROWS || c2 >= COLS) continue;
+          if (this._swapWouldMatch(r, c, r2, c2)) {
+            return [{ row: r, col: c }, { row: r2, col: c2 }];
+          }
+        }
+      }
+    }
+    return null;
+  }
+
+  _swapWouldMatch(r1, c1, r2, c2) {
+    const a = this.grid.get(r1, c1);
+    const b = this.grid.get(r2, c2);
+    if (a == null || b == null) return false;
+    this.grid.set(r1, c1, b);
+    this.grid.set(r2, c2, a);
+    const matches = (typeof this.logic.findMatches === "function")
+      ? this.logic.findMatches(this.grid)
+      : this.logic.findMatchesAt?.(this.grid, [{ row: r1, col: c1 }, { row: r2, col: c2 }]) || [];
+    this.grid.set(r1, c1, a);
+    this.grid.set(r2, c2, b);
+    return Array.isArray(matches) ? matches.length > 0 : Boolean(matches);
   }
 
   newGame() {
+    this.hints?.cancel();
     this.moves = MOVES;
     this.combo = 1;
     this.totalCleared = 0;
@@ -106,8 +162,9 @@ export class CandyMatchGame {
     this.turns.reset({ phase: "playing", round: 1 });
     this.scoreboard.reset(0);
     this.fillPlayableBoard();
-    this.setMessage("Pick a candy, then an adjacent candy.");
+    this.setMessage("Swipe a candy to swap with a neighbor.");
     this.render();
+    this.hints?.schedule();
   }
 
   shuffle() {
@@ -247,12 +304,7 @@ export class CandyMatchGame {
       if (this.swapper.selected?.row === row && this.swapper.selected?.col === col) {
         tile.classList.add("selected");
       }
-      // Color-only tile: skip the centered glyph entirely. CSS gradient on
-      // `.tile.kind-N` + the shine pseudo-element from `.tile::before` provide
-      // the candy look. Aria-label above carries semantic info for screen readers.
-      if (type.label) {
-        tile.innerHTML = `<span>${type.label}</span>`;
-      }
+      tile.innerHTML = _renderTokenGlyph(type);
       this.boardEl.appendChild(tile);
     });
     if (this.movesEl) {

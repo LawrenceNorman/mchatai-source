@@ -10,11 +10,13 @@
         "recipe": "recipe.match3",
         "components": [
           "ui.mini-header",
+          "ui.svg-shapes",
           "core.turn-based-manager",
           "entities.grid-board",
           "entities.tile-swapper",
           "entities.match3-logic",
           "ui.scoreboard",
+          "effects.hint-pulse",
           "resources.swatches",
           "resources.audio-manager"
         ],
@@ -29,17 +31,38 @@
       <header data-mini-header aria-label="App header"></header>
 
       <section class="stage-panel" aria-label="Candy Match game">
-        <div class="hud">
-          <div id="scoreboard"></div>
-          <div class="hud-card">Moves <strong id="moves">24</strong></div>
-          <div class="hud-card">Combo <strong id="combo">x1</strong></div>
-          <div class="hud-card">Cleared <strong id="cleared">0</strong></div>
+        <!-- Compact 3-column HUD per gold reference (REFERENCE_GOLD.html):
+             [Score badge | Level + Target + progress bar + 3 stars | Moves badge].
+             We do NOT show BEST/COMBO/CLEARED in-play (BEST belongs in game-over
+             per wisdom score-show-personal-best-on-game-over; COMBO=1 and CLEARED=0
+             at game start are noise pills with no useful information). See wisdom
+             rule game-hud-minimalism. -->
+        <div class="hud" role="region" aria-label="Status">
+          <div class="hud-badge" aria-label="Score">
+            <span class="hud-lbl">Score</span>
+            <strong id="scoreVal">0</strong>
+          </div>
+          <div class="hud-progress">
+            <div class="hud-progress-top">
+              <span class="hud-level-pill" id="levelPill">Level 1</span>
+              <span class="hud-target">Target <b id="targetVal">1500</b></span>
+            </div>
+            <div class="hud-bar"><div class="hud-fill" id="progFill"></div></div>
+            <div class="hud-stars" id="starsRow" aria-label="Stars">
+              <span class="star">★</span><span class="star">★</span><span class="star">★</span>
+            </div>
+          </div>
+          <div class="hud-badge" aria-label="Moves remaining">
+            <span class="hud-lbl">Moves</span>
+            <strong id="moves">24</strong>
+          </div>
         </div>
 
         <div id="board" class="candy-board" role="grid" aria-label="Candy grid"></div>
-        <p id="message" class="message" role="status" aria-live="polite">Pick a candy, then an adjacent candy.</p>
+        <p id="message" class="message" role="status" aria-live="polite">Swipe a candy to swap with a neighbor.</p>
 
         <div class="actions">
+          <button id="hintButton" type="button" aria-label="Hint">Hint</button>
           <button id="shuffleButton" type="button">Shuffle</button>
           <button id="newGameButton" type="button">New Board</button>
         </div>

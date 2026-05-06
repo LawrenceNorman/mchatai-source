@@ -1,6 +1,6 @@
 {
   "packID": "universal",
-  "version": 3,
+  "version": 4,
   "displayName": "Universal Guidelines",
   "description": "Rules that apply to ALL generated apps regardless of category.",
   "categories": [
@@ -396,6 +396,24 @@
       ]
     },
     {
+      "id": "u-hud-minimalism-meaningful-only",
+      "rule": "Every HUD pill / always-visible counter MUST answer a question the player is actively asking right now. If a value is constant, near-zero, or only meaningful at game-over, it does NOT belong in the always-on HUD. Specifically: (a) BEST/HIGH-SCORE — game-over panel only, never in-play (see score-show-personal-best-on-game-over). (b) COMBO when current value is 1 (i.e. no combo active) — drop it; surface only DURING a chain via a transient `Combo x3!` flash, then hide. (c) CLEARED-counter or kills-counter when value is 0 — drop until the first event. (d) DIFFICULTY label that doesn't change — move to a settings sheet. (e) Tutorial helper text after the player has made N moves — fade out. The gold reference is a 3-pill HUD: SCORE | LEVEL+TARGET+PROGRESS+STARS | MOVES. Anything more is noise; anything less may starve the player of feedback. The acid test: for each pill, ask 'in the next 5 seconds will this number change in a way that affects my decision?' — if no, remove it.",
+      "why": "User feedback 2026-05-06 on shipped candy-match: 'how did candy crush regress so much from this really amazing version? ... Seems like we need to shrink the header generally, it looks like it's just trying to fill out 4 big boxes at the top of the screen: What is \"Combo X1\" even mean?' The shipped version had SCORE | BEST 240 | MOVES | COMBO X1 | CLEARED 0 — five pills, three of them showing zero / one / a stale persistent value. The deployed gold (mchatai.com/hub/candy-match) showed only SCORE + LEVEL/Target/Progress/Stars + MOVES and felt much cleaner. Not a candy-match-specific bug — generalizes to any scored game.",
+      "severity": "high",
+      "appliesTo": [
+        "miniApp",
+        "macOSApp",
+        "anyGame"
+      ],
+      "examples": [
+        "RIGHT (compact 3-pill): [Score 1,200] [Level 3 — Target 5,000 with progress bar + ★★☆] [Moves 22] — answers: how am I doing? what am I aiming at? how much time left?",
+        "RIGHT (combo as transient): on a 3+ chain, briefly fly `Combo x3!` text from the board center; never as a persistent pill that says `Combo X1`.",
+        "WRONG: in-play HUD with [SCORE 60] [BEST 240] [MOVES 22] [COMBO X1] [CLEARED 0] — 3 of 5 are noise. BEST belongs in game-over, COMBO×1 is meaningless, CLEARED 0 is meaningless until first match.",
+        "WRONG: showing `DIFFICULTY: Medium` always-on; it never changes mid-game. Move to a settings menu.",
+        "Counter-example: Sudoku timer or Tetris next-piece preview — these change meaningfully every second and DO belong in the HUD."
+      ]
+    },
+    {
       "id": "u-cli-no-auto-open-browser",
       "rule": "When generating a mini-app inside a CLI session (Claude Code, Codex, Gemini CLI), do NOT run `open <file>.html`, `python -m http.server`, `npx serve`, `xdg-open`, or any other shell command that launches the artifact in the user's browser, terminal, or any external app. The host (mChatAI+) installs and previews the artifact in its own webview. A CLI-launched browser tab opens a STALE pre-install copy from the wizard tmp dir (e.g. `~/Library/Containers/com.sevenhillsstudio.mChatAImac/Data/tmp/wizard-<id>/chess.html`), which (a) confuses the user into debugging the wrong file, and (b) misses the recipe-aware install (the tmp file is the bare CLI fallback, not the recipe.<game> assembly that ships). End your turn after writing/replacing the artifact files in the work dir; report what you produced in text. The host takes it from there.",
       "why": "User feedback 2026-05-05 chess session: after the wizard's API-only path failed and fell back to claude-cli, the CLI opened `/tmp/wizard-3e1f567a-give-me-a/chess.html` in Safari. That file was the bare-HTML CLI fallback (no recipe, no swatch, hardcoded #1a1a2e palette) — totally separate from the recipe.chess assembly that the host then installed and previewed. User saw two chess games at once, thought one was 'broken' and the other 'rogue,' couldn't tell which to debug. Same pattern hits any CLI-fallback session that emits an HTML file. Universal rule because Codex and Gemini CLIs share the same temptation.",
@@ -423,6 +441,6 @@
       ]
     }
   ],
-  "_last_updated": "2026-05-05 u-cli-no-auto-open-browser added",
-  "lastUpdated": "2026-05-05"
+  "_last_updated": "2026-05-06 u-hud-minimalism-meaningful-only added",
+  "lastUpdated": "2026-05-06"
 }

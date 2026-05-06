@@ -1,21 +1,23 @@
 {
   "packID": "visual-quality",
-  "version": 1,
+  "version": 2,
   "displayName": "Visual Quality Standards",
-  "description": "Rules ensuring generated games and apps have professional-quality visuals — no plain colored rectangles.",
-  "categories": ["all"],
+  "description": "Rules ensuring generated games and apps have professional-quality visuals \u2014 no plain colored rectangles.",
+  "categories": [
+    "all"
+  ],
   "keywords": [],
   "guidelines": [
     {
       "id": "vq-001",
-      "rule": "NEVER use plain colored rectangles, circles, or solid triangles for game entities (players, enemies, projectiles, obstacles, NPCs, items). Every entity must have a recognizable shape. For Lego web-component artifacts, use `resources/SpriteRenderer` with grids from `resources/SpritePresets` — knight, dragon, treasure, key, gate, plumber, coin (animated), pipe, brick, goomba, and 4 turret variants are bundled. For non-Lego artifacts, use SVG, CSS clip-path, pixel-grid arrays drawn to canvas, or sprite atlases.",
-      "why": "Users rated Space Invaders with red rectangles as 'terrible' and refused to publish it. The Atari Adventure clone shipped 2026-05-02 with a white-square player and red-triangle dragon — user called the graphics 'so basic it's embarrassing.' The game was functionally correct but visually unacceptable. Professional-quality sprites are the difference between shareable and shameful. SpriteRenderer + SpritePresets makes this a 2-line fix in any Lego artifact.",
+      "rule": "NEVER use plain colored rectangles, circles, or solid triangles for game entities (players, enemies, projectiles, obstacles, NPCs, items). Every entity must have a recognizable shape. For Lego web-component artifacts, use `resources/SpriteRenderer` with grids from `resources/SpritePresets` \u2014 knight, dragon, treasure, key, gate, plumber, coin (animated), pipe, brick, goomba, and 4 turret variants are bundled. For non-Lego artifacts, use SVG, CSS clip-path, pixel-grid arrays drawn to canvas, or sprite atlases.",
+      "why": "Users rated Space Invaders with red rectangles as 'terrible' and refused to publish it. The Atari Adventure clone shipped 2026-05-02 with a white-square player and red-triangle dragon \u2014 user called the graphics 'so basic it's embarrassing.' The game was functionally correct but visually unacceptable. Professional-quality sprites are the difference between shareable and shameful. SpriteRenderer + SpritePresets makes this a 2-line fix in any Lego artifact.",
       "severity": "critical",
       "appliesTo": "games",
       "examples": [
         "BAD: <div style='width:30px;height:20px;background:red'></div> for an alien",
-        "BAD: ctx.fillRect(x-18, y-18, 36, 36) — a white square is not a knight, draw a sprite",
-        "BAD: ctx.beginPath(); ctx.moveTo(x, y-24); ctx.lineTo(...); ctx.fill(); — solid pink triangle is not a dragon",
+        "BAD: ctx.fillRect(x-18, y-18, 36, 36) \u2014 a white square is not a knight, draw a sprite",
+        "BAD: ctx.beginPath(); ctx.moveTo(x, y-24); ctx.lineTo(...); ctx.fill(); \u2014 solid pink triangle is not a dragon",
         "GOOD (Lego): import { drawSprite } from '../../resources/SpriteRenderer.js'; import { KNIGHT, KNIGHT_PALETTE } from '../../resources/SpritePresets.js'; drawSprite(ctx, KNIGHT, KNIGHT_PALETTE, { x: cx, y: cy, scale: 4, anchor: 'center' });",
         "GOOD (non-Lego): renderSprite(ALIEN_1, {1:'#ff0040'}, 4) using pixel grid arrays",
         "GOOD: <svg viewBox='0 0 40 30'><path d='M20,0 L40,30 L0,30 Z' fill='#ff0040'/></svg> for a triangle ship"
@@ -23,19 +25,19 @@
     },
     {
       "id": "vq-002",
-      "rule": "Every game must have at least 3 visually distinct entity types. Enemies/aliens should look different from each other (different shapes, colors, or patterns). The player entity must be immediately recognizable and distinct from enemies. For Tower Defense specifically, ship at LEAST 3 turret variants (e.g., BasicTurret + CannonTurret + FrostTurret from `entities/TurretVariants`) so the player has meaningful build choices — a single-turret tower defense fails this rule.",
-      "why": "Games where all entities are the same colored box are boring and confusing. Visual variety is a core quality signal. Tower Defense canary 2026-05-02 shipped with one turret type (a yellow circle) — user called it 'so basic its not going to hold anyones interest for long at all.'",
+      "rule": "Every game must have at least 3 visually distinct entity types. Enemies/aliens should look different from each other (different shapes, colors, or patterns). The player entity must be immediately recognizable and distinct from enemies. For Tower Defense specifically, ship at LEAST 3 turret variants (e.g., BasicTurret + CannonTurret + FrostTurret from `entities/TurretVariants`) so the player has meaningful build choices \u2014 a single-turret tower defense fails this rule.",
+      "why": "Games where all entities are the same colored box are boring and confusing. Visual variety is a core quality signal. Tower Defense canary 2026-05-02 shipped with one turret type (a yellow circle) \u2014 user called it 'so basic its not going to hold anyones interest for long at all.'",
       "severity": "important",
       "appliesTo": "games",
       "examples": [
-        "Space Invaders: 3 alien types (squid, crab, octopus) + player ship + UFO — each a different shape and color",
+        "Space Invaders: 3 alien types (squid, crab, octopus) + player ship + UFO \u2014 each a different shape and color",
         "Breakout: colored bricks (gradient rows), distinct paddle, visible ball with trail",
-        "Tower Defense: BasicTurret + CannonTurret + FrostTurret + BeamTurret — different sprites, costs, ranges, and effects. One variant = fails this rule."
+        "Tower Defense: BasicTurret + CannonTurret + FrostTurret + BeamTurret \u2014 different sprites, costs, ranges, and effects. One variant = fails this rule."
       ]
     },
     {
       "id": "vq-003",
-      "rule": "Include visual feedback for game events: explosions for destroyed entities, screen shake or flash for impacts, particle effects or trails for movement. Use CSS animations (@keyframes) — they cost zero extra code complexity.",
+      "rule": "Include visual feedback for game events: explosions for destroyed entities, screen shake or flash for impacts, particle effects or trails for movement. Use CSS animations (@keyframes) \u2014 they cost zero extra code complexity.",
       "why": "Static games feel lifeless. Even simple CSS animations dramatically improve perceived quality.",
       "severity": "important",
       "appliesTo": "games",
@@ -58,21 +60,21 @@
     },
     {
       "id": "vq-005",
-      "rule": "All text must have sufficient contrast against its background. Toasts, tooltips, overlays, and status messages must use HIGH-CONTRAST color pairs: white text (#fff) on dark backgrounds (#000 to #333), or black text (#000) on light backgrounds (#fff to #eee). NEVER use dark gray text (#666 or darker) on gray backgrounds (#888 or lighter) — it's unreadable.",
-      "why": "User feedback 2026-04-17: Hearts card game had dark gray text on gray toast messages — unreadable. Contrast failures make the app unusable even when functionality is correct. WCAG AA requires 4.5:1 contrast ratio for normal text.",
+      "rule": "All text must have sufficient contrast against its background. Toasts, tooltips, overlays, and status messages must use HIGH-CONTRAST color pairs: white text (#fff) on dark backgrounds (#000 to #333), or black text (#000) on light backgrounds (#fff to #eee). NEVER use dark gray text (#666 or darker) on gray backgrounds (#888 or lighter) \u2014 it's unreadable.",
+      "why": "User feedback 2026-04-17: Hearts card game had dark gray text on gray toast messages \u2014 unreadable. Contrast failures make the app unusable even when functionality is correct. WCAG AA requires 4.5:1 contrast ratio for normal text.",
       "severity": "critical",
       "appliesTo": "all",
       "examples": [
-        "BAD: .toast { background: #888; color: #666; }  — both gray, unreadable",
-        "GOOD: .toast { background: #1e293b; color: #fff; }  — dark bg, white text",
-        "GOOD: .toast-success { background: #16a34a; color: #fff; }  — green with white",
-        "GOOD: .toast-error { background: #dc2626; color: #fff; }  — red with white",
-        "GOOD: .toast-warning { background: #f59e0b; color: #000; }  — amber with black"
+        "BAD: .toast { background: #888; color: #666; }  \u2014 both gray, unreadable",
+        "GOOD: .toast { background: #1e293b; color: #fff; }  \u2014 dark bg, white text",
+        "GOOD: .toast-success { background: #16a34a; color: #fff; }  \u2014 green with white",
+        "GOOD: .toast-error { background: #dc2626; color: #fff; }  \u2014 red with white",
+        "GOOD: .toast-warning { background: #f59e0b; color: #000; }  \u2014 amber with black"
       ]
     },
     {
       "id": "vq-006",
-      "rule": "Card game rank display must use full rank characters when space permits. Show '10' not 'T'. Ace is 'A', King is 'K', Queen is 'Q', Jack is 'J' — but 10 is '10', not 'T'. Only abbreviate to 'T' in extreme-narrow layouts (under 20px wide per card).",
+      "rule": "Card game rank display must use full rank characters when space permits. Show '10' not 'T'. Ace is 'A', King is 'K', Queen is 'Q', Jack is 'J' \u2014 but 10 is '10', not 'T'. Only abbreviate to 'T' in extreme-narrow layouts (under 20px wide per card).",
       "why": "User feedback 2026-04-17: Hearts game showed 'T' for 10, which users mistook for 'Trump' (wrong concept in Hearts) or couldn't parse. Standard card game conventions use '10' not 'T'.",
       "severity": "important",
       "appliesTo": "card-games",
@@ -84,7 +86,7 @@
     {
       "id": "vq-007",
       "rule": "Turn-based games with CPU opponents MUST implement actual CPU turn logic. When it's a CPU player's turn, the game must: (1) detect it's their turn, (2) pick a legal move via AI (even if random), (3) execute the move after a short delay (300-800ms for UX feedback), (4) advance to the next turn. Games that say 'Waiting for [CPU name]' forever are broken.",
-      "why": "User feedback 2026-04-17: Hearts game got stuck on 'Waiting for West' — CPU opponents never played. This is the #2 most common bug in multi-player games after rule violations.",
+      "why": "User feedback 2026-04-17: Hearts game got stuck on 'Waiting for West' \u2014 CPU opponents never played. This is the #2 most common bug in multi-player games after rule violations.",
       "severity": "critical",
       "appliesTo": "card-games",
       "examples": [
@@ -95,16 +97,34 @@
     },
     {
       "id": "vq-008",
-      "rule": "Playing cards MUST color suits correctly: Hearts (♥) and Diamonds (♦) are RED (#dc2626 or similar). Spades (♠) and Clubs (♣) are BLACK (#000 or #1a1a1a). NEVER render hearts or diamonds in black/gray. This is a 500-year-old card design convention — violating it makes the game look wrong instantly.",
+      "rule": "Playing cards MUST color suits correctly: Hearts (\u2665) and Diamonds (\u2666) are RED (#dc2626 or similar). Spades (\u2660) and Clubs (\u2663) are BLACK (#000 or #1a1a1a). NEVER render hearts or diamonds in black/gray. This is a 500-year-old card design convention \u2014 violating it makes the game look wrong instantly.",
       "why": "User feedback 2026-04-17: Hearts card game showed all suits in black/gray. Players use color to quickly distinguish suits at a glance. Wrong colors make the game feel broken even when rules are correct.",
       "severity": "critical",
       "appliesTo": "card-games",
       "examples": [
-        "BAD: <span class='suit'>♥</span> with no color → renders as default text color (often gray/black)",
-        "GOOD: const SUIT_COLORS = { '♥':'#dc2626', '♦':'#dc2626', '♠':'#000', '♣':'#000' };",
+        "BAD: <span class='suit'>\u2665</span> with no color \u2192 renders as default text color (often gray/black)",
+        "GOOD: const SUIT_COLORS = { '\u2665':'#dc2626', '\u2666':'#dc2626', '\u2660':'#000', '\u2663':'#000' };",
         "GOOD: .card[data-suit='hearts'], .card[data-suit='diamonds'] { color: #dc2626; }",
-        "GOOD: <span style='color:#dc2626'>♥</span> for hearts, <span style='color:#000'>♠</span> for spades"
+        "GOOD: <span style='color:#dc2626'>\u2665</span> for hearts, <span style='color:#000'>\u2660</span> for spades"
+      ]
+    },
+    {
+      "id": "vq-shape-per-color",
+      "rule": "In tile-based games where N colors share the board (match-3, mahjong, color-puzzle, sudoku-with-icons, color-blocks, matching-pairs), each color MUST also have a distinct SHAPE. Color-only-distinguished tiles are inaccessible to colorblind/low-vision players AND make the board harder to scan for everyone \u2014 the eye reads a sea of squares as 'a grid' rather than as variety. Use the `ui.svg-shapes` Lego (`SvgShapes.defaultTokens()`) which provides a 6-token palette where each color has a unique silhouette: ruby=lozenge, orange=hexagon, lemon=star, mint=chiclet, blueberry=circle, plum=diamond. For palettes >6, extend via `SvgShapes.shapes` (heart, triangle available). The shape is decoration ON TOP of the colored tile background, not a replacement for it \u2014 color + shape together is the readable combination.",
+      "why": "User feedback 2026-05-06 on shipped candy-match: 'how did candy crush regress so much from this really amazing version?' (compared to mchatai.com/hub/candy-match). The deployed gold has lozenges/hexagons/stars/chiclets/circles/diamonds; the regenerated had identical-shape rounded squares in 6 colors. Players reported 'the jewels look kind of lame, the graphics are very flat and boring' on prior versions. The shape variety is the simplest single change that elevates a tile game from 'colored grid' to 'candy shop'. Universal \u2014 applies to every match-3-like game.",
+      "severity": "high",
+      "appliesTo": [
+        "miniApp",
+        "tileBasedGame"
+      ],
+      "examples": [
+        "RIGHT: import { SvgShapes } from '../../ui/SvgShapes.js'; const tokens = SvgShapes.defaultTokens(); tile.innerHTML = SvgShapes.renderToken(tokens[colorId]);",
+        "RIGHT: per-color shape contract \u2014 no two colors share a shape; the player can identify a token by silhouette alone in grayscale.",
+        "WRONG: every tile is .tile.kind-N { background: linear-gradient(red\u2192darkred) } \u2014 colorblind players see grayscale rectangles all looking identical.",
+        "WRONG: shape variety only on the 'special' tiles (striped, bomb) but normal tiles all the same shape \u2014 most of the board still reads as a color grid.",
+        "Verification: take a screenshot, open in Photoshop/Preview, convert to grayscale. Each token type must still be distinguishable."
       ]
     }
-  ]
+  ],
+  "_last_updated": "2026-05-06 vq-shape-per-color added"
 }

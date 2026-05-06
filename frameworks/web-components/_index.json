@@ -1525,6 +1525,76 @@
       ]
     },
     {
+      "id": "ui.svg-shapes",
+      "name": "SvgShapes",
+      "category": "ui",
+      "path": "ui/SvgShapes.js",
+      "exports": [
+        "SvgShapes"
+      ],
+      "status": "ready",
+      "summary": "Reusable SVG shape renderer for distinct per-token silhouettes (lozenge, hexagon, star, chiclet, circle, diamond, heart, triangle). Drop-in for match-3, mahjong, color-puzzle, sudoku-with-icons, any tile game where N colors share the board. Each color gets a unique shape so the board reads as variety, not a color grid (wisdom rule vq-shape-per-color).",
+      "tags": [
+        "svg",
+        "shape",
+        "candy",
+        "tile",
+        "match3",
+        "accessibility-colorblind"
+      ],
+      "contracts": {
+        "render": "SvgShapes.render({shape, fill, shine?, ariaLabel?, extraClass?}) -> svg HTML string",
+        "renderToken": "SvgShapes.renderToken(token) -> svg HTML string for {shape, fill, shine, name}",
+        "defaultTokens": "SvgShapes.defaultTokens() -> default 6-color palette tuned for match-3",
+        "shapes": "SvgShapes.shapes -> ['lozenge','hexagon','star','chiclet','circle','diamond','heart','triangle']"
+      },
+      "goodFits": [
+        "candy-match",
+        "mahjong",
+        "color-pop",
+        "sudoku-with-icons",
+        "matching-pairs",
+        "color-blocks"
+      ]
+    },
+    {
+      "id": "effects.hint-pulse",
+      "name": "HintPulse",
+      "category": "effects",
+      "path": "effects/HintPulse.js",
+      "exports": [
+        "HintPulse"
+      ],
+      "status": "ready",
+      "summary": "Idle-aware hint glow controller for tile puzzles. After idleMs of inactivity, pulses a found valid move (caller supplies findHint). Cancel on next tap; expose now() for an explicit Hint button. Wisdom rule game-idle-hint-pulse.",
+      "tags": [
+        "hint",
+        "pulse",
+        "idle",
+        "puzzle",
+        "tile",
+        "match3",
+        "sudoku",
+        "mahjong"
+      ],
+      "contracts": {
+        "constructor": "new HintPulse({boardEl, findHint, idleMs?, holdMs?, selectorFor?, hintClass?})",
+        "schedule": "hints.schedule() \u2014 start idle countdown after each successful move",
+        "cancel": "hints.cancel() \u2014 abort countdown, remove glow",
+        "now": "hints.now(holdMs?) \u2014 explicit hint button trigger; auto-fades after holdMs",
+        "dispose": "hints.dispose() \u2014 tear down on game-over / unmount",
+        "css": ".hint class is toggled on found cells; supply your own pulse keyframes"
+      },
+      "goodFits": [
+        "candy-match",
+        "mahjong",
+        "sudoku",
+        "solitaire",
+        "matching-pairs",
+        "tile-swap-puzzles"
+      ]
+    },
+    {
       "id": "ui.virtual-joystick",
       "name": "VirtualJoystick",
       "category": "ui",
@@ -2512,7 +2582,9 @@
         "entities.match3-logic",
         "ui.scoreboard",
         "resources.swatches",
-        "resources.audio-manager"
+        "resources.audio-manager",
+        "ui.svg-shapes",
+        "effects.hint-pulse"
       ],
       "assemblyNotes": [
         "Use TileSwapper for selection/swap input and Match3Logic for matches/cascades; generate tile skins and level goals only.",
