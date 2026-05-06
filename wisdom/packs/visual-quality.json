@@ -1,6 +1,6 @@
 {
   "packID": "visual-quality",
-  "version": 2,
+  "version": 3,
   "displayName": "Visual Quality Standards",
   "description": "Rules ensuring generated games and apps have professional-quality visuals \u2014 no plain colored rectangles.",
   "categories": [
@@ -124,7 +124,27 @@
         "WRONG: shape variety only on the 'special' tiles (striped, bomb) but normal tiles all the same shape \u2014 most of the board still reads as a color grid.",
         "Verification: take a screenshot, open in Photoshop/Preview, convert to grayscale. Each token type must still be distinguishable."
       ]
+    },
+    {
+      "id": "vq-anim-feedback-on-every-event",
+      "rule": "Every visible game event (match clear, score award, invalid input, tile spawn, score milestone) must have a corresponding animation. For Lego web-component tile games, use `effects/PopBurst` on each match-clear cell, `effects/ScoreRise` on every score award, `effects/BoardShake` on invalid swap/wrong answer, `effects/SpawnDrop` on each newly-rendered tile, and `effects/HintPulse` for idle hints. Every effects/* Lego exports an `injectCss()` helper \u2014 call all of them once on init so @keyframes are present before the first event. A board with no animations on match/swap/score events is missing required juice, not 'minimal-by-design'.",
+      "why": "The user asked 'why does candy match still not have animations?' on a generated mini-app \u2014 the LLM had imported the catalog Legos but skipped the visual feedback effects. A tile game without pop / spawn / shake / score-rise reads as broken even when logic is correct. Each effect Lego encapsulates the canonical curve and the timing so the LLM doesn't have to invent (and get wrong). Adoption is one import + one injectCss() per effect. The principle generalizes: every action-feedback beat lives in `effects/` so future games don't reinvent.",
+      "severity": "high",
+      "appliesTo": "tile-games-and-any-scoring-genre",
+      "examples": [
+        "BAD: cleared tiles disappear with no visual beat (board feels silent)",
+        "BAD: invalid swap snaps back without shake (player can't tell input failed)",
+        "BAD: score number jumps but no '+50' floats up at the action site",
+        "GOOD: import { PopBurst, ScoreRise, BoardShake, SpawnDrop, HintPulse } from '../../effects/...'; call injectCss() once per effect in constructor; PopBurst.spawn(cellEl) on each clear; ScoreRise.show(boardEl, '+50') after scoreboard.add(); BoardShake.shake(boardEl) on invalid swap; SpawnDrop.spawn(tile) inside render loop"
+      ],
+      "lego_pointers": [
+        "effects.pop-burst",
+        "effects.spawn-drop",
+        "effects.score-rise",
+        "effects.board-shake",
+        "effects.hint-pulse"
+      ]
     }
   ],
-  "_last_updated": "2026-05-06 vq-shape-per-color added"
+  "_last_updated": "2026-05-06 vq-anim-feedback-on-every-event added"
 }
