@@ -63,6 +63,8 @@ If a `CONTEXT.md` lives next to the component file, it's returned as `contextMD`
 
 The mChatAI+ macOS app's MCP Setup screen will offer this server as a recommended install. Click **Add** to write the registration into `~/.claude/mcp.json` automatically.
 
+The Add button registers `dist/server.mjs` — a **538KB self-contained bundle** that ships in this repo. No `npm install` needed at runtime; the bundle has every dependency inlined. The catalog template path resolves to your binary's git-pulled cache, so the bundle is always in sync with your `refreshMchataisourceCache` call.
+
 ### Option B — Manual
 
 Add this entry to your Claude Code `~/.claude/mcp.json`:
@@ -73,7 +75,7 @@ Add this entry to your Claude Code `~/.claude/mcp.json`:
     "mchatai-web-components": {
       "command": "node",
       "args": [
-        "/Users/<you>/Library/Containers/com.sevenhillsstudio.mChatAImac/Data/Library/Application Support/mChatAI/source-cache/mchatai-source/mcp-servers/web-components/server.js"
+        "/Users/<you>/Library/Containers/com.sevenhillsstudio.mChatAImac/Data/Library/Application Support/mChatAI/source-cache/mchatai-source/mcp-servers/web-components/dist/server.mjs"
       ],
       "env": {}
     }
@@ -122,8 +124,19 @@ The server resolves the mChatAI source root in this order:
 cd mchatai-source/mcp-servers/web-components
 npm install
 npm test           # smoke test (no MCP transport — direct module calls)
-node server.js     # runs the MCP stdio server
+node server.js     # runs the MCP stdio server (dev, requires node_modules)
+npm run build      # bundle to dist/server.mjs (538KB self-contained)
+node dist/server.mjs   # runs the bundled stdio server (production, no deps)
 ```
+
+After making changes to `server.js`, run `npm run build` and commit `dist/server.mjs` so the user's `refreshMchataisourceCache` picks up the new bundle.
+
+## Files
+
+- `server.js` — dev entry, requires `node_modules/`.
+- `dist/server.mjs` — bundled production entry, ships in git, runs standalone.
+- `test.js` — unit tests (catalog parse + recipe lookup + source read).
+- `package.json` — declares deps for dev; `npm run build` regenerates the bundle.
 
 ## License
 
