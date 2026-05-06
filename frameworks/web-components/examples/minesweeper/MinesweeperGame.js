@@ -10,6 +10,26 @@ import { BoardShake } from "../../effects/BoardShake.js";
 import { PopBurst } from "../../effects/PopBurst.js";
 import { ScoreRise } from "../../effects/ScoreRise.js";
 
+// Inline-assembler safety: when the inline assembler bundles this example
+// for single-file delivery it may strip the imports above without inlining
+// the effect class bodies. Capture each effect via `typeof X !== "undefined"`
+// (the only typeof form that survives undeclared identifiers) so the rest
+// of this file can null-check via Effects.X. Plain `X?.method()` throws
+// ReferenceError when X is undeclared — guard once, here.
+const Effects = (() => {
+  const grab = (name) => {
+    try {
+      // eslint-disable-next-line no-new-func
+      return new Function("name", `return typeof ${name} !== "undefined" ? ${name} : null;`)(name);
+    } catch (_) { return null; }
+  };
+  return {
+    BoardShake: grab("BoardShake"),
+    PopBurst:   grab("PopBurst"),
+    ScoreRise:  grab("ScoreRise")
+  };
+})();
+
 export class MinesweeperGame {
   constructor(options = {}) {
     this.root = options.root || document.body;
@@ -40,9 +60,9 @@ export class MinesweeperGame {
     if (typeof applySwatchVariables === "function" && typeof getSwatchByID === "function") {
       applySwatchVariables(document.documentElement, getSwatchByID("retro-neon"));
     }
-    if (typeof BoardShake?.injectCss === "function") BoardShake.injectCss();
-    if (typeof PopBurst?.injectCss === "function") PopBurst.injectCss();
-    if (typeof ScoreRise?.injectCss === "function") ScoreRise.injectCss();
+    Effects.BoardShake?.injectCss?.();
+    Effects.PopBurst?.injectCss?.();
+    Effects.ScoreRise?.injectCss?.();
     this.restart = (typeof RestartOverlay === "function") ? new RestartOverlay({
       host: document.querySelector("[data-app]") || document.body,
       onRestart: () => this.reset()
@@ -151,8 +171,8 @@ export class MinesweeperGame {
     if (result.hitMine) {
       this.audio.noise({ duration: 0.18, volume: 0.08 });
       const mineCell = this.boardElement?.querySelector(`[data-row="${row}"][data-col="${col}"]`);
-      if (mineCell) PopBurst?.spawn?.(mineCell, { color: "#ff5b6e", size: 1.4 });
-      BoardShake?.shake?.(this.boardElement, { intensity: "strong" });
+      if (mineCell) Effects.PopBurst?.spawn?.(mineCell, { color: "#ff5b6e", size: 1.4 });
+      Effects.BoardShake?.shake?.(this.boardElement, { intensity: "strong" });
       this.finish(false);
       return;
     }
@@ -162,7 +182,7 @@ export class MinesweeperGame {
     this.audio.beep({ freq: 520, duration: 0.04 });
     if (result.revealed.length >= 4) {
       const clickedCell = this.boardElement?.querySelector(`[data-row="${row}"][data-col="${col}"]`);
-      if (clickedCell) ScoreRise?.show?.(clickedCell, `+${points}`, { color: "#7ee787", fontSize: 14 });
+      if (clickedCell) Effects.ScoreRise?.show?.(clickedCell, `+${points}`, { color: "#7ee787", fontSize: 14 });
     }
     if (this.hasWon()) {
       this.finish(true);
@@ -196,7 +216,7 @@ export class MinesweeperGame {
       const winPoints = 500 + bonus;
       this.scoreboard.add(winPoints);
       this.audio.beep({ freq: 760, slideTo: 1040, duration: 0.16 });
-      ScoreRise?.show?.(this.boardElement || this.root, `+${winPoints}${bonus > 0 ? " ⏱️" : ""}`, {
+      Effects.ScoreRise?.show?.(this.boardElement || this.root, `+${winPoints}${bonus > 0 ? " ⏱️" : ""}`, {
         color: "#ffd766",
         fontSize: 22
       });
