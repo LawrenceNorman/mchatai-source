@@ -175,6 +175,27 @@ button:focus-visible,
   transform: translateY(-3px) scale(1.06);
 }
 
+/* Hint pulse — applied by the HintPulse Lego (effects/HintPulse.js) when
+   the player has been idle. Pair of cells gets a brief golden glow so the
+   eye is drawn to a valid swap. Wisdom rule game-idle-hint-pulse. */
+.tile.hint .candy {
+  animation: candyHintPulse 1.1s ease-in-out infinite;
+  filter: drop-shadow(0 0 8px rgba(255, 224, 102, 0.85));
+}
+@keyframes candyHintPulse {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.08); }
+}
+
+/* SVG candy renders on top of the gradient tile; sized to fill ~80% of the cell. */
+.tile .candy {
+  position: relative;
+  z-index: 2;
+  width: 80%;
+  height: 80%;
+  filter: drop-shadow(0 3px 4px rgba(0, 0, 0, 0.3));
+}
+
 .tile.kind-0 { background: linear-gradient(145deg, #ff4d6d, #bd1744); }
 .tile.kind-1 { background: linear-gradient(145deg, #ffad33, #d95e00); }
 .tile.kind-2 { background: linear-gradient(145deg, #facc15, #ba8a00); }
