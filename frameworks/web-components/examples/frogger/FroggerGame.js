@@ -93,7 +93,24 @@ export class FroggerGame {
       scoreLabel: "Score",
       highScoreLabel: "Best"
     });
-    this.audio = new AudioManager();
+    // Null-AudioManager fallback: when the inline assembler drops
+    // resources/AudioManager.js, an unguarded `new AudioManager()` throws
+    // ReferenceError → constructor fails → game never instantiates → board
+    // never renders (user sees HUD with default values but empty canvas).
+    // Mirror every method this example uses (beep, noise) plus the standard
+    // shape so future audio calls don't trip the same wedge.
+    this.audio = (typeof AudioManager === "function")
+      ? new AudioManager()
+      : {
+          beep: () => {},
+          noise: () => {},
+          fadeIn: () => {},
+          fadeOut: () => {},
+          stop: () => {},
+          loop: () => {},
+          stopMusic: () => {},
+          play: () => {}
+        };
     this.messageEl = $(options.messageTarget);
     this.livesEl = $(options.livesTarget);
     this.homesEl = $(options.homesTarget);
