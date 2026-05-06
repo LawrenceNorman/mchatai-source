@@ -1,0 +1,53 @@
+{
+  "version": 1,
+  "lastUpdated": "2026-05-05",
+  "description": "Phase LF.3 — per-backend disclosure mode for the web-components context layer. Controls whether the layer pre-loads full component source (`inlineSource: true`) or emits only the catalog index and lets the LLM fetch source on demand (`inlineSource: false`). Claude Code reliably tool-calls into the catalog, so it gets trim mode. Codex / Gemini / Ollama models with weaker tool-call veracity stay in inline mode until their veracity score graduates them. The webComponentsLoader reads this config; the recipe's option value is the default if no per-backend override exists.",
+  "graduationCriteria": {
+    "summary": "A backend graduates from `inline` to `trim` mode when ModelQualityScorer.toolCallVeracity (rolling avg over the last 20 miniApp runs) crosses graduationThreshold AND no LF.gate2 markerless-rejection was observed in the same window.",
+    "graduationThresholdDefault": 0.85,
+    "demotionTrigger": "If a backend in trim mode hits LF.gate2 markerless-rejection 2+ times in any 24h window, automatically demote to inline via DynamicConfigService Firestore hot-patch (no rebuild needed).",
+    "manualOverride": "Operators can pin a backend to either mode via DynamicConfigService key `disclosure.<backend>.<artifactType>.modeOverride = inline | trim`."
+  },
+  "perBackend": {
+    "claude": {
+      "miniApp": {
+        "mode": "trim",
+        "inlineSource": false,
+        "graduatedAt": "2026-05-05",
+        "veracityScore": 0.95,
+        "rationale": "Claude Code natively reads files from cwd via the Read tool, and consistently honors marker contracts when given. LF.1 baseline shows trim mode drops chess/ttt prompts from 98KB HARD_WARN to 50KB SOFT_WARN with zero compliance regression."
+      }
+    },
+    "codex": {
+      "miniApp": {
+        "mode": "inline",
+        "inlineSource": true,
+        "graduationThreshold": 0.85,
+        "rationale": "Codex tool-call usage is less consistent than Claude's. Keeps inline source until a 20-run veracity score crosses 0.85."
+      }
+    },
+    "gemini": {
+      "miniApp": {
+        "mode": "inline",
+        "inlineSource": true,
+        "graduationThreshold": 0.85,
+        "rationale": "Gemini CLI's tool-call surface varies by model. Inline-source mode is safer until per-model veracity stabilizes."
+      }
+    },
+    "ollama": {
+      "miniApp": {
+        "mode": "inline",
+        "inlineSource": true,
+        "graduationThreshold": 0.85,
+        "rationale": "Local Ollama models (qwen-coder, deepseek-coder, etc.) are highly variable on tool-call accuracy. Inline source keeps generation deterministic."
+      }
+    }
+  },
+  "default": {
+    "miniApp": {
+      "mode": "inline",
+      "inlineSource": true,
+      "rationale": "Unknown / unmapped backends default to inline source (safer). Backends explicitly listed in `perBackend` use their listed mode."
+    }
+  }
+}
