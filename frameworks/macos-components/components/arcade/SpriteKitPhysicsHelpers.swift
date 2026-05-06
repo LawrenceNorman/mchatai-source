@@ -169,4 +169,61 @@ enum SKArcadeCategory {
     static let goal: UInt32     = 0x1 << 7
     static let wall: UInt32     = 0x1 << 8
 }
+
+/// Swift-6-safe NotificationCenter observer cleanup for SKScene subclasses.
+///
+/// Under Swift 6 strict concurrency, you CANNOT call
+/// `NotificationCenter.default.removeObserver(token)` from `deinit` when `token`
+/// is `NSObjectProtocol?` — the compiler rejects: "cannot access property X with
+/// a non-Sendable type (any NSObjectProtocol)? from nonisolated deinit". See
+/// wisdom rule mac-026.
+///
+/// Usage in your SKScene subclass:
+///
+///     final class GameScene: SKScene {
+///         private var restart = RestartObserverToken()
+///
+///         override func didMove(to view: SKView) {
+///             restart.attach(name: .myRestart) { [weak self] in
+///                 self?.resetGame()
+///             }
+///         }
+///
+///         override func willMove(from view: SKView) {
+///             restart.detach()
+///             super.willMove(from: view)
+///         }
+///     }
+///
+/// The token is `@MainActor`-isolated and safely tearable in `willMove(from:)`,
+/// which SpriteKit calls before scene replacement / view tear-down. NEVER put
+/// `restart.detach()` inside a `deinit`.
+@MainActor
+final class RestartObserverToken {
+    private var token: NSObjectProtocol?
+
+    /// Register a closure-based observer. Replaces any prior token.
+    func attach(name: Notification.Name,
+                object: Any? = nil,
+                queue: OperationQueue? = .main,
+                using block: @escaping @MainActor (Notification) -> Void) {
+        detach()
+        token = NotificationCenter.default.addObserver(
+            forName: name,
+            object: object,
+            queue: queue
+        ) { note in
+            Task { @MainActor in block(note) }
+        }
+    }
+
+    /// Remove the observer. Idempotent. Call from `willMove(from:)` /
+    /// `.onDisappear` — NEVER from `deinit`.
+    func detach() {
+        if let token {
+            NotificationCenter.default.removeObserver(token)
+            self.token = nil
+        }
+    }
+}
 // END mChatAI macOS Component: arcade.spritekit-physics-helpers

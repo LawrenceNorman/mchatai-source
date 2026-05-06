@@ -1,6 +1,6 @@
 {
   "packID": "macos-app",
-  "version": 25,
+  "version": 26,
   "displayName": "macOS App Generation Wisdom",
   "description": "Rules for generating executable macOS apps (SwiftUI / AppKit) via Swift Playground. Focused on making the generated binary actually appear as a visible, interactive window \u2014 not a headless background process.",
   "categories": [
@@ -333,6 +333,20 @@
         "Real incident 2026-05-04: shipped Lunar Lander v1 had 'GAME OVER score=0' as static HUD. Catalog Minesweeper reference had hidden 'New Game' in controls. Same family of misses."
       ],
       "appliesTo": "macOSApp"
+    },
+    {
+      "id": "mac-026",
+      "rule": "NEVER call `NotificationCenter.default.removeObserver(...)` from a `deinit` when the stored observer is `NSObjectProtocol?` (the type returned by `addObserver(forName:object:queue:using:)`). Under Swift 6 strict concurrency, `deinit` is `nonisolated` and accessing a non-Sendable stored property like `NSObjectProtocol?` from a nonisolated context is a compile error: 'cannot access property X with a non-Sendable type ... from nonisolated deinit'. Instead, in `SKScene` subclasses unregister in `override func willMove(from view: SKView)` (called automatically before the scene is torn down). In SwiftUI, attach the observer in `.onAppear` and remove in `.onDisappear`. In `NSViewController`, use `viewWillDisappear` / `dealloc` of the *Objective-C selector* form. If you absolutely must clean up at object end-of-life, use the modern Swift 6 pattern: register with the selector-based `addObserver(self, selector:name:object:)` (which auto-removes when the observer is deallocated since macOS 11), or wrap the token in a `@MainActor` actor type. The `NSObjectProtocol` token from the closure-based API has NO automatic cleanup.",
+      "why": "BubblePop canary 2026-05-06 (RID catalog-sync-bubble-pop-1778091054) shipped a clean macOSApp — valid Package.swift, valid marker, recipe.spritekit-physics correctly composed — but failed `swift build` with: 'cannot access property restartObserver with a non-Sendable type (any NSObjectProtocol)? from nonisolated deinit'. Identical pattern will recur in every SpriteKit / SwiftUI / AppKit game that uses NotificationCenter for restart events. mac-019 covers SKPhysicsContactDelegate.didBegin's nonisolated nature but does NOT cover this deinit-cleanup case. macOS 26 / Swift 6.0 toolchain rejects the closure-based addObserver + deinit-removeObserver pattern by default.",
+      "severity": "critical",
+      "appliesTo": "macOSApp",
+      "examples": [
+        "WRONG (Swift 6 compile error): `private var restartObserver: NSObjectProtocol?` then `deinit { if let restartObserver { NotificationCenter.default.removeObserver(restartObserver) } }`",
+        "RIGHT (SKScene): override func willMove(from view: SKView) { if let restartObserver { NotificationCenter.default.removeObserver(restartObserver); self.restartObserver = nil }; super.willMove(from: view) }",
+        "RIGHT (SwiftUI): .onAppear { observer = NotificationCenter.default.addObserver(forName: .myEvent, object: nil, queue: .main) { _ in handle() } }.onDisappear { if let observer { NotificationCenter.default.removeObserver(observer) } }",
+        "RIGHT (selector-based, no token): NotificationCenter.default.addObserver(self, selector: #selector(handleRestart), name: .bubblePopRestart, object: nil) — then no manual cleanup needed (auto-removed when observer deallocated, since macOS 11+).",
+        "WRONG (mistake to avoid): wrapping the token in `@MainActor` doesn't help — deinit still can't access it. Move the cleanup OUT of deinit."
+      ]
     },
     {
       "id": "game-warm-gradient-background-macos",
@@ -952,5 +966,5 @@
       ]
     }
   ],
-  "_last_updated": "2026-05-05"
+  "_last_updated": "2026-05-06 mac-026 added (NotificationCenter observer cleanup must use willMove/onDisappear, not deinit, under Swift 6 strict concurrency)"
 }
