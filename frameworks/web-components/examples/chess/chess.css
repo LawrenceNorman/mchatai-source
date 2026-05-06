@@ -1,3 +1,6 @@
+/* mchat-swatch-defaults — synchronous FOUC fallback. Mirrors
+   resources/Swatches.js retro-neon swatch verbatim (see buildSwatchDefaultsCSS).
+   Swatches.applySwatchVariables overrides these via inline style at runtime. */
 :root {
   --mchat-background: #020617;
   --mchat-surface: #08111f;
@@ -6,6 +9,24 @@
   --mchat-accentWarm: #fb923c;
   --mchat-stroke: #e2e8f0;
   --mchat-shadow: rgba(34, 211, 238, 0.24);
+  --mchat-radius-sm: 6px;
+  --mchat-radius-md: 12px;
+  --mchat-radius-lg: 20px;
+  --mchat-radius-pill: 999px;
+  --mchat-space-1: 4px;
+  --mchat-space-2: 8px;
+  --mchat-space-3: 12px;
+  --mchat-space-4: 16px;
+  --mchat-space-5: 24px;
+  --mchat-space-6: 32px;
+  --mchat-type-xs: clamp(11px, 2.6vw, 12px);
+  --mchat-type-sm: clamp(13px, 3vw, 14px);
+  --mchat-type-md: clamp(15px, 3.4vw, 16px);
+  --mchat-type-lg: clamp(18px, 4.2vw, 22px);
+  --mchat-type-xl: clamp(24px, 6vw, 36px);
+  --mchat-font-ui: -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --mchat-font-display: 'Avenir Next', 'Trebuchet MS', sans-serif;
+  --mchat-font-mono: 'SF Mono', 'Cascadia Mono', monospace;
 }
 
 * {
@@ -16,19 +37,19 @@ body {
   margin: 0;
   min-height: 100vh;
   color: var(--mchat-text);
-  font-family: "Avenir Next", "Trebuchet MS", sans-serif;
+  font-family: var(--mchat-font-display);
   background:
     radial-gradient(circle at 12% 8%, rgba(34, 211, 238, 0.18), transparent 28rem),
     radial-gradient(circle at 90% 6%, rgba(251, 146, 60, 0.18), transparent 28rem),
-    linear-gradient(145deg, #020617, #111827 62%, #24140c);
+    linear-gradient(145deg, var(--mchat-background), #111827 62%, #24140c);
 }
 
 button {
   border: 0;
-  border-radius: 10px;
-  padding: 6px 12px;
+  border-radius: var(--mchat-radius-md);
+  padding: var(--mchat-space-2) var(--mchat-space-3);
   color: #03131a;
-  background: linear-gradient(135deg, #7dd3fc, #fdba74);
+  background: linear-gradient(135deg, var(--mchat-accent), var(--mchat-accentWarm));
   font: inherit;
   font-size: 0.8rem;
   font-weight: 700;
@@ -38,26 +59,26 @@ button {
 
 button:focus-visible,
 .square:focus-visible {
-  outline: 3px solid #fbbf24;
+  outline: 3px solid var(--mchat-accentWarm);
   outline-offset: 3px;
 }
 
 .chess-shell {
   width: min(1040px, 100%);
   margin: 0 auto;
-  padding: 8px;
+  padding: var(--mchat-space-2);
 }
 
 .stage-panel {
-  padding: 4px;
+  padding: var(--mchat-space-1);
 }
 
 .hud {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: var(--mchat-space-2);
   align-items: center;
-  margin-bottom: 8px;
+  margin-bottom: var(--mchat-space-2);
 }
 
 .hud-card {
@@ -65,9 +86,9 @@ button:focus-visible,
   min-width: 0;
   display: flex;
   align-items: baseline;
-  gap: 6px;
-  border-radius: 8px;
-  padding: 4px 10px;
+  gap: var(--mchat-space-2);
+  border-radius: var(--mchat-radius-sm);
+  padding: var(--mchat-space-1) var(--mchat-space-3);
   color: rgba(248, 250, 252, 0.68);
   background: rgba(255, 255, 255, 0.06);
   font-size: 0.65rem;
@@ -78,7 +99,7 @@ button:focus-visible,
 }
 
 .hud-card strong {
-  color: #fff7ed;
+  color: var(--mchat-text);
   font-size: 1rem;
   letter-spacing: -0.01em;
   font-weight: 800;
@@ -89,8 +110,8 @@ button:focus-visible,
   grid-template-columns: repeat(8, minmax(40px, 1fr));
   max-width: 720px;
   margin: 0 auto;
-  border: 12px solid rgba(3, 7, 18, 0.82);
-  border-radius: 24px;
+  border: var(--mchat-space-3) solid rgba(3, 7, 18, 0.82);
+  border-radius: var(--mchat-radius-lg);
   overflow: hidden;
   box-shadow: 0 24px 70px rgba(0, 0, 0, 0.42);
 }
@@ -115,7 +136,7 @@ button:focus-visible,
 }
 
 .square.selected {
-  box-shadow: inset 0 0 0 5px #22d3ee;
+  box-shadow: inset 0 0 0 5px var(--mchat-accent);
 }
 
 .square.legal::after {
@@ -123,7 +144,7 @@ button:focus-visible,
   position: absolute;
   width: 30%;
   aspect-ratio: 1;
-  border-radius: 999px;
+  border-radius: var(--mchat-radius-pill);
   background: rgba(34, 211, 238, 0.55);
 }
 
@@ -159,10 +180,10 @@ button:focus-visible,
 .message {
   min-height: 28px;
   max-width: 720px;
-  margin: 8px auto 0;
-  border-radius: 8px;
-  padding: 6px 10px;
-  color: #fff7ed;
+  margin: var(--mchat-space-2) auto 0;
+  border-radius: var(--mchat-radius-sm);
+  padding: var(--mchat-space-2) var(--mchat-space-3);
+  color: var(--mchat-text);
   text-align: center;
   background: rgba(255, 255, 255, 0.06);
   font-size: 0.85rem;
@@ -175,7 +196,7 @@ button:focus-visible,
 @media (max-width: 480px) {
   .board {
     border-width: 4px;
-    border-radius: 12px;
+    border-radius: var(--mchat-radius-md);
     max-width: min(98vw, 70vh);
   }
 }
