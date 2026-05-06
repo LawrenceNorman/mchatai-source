@@ -38,7 +38,7 @@ export class MinesweeperGame {
     this.mineCount = options.mines ?? 10;
     this.turns = new TurnBasedManager({ players: ["player"], phase: "ready" });
     this.logic = new RevealLogic();
-    this.audio = (typeof AudioManager === "function") ? new AudioManager({ masterVolume: 0.05 }) : { beep: () => {}, fadeIn: () => {}, fadeOut: () => {}, stop: () => {}, loop: () => {}, stopMusic: () => {}, play: () => {} };
+    this.audio = (typeof AudioManager === "function") ? new AudioManager({ masterVolume: 0.05 }) : { beep: () => {}, noise: () => {}, fadeIn: () => {}, fadeOut: () => {}, stop: () => {}, loop: () => {}, stopMusic: () => {}, play: () => {} };
     this.scoreboard = new ScoreBoard({
       target: "#scoreboard",
       storageKey: "mchatai.minesweeper99.bestScore",

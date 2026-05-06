@@ -50,7 +50,7 @@ export class WordQuestGame {
     this.turns = new TurnBasedManager({ players: ["player"], phase: "guessing" });
     this.boardShape = new GridBoard({ rows: this.maxRows, cols: this.wordLength });
     this.grid = new LetterGrid({ rows: this.maxRows, cols: this.wordLength });
-    this.audio = (typeof AudioManager === "function") ? new AudioManager({ masterVolume: 0.06 }) : { beep: () => {}, fadeIn: () => {}, fadeOut: () => {}, stop: () => {}, loop: () => {}, stopMusic: () => {}, play: () => {} };
+    this.audio = (typeof AudioManager === "function") ? new AudioManager({ masterVolume: 0.06 }) : { beep: () => {}, noise: () => {}, fadeIn: () => {}, fadeOut: () => {}, stop: () => {}, loop: () => {}, stopMusic: () => {}, play: () => {} };
     this.scoreboard = new ScoreBoard({
       target: this.root.querySelector("#scoreboard"),
       storageKey: `${this.storagePrefix}.bestScore`,

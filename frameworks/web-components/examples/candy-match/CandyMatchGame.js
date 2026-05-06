@@ -61,7 +61,7 @@ export class CandyMatchGame {
       scoreLabel: "Score",
       highScoreLabel: "Best"
     });
-    this.audio = (typeof AudioManager === "function") ? new AudioManager({ masterVolume: 0.045 }) : { beep: () => {}, fadeIn: () => {}, fadeOut: () => {}, stop: () => {}, loop: () => {}, stopMusic: () => {}, play: () => {} };
+    this.audio = (typeof AudioManager === "function") ? new AudioManager({ masterVolume: 0.045 }) : { beep: () => {}, noise: () => {}, fadeIn: () => {}, fadeOut: () => {}, stop: () => {}, loop: () => {}, stopMusic: () => {}, play: () => {} };
     this.turns = new TurnBasedManager({ players: ["player"], phase: "playing" });
     this.grid = new GridBoard({ rows: ROWS, cols: COLS, fill: 0 });
     this.swapper = new TileSwapper({

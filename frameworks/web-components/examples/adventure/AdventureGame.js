@@ -141,7 +141,7 @@ export class AdventureGame {
     this.ctx = this.canvas.getContext("2d");
     this.board = new GridBoard({ rows: ROWS, cols: COLS, tileSize: Math.min(TILE_W, TILE_H) });
     this.player = new GridMover({ row: 3, col: 1, moveDelay: 0.09, canEnter: () => true });
-    this.audio = (typeof AudioManager === "function") ? new AudioManager({ masterVolume: 0.05 }) : { beep: () => {}, fadeIn: () => {}, fadeOut: () => {}, stop: () => {}, loop: () => {}, stopMusic: () => {}, play: () => {} };
+    this.audio = (typeof AudioManager === "function") ? new AudioManager({ masterVolume: 0.05 }) : { beep: () => {}, noise: () => {}, fadeIn: () => {}, fadeOut: () => {}, stop: () => {}, loop: () => {}, stopMusic: () => {}, play: () => {} };
     this.scoreboard = new ScoreBoard({
       target: options.scoreboardTarget,
       storageKey: "mchatai.adventure.best",
