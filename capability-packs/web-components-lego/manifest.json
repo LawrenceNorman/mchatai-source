@@ -1,0 +1,41 @@
+{
+  "id": "web-components-lego",
+  "name": "Web Components Lego",
+  "version": "0.1.0",
+  "summary": "Modular catalog of UI/entity/resource components for miniApp generation. Declares the marker contract, per-recipe component lists, and golden-assembly fallbacks. The web-components layer is the largest single source of context cost on miniApp goals (~57% of assembled context pre-LF.1); this pack tracks what's emitted and what tools can fetch component source on demand.",
+  "domains": ["miniapp", "lego", "modular-composition", "web-components"],
+  "solutionTypes": ["miniApp"],
+  "providedSkills": [],
+  "providedTools": [
+    "list_components",
+    "read_component",
+    "get_recipe_marker_template"
+  ],
+  "contextFiles": [
+    "context/web-components-lego.md"
+  ],
+  "templatePaths": [],
+  "evaluatorRubrics": [
+    "evals/lego-marker-compliance.json"
+  ],
+  "permissions": [
+    "web-components.read",
+    "mchatai-source.read"
+  ],
+  "riskLevel": "low",
+  "recommendedMCPs": [
+    {
+      "id": "mchatai-web-components",
+      "score": 95,
+      "title": "Install mchatai-web-components MCP",
+      "summary": "Lets the LLM tool-call into the catalog (list_components / read_component) instead of pre-loading 30-50KB of source per prompt. Required for LF.3 trim mode on Claude Code; large headroom win on every miniApp goal.",
+      "configRecipe": [
+        "Add server entry to ~/.claude/mcp.json (Configure button writes this)",
+        "Restart Claude Code session so the MCP loads",
+        "Verify with: claude mcp call mchatai-web-components list_components"
+      ],
+      "supportingContext": ["Filesystem"],
+      "notesIfMissing": "Inline-source mode is used as fallback — works but eats ~30-50KB more context per miniApp prompt."
+    }
+  ]
+}

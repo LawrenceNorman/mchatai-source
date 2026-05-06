@@ -187,6 +187,29 @@ const recipes = Array.isArray(catalog.compositionRecipes)
     ? catalog.recipes
     : [];
 const recipeMeta = recipes.find((r) => r && r.id === marker.recipe);
+
+// Phase LF.4 — required-components subset check. Marker must include every
+// id from recipe.requiredComponents (when present). Optional components may
+// appear or be omitted freely. Pre-LF.4 recipes don't have requiredComponents
+// — those skip this check (back-compat); the AI-opponent + restart-button
+// gates still cover the load-bearing pieces for those.
+if (recipeMeta && Array.isArray(recipeMeta.requiredComponents) && recipeMeta.requiredComponents.length > 0) {
+  const markerSet = new Set(marker.components);
+  const missingRequired = recipeMeta.requiredComponents.filter((id) => !markerSet.has(id));
+  if (missingRequired.length > 0) {
+    fail(
+      "Marker is missing required components for this recipe. Required components must appear in the marker's components array; optional components may be omitted.",
+      {
+        recipe: marker.recipe,
+        requiredComponents: recipeMeta.requiredComponents,
+        optionalComponents: recipeMeta.optionalComponents || [],
+        markerComponents: marker.components,
+        missingRequired
+      }
+    );
+  }
+}
+
 if (recipeMeta && recipeMeta.requiresAIOpponent === true) {
   const expected = Array.isArray(recipeMeta.aiOpponentComponents) && recipeMeta.aiOpponentComponents.length > 0
     ? recipeMeta.aiOpponentComponents
