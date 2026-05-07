@@ -6,6 +6,29 @@ import { RestartOverlay } from "../../ui/RestartOverlay.js";
 import { Leaderboard } from "../../ui/Leaderboard.js";
 import { getSwatchByID, applySwatchVariables } from "../../resources/Swatches.js";
 import { AudioManager } from "../../resources/AudioManager.js";
+import { BoardShake } from "../../effects/BoardShake.js";
+import { PopBurst } from "../../effects/PopBurst.js";
+import { ScoreRise } from "../../effects/ScoreRise.js";
+
+// Inline-assembler safety: when the inline assembler bundles this example
+// for single-file delivery it may strip the imports above without inlining
+// the effect class bodies. Capture each effect via `typeof X !== "undefined"`
+// (the only typeof form that survives undeclared identifiers) so the rest
+// of this file can null-check via Effects.X. Plain `X?.method()` throws
+// ReferenceError when X is undeclared — guard once, here.
+const Effects = (() => {
+  const grab = (name) => {
+    try {
+      // eslint-disable-next-line no-new-func
+      return new Function("name", `return typeof ${name} !== "undefined" ? ${name} : null;`)(name);
+    } catch (_) { return null; }
+  };
+  return {
+    BoardShake: grab("BoardShake"),
+    PopBurst:   grab("PopBurst"),
+    ScoreRise:  grab("ScoreRise")
+  };
+})();
 
 export class MinesweeperGame {
   constructor(options = {}) {
@@ -15,7 +38,7 @@ export class MinesweeperGame {
     this.mineCount = options.mines ?? 10;
     this.turns = new TurnBasedManager({ players: ["player"], phase: "ready" });
     this.logic = new RevealLogic();
-    this.audio = (typeof AudioManager === "function") ? new AudioManager({ masterVolume: 0.05 }) : { beep: () => {}, fadeIn: () => {}, fadeOut: () => {}, stop: () => {}, loop: () => {}, stopMusic: () => {}, play: () => {} };
+    this.audio = (typeof AudioManager === "function") ? new AudioManager({ masterVolume: 0.05 }) : { beep: () => {}, noise: () => {}, fadeIn: () => {}, fadeOut: () => {}, stop: () => {}, loop: () => {}, stopMusic: () => {}, play: () => {} };
     this.scoreboard = new ScoreBoard({
       target: "#scoreboard",
       storageKey: "mchatai.minesweeper99.bestScore",
@@ -31,13 +54,15 @@ export class MinesweeperGame {
     this.messageElement = document.querySelector("#message");
     this.timerElement = document.querySelector("#timer");
     this.minesLeftElement = document.querySelector("#minesLeft");
-    this.modeElement = document.querySelector("#modeLabel");
     this.flagModeButton = document.querySelector("#flagModeButton");
     this.newGameButton = document.querySelector("#newGameButton");
     this.rankCardHostEl = document.querySelector("#rankCard");
     if (typeof applySwatchVariables === "function" && typeof getSwatchByID === "function") {
       applySwatchVariables(document.documentElement, getSwatchByID("retro-neon"));
     }
+    Effects.BoardShake?.injectCss?.();
+    Effects.PopBurst?.injectCss?.();
+    Effects.ScoreRise?.injectCss?.();
     this.restart = (typeof RestartOverlay === "function") ? new RestartOverlay({
       host: document.querySelector("[data-app]") || document.body,
       onRestart: () => this.reset()
@@ -145,12 +170,20 @@ export class MinesweeperGame {
     this.turns.record({ type: "reveal", row, col, count: result.revealed.length });
     if (result.hitMine) {
       this.audio.noise({ duration: 0.18, volume: 0.08 });
+      const mineCell = this.boardElement?.querySelector(`[data-row="${row}"][data-col="${col}"]`);
+      if (mineCell) Effects.PopBurst?.spawn?.(mineCell, { color: "#ff5b6e", size: 1.4 });
+      Effects.BoardShake?.shake?.(this.boardElement, { intensity: "strong" });
       this.finish(false);
       return;
     }
 
-    this.scoreboard.add(result.revealed.length * 10);
+    const points = result.revealed.length * 10;
+    this.scoreboard.add(points);
     this.audio.beep({ freq: 520, duration: 0.04 });
+    if (result.revealed.length >= 4) {
+      const clickedCell = this.boardElement?.querySelector(`[data-row="${row}"][data-col="${col}"]`);
+      if (clickedCell) Effects.ScoreRise?.show?.(clickedCell, `+${points}`, { color: "#7ee787", fontSize: 14 });
+    }
     if (this.hasWon()) {
       this.finish(true);
       return;
@@ -180,8 +213,13 @@ export class MinesweeperGame {
     });
     if (won) {
       const bonus = Math.max(0, 300 - this.elapsed * 3);
-      this.scoreboard.add(500 + bonus);
+      const winPoints = 500 + bonus;
+      this.scoreboard.add(winPoints);
       this.audio.beep({ freq: 760, slideTo: 1040, duration: 0.16 });
+      Effects.ScoreRise?.show?.(this.boardElement || this.root, `+${winPoints}${bonus > 0 ? " ⏱️" : ""}`, {
+        color: "#ffd766",
+        fontSize: 22
+      });
       this.setMessage(`Board cleared in ${this.elapsed}s. New field ready when you are.`);
       this.turns.setPhase("won");
       this.restart?.show({
@@ -228,8 +266,8 @@ export class MinesweeperGame {
     const flags = this.countFlags();
     this.timerElement.textContent = String(this.elapsed);
     this.minesLeftElement.textContent = String(Math.max(0, this.mineCount - flags));
-    this.modeElement.textContent = this.flagMode ? "Flag" : "Reveal";
     this.flagModeButton.classList.toggle("is-active", this.flagMode);
+    this.flagModeButton.textContent = this.flagMode ? "Flag Mode (on)" : "Flag Mode";
   }
 
   renderCells() {

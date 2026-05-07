@@ -186,7 +186,7 @@ export class TowerDefenseGame {
   constructor(options = {}) {
     this.canvas = options.canvas;
     this.ctx = this.canvas.getContext("2d");
-    this.audio = (typeof AudioManager === "function") ? new AudioManager({ masterVolume: 0.05 }) : { beep: () => {}, fadeIn: () => {}, fadeOut: () => {}, stop: () => {}, loop: () => {}, stopMusic: () => {}, play: () => {} };
+    this.audio = (typeof AudioManager === "function") ? new AudioManager({ masterVolume: 0.05 }) : { beep: () => {}, noise: () => {}, fadeIn: () => {}, fadeOut: () => {}, stop: () => {}, loop: () => {}, stopMusic: () => {}, play: () => {} };
     this.scoreboard = new ScoreBoard({
       target: options.scoreboardTarget,
       storageKey: "mchatai.towerDefense.best",
