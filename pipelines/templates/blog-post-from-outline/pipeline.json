@@ -1,0 +1,36 @@
+{
+  "id": "862D6AD3-506E-426C-827D-9DC9785B8323",
+  "name": "Blog Post from Outline",
+  "description": "Expand a topic or bullet-point outline into a full blog post with two LLM passes",
+  "components": [
+    "component.llm-to-doc-save"
+  ],
+  "steps": [
+    {
+      "id": "50541E4F-1A9C-4B2E-9F14-C8CAE2F353F6",
+      "skillID": "builtin.llmGenerate",
+      "config": {
+        "llmMaxTokens": "1200",
+        "llmTimeout": "60",
+        "userPrompt": "Given the topic or outline below, produce a detailed section-by-section outline for a blog post.\nRequirements:\n- 4 to 6 main sections with clear H2 headings.\n- 2-3 bullet sub-points per section noting what to cover.\n- Include an intro hook and a conclusion section.\n- Return the outline only — no prose yet.\n\nTOPIC OR OUTLINE:\n{{INPUT}}"
+      }
+    },
+    {
+      "id": "A4B84540-82AB-4696-82EC-AEACC2E80576",
+      "skillID": "builtin.llmGenerate",
+      "config": {
+        "llmMaxTokens": "3200",
+        "llmTimeout": "120",
+        "userPrompt": "Expand the following blog post outline into a full, well-written blog post.\nRequirements:\n- Write each section with 2-4 paragraphs of engaging prose.\n- Use the H2 headings from the outline.\n- Keep the tone informative but approachable — avoid jargon unless necessary.\n- Begin with a compelling 2-sentence hook.\n- End with a conclusion that summarizes the key insight and includes a call to action.\n- Use markdown formatting.\n\nOUTLINE:\n{{INPUT}}"
+      }
+    },
+    {
+      "id": "20ED654D-8E09-4EB5-8076-6D7CFD5E8EE1",
+      "skillID": "builtin.saveArtifact",
+      "config": {
+        "artifactName": "Blog Post",
+        "artifactExtension": "md"
+      }
+    }
+  ]
+}

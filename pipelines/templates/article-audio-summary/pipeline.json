@@ -1,0 +1,42 @@
+{
+  "id": "43057B35-42C9-4188-BEB2-09B3FE17B6C2",
+  "name": "Article Audio Summary",
+  "description": "Fetch any article URL, summarize it, and convert to a spoken audio file",
+  "components": [
+    "component.web-fetch-summarize",
+    "component.llm-to-speech-notify"
+  ],
+  "steps": [
+    {
+      "id": "F10D77B9-9B95-4F5A-BD53-11CB97BD14AF",
+      "skillID": "builtin.webExtract",
+      "config": {
+        "includeMetadata": "false",
+        "maxChars": "60000"
+      }
+    },
+    {
+      "id": "2A9F7601-B8BD-4F8F-8210-ECB48F1C54A7",
+      "skillID": "builtin.llmGenerate",
+      "config": {
+        "llmMaxInputChars": "8000",
+        "llmMaxTokens": "1200",
+        "llmTimeout": "60",
+        "userPrompt": "Summarize the article below into a clear, spoken audio script.\nRequirements:\n- 4 to 6 paragraphs, each 2-3 sentences.\n- Open by stating the article topic in one sentence.\n- Cover the key points, findings, or arguments.\n- Keep the tone clear and conversational — written to be heard, not read.\n- End with a one-sentence takeaway.\n- Return plain text only — no markdown, bullets, headings, or asterisks.\n\nARTICLE:\n{{INPUT}}"
+      }
+    },
+    {
+      "id": "F1992CB0-51F5-47A7-9512-173E34EC4FC3",
+      "skillID": "builtin.ttsGenerate",
+      "config": {}
+    },
+    {
+      "id": "34C8DB21-C6EA-4859-848D-9CDA816C8A6F",
+      "skillID": "builtin.saveArtifact",
+      "config": {
+        "audioArtifactName": "Article Audio",
+        "saveText": "false"
+      }
+    }
+  ]
+}
