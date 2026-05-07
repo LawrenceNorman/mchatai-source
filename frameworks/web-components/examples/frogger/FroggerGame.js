@@ -254,12 +254,14 @@ export class FroggerGame {
   }
 
   installInput() {
-    // Always bind keyboard on `window`, never `document`. WebView/iframe
-    // hosts (mChatAI+ in-app preview, embedded contexts) deliver keydown
-    // to the window but not always to the document until the user clicks
-    // the document tree first. window-bound handlers fire immediately on
-    // page load and survive focus migration, which is the universal
-    // expectation across the rest of the example catalog.
+    // Robust keyboard binding pattern: window scope + capture phase +
+    // canvas focus. Without these, WebView/iframe hosts (mChatAI+
+    // in-app preview, embedded Safari without a click) can eat the
+    // keystroke before our page-level listener fires.
+    if (this.canvas) {
+      this.canvas.tabIndex = 0;
+      try { this.canvas.focus({ preventScroll: true }); } catch (_) { this.canvas.focus(); }
+    }
     window.addEventListener("keydown", (event) => {
       const keyMap = {
         ArrowUp: [-1, 0],
@@ -277,7 +279,7 @@ export class FroggerGame {
       }
       event.preventDefault();
       this.tryMove(move[0], move[1]);
-    });
+    }, { capture: true });
   }
 
   installJoystick(target) {
@@ -419,11 +421,18 @@ export class FroggerGame {
 
   playerRect() {
     const pos = this.board.cellToWorld(this.player.row, this.player.col);
+    // Tighten the collision AABB to ~half the tile (frog looks ~26px wide
+    // visually; using 28 here gives a forgiving margin without letting a
+    // car's edge phantom-clip you). Also add the water-drift offset so
+    // the collision rect tracks the VISUAL position of the frog while it
+    // glides on a log between tile snaps. Without this offset the AABB
+    // would lag the visible frog by up to TILE/2 px on water rows.
+    const dx = this.waterLanes.includes(this.player.row) ? (this._waterDriftPx || 0) : 0;
     return {
-      x: pos.x - 18,
-      y: pos.y - 18,
-      width: 36,
-      height: 36
+      x: pos.x - 14 + dx,
+      y: pos.y - 14,
+      width: 28,
+      height: 28
     };
   }
 
@@ -544,8 +553,13 @@ export class FroggerGame {
 
   drawPlayer(ctx) {
     const pos = this.board.cellToWorld(this.player.row, this.player.col);
+    // Visual drift on water: render the frog at the cell-center PLUS the
+    // sub-tile drift accumulator so it slides smoothly with the log
+    // between tile-boundary snaps. Without this the frog appeared stuck
+    // at the cell while the log slid out from under it.
+    const dx = this.waterLanes.includes(this.player.row) ? (this._waterDriftPx || 0) : 0;
     ctx.save();
-    ctx.translate(pos.x, pos.y);
+    ctx.translate(pos.x + dx, pos.y);
     // soft drop shadow under the frog
     ctx.fillStyle = "rgba(0, 0, 0, 0.35)";
     ctx.beginPath();

@@ -7,6 +7,12 @@ import { VirtualJoystick } from "../../ui/VirtualJoystick.js";
 import { AudioManager } from "../../resources/AudioManager.js";
 import { applySwatchVariables, getSwatchByID } from "../../resources/Swatches.js";
 
+// Maze layout. # = wall, . = pellet, o = power pellet.
+// Verified all pellets reachable from spawn (7,7) by BFS — the previous
+// version had 2 unreachable pellets at row 9 cols 6-7 because row 8
+// cols 6-7 were walls (`####.####`-style) blocking vertical access from
+// the bottom corridor. Opening row 8 cols 6-7 to `..` connects the
+// bottom corridor through the central play area.
 const MAZE = [
   "##############",
   "#............#",
@@ -16,7 +22,7 @@ const MAZE = [
   "#....#..#....#",
   "####.#..#.####",
   "#............#",
-  "#.##.####.##.#",
+  "#.##.#..#.##.#",
   "#o...#..#...o#",
   "##############"
 ];
@@ -66,10 +72,13 @@ export class PacmanGame {
       onUpdate: (dt) => this.update(dt),
       onDraw: () => this.draw()
     });
-    this.player = new GridMover({ row: 7, col: 7, moveDelay: 0.12, canEnter: (_, board) => board.get(_.row, _.col) !== "#" });
+    // moveDelay 0.12s = ~8 ticks/sec. Felt sluggish vs classic Pac-Man's
+    // continuous motion; tightened to 0.07s (~14 tps) for snappier turns.
+    // Ghosts get matching speed-ups so the chase pacing stays balanced.
+    this.player = new GridMover({ row: 7, col: 7, moveDelay: 0.07, canEnter: (_, board) => board.get(_.row, _.col) !== "#" });
     this.ghosts = [
-      { mover: new GridMover({ row: 1, col: 1, moveDelay: 0.22 }), color: "#fb7185", scatter: { row: 1, col: 12 } },
-      { mover: new GridMover({ row: 9, col: 12, moveDelay: 0.26 }), color: "#22d3ee", scatter: { row: 9, col: 1 } }
+      { mover: new GridMover({ row: 1, col: 1, moveDelay: 0.13 }), color: "#fb7185", scatter: { row: 1, col: 12 } },
+      { mover: new GridMover({ row: 9, col: 12, moveDelay: 0.16 }), color: "#22d3ee", scatter: { row: 9, col: 1 } }
     ];
     this.pathfinder = new AIPathfinder({ canEnter: (cell) => cell !== "#" });
     this.lives = 3;
@@ -85,13 +94,21 @@ export class PacmanGame {
     if (typeof applySwatchVariables === "function" && typeof getSwatchByID === "function") {
       applySwatchVariables(document.documentElement, getSwatchByID("retro-neon"));
     }
+    // Universal robust keyboard: window+capture phase delivers events
+    // before any host listener could swallow them; canvas tabIndex+focus
+    // makes the document tree own focus on load so keys route to us
+    // immediately (no "click to play" required).
+    if (this.canvas) {
+      this.canvas.tabIndex = 0;
+      try { this.canvas.focus({ preventScroll: true }); } catch (_) { this.canvas.focus(); }
+    }
     window.addEventListener("keydown", (event) => {
       const dir = DIRS[event.key];
       if (dir) {
         event.preventDefault();
         this.player.setDirection(dir);
       }
-    });
+    }, { capture: true });
     pacmanQuery("#restartButton").addEventListener("click", () => this.restart());
     this.engine.step(0);
     this.engine.start();
