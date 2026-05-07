@@ -1,6 +1,6 @@
 {
   "$schema_version": "1.0.0",
-  "last_updated": "2026-05-04",
+  "last_updated": "2026-05-06 +5 effect Legos (PopBurst/ScoreRise/BoardShake/SpawnDrop/HintPulse) + NL keyword expansion on chess/match3/asteroids/pong",
   "notes": "Catalog for reusable SwiftUI/AppKit macOS Lego components. AIWizard should copy canonical Swift source files into generated macOSApp artifacts before writing app-specific glue.",
   "library": {
     "id": "framework.macos-components",
@@ -1133,6 +1133,182 @@
         "Multi-mode games (gameID 'asteroids.classic' vs 'asteroids.endless')",
         "Score-attack games where the only goal is beating your own record"
       ]
+    },
+    {
+      "id": "effects.pop-burst",
+      "name": "PopBurst",
+      "category": "effects",
+      "path": "components/effects/PopBurst.swift",
+      "exports": [
+        "PopBurst",
+        "PopBurstView",
+        "PopBurstIntensity",
+        "popBurst"
+      ],
+      "status": "ready",
+      "summary": "Radial light flash for tile-clear / match-clear / explosion events. SwiftUI port of the web Lego of the same name. Drop-in for match-3, mahjong, jewel-puzzle, line-clear games. Apply as `.popBurst(trigger:)` modifier \u2014 each new non-nil trigger value spawns a one-shot flash overlay that scales out + fades. Per wisdom rule mac-028 (anim-feedback on every event) \u2014 every tile-clear needs a 'thing happened here' beat or the board reads as silent.",
+      "tags": [
+        "animation",
+        "effects",
+        "feedback",
+        "match3",
+        "arcade",
+        "macos",
+        "swiftui",
+        "one-shot",
+        "overlay"
+      ],
+      "contracts": {
+        "input": "View modifier `.popBurst(trigger: T?, intensity: PopBurstIntensity = .normal, color: Color = .yellow)`. Trigger is any Equatable+Sendable; pass Date? or UUID? so each event reads as a unique value.",
+        "output": "When trigger changes to a non-nil value, an overlay PopBurstView is spawned at view center, scales 0.4 \u2192 endScale (1.4/1.8/2.4 by intensity), opacity 0.95 \u2192 0, removes via auto-fade in 0.42-0.62s."
+      },
+      "useCases": [
+        "Match-3 / Bejeweled / Candy Crush \u2014 each cleared tile gets a burst",
+        "Asteroids / Space shooter \u2014 each enemy hit gets a burst at the impact point",
+        "Breakout / brick clear \u2014 each broken brick gets a burst",
+        "Bubble Pop \u2014 each popped bubble gets a burst",
+        "Card games \u2014 milestone hand (royal flush, blackjack)"
+      ]
+    },
+    {
+      "id": "effects.score-rise",
+      "name": "ScoreRise",
+      "category": "effects",
+      "path": "components/effects/ScoreRise.swift",
+      "exports": [
+        "ScoreRise",
+        "ScoreRiseView",
+        "scoreRise"
+      ],
+      "status": "ready",
+      "summary": "Floating '+50' / '+100' / '\u2605 COMBO' popup that rises above a tile as points are awarded. SwiftUI port of the web Lego. Universal positive feedback for any score event in any genre. Apply as `.scoreRise(trigger: '+50')` modifier OR drop a ScoreRiseView at a board point. Pairs with score-format-with-thousands-separators wisdom for \u22651000.",
+      "tags": [
+        "animation",
+        "score",
+        "feedback",
+        "match3",
+        "arcade",
+        "cards",
+        "macos",
+        "swiftui",
+        "overlay"
+      ],
+      "contracts": {
+        "input": "View modifier `.scoreRise(trigger: String?, color: Color = .white, fontSize: CGFloat = 16)` or generic variant `.scoreRise(trigger: T?, textProvider: (T)->String)`. Trigger is any Equatable+Sendable.",
+        "output": "When trigger changes to non-nil, ScoreRiseView text appears at view center, pops in (scale 0.6 \u2192 1.0 in 0.18s), rises 42pt, fades to 0 over ~0.95s, auto-removes."
+      },
+      "useCases": [
+        "Match-3 \u2014 '+50' rises from cleared tile",
+        "Breakout \u2014 '+10' rises from broken brick",
+        "Idle clicker \u2014 '+1' rises from each tap",
+        "Quiz games \u2014 'CORRECT! +25' on right answer",
+        "Combo events \u2014 'COMBO \u00d73' in yellow at chain depth 3+"
+      ]
+    },
+    {
+      "id": "effects.board-shake",
+      "name": "BoardShake",
+      "category": "effects",
+      "path": "components/effects/BoardShake.swift",
+      "exports": [
+        "BoardShake",
+        "BoardShakeIntensity",
+        "boardShake"
+      ],
+      "status": "ready",
+      "summary": "Universal 'no-go / wrong answer / illegal move' shake. SwiftUI port of the web Lego. Applies a brief side-to-side jitter (with optional rotation on .strong) to any container. Per wisdom rule mac-028 \u2014 illegal/invalid input needs an immediate motion response or players can't tell whether it failed or the game is just slow.",
+      "tags": [
+        "animation",
+        "feedback",
+        "negative",
+        "match3",
+        "cards",
+        "puzzle",
+        "input",
+        "macos",
+        "swiftui"
+      ],
+      "contracts": {
+        "input": "View modifier `.boardShake(trigger: T?, intensity: BoardShakeIntensity = .normal)`. Trigger is any Equatable+Sendable.",
+        "output": "When trigger changes, view shakes through a 5-step sequence over 0.25-0.52s by intensity (.subtle / .normal / .strong). Strong adds \u00b11\u00b0 rotation. After completion, returns to identity transform."
+      },
+      "useCases": [
+        "Match-3 \u2014 invalid swap shake on the board",
+        "Chess / checkers \u2014 illegal move shake on the source square",
+        "Sudoku \u2014 wrong digit shake on the cell",
+        "Mastermind \u2014 wrong code shake on the guess row",
+        "Password / PIN \u2014 wrong code shake on the input"
+      ]
+    },
+    {
+      "id": "effects.spawn-drop",
+      "name": "SpawnDrop",
+      "category": "effects",
+      "path": "components/effects/SpawnDrop.swift",
+      "exports": [
+        "SpawnDrop",
+        "spawnDrop"
+      ],
+      "status": "ready",
+      "summary": "Entry + exit micro-animations for tiles in any grid game. SwiftUI port of the web Lego. The view springs in from scale 0.2 with overshoot (matches the web's cubic-bezier(0.34, 1.56, 0.64, 1)), and on `popping = true` bulges + rotates 8\u00b0 + shrinks to 0. Caller removes the view from the hierarchy after the pop completes. Pairs with effects.pop-burst for the layered 'clear + flash' chain.",
+      "tags": [
+        "animation",
+        "tile-spawn",
+        "tile-pop",
+        "match3",
+        "puzzle",
+        "macos",
+        "swiftui",
+        "spring",
+        "modifier"
+      ],
+      "contracts": {
+        "input": "View modifier `.spawnDrop(popping: Bool, popDuration: Double = 0.28, spawnDuration: Double = 0.36)`. Spawn fires once on first appear; pop fires when `popping` flips false\u2192true.",
+        "output": "Entry: scale 0.2 \u2192 1.0 with spring overshoot (1.12 peak). Exit: scale 1.0 \u2192 1.35 + rotate 8\u00b0 in popDuration*0.5, then scale 1.35 \u2192 0 in popDuration*0.5."
+      },
+      "useCases": [
+        "Match-3 / Bejeweled \u2014 refilled tiles spawn-drop in",
+        "Tetris \u2014 spawned tetromino pulse",
+        "Mahjong \u2014 dealt tile entry",
+        "Solitaire \u2014 placed-card entry",
+        "Roguelikes \u2014 orb / pickup spawn"
+      ]
+    },
+    {
+      "id": "effects.hint-pulse",
+      "name": "HintPulse",
+      "category": "effects",
+      "path": "components/effects/HintPulse.swift",
+      "exports": [
+        "HintPulse",
+        "HintPulseController",
+        "HintPulseModifier",
+        "hintPulse"
+      ],
+      "status": "ready",
+      "summary": "Idle-aware hint glow for tile games. SwiftUI port of the web Lego. After idleSeconds of inactivity, surface a hint by toggling a glow on a small set of cells. Cancel on next interaction. Manual now() triggers an immediate hint that auto-fades after holdSeconds. Per wisdom rule game-idle-hint-pulse-macos \u2014 every tile puzzle reinvents this and gets corner cases wrong (forgetting to cancel on tap, leaking timers across game-over).",
+      "tags": [
+        "hint",
+        "idle",
+        "match3",
+        "sudoku",
+        "mahjong",
+        "puzzle",
+        "macos",
+        "swiftui",
+        "controller"
+      ],
+      "contracts": {
+        "input": "Construct `HintPulseController(idleSeconds: 6, holdSeconds: 2.4, findHint: { (vm: GameVM) -> [Coord] in ... })` then bind cells via `.hintPulse(active: vm.hints.isHinting(coord))`. Call `.schedule(self)` after each move; `.cancel()` on user interaction; `.now(self)` for explicit hint button; `.dispose()` on game-over.",
+        "output": "After idleSeconds, controller calls findHint, populates `cells: Set<Coord>`. Bound cells pulse glow (scale 1.12 + yellow halo) on a 1.1s repeatForever animation until cancel() or hold timeout."
+      },
+      "useCases": [
+        "Match-3 / Candy Crush \u2014 hint at next valid swap after 6s idle",
+        "Sudoku \u2014 hint at next certain digit after idle",
+        "Mahjong \u2014 hint at next pair match after idle",
+        "Solitaire \u2014 hint at next legal move after idle",
+        "Puzzles \u2014 manual hint button"
+      ]
     }
   ],
   "compositionRecipes": [
@@ -1161,7 +1337,8 @@
         "wordgame.keyboard-handling",
         "wordgame.smoke-tests",
         "effects.animation-intensity",
-        "effects.high-score-manager"
+        "effects.high-score-manager",
+        "effects.board-shake"
       ],
       "assemblyNotes": [
         "Copy all selected component files verbatim under Sources/<TargetName>/MChatAIComponents/.",
@@ -1205,7 +1382,8 @@
         "crossword.engine",
         "crossword.bank",
         "crossword.smoke-tests",
-        "effects.animation-intensity"
+        "effects.animation-intensity",
+        "effects.board-shake"
       ],
       "assemblyNotes": [
         "Copy the crossword engine verbatim and build the SwiftUI board/clue list as app-specific glue.",
@@ -1244,7 +1422,9 @@
         "effects.animation-intensity",
         "effects.sound-engine",
         "effects.level-manager",
-        "effects.high-score-manager"
+        "effects.high-score-manager",
+        "effects.board-shake",
+        "effects.spawn-drop"
       ],
       "assemblyNotes": [
         "Use MastermindEngine for duplicate-safe scoring. Do not rewrite exact/color-only peg logic in ContentView.",
@@ -1278,7 +1458,9 @@
       "starterComponents": [
         "gridpuzzle.core",
         "gridpuzzle.minesweeper",
-        "gridpuzzle.minesweeper-smoke-tests"
+        "gridpuzzle.minesweeper-smoke-tests",
+        "effects.board-shake",
+        "effects.score-rise"
       ],
       "assemblyNotes": [
         "Use MinesweeperEngine for mine placement, adjacency, flags, reveal, and flood reveal.",
@@ -1304,11 +1486,28 @@
         "candy",
         "swap",
         "cascade",
-        "tile swapping"
+        "tile swapping",
+        "match three game",
+        "match three puzzle",
+        "match-three puzzle",
+        "candy crush",
+        "candy crush style",
+        "gem matching",
+        "gem swapping",
+        "jewel match",
+        "colorful gems",
+        "swap gems",
+        "matches of three",
+        "three or more",
+        "three in a row",
+        "tile matching",
+        "match-three",
+        "bejeweled"
       ],
       "templateIDs": [],
       "existingApps": [
-        "candy-match"
+        "candy-match",
+        "candy crush"
       ],
       "starterComponents": [
         "gridpuzzle.core",
@@ -1317,7 +1516,12 @@
         "effects.animation-intensity",
         "effects.sound-engine",
         "effects.level-manager",
-        "effects.high-score-manager"
+        "effects.high-score-manager",
+        "effects.pop-burst",
+        "effects.score-rise",
+        "effects.board-shake",
+        "effects.spawn-drop",
+        "effects.hint-pulse"
       ],
       "assemblyNotes": [
         "Use Match3Engine for adjacent swaps, match detection, collapse, refill, cascades, and score.",
@@ -1344,17 +1548,34 @@
         "vector arcade",
         "top-down arcade",
         "ship",
-        "asteroid splitting"
+        "asteroid splitting",
+        "asteroids game",
+        "asteroid game",
+        "space rocks",
+        "shooting rocks",
+        "floating rocks",
+        "asteroid clone",
+        "fly a ship",
+        "fly a spaceship",
+        "rotating ship",
+        "space combat",
+        "spaceship game",
+        "shoot asteroids",
+        "break apart",
+        "split into smaller"
       ],
       "templateIDs": [],
       "existingApps": [
         "asteroids",
-        "alien-abduction"
+        "alien-abduction",
+        "space shooter"
       ],
       "starterComponents": [
         "arcade.core",
         "arcade.asteroids",
-        "arcade.smoke-tests"
+        "arcade.smoke-tests",
+        "effects.pop-burst",
+        "effects.score-rise"
       ],
       "assemblyNotes": [
         "Use AsteroidsEngine for ship rotation, thrust, shots, wrapping, rock splitting, score, lives, and waves.",
@@ -1380,16 +1601,33 @@
         "ball",
         "score to 7",
         "paddle ball",
-        "breakout"
+        "breakout",
+        "pong game",
+        "classic pong",
+        "two paddles",
+        "two-player pong",
+        "paddle game",
+        "bouncing ball",
+        "ball bouncing back",
+        "back and forth",
+        "paddle vs paddle",
+        "paddle and ball",
+        "breakout game",
+        "classic breakout",
+        "ball and paddle"
       ],
       "templateIDs": [],
       "existingApps": [
-        "pong"
+        "pong",
+        "classic pong"
       ],
       "starterComponents": [
         "arcade.core",
         "arcade.pong",
-        "arcade.smoke-tests"
+        "arcade.smoke-tests",
+        "effects.pop-burst",
+        "effects.score-rise",
+        "effects.board-shake"
       ],
       "assemblyNotes": [
         "Use PongEngine for ball physics, paddle movement, scoring, AI fallback, and win state.",
@@ -1424,7 +1662,10 @@
         "arcade.core",
         "gridpuzzle.core",
         "arcade.grid-adventure",
-        "arcade.smoke-tests"
+        "arcade.smoke-tests",
+        "effects.pop-burst",
+        "effects.score-rise",
+        "effects.board-shake"
       ],
       "assemblyNotes": [
         "Use GridAdventureEngine.adventureCastleMap() as the seed map, then add rooms, keys, doors, treasure, and enemy behavior in app glue.",
@@ -1461,7 +1702,9 @@
         "arcade.core",
         "gridpuzzle.core",
         "arcade.grid-adventure",
-        "arcade.smoke-tests"
+        "arcade.smoke-tests",
+        "effects.pop-burst",
+        "effects.score-rise"
       ],
       "assemblyNotes": [
         "Use GridAdventureEngine.froggerLaneMap() as the seed layout.",
@@ -1499,7 +1742,9 @@
         "arcade.core",
         "gridpuzzle.core",
         "arcade.grid-adventure",
-        "arcade.smoke-tests"
+        "arcade.smoke-tests",
+        "effects.pop-burst",
+        "effects.score-rise"
       ],
       "assemblyNotes": [
         "Use GridAdventureEngine.mazePelletMap() as the seed layout.",
@@ -1541,7 +1786,9 @@
         "arcade.smoke-tests",
         "effects.sound-engine",
         "effects.level-manager",
-        "effects.high-score-manager"
+        "effects.high-score-manager",
+        "effects.pop-burst",
+        "effects.score-rise"
       ],
       "assemblyNotes": [
         "Use PlatformerEngine for movement, gravity, jumping, platform collision, coins, score, and loss state.",
@@ -1582,7 +1829,9 @@
         "gridpuzzle.core",
         "arcade.tower-defense",
         "arcade.projectile",
-        "arcade.smoke-tests"
+        "arcade.smoke-tests",
+        "effects.pop-burst",
+        "effects.score-rise"
       ],
       "assemblyNotes": [
         "Use TowerDefenseEngine for pathing, waves, 4 turret kinds (basic/cannon/frost/beam), targeting, cooldowns, frost-slow effect, splash damage, lives, credits, and phase.",
@@ -1625,7 +1874,8 @@
         "gridpuzzle.core",
         "cardgame.core",
         "cardgame.blackjack",
-        "cardgame.smoke-tests"
+        "cardgame.smoke-tests",
+        "effects.score-rise"
       ],
       "assemblyNotes": [
         "Use BlackjackEngine for deal/hit/stand/dealer/settlement/bankroll behavior.",
@@ -1662,7 +1912,8 @@
         "gridpuzzle.core",
         "cardgame.core",
         "cardgame.poker",
-        "cardgame.smoke-tests"
+        "cardgame.smoke-tests",
+        "effects.score-rise"
       ],
       "assemblyNotes": [
         "Use PokerHandEvaluator for hand ranking; app glue owns betting rounds, seats, pot UI, and opponent behavior.",
@@ -1698,7 +1949,8 @@
         "gridpuzzle.core",
         "boardgame.core",
         "boardgame.checkers",
-        "boardgame.smoke-tests"
+        "boardgame.smoke-tests",
+        "effects.board-shake"
       ],
       "assemblyNotes": [
         "Use CheckersRules for setup, legal moves, optional or mandatory capture policy, move application, and kinging.",
@@ -1726,17 +1978,31 @@
         "rook",
         "knight",
         "checkmate",
-        "stalemate"
+        "stalemate",
+        "chess game",
+        "play chess",
+        "chess match",
+        "chess board",
+        "chess pieces",
+        "castling",
+        "en passant",
+        "chess ai",
+        "chess engine",
+        "chess opponent",
+        "against the computer",
+        "computer opponent"
       ],
       "templateIDs": [],
       "existingApps": [
-        "playable-chess"
+        "playable-chess",
+        "chess game"
       ],
       "starterComponents": [
         "gridpuzzle.core",
         "boardgame.core",
         "boardgame.chess",
-        "boardgame.smoke-tests"
+        "boardgame.smoke-tests",
+        "effects.board-shake"
       ],
       "assemblyNotes": [
         "Use ChessRules for setup, legal move generation, move application, check, and checkmate.",
@@ -1844,7 +2110,9 @@
         "effects.animation-intensity",
         "effects.sound-engine",
         "effects.level-manager",
-        "effects.high-score-manager"
+        "effects.high-score-manager",
+        "effects.pop-burst",
+        "effects.score-rise"
       ],
       "assemblyNotes": [
         "MANDATORY: copy the canonical SpriteKitPhysicsHelpers.swift VERBATIM into Sources/<TargetName>/MChatAIComponents/SpriteKitPhysicsHelpers.swift (preserve the BEGIN/END markers). Then COMPOSE it from app-specific code by calling at least one of: SKPhysicsHelpers.makeCircularBody, SKPhysicsHelpers.makeRectangularBody, SKPhysicsHelpers.makeOvalBody, SKPhysicsHelpers.makeStaticBody, SKPhysicsHelpers.makeSceneBoundary, SKPhysicsHelpers.snapshot(of:), or reference SKArcadeCategory.<name> / SKPhysicsContactSnapshot. Copying without composing fails the Lego provenance gate.",
