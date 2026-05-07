@@ -1,0 +1,46 @@
+{
+  "id": "1587C9B9-2A74-4824-9D8C-E8A0ACF87787",
+  "name": "Telegram Knowledge Base Bot",
+  "description": "Poll Telegram for new messages, search your knowledge base, and reply with AI",
+  "components": ["component.telegram-kb-bot"],
+  "steps": [
+    {
+      "id": "A86D9396-B0B4-4C7E-9B24-47C4B14ED5B1",
+      "skillID": "builtin.telegram",
+      "config": {
+        "telegramMode": "agentPoll",
+        "ignoreBotMessages": "true",
+        "limit": "20",
+        "offsetStoreKey": "TelegramKBBotNextOffset",
+        "persistOffset": "true",
+        "skipStepsIfNoMessage": "2",
+        "timeout": "10"
+      }
+    },
+    {
+      "id": "E294C8C4-D649-4F13-B2DA-C1BBBC16208D",
+      "skillID": "builtin.memorySearch",
+      "config": {
+        "maxResults": "5"
+      }
+    },
+    {
+      "id": "28463CA8-B21E-44EC-878B-B5C1D25A5683",
+      "skillID": "builtin.llmGenerate",
+      "config": {
+        "llmMaxTokens": "800",
+        "llmTimeout": "45",
+        "systemPrompt": "You are a helpful assistant that answers questions using a personal knowledge base. Be concise and direct. If the knowledge base has no relevant information, say so honestly.",
+        "userPrompt": "Answer the user's Telegram message using the knowledge base context below.\n\nRules:\n- Keep the reply under 200 words.\n- Quote specific facts from the knowledge base when relevant.\n- If the knowledge base doesn't contain an answer, say \"I don't have that in my notes\" and offer a general response.\n\nKNOWLEDGE BASE RESULTS:\n{{INPUT}}\n\nUSER MESSAGE: [extracted from previous telegram poll step]"
+      }
+    },
+    {
+      "id": "09B56B1F-5EA9-4652-A670-75B3C27FD795",
+      "skillID": "builtin.telegram",
+      "config": {
+        "telegramMode": "send",
+        "parseMode": "Markdown"
+      }
+    }
+  ]
+}
