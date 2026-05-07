@@ -1,0 +1,41 @@
+{
+  "id": "4C6A1BFD-B553-41DF-90BE-8FA65F337997",
+  "name": "Web Research Brief",
+  "description": "Search the web for a topic, extract page content, and synthesize a research brief",
+  "components": ["component.web-search-research"],
+  "steps": [
+    {
+      "id": "6B5EE13B-9621-4053-9073-199D27A117F7",
+      "skillID": "builtin.webSearch",
+      "config": {
+        "maxResults": "5"
+      }
+    },
+    {
+      "id": "E21E609A-A8C6-4356-928B-F93BC0071948",
+      "skillID": "builtin.webExtract",
+      "config": {
+        "maxChars": "40000",
+        "includeMetadata": "true"
+      }
+    },
+    {
+      "id": "2306E176-A7BC-4F8A-B029-7923491AE81B",
+      "skillID": "builtin.llmGenerate",
+      "config": {
+        "llmMaxInputChars": "12000",
+        "llmMaxTokens": "2400",
+        "llmTimeout": "90",
+        "userPrompt": "You are a research analyst. Synthesize the web search results below into a concise research brief.\n\n## Output Format\n\n### Summary\n2-3 sentence overview of what the research found.\n\n### Key Findings\n5-8 bullet points of the most important facts, data points, or insights.\n\n### Sources\nList each source with title and URL (if available in the content).\n\n### Gaps & Next Steps\nWhat this research doesn't answer. Suggest 2-3 follow-up searches.\n\nBe factual. Only include information present in the sources — do not hallucinate.\n\nSEARCH RESULTS:\n{{INPUT}}"
+      }
+    },
+    {
+      "id": "429E3DF4-0FF4-45B1-AB59-F8C76DE6246A",
+      "skillID": "builtin.saveArtifact",
+      "config": {
+        "artifactName": "Research Brief",
+        "artifactExtension": "md"
+      }
+    }
+  ]
+}

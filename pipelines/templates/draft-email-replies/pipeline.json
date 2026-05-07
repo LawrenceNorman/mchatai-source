@@ -1,0 +1,41 @@
+{
+  "id": "0CB3616E-A116-41CC-9B6C-36993C4886FB",
+  "name": "Draft Email Replies",
+  "description": "Fetch emails needing a reply, draft responses with AI, pause for your approval, then send",
+  "components": ["component.gmail-draft-approve-send"],
+  "steps": [
+    {
+      "id": "6E4E1A63-9738-4C1E-A669-1042B94E9D81",
+      "skillID": "builtin.gmail",
+      "config": {
+        "gmailMode": "fetch",
+        "maxResults": "5",
+        "query": "is:unread in:inbox -category:promotions -category:social"
+      }
+    },
+    {
+      "id": "2AEB339F-DE82-4A54-8FCB-52897C02C4C3",
+      "skillID": "builtin.llmGenerate",
+      "config": {
+        "llmMaxTokens": "2400",
+        "llmTimeout": "90",
+        "userPrompt": "You are a professional email assistant. For each email below that requires a reply, draft a concise, polite response.\n\nFormat each draft as:\n---\nREPLY TO: <sender name>\nSUBJECT: Re: <original subject>\n\n<draft reply body>\n---\n\nRules:\n- Match the tone of the original email (formal/casual).\n- Keep replies under 150 words.\n- If an email is informational only (no action needed), write \"NO REPLY NEEDED\" instead.\n- Do not invent commitments or facts not in the original email.\n\nEMAILS:\n{{INPUT}}"
+      }
+    },
+    {
+      "id": "5D56E4B0-1F3A-4F25-AF87-1159C5A430E4",
+      "skillID": "builtin.saveArtifact",
+      "config": {
+        "artifactName": "Draft Replies",
+        "artifactExtension": "md"
+      }
+    },
+    {
+      "id": "466BC5C8-668F-4E60-92B9-BCFC3CC82ECA",
+      "skillID": "builtin.humanInLoop",
+      "config": {
+        "prompt": "Review the draft replies above. Edit any draft in the artifact, then approve to send — or cancel to discard all."
+      }
+    }
+  ]
+}
