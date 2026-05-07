@@ -72,13 +72,16 @@ export class PacmanGame {
       onUpdate: (dt) => this.update(dt),
       onDraw: () => this.draw()
     });
-    // moveDelay 0.12s = ~8 ticks/sec. Felt sluggish vs classic Pac-Man's
-    // continuous motion; tightened to 0.07s (~14 tps) for snappier turns.
-    // Ghosts get matching speed-ups so the chase pacing stays balanced.
-    this.player = new GridMover({ row: 7, col: 7, moveDelay: 0.07, canEnter: (_, board) => board.get(_.row, _.col) !== "#" });
+    // moveDelay calibrated against the reference Pac-Man template
+    // (harness/templates/miniapps/arcade-pacman-v1) — level 1 was
+    // 5.0 tiles/sec there, so 0.18s here (~5.5tps) matches the
+    // first-level pacing. Earlier 0.07s was way too fast for a first
+    // level. Ghosts run slightly slower so the player can outrun them
+    // on level 1 (per the reference's 4.4tps start).
+    this.player = new GridMover({ row: 7, col: 7, moveDelay: 0.18, canEnter: (_, board) => board.get(_.row, _.col) !== "#" });
     this.ghosts = [
-      { mover: new GridMover({ row: 1, col: 1, moveDelay: 0.13 }), color: "#fb7185", scatter: { row: 1, col: 12 } },
-      { mover: new GridMover({ row: 9, col: 12, moveDelay: 0.16 }), color: "#22d3ee", scatter: { row: 9, col: 1 } }
+      { mover: new GridMover({ row: 1, col: 1, moveDelay: 0.22 }), color: "#fb7185", scatter: { row: 1, col: 12 } },
+      { mover: new GridMover({ row: 9, col: 12, moveDelay: 0.26 }), color: "#22d3ee", scatter: { row: 9, col: 1 } }
     ];
     this.pathfinder = new AIPathfinder({ canEnter: (cell) => cell !== "#" });
     this.lives = 3;

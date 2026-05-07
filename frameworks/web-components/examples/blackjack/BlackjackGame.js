@@ -5,11 +5,21 @@ import { ScoreBoard } from "../../ui/ScoreBoard.js";
 import { AudioManager } from "../../resources/AudioManager.js";
 import { applySwatchVariables, getSwatchByID } from "../../resources/Swatches.js";
 
+// Use the proper suit glyphs, not initials. User feedback: "instead we
+// get C for club, H for hearts and etc". The Unicode card-suit code
+// points (♣ U+2663, ♦ U+2666, ♥ U+2665, ♠ U+2660) render in every
+// modern browser font without needing custom fonts or images.
 const SUIT_LABELS = {
-  clubs: "C",
-  diamonds: "D",
-  hearts: "H",
-  spades: "S"
+  clubs: "♣",
+  diamonds: "♦",
+  hearts: "♥",
+  spades: "♠"
+};
+const SUIT_COLORS = {
+  clubs: "#0f172a",
+  diamonds: "#dc2626",
+  hearts: "#dc2626",
+  spades: "#0f172a"
 };
 
 function blackjackTarget(root, selector) {
@@ -217,9 +227,20 @@ export class BlackjackGame {
       return el;
     }
     el.dataset.color = card.color;
+    const suitGlyph = SUIT_LABELS[card.suit] || card.suit[0].toUpperCase();
+    const suitColor = SUIT_COLORS[card.suit] || (card.color === "red" ? "#dc2626" : "#0f172a");
+    // Render: top-left rank/suit, big center suit glyph, bottom-right
+    // rank/suit (rotated). Mirrors a real playing card layout.
     el.innerHTML = `
-      <div class="rank">${card.rank}</div>
-      <div class="suit">${SUIT_LABELS[card.suit] || card.suit[0].toUpperCase()}</div>
+      <div class="card-corner card-corner-tl" style="color:${suitColor}">
+        <div class="rank">${card.rank}</div>
+        <div class="suit">${suitGlyph}</div>
+      </div>
+      <div class="card-center" style="color:${suitColor}">${suitGlyph}</div>
+      <div class="card-corner card-corner-br" style="color:${suitColor}">
+        <div class="rank">${card.rank}</div>
+        <div class="suit">${suitGlyph}</div>
+      </div>
     `;
     return el;
   }
