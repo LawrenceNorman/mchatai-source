@@ -85,17 +85,35 @@ export class PlatformerGame {
     if (typeof applySwatchVariables === "function" && typeof getSwatchByID === "function") {
       applySwatchVariables(document.documentElement, getSwatchByID("retro-neon"));
     }
-    window.addEventListener("keydown", (event) => this.setKey(event, true));
-    window.addEventListener("keyup", (event) => this.setKey(event, false));
+    // Robust keyboard binding: window-capture + canvas focus. User
+    // reported "keys DO NOT WORK" in WebView/iframe hosts where window
+    // keydown can be eaten by the host shell before reaching the page.
+    // capture:true delivers the event before any other listener; the
+    // canvas tabindex + initial focus ensures the document tree owns
+    // focus on load so keystrokes route to our listener immediately.
+    window.addEventListener("keydown", (event) => this.setKey(event, true), { capture: true });
+    window.addEventListener("keyup", (event) => this.setKey(event, false), { capture: true });
+    if (this.canvas) {
+      this.canvas.tabIndex = 0;
+      try { this.canvas.focus({ preventScroll: true }); } catch (_) { this.canvas.focus(); }
+    }
     platformerQuery("#restartButton").addEventListener("click", () => this.restart());
     this.engine.step(0);
     this.engine.start();
   }
 
   setKey(event, pressed) {
-    if (["ArrowLeft", "a", "A"].includes(event.key)) this.input.left = pressed;
-    if (["ArrowRight", "d", "D"].includes(event.key)) this.input.right = pressed;
-    if ([" ", "ArrowUp", "w", "W"].includes(event.key)) this.input.jump = pressed;
+    const k = event.key;
+    let handled = false;
+    if (["ArrowLeft", "a", "A"].includes(k)) { this.input.left = pressed; handled = true; }
+    if (["ArrowRight", "d", "D"].includes(k)) { this.input.right = pressed; handled = true; }
+    if ([" ", "ArrowUp", "w", "W"].includes(k)) { this.input.jump = pressed; handled = true; }
+    if (handled) {
+      // Prevent page scroll on arrow/space when we own the input. Without
+      // this the browser scrolls the document on every keypress and the
+      // canvas drifts out of view, making it look like "keys don't work."
+      event.preventDefault();
+    }
   }
 
   handleJoystick(value) {
@@ -204,44 +222,153 @@ export class PlatformerGame {
   }
 
   drawSky() {
-    this.ctx.fillStyle = "#0c1f32";
+    // Sunrise gradient + parallax cloud puffs + distant mountains for
+    // depth instead of flat dark blue with a few stamped circles.
+    const skyGrad = this.ctx.createLinearGradient(0, 0, 0, HEIGHT);
+    skyGrad.addColorStop(0, "#1e3a5f");
+    skyGrad.addColorStop(0.55, "#fb923c");
+    skyGrad.addColorStop(1, "#fed7aa");
+    this.ctx.fillStyle = skyGrad;
     this.ctx.fillRect(0, 0, WORLD_WIDTH, HEIGHT);
-    this.ctx.fillStyle = "rgba(255,255,255,0.08)";
-    for (let x = 80; x < WORLD_WIDTH; x += 180) {
+    // distant mountains (slow parallax)
+    this.ctx.fillStyle = "rgba(15, 23, 42, 0.55)";
+    for (let x = 0; x < WORLD_WIDTH; x += 320) {
       this.ctx.beginPath();
-      this.ctx.arc(x, 70 + (x % 90), 20, 0, Math.PI * 2);
+      this.ctx.moveTo(x, GROUND_Y);
+      this.ctx.lineTo(x + 160, GROUND_Y - 130);
+      this.ctx.lineTo(x + 320, GROUND_Y);
+      this.ctx.closePath();
+      this.ctx.fill();
+    }
+    // cloud puffs (clusters of overlapping circles for fluffier look)
+    this.ctx.fillStyle = "rgba(255,255,255,0.85)";
+    for (let x = 80; x < WORLD_WIDTH; x += 240) {
+      const y = 60 + (x % 90);
+      this.ctx.beginPath();
+      this.ctx.arc(x, y, 18, 0, Math.PI * 2);
+      this.ctx.arc(x + 18, y - 4, 22, 0, Math.PI * 2);
+      this.ctx.arc(x + 38, y, 16, 0, Math.PI * 2);
       this.ctx.fill();
     }
   }
 
   drawPlatform(platform) {
+    // Brick-textured platform with grass crown. Replaces the flat
+    // green rect — gives platforms a tactile read.
+    const { x, y, width, height } = platform;
+    // grass crown
+    const crown = this.ctx.createLinearGradient(0, y, 0, y + 14);
+    crown.addColorStop(0, "#86efac");
+    crown.addColorStop(1, "#16a34a");
+    this.ctx.fillStyle = crown;
+    this.ctx.fillRect(x, y, width, 14);
+    // dirt/brick body
+    const dirt = this.ctx.createLinearGradient(0, y + 14, 0, y + height);
+    dirt.addColorStop(0, "#92400e");
+    dirt.addColorStop(1, "#451a03");
+    this.ctx.fillStyle = dirt;
+    this.ctx.fillRect(x, y + 14, width, height - 14);
+    // brick lines
+    this.ctx.strokeStyle = "rgba(0,0,0,0.28)";
+    this.ctx.lineWidth = 1;
+    for (let bx = x; bx < x + width; bx += 28) {
+      this.ctx.beginPath();
+      this.ctx.moveTo(bx, y + 14);
+      this.ctx.lineTo(bx, y + height);
+      this.ctx.stroke();
+    }
+    // grass tufts hanging over the crown
     this.ctx.fillStyle = "#22c55e";
-    this.ctx.fillRect(platform.x, platform.y, platform.width, platform.height);
-    this.ctx.fillStyle = "#166534";
-    this.ctx.fillRect(platform.x, platform.y + platform.height - 12, platform.width, 12);
+    for (let gx = x + 4; gx < x + width; gx += 16) {
+      this.ctx.fillRect(gx, y - 2, 2, 4);
+      this.ctx.fillRect(gx + 7, y - 1, 2, 3);
+    }
   }
 
   drawHazard(hazard) {
-    this.ctx.fillStyle = "#fb7185";
-    this.ctx.beginPath();
-    this.ctx.moveTo(hazard.x, hazard.y + hazard.height);
-    this.ctx.lineTo(hazard.x + hazard.width / 2, hazard.y);
-    this.ctx.lineTo(hazard.x + hazard.width, hazard.y + hazard.height);
-    this.ctx.closePath();
-    this.ctx.fill();
+    // Spike row instead of a single tall triangle. Reads as obstacles.
+    const { x, y, width, height } = hazard;
+    const spikes = Math.max(2, Math.floor(width / 14));
+    const sw = width / spikes;
+    const grad = this.ctx.createLinearGradient(0, y, 0, y + height);
+    grad.addColorStop(0, "#f87171");
+    grad.addColorStop(1, "#7f1d1d");
+    this.ctx.fillStyle = grad;
+    for (let i = 0; i < spikes; i += 1) {
+      const sx = x + i * sw;
+      this.ctx.beginPath();
+      this.ctx.moveTo(sx, y + height);
+      this.ctx.lineTo(sx + sw / 2, y);
+      this.ctx.lineTo(sx + sw, y + height);
+      this.ctx.closePath();
+      this.ctx.fill();
+    }
+    // glint
+    this.ctx.fillStyle = "rgba(255,255,255,0.6)";
+    for (let i = 0; i < spikes; i += 1) {
+      const sx = x + i * sw + sw / 2 - 1;
+      this.ctx.fillRect(sx, y + 4, 1.5, 4);
+    }
   }
 
   drawCoin(coin) {
-    this.ctx.fillStyle = "#facc15";
+    // Animated spinning coin (sin-based width pulse to fake rotation)
+    // + gold gradient + dot detail on the rim. Goes from "yellow circle"
+    // to actual collectible vibe.
+    const t = (this.engine?.elapsedTime ?? performance.now() / 1000) * 6;
+    const w = 12 * (0.6 + 0.4 * Math.abs(Math.sin(t + coin.x * 0.01)));
+    const grad = this.ctx.createRadialGradient(coin.x, coin.y, 1, coin.x, coin.y, 14);
+    grad.addColorStop(0, "#fff7ce");
+    grad.addColorStop(0.6, "#fbbf24");
+    grad.addColorStop(1, "#a16207");
+    this.ctx.fillStyle = grad;
     this.ctx.beginPath();
-    this.ctx.arc(coin.x, coin.y, 12, 0, Math.PI * 2);
+    this.ctx.ellipse(coin.x, coin.y, w, 12, 0, 0, Math.PI * 2);
     this.ctx.fill();
+    // rim highlight
+    this.ctx.strokeStyle = "rgba(255, 240, 180, 0.7)";
+    this.ctx.lineWidth = 1.5;
+    this.ctx.stroke();
+    // center "$" marker (subtle)
+    this.ctx.fillStyle = "rgba(120, 70, 0, 0.55)";
+    this.ctx.font = "bold 10px Avenir Next, sans-serif";
+    this.ctx.textAlign = "center";
+    this.ctx.textBaseline = "middle";
+    this.ctx.fillText("$", coin.x, coin.y);
   }
 
   drawGoal() {
-    this.ctx.fillStyle = "#38bdf8";
-    this.ctx.fillRect(WORLD_WIDTH - 80, GROUND_Y - 96, 26, 96);
-    this.ctx.fillStyle = "#facc15";
-    this.ctx.fillRect(WORLD_WIDTH - 80, GROUND_Y - 96, 70, 22);
+    // Flagpole + waving flag, not just two rectangles.
+    const x = WORLD_WIDTH - 80;
+    const top = GROUND_Y - 110;
+    // pole
+    this.ctx.fillStyle = "#cbd5e1";
+    this.ctx.fillRect(x, top, 4, 110);
+    // pole base ball
+    this.ctx.fillStyle = "#fbbf24";
+    this.ctx.beginPath();
+    this.ctx.arc(x + 2, top, 5, 0, Math.PI * 2);
+    this.ctx.fill();
+    // waving flag (sin-based wave)
+    const t = (this.engine?.elapsedTime ?? performance.now() / 1000) * 3;
+    this.ctx.fillStyle = "#22c55e";
+    this.ctx.beginPath();
+    this.ctx.moveTo(x + 4, top + 4);
+    for (let i = 0; i <= 10; i += 1) {
+      const fx = x + 4 + i * 5;
+      const fy = top + 4 + Math.sin(t + i * 0.6) * 3;
+      this.ctx.lineTo(fx, fy);
+    }
+    this.ctx.lineTo(x + 4 + 50, top + 26);
+    for (let i = 10; i >= 0; i -= 1) {
+      const fx = x + 4 + i * 5;
+      const fy = top + 26 + Math.sin(t + i * 0.6) * 3;
+      this.ctx.lineTo(fx, fy);
+    }
+    this.ctx.closePath();
+    this.ctx.fill();
+    // ground pad
+    this.ctx.fillStyle = "#a16207";
+    this.ctx.fillRect(x - 8, GROUND_Y - 6, 22, 6);
   }
 }

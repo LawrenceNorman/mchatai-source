@@ -116,19 +116,27 @@ export class DefenderGame {
   }
 
   bindInput() {
-    window.addEventListener("keydown", (event) => this.setKey(event, true));
-    window.addEventListener("keyup", (event) => this.setKey(event, false));
+    // Robust keyboard binding: window-capture + canvas focus. Same
+    // pattern as platformer — without capture-phase + canvas focus,
+    // WebView/iframe hosts can eat keystrokes before they reach the
+    // page, making "keys don't work" the default user experience.
+    window.addEventListener("keydown", (event) => this.setKey(event, true), { capture: true });
+    window.addEventListener("keyup", (event) => this.setKey(event, false), { capture: true });
+    if (this.canvas) {
+      this.canvas.tabIndex = 0;
+      try { this.canvas.focus({ preventScroll: true }); } catch (_) { this.canvas.focus(); }
+    }
   }
 
   setKey(event, pressed) {
-    if (["ArrowLeft", "a", "A"].includes(event.key)) this.ship.input.left = pressed;
-    if (["ArrowRight", "d", "D"].includes(event.key)) this.ship.input.right = pressed;
-    if (["ArrowUp", "w", "W"].includes(event.key)) this.ship.input.up = pressed;
-    if (["ArrowDown", "s", "S"].includes(event.key)) this.ship.input.down = pressed;
-    if (event.key === " ") {
-      this.ship.input.fire = pressed;
-      event.preventDefault();
-    }
+    const k = event.key;
+    let handled = false;
+    if (["ArrowLeft", "a", "A"].includes(k)) { this.ship.input.left = pressed; handled = true; }
+    if (["ArrowRight", "d", "D"].includes(k)) { this.ship.input.right = pressed; handled = true; }
+    if (["ArrowUp", "w", "W"].includes(k)) { this.ship.input.up = pressed; handled = true; }
+    if (["ArrowDown", "s", "S"].includes(k)) { this.ship.input.down = pressed; handled = true; }
+    if (k === " ") { this.ship.input.fire = pressed; handled = true; }
+    if (handled) event.preventDefault();
   }
 
   seedWave() {
@@ -270,21 +278,59 @@ export class DefenderGame {
   }
 
   drawStars() {
-    this.ctx.fillStyle = "#020617";
+    // Deep-space gradient + multi-density star field with subtle twinkle.
+    const skyGrad = this.ctx.createLinearGradient(0, 0, 0, HEIGHT);
+    skyGrad.addColorStop(0, "#020617");
+    skyGrad.addColorStop(0.6, "#0c1f3d");
+    skyGrad.addColorStop(1, "#1e3a8a");
+    this.ctx.fillStyle = skyGrad;
     this.ctx.fillRect(this.camera.x, 0, WIDTH, HEIGHT);
+    const t = (this.engine?.elapsedTime ?? performance.now() / 1000);
+    // distant tiny stars
     this.ctx.fillStyle = "rgba(248,250,252,0.35)";
-    for (let x = 0; x < WORLD_WIDTH; x += 90) {
-      const y = 34 + ((x * 37) % 190);
+    for (let x = 0; x < WORLD_WIDTH; x += 60) {
+      const y = 24 + ((x * 37) % 200);
+      this.ctx.fillRect(x, y, 1.5, 1.5);
+    }
+    // mid-bright stars with twinkle
+    for (let x = 30; x < WORLD_WIDTH; x += 130) {
+      const y = 50 + ((x * 53) % 170);
+      const alpha = 0.45 + 0.35 * Math.sin(t * 1.4 + x * 0.01);
+      this.ctx.fillStyle = `rgba(255, 245, 200, ${alpha})`;
       this.ctx.fillRect(x, y, 2, 2);
+    }
+    // distant nebula puff
+    this.ctx.fillStyle = "rgba(168, 85, 247, 0.08)";
+    for (let x = 0; x < WORLD_WIDTH; x += 360) {
+      this.ctx.beginPath();
+      this.ctx.arc(x + 180, 90, 90, 0, Math.PI * 2);
+      this.ctx.fill();
     }
   }
 
   drawTerrain() {
-    this.ctx.strokeStyle = "#22d3ee";
-    this.ctx.lineWidth = 3;
+    // Solid terrain with gradient fill (was just a stroke line) + ridge
+    // highlights so it reads as ground rather than a wave.
+    const terrainGrad = this.ctx.createLinearGradient(0, TERRAIN_Y - 30, 0, HEIGHT);
+    terrainGrad.addColorStop(0, "rgba(34, 211, 238, 0.4)");
+    terrainGrad.addColorStop(0.3, "#0c4a6e");
+    terrainGrad.addColorStop(1, "#020617");
+    this.ctx.fillStyle = terrainGrad;
     this.ctx.beginPath();
-    for (let x = 0; x <= WORLD_WIDTH; x += 40) {
-      const y = TERRAIN_Y + Math.sin(x * 0.015) * 22;
+    this.ctx.moveTo(0, HEIGHT);
+    for (let x = 0; x <= WORLD_WIDTH; x += 20) {
+      const y = TERRAIN_Y + Math.sin(x * 0.015) * 22 + Math.sin(x * 0.045) * 6;
+      this.ctx.lineTo(x, y);
+    }
+    this.ctx.lineTo(WORLD_WIDTH, HEIGHT);
+    this.ctx.closePath();
+    this.ctx.fill();
+    // bright ridge line
+    this.ctx.strokeStyle = "#22d3ee";
+    this.ctx.lineWidth = 2;
+    this.ctx.beginPath();
+    for (let x = 0; x <= WORLD_WIDTH; x += 20) {
+      const y = TERRAIN_Y + Math.sin(x * 0.015) * 22 + Math.sin(x * 0.045) * 6;
       if (x === 0) this.ctx.moveTo(x, y);
       else this.ctx.lineTo(x, y);
     }
@@ -292,18 +338,56 @@ export class DefenderGame {
   }
 
   drawHuman(human) {
-    this.ctx.fillStyle = human.carried ? "#fb923c" : "#f8fafc";
-    this.ctx.fillRect(human.x - 5, human.y - 16, 10, 24);
+    // Tiny stick-figure: head + torso + legs. Beats a 10x24 rectangle.
+    const fill = human.carried ? "#fb923c" : "#f8fafc";
+    this.ctx.fillStyle = fill;
+    // head
+    this.ctx.beginPath();
+    this.ctx.arc(human.x, human.y - 14, 3, 0, Math.PI * 2);
+    this.ctx.fill();
+    // body
+    this.ctx.fillRect(human.x - 1.5, human.y - 11, 3, 10);
+    // arms
+    this.ctx.fillRect(human.x - 5, human.y - 9, 10, 1.6);
+    // legs (splayed)
+    this.ctx.fillRect(human.x - 3, human.y - 1, 1.8, 6);
+    this.ctx.fillRect(human.x + 1, human.y - 1, 1.8, 6);
+    if (human.carried) {
+      // beam-up glow
+      this.ctx.fillStyle = "rgba(251, 146, 60, 0.25)";
+      this.ctx.fillRect(human.x - 4, human.y - 28, 8, 28);
+    }
   }
 
   drawEnemy(enemy) {
-    this.ctx.strokeStyle = "#fb7185";
-    this.ctx.lineWidth = 3;
+    // Saucer with glowing dome instead of crossed circle. Pulses
+    // slightly so it reads as alive.
+    const t = (this.engine?.elapsedTime ?? performance.now() / 1000);
+    const pulse = 1 + 0.08 * Math.sin(t * 6 + enemy.x * 0.01);
+    // outer ring shadow
+    this.ctx.fillStyle = "rgba(0, 0, 0, 0.35)";
     this.ctx.beginPath();
-    this.ctx.arc(enemy.x, enemy.y, enemy.radius, 0, Math.PI * 2);
-    this.ctx.moveTo(enemy.x - 20, enemy.y);
-    this.ctx.lineTo(enemy.x + 20, enemy.y);
-    this.ctx.stroke();
+    this.ctx.ellipse(enemy.x, enemy.y + 4, enemy.radius * 1.05 * pulse, enemy.radius * 0.45, 0, 0, Math.PI * 2);
+    this.ctx.fill();
+    // saucer body
+    const grad = this.ctx.createLinearGradient(0, enemy.y - enemy.radius, 0, enemy.y + enemy.radius);
+    grad.addColorStop(0, "#fbbf24");
+    grad.addColorStop(0.5, "#fb7185");
+    grad.addColorStop(1, "#7f1d1d");
+    this.ctx.fillStyle = grad;
+    this.ctx.beginPath();
+    this.ctx.ellipse(enemy.x, enemy.y, enemy.radius * pulse, enemy.radius * 0.55, 0, 0, Math.PI * 2);
+    this.ctx.fill();
+    // dome
+    this.ctx.fillStyle = "rgba(34, 211, 238, 0.85)";
+    this.ctx.beginPath();
+    this.ctx.ellipse(enemy.x, enemy.y - enemy.radius * 0.25, enemy.radius * 0.6, enemy.radius * 0.45, 0, Math.PI, 0);
+    this.ctx.fill();
+    // dome highlight
+    this.ctx.fillStyle = "rgba(255, 255, 255, 0.6)";
+    this.ctx.beginPath();
+    this.ctx.ellipse(enemy.x - enemy.radius * 0.15, enemy.y - enemy.radius * 0.4, 4, 2, 0, 0, Math.PI * 2);
+    this.ctx.fill();
   }
 
   drawRadar() {

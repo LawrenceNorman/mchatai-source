@@ -182,12 +182,17 @@ export class AdventureGame {
     if (typeof applySwatchVariables === "function" && typeof getSwatchByID === "function") {
       applySwatchVariables(document.documentElement, getSwatchByID("sunset-arcade"));
     }
+    // Universal robust keyboard pattern (capture + canvas focus).
+    if (this.canvas) {
+      this.canvas.tabIndex = 0;
+      try { this.canvas.focus({ preventScroll: true }); } catch (_) { this.canvas.focus(); }
+    }
     window.addEventListener("keydown", (event) => {
       const dir = DIRS[event.key];
       if (!dir) return;
       event.preventDefault();
       this.move(dir);
-    });
+    }, { capture: true });
     adventureQuery("#restartButton")?.addEventListener("click", () => this.restart());
     this.message.textContent = ROOMS.keep.welcome;
     this.engine.step(0);

@@ -147,8 +147,13 @@ export class AsteroidsGame {
     this._boundKeyDown = (event) => this._handleKeyDown(event);
     this._boundKeyUp = (event) => this._handleKeyUp(event);
     if (typeof window !== "undefined") {
-      window.addEventListener("keydown", this._boundKeyDown);
-      window.addEventListener("keyup", this._boundKeyUp);
+      // Universal robust keyboard: capture phase + canvas focus.
+      window.addEventListener("keydown", this._boundKeyDown, { capture: true });
+      window.addEventListener("keyup", this._boundKeyUp, { capture: true });
+      if (this.canvas) {
+        this.canvas.tabIndex = 0;
+        try { this.canvas.focus({ preventScroll: true }); } catch (_) { this.canvas.focus(); }
+      }
     }
 
     this.reset();
