@@ -13,7 +13,7 @@ function pianoQuery(root, selector) {
 export class PianoGame {
   constructor(options = {}) {
     this.root = options.root || document;
-    this.audio = (typeof AudioManager === "function") ? new AudioManager({ masterVolume: 0.08 }) : { beep: () => {}, fadeIn: () => {}, fadeOut: () => {}, stop: () => {}, loop: () => {}, stopMusic: () => {}, play: () => {} };
+    this.audio = (typeof AudioManager === "function") ? new AudioManager({ masterVolume: 0.08 }) : { beep: () => {}, noise: () => {}, fadeIn: () => {}, fadeOut: () => {}, stop: () => {}, loop: () => {}, stopMusic: () => {}, play: () => {} };
     this.notes = options.notes || NOTES;
     this.trail = [];
     this.currentNote = pianoQuery(this.root, "#currentNote");

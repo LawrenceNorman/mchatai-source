@@ -36,7 +36,7 @@ export class MastermindGame {
     });
     this.turns = new TurnBasedManager({ players: ["codebreaker"], phase: "guessing" });
     this.board = new GridBoard({ rows: this.maxTurns, cols: this.codeLength });
-    this.audio = (typeof AudioManager === "function") ? new AudioManager({ masterVolume: 0.055 }) : { beep: () => {}, fadeIn: () => {}, fadeOut: () => {}, stop: () => {}, loop: () => {}, stopMusic: () => {}, play: () => {} };
+    this.audio = (typeof AudioManager === "function") ? new AudioManager({ masterVolume: 0.055 }) : { beep: () => {}, noise: () => {}, fadeIn: () => {}, fadeOut: () => {}, stop: () => {}, loop: () => {}, stopMusic: () => {}, play: () => {} };
     this.scoreboard = new ScoreBoard({
       target: mastermindQuery(this.root, "#scoreboard"),
       storageKey: `${this.storagePrefix}.bestScore`,

@@ -34,7 +34,7 @@ export class CrosswordGame {
     this.root = options.root || document;
     this.board = new GridBoard({ rows: 5, cols: 5, fill: "" });
     this.turns = new TurnBasedManager({ players: ["solver"], phase: "solving" });
-    this.audio = (typeof AudioManager === "function") ? new AudioManager({ masterVolume: 0.045 }) : { beep: () => {}, fadeIn: () => {}, fadeOut: () => {}, stop: () => {}, loop: () => {}, stopMusic: () => {}, play: () => {} };
+    this.audio = (typeof AudioManager === "function") ? new AudioManager({ masterVolume: 0.045 }) : { beep: () => {}, noise: () => {}, fadeIn: () => {}, fadeOut: () => {}, stop: () => {}, loop: () => {}, stopMusic: () => {}, play: () => {} };
     this.scoreboard = new ScoreBoard({
       target: "#scoreboard",
       storageKey: "mchatai.crossword.best",

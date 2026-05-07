@@ -5,6 +5,27 @@ import { KeyboardInput } from "../../ui/KeyboardInput.js";
 import { ScoreBoard } from "../../ui/ScoreBoard.js";
 import { WEB_COMPONENT_SWATCHES, applySwatchVariables, getSwatchByID } from "../../resources/Swatches.js";
 import { AudioManager } from "../../resources/AudioManager.js";
+import { BoardShake } from "../../effects/BoardShake.js";
+import { ScoreRise } from "../../effects/ScoreRise.js";
+
+// Inline-assembler safety: when the inline assembler bundles this example
+// for single-file delivery it may strip the imports above without inlining
+// the effect class bodies. Capture each effect via `typeof X !== "undefined"`
+// (the only typeof form that survives undeclared identifiers) so the rest
+// of this file can null-check via Effects.X. Plain `X?.method()` throws
+// ReferenceError when X is undeclared — guard once, here.
+const Effects = (() => {
+  const grab = (name) => {
+    try {
+      // eslint-disable-next-line no-new-func
+      return new Function("name", `return typeof ${name} !== "undefined" ? ${name} : null;`)(name);
+    } catch (_) { return null; }
+  };
+  return {
+    BoardShake: grab("BoardShake"),
+    ScoreRise:  grab("ScoreRise")
+  };
+})();
 
 const KEY_ROWS = ["QWERTYUIOP", "ASDFGHJKL", "ZXCVBNM"];
 const STATUS_RANK = { absent: 1, present: 2, correct: 3 };
@@ -29,7 +50,7 @@ export class WordQuestGame {
     this.turns = new TurnBasedManager({ players: ["player"], phase: "guessing" });
     this.boardShape = new GridBoard({ rows: this.maxRows, cols: this.wordLength });
     this.grid = new LetterGrid({ rows: this.maxRows, cols: this.wordLength });
-    this.audio = (typeof AudioManager === "function") ? new AudioManager({ masterVolume: 0.06 }) : { beep: () => {}, fadeIn: () => {}, fadeOut: () => {}, stop: () => {}, loop: () => {}, stopMusic: () => {}, play: () => {} };
+    this.audio = (typeof AudioManager === "function") ? new AudioManager({ masterVolume: 0.06 }) : { beep: () => {}, noise: () => {}, fadeIn: () => {}, fadeOut: () => {}, stop: () => {}, loop: () => {}, stopMusic: () => {}, play: () => {} };
     this.scoreboard = new ScoreBoard({
       target: this.root.querySelector("#scoreboard"),
       storageKey: `${this.storagePrefix}.bestScore`,
@@ -58,6 +79,12 @@ export class WordQuestGame {
     if (typeof applySwatchVariables === "function" && typeof getSwatchByID === "function") {
       applySwatchVariables(document.documentElement, getSwatchByID("retro-neon", WEB_COMPONENT_SWATCHES));
     }
+    // Effects: BoardShake on invalid guesses (replaces this example's own .shake
+    // class), ScoreRise on correct/score events. Each Lego owns its keyframes —
+    // injectCss() once and the CSS is present without us touching this example's
+    // CSS file. Defensive: no-op if assembler dropped a Lego.
+    Effects.BoardShake?.injectCss?.();
+    Effects.ScoreRise?.injectCss?.();
     this.renderKeyboard();
     this.newRound();
   }
@@ -152,6 +179,13 @@ export class WordQuestGame {
     this.scoreboard.add(points);
     this.finished = true;
     this.audio.beep({ freq: 740, slideTo: 1180, duration: 0.16, type: "triangle" });
+    // ScoreRise Lego: float "+points STREAK" above the solved row so the win
+    // beat is felt, not just read.
+    const solvedRow = this.root.querySelector(`[data-row="${this.row}"]`) || this.root;
+    Effects.ScoreRise?.show?.(solvedRow, `+${points}${this.streak > 1 ? ` 🔥${this.streak}` : ""}`, {
+      color: "#ffd766",
+      fontSize: 18
+    });
     this.renderStreak();
     this.setMessage(`Correct: ${this.answer}. +${points} points.`);
   }
@@ -161,6 +195,10 @@ export class WordQuestGame {
     localStorage.setItem(`${this.storagePrefix}.streak`, "0");
     this.finished = true;
     this.audio.noise({ duration: 0.12 });
+    // BoardShake strong-mode: emphatic "you lost the round" beat on the whole
+    // grid (not just the row). Players need a different intensity than reject.
+    const grid = this.root.querySelector("[data-grid], .grid, #grid") || this.root;
+    Effects.BoardShake?.shake?.(grid, { intensity: "strong" });
     this.renderStreak();
     this.setMessage(`The word was ${this.answer}. Try a new word.`);
   }
@@ -168,9 +206,11 @@ export class WordQuestGame {
   reject(message) {
     this.audio.beep({ freq: 180, duration: 0.08 });
     this.setMessage(message);
+    // BoardShake Lego: invalid-guess feedback. Universal pattern — same call
+    // works on any container needing a "no-go" beat. Replaces this example's
+    // own .shake CSS class with a Lego-owned animation.
     const row = this.root.querySelector(`[data-row="${this.row}"]`);
-    row?.classList.remove("shake");
-    requestAnimationFrame(() => row?.classList.add("shake"));
+    Effects.BoardShake?.shake?.(row);
   }
 
   markRow(scored) {

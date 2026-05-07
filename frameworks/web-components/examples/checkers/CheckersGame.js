@@ -25,7 +25,7 @@ export class CheckersGame {
     this.board = new Board8x8();
     this.rules = new CheckersRules();
     this.turns = new TurnBasedManager({ players: ["red", "black"], phase: "playing" });
-    this.audio = (typeof AudioManager === "function") ? new AudioManager({ masterVolume: 0.045 }) : { beep: () => {}, fadeIn: () => {}, fadeOut: () => {}, stop: () => {}, loop: () => {}, stopMusic: () => {}, play: () => {} };
+    this.audio = (typeof AudioManager === "function") ? new AudioManager({ masterVolume: 0.045 }) : { beep: () => {}, noise: () => {}, fadeIn: () => {}, fadeOut: () => {}, stop: () => {}, loop: () => {}, stopMusic: () => {}, play: () => {} };
     this.selected = null;
     this.legalMoves = [];
     this.moveCount = 0;

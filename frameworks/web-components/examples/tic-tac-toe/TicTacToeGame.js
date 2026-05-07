@@ -25,7 +25,7 @@ export class TicTacToeGame {
     this.rules = new TicTacToeRules();
     this.ai = new TicTacToeAI({ rules: this.rules, difficulty: "perfect" });
     this.turns = new TurnBasedManager({ players: [HUMAN, AI], phase: "playing" });
-    this.audio = (typeof AudioManager === "function") ? new AudioManager({ masterVolume: 0.05 }) : { beep: () => {}, fadeIn: () => {}, fadeOut: () => {}, stop: () => {}, loop: () => {}, stopMusic: () => {}, play: () => {} };
+    this.audio = (typeof AudioManager === "function") ? new AudioManager({ masterVolume: 0.05 }) : { beep: () => {}, noise: () => {}, fadeIn: () => {}, fadeOut: () => {}, stop: () => {}, loop: () => {}, stopMusic: () => {}, play: () => {} };
     this.board = emptyBoard();
     this.score = { wins: 0, losses: 0, draws: 0 };
     this._aiPending = false;

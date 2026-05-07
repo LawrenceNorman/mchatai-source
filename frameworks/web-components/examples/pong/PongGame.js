@@ -29,7 +29,25 @@ export class PongGame {
       scoreLabel: "Rally",
       highScoreLabel: "Best"
     });
-    this.audio = (typeof AudioManager === "function") ? new AudioManager({ masterVolume: 0.05 }) : { beep: () => {}, fadeIn: () => {}, fadeOut: () => {}, stop: () => {}, loop: () => {}, stopMusic: () => {}, play: () => {} };
+    // Null-AudioManager fallback: when the inline assembler drops
+    // resources/AudioManager.js, calling any method that's NOT in this
+    // object throws TypeError mid-tick → GameManager._frame catches →
+    // engine.stop() → game appears wedged (next serve click has no
+    // ticking loop to advance the ball). Mirror EVERY method PongGame
+    // calls so this is a true silent stub.
+    // Methods used by PongGame: beep (paddle/wall hits), noise (after each point).
+    this.audio = (typeof AudioManager === "function")
+      ? new AudioManager({ masterVolume: 0.05 })
+      : {
+          beep: () => {},
+          noise: () => {},
+          fadeIn: () => {},
+          fadeOut: () => {},
+          stop: () => {},
+          loop: () => {},
+          stopMusic: () => {},
+          play: () => {}
+        };
     this.playerScoreEl = pongTarget(options.playerScoreTarget);
     this.cpuScoreEl = pongTarget(options.cpuScoreTarget);
     this.roundEl = pongTarget(options.roundTarget);
