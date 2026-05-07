@@ -1,6 +1,6 @@
 {
   "$schema_version": "1.1.0",
-  "last_updated": "2026-05-01",
+  "last_updated": "2026-05-06 effects in match3+word-logic requiredComponents",
   "notes": "Catalog for reusable vanilla ES6 mini-app Lego blocks. AIWizard should compose from these modules before generating custom logic. Prefer local bundling into published mini-app ZIPs; CDN loading is only a development option.",
   "library": {
     "id": "framework.web-components",
@@ -1613,9 +1613,9 @@
         "feedback"
       ],
       "contracts": {
-        "injectCss": "PopBurst.injectCss() — once on init, idempotent",
-        "spawn": "PopBurst.spawn(parentEl, { ttlMs?, className? }) — returns the overlay node (already attached, auto-removed)",
-        "css": "Default .pop-fx class with .pop-fx::before radial gradient; @keyframes popBurst (.5s scale 0.4 → 1.8 + opacity 0)"
+        "injectCss": "PopBurst.injectCss() \u2014 once on init, idempotent",
+        "spawn": "PopBurst.spawn(parentEl, { ttlMs?, className? }) \u2014 returns the overlay node (already attached, auto-removed)",
+        "css": "Default .pop-fx class with .pop-fx::before radial gradient; @keyframes popBurst (.5s scale 0.4 \u2192 1.8 + opacity 0)"
       },
       "goodFits": [
         "candy-match",
@@ -1647,9 +1647,9 @@
         "juice"
       ],
       "contracts": {
-        "injectCss": "SpawnDrop.injectCss() — once on init, idempotent",
-        "spawn": "SpawnDrop.spawn(tileEl) — add .spawn class, auto-clears after 360ms",
-        "pop": "await SpawnDrop.pop(tileEl) — add .popping, remove from DOM, resolves when done",
+        "injectCss": "SpawnDrop.injectCss() \u2014 once on init, idempotent",
+        "spawn": "SpawnDrop.spawn(tileEl) \u2014 add .spawn class, auto-clears after 360ms",
+        "pop": "await SpawnDrop.pop(tileEl) \u2014 add .popping, remove from DOM, resolves when done",
         "css": "@keyframes spawnPop (cubic-bezier overshoot) and tilePop (scale + rotate + drop-shadow brightness flash)"
       },
       "goodFits": [
@@ -1671,7 +1671,7 @@
         "ScoreRise"
       ],
       "status": "ready",
-      "summary": "Floating '+50' / 'COMBO ×3' popup that rises and fades over a tile or container. Universal positive feedback for any score event in any genre: tile games, breakout, shoot-em-ups, idle clickers, quiz games. Container needs position: relative or absolute.",
+      "summary": "Floating '+50' / 'COMBO \u00d73' popup that rises and fades over a tile or container. Universal positive feedback for any score event in any genre: tile games, breakout, shoot-em-ups, idle clickers, quiz games. Container needs position: relative or absolute.",
       "tags": [
         "animation",
         "effect",
@@ -1681,8 +1681,8 @@
         "combo"
       ],
       "contracts": {
-        "injectCss": "ScoreRise.injectCss() — once on init, idempotent",
-        "show": "ScoreRise.show(parentEl, text, { color?, fontSize?, ttlMs? }) — attaches and auto-removes after ~950ms",
+        "injectCss": "ScoreRise.injectCss() \u2014 once on init, idempotent",
+        "show": "ScoreRise.show(parentEl, text, { color?, fontSize?, ttlMs? }) \u2014 attaches and auto-removes after ~950ms",
         "css": ".score-popup absolute-positioned, @keyframes scoreRise (translate -46px + scale + opacity)"
       },
       "goodFits": [
@@ -1714,7 +1714,7 @@
         "feedback"
       ],
       "contracts": {
-        "injectCss": "BoardShake.injectCss() — once on init, idempotent",
+        "injectCss": "BoardShake.injectCss() \u2014 once on init, idempotent",
         "shake": "BoardShake.shake(el, { intensity?: 'normal'|'strong', durationMs? })",
         "css": "@keyframes shakeFx (~350ms) and shakeFxStrong (~500ms with rotation)"
       },
@@ -2556,18 +2556,21 @@
         "word-quest"
       ],
       "starterComponents": [
-        "ui.mini-header",
         "core.turn-based-manager",
         "entities.grid-board",
         "entities.letter-grid",
         "ui.keyboard-input",
+        "ui.mini-header",
         "ui.scoreboard",
         "resources.swatches",
-        "resources.audio-manager"
+        "resources.audio-manager",
+        "effects.board-shake",
+        "effects.score-rise"
       ],
       "assemblyNotes": [
         "Build Word Quest as a Wordle clone, not a generic word builder: one hidden five-letter answer, six rows of five cells, Enter/Delete/New Word controls, green/yellow/gray feedback, and colored QWERTY keyboard keys.",
-        "Use LetterGrid for guesses and feedback; generate dictionary/level content separately from grid scoring."
+        "Use LetterGrid for guesses and feedback; generate dictionary/level content separately from grid scoring.",
+        "Adopt effects/ Legos for visual feedback: BoardShake.shake(row) on invalid guesses, ScoreRise.show(row, '+points STREAK') on correct. Each effect Lego exports an injectCss() helper \u2014 call once on init so @keyframes are present before the first event. A wordle without invalid-shake or score-rise reads as broken even when logic is correct."
       ],
       "requiredComponents": [
         "core.turn-based-manager",
@@ -2575,12 +2578,13 @@
         "entities.letter-grid",
         "ui.keyboard-input",
         "ui.mini-header",
-        "ui.scoreboard"
-      ],
-      "optionalComponents": [
+        "ui.scoreboard",
+        "resources.swatches",
         "resources.audio-manager",
-        "resources.swatches"
-      ]
+        "effects.board-shake",
+        "effects.score-rise"
+      ],
+      "optionalComponents": []
     },
     {
       "id": "recipe.mastermind",
@@ -2727,7 +2731,7 @@
       "assemblyNotes": [
         "Use TileSwapper for selection/swap input and Match3Logic for matches/cascades; generate tile skins and level goals only.",
         "Do not stop at an import shell. A valid match-three app must render a visible tile board, selectable adjacent swaps, match/cascade resolution, score/combo HUD, and restart/shuffle controls.",
-        "Adopt the effects/ Legos for visual feedback: SpawnDrop for tile entry/exit, PopBurst on every match, ScoreRise on score events, BoardShake on invalid swaps, HintPulse for idle hints. Each effect exports an injectCss() helper — call once on init so the @keyframes are present. A board with no animations on match/swap/score events should be treated as missing required juice, not 'minimal-by-design'."
+        "Adopt the effects/ Legos for visual feedback: SpawnDrop for tile entry/exit, PopBurst on every match, ScoreRise on score events, BoardShake on invalid swaps, HintPulse for idle hints. Each effect exports an injectCss() helper \u2014 call once on init so the @keyframes are present. A board with no animations on match/swap/score events should be treated as missing required juice, not 'minimal-by-design'."
       ],
       "requiredComponents": [
         "core.turn-based-manager",
@@ -2735,12 +2739,17 @@
         "entities.match3-logic",
         "entities.tile-swapper",
         "ui.mini-header",
-        "ui.scoreboard"
-      ],
-      "optionalComponents": [
+        "ui.scoreboard",
+        "ui.svg-shapes",
+        "resources.swatches",
         "resources.audio-manager",
-        "resources.swatches"
-      ]
+        "effects.hint-pulse",
+        "effects.pop-burst",
+        "effects.spawn-drop",
+        "effects.score-rise",
+        "effects.board-shake"
+      ],
+      "optionalComponents": []
     },
     {
       "id": "recipe.blackjack",
