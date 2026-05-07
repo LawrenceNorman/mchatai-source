@@ -1,6 +1,6 @@
 {
   "packID": "macos-app",
-  "version": 27,
+  "version": 28,
   "displayName": "macOS App Generation Wisdom",
   "description": "Rules for generating executable macOS apps (SwiftUI / AppKit) via Swift Playground. Focused on making the generated binary actually appear as a visible, interactive window \u2014 not a headless background process.",
   "categories": [
@@ -333,6 +333,33 @@
         "Real incident 2026-05-04: shipped Lunar Lander v1 had 'GAME OVER score=0' as static HUD. Catalog Minesweeper reference had hidden 'New Game' in controls. Same family of misses."
       ],
       "appliesTo": "macOSApp"
+    },
+    {
+      "id": "mac-029",
+      "rule": "SKPhysicsHelpers.makeSceneBoundary creates an EDGE-LOOP physics body covering all four sides of the supplied rect. Entities (bubbles, balls, pucks) MUST spawn INSIDE the rect, not above/outside it. Spawning at `y = size.height + radius + 6` puts the entity OUTSIDE the boundary box — it bounces off the outside of the top wall every frame, never enters the visible play area, and the player sees a blank screen. Correct pattern: spawn just inside the top edge with `y = size.height - radius - 6` and let gravity pull entities down through the visible area. For `gravity = .standardGravity` (which is `(0, -9.8)` — UP-positive in SpriteKit), entities spawning at the top fall toward the bottom; for inverted gravity, mirror the logic.",
+      "why": "BubblePop canary 2026-05-06 shipped with bubbles spawning at `y = size.height + radius + 6` (i.e. 6pt OUTSIDE the top boundary). Game compiled clean, audio events fired (proving entities exist in the physics world), but the play area was blank — bubbles bounced eternally on the outside of the top wall. User saw a working HUD with Score/Lives but no bubbles, called it 'blank screen.' The fix is one character: replace `+` with `-` on the y-coordinate. The Lego is correct; the spawn-position math is the trap. Generalizes to every makeSceneBoundary user: pong (ball serve), asteroids (asteroid spawn at edges), platformer (player respawn).",
+      "severity": "critical",
+      "appliesTo": "macOSApp",
+      "examples": [
+        "WRONG (bubbles bounce off the outside of the top wall): bubble.position = CGPoint(x: random_x, y: size.height + radius + 6)",
+        "RIGHT (bubbles spawn just inside the top, fall down): bubble.position = CGPoint(x: random_x, y: size.height - radius - 6)",
+        "RIGHT (pong ball serve from center): ball.position = CGPoint(x: size.width / 2, y: size.height / 2)",
+        "RIGHT (asteroid spawn at random edge, traveling inward): pick edge e; place 1pt INSIDE that edge; velocity points toward center",
+        "Diagnostic tip: if SoundEngine.shared.play(.impactPlate) or similar wall-hit SFX is firing repeatedly but the play area looks empty, entities are bouncing OUTSIDE the boundary. Print bubble.position.y and compare to size.height — if y > size.height, the spawn-outside bug is hitting."
+      ]
+    },
+    {
+      "id": "mac-030",
+      "rule": "SoundEngine.swift exports a singleton-shared instance: `SoundEngine.shared`. To play a SFX, ALWAYS qualify the call as `SoundEngine.shared.play(.sfxCase, volume: vol)` — NOT `sound.play(.sfxCase)` where `sound` is `@ObservedObject sound = SoundEngine.shared`. The `@ObservedObject` wrapper exposes published properties (mute, intensity) for SwiftUI binding, but `play()` is a method on the underlying class that requires either the wrapper-projected `.shared` qualifier OR a fully-qualified call. The bare `sound.play(.x)` form may compile in some Swift versions but fails Swift 6 strict resolution (`cannot infer contextual base in reference to member 'x'`) when SFX is a separate enum and play is overloaded.",
+      "why": "Native Pong canary (com.mchatai.wizard.native-pong, 2026-05-04) shipped with `sound.play(.uiButtonTap, volume: 0.5)` where `sound: SoundEngine = SoundEngine.shared`. Compiled clean on macOS 14.x but Swift 6 toolchain rejects: 'cannot infer contextual base in reference to member uiButtonTap'. Several other apps had the same pattern. Always-qualify avoids the inference failure entirely.",
+      "severity": "high",
+      "appliesTo": "macOSApp",
+      "examples": [
+        "RIGHT: SoundEngine.shared.play(.match3Pop, volume: 0.6)",
+        "RIGHT: SoundEngine.shared.play(.uiButtonTap)",
+        "WRONG: sound.play(.uiButtonTap, volume: 0.5)  // — Swift 6 rejects, depending on overload set",
+        "WRONG: SoundEngine.shared.play(.x) where x isn't a real SFX case — check the enum first by reading SoundEngine.swift's `case <name> = \"<asset-id>\"` lines."
+      ]
     },
     {
       "id": "mac-027",
@@ -1001,5 +1028,5 @@
       ]
     }
   ],
-  "_last_updated": "2026-05-06 mac-027 (HUD minimalism) + mac-028 (anim-feedback on every event) added — macOS analogs of web u-hud-minimalism + vq-anim-feedback rules"
+  "_last_updated": "2026-05-07 mac-029 (SKPhysicsHelpers spawn INSIDE boundary) + mac-030 (SoundEngine.shared.play qualifier) added — both surfaced by BubblePop blank-screen + Pong compile-fail incidents"
 }

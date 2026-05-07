@@ -1,0 +1,33 @@
+{
+  "id": "D0C0304B-201F-4884-A066-6A6232469A55",
+  "name": "Run Shell & Summarize",
+  "description": "Execute a shell command and have the AI summarize the output as a notification",
+  "components": ["component.shell-summarize"],
+  "steps": [
+    {
+      "id": "5F4D4A31-6388-4D3F-970B-FD9EEA0E9A01",
+      "skillID": "builtin.shell.cliExecute",
+      "config": {
+        "command": "echo 'Replace this with your command'"
+      }
+    },
+    {
+      "id": "2928AF5C-BFF7-44EE-8F46-97BFE48C8F06",
+      "skillID": "builtin.llmGenerate",
+      "config": {
+        "llmMaxInputChars": "4000",
+        "llmMaxTokens": "800",
+        "llmTimeout": "45",
+        "userPrompt": "Summarize the shell command output below in plain English.\n\nRequirements:\n- 2-4 sentences maximum.\n- State what the command did and what the result means.\n- Flag any errors, warnings, or anomalies.\n- If the output is empty or the command succeeded silently, say so.\n\nOUTPUT:\n{{INPUT}}"
+      }
+    },
+    {
+      "id": "56C630D5-8879-4D0C-A84F-064713A30969",
+      "skillID": "builtin.notify",
+      "config": {
+        "notifyTitle": "Shell Run Complete",
+        "notifyBody": "{{INPUT}}"
+      }
+    }
+  ]
+}

@@ -1,0 +1,123 @@
+{
+  "$schema_version": "1.0.0",
+  "last_updated": "2026-05-06",
+  "notes": "Catalog of reusable pipeline step patterns (Lego bricks) for mChatAI+ AI Automation. AIWizard and pipeline-builder prompts should compose from these components before generating custom steps. CONTEXT.md has the full assembly guide.",
+  "library": {
+    "id": "framework.pipeline-components",
+    "name": "Pipeline Lego Components",
+    "platform": "mchatai-plus",
+    "runtime": "pipeline-engine",
+    "contextFile": "CONTEXT.md",
+    "templateDirectory": "../templates/"
+  },
+  "components": [
+    {
+      "id": "component.web-fetch-summarize",
+      "name": "Web Fetch + Summarize",
+      "steps": ["builtin.webExtract", "builtin.llmGenerate"],
+      "summary": "Fetch a URL and summarize its content with an LLM.",
+      "tags": ["web", "summarize", "research"],
+      "requiredCredentials": [],
+      "outputType": "text"
+    },
+    {
+      "id": "component.llm-to-speech-notify",
+      "name": "LLM → Speech → Notify",
+      "steps": ["builtin.ttsGenerate", "builtin.saveArtifact", "builtin.notify"],
+      "summary": "Convert LLM text output to speech, save audio artifact, and notify the user.",
+      "tags": ["audio", "tts", "podcast", "notify"],
+      "requiredCredentials": [],
+      "outputType": "audio"
+    },
+    {
+      "id": "component.llm-to-doc-save",
+      "name": "LLM → Document Save",
+      "steps": ["builtin.llmGenerate", "builtin.saveArtifact"],
+      "summary": "Generate text with an LLM and save as a markdown artifact.",
+      "tags": ["document", "writing", "save"],
+      "requiredCredentials": [],
+      "outputType": "document"
+    },
+    {
+      "id": "component.feed-to-podcast",
+      "name": "Feed → Podcast",
+      "steps": ["builtin.loadWebFeed", "builtin.llmGenerate", "builtin.saveArtifact", "builtin.ttsGenerate", "builtin.saveArtifact", "builtin.notify"],
+      "summary": "Full podcast chain: fetch RSS feed, write script, convert to audio, notify.",
+      "tags": ["podcast", "rss", "audio", "news"],
+      "requiredCredentials": [],
+      "outputType": "audio"
+    },
+    {
+      "id": "component.gmail-digest",
+      "name": "Gmail Digest",
+      "steps": ["builtin.gmail", "builtin.llmGenerate", "builtin.saveArtifact", "builtin.notify"],
+      "summary": "Fetch unread emails, summarize with LLM, save digest, notify.",
+      "tags": ["email", "gmail", "digest", "productivity"],
+      "requiredCredentials": ["google-oauth"],
+      "outputType": "document"
+    },
+    {
+      "id": "component.gmail-draft-approve-send",
+      "name": "Gmail Draft → Approve → Send",
+      "steps": ["builtin.gmail", "builtin.llmGenerate", "builtin.humanInLoop", "builtin.gmail"],
+      "summary": "Fetch emails, draft replies with LLM, pause for human approval, then send.",
+      "tags": ["email", "gmail", "human-in-the-loop", "draft"],
+      "requiredCredentials": ["google-oauth"],
+      "outputType": "sent-email"
+    },
+    {
+      "id": "component.telegram-kb-bot",
+      "name": "Telegram Knowledge Base Bot",
+      "steps": ["builtin.telegram", "builtin.memorySearch", "builtin.llmGenerate", "builtin.telegram"],
+      "summary": "Poll Telegram for messages, search knowledge base, reply with LLM.",
+      "tags": ["telegram", "bot", "knowledge-base", "messaging"],
+      "requiredCredentials": ["telegram-bot-token"],
+      "outputType": "message"
+    },
+    {
+      "id": "component.mcp-fetch-summarize",
+      "name": "MCP Fetch + Summarize",
+      "steps": ["builtin.mcp.toolCall", "builtin.llmGenerate", "builtin.saveArtifact", "builtin.notify"],
+      "summary": "Call an MCP server tool (e.g. fetch), summarize the result, save and notify.",
+      "tags": ["mcp", "fetch", "summarize", "power-user"],
+      "requiredCredentials": ["mcp-server"],
+      "outputType": "document"
+    },
+    {
+      "id": "component.todo-to-report",
+      "name": "Todos → Report",
+      "steps": ["builtin.todoList", "builtin.llmGenerate", "builtin.saveArtifact"],
+      "summary": "Fetch all todos, analyze or summarize with LLM, save as a report.",
+      "tags": ["todos", "productivity", "report"],
+      "requiredCredentials": [],
+      "outputType": "document"
+    },
+    {
+      "id": "component.shell-summarize",
+      "name": "Shell → Summarize → Notify",
+      "steps": ["builtin.shell.cliExecute", "builtin.llmGenerate", "builtin.notify"],
+      "summary": "Run a shell command and have the LLM summarize the output.",
+      "tags": ["shell", "dev", "automation"],
+      "requiredCredentials": [],
+      "outputType": "notification"
+    },
+    {
+      "id": "component.file-review",
+      "name": "File → LLM Review → Save",
+      "steps": ["builtin.readFile", "builtin.llmGenerate", "builtin.saveArtifact"],
+      "summary": "Read a file, run an LLM review (bugs, security, clarity), save the report.",
+      "tags": ["dev", "code-review", "security", "writing"],
+      "requiredCredentials": [],
+      "outputType": "document"
+    },
+    {
+      "id": "component.web-search-research",
+      "name": "Web Search → Extract → Synthesize",
+      "steps": ["builtin.webSearch", "builtin.webExtract", "builtin.llmGenerate", "builtin.saveArtifact"],
+      "summary": "Search the web for a topic, extract page content, synthesize a research brief.",
+      "tags": ["research", "web", "search"],
+      "requiredCredentials": [],
+      "outputType": "document"
+    }
+  ]
+}

@@ -1,0 +1,43 @@
+{
+  "id": "6815D993-3738-4E12-B585-BB3F408FF193",
+  "name": "Podcast from Text",
+  "description": "Polish a text input into a spoken podcast script and convert to audio",
+  "components": [
+    "component.llm-to-doc-save",
+    "component.llm-to-speech-notify"
+  ],
+  "steps": [
+    {
+      "id": "39FE7193-237C-4202-8016-37BEE01D4016",
+      "skillID": "builtin.llmGenerate",
+      "config": {
+        "llmMaxTokens": "2400",
+        "llmTimeout": "90",
+        "userPrompt": "Transform the notes or text below into a polished, natural spoken podcast script.\nRequirements:\n- 5 to 10 short paragraphs, each 2-4 sentences.\n- Open with a warm 1-sentence host intro.\n- Keep the tone conversational and engaging, not formal.\n- Preserve all key facts, names, and dates from the source.\n- End with a brief sign-off (1 sentence).\n- Return plain text only — no markdown headings, bullets, asterisks, or code fences.\n\nSOURCE TEXT:\n{{INPUT}}"
+      }
+    },
+    {
+      "id": "760622F7-45DA-49FC-AC8A-C27224809118",
+      "skillID": "builtin.saveArtifact",
+      "config": {
+        "artifactName": "Podcast Script",
+        "artifactExtension": "md"
+      }
+    },
+    {
+      "id": "F965ABE1-68D0-46F9-94BA-96923967A86D",
+      "skillID": "builtin.ttsGenerate",
+      "config": {}
+    },
+    {
+      "id": "D3B9F661-5399-4B67-B99D-16FE4FD10CD6",
+      "skillID": "builtin.saveArtifact",
+      "config": {
+        "audioArtifactName": "Podcast Audio",
+        "saveText": "false",
+        "notifyTitle": "Podcast from Text",
+        "notifyBody": "Your podcast is ready to play."
+      }
+    }
+  ]
+}

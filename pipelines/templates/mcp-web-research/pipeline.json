@@ -1,0 +1,43 @@
+{
+  "id": "955DE375-2D4D-4445-9BE4-046A046E1809",
+  "name": "MCP Web Research",
+  "description": "Fetch a URL via the MCP fetch server, summarize with AI, save and notify",
+  "components": ["component.mcp-fetch-summarize"],
+  "steps": [
+    {
+      "id": "0F4B0A97-71A1-4F00-87C6-A7980EB37B41",
+      "skillID": "builtin.mcp.toolCall",
+      "config": {
+        "serverID": "fetch",
+        "toolName": "fetch",
+        "arguments": "{\"url\": \"https://news.ycombinator.com\", \"max_length\": 10000}"
+      }
+    },
+    {
+      "id": "3694D221-1602-4004-98C5-15277B0620E0",
+      "skillID": "builtin.llmGenerate",
+      "config": {
+        "llmMaxInputChars": "8000",
+        "llmMaxTokens": "2400",
+        "llmTimeout": "90",
+        "userPrompt": "You are a research analyst. Summarize the fetched web content below into a structured brief.\n\n## Summary\n2-3 sentence overview of the page and its main content.\n\n## Key Points\n5-8 bullet points of the most important information.\n\n## Notable Items\nAnything surprising, important, or worth acting on.\n\n## Source\nNote the URL and date if visible in the content.\n\nBe factual and concise. Only include what's in the content.\n\nCONTENT:\n{{INPUT}}"
+      }
+    },
+    {
+      "id": "2ED33B23-B869-4820-A40B-EFF3059BB3C7",
+      "skillID": "builtin.saveArtifact",
+      "config": {
+        "artifactName": "Web Research Brief",
+        "artifactExtension": "md"
+      }
+    },
+    {
+      "id": "AC544EE8-5DB7-4859-9F43-DCF99C58800A",
+      "skillID": "builtin.notify",
+      "config": {
+        "notifyTitle": "MCP Web Research",
+        "notifyBody": "Your research brief is ready."
+      }
+    }
+  ]
+}
