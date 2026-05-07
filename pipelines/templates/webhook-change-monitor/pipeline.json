@@ -1,0 +1,35 @@
+{
+  "id": "94ECCBB0-8CDB-4B1E-BFE2-14D4700C636E",
+  "name": "Webhook Change Monitor",
+  "description": "Poll a URL or webhook endpoint and notify you when the response changes meaningfully",
+  "components": ["component.web-fetch-summarize"],
+  "steps": [
+    {
+      "id": "D475B4EE-E321-43FB-9EBD-000D750F8EC8",
+      "skillID": "builtin.webExtract",
+      "config": {
+        "maxChars": "20000",
+        "includeMetadata": "false",
+        "url": "https://example.com/status"
+      }
+    },
+    {
+      "id": "148DD146-1B2C-44CF-86C6-14A5C25F3A44",
+      "skillID": "builtin.llmGenerate",
+      "config": {
+        "llmMaxInputChars": "4000",
+        "llmMaxTokens": "400",
+        "llmTimeout": "30",
+        "userPrompt": "You are monitoring a webpage or API endpoint for meaningful changes.\n\nAnalyze the content below and determine if there is anything noteworthy:\n- New information, status changes, price changes, new entries, errors\n- Do NOT flag minor formatting or timestamp-only changes\n\nRespond with:\n- \"NO_CHANGE\" if nothing meaningful changed\n- A 1-3 sentence plain English summary of what changed if something is noteworthy\n\nCONTENT:\n{{INPUT}}"
+      }
+    },
+    {
+      "id": "4092ADBE-BB58-42DD-B3F5-CB3D4D9B8FFE",
+      "skillID": "builtin.notify",
+      "config": {
+        "notifyTitle": "Monitor Alert",
+        "notifyBody": "{{INPUT}}"
+      }
+    }
+  ]
+}

@@ -1,0 +1,33 @@
+{
+  "id": "4F88DC51-90DD-43ED-97EC-5953B0EAC072",
+  "name": "Code Security Review",
+  "description": "Read a source file and produce an AI security and bug review report",
+  "components": ["component.file-review"],
+  "steps": [
+    {
+      "id": "33E195FE-61E4-4E05-AAC0-24481C7E35DF",
+      "skillID": "builtin.readFile",
+      "config": {
+        "path": "/path/to/your/file.swift"
+      }
+    },
+    {
+      "id": "9F27310E-A03F-47A8-88FE-162AB25EDB86",
+      "skillID": "builtin.llmGenerate",
+      "config": {
+        "llmMaxInputChars": "8000",
+        "llmMaxTokens": "2400",
+        "llmTimeout": "90",
+        "userPrompt": "You are a senior security engineer. Review the code below for security vulnerabilities, bugs, and code quality issues.\n\n## Output Format\n\n### Security Issues\nFor each issue found:\n- **Severity**: Critical / High / Medium / Low\n- **Location**: function or line description\n- **Issue**: what the problem is\n- **Fix**: specific remediation\n\n### Bugs & Logic Errors\nNon-security bugs, edge cases, or incorrect logic. Same format.\n\n### Code Quality\n2-4 observations about maintainability, naming, or architecture.\n\n### Summary\nOne sentence: overall risk level and top priority fix.\n\nIf no issues found in a category, write \"None found.\"\n\nCODE:\n{{INPUT}}"
+      }
+    },
+    {
+      "id": "B13EF613-7735-4AD6-9065-2864C657CAE3",
+      "skillID": "builtin.saveArtifact",
+      "config": {
+        "artifactName": "Security Review",
+        "artifactExtension": "md"
+      }
+    }
+  ]
+}

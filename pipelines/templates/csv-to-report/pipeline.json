@@ -1,0 +1,26 @@
+{
+  "id": "666591B3-36FC-411C-9A39-DFD103E9C8C5",
+  "name": "CSV to Report",
+  "description": "Paste CSV data and get an AI-analyzed report with key stats, patterns, and insights",
+  "components": ["component.llm-to-doc-save"],
+  "steps": [
+    {
+      "id": "17CBC1AC-9F02-4EF6-A1CF-63BC1AAC98EC",
+      "skillID": "builtin.llmGenerate",
+      "config": {
+        "llmMaxInputChars": "8000",
+        "llmMaxTokens": "2400",
+        "llmTimeout": "90",
+        "userPrompt": "Analyze the CSV data below and produce a clear, structured report.\n\n## Output Format\n\n### Dataset Overview\n- Number of rows and columns\n- Column names and data types (inferred)\n- Any obvious data quality issues (blanks, inconsistencies, duplicates)\n\n### Key Statistics\nFor numeric columns: min, max, average, notable outliers.\nFor text/category columns: unique value counts, most common values.\n\n### Patterns & Insights\n3-5 bullet points highlighting the most interesting findings.\n\n### Recommended Actions\n1-3 concrete next steps based on what the data shows.\n\nBe specific — reference actual values from the data.\n\nCSV DATA:\n{{INPUT}}"
+      }
+    },
+    {
+      "id": "EB99F95C-6EE1-46AE-BC06-BE7E8FBF91A6",
+      "skillID": "builtin.saveArtifact",
+      "config": {
+        "artifactName": "CSV Analysis Report",
+        "artifactExtension": "md"
+      }
+    }
+  ]
+}

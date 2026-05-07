@@ -1,0 +1,32 @@
+{
+  "id": "7CA6F0A8-86E4-4ABA-BDDB-D746E0420718",
+  "name": "Daily Slack Summary",
+  "description": "Generate a daily todo and priorities summary and post it to a Slack channel",
+  "components": ["component.todo-to-report"],
+  "steps": [
+    {
+      "id": "10ADC3A0-1465-481F-A588-FB0BCBDF0FF6",
+      "skillID": "builtin.todoList",
+      "config": {
+        "includeCompleted": "false",
+        "includeNotes": "false"
+      }
+    },
+    {
+      "id": "3DB65D0C-B7D3-4E45-8BEE-5907198D1421",
+      "skillID": "builtin.llmGenerate",
+      "config": {
+        "llmMaxTokens": "600",
+        "llmTimeout": "45",
+        "userPrompt": "Generate a brief daily standup-style Slack message from the todo items below.\n\nFormat (Slack markdown):\n*Good morning, team!* :wave:\n\n*Working on today:*\n• <item 1>\n• <item 2>\n• <item 3>\n\n*Blockers:* <none, or list them>\n\nRules:\n- Maximum 5 items in \"Working on today\".\n- Use Slack markdown (*bold*, _italic_, :emoji:).\n- Keep it under 100 words total.\n- Pick the most important items — ignore minor todos.\n\nTODOS:\n{{INPUT}}"
+      }
+    },
+    {
+      "id": "535929D2-65DB-4450-8FB8-EB9C83E7A4CE",
+      "skillID": "builtin.slack",
+      "config": {
+        "channel": "#general"
+      }
+    }
+  ]
+}
