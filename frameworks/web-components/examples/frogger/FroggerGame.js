@@ -57,24 +57,81 @@ class LaneActor extends PathFollower {
   draw(ctx) {
     ctx.save();
     ctx.translate(this.x, this.y);
-    ctx.fillStyle = this.color;
 
     if (this.kind === "log") {
-      ctx.fillRect(-this.width / 2, -this.height / 2, this.width, this.height);
-      ctx.fillStyle = "rgba(70, 32, 12, 0.35)";
-      for (let x = -this.width / 2 + 18; x < this.width / 2; x += 34) {
-        ctx.beginPath();
-        ctx.arc(x, 0, 8, 0, Math.PI * 2);
-        ctx.fill();
-      }
-    } else {
-      const r = 8;
+      // Log: dark wood base + lighter top stripe (sun-kissed) + grain
+      // ridges + darker end caps so the logs read as solid 3D objects on
+      // the water rather than flat brown rectangles.
+      const w = this.width;
+      const h = this.height;
+      const grad = ctx.createLinearGradient(0, -h / 2, 0, h / 2);
+      grad.addColorStop(0, "#a36a3a");
+      grad.addColorStop(0.5, "#7a4a26");
+      grad.addColorStop(1, "#4f2f17");
+      ctx.fillStyle = grad;
       ctx.beginPath();
-      ctx.roundRect(-this.width / 2, -this.height / 2, this.width, this.height, r);
+      ctx.roundRect(-w / 2, -h / 2, w, h, h / 2);
       ctx.fill();
-      ctx.fillStyle = "rgba(255,255,255,0.22)";
-      ctx.fillRect(-this.width / 2 + 10, -this.height / 2 + 6, 24, 8);
-      ctx.fillRect(this.width / 2 - 34, -this.height / 2 + 6, 24, 8);
+      // top highlight
+      ctx.fillStyle = "rgba(255, 220, 170, 0.18)";
+      ctx.fillRect(-w / 2 + 12, -h / 2 + 4, w - 24, 4);
+      // grain ridges
+      ctx.strokeStyle = "rgba(40, 22, 8, 0.5)";
+      ctx.lineWidth = 1;
+      for (let x = -w / 2 + 24; x < w / 2 - 12; x += 32) {
+        ctx.beginPath();
+        ctx.moveTo(x, -h / 2 + 6);
+        ctx.lineTo(x, h / 2 - 6);
+        ctx.stroke();
+      }
+      // end-cap rings
+      ctx.fillStyle = "rgba(50, 28, 12, 0.55)";
+      [-w / 2 + 8, w / 2 - 8].forEach((cx) => {
+        ctx.beginPath();
+        ctx.arc(cx, 0, 7, 0, Math.PI * 2);
+        ctx.fill();
+      });
+    } else {
+      // Car: rounded body, contrasting roof, headlights pointing in the
+      // direction of travel, wheels at the corners. Distinct from the
+      // simple roundRect so each lane reads as moving traffic.
+      const w = this.width;
+      const h = this.height;
+      const r = 10;
+      // body shadow
+      ctx.fillStyle = "rgba(0,0,0,0.4)";
+      ctx.beginPath();
+      ctx.roundRect(-w / 2 + 2, -h / 2 + 4, w, h, r);
+      ctx.fill();
+      // body
+      ctx.fillStyle = this.color;
+      ctx.beginPath();
+      ctx.roundRect(-w / 2, -h / 2, w, h, r);
+      ctx.fill();
+      // roof / cabin (darker, set in)
+      ctx.fillStyle = "rgba(0,0,0,0.32)";
+      ctx.beginPath();
+      ctx.roundRect(-w / 2 + 14, -h / 2 + 6, w - 28, h - 12, 6);
+      ctx.fill();
+      // window highlights
+      ctx.fillStyle = "rgba(255,255,255,0.5)";
+      ctx.fillRect(-w / 2 + 18, -h / 2 + 9, 16, 5);
+      ctx.fillRect(w / 2 - 34, -h / 2 + 9, 16, 5);
+      // wheels (front + back)
+      ctx.fillStyle = "#0a0a0a";
+      [-w / 2 + 12, w / 2 - 12].forEach((cx) => {
+        ctx.beginPath();
+        ctx.arc(cx, h / 2 - 2, 5, 0, Math.PI * 2);
+        ctx.arc(cx, -h / 2 + 2, 5, 0, Math.PI * 2);
+        ctx.fill();
+      });
+      // headlights at the leading edge (direction-aware)
+      const headX = this.direction > 0 ? w / 2 - 4 : -w / 2 + 4;
+      ctx.fillStyle = "rgba(255, 240, 180, 0.95)";
+      ctx.beginPath();
+      ctx.arc(headX, -h / 2 + 6, 3, 0, Math.PI * 2);
+      ctx.arc(headX, h / 2 - 6, 3, 0, Math.PI * 2);
+      ctx.fill();
     }
 
     ctx.restore();
@@ -274,15 +331,32 @@ export class FroggerGame {
 
     if (this.waterLanes.includes(this.player.row)) {
       if (!this.rideLog) {
+        this._waterDriftPx = 0;
         this.loseLife("Splash. Ride a log across the river.");
         return;
       }
-      const drift = this.rideLog.direction * this.rideLog.speed * dt;
-      const pos = this.board.cellToWorld(this.player.row, this.player.col);
-      const nextCol = Math.round((pos.x + drift - TILE / 2) / TILE);
-      if (nextCol !== this.player.col && this.board.inBounds(this.player.row, nextCol)) {
-        this.player.snapTo(this.player.row, nextCol);
+      // Accumulate sub-pixel drift across frames; snap the player to the
+      // next column whenever the accumulator crosses a tile boundary. The
+      // previous implementation recomputed `nextCol` each frame from the
+      // PLAYER's snapped cell-center plus a single-frame drift (≈1px), so
+      // the round() always landed on the same column — the player visually
+      // stayed put while the log slid out from under them.
+      this._waterDriftPx = (this._waterDriftPx || 0) + this.rideLog.direction * this.rideLog.speed * dt;
+      while (Math.abs(this._waterDriftPx) >= TILE) {
+        const dir = Math.sign(this._waterDriftPx);
+        const newCol = this.player.col + dir;
+        if (!this.board.inBounds(this.player.row, newCol)) {
+          this._waterDriftPx = 0;
+          this.loseLife("Carried off the river.");
+          return;
+        }
+        this.player.snapTo(this.player.row, newCol);
+        this._waterDriftPx -= dir * TILE;
       }
+    } else {
+      // Player is no longer on water — reset drift so a fresh log mount
+      // doesn't inherit stale offset from a previous water trip.
+      this._waterDriftPx = 0;
     }
   }
 
@@ -372,41 +446,93 @@ export class FroggerGame {
   }
 
   drawBoard(ctx) {
+    const time = (this.engine?.elapsedTime ?? performance.now() / 1000);
     for (let row = 0; row < ROWS; row += 1) {
       const y = row * TILE;
-      let fill = "#173c2d";
       if (this.waterLanes.includes(row)) {
-        fill = "#0a3452";
+        // Water: deep-to-shallow gradient + animated wavelets + scrolling
+        // glints so the river clearly reads as moving water vs flat tile.
+        const grad = ctx.createLinearGradient(0, y, 0, y + TILE);
+        grad.addColorStop(0, "#072a45");
+        grad.addColorStop(0.5, "#0d4666");
+        grad.addColorStop(1, "#072a45");
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, y, COLS * TILE, TILE);
+        ctx.strokeStyle = "rgba(180, 220, 255, 0.18)";
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        for (let x = 0; x <= COLS * TILE; x += 4) {
+          const yy = y + TILE / 2 + Math.sin((x + time * 60 + row * 30) * 0.06) * 3;
+          if (x === 0) ctx.moveTo(x, yy); else ctx.lineTo(x, yy);
+        }
+        ctx.stroke();
       } else if (this.carLanes.includes(row)) {
-        fill = "#20242b";
+        // Road: asphalt gradient + lighter shoulder lines top + bottom.
+        const grad = ctx.createLinearGradient(0, y, 0, y + TILE);
+        grad.addColorStop(0, "#1a1d23");
+        grad.addColorStop(0.5, "#26292f");
+        grad.addColorStop(1, "#1a1d23");
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, y, COLS * TILE, TILE);
+        ctx.fillStyle = "rgba(255, 220, 80, 0.65)";
+        for (let x = 0; x < COLS * TILE; x += 60) {
+          ctx.fillRect(x + 8, y + TILE / 2 - 2, 32, 4);
+        }
       } else if (this.safeRows.includes(row)) {
-        fill = "#1d5d36";
+        // Grass: layered greens with darker bands so the safe rows feel
+        // like a pleasant rest stop.
+        const grad = ctx.createLinearGradient(0, y, 0, y + TILE);
+        grad.addColorStop(0, "#1f6e3f");
+        grad.addColorStop(1, "#164e2c");
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, y, COLS * TILE, TILE);
+        // grass tufts
+        ctx.fillStyle = "rgba(255, 255, 255, 0.05)";
+        for (let x = 8; x < COLS * TILE; x += 24) {
+          ctx.fillRect(x + ((row * 7) % 12), y + TILE - 6, 6, 2);
+        }
+      } else {
+        ctx.fillStyle = "#173c2d";
+        ctx.fillRect(0, y, COLS * TILE, TILE);
       }
-      ctx.fillStyle = fill;
-      ctx.fillRect(0, y, COLS * TILE, TILE);
-      ctx.strokeStyle = "rgba(255,255,255,0.06)";
+      ctx.strokeStyle = "rgba(0, 0, 0, 0.18)";
+      ctx.lineWidth = 1;
       ctx.beginPath();
       ctx.moveTo(0, y);
       ctx.lineTo(COLS * TILE, y);
       ctx.stroke();
-    }
-
-    ctx.fillStyle = "rgba(255,255,255,0.12)";
-    for (const row of this.carLanes) {
-      const y = row * TILE + TILE / 2;
-      for (let x = 0; x < COLS * TILE; x += 90) {
-        ctx.fillRect(x + 10, y - 2, 42, 4);
-      }
     }
   }
 
   drawHomes(ctx) {
     for (const col of HOME_COLS) {
       const pos = this.board.cellToWorld(0, col);
-      ctx.fillStyle = this.homes.has(col) ? "#9cff63" : "rgba(156, 255, 99, 0.18)";
+      const filled = this.homes.has(col);
+      // pad recess
+      ctx.fillStyle = "rgba(0, 0, 0, 0.35)";
       ctx.beginPath();
-      ctx.roundRect(pos.x - 24, pos.y - 22, 48, 44, 12);
+      ctx.roundRect(pos.x - 26, pos.y - 24, 52, 48, 14);
       ctx.fill();
+      // pad glow / fill
+      ctx.fillStyle = filled ? "#9cff63" : "rgba(156, 255, 99, 0.14)";
+      ctx.beginPath();
+      ctx.roundRect(pos.x - 22, pos.y - 20, 44, 40, 10);
+      ctx.fill();
+      if (filled) {
+        // mini frog icon to mark the secured home
+        ctx.save();
+        ctx.translate(pos.x, pos.y);
+        ctx.fillStyle = "#0a3a14";
+        ctx.beginPath();
+        ctx.ellipse(0, 0, 12, 10, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "#0a3a14";
+        ctx.beginPath();
+        ctx.arc(-4, -4, 2, 0, Math.PI * 2);
+        ctx.arc(4, -4, 2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
     }
   }
 
@@ -414,15 +540,61 @@ export class FroggerGame {
     const pos = this.board.cellToWorld(this.player.row, this.player.col);
     ctx.save();
     ctx.translate(pos.x, pos.y);
-    ctx.fillStyle = "#9cff63";
+    // soft drop shadow under the frog
+    ctx.fillStyle = "rgba(0, 0, 0, 0.35)";
     ctx.beginPath();
-    ctx.ellipse(0, 0, 20, 17, 0, 0, Math.PI * 2);
+    ctx.ellipse(0, 12, 18, 5, 0, 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillStyle = "#07130f";
+    // back legs (peek out from sides)
+    ctx.fillStyle = "#5fcd3d";
     ctx.beginPath();
-    ctx.arc(-7, -7, 3, 0, Math.PI * 2);
-    ctx.arc(7, -7, 3, 0, Math.PI * 2);
+    ctx.ellipse(-15, 6, 7, 5, -0.4, 0, Math.PI * 2);
+    ctx.ellipse(15, 6, 7, 5, 0.4, 0, Math.PI * 2);
     ctx.fill();
+    // body — gradient for depth
+    const bodyGrad = ctx.createRadialGradient(0, -4, 4, 0, 0, 22);
+    bodyGrad.addColorStop(0, "#c0ff86");
+    bodyGrad.addColorStop(0.6, "#8fe75a");
+    bodyGrad.addColorStop(1, "#3f8f1e");
+    ctx.fillStyle = bodyGrad;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 21, 18, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // belly highlight
+    ctx.fillStyle = "rgba(255, 255, 255, 0.18)";
+    ctx.beginPath();
+    ctx.ellipse(0, 4, 12, 6, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // eye sockets (raised bumps)
+    ctx.fillStyle = "#7fd84a";
+    ctx.beginPath();
+    ctx.arc(-7, -10, 6, 0, Math.PI * 2);
+    ctx.arc(7, -10, 6, 0, Math.PI * 2);
+    ctx.fill();
+    // eye whites
+    ctx.fillStyle = "#fefefe";
+    ctx.beginPath();
+    ctx.arc(-7, -10, 4, 0, Math.PI * 2);
+    ctx.arc(7, -10, 4, 0, Math.PI * 2);
+    ctx.fill();
+    // pupils
+    ctx.fillStyle = "#0a1a05";
+    ctx.beginPath();
+    ctx.arc(-6, -10, 2.4, 0, Math.PI * 2);
+    ctx.arc(8, -10, 2.4, 0, Math.PI * 2);
+    ctx.fill();
+    // pupil shine
+    ctx.fillStyle = "rgba(255,255,255,0.9)";
+    ctx.beginPath();
+    ctx.arc(-5.4, -10.6, 0.9, 0, Math.PI * 2);
+    ctx.arc(8.6, -10.6, 0.9, 0, Math.PI * 2);
+    ctx.fill();
+    // mouth hint
+    ctx.strokeStyle = "rgba(20, 50, 10, 0.6)";
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.arc(0, 2, 4, 0.2, Math.PI - 0.2);
+    ctx.stroke();
     ctx.restore();
   }
 }
