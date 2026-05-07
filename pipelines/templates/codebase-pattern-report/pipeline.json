@@ -1,0 +1,36 @@
+{
+  "id": "27B92265-2180-455F-B4BC-D8F94EB13A15",
+  "name": "Codebase Pattern Report",
+  "description": "Search your codebase for a string or pattern and produce an AI-analyzed report",
+  "components": ["component.file-review"],
+  "steps": [
+    {
+      "id": "EBE71AFA-50D1-4328-9482-5F1481487014",
+      "skillID": "builtin.findInFiles",
+      "config": {
+        "directoryPath": "/Users/lawrencenorman",
+        "searchString": "TODO",
+        "fileExtensions": "swift,ts,js,py,md",
+        "recursive": "true"
+      }
+    },
+    {
+      "id": "E8E390CD-E8E9-43EE-8D9A-BD3E41CC6AF8",
+      "skillID": "builtin.llmGenerate",
+      "config": {
+        "llmMaxInputChars": "6000",
+        "llmMaxTokens": "1600",
+        "llmTimeout": "60",
+        "userPrompt": "Analyze the codebase search results below and produce a structured report.\n\n## Output Format\n\n### Summary\nTotal matches found, files affected, most common patterns.\n\n### Findings by File\nFor each file with matches:\n- Filename\n- Match count\n- Brief note on what the matches suggest (e.g. \"3 TODOs around error handling\")\n\n### Priority Actions\nTop 3-5 items worth addressing, ranked by apparent importance.\n\n### Patterns & Themes\nAny recurring patterns across files (same bug class, same tech debt area, etc.).\n\nBe concise and actionable.\n\nSEARCH RESULTS:\n{{INPUT}}"
+      }
+    },
+    {
+      "id": "FF45EAC6-ED3B-4B20-9567-EC8153B62EFF",
+      "skillID": "builtin.saveArtifact",
+      "config": {
+        "artifactName": "Pattern Report",
+        "artifactExtension": "md"
+      }
+    }
+  ]
+}
