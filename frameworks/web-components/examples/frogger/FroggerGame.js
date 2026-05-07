@@ -254,7 +254,13 @@ export class FroggerGame {
   }
 
   installInput() {
-    document.addEventListener("keydown", (event) => {
+    // Always bind keyboard on `window`, never `document`. WebView/iframe
+    // hosts (mChatAI+ in-app preview, embedded contexts) deliver keydown
+    // to the window but not always to the document until the user clicks
+    // the document tree first. window-bound handlers fire immediately on
+    // page load and survive focus migration, which is the universal
+    // expectation across the rest of the example catalog.
+    window.addEventListener("keydown", (event) => {
       const keyMap = {
         ArrowUp: [-1, 0],
         ArrowDown: [1, 0],
