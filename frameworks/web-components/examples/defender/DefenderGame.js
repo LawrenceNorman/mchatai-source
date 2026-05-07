@@ -164,15 +164,22 @@ export class DefenderGame {
       const shot = this.ship.createShot();
       if (shot) {
         this.projectiles.push(shot);
-        this.engine.addEntity(shot);
+        // NOTE: do NOT call engine.addEntity(shot). engine entities draw
+        // outside our camera transform, so projectiles in world-space
+        // would render at raw world coords (off-screen as soon as the
+        // camera scrolls). We tick + draw them ourselves inside the
+        // camera-applied draw() block below.
         this.audio.beep({ freq: 720, duration: 0.035, type: "square" });
       }
     }
     this.camera.follow(this.ship, { width: WIDTH, height: HEIGHT });
+    // Tick projectiles ourselves (since they're not engine-managed any more).
+    this.projectiles.forEach((shot) => shot.update(dt, this.engine));
     this.updateEnemies(dt);
+    this.maybeFireEnemyShots(dt);
     this.resolveShots();
     this.resolveCollisions();
-    this.projectiles = this.projectiles.filter((projectile) => projectile.active !== false);
+    this.projectiles = this.projectiles.filter((projectile) => projectile.active !== false && projectile.ttl > 0);
     if (this.enemies.length === 0) {
       this.wave += 1;
       this.scoreboard.add(500);
@@ -180,6 +187,34 @@ export class DefenderGame {
       this.seedWave();
     }
     this.updateHUD();
+  }
+
+  maybeFireEnemyShots(dt) {
+    // Enemies fire toward the ship at a slow random cadence so the
+    // player can actually take damage from incoming fire (was missing
+    // entirely — user reported "the other ships don't shoot").
+    this._enemyFireTimer = (this._enemyFireTimer || 0) - dt;
+    if (this._enemyFireTimer > 0 || this.enemies.length === 0) return;
+    this._enemyFireTimer = 0.7 + Math.random() * 0.9;
+    const shooter = this.enemies[Math.floor(Math.random() * this.enemies.length)];
+    if (!shooter || shooter.abducting) return;
+    const dx = this.ship.x - shooter.x;
+    const dy = this.ship.y - shooter.y;
+    const angle = Math.atan2(dy, dx);
+    const shot = new Projectile({
+      x: shooter.x,
+      y: shooter.y,
+      angle,
+      speed: 360,
+      vx: Math.cos(angle) * 360,
+      vy: Math.sin(angle) * 360,
+      ttl: 1.6,
+      radius: 4,
+      color: "#fb7185",
+      hostile: true
+    });
+    this.projectiles.push(shot);
+    this.audio.beep({ freq: 220, duration: 0.04, type: "sawtooth" });
   }
 
   updateEnemies(dt) {
@@ -215,7 +250,9 @@ export class DefenderGame {
   }
 
   resolveShots() {
+    // Player shots vs enemies
     for (const shot of this.projectiles.slice()) {
+      if (shot.hostile) continue;
       for (const enemy of this.enemies.slice()) {
         if (!intersectsCircle(shot, enemy, 4)) continue;
         shot.destroy();
@@ -230,18 +267,32 @@ export class DefenderGame {
         break;
       }
     }
+    // Enemy shots vs ship
+    for (const shot of this.projectiles.slice()) {
+      if (!shot.hostile) continue;
+      if (intersectsCircle(shot, this.ship, 4)) {
+        shot.destroy();
+        this.takeHit("Hostile fire hit your ship.");
+        break;
+      }
+    }
+  }
+
+  takeHit(message) {
+    this.lives -= 1;
+    this.ship.x = Math.max(120, this.camera.x + 120);
+    this.ship.y = 210;
+    this.message.textContent = this.lives > 0 ? message : "Fleet lost. Restarting.";
+    this.audio.noise({ duration: 0.18, volume: 0.06 });
+    if (this.lives <= 0) {
+      this.restart();
+    }
   }
 
   resolveCollisions() {
     for (const enemy of this.enemies) {
       if (!intersectsCircle(this.ship, enemy, 4)) continue;
-      this.lives -= 1;
-      this.ship.x = Math.max(120, this.camera.x + 120);
-      this.ship.y = 210;
-      this.message.textContent = this.lives > 0 ? "Ship hit. Keep defending." : "Fleet lost. Restarting.";
-      if (this.lives <= 0) {
-        this.restart();
-      }
+      this.takeHit("Rammed by an alien.");
       break;
     }
   }
@@ -272,6 +323,7 @@ export class DefenderGame {
     this.drawTerrain();
     this.humans.forEach((human) => this.drawHuman(human));
     this.enemies.forEach((enemy) => this.drawEnemy(enemy));
+    this.projectiles.forEach((shot) => shot.draw(this.ctx));
     this.ship.draw(this.ctx);
     this.ctx.restore();
     this.drawRadar();

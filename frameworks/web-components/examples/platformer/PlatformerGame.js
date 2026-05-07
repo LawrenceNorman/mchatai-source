@@ -123,7 +123,13 @@ export class PlatformerGame {
   }
 
   update(dt) {
-    this.player.onGround = false;
+    // BUG-FIX 2026-05-07: previously did `this.player.onGround = false`
+    // here, BEFORE player.update(dt). PlatformerPlayer.update() reads
+    // onGround to set the coyote timer, so the reset wiped the coyote
+    // window every frame and the jump check never fired
+    // (`_coyoteTimer > 0 && _jumpBufferTimer > 0` was never both true).
+    // resolvePlatforms() now owns the onGround state — sets true on
+    // contact, false when no platform contact this frame.
     this.player.setInput(this.input);
     this.player.update(dt);
     this.resolvePlatforms();
@@ -143,6 +149,7 @@ export class PlatformerGame {
   }
 
   resolvePlatforms() {
+    let landed = false;
     for (const platform of PLATFORMS) {
       const falling = this.player.vy >= 0;
       const playerBottom = this.player.y + this.player.height;
@@ -155,8 +162,10 @@ export class PlatformerGame {
         previousBottom <= platform.y + 18
       ) {
         this.player.landOn(platform.y);
+        landed = true;
       }
     }
+    if (!landed) this.player.onGround = false;
   }
 
   resolveCoins() {
