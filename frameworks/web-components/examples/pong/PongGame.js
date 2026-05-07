@@ -97,7 +97,12 @@ export class PongGame {
   }
 
   bindControls() {
-    document.addEventListener("keydown", (event) => {
+    // Bind keyboard on `window`, not `document`. WebView/iframe hosts
+    // (mChatAI+ in-app preview, embedded contexts) deliver keydown to
+    // the window but not always to the document until the user clicks
+    // the document tree first. window-bound handlers fire immediately
+    // on page load — universal across the rest of the catalog.
+    window.addEventListener("keydown", (event) => {
       const key = event.key.toLowerCase();
       if (["arrowup", "arrowdown", "w", "s", " "].includes(key)) {
         event.preventDefault();
@@ -108,7 +113,7 @@ export class PongGame {
         this.keys.add(key);
       }
     });
-    document.addEventListener("keyup", (event) => {
+    window.addEventListener("keyup", (event) => {
       this.keys.delete(event.key.toLowerCase());
     });
     this.serveButton?.addEventListener("click", () => this.serve());
