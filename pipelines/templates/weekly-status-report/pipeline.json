@@ -1,0 +1,33 @@
+{
+  "id": "23F98E73-34BE-4EFE-A6B3-59FF5453F289",
+  "name": "Weekly Status Report",
+  "description": "Pull all todos and generate a structured weekly status report saved as a document",
+  "components": ["component.todo-to-report"],
+  "steps": [
+    {
+      "id": "982BED8F-2A0A-4521-B2D2-D239DC51B1EB",
+      "skillID": "builtin.todoList",
+      "config": {
+        "includeCompleted": "true",
+        "includeNotes": "true"
+      }
+    },
+    {
+      "id": "88A66329-2296-40FA-8915-A0EEF0A507C5",
+      "skillID": "builtin.llmGenerate",
+      "config": {
+        "llmMaxTokens": "2400",
+        "llmTimeout": "90",
+        "userPrompt": "You are a professional writing assistant. Generate a concise weekly status report from the todo data below.\n\n## Output Format\n\n### Completed This Week\nBullet list of finished items, grouped by project. Be specific.\n\n### In Progress\nBullet list of active items with any notes or blockers.\n\n### Planned Next Week\nTop 3-5 priorities based on what's pending.\n\n### Blockers & Risks\nAnything stalled, overdue, or flagged. Note if none.\n\nKeep it factual and concise — this is for a team or manager update.\n\nTODO DATA:\n{{INPUT}}"
+      }
+    },
+    {
+      "id": "5E511DEB-4048-4587-ADF7-6DEB4E4616B3",
+      "skillID": "builtin.saveArtifact",
+      "config": {
+        "artifactName": "Weekly Status Report",
+        "artifactExtension": "md"
+      }
+    }
+  ]
+}

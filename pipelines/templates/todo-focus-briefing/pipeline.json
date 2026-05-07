@@ -1,0 +1,33 @@
+{
+  "id": "7DD54D6A-E228-43AB-8D6A-BED54F256AEF",
+  "name": "Todo Focus Briefing",
+  "description": "Analyze your todos and deliver a sharp daily focus plan as a notification",
+  "components": ["component.todo-to-report"],
+  "steps": [
+    {
+      "id": "8442E5B0-6767-4698-8EB5-C01A635B753A",
+      "skillID": "builtin.todoList",
+      "config": {
+        "includeCompleted": "false",
+        "includeNotes": "true"
+      }
+    },
+    {
+      "id": "770B62E3-96F8-4D49-A76F-61AEDB8B6069",
+      "skillID": "builtin.llmGenerate",
+      "config": {
+        "llmMaxTokens": "600",
+        "llmTimeout": "45",
+        "userPrompt": "You are a ruthless prioritization assistant. Given the todo list below, output exactly this:\n\nLine 1: \"Focus: <single most important task name>\"\nLine 2: \"Also: <second task>, <third task>\"\nLine 3: \"Skip today: <anything to defer>\"\n\nNo markdown, no explanations, no headers. Three lines only.\n\nTODOS:\n{{INPUT}}"
+      }
+    },
+    {
+      "id": "7BF32647-41A1-43F5-9082-3FCAFC945BA3",
+      "skillID": "builtin.notify",
+      "config": {
+        "notifyTitle": "Today's Focus",
+        "notifyBody": "{{INPUT}}"
+      }
+    }
+  ]
+}
