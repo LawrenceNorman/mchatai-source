@@ -203,17 +203,24 @@ final class RestartObserverToken {
     private var token: NSObjectProtocol?
 
     /// Register a closure-based observer. Replaces any prior token.
+    /// The block is invoked on the main actor — extract any data you need
+    /// from `Notification.userInfo` (Sendable) inside the block.
     func attach(name: Notification.Name,
                 object: Any? = nil,
                 queue: OperationQueue? = .main,
-                using block: @escaping @MainActor (Notification) -> Void) {
+                using block: @escaping @MainActor () -> Void) {
         detach()
         token = NotificationCenter.default.addObserver(
             forName: name,
             object: object,
             queue: queue
-        ) { note in
-            Task { @MainActor in block(note) }
+        ) { _ in
+            // Notification isn't Sendable, so we can't capture it into the
+            // MainActor task. Most restart/menu notifications don't carry
+            // payload — callers that need userInfo should subscribe via
+            // their own observer that handles the data extraction at the
+            // notification's own queue boundary.
+            Task { @MainActor in block() }
         }
     }
 

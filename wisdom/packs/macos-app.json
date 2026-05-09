@@ -1,6 +1,6 @@
 {
   "packID": "macos-app",
-  "version": 28,
+  "version": 29,
   "displayName": "macOS App Generation Wisdom",
   "description": "Rules for generating executable macOS apps (SwiftUI / AppKit) via Swift Playground. Focused on making the generated binary actually appear as a visible, interactive window \u2014 not a headless background process.",
   "categories": [
@@ -336,8 +336,8 @@
     },
     {
       "id": "mac-029",
-      "rule": "SKPhysicsHelpers.makeSceneBoundary creates an EDGE-LOOP physics body covering all four sides of the supplied rect. Entities (bubbles, balls, pucks) MUST spawn INSIDE the rect, not above/outside it. Spawning at `y = size.height + radius + 6` puts the entity OUTSIDE the boundary box — it bounces off the outside of the top wall every frame, never enters the visible play area, and the player sees a blank screen. Correct pattern: spawn just inside the top edge with `y = size.height - radius - 6` and let gravity pull entities down through the visible area. For `gravity = .standardGravity` (which is `(0, -9.8)` — UP-positive in SpriteKit), entities spawning at the top fall toward the bottom; for inverted gravity, mirror the logic.",
-      "why": "BubblePop canary 2026-05-06 shipped with bubbles spawning at `y = size.height + radius + 6` (i.e. 6pt OUTSIDE the top boundary). Game compiled clean, audio events fired (proving entities exist in the physics world), but the play area was blank — bubbles bounced eternally on the outside of the top wall. User saw a working HUD with Score/Lives but no bubbles, called it 'blank screen.' The fix is one character: replace `+` with `-` on the y-coordinate. The Lego is correct; the spawn-position math is the trap. Generalizes to every makeSceneBoundary user: pong (ball serve), asteroids (asteroid spawn at edges), platformer (player respawn).",
+      "rule": "SKPhysicsHelpers.makeSceneBoundary creates an EDGE-LOOP physics body covering all four sides of the supplied rect. Entities (bubbles, balls, pucks) MUST spawn INSIDE the rect, not above/outside it. Spawning at `y = size.height + radius + 6` puts the entity OUTSIDE the boundary box \u2014 it bounces off the outside of the top wall every frame, never enters the visible play area, and the player sees a blank screen. Correct pattern: spawn just inside the top edge with `y = size.height - radius - 6` and let gravity pull entities down through the visible area. For `gravity = .standardGravity` (which is `(0, -9.8)` \u2014 UP-positive in SpriteKit), entities spawning at the top fall toward the bottom; for inverted gravity, mirror the logic.",
+      "why": "BubblePop canary 2026-05-06 shipped with bubbles spawning at `y = size.height + radius + 6` (i.e. 6pt OUTSIDE the top boundary). Game compiled clean, audio events fired (proving entities exist in the physics world), but the play area was blank \u2014 bubbles bounced eternally on the outside of the top wall. User saw a working HUD with Score/Lives but no bubbles, called it 'blank screen.' The fix is one character: replace `+` with `-` on the y-coordinate. The Lego is correct; the spawn-position math is the trap. Generalizes to every makeSceneBoundary user: pong (ball serve), asteroids (asteroid spawn at edges), platformer (player respawn).",
       "severity": "critical",
       "appliesTo": "macOSApp",
       "examples": [
@@ -345,40 +345,40 @@
         "RIGHT (bubbles spawn just inside the top, fall down): bubble.position = CGPoint(x: random_x, y: size.height - radius - 6)",
         "RIGHT (pong ball serve from center): ball.position = CGPoint(x: size.width / 2, y: size.height / 2)",
         "RIGHT (asteroid spawn at random edge, traveling inward): pick edge e; place 1pt INSIDE that edge; velocity points toward center",
-        "Diagnostic tip: if SoundEngine.shared.play(.impactPlate) or similar wall-hit SFX is firing repeatedly but the play area looks empty, entities are bouncing OUTSIDE the boundary. Print bubble.position.y and compare to size.height — if y > size.height, the spawn-outside bug is hitting."
+        "Diagnostic tip: if SoundEngine.shared.play(.impactPlate) or similar wall-hit SFX is firing repeatedly but the play area looks empty, entities are bouncing OUTSIDE the boundary. Print bubble.position.y and compare to size.height \u2014 if y > size.height, the spawn-outside bug is hitting."
       ]
     },
     {
       "id": "mac-030",
-      "rule": "SoundEngine.swift exports a singleton-shared instance: `SoundEngine.shared`. To play a SFX, ALWAYS qualify the call as `SoundEngine.shared.play(.sfxCase, volume: vol)` — NOT `sound.play(.sfxCase)` where `sound` is `@ObservedObject sound = SoundEngine.shared`. The `@ObservedObject` wrapper exposes published properties (mute, intensity) for SwiftUI binding, but `play()` is a method on the underlying class that requires either the wrapper-projected `.shared` qualifier OR a fully-qualified call. The bare `sound.play(.x)` form may compile in some Swift versions but fails Swift 6 strict resolution (`cannot infer contextual base in reference to member 'x'`) when SFX is a separate enum and play is overloaded.",
+      "rule": "SoundEngine.swift exports a singleton-shared instance: `SoundEngine.shared`. To play a SFX, ALWAYS qualify the call as `SoundEngine.shared.play(.sfxCase, volume: vol)` \u2014 NOT `sound.play(.sfxCase)` where `sound` is `@ObservedObject sound = SoundEngine.shared`. The `@ObservedObject` wrapper exposes published properties (mute, intensity) for SwiftUI binding, but `play()` is a method on the underlying class that requires either the wrapper-projected `.shared` qualifier OR a fully-qualified call. The bare `sound.play(.x)` form may compile in some Swift versions but fails Swift 6 strict resolution (`cannot infer contextual base in reference to member 'x'`) when SFX is a separate enum and play is overloaded.",
       "why": "Native Pong canary (com.mchatai.wizard.native-pong, 2026-05-04) shipped with `sound.play(.uiButtonTap, volume: 0.5)` where `sound: SoundEngine = SoundEngine.shared`. Compiled clean on macOS 14.x but Swift 6 toolchain rejects: 'cannot infer contextual base in reference to member uiButtonTap'. Several other apps had the same pattern. Always-qualify avoids the inference failure entirely.",
       "severity": "high",
       "appliesTo": "macOSApp",
       "examples": [
         "RIGHT: SoundEngine.shared.play(.match3Pop, volume: 0.6)",
         "RIGHT: SoundEngine.shared.play(.uiButtonTap)",
-        "WRONG: sound.play(.uiButtonTap, volume: 0.5)  // — Swift 6 rejects, depending on overload set",
-        "WRONG: SoundEngine.shared.play(.x) where x isn't a real SFX case — check the enum first by reading SoundEngine.swift's `case <name> = \"<asset-id>\"` lines."
+        "WRONG: sound.play(.uiButtonTap, volume: 0.5)  // \u2014 Swift 6 rejects, depending on overload set",
+        "WRONG: SoundEngine.shared.play(.x) where x isn't a real SFX case \u2014 check the enum first by reading SoundEngine.swift's `case <name> = \"<asset-id>\"` lines."
       ]
     },
     {
       "id": "mac-027",
-      "rule": "Every HUD pill / always-visible counter MUST answer a question the player is actively asking right now. If a value is constant, near-zero, or only meaningful at game-over, it does NOT belong in the always-on HUD. Specifically: (a) BEST/HIGH-SCORE — game-over panel only, never in-play (also see score-show-personal-best-on-game-over). (b) COMBO when current value is 1 (i.e. no combo active) — drop it; surface only DURING a chain via a transient `Combo x3!` flash overlay, then hide. (c) CLEARED-counter / kills-counter / matches-counter when value is 0 — drop until first event. (d) DIFFICULTY label that doesn't change mid-game — move to a settings sheet. (e) Tutorial helper text after the player has made N moves — fade out. The gold reference is a 3-pill HUD: SCORE | LEVEL+TARGET+PROGRESS+STARS | MOVES. Anything more is noise; anything less may starve the player of feedback. Acid test for each pill: 'in the next 5 seconds will this number change in a way that affects my decision?' — if no, remove it.",
-      "why": "Web side filed `u-hud-minimalism-meaningful-only` (universal pack v4, 2026-05-06) after Lawrence pushed back on shipped candy-match HUD: `[SCORE 60] [BEST 240] [MOVES 22] [COMBO X1] [CLEARED 0]` — 3 of 5 pills were noise. Same anti-pattern shows up on macOS (Match3 v9 had constant in-play 'NEW BEST!' chrome before being walked back). The rule generalizes verbatim from miniApp to macOSApp; HUD minimalism is a SwiftUI choice, not a CSS one. Counterpoint: Sudoku timer / Tetris next-piece preview DO belong in HUD because they change meaningfully every second. Distinct from `score-show-personal-best-on-game-over` (which is more specific to BEST) — mac-027 is the broader rule it instantiates.",
+      "rule": "Every HUD pill / always-visible counter MUST answer a question the player is actively asking right now. If a value is constant, near-zero, or only meaningful at game-over, it does NOT belong in the always-on HUD. Specifically: (a) BEST/HIGH-SCORE \u2014 game-over panel only, never in-play (also see score-show-personal-best-on-game-over). (b) COMBO when current value is 1 (i.e. no combo active) \u2014 drop it; surface only DURING a chain via a transient `Combo x3!` flash overlay, then hide. (c) CLEARED-counter / kills-counter / matches-counter when value is 0 \u2014 drop until first event. (d) DIFFICULTY label that doesn't change mid-game \u2014 move to a settings sheet. (e) Tutorial helper text after the player has made N moves \u2014 fade out. The gold reference is a 3-pill HUD: SCORE | LEVEL+TARGET+PROGRESS+STARS | MOVES. Anything more is noise; anything less may starve the player of feedback. Acid test for each pill: 'in the next 5 seconds will this number change in a way that affects my decision?' \u2014 if no, remove it.",
+      "why": "Web side filed `u-hud-minimalism-meaningful-only` (universal pack v4, 2026-05-06) after Lawrence pushed back on shipped candy-match HUD: `[SCORE 60] [BEST 240] [MOVES 22] [COMBO X1] [CLEARED 0]` \u2014 3 of 5 pills were noise. Same anti-pattern shows up on macOS (Match3 v9 had constant in-play 'NEW BEST!' chrome before being walked back). The rule generalizes verbatim from miniApp to macOSApp; HUD minimalism is a SwiftUI choice, not a CSS one. Counterpoint: Sudoku timer / Tetris next-piece preview DO belong in HUD because they change meaningfully every second. Distinct from `score-show-personal-best-on-game-over` (which is more specific to BEST) \u2014 mac-027 is the broader rule it instantiates.",
       "severity": "high",
       "appliesTo": "macOSApp",
       "examples": [
-        "RIGHT (compact 3-pill match-3): HStack { ScorePill('1,200') ; LevelPill(level: 3, target: 5_000, progress: 0.42, stars: 2) ; MovesPill(22) } — answers 'how am I doing? what am I aiming at? how much time left?'",
+        "RIGHT (compact 3-pill match-3): HStack { ScorePill('1,200') ; LevelPill(level: 3, target: 5_000, progress: 0.42, stars: 2) ; MovesPill(22) } \u2014 answers 'how am I doing? what am I aiming at? how much time left?'",
         "RIGHT (combo as transient): when chain depth >=3, briefly fly `Combo x3!` SwiftUI Text from the affected tile center using .scaleEffect + .opacity transitions; never as a persistent pill that says `Combo X1`.",
-        "WRONG: in-play HUD with `[SCORE 60] [BEST 240] [MOVES 22] [COMBO X1] [CLEARED 0]` — 3 of 5 are noise. BEST belongs in game-over panel (mac-022 + score-show-personal-best-on-game-over), COMBO×1 is meaningless, CLEARED 0 is meaningless until first match.",
+        "WRONG: in-play HUD with `[SCORE 60] [BEST 240] [MOVES 22] [COMBO X1] [CLEARED 0]` \u2014 3 of 5 are noise. BEST belongs in game-over panel (mac-022 + score-show-personal-best-on-game-over), COMBO\u00d71 is meaningless, CLEARED 0 is meaningless until first match.",
         "WRONG: showing `Difficulty: Medium` always-on; it never changes mid-game. Move to a Settings sheet or Toolbar item.",
-        "Counter-example (HUD-belongs): Sudoku elapsed timer, Tetris next-piece preview, Pong score-to-7 pip indicator — change meaningfully and inform decisions."
+        "Counter-example (HUD-belongs): Sudoku elapsed timer, Tetris next-piece preview, Pong score-to-7 pip indicator \u2014 change meaningfully and inform decisions."
       ]
     },
     {
       "id": "mac-028",
-      "rule": "Every visible game event (match clear, score award, invalid input, tile spawn, score milestone, level up, kill, hit, bounce) MUST have a corresponding animation OR sound — and ideally both. For macOS Lego games, USE the existing effects Legos: `effects.animation-intensity` for tunable per-event curves (sparkle / burst / lightning overlays, squash-stretch, bulge-shrink), `effects.sound-engine` for SFX with debouncing + pitch-shift on cascades, `effects.high-score-manager` for milestone celebrations, `effects.level-manager` for level-up banners. Do NOT use `withAnimation { … }` ad-hoc with hand-tuned numbers — pick a preset on the Intensity component and let the Lego own the curve. A board with no animations on match/swap/score/spawn events is missing required juice, not 'minimal-by-design.'",
-      "why": "Web side just filed `vq-anim-feedback-on-every-event` (visual-quality v3, 2026-05-06) after a candy-match canary landed with imported Legos but no per-event animations. macOS has the equivalent gap, except the Legos are already in `effects/` (AnimationIntensity, SoundEngine, HighScoreManager, LevelManager). The wisdom rules `anim-bulge-shrink-not-flat-fade`, `anim-flash-overlays-transparent-not-solid`, `audio-debounce-events-not-renders`, `audio-pitch-shift-cascades`, `level-celebrate-the-level-up-moment` already cover specific event types — mac-028 is the umbrella rule that says 'every event needs ONE of these': don't ship a silent / motionless game.",
+      "rule": "Every visible game event (match clear, score award, invalid input, tile spawn, score milestone, level up, kill, hit, bounce) MUST have a corresponding animation OR sound \u2014 and ideally both. For macOS Lego games, USE the existing effects Legos: `effects.animation-intensity` for tunable per-event curves (sparkle / burst / lightning overlays, squash-stretch, bulge-shrink), `effects.sound-engine` for SFX with debouncing + pitch-shift on cascades, `effects.high-score-manager` for milestone celebrations, `effects.level-manager` for level-up banners. Do NOT use `withAnimation { \u2026 }` ad-hoc with hand-tuned numbers \u2014 pick a preset on the Intensity component and let the Lego own the curve. A board with no animations on match/swap/score/spawn events is missing required juice, not 'minimal-by-design.'",
+      "why": "Web side just filed `vq-anim-feedback-on-every-event` (visual-quality v3, 2026-05-06) after a candy-match canary landed with imported Legos but no per-event animations. macOS has the equivalent gap, except the Legos are already in `effects/` (AnimationIntensity, SoundEngine, HighScoreManager, LevelManager). The wisdom rules `anim-bulge-shrink-not-flat-fade`, `anim-flash-overlays-transparent-not-solid`, `audio-debounce-events-not-renders`, `audio-pitch-shift-cascades`, `level-celebrate-the-level-up-moment` already cover specific event types \u2014 mac-028 is the umbrella rule that says 'every event needs ONE of these': don't ship a silent / motionless game.",
       "severity": "high",
       "appliesTo": "macOSApp",
       "lego_pointers": [
@@ -388,26 +388,26 @@
         "effects.level-manager"
       ],
       "examples": [
-        "RIGHT (Match3): on tile-clear → AnimationIntensity.bulgeShrink(tile) + SoundEngine.play(.match, pitch: cascadeDepth * 1.06) + ScorePill update. On invalid swap → AnimationIntensity.boardShake() + SoundEngine.play(.invalid). On level up → LevelManager.celebrate() banner + SoundEngine.play(.levelUp).",
-        "RIGHT (Asteroids): on hit → AnimationIntensity.flash(.sparkle, color: .yellow) + SoundEngine.play(.hit). On boss enter → LevelManager.bossBanner() + SoundEngine.play(.bossIntro).",
+        "RIGHT (Match3): on tile-clear \u2192 AnimationIntensity.bulgeShrink(tile) + SoundEngine.play(.match, pitch: cascadeDepth * 1.06) + ScorePill update. On invalid swap \u2192 AnimationIntensity.boardShake() + SoundEngine.play(.invalid). On level up \u2192 LevelManager.celebrate() banner + SoundEngine.play(.levelUp).",
+        "RIGHT (Asteroids): on hit \u2192 AnimationIntensity.flash(.sparkle, color: .yellow) + SoundEngine.play(.hit). On boss enter \u2192 LevelManager.bossBanner() + SoundEngine.play(.bossIntro).",
         "WRONG: tile clears with no scale/opacity transition (board feels silent). Cleared tile just disappears.",
-        "WRONG: invalid swap snaps back to original positions with no shake — player can't tell input failed.",
-        "WRONG: score number jumps from 60 → 110 instantly with no '+50' floating from the action site. Use AnimationIntensity.scoreRise(at: tilePoint, text: '+50').",
-        "WRONG: hand-rolling `withAnimation(.easeOut(duration: 0.42)) { … }` on every event — bypasses AnimationIntensity preset which gates intensity per game pace (subtle / medium / bold)."
+        "WRONG: invalid swap snaps back to original positions with no shake \u2014 player can't tell input failed.",
+        "WRONG: score number jumps from 60 \u2192 110 instantly with no '+50' floating from the action site. Use AnimationIntensity.scoreRise(at: tilePoint, text: '+50').",
+        "WRONG: hand-rolling `withAnimation(.easeOut(duration: 0.42)) { \u2026 }` on every event \u2014 bypasses AnimationIntensity preset which gates intensity per game pace (subtle / medium / bold)."
       ]
     },
     {
       "id": "mac-026",
       "rule": "NEVER call `NotificationCenter.default.removeObserver(...)` from a `deinit` when the stored observer is `NSObjectProtocol?` (the type returned by `addObserver(forName:object:queue:using:)`). Under Swift 6 strict concurrency, `deinit` is `nonisolated` and accessing a non-Sendable stored property like `NSObjectProtocol?` from a nonisolated context is a compile error: 'cannot access property X with a non-Sendable type ... from nonisolated deinit'. Instead, in `SKScene` subclasses unregister in `override func willMove(from view: SKView)` (called automatically before the scene is torn down). In SwiftUI, attach the observer in `.onAppear` and remove in `.onDisappear`. In `NSViewController`, use `viewWillDisappear` / `dealloc` of the *Objective-C selector* form. If you absolutely must clean up at object end-of-life, use the modern Swift 6 pattern: register with the selector-based `addObserver(self, selector:name:object:)` (which auto-removes when the observer is deallocated since macOS 11), or wrap the token in a `@MainActor` actor type. The `NSObjectProtocol` token from the closure-based API has NO automatic cleanup.",
-      "why": "BubblePop canary 2026-05-06 (RID catalog-sync-bubble-pop-1778091054) shipped a clean macOSApp — valid Package.swift, valid marker, recipe.spritekit-physics correctly composed — but failed `swift build` with: 'cannot access property restartObserver with a non-Sendable type (any NSObjectProtocol)? from nonisolated deinit'. Identical pattern will recur in every SpriteKit / SwiftUI / AppKit game that uses NotificationCenter for restart events. mac-019 covers SKPhysicsContactDelegate.didBegin's nonisolated nature but does NOT cover this deinit-cleanup case. macOS 26 / Swift 6.0 toolchain rejects the closure-based addObserver + deinit-removeObserver pattern by default.",
+      "why": "BubblePop canary 2026-05-06 (RID catalog-sync-bubble-pop-1778091054) shipped a clean macOSApp \u2014 valid Package.swift, valid marker, recipe.spritekit-physics correctly composed \u2014 but failed `swift build` with: 'cannot access property restartObserver with a non-Sendable type (any NSObjectProtocol)? from nonisolated deinit'. Identical pattern will recur in every SpriteKit / SwiftUI / AppKit game that uses NotificationCenter for restart events. mac-019 covers SKPhysicsContactDelegate.didBegin's nonisolated nature but does NOT cover this deinit-cleanup case. macOS 26 / Swift 6.0 toolchain rejects the closure-based addObserver + deinit-removeObserver pattern by default.",
       "severity": "critical",
       "appliesTo": "macOSApp",
       "examples": [
         "WRONG (Swift 6 compile error): `private var restartObserver: NSObjectProtocol?` then `deinit { if let restartObserver { NotificationCenter.default.removeObserver(restartObserver) } }`",
         "RIGHT (SKScene): override func willMove(from view: SKView) { if let restartObserver { NotificationCenter.default.removeObserver(restartObserver); self.restartObserver = nil }; super.willMove(from: view) }",
         "RIGHT (SwiftUI): .onAppear { observer = NotificationCenter.default.addObserver(forName: .myEvent, object: nil, queue: .main) { _ in handle() } }.onDisappear { if let observer { NotificationCenter.default.removeObserver(observer) } }",
-        "RIGHT (selector-based, no token): NotificationCenter.default.addObserver(self, selector: #selector(handleRestart), name: .bubblePopRestart, object: nil) — then no manual cleanup needed (auto-removed when observer deallocated, since macOS 11+).",
-        "WRONG (mistake to avoid): wrapping the token in `@MainActor` doesn't help — deinit still can't access it. Move the cleanup OUT of deinit."
+        "RIGHT (selector-based, no token): NotificationCenter.default.addObserver(self, selector: #selector(handleRestart), name: .bubblePopRestart, object: nil) \u2014 then no manual cleanup needed (auto-removed when observer deallocated, since macOS 11+).",
+        "WRONG (mistake to avoid): wrapping the token in `@MainActor` doesn't help \u2014 deinit still can't access it. Move the cleanup OUT of deinit."
       ]
     },
     {
@@ -1026,7 +1026,19 @@
         "RIGHT (visual review): looking at the string array, you can SEE the maze layout. Walls stand out, hero spawn is visible, ghost spawn corners are obvious.",
         "WRONG: map factory has 'let heroStart = PuzzlePoint(row: 11, col: 8); let ghostStarts = [...]' followed by a long for-loop over allPoints() inserting walls. Hard to verify by eye."
       ]
+    },
+    {
+      "id": "mac-031",
+      "rule": "When a recipe selects MANY components (e.g. recipe.spritekit-physics selects 7: arcade.spritekit-physics-helpers + 6 effects), only the recipe's `requiredNow` list MUST be composed by your app's Swift glue. Optional/decorative effects (animation-intensity, sound-engine, level-manager, high-score-manager, pop-burst, score-rise) get copied verbatim into Sources/<Target>/MChatAIComponents/ but you only need to reference them if you're actually using them in your gameplay. The Lego gate enforces composition for `requiredNow` strictly and accepts partial composition for the rest. Don't twist your gameplay shape to forcibly reference every selected component \u2014 pick the effects that make sense for the genre, ignore the rest.",
+      "why": "Marble Madness canary 2026-05-09 (composition-fix-marble) succeeded ONLY after the gate was relaxed to enforce composition just for `requiredNow`. Bubble Pop canary 2026-05-09 had earlier gate-rejected itself into a Lunar Lander golden assembly fallback because it referenced AnimationIntensity but not SoundEngine/LevelManager/etc. The gate's old policy turned a working partial-composition into a Frankenstein.",
+      "severity": "medium",
+      "appliesTo": "macOSApp",
+      "examples": [
+        "RIGHT (BubblePop): use AnimationIntensity for tap-pop animation tuning. Skip SoundEngine if your game has no audio. Skip LevelManager if it's a single-screen game.",
+        "RIGHT (MarbleMadness): compose SKPhysicsHelpers + SKArcadeCategory (the physics-helpers component is requiredNow). Reach for effects only as needed.",
+        "WRONG: padding your code with `let _ = SoundEngine.shared` just to satisfy the composition check \u2014 this hides the optional-effect intent."
+      ]
     }
   ],
-  "_last_updated": "2026-05-07 mac-029 (SKPhysicsHelpers spawn INSIDE boundary) + mac-030 (SoundEngine.shared.play qualifier) added — both surfaced by BubblePop blank-screen + Pong compile-fail incidents"
+  "_last_updated": "2026-05-09"
 }
