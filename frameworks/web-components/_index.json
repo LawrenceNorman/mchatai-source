@@ -1076,6 +1076,43 @@
       ]
     },
     {
+      "id": "entities.flappy-bird",
+      "name": "FlappyBird",
+      "category": "entities",
+      "path": "entities/FlappyBird.js",
+      "exports": [
+        "FlappyBird"
+      ],
+      "status": "ready",
+      "summary": "Flappy-Bird-style state machine. Bird falls under gravity; flap() applies upward impulse; pipes scroll left at constant speed with random vertical gaps; tick(dt) advances physics + collision + scoring. World coords: width \u00d7 height (pixels) \u2014 caller picks viewport size.",
+      "tags": [
+        "flappy",
+        "flappy-bird",
+        "tap-to-flap",
+        "endless-runner",
+        "arcade",
+        "mobile",
+        "side-scroller"
+      ],
+      "contracts": {
+        "helpers": [
+          "newGame()",
+          "flap() -> bool",
+          "tick(dt) -> {died, scored, headY}",
+          "isGameOver() -> bool"
+        ],
+        "state": "bird: {y, vy}; pipes: [{x, gapTop, gapBottom, scored}]; score; gameOver; state: 'idle'|'playing'|'gameover'",
+        "tunables": "gravity, flapImpulse, pipeSpeed, pipeWidth, pipeGap, pipeIntervalSeconds, birdX, birdRadius, groundHeight"
+      },
+      "goodFits": [
+        "flappy-bird",
+        "tap-to-flap",
+        "endless-runner",
+        "side-scroller",
+        "mobile-arcade"
+      ]
+    },
+    {
       "id": "entities.tile-swapper",
       "name": "TileSwapper",
       "category": "entities",
@@ -3613,6 +3650,53 @@
       ],
       "requiredNow": [
         "entities.snake-game"
+      ],
+      "plannedNext": []
+    },
+    {
+      "id": "recipe.flappy",
+      "name": "Flappy Bird Tap-to-Flap",
+      "keywords": [
+        "flappy",
+        "flappy bird",
+        "flappy-bird",
+        "tap to flap",
+        "tap-to-flap",
+        "tap to fly",
+        "endless runner side-scroller",
+        "pipes obstacle",
+        "bird flying game",
+        "flappy clone",
+        "swing copters"
+      ],
+      "templateIDs": [],
+      "existingApps": [
+        "flappy bird",
+        "swing copters"
+      ],
+      "starterComponents": [
+        "entities.flappy-bird",
+        "ui.mini-header",
+        "ui.scoreboard",
+        "core.game-manager",
+        "resources.swatches",
+        "resources.audio-manager",
+        "effects.score-rise"
+      ],
+      "assemblyNotes": [
+        "Use FlappyBird for the physics + state machine. Set width/height to match the canvas/viewport. For mobile portrait: width=360, height=640 is standard.",
+        "Game loop: requestAnimationFrame. Track lastTimestamp; on each frame compute dt=(now-last)/1000, call grid.tick(dt), then render.",
+        "Mobile touch input (mob-005): pointerdown anywhere on the canvas \u2192 grid.flap(). NO drag, NO complex gestures \u2014 flappy is tap-only.",
+        "Desktop: Space or Up-Arrow \u2192 grid.flap(). Same handler.",
+        "Render order: background sky gradient \u2192 pipes (top + bottom rectangles, with cap shapes for visual flair) \u2192 bird (rotated based on vy: nose-up when going up, nose-down when falling) \u2192 ground \u2192 score (large, top-center).",
+        "Bird animation: bobs subtly during gameplay; rotation eases toward Math.atan2(vy, 200) clamped to [-60\u00b0, 90\u00b0] degrees.",
+        "End-game overlay (mac-022 web equivalent) on grid.isGameOver(): show final score + best score + 'Tap to play again' button.",
+        "Persist best score in localStorage. Show in header ('Best: N').",
+        "First-time UX: show a 'Tap to start' message before the first flap; the bird hovers in place until first tap.",
+        "Mobile-portrait full-bleed. Apply mobile-frontend wisdom rules (mob-001..016)."
+      ],
+      "requiredNow": [
+        "entities.flappy-bird"
       ],
       "plannedNext": []
     },
