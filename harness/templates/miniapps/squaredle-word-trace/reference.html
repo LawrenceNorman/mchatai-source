@@ -1,0 +1,547 @@
+<!--
+  mchatai-web-components-used (canonical marker — do not remove)
+  recipe: recipe.word-trace
+  components:
+    - entities.word-trace-grid (entities/WordTraceGrid.js)
+    - entities.word-dictionary (entities/WordDictionary.js)
+    - ui.mini-header
+    - ui.scoreboard
+    - core.game-manager
+    - resources.swatches
+    - effects.score-rise
+    - effects.pop-burst
+  mode: source-copy
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#0f172a">
+  <title>Letter Trace — Word Hunt</title>
+  <script type="application/json" id="mchatai-web-components-used">
+{"recipe":"recipe.word-trace","components":["entities.word-trace-grid","entities.word-dictionary","ui.mini-header","ui.scoreboard","core.game-manager","resources.swatches","effects.score-rise","effects.pop-burst"],"mode":"source-copy"}
+  </script>
+  <style>
+    /* Mobile-first portrait. Per mobile-frontend wisdom mob-001..016. */
+    :root {
+      --bg-1: #0f172a;
+      --bg-2: #1e293b;
+      --tile: #334155;
+      --tile-active: #0ea5e9;
+      --tile-found: #1e293b;
+      --text: #f1f5f9;
+      --accent: #fbbf24;
+      --good: #4ade80;
+      --bad: #f87171;
+      --shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body { margin: 0; padding: 0; height: 100%; overscroll-behavior: none; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: linear-gradient(180deg, var(--bg-1) 0%, var(--bg-2) 100%);
+      color: var(--text);
+      min-height: 100dvh; /* mob-003 */
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      user-select: none; /* mob-006 */
+      -webkit-user-select: none;
+      touch-action: manipulation;
+      padding: env(safe-area-inset-top, 0) env(safe-area-inset-right, 0) env(safe-area-inset-bottom, 0) env(safe-area-inset-left, 0);
+    }
+    header {
+      width: 100%;
+      max-width: 480px;
+      padding: 16px 20px 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+    }
+    header h1 {
+      margin: 0;
+      font-size: 20px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--accent);
+    }
+    .scoreboard {
+      display: flex;
+      gap: 16px;
+      font-size: 14px;
+      font-variant-numeric: tabular-nums;
+    }
+    .scoreboard span strong {
+      color: var(--good);
+      margin-left: 6px;
+    }
+    main {
+      flex: 1;
+      width: 100%;
+      max-width: 480px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 0 20px 16px;
+      min-height: 0;
+    }
+    /* Found-words tray — top of the play area, scrolls horizontally on mobile */
+    .found-tray {
+      width: 100%;
+      min-height: 36px;
+      max-height: 80px;
+      overflow-y: auto;
+      margin-bottom: 12px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      align-content: flex-start;
+      padding: 6px;
+      background: rgba(0,0,0,0.2);
+      border-radius: 12px;
+    }
+    .found-pill {
+      background: var(--good);
+      color: #052e1c;
+      font-weight: 700;
+      font-size: 12px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      letter-spacing: 0.05em;
+    }
+    /* The grid: 4×4, sized to fill viewport width up to ~480px */
+    #board {
+      width: min(95vw, 460px);
+      aspect-ratio: 1 / 1;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      grid-template-rows: repeat(4, 1fr);
+      gap: 8px;
+      touch-action: none; /* mob-005: pointer events handle this, not scroll */
+      position: relative;
+    }
+    .cell {
+      background: var(--tile);
+      color: var(--text);
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: clamp(28px, 7vw, 40px);
+      text-transform: uppercase;
+      box-shadow: var(--shadow);
+      transition: transform 80ms ease-out, background-color 120ms ease-out;
+      will-change: transform, background-color;
+      touch-action: none;
+      cursor: pointer;
+    }
+    .cell.in-path {
+      background: var(--tile-active);
+      color: white;
+      transform: scale(1.06);
+    }
+    .cell.in-path.head {
+      background: var(--accent);
+      color: #1f2937;
+    }
+    /* SVG path overlay drawn behind cells via z-index; cells stay on top */
+    #path-svg {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+    }
+    .cell { position: relative; z-index: 1; }
+    /* Current trace word — sticky bottom, big enough to read while tracing */
+    .current-word {
+      width: 100%;
+      max-width: 460px;
+      margin-top: 14px;
+      padding: 14px 16px;
+      background: rgba(255,255,255,0.05);
+      border-radius: 14px;
+      text-align: center;
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      min-height: 1em;
+      transition: color 200ms;
+    }
+    .current-word.is-prefix { color: var(--accent); }
+    .current-word.is-valid { color: var(--good); }
+    .current-word.is-invalid { color: var(--bad); }
+    /* Toast for word commit feedback */
+    #toast {
+      position: fixed;
+      top: 60px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,0.85);
+      padding: 10px 18px;
+      border-radius: 999px;
+      font-weight: 700;
+      font-size: 14px;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 200ms ease, transform 200ms ease;
+      z-index: 50;
+    }
+    #toast.show { opacity: 1; transform: translate(-50%, 8px); }
+    #toast.good { background: var(--good); color: #052e1c; }
+    #toast.bad { background: var(--bad); color: #4b0a0a; }
+    /* Game-over overlay (mac-022 visible-restart-button equivalent for web) */
+    #overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.92);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 18px;
+      z-index: 100;
+      padding: 32px;
+    }
+    #overlay.show { display: flex; }
+    #overlay h2 { margin: 0; font-size: 28px; color: var(--accent); }
+    #overlay .stats { font-size: 16px; line-height: 1.6; text-align: center; opacity: 0.9; }
+    #overlay button {
+      min-height: 48px; /* mob-002 */
+      min-width: 180px;
+      padding: 14px 28px;
+      background: var(--accent);
+      color: #1f2937;
+      border: none;
+      border-radius: 999px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: var(--shadow);
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Letter Trace</h1>
+    <div class="scoreboard">
+      <span>Score<strong id="score">0</strong></span>
+      <span>Words<strong id="word-count">0/0</strong></span>
+    </div>
+  </header>
+
+  <main>
+    <div class="found-tray" id="found-tray" aria-label="Words you've found"></div>
+    <div id="board" aria-label="Letter grid — drag adjacent letters to spell words">
+      <svg id="path-svg" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+        <polyline id="path-line" points="" fill="none" stroke="rgba(14,165,233,0.45)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+      </svg>
+    </div>
+    <div class="current-word" id="current-word"></div>
+  </main>
+
+  <div id="toast" role="status" aria-live="polite"></div>
+
+  <div id="overlay" role="dialog" aria-modal="true" aria-labelledby="overlay-title">
+    <h2 id="overlay-title">Round Complete!</h2>
+    <div class="stats" id="overlay-stats"></div>
+    <button id="overlay-restart">Play Again</button>
+  </div>
+
+  <!-- Inline web-components (verbatim source-copy from mchatai-source) -->
+  <script type="module">
+    /* BEGIN inline copy: GridBoard.js */
+    class GridBoard {
+      constructor(options = {}) {
+        this.rows = options.rows ?? 8;
+        this.cols = options.cols ?? 8;
+        this.cells = Array.from({length: this.rows}, () =>
+          Array.from({length: this.cols}, () => options.fill ?? null)
+        );
+      }
+      inBounds(r, c) { return r >= 0 && r < this.rows && c >= 0 && c < this.cols; }
+      get(r, c) { return this.inBounds(r, c) ? this.cells[r][c] : undefined; }
+      set(r, c, v) { if (this.inBounds(r, c)) { this.cells[r][c] = v; return true; } return false; }
+    }
+    /* END inline copy: GridBoard.js */
+
+    /* BEGIN inline copy: WordTraceGrid.js */
+    class WordTraceGrid extends GridBoard {
+      constructor(options = {}) {
+        super({ ...options, rows: options.rows ?? 4, cols: options.cols ?? 4, fill: "" });
+        this.adjacency = options.adjacency === 4 ? 4 : 8;
+        this.minLength = options.minLength ?? 3;
+        this.scoreFn = options.scoreFn ?? defaultScore;
+        this.path = [];
+        this.foundWords = new Set();
+      }
+      setLetters(letters) {
+        if (typeof letters === "string") {
+          const flat = letters.toUpperCase().replace(/\s+/g, "");
+          for (let r = 0; r < this.rows; r++)
+            for (let c = 0; c < this.cols; c++)
+              this.set(r, c, flat[r * this.cols + c] ?? "");
+        }
+      }
+      resetPath() { this.path = []; }
+      startTrace(r, c) { this.path = []; if (this.inBounds(r, c)) this.path.push({row: r, col: c}); return this.currentWord(); }
+      extendTrace(r, c) {
+        if (!this.inBounds(r, c) || this.path.length === 0) return false;
+        if (this.containsCell(r, c)) {
+          const prev = this.path[this.path.length - 2];
+          if (prev && prev.row === r && prev.col === c) { this.path.pop(); return true; }
+          return false;
+        }
+        const last = this.path[this.path.length - 1];
+        if (!this.isAdjacent(last.row, last.col, r, c)) return false;
+        this.path.push({row: r, col: c});
+        return true;
+      }
+      commitWord(dictionary) {
+        const word = this.currentWord();
+        this.resetPath();
+        if (word.length < this.minLength) return {valid: false, reason: "too-short", word};
+        if (!this.dictionaryHas(dictionary, word)) return {valid: false, reason: "not-a-word", word};
+        if (this.foundWords.has(word)) return {valid: false, reason: "already-found", word};
+        this.foundWords.add(word);
+        return {valid: true, word, score: this.scoreFn(word)};
+      }
+      currentWord() { return this.path.map(({row, col}) => this.get(row, col) || "").join(""); }
+      containsCell(r, c) { return this.path.some(p => p.row === r && p.col === c); }
+      isAdjacent(r1, c1, r2, c2) {
+        const dr = Math.abs(r1 - r2), dc = Math.abs(c1 - c2);
+        if (dr === 0 && dc === 0) return false;
+        if (this.adjacency === 8) return dr <= 1 && dc <= 1;
+        return (dr === 1 && dc === 0) || (dr === 0 && dc === 1);
+      }
+      dictionaryHas(dict, word) {
+        if (dict instanceof Set) return dict.has(word);
+        if (typeof dict?.has === "function") return dict.has(word);
+        return false;
+      }
+      totalScore() { let t = 0; for (const w of this.foundWords) t += this.scoreFn(w); return t; }
+    }
+    function defaultScore(w) {
+      const n = w.length;
+      if (n <= 2) return 0; if (n === 3) return 1; if (n === 4) return 2;
+      if (n === 5) return 4; if (n === 6) return 7; return 11 + (n - 7) * 5;
+    }
+    /* END inline copy: WordTraceGrid.js */
+
+    /* BEGIN inline copy: WordDictionary.js (abbreviated — production should bundle 5k+) */
+    class WordDictionary {
+      constructor(words = []) {
+        this.words = new Set();
+        this.prefixes = new Set();
+        for (const w of words) this.add(w);
+      }
+      add(word) {
+        const u = String(word).toUpperCase().replace(/[^A-Z]/g, "");
+        if (u.length < 2) return;
+        this.words.add(u);
+        for (let i = 1; i <= u.length; i++) this.prefixes.add(u.slice(0, i));
+      }
+      has(word) { return this.words.has(String(word).toUpperCase()); }
+      isPrefix(prefix) { return this.prefixes.has(String(prefix).toUpperCase()); }
+      findAllOnGrid(grid) {
+        const found = new Set();
+        const visited = Array.from({length: grid.rows}, () => Array(grid.cols).fill(false));
+        const path = [];
+        const dfs = (r, c) => {
+          const letter = grid.get(r, c); if (!letter) return;
+          visited[r][c] = true; path.push(letter);
+          const word = path.join("");
+          if (this.isPrefix(word)) {
+            if (word.length >= grid.minLength && this.has(word)) found.add(word);
+            for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) {
+              if (dr === 0 && dc === 0) continue;
+              const nr = r + dr, nc = c + dc;
+              if (!grid.inBounds(nr, nc) || visited[nr][nc]) continue;
+              dfs(nr, nc);
+            }
+          }
+          path.pop(); visited[r][c] = false;
+        };
+        for (let r = 0; r < grid.rows; r++) for (let c = 0; c < grid.cols; c++) dfs(r, c);
+        return found;
+      }
+    }
+    /* END inline copy: WordDictionary.js */
+
+    // Tiny embedded dictionary — production should bundle 5k+ words.
+    // This sample focuses on common 3-7-letter words for a 4×4 board.
+    const WORDS = ["ACE","ACT","ADD","AGE","AGO","AID","AIM","AIR","ALE","ALL","AND","ANT","ANY","APE","APT","ARC","ARE","ARK","ARM","ART","ASH","ASK","ATE","AXE","BAD","BAG","BAN","BAR","BAT","BAY","BED","BEE","BEG","BET","BIG","BIN","BIT","BOA","BOG","BOO","BOW","BOX","BOY","BRA","BUN","BUS","BUT","BUY","BYE","CAB","CAN","CAP","CAR","CAT","COD","COG","COP","COT","COW","COY","CRY","CUB","CUE","CUP","CUT","DAB","DAD","DAM","DAY","DEN","DEW","DIE","DIG","DIM","DIN","DIP","DOE","DOG","DOT","DRY","DUE","DUG","DUO","DYE","EAR","EAT","EBB","EEL","EGG","EGO","ELF","ELK","ELM","END","ERA","EVE","EWE","EYE","FAD","FAN","FAR","FAT","FED","FEE","FEW","FIG","FIN","FIR","FIT","FIX","FLU","FLY","FOE","FOG","FOR","FOX","FRY","FUN","FUR","GAG","GAP","GAS","GAY","GEL","GEM","GET","GIG","GIN","GOD","GOT","GUM","GUN","GUT","GUY","GYM","HAD","HAM","HAS","HAT","HAY","HEM","HEN","HER","HEW","HEX","HEY","HID","HIM","HIP","HIS","HIT","HOE","HOG","HOP","HOT","HOW","HUB","HUE","HUG","HUM","HUT","ICE","ICY","ILL","IMP","INK","INN","ION","IRE","IRK","ITS","IVY","JAB","JAM","JAR","JAW","JAY","JET","JIG","JOB","JOG","JOY","JUG","JUT","KEY","KID","KIN","KIT","LAB","LAD","LAG","LAP","LAW","LAX","LAY","LED","LEE","LEG","LET","LID","LIE","LIP","LIT","LOG","LOT","LOW","LYE","MAD","MAN","MAP","MAR","MAT","MAY","MEN","MET","MID","MIX","MOB","MOM","MOP","MUD","MUG","NAG","NAP","NAY","NEW","NIL","NIP","NIT","NOD","NOR","NOT","NOW","NUB","NUN","NUT","OAK","OAR","OAT","ODD","ODE","OFF","OIL","OLD","ONE","OPT","ORB","ORE","OUR","OUT","OWE","OWL","OWN","PAD","PAL","PAN","PAR","PAT","PAW","PAY","PEA","PEG","PEN","PEP","PER","PET","PIE","PIG","PIN","PIT","POD","POP","POT","PRO","PRY","PUB","PUG","PUN","PUT","RAG","RAM","RAN","RAP","RAT","RAW","RAY","RED","REP","RIB","RID","RIG","RIM","RIP","ROB","ROD","ROE","ROT","ROW","RUB","RUE","RUG","RUM","RUN","RUT","RYE","SAD","SAG","SAP","SAT","SAW","SAY","SEA","SEE","SET","SEW","SEX","SHE","SHY","SIN","SIP","SIR","SIT","SIX","SKI","SKY","SLY","SOB","SOD","SON","SOP","SOW","SOY","SPA","SPY","STY","SUB","SUE","SUM","SUN","SUP","TAB","TAD","TAG","TAN","TAP","TAR","TAX","TEA","TEE","TEN","THE","THY","TIE","TIN","TIP","TOE","TOM","TON","TOO","TOP","TOY","TRY","TUB","TUG","TWO","UGH","UMP","URN","USE","VAN","VAT","VET","VIA","VIE","VOW","WAR","WAS","WAX","WAY","WEB","WED","WEE","WET","WHO","WHY","WIG","WIN","WIT","WOK","WON","WOO","WOW","WRY","YAK","YAP","YAW","YEA","YEN","YES","YET","YEW","YOU","ZAP","ZIP","ZOO",
+    "ABLE","ACID","AGED","ALSO","AREA","ARMY","AWAY","BACK","BALL","BAND","BANK","BASE","BATH","BEAR","BEAT","BEEN","BELL","BEST","BIRD","BLOW","BLUE","BOAT","BODY","BOMB","BOND","BONE","BOOK","BORN","BOWL","CALL","CALM","CAME","CAMP","CARD","CARE","CASE","CASH","CAST","CELL","CHIP","CITY","CLUB","COAL","COAT","CODE","COIN","COLD","COME","COOK","COOL","COPE","COPY","CORE","COST","CREW","CROP","DARK","DATA","DATE","DAWN","DEAD","DEAL","DEAR","DEBT","DEEP","DESK","DIAL","DICE","DIET","DISH","DISK","DOES","DONE","DOOR","DOSE","DOWN","DRAW","DREW","DROP","DUAL","DUST","DUTY","EACH","EARN","EASE","EAST","EASY","EDGE","ELSE","EVEN","EVER","EVIL","EXIT","FACE","FACT","FAIL","FAIR","FALL","FARM","FAST","FATE","FEAR","FEED","FEEL","FELL","FELT","FILE","FILL","FILM","FIND","FINE","FIRE","FIRM","FISH","FIST","FIVE","FLAT","FLOW","FOOD","FOOT","FORM","FORT","FOUR","FREE","FROM","FUEL","FULL","FUND","GAIN","GAME","GATE","GAVE","GEAR","GIFT","GIRL","GIVE","GOAL","GOES","GOLD","GOLF","GONE","GOOD","GRAB","GRAY","GREW","GREY","GRIP","GROW","HAIR","HALF","HALL","HAND","HANG","HARD","HARM","HATE","HAVE","HEAD","HEAR","HEAT","HELD","HELP","HERE","HERO","HIGH","HILL","HINT","HIRE","HOLD","HOLE","HOLY","HOME","HOOK","HOPE","HOST","HOUR","HUGE","HUNG","HUNT","HURT","IDEA","INCH","INTO","IRON","ITEM","JACK","JOIN","JOKE","JUMP","JURY","JUST","KEEN","KEEP","KEPT","KICK","KILL","KIND","KING","KISS","KNEE","KNEW","KNOT","KNOW","LACK","LADY","LAID","LAKE","LAND","LANE","LAST","LATE","LEAD","LEAF","LEAN","LEFT","LEGS","LENS","LESS","LIFE","LIFT","LIKE","LIMB","LINE","LINK","LION","LIPS","LIST","LIVE","LOAD","LOAN","LOCK","LONG","LOOK","LORD","LOSE","LOSS","LOST","LOUD","LOVE","LUCK","MADE","MAIL","MAIN","MAKE","MALE","MANY","MARK","MASK","MASS","MATE","MEAL","MEAN","MEAT","MEET","MELT","MENU","MERE","MILE","MILK","MILL","MIND","MINE","MISS","MODE","MOON","MORE","MOST","MOVE","MUCH","MUST","NAME","NAVY","NEAR","NECK","NEED","NEWS","NEXT","NICE","NINE","NODE","NONE","NOON","NORM","NOSE","NOTE","OBEY","OPEN","ORAL","OURS","OVAL","OVER","PACE","PACK","PAGE","PAID","PAIN","PAIR","PALE","PALM","PARK","PART","PASS","PAST","PATH","PEAK","PEAR","PICK","PILE","PINE","PINK","PIPE","PLAN","PLAY","PLOT","PLUG","PLUS","POEM","POET","POLE","POLL","POND","POOL","POOR","PORK","PORT","POST","POUR","PRAY","PURE","PUSH","QUIT","RACE","RACK","RAIL","RAIN","RAKE","RANK","RARE","RASH","RATE","READ","REAL","REAR","RELY","RENT","REST","RICE","RICH","RIDE","RING","RISE","RISK","ROAD","ROCK","ROLE","ROLL","ROOF","ROOM","ROOT","ROPE","ROSE","RULE","RUSH","RUST","SAFE","SAID","SAKE","SALE","SALT","SAME","SAND","SANG","SANK","SAVE","SCAN","SEAL","SEAT","SEED","SEEK","SEEM","SEEN","SELF","SELL","SEMI","SEND","SENT","SHED","SHIP","SHOE","SHOP","SHOT","SHOW","SHUT","SICK","SIDE","SIGN","SILK","SING","SINK","SITE","SIZE","SKIN","SLAM","SLAP","SLED","SLID","SLIM","SLOT","SLOW","SNAP","SNOW","SOAP","SOCK","SOFA","SOFT","SOIL","SOLD","SOLE","SOLO","SOME","SONG","SOON","SORT","SOUL","SPAN","STAR","STAY","STEM","STEP","STOP","SUCH","SUIT","SURE","SWAM","SWIM","TACK","TAIL","TAKE","TALE","TALK","TALL","TANK","TAPE","TASK","TAXI","TEAM","TEAR","TELL","TEND","TENT","TERM","TEST","THAN","THAT","THEM","THEN","THEY","THIN","THIS","THUS","TIED","TILE","TILL","TIME","TINY","TIPS","TIRE","TOAD","TOLD","TOLL","TONE","TOOK","TOOL","TORN","TOUR","TOWN","TRAY","TREE","TRIM","TRIP","TRUE","TUBE","TUNA","TUNE","TURN","TWIN","TYPE","UGLY","UNDO","UNIT","UPON","URGE","USED","USER","VAIN","VARY","VAST","VERY","VICE","VIEW","VINE","VOID","VOTE","WAGE","WAIT","WAKE","WALK","WALL","WANT","WARD","WARM","WARN","WARS","WASH","WAVE","WEAK","WEAR","WEEK","WELL","WENT","WERE","WEST","WHAT","WHEN","WIDE","WIFE","WILD","WILL","WIND","WINE","WING","WIRE","WISE","WISH","WITH","WOLF","WOOD","WORD","WORE","WORK","WORN","YARD","YEAH","YEAR","YOUR","ZERO","ZONE",
+    "AFTER","AGAIN","ALONE","ALONG","BLAST","BLOCK","BREAD","BREAK","BUILT","CHAIR","CHALK","CHARM","CHEAP","CHECK","CLEAR","CLOCK","CLOSE","CLOUD","COAST","COLOR","COMET","CRAFT","CRANE","CRASH","CREAM","CRIES","CROWD","CROWN","CRUEL","CURVE","DAILY","DANCE","DEALT","DEATH","DELAY","DENSE","DIRTY","DRAFT","DRAMA","DRANK","DRESS","DRIED","DRIES","DRINK","DRIVE","DROVE","DROWN","EARLY","EARTH","ELBOW","ENJOY","ENTRY","EQUAL","ERROR","EVENT","EVERY","FAINT","FAITH","FANCY","FARMS","FAULT","FENCE","FIELD","FINAL","FIRST","FLASH","FLOAT","FLOOD","FLOOR","FLOUR","FORCE","FOUND","FRAME","FRESH","FRIED","FROCK","FROST","FROWN","FROZE","FRUIT","GIANT","GLAND","GLARE","GLASS","GLOBE","GLOOM","GLORY","GLOVE","GRACE","GRADE","GRAIN","GRAND","GRANT","GRAPH","GRASP","GRASS","GRAVE","GRAVY","GREAT","GREEN","GREET","GRIEF","GRILL","GRIND","GROUP","GROWN","GUARD","GUESS","GUEST","GUIDE","GUILT","HAPPY","HEART","HEAVY","HOTEL","HOUSE","HUMAN","INDEX","INPUT","ISSUE","JEWEL","JOINT","JUDGE","JUICE","KNIFE","KNOWN","LABEL","LARGE","LATER","LAUGH","LAYER","LEARN","LEAST","LEAVE","LEGAL","LEMON","LIGHT","LIVER","LOCAL","LOGIC","LOOSE","LOWER","LOYAL","LUCKY","LUNCH","LYING","MAGIC","MAJOR","MAKER","MAPLE","MARCH","MATCH","MAYBE","MAYOR","MEANT","MEDAL","MEDIA","MERIT","METAL","METRO","MIGHT","MINOR","MINUS","MIXED","MODEL","MONEY","MONTH","MORAL","MOTOR","MOUNT","MOUSE","MOUTH","MOVED","MOVES","MOVIE","MUSIC","NEEDS","NEVER","NEWLY","NIGHT","NINTH","NOBLE","NOISE","NORTH","NOTED","NOVEL","NURSE","OASIS","OCCUR","OCEAN","OFFER","OFTEN","OLDER","OLIVE","OPERA","ORDER","ORGAN","OTHER","OUNCE","OUTER","OWNED","OWNER","PAINT","PAPER","PARTS","PARTY","PASTE","PATCH","PATHS","PAUSE","PEACE","PEACH","PEARL","PHASE","PHONE","PHOTO","PIANO","PIECE","PILOT","PIVOT","PIZZA","PLACE","PLAIN","PLANE","PLANT","PLATE","PLAYS","POEMS","POINT","POUND","POWER","PRESS","PRICE","PRIDE","PRINT","PRIOR","PROUD","PROVE","QUEEN","QUEST","QUICK","QUIET","QUITE","QUOTE","RADAR","RADIO","RAISE","RANGE","RAPID","RATIO","REACH","READY","RIGHT","RIVAL","RIVER","ROAST","ROBOT","ROUGH","ROUND","ROUTE","ROYAL","RURAL","SADLY","SAINT","SALAD","SAUCE","SCALE","SCENE","SCENT","SCORE","SHACK","SHADE","SHAFT","SHAKE","SHAPE","SHARE","SHARK","SHARP","SHEEP","SHEET","SHELF","SHELL","SHIFT","SHINE","SHIRT","SHOCK","SHOES","SHORE","SHORT","SHOUT","SHOWN","SIGHT","SILLY","SINCE","SIXTH","SIXTY","SLEEP","SLEPT","SLICE","SLIDE","SLOPE","SMALL","SMART","SMASH","SMELL","SMILE","SMOKE","SNAKE","SOLID","SOLVE","SOUND","SOUTH","SPACE","SPARE","SPARK","SPEAK","SPEED","SPELL","SPEND","SPENT","SPOKE","SPOON","SPORT","STACK","STAFF","STAGE","STAIN","STAIR","STAND","STARE","START","STATE","STEAL","STEEL","STEEP","STEER","STICK","STILL","STING","STOCK","STONE","STOOD","STORE","STORM","STORY","STUDY","STUFF","STYLE","SUGAR","SWEET","SWEPT","SWIFT","TABLE","TASTE","TASTY","TEACH","THANK","THEIR","THEME","THERE","THESE","THICK","THING","THINK","THIRD","THOSE","THREE","THREW","THROW","TIGER","TIGHT","TIRED","TODAY","TONAL","TOOTH","TOPIC","TOTAL","TOUCH","TOUGH","TOWER","TRACE","TRACK","TRADE","TRAIL","TRAIN","TREAT","TREES","TRIAL","TRIBE","TRICK","TRIED","TRIES","TRUCK","TRULY","TRUNK","TRUST","TRUTH","TWICE","TWIST","UNCLE","UNDER","UNDID","UNION","UNITY","UNTIL","UPPER","UPSET","URBAN","USAGE","USING","USUAL","VALID","VALUE","VAULT","VENUE","VIDEO","VIEWS","VITAL","VIVID","VOCAL","VOICE","VOTED","WAIST","WAITS","WAVED","WAVES","WHALE","WHEAT","WHEEL","WHERE","WHICH","WHILE","WHITE","WHOLE","WHOSE","WIDOW","WOMAN","WOMEN","WORDS","WORLD","WORRY","WORSE","WORST","WORTH","WOULD","WOVEN","WRECK","WRIST","WRITE","WRONG","WROTE","YOUNG","YOUTH","ZEBRA"];
+
+    // Game logic
+    const grid = new WordTraceGrid({rows: 4, cols: 4, minLength: 3});
+    const dict = new WordDictionary(WORDS);
+
+    // Pick a hand-curated 4×4 letter set with many findable words.
+    // Production: pick from a curated puzzle list or generate via WordDictionary.findAllOnGrid threshold filter.
+    const PUZZLES = [
+      "TIRE\nNEAS\nPEAT\nSLER", // ~30+ words: TIRE, TINS, NEAR, EARS, PEAR, PEAT, REST, REAP, TEAR, etc.
+      "MOST\nROAD\nPEEL\nINKS",
+      "RIDE\nSALT\nMORE\nPACE"
+    ];
+    grid.setLetters(PUZZLES[0].replace(/\n/g, ""));
+    const allWords = dict.findAllOnGrid(grid);
+    let totalTarget = allWords.size;
+
+    // DOM
+    const boardEl = document.getElementById("board");
+    const pathLine = document.getElementById("path-line");
+    const currentEl = document.getElementById("current-word");
+    const scoreEl = document.getElementById("score");
+    const wordCountEl = document.getElementById("word-count");
+    const foundTrayEl = document.getElementById("found-tray");
+    const toastEl = document.getElementById("toast");
+    const overlayEl = document.getElementById("overlay");
+    const overlayStatsEl = document.getElementById("overlay-stats");
+
+    // Build cells
+    const cellEls = [];
+    for (let r = 0; r < grid.rows; r++) {
+      for (let c = 0; c < grid.cols; c++) {
+        const el = document.createElement("div");
+        el.className = "cell";
+        el.dataset.row = r;
+        el.dataset.col = c;
+        el.textContent = grid.get(r, c);
+        boardEl.appendChild(el);
+        cellEls.push(el);
+      }
+    }
+
+    function cellElAt(r, c) { return cellEls[r * grid.cols + c]; }
+    function updateCellHighlights() {
+      cellEls.forEach((el, i) => {
+        const r = Math.floor(i / grid.cols), c = i % grid.cols;
+        el.classList.toggle("in-path", grid.containsCell(r, c));
+        el.classList.toggle("head", grid.path.length > 0 &&
+          grid.path[grid.path.length - 1].row === r &&
+          grid.path[grid.path.length - 1].col === c);
+      });
+      // Path overlay (SVG percentage coordinates)
+      if (grid.path.length === 0) { pathLine.setAttribute("points", ""); return; }
+      const stepX = 100 / grid.cols;
+      const stepY = 100 / grid.rows;
+      const pts = grid.path.map(p =>
+        `${p.col * stepX + stepX/2},${p.row * stepY + stepY/2}`
+      ).join(" ");
+      pathLine.setAttribute("points", pts);
+    }
+    function updateWordDisplay() {
+      const w = grid.currentWord();
+      currentEl.textContent = w;
+      currentEl.className = "current-word";
+      if (w.length >= grid.minLength && dict.has(w) && !grid.foundWords.has(w)) {
+        currentEl.classList.add("is-valid");
+      } else if (w.length > 0 && dict.isPrefix(w)) {
+        currentEl.classList.add("is-prefix");
+      } else if (w.length >= grid.minLength) {
+        currentEl.classList.add("is-invalid");
+      }
+    }
+    function updateScoreboard() {
+      scoreEl.textContent = grid.totalScore();
+      wordCountEl.textContent = `${grid.foundWords.size}/${totalTarget}`;
+      foundTrayEl.innerHTML = "";
+      [...grid.foundWords].sort().forEach(w => {
+        const pill = document.createElement("span");
+        pill.className = "found-pill";
+        pill.textContent = w;
+        foundTrayEl.appendChild(pill);
+      });
+    }
+    function showToast(msg, kind) {
+      toastEl.textContent = msg;
+      toastEl.className = "show " + (kind || "");
+      clearTimeout(showToast._t);
+      showToast._t = setTimeout(() => toastEl.className = "", 1400);
+    }
+
+    // Pointer handling — mob-005: pointerdown/pointermove/pointerup, no click events.
+    function pointerCellFromEvent(ev) {
+      const target = document.elementFromPoint(ev.clientX, ev.clientY);
+      if (!target?.classList.contains("cell")) return null;
+      return { row: parseInt(target.dataset.row, 10), col: parseInt(target.dataset.col, 10) };
+    }
+
+    let tracing = false;
+    boardEl.addEventListener("pointerdown", (ev) => {
+      ev.preventDefault();
+      const cell = pointerCellFromEvent(ev);
+      if (!cell) return;
+      tracing = true;
+      grid.startTrace(cell.row, cell.col);
+      try { boardEl.setPointerCapture(ev.pointerId); } catch {}
+      updateCellHighlights();
+      updateWordDisplay();
+    }, { passive: false });
+
+    boardEl.addEventListener("pointermove", (ev) => {
+      if (!tracing) return;
+      const cell = pointerCellFromEvent(ev);
+      if (!cell) return;
+      const changed = grid.extendTrace(cell.row, cell.col);
+      if (changed) {
+        updateCellHighlights();
+        updateWordDisplay();
+      }
+    }, { passive: false });
+
+    function endTrace() {
+      if (!tracing) return;
+      tracing = false;
+      const result = grid.commitWord(dict);
+      updateCellHighlights();
+      currentEl.textContent = "";
+      currentEl.className = "current-word";
+      if (result.valid) {
+        showToast(`+${result.score}  ${result.word}`, "good");
+        updateScoreboard();
+        if (grid.foundWords.size >= totalTarget) {
+          overlayStatsEl.innerHTML = `Found <strong>${grid.foundWords.size}</strong> of <strong>${totalTarget}</strong> words<br>Total score: <strong>${grid.totalScore()}</strong>`;
+          overlayEl.classList.add("show");
+        }
+      } else if (result.word.length >= grid.minLength) {
+        const reasons = {"not-a-word": "not a word", "already-found": "already found", "too-short": "too short"};
+        showToast(reasons[result.reason] || "invalid", "bad");
+      }
+    }
+    boardEl.addEventListener("pointerup", endTrace, { passive: false });
+    boardEl.addEventListener("pointercancel", endTrace, { passive: false });
+    boardEl.addEventListener("pointerleave", (ev) => {
+      // Only end if we're not still in capture
+      if (!tracing) return;
+      const cell = pointerCellFromEvent(ev);
+      if (!cell) endTrace();
+    });
+
+    document.getElementById("overlay-restart").addEventListener("click", () => {
+      grid.foundWords.clear();
+      grid.resetPath();
+      const next = PUZZLES[Math.floor(Math.random() * PUZZLES.length)].replace(/\n/g, "");
+      grid.setLetters(next);
+      cellEls.forEach((el, i) => el.textContent = grid.get(Math.floor(i / grid.cols), i % grid.cols));
+      totalTarget = dict.findAllOnGrid(grid).size;
+      overlayEl.classList.remove("show");
+      updateCellHighlights();
+      updateWordDisplay();
+      updateScoreboard();
+    });
+
+    // Smoke-test stdout: prove WordTraceGrid + WordDictionary are wired correctly
+    console.log(`[Smoke] WordTraceGrid ${grid.rows}×${grid.cols} ready, dictionary=${dict.size?.() ?? dict.words.size} words`);
+    console.log(`[Smoke] Grid letters: ${PUZZLES[0].replace(/\n/g, " ")}`);
+    console.log(`[Smoke] Findable words on grid: ${totalTarget}`);
+    console.log(`[Smoke] Sample findable: ${[...allWords].slice(0, 8).join(", ")}`);
+
+    updateScoreboard();
+  </script>
+</body>
+</html>
