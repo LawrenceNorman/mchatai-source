@@ -815,6 +815,52 @@
       ]
     },
     {
+      "id": "entities.memory-match-board",
+      "name": "MemoryMatchBoard",
+      "category": "entities",
+      "path": "entities/MemoryMatchBoard.js",
+      "exports": [
+        "MemoryMatchBoard",
+        "MEMORY_DEFAULT_SYMBOLS"
+      ],
+      "status": "ready",
+      "summary": "Memory match (concentration) board. NxM grid (must have even cell count) with face-down/face-up/matched card states. flipCard(r,c) returns {state: 'first'|'match'|'mismatch'|'ignored', card, matchedPair?, mismatchPair?}. Caller delays ~800-1200ms after a mismatch then invokes resolveMismatch() to flip both cards back. Includes static buildShuffledDeck(symbols, totalCells) + Fisher-Yates shuffle helpers. MEMORY_DEFAULT_SYMBOLS exports 36 emoji for default decks.",
+      "tags": [
+        "memory",
+        "match",
+        "concentration",
+        "card-pairs",
+        "card-flip",
+        "puzzle",
+        "mobile",
+        "kids"
+      ],
+      "contracts": {
+        "helpers": [
+          "setCards(values: array)",
+          "flipCard(r,c) -> {state, card, matchedPair?, mismatchPair?}",
+          "resolveMismatch() -> bool",
+          "isComplete()",
+          "accuracy() -> 0..1",
+          "static buildShuffledDeck(symbols, totalCells)",
+          "static shuffle(arr)"
+        ],
+        "state": "moves: number; misses: number; matchedCount: number; faceUpCells: [{row,col}]"
+      },
+      "goodFits": [
+        "memory-match",
+        "concentration",
+        "card-pairs",
+        "kids-game",
+        "mobile-puzzle",
+        "flip-cards",
+        "matching-game"
+      ],
+      "extends": [
+        "entities.grid-board"
+      ]
+    },
+    {
       "id": "entities.tile-swapper",
       "name": "TileSwapper",
       "category": "entities",
@@ -3009,6 +3055,60 @@
       ],
       "requiredNow": [
         "entities.swipe-tile-grid"
+      ],
+      "plannedNext": []
+    },
+    {
+      "id": "recipe.memory-match",
+      "name": "Memory Match / Concentration",
+      "keywords": [
+        "memory",
+        "memory match",
+        "memory-match",
+        "concentration",
+        "concentration card game",
+        "card pairs",
+        "matching pairs",
+        "match pairs",
+        "flip card",
+        "flip cards",
+        "card flip game",
+        "find pairs",
+        "match the cards",
+        "memory game",
+        "flashcard match",
+        "kids matching",
+        "kids memory game",
+        "tile flip puzzle"
+      ],
+      "templateIDs": [],
+      "existingApps": [
+        "memory match",
+        "concentration",
+        "card-flip-pairs"
+      ],
+      "starterComponents": [
+        "entities.memory-match-board",
+        "ui.mini-header",
+        "ui.scoreboard",
+        "core.game-manager",
+        "resources.swatches",
+        "resources.audio-manager",
+        "effects.score-rise",
+        "effects.pop-burst"
+      ],
+      "assemblyNotes": [
+        "Use MemoryMatchBoard for the card grid. Pick 4\u00d74 (16 cards / 8 pairs) for kids/easy, 4\u00d76 (24 / 12 pairs) for medium, 6\u00d76 (36 / 18 pairs) for hard.",
+        "Call MemoryMatchBoard.buildShuffledDeck(symbols, rows * cols) once per new game. MEMORY_DEFAULT_SYMBOLS has 36 emoji; substitute with country flags / animal photos / chess-piece glyphs / etc. for thematic variants.",
+        "Touch UX (mob-005): listen to pointerup on each card element, NOT click. Call grid.flipCard(r, c). The 'state' return value tells you what to do: 'first' (just flip); 'match' (apply matched class to both, play match SFX); 'mismatch' (apply face-up briefly, then setTimeout(800ms) \u2192 grid.resolveMismatch() \u2192 re-render); 'ignored' (no-op).",
+        "Animate card flips with CSS transform: rotateY(180deg) and a face-back / face-front structure. Touch targets \u2265 44\u00d744 logical pixels (mob-002).",
+        "Score model: track grid.moves (pair-attempts) and grid.misses. Final score = (totalPairs / moves) * 1000 OR a time-based scheme. Show end-of-game stats: pairs found / moves / misses / time elapsed.",
+        "End-of-game overlay (mac-022 web equivalent): grid.isComplete() \u2192 show 'Try Again' button + 'New Theme' button (lets user pick a different symbol set).",
+        "Persist best-moves and best-time in localStorage per board size.",
+        "Mobile-portrait full-bleed. Apply mobile-frontend wisdom rules (mob-001..016)."
+      ],
+      "requiredNow": [
+        "entities.memory-match-board"
       ],
       "plannedNext": []
     },
