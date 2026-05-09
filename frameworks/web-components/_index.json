@@ -905,6 +905,44 @@
       ]
     },
     {
+      "id": "entities.hangman-game",
+      "name": "HangmanGame",
+      "category": "entities",
+      "path": "entities/HangmanGame.js",
+      "exports": [
+        "HangmanGame",
+        "HANGMAN_DEFAULT_WORDS"
+      ],
+      "status": "ready",
+      "summary": "Hangman state machine (letter-by-letter word guessing classic). Tracks guessed letters, wrong count, and win/loss state. guessLetter(L) returns {kind:'correct'|'incorrect'|'repeat'|'ignored', positions?, wrongCount, state, masked}. maskedWord() reveals guessed letters as letters and unguessed as '_'. remainingLetters() returns A-Z minus tried letters for keyboard enable/disable. HANGMAN_DEFAULT_WORDS exports 100 common 4-8 letter words.",
+      "tags": [
+        "hangman",
+        "word-guess",
+        "letter-by-letter",
+        "word-game",
+        "kids",
+        "mobile"
+      ],
+      "contracts": {
+        "helpers": [
+          "newRound(word)",
+          "guessLetter(L) -> {kind, letter, positions?, wrongCount, state, masked}",
+          "maskedWord()",
+          "isFullyRevealed()",
+          "isOver()",
+          "remainingLetters()"
+        ],
+        "state": "target: string; guessed: Set<letter>; wrongCount: number; state: 'idle'|'playing'|'won'|'lost'; maxWrong: number (default 6)"
+      },
+      "goodFits": [
+        "hangman",
+        "word-guess",
+        "letter-puzzle",
+        "kids-word-game",
+        "mobile-word-game"
+      ]
+    },
+    {
       "id": "entities.tile-swapper",
       "name": "TileSwapper",
       "category": "entities",
@@ -3238,6 +3276,51 @@
       ],
       "requiredNow": [
         "entities.sudoku-board"
+      ],
+      "plannedNext": []
+    },
+    {
+      "id": "recipe.hangman",
+      "name": "Hangman Word-Guess",
+      "keywords": [
+        "hangman",
+        "hangman game",
+        "word guess",
+        "word-guess",
+        "letter by letter",
+        "letter-by-letter",
+        "guess the word",
+        "guess word",
+        "wheel of fortune-ish",
+        "letter game",
+        "kids word game",
+        "word reveal puzzle",
+        "spelling game"
+      ],
+      "templateIDs": [],
+      "existingApps": [
+        "hangman"
+      ],
+      "starterComponents": [
+        "entities.hangman-game",
+        "ui.mini-header",
+        "ui.scoreboard",
+        "ui.keyboard-input",
+        "core.game-manager",
+        "resources.swatches",
+        "resources.audio-manager"
+      ],
+      "assemblyNotes": [
+        "Use HangmanGame for state. Pick a fresh word from HANGMAN_DEFAULT_WORDS (or a thematic substitute) on each round. Caller-controlled vocabulary \u21d2 easy to swap in animals / movies / foods / countries.",
+        "Render 3 surfaces: (1) the gallows + hangman drawing (SVG with paths revealed by wrongCount: head=1, body=2, lArm=3, rArm=4, lLeg=5, rLeg=6); (2) the masked word as widely-spaced underscores/letters; (3) an A-Z on-screen keyboard.",
+        "On-screen keyboard touch UX (mob-005): pointerup per key. Disable already-guessed letters (or grey them out + apply correct/incorrect color). Use grid.remainingLetters() to drive enabled state.",
+        "Color cues: correct guesses = green letter on the keyboard; incorrect = red. Animate the masked word's letter when it gets revealed.",
+        "End-of-round overlay (mac-022 web equivalent): if state==='won' show 'You won!'; if state==='lost' show 'Game over' + the word that was hidden. Both overlays have a 'New Word' button.",
+        "Persist streak / longest streak in localStorage. Show streak in the header.",
+        "Touch targets \u2265 44\u00d744 logical pixels (mob-002). Mobile-portrait full-bleed. Apply mobile-frontend wisdom rules (mob-001..016)."
+      ],
+      "requiredNow": [
+        "entities.hangman-game"
       ],
       "plannedNext": []
     },
