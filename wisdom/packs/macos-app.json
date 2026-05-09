@@ -1,6 +1,6 @@
 {
   "packID": "macos-app",
-  "version": 34,
+  "version": 36,
   "displayName": "macOS App Generation Wisdom",
   "description": "Rules for generating executable macOS apps (SwiftUI / AppKit) via Swift Playground. Focused on making the generated binary actually appear as a visible, interactive window \u2014 not a headless background process.",
   "categories": [
@@ -1091,6 +1091,34 @@
         "RIGHT: read `Sources/<Target>/MChatAIComponents/PongEngine.swift` first to learn the surface.",
         "WRONG: `paddle.halfHeight` where `paddle: ArcadeBody` \u2014 ArcadeBody only has position/velocity/radius/angle/isAlive.",
         "WRONG: `PongEngine.Event.scored` \u2014 PongEngine has no Event type; check the file first."
+      ]
+    },
+    {
+      "id": "mac-036",
+      "rule": "macos-components is a SOURCE CATALOG, NOT a SwiftPM package. Components are COPIED VERBATIM into `Sources/<Target>/MChatAIComponents/` \u2014 they ARE NOT imported as `.product(name:..., package:'macos-components')` and they ARE NOT declared as `.package(url: 'https://github.com/mchatai/macos-components', ...)` (that URL doesn't exist as a SwiftPM-shaped repo). DO NOT add a `dependencies:` array referring to macos-components. The Package.swift for a Lego-using app should have an EMPTY `dependencies: []` (or omit the field entirely). The marker file `mchatai-macos-components-used.json` is the only declaration needed; the verbatim copies in `MChatAIComponents/` are how the app gets the source. They compile as part of YOUR executable target. ALSO: do NOT write `import PongEngine` / `import ArcadeCore` / `import GridPuzzleCore` / `import SpriteKitPhysicsHelpers` / etc. The components compile inline as part of YOUR target \u2014 they are NOT separate modules. The only `import` statements you need are system frameworks (SwiftUI, AppKit, SpriteKit, AudioToolbox, Foundation).",
+      "why": "Final pong validation 2026-05-09 (final-pong-validate-2026-05-09-1224) had Package.swift with `.package(url: 'https://github.com/mchatai/macos-components', branch: 'main')` and `.product(name: 'PongEngine', package: 'macos-components')` \u2014 swift build failed with 'Failed to clone repository https://github.com/mchatai/macos-components' (the URL doesn't exist as a SwiftPM-shaped repo with Package.swift exposing PongEngine product). The PongEngine.swift was correctly copied verbatim into Sources/PongArcade/MChatAIComponents/ \u2014 it should compile as part of the PongArcade target. Adding the package dependency is a fundamental misunderstanding of the catalog architecture.",
+      "severity": "critical",
+      "appliesTo": "macOSApp",
+      "examples": [
+        "RIGHT (Package.swift for any Lego-using app):\n```\nlet package = Package(\n    name: \"PongArcade\",\n    platforms: [.macOS(.v26)],\n    products: [.executable(name: \"PongArcade\", targets: [\"PongArcade\"])],\n    targets: [\n        .executableTarget(name: \"PongArcade\", path: \"Sources/PongArcade\")\n    ]\n)\n```\nNo dependencies. Components are inside Sources/PongArcade/MChatAIComponents/.",
+        "WRONG: `.package(url: 'https://github.com/mchatai/macos-components', branch: 'main')` \u2014 that's not how the catalog works.",
+        "WRONG: `.product(name: 'PongEngine', package: 'macos-components')` \u2014 components compile as part of YOUR target.",
+        "WRONG: `import PongEngine` (compiles inline, not a module).",
+        "WRONG: `import ArcadeCore` (same \u2014 verbatim source copy in MChatAIComponents/, not a separate module).",
+        "RIGHT: `import SwiftUI` and `import SpriteKit` \u2014 only system frameworks need imports."
+      ]
+    },
+    {
+      "id": "mac-037",
+      "rule": "Swift target/module names MUST be valid Swift identifiers: [A-Za-z_][A-Za-z0-9_]*. Do NOT use parentheses, slashes, hyphens, spaces, or other punctuation in target names OR in file names that contain `@main`. Common Claude-hallucination examples: `PongArcade(macOS)App.swift`, `Bubble-Pop-App.swift`, `My App.swift`. The parens/dashes/spaces break SwiftPM compilation and Xcode resolution. Use `PongArcadeApp.swift`, `BubblePopApp.swift`, `MyApp.swift`. Same for the Package.swift `name:` field \u2014 keep it alphanumeric.",
+      "why": "Final pong validation 2026-05-09 had `Sources/PongArcade(macOS)App.swift` with `@main` \u2014 the parens broke macro expansion. Multiple historical canaries have shipped target names with parens (when LLM picks up the recipe.name like `Native (macOS) Pong` and tries to slug it). Always-alphanumeric avoids the class.",
+      "severity": "high",
+      "appliesTo": "macOSApp",
+      "examples": [
+        "RIGHT: `Sources/PongArcade/PongArcadeApp.swift` with `@main struct PongArcadeApp { ... }`.",
+        "WRONG: `Sources/PongArcade(macOS)App.swift` \u2014 parens not valid in identifier.",
+        "WRONG: `Sources/Bubble-Pop-App.swift` \u2014 dashes break.",
+        "WRONG: `Package(name: \"Pong (Arcade)\")` \u2014 parens in target name break SwiftPM resolution."
       ]
     }
   ],
