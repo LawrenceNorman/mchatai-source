@@ -1,6 +1,6 @@
 {
   "packID": "macos-app",
-  "version": 33,
+  "version": 34,
   "displayName": "macOS App Generation Wisdom",
   "description": "Rules for generating executable macOS apps (SwiftUI / AppKit) via Swift Playground. Focused on making the generated binary actually appear as a visible, interactive window \u2014 not a headless background process.",
   "categories": [
@@ -1069,14 +1069,15 @@
     },
     {
       "id": "mac-034",
-      "rule": "When your recipe selects ANY SwiftUI effect Lego (effects.pop-burst, effects.score-rise, effects.board-shake, effects.spawn-drop, effects.hint-pulse), Package.swift MUST declare `.macOS(.v26)` (or .v15+ depending on which effects you're using). All these effect Legos are annotated `@available(macOS 26.0, *)` because they use SwiftUI 5.0 / iOS 18 / macOS Sequoia animation APIs (Animatable, ScaledMetric improvements, KeyframeAnimator). If your Package.swift defaults to `.macOS(.v12)` (Claude's habit) the build fails with `'popBurst(trigger:intensity:color:)' is only available in macOS 26.0 or newer`. ALWAYS use `.macOS(.v26)` for any recipe with SwiftUI-effect components.",
-      "why": "Pong canary 2026-05-09 (catalog-verify-pong refire) shipped Package.swift with `.macOS(.v12)` but ContentView.swift used `.popBurst(trigger:...)`, `.scoreRise(...)`, `.boardShake(...)` \u2014 4 errors all of form `only available in macOS 26.0 or newer`. The Lego components themselves are correctly annotated. The bug is the mismatch between the wizard-generated Package.swift platform target and the Lego availability requirements.",
+      "rule": "When your recipe selects ANY SwiftUI effect Lego (effects.pop-burst, effects.score-rise, effects.board-shake, effects.spawn-drop, effects.hint-pulse), Package.swift MUST declare BOTH (a) `// swift-tools-version: 6.2` (or higher) AND (b) `.macOS(.v26)` (or higher). The platform `.v26` was introduced in PackageDescription 6.2 \u2014 using `swift-tools-version: 6.0` with `.macOS(.v26)` produces error: `'v26' is unavailable`. All effect Legos are annotated `@available(macOS 26.0, *)` because they use SwiftUI 5.0 / iOS 18 / macOS Sequoia animation APIs (Animatable, ScaledMetric improvements, KeyframeAnimator). If your Package.swift defaults to `.macOS(.v12)` (Claude's habit) the build fails with `'popBurst(trigger:intensity:color:)' is only available in macOS 26.0 or newer`. ALWAYS use `swift-tools-version: 6.2` AND `.macOS(.v26)` for any recipe with SwiftUI-effect components.",
+      "why": "Pong canary 2026-05-09 (catalog-verify-pong refire) shipped Package.swift with `.macOS(.v12)` but ContentView.swift used `.popBurst(trigger:...)`, `.scoreRise(...)`, `.boardShake(...)` \u2014 4 errors all of form `only available in macOS 26.0 or newer`. The Lego components themselves are correctly annotated. The bug is the mismatch between the wizard-generated Package.swift platform target and the Lego availability requirements. Final pong validation 2026-05-09 used .macOS(.v26) with swift-tools 6.0 \u2192 error: `'v26' is unavailable` from Swift PackageDescription 6.2 requirement.",
       "severity": "critical",
       "appliesTo": "macOSApp",
       "examples": [
-        "RIGHT: `platforms: [.macOS(.v26)]` when your recipe selects effects.pop-burst / score-rise / board-shake / spawn-drop / hint-pulse.",
-        "RIGHT: `platforms: [.macOS(.v15)]` for non-effect recipes (chess, pong without effects, etc).",
-        "WRONG: `platforms: [.macOS(.v12)]` when ANY effects.* Lego is in the marker \u2014 guaranteed compile failure on the .popBurst/.scoreRise/.boardShake call sites."
+        "RIGHT: Package.swift starts `// swift-tools-version: 6.2` AND `platforms: [.macOS(.v26)]`",
+        "RIGHT: `// swift-tools-version: 6.0` AND `platforms: [.macOS(.v15)]` for non-effect recipes",
+        "WRONG: `// swift-tools-version: 6.0` with `.macOS(.v26)` \u2192 error: `'v26' is unavailable` (v26 requires 6.2)",
+        "WRONG: `// swift-tools-version: 6.2` with `.macOS(.v12)` \u2192 effect modifier calls fail with `'popBurst' is only available in macOS 26.0 or newer`"
       ]
     },
     {
