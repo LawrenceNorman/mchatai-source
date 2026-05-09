@@ -769,6 +769,52 @@
       ]
     },
     {
+      "id": "entities.swipe-tile-grid",
+      "name": "SwipeTileGrid",
+      "category": "entities",
+      "path": "entities/SwipeTileGrid.js",
+      "exports": [
+        "SwipeTileGrid"
+      ],
+      "status": "ready",
+      "summary": "Swipe-merge tile grid for 2048 / Threes / Doodle Merge clones. NxN numeric tile grid with classic 2048 swipe-merge mechanics: each tile merges at most once per swipe, two-of-a-kind become their sum. Includes spawnRandomTile (90% 2 / 10% 4 by default), canMove / isGameOver, isWin (configurable winValue, default 2048), and a static directionFromSwipe helper for pointer-event delta detection.",
+      "tags": [
+        "2048",
+        "threes",
+        "swipe",
+        "merge",
+        "tile",
+        "puzzle",
+        "mobile",
+        "grid",
+        "doodle-merge"
+      ],
+      "contracts": {
+        "helpers": [
+          "newGame()",
+          "swipe(direction) -> {moved, merged, mergedTiles}",
+          "spawnRandomTile() -> {row, col, value} | null",
+          "canMove()",
+          "isWin()",
+          "isGameOver()",
+          "static directionFromSwipe(startX, startY, endX, endY, threshold) -> 'left'|'right'|'up'|'down'|null"
+        ],
+        "state": "score: number; bestTile: number; moveCount: number; hasReachedWinValue: bool"
+      },
+      "goodFits": [
+        "2048",
+        "threes",
+        "doodle-merge",
+        "drop-merge",
+        "tile-merge",
+        "swipe-puzzle",
+        "mobile-puzzle"
+      ],
+      "extends": [
+        "entities.grid-board"
+      ]
+    },
+    {
       "id": "entities.tile-swapper",
       "name": "TileSwapper",
       "category": "entities",
@@ -2906,6 +2952,65 @@
         "effects.board-shake"
       ],
       "optionalComponents": []
+    },
+    {
+      "id": "recipe.swipe-merge",
+      "name": "2048 / Threes Swipe-Merge",
+      "keywords": [
+        "2048",
+        "twenty-forty-eight",
+        "threes",
+        "doodle merge",
+        "doodle-merge",
+        "drop merge",
+        "swipe merge",
+        "swipe-merge",
+        "tile merge",
+        "tile-merge",
+        "merge tiles",
+        "combine tiles",
+        "2048 clone",
+        "threes clone",
+        "swipe up down left right",
+        "swipe to combine",
+        "powers of 2",
+        "powers of two",
+        "merge puzzle",
+        "puzzle merge"
+      ],
+      "templateIDs": [],
+      "existingApps": [
+        "2048",
+        "threes",
+        "doodle merge"
+      ],
+      "starterComponents": [
+        "entities.swipe-tile-grid",
+        "ui.mini-header",
+        "ui.scoreboard",
+        "core.game-manager",
+        "resources.swatches",
+        "resources.audio-manager",
+        "effects.score-rise",
+        "effects.pop-burst",
+        "effects.spawn-drop"
+      ],
+      "assemblyNotes": [
+        "Use SwipeTileGrid for the 4\u00d74 tile grid (size: 4 default, or pass size: 5/6 for harder variants).",
+        "Mobile-first: detect swipe via pointerdown + pointerup, NOT keyboard. Use SwipeTileGrid.directionFromSwipe(startX, startY, endX, endY, 30) to convert deltas to direction. (See mobile-frontend wisdom mob-005.)",
+        "Desktop fallback: also bind ArrowUp/ArrowDown/ArrowLeft/ArrowRight to grid.swipe(direction).",
+        "After every successful swipe (result.moved == true), call grid.spawnRandomTile() to add a new 2 or 4. Track grid.score for the scoreboard.",
+        "Use effects.spawn-drop for new-tile entrance animation and effects.score-rise for merge feedback (per merge points).",
+        "Color palette: tiles get distinct colors per power. Use a logarithmic gradient (2 = lightest \u2192 2048+ = boldest accent). Pull from resources.swatches.",
+        "End-of-game: when grid.isGameOver(), show overlay with final score + best tile + 'Try Again' button (mac-022 web equivalent \u2014 visible-restart).",
+        "On grid.isWin() === true (first time the win-value tile appears), show a 'You won! Keep playing?' overlay; let the user continue past 2048.",
+        "Persist best score + best tile in localStorage. Show end-of-game vs personal-best comparison ONLY at game-over, not in-play (per high-score-is-end-of-run-chrome wisdom).",
+        "Mobile-portrait full-bleed. Apply mobile-frontend wisdom rules (mob-001..016). Touch targets \u2265 44\u00d744 logical pixels."
+      ],
+      "requiredNow": [
+        "entities.swipe-tile-grid"
+      ],
+      "plannedNext": []
     },
     {
       "id": "recipe.blackjack",
