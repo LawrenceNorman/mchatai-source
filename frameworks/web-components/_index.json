@@ -943,6 +943,51 @@
       ]
     },
     {
+      "id": "entities.tetris-board",
+      "name": "TetrisBoard",
+      "category": "entities",
+      "path": "entities/TetrisBoard.js",
+      "exports": [
+        "TetrisBoard"
+      ],
+      "status": "ready",
+      "summary": "Standard 10\u00d720 Tetris game board with the seven canonical tetrominoes (I/O/T/L/J/S/Z), 7-bag random piece distribution, simple wall-kick rotation, soft/hard drop, and standard line-clear scoring (100/300/500/800 \u00d7 level). Includes ghostPosition() for the landing-preview UI feature, gravityMs() for level-scaled fall speed, and TetrisBoard.COLORS palette for the 7 piece colors.",
+      "tags": [
+        "tetris",
+        "tetromino",
+        "blocks",
+        "falling-blocks",
+        "line-clear",
+        "puzzle",
+        "mobile",
+        "arcade"
+      ],
+      "contracts": {
+        "helpers": [
+          "newGame()",
+          "tick() -> {locked, linesCleared}",
+          "move(dr, dc) -> bool",
+          "rotate(dir=1|-1) -> bool",
+          "hardDrop() -> {locked, linesCleared, dropDistance}",
+          "softDrop() -> bool",
+          "ghostPosition() -> {kind, rot, row, col}",
+          "gravityMs() -> number",
+          "static COLORS, static TETROMINOES"
+        ],
+        "state": "score: number; level: number; lines: number; active: {kind,rot,row,col}|null; nextKind: string; gameOver: bool"
+      },
+      "goodFits": [
+        "tetris",
+        "blockstack",
+        "falling-blocks",
+        "tspin-puzzle",
+        "mobile-block-game"
+      ],
+      "extends": [
+        "entities.grid-board"
+      ]
+    },
+    {
       "id": "entities.tile-swapper",
       "name": "TileSwapper",
       "category": "entities",
@@ -3321,6 +3366,61 @@
       ],
       "requiredNow": [
         "entities.hangman-game"
+      ],
+      "plannedNext": []
+    },
+    {
+      "id": "recipe.tetris",
+      "name": "Tetris Falling Blocks",
+      "keywords": [
+        "tetris",
+        "tetris clone",
+        "falling blocks",
+        "falling-blocks",
+        "tetromino",
+        "tetrominoes",
+        "block stack",
+        "blockstack",
+        "stacker",
+        "block falling puzzle",
+        "line clear",
+        "line-clear",
+        "I O T L J S Z",
+        "rotate blocks",
+        "drop blocks",
+        "classic tetris",
+        "soviet block puzzle"
+      ],
+      "templateIDs": [],
+      "existingApps": [
+        "tetris",
+        "block puzzle"
+      ],
+      "starterComponents": [
+        "entities.tetris-board",
+        "ui.mini-header",
+        "ui.scoreboard",
+        "core.game-manager",
+        "resources.swatches",
+        "resources.audio-manager",
+        "effects.score-rise",
+        "effects.board-shake",
+        "effects.spawn-drop"
+      ],
+      "assemblyNotes": [
+        "Use TetrisBoard for the 10\u00d720 grid (or pass rows: 22 / cols: 10 for the standard 'extra rows above' rendering).",
+        "Game loop: setInterval(() => grid.tick(), grid.gravityMs()) \u2014 re-call setInterval whenever lines clear (level changes \u2192 faster gravity).",
+        "Mobile touch input (mob-005): pointerdown to detect tap, pointerup with delta to detect swipe (left/right = move, down = soft drop, up = rotate, swipe-up-fast = hard drop). Bottom on-screen control bar with arrow buttons + rotate as a fallback.",
+        "Desktop keyboard: ArrowLeft/Right = move, ArrowDown = softDrop, ArrowUp = rotate, Space = hardDrop, P = pause.",
+        "Use TetrisBoard.ghostPosition() to render the 'landing preview' (semi-transparent piece silhouette where the current piece would land). Standard mobile-Tetris UX feature.",
+        "Render the 'next' piece in a side-panel using TetrisBoard.TETROMINOES[grid.nextKind].rotations[0].",
+        "Scoring is built-in (100/300/500/800 \u00d7 level). Level rises every 10 lines automatically. Use effects.score-rise for combo / line-clear visual feedback. Use effects.board-shake for tetris (4-line) clears.",
+        "End-of-game overlay (mac-022 web equivalent) when grid.gameOver: show final score + lines + level + 'New Game' button.",
+        "Persist best score in localStorage. Show in header.",
+        "Mobile-portrait full-bleed. Apply mobile-frontend wisdom rules (mob-001..016). Touch targets \u2265 44\u00d744 logical pixels."
+      ],
+      "requiredNow": [
+        "entities.tetris-board"
       ],
       "plannedNext": []
     },
