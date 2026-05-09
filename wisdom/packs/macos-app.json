@@ -1,6 +1,6 @@
 {
   "packID": "macos-app",
-  "version": 29,
+  "version": 30,
   "displayName": "macOS App Generation Wisdom",
   "description": "Rules for generating executable macOS apps (SwiftUI / AppKit) via Swift Playground. Focused on making the generated binary actually appear as a visible, interactive window \u2014 not a headless background process.",
   "categories": [
@@ -1037,6 +1037,21 @@
         "RIGHT (BubblePop): use AnimationIntensity for tap-pop animation tuning. Skip SoundEngine if your game has no audio. Skip LevelManager if it's a single-screen game.",
         "RIGHT (MarbleMadness): compose SKPhysicsHelpers + SKArcadeCategory (the physics-helpers component is requiredNow). Reach for effects only as needed.",
         "WRONG: padding your code with `let _ = SoundEngine.shared` just to satisfy the composition check \u2014 this hides the optional-effect intent."
+      ]
+    },
+    {
+      "id": "mac-032",
+      "rule": "When using SwiftUI shape strokes/fills, ONLY reference real ShapeStyle members. Common LLM hallucinations: `.gold`, `.silver`, `.bronze`, `.crimson`, `.azure` \u2014 NONE of these exist on `Color` or `ShapeStyle`. Use the canonical members (`.red`, `.orange`, `.yellow`, `.green`, `.mint`, `.teal`, `.cyan`, `.blue`, `.indigo`, `.purple`, `.pink`, `.brown`, `.white`, `.gray`, `.black`, `.primary`, `.secondary`) or construct via `Color(red:green:blue:)` / `Color(.sRGB, ...)` / `Color(hex:)` with explicit values. For gold-flavored UI: `Color(red: 1.0, green: 0.84, blue: 0.0)` or just `.yellow`.",
+      "why": "Match3 canary 2026-05-09 (catalog-verify-match3) shipped with `Circle().stroke(.gold, lineWidth: ...)` \u2014 Swift error: `type 'ShapeStyle' has no member 'gold'`. Build failed despite the rest of the app being clean. This pattern recurs because LLMs over-generalize from system-color naming conventions in other frameworks (Apple watchOS, macOS Catalina design tokens, etc.) \u2014 none of which expose a `.gold` ShapeStyle. Always-construct-explicitly avoids the hallucination class entirely.",
+      "severity": "high",
+      "appliesTo": "macOSApp",
+      "examples": [
+        "RIGHT: Circle().stroke(.yellow, lineWidth: 4)",
+        "RIGHT: Circle().stroke(Color(red: 1.0, green: 0.84, blue: 0.0), lineWidth: 4)  // gold",
+        "RIGHT: .foregroundStyle(Color(red: 0.83, green: 0.69, blue: 0.22))  // antique-gold",
+        "WRONG: Circle().stroke(.gold, lineWidth: 4)  // 'ShapeStyle' has no member 'gold'",
+        "WRONG: .foregroundColor(.silver)  // 'Color' has no member 'silver'",
+        "WRONG: Text(\"...\").foregroundStyle(.bronze)  // doesn't exist"
       ]
     }
   ],
