@@ -1,6 +1,6 @@
 {
   "packID": "macos-app",
-  "version": 30,
+  "version": 31,
   "displayName": "macOS App Generation Wisdom",
   "description": "Rules for generating executable macOS apps (SwiftUI / AppKit) via Swift Playground. Focused on making the generated binary actually appear as a visible, interactive window \u2014 not a headless background process.",
   "categories": [
@@ -1052,6 +1052,19 @@
         "WRONG: Circle().stroke(.gold, lineWidth: 4)  // 'ShapeStyle' has no member 'gold'",
         "WRONG: .foregroundColor(.silver)  // 'Color' has no member 'silver'",
         "WRONG: Text(\"...\").foregroundStyle(.bronze)  // doesn't exist"
+      ]
+    },
+    {
+      "id": "mac-033",
+      "rule": "ONLY reference symbols that come from components listed in the recipe's selection \u2014 DO NOT reach for `SoundEngine`, `AnimationIntensity`, `LevelManager`, `HighScoreManager`, `PopBurst`, `ScoreRise`, `BoardShake`, `SpawnDrop`, `HintPulse`, etc. unless the marker file `mchatai-macos-components-used.json` lists their component IDs (e.g. `effects.sound-engine`, `effects.animation-intensity`). Look at the marker BEFORE writing imports/usages. If the recipe didn't select an effect you want, EITHER (a) implement that capability inline (a few lines of plain Swift will compile), OR (b) propose a recipe change in your continueWizard turn \u2014 but never reference a component that wasn't shipped by the matcher. Compile errors of the form `cannot find 'SoundEngine' in scope` mean you reached for an unselected Lego.",
+      "why": "Pong canary 2026-05-09 (catalog-verify-pong) shipped with `@ObservedObject private var sound = SoundEngine.shared` and `@StateObject private var levels = LevelManager(...)` even though recipe.arcade-pong's marker only listed arcade.core/arcade.pong/arcade.smoke-tests/effects.pop-burst/effects.score-rise/effects.board-shake. SoundEngine.swift / AnimationIntensity.swift / LevelManager.swift were never copied \u2192 swift build failed with `cannot find 'SoundEngine' in scope`. This is the inverse of mac-031: there we said 'don't pad code to compose every selected component'; here we say 'don't reach for components that weren't selected at all'.",
+      "severity": "high",
+      "appliesTo": "macOSApp",
+      "examples": [
+        "RIGHT: read mchatai-macos-components-used.json first; if it lists `effects.sound-engine`, use SoundEngine.shared. If it doesn't, write `NSSound.beep()` or skip audio.",
+        "RIGHT (audio without SoundEngine selected): `NSSound(named: \"Pop\")?.play()` or `import AudioToolbox; AudioServicesPlaySystemSound(1057)` \u2014 both work without any component.",
+        "WRONG: `@ObservedObject private var sound = SoundEngine.shared` when effects.sound-engine isn't in the marker.",
+        "WRONG: `private let intensity: AnimationIntensity = .standard` when effects.animation-intensity isn't in the marker."
       ]
     }
   ],
