@@ -1,7 +1,7 @@
 {
-  "$schema_version": "1.1.0",
+  "$schema_version": "1.2.0",
   "last_updated": "2026-05-09",
-  "notes": "Catalog for reusable vanilla ES6 mini-app Lego blocks. AIWizard should compose from these modules before generating custom logic. Prefer local bundling into published mini-app ZIPs; CDN loading is only a development option.",
+  "notes": "Catalog for reusable vanilla ES6 mini-app Lego blocks. AIWizard should compose from these modules before generating custom logic. Prefer local bundling into published mini-app ZIPs; CDN loading is only a development option. Schema 1.2.0 adds composition addon recipes (isAddon: true) that layer on top of a base recipe \u2014 see recipe.with-leaderboard. Marker shape extended with optional addons: [recipeID, ...]; the gate enforces requiredComponents subset for each addon.",
   "library": {
     "id": "framework.web-components",
     "name": "Web Mini-App Lego Blocks",
@@ -53,6 +53,7 @@
       "ui/KeyboardInput.js",
       "ui/RestartOverlay.js",
       "ui/Leaderboard.js",
+      "ui/GameOverWithRank.js",
       "ui/CloudAIToggle.js",
       "resources/Swatches.js",
       "resources/AudioManager.js",
@@ -861,6 +862,49 @@
       ]
     },
     {
+      "id": "entities.sudoku-board",
+      "name": "SudokuBoard",
+      "category": "entities",
+      "path": "entities/SudokuBoard.js",
+      "exports": [
+        "SudokuBoard"
+      ],
+      "status": "ready",
+      "summary": "Sudoku 9\u00d79 board with row/column/3\u00d73-subgrid validation. Cells carry {value, locked, notes}. setCell ignores locked clues. validateCell returns conflict-set; isComplete = filled+no-conflicts. Includes static SudokuBoard.generatePuzzle(difficulty) that builds a fresh randomized puzzle (easy=40 clues / medium=32 / hard=26 / expert=22). solve() does backtracking. Pencil-mark notes (Set<1-9>) per cell for the candidate-display UI feature.",
+      "tags": [
+        "sudoku",
+        "9x9",
+        "logic-puzzle",
+        "number-puzzle",
+        "puzzle",
+        "mobile"
+      ],
+      "contracts": {
+        "helpers": [
+          "loadPuzzle(string|2D-array)",
+          "valueAt(r,c)",
+          "setCell(r,c,value) -> bool",
+          "toggleNote(r,c,value) -> bool",
+          "validateCell(r,c) -> Set<\"r,c\">",
+          "allConflicts() -> Set<\"r,c\">",
+          "candidates(r,c) -> [1-9]",
+          "isFilled() / isComplete()",
+          "solve() -> bool",
+          "static generatePuzzle(difficulty) -> SudokuBoard"
+        ]
+      },
+      "goodFits": [
+        "sudoku",
+        "kakuro-style",
+        "9x9-puzzle",
+        "number-logic-puzzle",
+        "mobile-logic-puzzle"
+      ],
+      "extends": [
+        "entities.grid-board"
+      ]
+    },
+    {
       "id": "entities.tile-swapper",
       "name": "TileSwapper",
       "category": "entities",
@@ -1634,6 +1678,42 @@
         "board-games",
         "puzzle-games",
         "trivia"
+      ]
+    },
+    {
+      "id": "ui.game-over-with-rank",
+      "name": "GameOverWithRank",
+      "category": "ui",
+      "path": "ui/GameOverWithRank.js",
+      "exports": [
+        "GameOverWithRank"
+      ],
+      "status": "ready",
+      "summary": "Composed game-over panel that wraps Leaderboard.submitFinal + renderRankCard + renderTopList. When the player isn't signed in (submitFinal returns null), renders a 'Sign in at mchatai.com to post your score' CTA instead of a rank card; the top-list still renders for everyone (public read). Restart button included when onRestart is provided. Pairs with ui.leaderboard via recipe.with-leaderboard addon.",
+      "dependencies": [
+        "ui.leaderboard"
+      ],
+      "tags": [
+        "ui",
+        "game-over",
+        "leaderboard",
+        "rank-card",
+        "competitive",
+        "sign-in-cta",
+        "bridge-aware"
+      ],
+      "contracts": {
+        "static": [
+          "GameOverWithRank.show({ host, score, metadata?, title?, subtitle?, topCount?, onRestart?, restartLabel?, signIn? }) -> Promise<HTMLElement | null>"
+        ],
+        "bridge": "window.mChatAI.leaderboard.submit/getTop (via Leaderboard.js)"
+      },
+      "goodFits": [
+        "every-scoring-game",
+        "arcade",
+        "puzzle-games",
+        "board-games",
+        "addon:recipe.with-leaderboard"
       ]
     },
     {
@@ -3113,6 +3193,55 @@
       "plannedNext": []
     },
     {
+      "id": "recipe.sudoku",
+      "name": "Sudoku 9\u00d79 Logic Puzzle",
+      "keywords": [
+        "sudoku",
+        "soduku",
+        "sudoko",
+        "9x9 puzzle",
+        "9 by 9 puzzle",
+        "number puzzle",
+        "number logic puzzle",
+        "fill in numbers",
+        "1 to 9 grid",
+        "logic puzzle",
+        "constraint puzzle",
+        "killer sudoku",
+        "classic sudoku"
+      ],
+      "templateIDs": [],
+      "existingApps": [
+        "sudoku",
+        "killer sudoku"
+      ],
+      "starterComponents": [
+        "entities.sudoku-board",
+        "ui.mini-header",
+        "ui.scoreboard",
+        "ui.keyboard-input",
+        "core.game-manager",
+        "resources.swatches",
+        "resources.audio-manager",
+        "effects.score-rise"
+      ],
+      "assemblyNotes": [
+        "Use SudokuBoard for the 9\u00d79 grid. Generate puzzles via SudokuBoard.generatePuzzle('easy'|'medium'|'hard'|'expert') \u2014 caller doesn't need a hard-coded puzzle list.",
+        "Render with 3\u00d73 subgrid borders (heavier 2px lines every 3 rows/cols). Locked clue cells get distinct styling (bolder font + slightly darker bg).",
+        "Touch UX (mob-005): pointerup to select a cell; show a 1-9 number pad below the grid (touch targets \u2265 44\u00d744 per mob-002). Caller maps tap of a number \u2192 grid.setCell(activeR, activeC, value); validate immediately and highlight conflicts via grid.validateCell.",
+        "Pencil-mark mode: a toggle button switches input from 'commit value' to 'toggle note'. Notes display as small 1-9 candidates inside the cell.",
+        "Highlight features (huge UX boost): when a cell is selected, soft-highlight (a) same row, (b) same column, (c) same 3\u00d73 subgrid, (d) all cells with the same value. Conflict cells get red highlight via allConflicts().",
+        "Win detection: after every setCell, if grid.isComplete() show overlay with elapsed time + difficulty + 'New Puzzle' button (mac-022 web equivalent \u2014 visible-restart).",
+        "Persist current puzzle in localStorage so refresh doesn't lose progress. Save: JSON.stringify(grid.cells).",
+        "Mobile-portrait full-bleed. Apply mobile-frontend wisdom rules (mob-001..016).",
+        "Difficulty selector (segmented control or pills): easy/medium/hard/expert. Each picks a different generatePuzzle clue count."
+      ],
+      "requiredNow": [
+        "entities.sudoku-board"
+      ],
+      "plannedNext": []
+    },
+    {
       "id": "recipe.blackjack",
       "name": "Blackjack Clone",
       "cloneTarget": "Blackjack / Twenty-One card game",
@@ -3542,6 +3671,45 @@
         "resources.sprite-renderer",
         "resources.swatches"
       ]
+    },
+    {
+      "id": "recipe.with-leaderboard",
+      "name": "Add Hosted Leaderboard (addon)",
+      "isAddon": true,
+      "addonAppliesTo": [
+        "every-scoring-game"
+      ],
+      "promptName": "leaderboard addon",
+      "keywords": [
+        "leaderboard",
+        "high score",
+        "highscore",
+        "high-score",
+        "rankings",
+        "compete",
+        "compete with friends",
+        "global scores",
+        "post my score"
+      ],
+      "templateIDs": [],
+      "starterComponents": [
+        "ui.leaderboard",
+        "ui.game-over-with-rank"
+      ],
+      "assemblyNotes": [
+        "This is an ADDON recipe. It LAYERS ON TOP of the base game recipe (Snake, Pong, Tetris, etc.) \u2014 never replaces it. The marker MUST be `{recipe: <base-recipe-id>, addons: [\"recipe.with-leaderboard\"], components: [...all base + addon components...]}`.",
+        "ON GAME OVER (and ONLY on game-over \u2014 see u-018 + score-show-personal-best-on-game-over), call: `await GameOverWithRank.show({ host, score: finalScore, metadata: { level, moves, duration_ms }, onRestart: () => game.restart() });` This single call submits the score, renders the rank card OR a 'Sign in at mchatai.com' CTA (when not signed in), renders the top-10, and mounts a Play Again button.",
+        "Do NOT call `Leaderboard.submitFinal` mid-game. Do NOT show rank or top-list while gameplay is active \u2014 that violates wisdom rule score-show-personal-best-on-game-over and u-hud-minimalism-meaningful-only.",
+        "Do NOT manually fetch /api/leaderboards/* or any HTTP endpoint. ALWAYS go through the Leaderboard / GameOverWithRank components. They handle bridge availability, sign-in state, network errors, and offline fallback transparently.",
+        "When `Leaderboard.submitFinal` resolves null (player not signed in OR bridge absent OR offline), the component renders a persuasive 'Sign in at mchatai.com to post your score' CTA. This is BY DESIGN \u2014 the leaderboard is the reason to create a free mChatAI account. Do not suppress the CTA or replace it with a generic 'leaderboard unavailable' message.",
+        "The board-id is supplied by the host page (window.mChatAI.leaderboard bridge) \u2014 the generated game never sets it. v1 \u2192 v2 of the same published project share the same board.",
+        "Mobile-first: GameOverWithRank.show() is a single panel that fits 360px wide; do not stack multiple custom panels around it."
+      ],
+      "requiredComponents": [
+        "ui.leaderboard",
+        "ui.game-over-with-rank"
+      ],
+      "optionalComponents": []
     }
   ],
   "sourceCatalogs": [
