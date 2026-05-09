@@ -988,6 +988,54 @@
       ]
     },
     {
+      "id": "entities.solitaire-klondike",
+      "name": "SolitaireKlondike",
+      "category": "entities",
+      "path": "entities/SolitaireKlondike.js",
+      "exports": [
+        "SolitaireKlondike",
+        "CARD_SYMBOLS"
+      ],
+      "status": "ready",
+      "summary": "Klondike Solitaire game state machine. Standard 7-tableau / 4-foundation / stock+waste / 3-card-flip layout. canStackTableau (alternating colors descending) + canStackFoundation (same-suit ascending) helpers. moveFromWaste/Tableau/Foundation API; autoFinishToFoundations() helper for endgame; undo() with 30-snapshot history. Builds + shuffles a standard 52-card deck. Card type: {suit:'H'|'D'|'C'|'S', rank:1-13, faceUp}. CARD_SYMBOLS exports the Unicode glyphs (\u2665\u2666\u2663\u2660) + colors.",
+      "tags": [
+        "solitaire",
+        "klondike",
+        "card-game",
+        "patience",
+        "53-card",
+        "52-card",
+        "mobile",
+        "classic"
+      ],
+      "contracts": {
+        "helpers": [
+          "newGame()",
+          "draw() -> {ok, drew}",
+          "moveFromWaste(toKind, toIdx) -> {ok, reason?}",
+          "moveFromTableau(fromCol, fromIdx, toKind, toIdx) -> {ok, reason?}",
+          "moveFromFoundation(fromSuit, toKind, toIdx) -> {ok, reason?}",
+          "wasteTop() / tableauTop(col) / foundationTop(suit)",
+          "canStackTableau(card, target) -> bool",
+          "canStackFoundation(card, suit) -> bool",
+          "isWon() -> bool",
+          "undo() -> bool",
+          "autoFinishToFoundations() -> count",
+          "static buildDeck() / static shuffle(arr)"
+        ],
+        "state": "tableau: [[card]] x7; stock: [card]; waste: [card]; foundations: {H,D,C,S: [card]}; moves: number; score: number; history: [snapshot]"
+      },
+      "goodFits": [
+        "solitaire",
+        "klondike",
+        "patience",
+        "card-classic",
+        "windows-95-solitaire",
+        "ios-solitaire",
+        "mobile-card-game"
+      ]
+    },
+    {
       "id": "entities.tile-swapper",
       "name": "TileSwapper",
       "category": "entities",
@@ -3423,6 +3471,64 @@
         "entities.tetris-board"
       ],
       "plannedNext": []
+    },
+    {
+      "id": "recipe.solitaire",
+      "name": "Klondike Solitaire",
+      "keywords": [
+        "solitaire",
+        "soliatire",
+        "klondike",
+        "klondike solitaire",
+        "patience",
+        "patience card game",
+        "windows solitaire",
+        "windows 95 solitaire",
+        "ios solitaire",
+        "iphone solitaire",
+        "card pile",
+        "tableau",
+        "draw three",
+        "draw three solitaire",
+        "build to king",
+        "build foundations",
+        "classic solitaire"
+      ],
+      "templateIDs": [],
+      "existingApps": [
+        "solitaire",
+        "klondike"
+      ],
+      "starterComponents": [
+        "entities.solitaire-klondike",
+        "entities.card",
+        "entities.deck",
+        "ui.mini-header",
+        "ui.scoreboard",
+        "core.game-manager",
+        "resources.swatches",
+        "resources.audio-manager",
+        "effects.score-rise"
+      ],
+      "assemblyNotes": [
+        "Use SolitaireKlondike for ALL game state and rules. Drag-and-drop UX is the standard solitaire interaction model \u2014 listen to pointerdown on a card, pointermove to drag, pointerup to drop on a tableau column or foundation. The state machine handles all rule validation; UI just calls grid.moveFromWaste/Tableau/Foundation and reads the {ok, reason} return.",
+        "TAP-TO-AUTO-MOVE for mobile: a single tap on a card should attempt to move it to its foundation if legal (saves the user a long drag). Use canStackFoundation to check.",
+        "Render face-down cards as a card-back pattern (gradient or pattern). Face-up cards show rank+suit using CARD_SYMBOLS.",
+        "Tableau layout: stack cards with vertical offset (~25-30px on mobile) so multiple cards in a column are visible. Top card is fully exposed.",
+        "Foundation cells start empty; show a faint suit-symbol watermark per pile so the player knows which is which.",
+        "Stock + waste in the top-right (or top-left for mobile-portrait). Drawing 3 cards: visually fan the top 3 of the waste so the player can see all 3.",
+        "Auto-complete button (effects.score-rise feedback): when no face-down cards remain in the tableau, an 'Auto Finish' button calls grid.autoFinishToFoundations() to play out the win.",
+        "End-game overlay (mac-022 web equivalent) when grid.isWon(): show 'You Won!' + final score + moves + 'New Game' button.",
+        "Persist best score in localStorage. Show in header.",
+        "Mobile-portrait full-bleed. Apply mobile-frontend wisdom rules (mob-001..016). Touch targets \u2265 44\u00d744 logical pixels (whole card surface, not just the visible portion)."
+      ],
+      "requiredNow": [
+        "entities.solitaire-klondike"
+      ],
+      "plannedNext": [
+        "solitaire-spider",
+        "solitaire-freecell"
+      ]
     },
     {
       "id": "recipe.blackjack",
