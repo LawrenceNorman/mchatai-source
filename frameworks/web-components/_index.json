@@ -1,6 +1,6 @@
 {
   "$schema_version": "1.1.0",
-  "last_updated": "2026-05-06 effects in match3+word-logic requiredComponents",
+  "last_updated": "2026-05-09",
   "notes": "Catalog for reusable vanilla ES6 mini-app Lego blocks. AIWizard should compose from these modules before generating custom logic. Prefer local bundling into published mini-app ZIPs; CDN loading is only a development option.",
   "library": {
     "id": "framework.web-components",
@@ -853,6 +853,94 @@
         "word-quest",
         "word-puzzle",
         "letter-games"
+      ]
+    },
+    {
+      "id": "entities.word-dictionary",
+      "name": "WordDictionary",
+      "category": "entities",
+      "path": "entities/WordDictionary.js",
+      "exports": [
+        "WordDictionary",
+        "COMMON_WORDS_SAMPLE"
+      ],
+      "status": "ready",
+      "summary": "Lightweight dictionary helper for word-trace games. Wraps a word list in a Set for O(1) has() + a prefix Set for trie-prefix pruning during real-time tracing. findAllOnGrid(grid) DFS-enumerates every dictionary word reachable on a WordTraceGrid for hint/score-target generation.",
+      "tags": [
+        "word",
+        "dictionary",
+        "trie",
+        "prefix",
+        "puzzle",
+        "validation"
+      ],
+      "contracts": {
+        "helpers": [
+          "constructor(words: Iterable<string>)",
+          "add(word)",
+          "has(word)",
+          "isPrefix(prefix)",
+          "size()",
+          "findAllOnGrid(WordTraceGrid) -> Set<string>"
+        ],
+        "exported-data": "COMMON_WORDS_SAMPLE: ~1000 short English words (3-7 letters) for tests + small mini-apps. Production should bundle 2-10k word list."
+      },
+      "goodFits": [
+        "squaredle",
+        "bookworm",
+        "anagram",
+        "word-puzzle",
+        "word-trace"
+      ]
+    },
+    {
+      "id": "entities.word-trace-grid",
+      "name": "WordTraceGrid",
+      "category": "entities",
+      "path": "entities/WordTraceGrid.js",
+      "exports": [
+        "WordTraceGrid"
+      ],
+      "status": "ready",
+      "summary": "Adjacent-letter trace grid for Squaredle / Bookworm / Letter-Blast / WordHunt clones. 4\u00d74 (or NxN) grid; user drags through adjacent cells (8-direction default) to trace a word; commitWord(dictionary) validates against dictionary + min length + already-found tracking.",
+      "tags": [
+        "word",
+        "letters",
+        "grid",
+        "squaredle",
+        "bookworm",
+        "wordhunt",
+        "letter-trace",
+        "puzzle",
+        "mobile"
+      ],
+      "contracts": {
+        "helpers": [
+          "setLetters(string|array)",
+          "startTrace(row, col)",
+          "extendTrace(row, col)",
+          "commitWord(dictionary, options) -> {valid, word, score, reason}",
+          "currentWord()",
+          "containsCell(row, col)",
+          "pathIndexOf(row, col)",
+          "isAdjacent(r1, c1, r2, c2)",
+          "totalScore()",
+          "resetPuzzle()",
+          "resetPath()"
+        ],
+        "state": "path: [{row,col}]; foundWords: Set<string>"
+      },
+      "goodFits": [
+        "squaredle",
+        "bookworm",
+        "letter-blast",
+        "word-hunt",
+        "spell-tower",
+        "anagram-trace",
+        "mobile-word-game"
+      ],
+      "extends": [
+        "entities.grid-board"
       ]
     },
     {
@@ -2585,6 +2673,74 @@
         "effects.score-rise"
       ],
       "optionalComponents": []
+    },
+    {
+      "id": "recipe.word-trace",
+      "name": "Squaredle / Bookworm Letter-Trace",
+      "keywords": [
+        "squaredle",
+        "squardle",
+        "squardel",
+        "letter trace",
+        "letter-trace",
+        "trace letters",
+        "connect letters",
+        "adjacent letters",
+        "bookworm",
+        "spelltower",
+        "spell tower",
+        "word hunt",
+        "wordhunt",
+        "letter blast",
+        "letter-blast",
+        "find words",
+        "spell words on grid",
+        "word grid",
+        "letter grid puzzle",
+        "spell-on-grid",
+        "tap and drag letters",
+        "swipe letters",
+        "drag through letters",
+        "anagram trace",
+        "4x4 letter",
+        "5x5 letter",
+        "letter chain"
+      ],
+      "templateIDs": [
+        "word-puzzle-game"
+      ],
+      "existingApps": [
+        "squaredle",
+        "bookworm",
+        "spelltower",
+        "word hunt"
+      ],
+      "starterComponents": [
+        "entities.word-trace-grid",
+        "entities.word-dictionary",
+        "ui.mini-header",
+        "ui.scoreboard",
+        "core.game-manager",
+        "resources.swatches",
+        "resources.audio-manager",
+        "effects.score-rise",
+        "effects.pop-burst"
+      ],
+      "assemblyNotes": [
+        "Use WordTraceGrid for the 4\u00d74 (or NxN) board. Listen to pointerdown/pointermove/pointerup with `passive: false` and call grid.startTrace / extendTrace / commitWord. (See mobile-frontend wisdom mob-005.)",
+        "Bundle a 2-10k word dictionary inline as a JS array; pass it to WordDictionary. For tests, use the exported COMMON_WORDS_SAMPLE (~1000 words).",
+        "Use WordDictionary.findAllOnGrid(grid) at puzzle generation to compute the FULL set of legal words for that letter arrangement. Use the count + total possible score as the level target.",
+        "Highlight adjacent cells visually. Use isPrefix(currentWord) during pointermove to color-cue the user when their trace can still complete a valid word.",
+        "Mobile-portrait full-bleed. Apply mobile-frontend wisdom rules (mob-001..016). Touch targets \u2265 44\u00d744 logical pixels.",
+        "Persist foundWords + best score in localStorage. Show 'X / Y words found' progress. End-of-puzzle bonus screen lists missed words via WordDictionary.findAllOnGrid."
+      ],
+      "requiredNow": [
+        "entities.word-trace-grid",
+        "entities.word-dictionary"
+      ],
+      "plannedNext": [
+        "entities.word-letter-distribution"
+      ]
     },
     {
       "id": "recipe.mastermind",
