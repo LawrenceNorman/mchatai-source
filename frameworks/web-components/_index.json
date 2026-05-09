@@ -1036,6 +1036,46 @@
       ]
     },
     {
+      "id": "entities.snake-game",
+      "name": "SnakeGame",
+      "category": "entities",
+      "path": "entities/SnakeGame.js",
+      "exports": [
+        "SnakeGame"
+      ],
+      "status": "ready",
+      "summary": "Classic Snake on an NxN grid. Snake = array of {row,col} segments; tick() advances head in current direction; eats food (grows + score) or self/wall (game over). setDirection rejects 180\u00b0 reversals. Optional toroidal wrap mode. Speed scales with score (startSpeedMs, minSpeedMs, speedupPerFood). Static directionFromSwipe(sx,sy,ex,ey) helper for pointer-swipe input.",
+      "tags": [
+        "snake",
+        "classic",
+        "arcade",
+        "mobile",
+        "grid-game",
+        "touch-swipe"
+      ],
+      "contracts": {
+        "helpers": [
+          "newGame()",
+          "tick() -> {moved, ate, died, headRow, headCol}",
+          "setDirection('up'|'down'|'left'|'right') -> bool",
+          "tickMs() -> number",
+          "isFull() -> bool",
+          "static directionFromSwipe(sx,sy,ex,ey,threshold=30) -> dir|null"
+        ],
+        "state": "snake: [{row,col}] (head first); direction; score; gameOver; food: {row,col}; wrap: bool",
+        "cellValues": "0=empty, 1=body, 2=head, 3=food"
+      },
+      "goodFits": [
+        "snake",
+        "classic-arcade",
+        "mobile-touch-swipe-game",
+        "grid-game"
+      ],
+      "extends": [
+        "entities.grid-board"
+      ]
+    },
+    {
       "id": "entities.tile-swapper",
       "name": "TileSwapper",
       "category": "entities",
@@ -3529,6 +3569,52 @@
         "solitaire-spider",
         "solitaire-freecell"
       ]
+    },
+    {
+      "id": "recipe.snake",
+      "name": "Classic Snake",
+      "keywords": [
+        "snake",
+        "snake game",
+        "snake clone",
+        "classic snake",
+        "nokia snake",
+        "snake mobile",
+        "growing snake",
+        "swipe to move snake",
+        "eat food grow",
+        "tail grows when eat"
+      ],
+      "templateIDs": [],
+      "existingApps": [
+        "snake",
+        "nokia snake"
+      ],
+      "starterComponents": [
+        "entities.snake-game",
+        "ui.mini-header",
+        "ui.scoreboard",
+        "core.game-manager",
+        "resources.swatches",
+        "resources.audio-manager",
+        "effects.score-rise",
+        "effects.pop-burst"
+      ],
+      "assemblyNotes": [
+        "Use SnakeGame for the grid + state machine. Default 20\u00d720 grid is standard mobile-snake size; use size:15 for kids/easy or size:25 for hard.",
+        "Game loop: setInterval(() => grid.tick(), grid.tickMs()) \u2014 re-arm setInterval whenever score changes (speed scales with score).",
+        "Mobile touch input (mob-005): swipe gestures via pointerdown + pointerup. Use SnakeGame.directionFromSwipe(sx,sy,ex,ey,30) to convert deltas to direction. Call grid.setDirection(dir).",
+        "Desktop keyboard: ArrowKeys + WASD. Bind keydown to grid.setDirection.",
+        "Render via canvas (faster than DOM for 20\u00d720 cells x 60fps) OR a CSS grid with cell colors per cellValue (0=bg, 1=snake-body, 2=snake-head-bright, 3=food-accent).",
+        "Wrap mode (options.wrap=true) is a kid-friendly variant \u2014 edges wrap toroidally instead of game-over. Add a difficulty toggle.",
+        "End-game overlay (mac-022 web equivalent) on grid.gameOver: show final score + length + 'Try Again' button. Persist best score in localStorage.",
+        "effects.score-rise on each food eaten; effects.pop-burst on the food cell when consumed (small particle burst).",
+        "Mobile-portrait full-bleed. Apply mobile-frontend wisdom rules (mob-001..016)."
+      ],
+      "requiredNow": [
+        "entities.snake-game"
+      ],
+      "plannedNext": []
     },
     {
       "id": "recipe.blackjack",
