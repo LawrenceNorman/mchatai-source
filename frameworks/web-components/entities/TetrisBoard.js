@@ -1,4 +1,11 @@
 // BEGIN mchatai-web-components: entities.tetris-board (entities/TetrisBoard.js)
+//
+// PLAIN JS CLASS — NOT A WEB CUSTOM ELEMENT.
+// DO NOT call customElements.define() on this class.
+// DO NOT use <tetrisboard-foo> tags in HTML.
+// Instantiate with `new` and call methods. YOU draw the UI.
+// See wisdom rule fs-015 for the full pattern + worked examples.
+//
 import { GridBoard } from "./GridBoard.js";
 
 /**

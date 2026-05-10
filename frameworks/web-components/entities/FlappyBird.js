@@ -1,4 +1,11 @@
 // BEGIN mchatai-web-components: entities.flappy-bird (entities/FlappyBird.js)
+//
+// PLAIN JS CLASS — NOT A WEB CUSTOM ELEMENT.
+// DO NOT call customElements.define() on this class.
+// DO NOT use <flappybird-foo> tags in HTML.
+// Instantiate with `new` and call methods. YOU draw the UI.
+// See wisdom rule fs-015 for the full pattern + worked examples.
+//
 
 /**
  * Flappy-Bird-style arcade game state machine.
