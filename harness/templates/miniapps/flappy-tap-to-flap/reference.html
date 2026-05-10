@@ -242,6 +242,10 @@
     /* END inline copy: FlappyBird.js */
 
     const game = new FlappyBird({width: 360, height: 640});
+    // Position the idle bird at a sensible pre-flap rest height so the
+    // start-overlay shows it floating mid-screen (not at world y=0 = upper-
+    // left). Only newGame() resets bird.y; idle init leaves it at 0.
+    game.bird.y = game.height * 0.4;
     let bestScore = parseInt(localStorage.getItem("flappy-best") || "0", 10) || 0;
 
     const canvas = document.getElementById("board");
