@@ -210,6 +210,64 @@ if (recipeMeta && Array.isArray(recipeMeta.requiredComponents) && recipeMeta.req
   }
 }
 
+// Schema 1.2.0 — addon recipes. Marker may carry `addons: [recipeID, ...]`
+// (e.g. recipe.with-leaderboard layered on top of recipe.snake). Each addon
+// is looked up in the same compositionRecipes catalog and its requiredComponents
+// must also be a subset of marker.components. Each addon must be flagged
+// `isAddon: true` in the catalog — non-addon recipes can't be stacked.
+// See wisdom rule u-leaderboard-addon-recipe.
+if (Array.isArray(marker.addons) && marker.addons.length > 0) {
+  const markerSet = new Set(marker.components);
+  const recipeByID = new Map(recipes.filter((r) => r && r.id).map((r) => [r.id, r]));
+  const unknownAddons = [];
+  const nonAddonRecipes = [];
+  const addonsMissingComponents = [];
+
+  for (const addonID of marker.addons) {
+    const addonMeta = recipeByID.get(addonID);
+    if (!addonMeta) {
+      unknownAddons.push(addonID);
+      continue;
+    }
+    if (addonMeta.isAddon !== true) {
+      nonAddonRecipes.push(addonID);
+      continue;
+    }
+    if (Array.isArray(addonMeta.requiredComponents) && addonMeta.requiredComponents.length > 0) {
+      const missing = addonMeta.requiredComponents.filter((id) => !markerSet.has(id));
+      if (missing.length > 0) {
+        addonsMissingComponents.push({
+          addon: addonID,
+          requiredComponents: addonMeta.requiredComponents,
+          missingRequired: missing
+        });
+      }
+    }
+  }
+
+  if (unknownAddons.length > 0) {
+    fail("Marker references addon recipe ids not present in _index.json compositionRecipes.", {
+      unknownAddons
+    });
+  }
+  if (nonAddonRecipes.length > 0) {
+    fail(
+      "Marker references recipe ids in `addons[]` that are not flagged `isAddon: true`. Only addon recipes can be stacked on top of a base recipe.",
+      { nonAddonRecipes }
+    );
+  }
+  if (addonsMissingComponents.length > 0) {
+    fail(
+      "Marker is missing required components for one or more addon recipes. Each addon's requiredComponents must appear in the marker's components array.",
+      {
+        addons: marker.addons,
+        markerComponents: marker.components,
+        addonsMissingComponents
+      }
+    );
+  }
+}
+
 if (recipeMeta && recipeMeta.requiresAIOpponent === true) {
   const expected = Array.isArray(recipeMeta.aiOpponentComponents) && recipeMeta.aiOpponentComponents.length > 0
     ? recipeMeta.aiOpponentComponents
@@ -379,6 +437,7 @@ console.log(
     {
       ok: true,
       recipe: marker.recipe,
+      addons: Array.isArray(marker.addons) ? marker.addons : [],
       mode: marker.mode || "unspecified",
       componentCount: marker.components.length,
       components: marker.components,
