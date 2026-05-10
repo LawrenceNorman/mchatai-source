@@ -1,6 +1,6 @@
 {
   "packID": "frontend-skill",
-  "version": 3,
+  "version": 4,
   "displayName": "Delightful Frontends \u2014 Taste Discipline",
   "description": "Hard rules for generating delightful frontends. Distilled from OpenAI's 'Designing Delightful Frontends with GPT-5' field guide (Apr 2026). Applies to mini-apps, webSPA landing pages and product UIs, and (where idiomatic) macOS/iOS UI. Source: Phase DF spec. The rubric is the non-negotiable first-impression bar.",
   "categories": [
@@ -195,12 +195,13 @@
       "severity": "critical",
       "appliesTo": "miniApp",
       "examples": [
-        "RIGHT: const board = SudokuBoard.generatePuzzle('medium'); for (let r=0;r<9;r++) for (let c=0;c<9;c++) { const el = document.createElement('div'); el.textContent = board.valueAt(r,c) || ''; boardEl.appendChild(el); }",
-        "RIGHT (Tetris): const grid = new TetrisBoard({rows:20, cols:10}); grid.newGame(); setInterval(() => { grid.tick(); paintCanvas(grid); }, grid.gravityMs());",
-        "WRONG: customElements.define('tetris-board', TetrisBoard) \u2014 TetrisBoard is not a Web Component, this leaves an empty placeholder.",
-        "WRONG: <sudoku-board id='board'></sudoku-board> + board.setAttribute('difficulty', 'medium') \u2014 element is empty because SudokuBoard doesn't extend HTMLElement.",
-        "WRONG: game.secret / game.guesses / game.mistakes on HangmanGame \u2014 real fields are target / guessed / wrongCount. Always read the source first.",
-        "WRONG: `import { GameManager } from \"./web-components/core/GameManager.js\"; gameManager = new GameManager({boardEl: sudokuEl, ...})` \u2014 GameManager is a canvas-based loop runner; passing a `<sudoku-board>` placeholder as boardEl produces 10+ console errors because GameManager expected a <canvas>. Instead: `const board = SudokuBoard.generatePuzzle('medium'); renderGridToDOM(board, document.getElementById('sudoku'));`"
+        "RIGHT \u2014 full Sudoku DOM render (the canonical pattern; copy this shape):\n```html\n<div id='board' style='display:grid;grid-template-columns:repeat(9,1fr);aspect-ratio:1/1'></div>\n<script type='module'>\nimport { SudokuBoard } from './web-components/entities/SudokuBoard.js';\nconst game = SudokuBoard.generatePuzzle('medium');\nconst boardEl = document.getElementById('board');\nfor (let r=0;r<9;r++) for (let c=0;c<9;c++) {\n  const cellEl = document.createElement('div');\n  cellEl.className = 'cell' + (game.get(r,c).locked ? ' locked' : '');\n  cellEl.textContent = game.valueAt(r,c) || '';\n  cellEl.dataset.r = r; cellEl.dataset.c = c;\n  boardEl.appendChild(cellEl);\n}\nboardEl.addEventListener('pointerup', e => { const t = e.target.closest('.cell'); if (t) selectCell(+t.dataset.r, +t.dataset.c); });\n</script>\n```",
+        "RIGHT \u2014 Tetris canvas render: `const grid = new TetrisBoard({rows:20, cols:10}); grid.newGame(); setInterval(() => { grid.tick(); paintCanvas(grid); }, grid.gravityMs());`",
+        "RIGHT \u2014 Hangman: read the canonical fields. `game.target` is the word, `game.guessed` is Set<letter>, `game.wrongCount` is the int. NEVER `game.secret`/`game.guesses`/`game.mistakes` \u2014 those don't exist on HangmanGame.",
+        "WRONG: `<sudoku-board id='board'></sudoku-board>` + `board.newPuzzle('medium')` \u2014 `<sudoku-board>` is an unknown HTML element rendered as an inline span; methods on the DOM placeholder silently throw. The board never appears.",
+        "WRONG: `customElements.define('tetris-board', TetrisBoard)` \u2014 TetrisBoard doesn't extend HTMLElement; the custom element stays empty.",
+        "WRONG: `gameManager = new GameManager({boardEl: sudokuEl, ...})` \u2014 GameManager is a canvas loop runner, doesn't render Sudoku DOMs. Use `new SudokuBoard()` directly.",
+        "WRONG (method hallucination): `board.newPuzzle()` / `board.clearSelection()` / `board.setNotesMode()` / `board.eraseSelected()` / `board.toggleNoteOnSelected()` / `board.enterNumberOnSelected()` \u2014 NONE exist on SudokuBoard. Real methods: `loadPuzzle`, `setCell`, `toggleNote`, `valueAt`, `validateCell`, `candidates`, `static generatePuzzle`. Read SudokuBoard.js before writing glue."
       ]
     },
     {
