@@ -1,6 +1,6 @@
 {
   "packID": "universal",
-  "version": 4,
+  "version": 6,
   "displayName": "Universal Guidelines",
   "description": "Rules that apply to ALL generated apps regardless of category.",
   "categories": [
@@ -439,8 +439,30 @@
         "WRONG: Pong loads requiring both W/S and \u2191/\u2193 on one keyboard. Solo player can only watch ball bounce.",
         "WRONG: Connect Four loads with red-then-yellow alternating without an AI opponent."
       ]
+    },
+    {
+      "id": "u-leaderboard-addon-recipe",
+      "rule": "When `recipe.with-leaderboard` is selected as an ADDON on top of a base game recipe, you MUST: (1) import `GameOverWithRank` and `Leaderboard` using NAMED-IMPORT syntax with curly braces \u2014 `import { GameOverWithRank } from \"./web-components/ui/GameOverWithRank.js\";` and `import { Leaderboard } from \"./web-components/ui/Leaderboard.js\";`. NEVER `import GameOverWithRank from ...` (default-import) \u2014 that resolves to `undefined` at runtime and the game-over screen throws TypeError; (2) on game-over (and ONLY on game-over), call `await GameOverWithRank.show({ host, score: finalScore, metadata, onRestart: () => game.restart() })` \u2014 this single call submits the score, renders the rank card OR a 'Sign in at mchatai.com to post your score' CTA when the player isn't signed in, renders the top-10 list, and mounts the Play Again button; (3) DO NOT wrap that call in try/catch with a 'Leaderboard Unavailable' fallback panel \u2014 the component is no-op-safe and a fallback adds dead code that swallows real bugs; (4) include both `ui.leaderboard` and `ui.game-over-with-rank` in the marker `components` array; (5) include `recipe.with-leaderboard` in the marker `addons` array, alongside the base recipe id (e.g. `{recipe: 'recipe.snake', addons: ['recipe.with-leaderboard'], components: [...]}`). NEVER call `Leaderboard.submitFinal` mid-game. NEVER manually fetch `/api/leaderboards/*` or any HTTP endpoint \u2014 always go through the components. NEVER suppress the sign-in CTA when submitFinal returns null \u2014 the leaderboard is intentionally the persuasive funnel for free mChatAI account signup; that CTA is the funnel.",
+      "why": "Phase 1 of the hosted high-score service (spec write-up-an-excellent-witty-sparrow.md). The feature is a one-click version-bump applied to existing scoring games via continueDevelopment + a FeedbackTicket whose prose names this recipe. Without this rule, the LLM tends to (a) submit scores during play instead of game-over (violates u-018 + score-show-personal-best-on-game-over), (b) hand-roll a sign-in dialog instead of using the GameOverWithRank-built CTA (loses funnel coherence + each game ships its own auth flow), (c) call fetch('/api/leaderboards/...') directly instead of going through the bridge component (breaks rate-limiting + auth + offline fallback), (d) drop the addons marker field so the gate can't enforce required-component subset, OR (e) use default-import syntax for components that are named-exported, which silently turns the import into `undefined` and forces a try/catch fallback that masks the bug. Hit (e) on the very first canary 2026-05-09 \u2014 flappy-leaderboard generation passed the gate but would have crashed in browser. Signed-in is by design \u2014 the leaderboard is the reason users sign up at mchatai.com, and the same auth surface unlocks newsletter signup + orders later for non-game mini-apps.",
+      "severity": "critical",
+      "appliesTo": [
+        "miniApp",
+        "webspa"
+      ],
+      "examples": [
+        "GOOD imports (named, curly braces): `import { GameOverWithRank } from \"./web-components/ui/GameOverWithRank.js\"; import { Leaderboard } from \"./web-components/ui/Leaderboard.js\";`",
+        "GOOD: on game-over: `await GameOverWithRank.show({ host: document.querySelector('#game-over'), score: state.score, metadata: { level, moves }, onRestart: () => game.restart() });` \u2014 no try/catch wrapper, no fallback panel.",
+        "GOOD marker: `<script type='application/json' id='mchatai-web-components-used'>{\"recipe\":\"recipe.snake\",\"addons\":[\"recipe.with-leaderboard\"],\"components\":[\"core.game-manager\",\"entities.grid-board\",\"ui.scoreboard\",\"ui.leaderboard\",\"ui.game-over-with-rank\"],\"mode\":\"module-imports\"}</script>`",
+        "GOOD: when submitFinal resolves null (anonymous player), GameOverWithRank automatically renders 'Sign in at mchatai.com to post your score \u2192' \u2014 don't override or hide that.",
+        "BAD: `import GameOverWithRank from \"./web-components/ui/GameOverWithRank.js\";` \u2014 default-import on a named export. `GameOverWithRank` is undefined at runtime; calling `.show(...)` throws TypeError. Hit on the first leaderboard canary 2026-05-09.",
+        "BAD: `try { await GameOverWithRank.show({...}); } catch (e) { showCustomFallbackPanel(); }` \u2014 the component never throws (no-op-safe contract). The catch routes a real bug (e.g. wrong import shape resolving to undefined) into the fallback so the UI looks 'mostly-fine' while never actually working. Just call it; trust the contract.",
+        "BAD: calling `await Leaderboard.submitFinal(score, meta)` after every move \u2014 spams the rate-limit + breaks score-show-personal-best-on-game-over + renders the rank card during gameplay.",
+        "BAD: handcrafting `if (!user) { showCustomSigninModal(); }` \u2014 inconsistent with every other game's CTA, fragments the funnel, and the user has to re-implement auth state in each generated game.",
+        "BAD: `fetch('/api/leaderboards/' + slug + '/scores', { method: 'POST', body: ... })` \u2014 bypasses bridge, no offline fallback, no rate-limit awareness.",
+        "BAD: marker omits `addons: ['recipe.with-leaderboard']` so the gate's addon subset check passes vacuously \u2014 your code may have wired Leaderboard correctly, but downstream tooling (deploy diff, popularity signal, A/B between v1 and v2) loses the signal that this artifact is leaderboard-enabled."
+      ]
     }
   ],
-  "_last_updated": "2026-05-06 u-hud-minimalism-meaningful-only added",
-  "lastUpdated": "2026-05-06"
+  "_last_updated": "2026-05-09 u-leaderboard-addon-recipe sharpened: explicit named-import shape + no try/catch fallback (after first canary used default-import + wrapped in try/catch)",
+  "lastUpdated": "2026-05-09"
 }
