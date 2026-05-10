@@ -3100,13 +3100,13 @@
         "entities.word-dictionary",
         "ui.mini-header",
         "ui.scoreboard",
-        "core.game-manager",
         "resources.swatches",
         "resources.audio-manager",
         "effects.score-rise",
         "effects.pop-burst"
       ],
       "assemblyNotes": [
+        "NOTE 2026-05-09: core.game-manager DELIBERATELY OMITTED from this recipe. The entity Lego (e.g. entities.word-trace-grid) is a self-contained state machine \u2014 instantiate directly with `new`, drive your own setInterval/requestAnimationFrame loop. See wisdom rule fs-015.",
         "Use WordTraceGrid for the 4\u00d74 (or NxN) board. Listen to pointerdown/pointermove/pointerup with `passive: false` and call grid.startTrace / extendTrace / commitWord. (See mobile-frontend wisdom mob-005.)",
         "Bundle a 2-10k word dictionary inline as a JS array; pass it to WordDictionary. For tests, use the exported COMMON_WORDS_SAMPLE (~1000 words).",
         "Use WordDictionary.findAllOnGrid(grid) at puzzle generation to compute the FULL set of legal words for that letter arrangement. Use the count + total possible score as the level target.",
@@ -3322,7 +3322,6 @@
         "entities.swipe-tile-grid",
         "ui.mini-header",
         "ui.scoreboard",
-        "core.game-manager",
         "resources.swatches",
         "resources.audio-manager",
         "effects.score-rise",
@@ -3330,6 +3329,7 @@
         "effects.spawn-drop"
       ],
       "assemblyNotes": [
+        "NOTE 2026-05-09: core.game-manager DELIBERATELY OMITTED from this recipe. The entity Lego (e.g. entities.swipe-tile-grid) is a self-contained state machine \u2014 instantiate directly with `new`, drive your own setInterval/requestAnimationFrame loop. See wisdom rule fs-015.",
         "Use SwipeTileGrid for the 4\u00d74 tile grid (size: 4 default, or pass size: 5/6 for harder variants).",
         "Mobile-first: detect swipe via pointerdown + pointerup, NOT keyboard. Use SwipeTileGrid.directionFromSwipe(startX, startY, endX, endY, 30) to convert deltas to direction. (See mobile-frontend wisdom mob-005.)",
         "Desktop fallback: also bind ArrowUp/ArrowDown/ArrowLeft/ArrowRight to grid.swipe(direction).",
@@ -3379,13 +3379,13 @@
         "entities.memory-match-board",
         "ui.mini-header",
         "ui.scoreboard",
-        "core.game-manager",
         "resources.swatches",
         "resources.audio-manager",
         "effects.score-rise",
         "effects.pop-burst"
       ],
       "assemblyNotes": [
+        "NOTE 2026-05-09: core.game-manager DELIBERATELY OMITTED from this recipe. The entity Lego (e.g. entities.memory-match-board) is a self-contained state machine \u2014 instantiate directly with `new`, drive your own setInterval/requestAnimationFrame loop. See wisdom rule fs-015.",
         "Use MemoryMatchBoard for the card grid. Pick 4\u00d74 (16 cards / 8 pairs) for kids/easy, 4\u00d76 (24 / 12 pairs) for medium, 6\u00d76 (36 / 18 pairs) for hard.",
         "Call MemoryMatchBoard.buildShuffledDeck(symbols, rows * cols) once per new game. MEMORY_DEFAULT_SYMBOLS has 36 emoji; substitute with country flags / animal photos / chess-piece glyphs / etc. for thematic variants.",
         "Touch UX (mob-005): listen to pointerup on each card element, NOT click. Call grid.flipCard(r, c). The 'state' return value tells you what to do: 'first' (just flip); 'match' (apply matched class to both, play match SFX); 'mismatch' (apply face-up briefly, then setTimeout(800ms) \u2192 grid.resolveMismatch() \u2192 re-render); 'ignored' (no-op).",
@@ -3428,12 +3428,12 @@
         "ui.mini-header",
         "ui.scoreboard",
         "ui.keyboard-input",
-        "core.game-manager",
         "resources.swatches",
         "resources.audio-manager",
         "effects.score-rise"
       ],
       "assemblyNotes": [
+        "NOTE 2026-05-09: core.game-manager DELIBERATELY OMITTED from this recipe. The entity Lego (e.g. entities.sudoku-board) is a self-contained state machine \u2014 instantiate directly with `new`, drive your own setInterval/requestAnimationFrame loop. See wisdom rule fs-015.",
         "Use SudokuBoard for the 9\u00d79 grid. Generate puzzles via SudokuBoard.generatePuzzle('easy'|'medium'|'hard'|'expert') \u2014 caller doesn't need a hard-coded puzzle list.",
         "Render with 3\u00d73 subgrid borders (heavier 2px lines every 3 rows/cols). Locked clue cells get distinct styling (bolder font + slightly darker bg).",
         "Touch UX (mob-005): pointerup to select a cell; show a 1-9 number pad below the grid (touch targets \u2265 44\u00d744 per mob-002). Caller maps tap of a number \u2192 grid.setCell(activeR, activeC, value); validate immediately and highlight conflicts via grid.validateCell.",
@@ -3476,11 +3476,11 @@
         "ui.mini-header",
         "ui.scoreboard",
         "ui.keyboard-input",
-        "core.game-manager",
         "resources.swatches",
         "resources.audio-manager"
       ],
       "assemblyNotes": [
+        "NOTE 2026-05-09: core.game-manager DELIBERATELY OMITTED from this recipe. The entity Lego (e.g. entities.hangman-game) is a self-contained state machine \u2014 instantiate directly with `new`, drive your own setInterval/requestAnimationFrame loop. See wisdom rule fs-015.",
         "Use HangmanGame for state. Pick a fresh word from HANGMAN_DEFAULT_WORDS (or a thematic substitute) on each round. Caller-controlled vocabulary \u21d2 easy to swap in animals / movies / foods / countries.",
         "Render 3 surfaces: (1) the gallows + hangman drawing (SVG with paths revealed by wrongCount: head=1, body=2, lArm=3, rArm=4, lLeg=5, rLeg=6); (2) the masked word as widely-spaced underscores/letters; (3) an A-Z on-screen keyboard.",
         "On-screen keyboard touch UX (mob-005): pointerup per key. Disable already-guessed letters (or grey them out + apply correct/incorrect color). Use grid.remainingLetters() to drive enabled state.",
@@ -3525,7 +3525,6 @@
         "entities.tetris-board",
         "ui.mini-header",
         "ui.scoreboard",
-        "core.game-manager",
         "resources.swatches",
         "resources.audio-manager",
         "effects.score-rise",
@@ -3533,6 +3532,7 @@
         "effects.spawn-drop"
       ],
       "assemblyNotes": [
+        "NOTE 2026-05-09: core.game-manager DELIBERATELY OMITTED from this recipe. The entity Lego (e.g. entities.tetris-board) is a self-contained state machine \u2014 instantiate directly with `new`, drive your own setInterval/requestAnimationFrame loop. See wisdom rule fs-015.",
         "Use TetrisBoard for the 10\u00d720 grid (or pass rows: 22 / cols: 10 for the standard 'extra rows above' rendering).",
         "Game loop: setInterval(() => grid.tick(), grid.gravityMs()) \u2014 re-call setInterval whenever lines clear (level changes \u2192 faster gravity).",
         "Mobile touch input (mob-005): pointerdown to detect tap, pointerup with delta to detect swipe (left/right = move, down = soft drop, up = rotate, swipe-up-fast = hard drop). Bottom on-screen control bar with arrow buttons + rotate as a fallback.",
@@ -3582,12 +3582,12 @@
         "entities.deck",
         "ui.mini-header",
         "ui.scoreboard",
-        "core.game-manager",
         "resources.swatches",
         "resources.audio-manager",
         "effects.score-rise"
       ],
       "assemblyNotes": [
+        "NOTE 2026-05-09: core.game-manager DELIBERATELY OMITTED from this recipe. The entity Lego (e.g. entities.solitaire-klondike) is a self-contained state machine \u2014 instantiate directly with `new`, drive your own setInterval/requestAnimationFrame loop. See wisdom rule fs-015.",
         "Use SolitaireKlondike for ALL game state and rules. Drag-and-drop UX is the standard solitaire interaction model \u2014 listen to pointerdown on a card, pointermove to drag, pointerup to drop on a tableau column or foundation. The state machine handles all rule validation; UI just calls grid.moveFromWaste/Tableau/Foundation and reads the {ok, reason} return.",
         "TAP-TO-AUTO-MOVE for mobile: a single tap on a card should attempt to move it to its foundation if legal (saves the user a long drag). Use canStackFoundation to check.",
         "Render face-down cards as a card-back pattern (gradient or pattern). Face-up cards show rank+suit using CARD_SYMBOLS.",
@@ -3631,13 +3631,13 @@
         "entities.snake-game",
         "ui.mini-header",
         "ui.scoreboard",
-        "core.game-manager",
         "resources.swatches",
         "resources.audio-manager",
         "effects.score-rise",
         "effects.pop-burst"
       ],
       "assemblyNotes": [
+        "NOTE 2026-05-09: core.game-manager DELIBERATELY OMITTED from this recipe. The entity Lego (e.g. entities.snake-game) is a self-contained state machine \u2014 instantiate directly with `new`, drive your own setInterval/requestAnimationFrame loop. See wisdom rule fs-015.",
         "Use SnakeGame for the grid + state machine. Default 20\u00d720 grid is standard mobile-snake size; use size:15 for kids/easy or size:25 for hard.",
         "Game loop: setInterval(() => grid.tick(), grid.tickMs()) \u2014 re-arm setInterval whenever score changes (speed scales with score).",
         "Mobile touch input (mob-005): swipe gestures via pointerdown + pointerup. Use SnakeGame.directionFromSwipe(sx,sy,ex,ey,30) to convert deltas to direction. Call grid.setDirection(dir).",
@@ -3678,12 +3678,12 @@
         "entities.flappy-bird",
         "ui.mini-header",
         "ui.scoreboard",
-        "core.game-manager",
         "resources.swatches",
         "resources.audio-manager",
         "effects.score-rise"
       ],
       "assemblyNotes": [
+        "NOTE 2026-05-09: core.game-manager DELIBERATELY OMITTED from this recipe. The entity Lego (e.g. entities.flappy-bird) is a self-contained state machine \u2014 instantiate directly with `new`, drive your own setInterval/requestAnimationFrame loop. See wisdom rule fs-015.",
         "Use FlappyBird for the physics + state machine. Set width/height to match the canvas/viewport. For mobile portrait: width=360, height=640 is standard.",
         "Game loop: requestAnimationFrame. Track lastTimestamp; on each frame compute dt=(now-last)/1000, call grid.tick(dt), then render.",
         "Mobile touch input (mob-005): pointerdown anywhere on the canvas \u2192 grid.flap(). NO drag, NO complex gestures \u2014 flappy is tap-only.",

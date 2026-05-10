@@ -1,6 +1,6 @@
 {
   "packID": "frontend-skill",
-  "version": 2,
+  "version": 3,
   "displayName": "Delightful Frontends \u2014 Taste Discipline",
   "description": "Hard rules for generating delightful frontends. Distilled from OpenAI's 'Designing Delightful Frontends with GPT-5' field guide (Apr 2026). Applies to mini-apps, webSPA landing pages and product UIs, and (where idiomatic) macOS/iOS UI. Source: Phase DF spec. The rubric is the non-negotiable first-impression bar.",
   "categories": [
@@ -190,7 +190,7 @@
     },
     {
       "id": "fs-015",
-      "rule": "When the marker selects an entities.* Lego (e.g. entities.sudoku-board, entities.tetris-board, entities.hangman-game, entities.memory-match-board, entities.swipe-tile-grid, entities.snake-game, entities.flappy-bird, entities.solitaire-klondike, entities.word-trace-grid), these are PLAIN JAVASCRIPT CLASSES, NOT Web Custom Elements. They do NOT extend HTMLElement, have NO connectedCallback or attributeChangedCallback, and DO NOT render themselves into the DOM. Instantiate with `new ClassName(options)`, call methods on the instance, and YOU draw the UI from the instance state into your own DOM/canvas elements. NEVER call customElements.define('foo-bar', LegoClass). NEVER use <sudoku-board> or <tetris-board> custom-element tags in HTML. NEVER call instance.setAttribute(...) to communicate with the Lego \u2014 call methods directly (board.flipCard(r,c), grid.swipe('left'), game.guessLetter('A')). Read the canonical .js source under web-components/entities/ to learn the actual method names + field names BEFORE writing glue.",
+      "rule": "When the marker selects an entities.* Lego (e.g. entities.sudoku-board, entities.tetris-board, entities.hangman-game, entities.memory-match-board, entities.swipe-tile-grid, entities.snake-game, entities.flappy-bird, entities.solitaire-klondike, entities.word-trace-grid), these are PLAIN JAVASCRIPT CLASSES, NOT Web Custom Elements. They do NOT extend HTMLElement, have NO connectedCallback or attributeChangedCallback, and DO NOT render themselves into the DOM. Instantiate with `new ClassName(options)`, call methods on the instance, and YOU draw the UI from the instance state into your own DOM/canvas elements. NEVER call customElements.define('foo-bar', LegoClass). NEVER use <sudoku-board> or <tetris-board> custom-element tags in HTML. NEVER call instance.setAttribute(...) to communicate with the Lego \u2014 call methods directly (board.flipCard(r,c), grid.swipe('left'), game.guessLetter('A')). Read the canonical .js source under web-components/entities/ to learn the actual method names + field names BEFORE writing glue. ALSO: do NOT route the new entities (SudokuBoard, TetrisBoard, HangmanGame, MemoryMatchBoard, SwipeTileGrid, SnakeGame, FlappyBird, WordTraceGrid, SolitaireKlondike) through `core.game-manager` (GameManager). GameManager is a canvas-based loop runner with a different API. The new entities are SELF-CONTAINED state machines; instantiate them DIRECTLY with `new SudokuBoard()` / `new TetrisBoard({rows:20,cols:10})` / etc. and drive them yourself with setInterval (or requestAnimationFrame for canvas games). If the recipe lists `core.game-manager` you can ignore that import; use the entity directly. If you genuinely need a game-loop helper, use plain `setInterval(() => grid.tick(), 1000/30)`.",
       "why": "2026-05-09 mobile-render survey: 4 of 8 catalog gold-stars (Sudoku/Tetris/2048/MemoryMatch) shipped with customElements.define + <foo-bar> tags. The Lego classes don't extend HTMLElement, so the custom elements stayed empty \u2192 blank playable surface. User reported screenshots showing only HUDs and controls. Hangman variant: same fault category but via method-name hallucination \u2014 the install used game.secret/game.guesses/game.mistakes when the real Lego API is target/guessed/wrongCount.",
       "severity": "critical",
       "appliesTo": "miniApp",
@@ -199,7 +199,8 @@
         "RIGHT (Tetris): const grid = new TetrisBoard({rows:20, cols:10}); grid.newGame(); setInterval(() => { grid.tick(); paintCanvas(grid); }, grid.gravityMs());",
         "WRONG: customElements.define('tetris-board', TetrisBoard) \u2014 TetrisBoard is not a Web Component, this leaves an empty placeholder.",
         "WRONG: <sudoku-board id='board'></sudoku-board> + board.setAttribute('difficulty', 'medium') \u2014 element is empty because SudokuBoard doesn't extend HTMLElement.",
-        "WRONG: game.secret / game.guesses / game.mistakes on HangmanGame \u2014 real fields are target / guessed / wrongCount. Always read the source first."
+        "WRONG: game.secret / game.guesses / game.mistakes on HangmanGame \u2014 real fields are target / guessed / wrongCount. Always read the source first.",
+        "WRONG: `import { GameManager } from \"./web-components/core/GameManager.js\"; gameManager = new GameManager({boardEl: sudokuEl, ...})` \u2014 GameManager is a canvas-based loop runner; passing a `<sudoku-board>` placeholder as boardEl produces 10+ console errors because GameManager expected a <canvas>. Instead: `const board = SudokuBoard.generatePuzzle('medium'); renderGridToDOM(board, document.getElementById('sudoku'));`"
       ]
     },
     {
