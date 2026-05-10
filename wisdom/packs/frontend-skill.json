@@ -1,6 +1,6 @@
 {
   "packID": "frontend-skill",
-  "version": 4,
+  "version": 5,
   "displayName": "Delightful Frontends \u2014 Taste Discipline",
   "description": "Hard rules for generating delightful frontends. Distilled from OpenAI's 'Designing Delightful Frontends with GPT-5' field guide (Apr 2026). Applies to mini-apps, webSPA landing pages and product UIs, and (where idiomatic) macOS/iOS UI. Source: Phase DF spec. The rubric is the non-negotiable first-impression bar.",
   "categories": [
@@ -214,7 +214,19 @@
         "RIGHT: if (boardEl.children.length === 0) console.warn('[BUG] empty board after first render');",
         "RIGHT (canvas): const px = ctx.getImageData(W/2, H/2, 1, 1).data; if (px[3] === 0) console.warn('[BUG] empty canvas after first paint');"
       ]
+    },
+    {
+      "id": "fs-017",
+      "rule": "Game state machines that have an `idle` / pre-start phase MUST initialize their renderable position fields BEFORE the first render, not lazily on the first user input. Specifically: if newGame() is the only place that sets player position (e.g. bird.y = height*0.4 in Flappy, snake[0] = center in Snake, paddle.x = midfield in Pong), and the start-overlay shows a frozen pre-game scene, the rendered player will be at the constructor default (often 0 = top-left) until the user taps. This produces a 'chopped sprite at upper-left' or 'snake invisible' bug in the start overlay screenshot. Fix: either call newGame() at init (and set state back to 'idle'), OR explicitly set the renderable fields to their resting values right after the constructor.",
+      "why": "2026-05-10 mobile QA: Flappy install showed the bird sliced at upper-left in the 'Tap to Start' screenshot. Root cause: FlappyBird constructor sets `this.bird = {y: 0, vy: 0}` and ONLY newGame() sets bird.y = height*0.4. The start overlay renders before newGame() is called, so the bird draws at world y=0 = top-left edge. Fix landed: `game.bird.y = game.height * 0.4` after construction.",
+      "severity": "medium",
+      "appliesTo": "miniApp",
+      "examples": [
+        "RIGHT: const game = new FlappyBird(...); game.bird.y = game.height * 0.4; render(); // pre-flight rest position",
+        "RIGHT: const grid = new SnakeGame({size:20}); grid.newGame(); // populate snake[] before first render",
+        "WRONG: const game = new FlappyBird(...); render(); // bird at default y=0, draws at top-left edge"
+      ]
     }
   ],
-  "_last_updated": "2026-05-09"
+  "_last_updated": "2026-05-10"
 }
