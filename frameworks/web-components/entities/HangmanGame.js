@@ -1,4 +1,11 @@
 // BEGIN mchatai-web-components: entities.hangman-game (entities/HangmanGame.js)
+//
+// PLAIN JS CLASS — NOT A WEB CUSTOM ELEMENT.
+// DO NOT call customElements.define() on this class.
+// DO NOT use <hangmangame-foo> tags in HTML.
+// Instantiate with `new` and call methods. YOU draw the UI.
+// See wisdom rule fs-015 for the full pattern + worked examples.
+//
 
 /**
  * Hangman game state machine. Letter-by-letter word-guessing classic.

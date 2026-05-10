@@ -1,4 +1,11 @@
 // BEGIN mchatai-web-components: entities.snake-game (entities/SnakeGame.js)
+//
+// PLAIN JS CLASS — NOT A WEB CUSTOM ELEMENT.
+// DO NOT call customElements.define() on this class.
+// DO NOT use <snakegame-foo> tags in HTML.
+// Instantiate with `new` and call methods. YOU draw the UI.
+// See wisdom rule fs-015 for the full pattern + worked examples.
+//
 import { GridBoard } from "./GridBoard.js";
 
 /**
