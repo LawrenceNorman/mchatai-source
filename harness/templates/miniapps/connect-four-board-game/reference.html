@@ -3,6 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
+<!-- mchatai-leaderboard-mode: winstreak — track consecutive wins vs CPU
+     instead of a numeric score (Connect Four has no natural per-game
+     score; "wins in a row" is the closest analog to a leaderboard metric
+     for turn-based 2-player games). See gotchas_turnbased_leaderboard_scoring. -->
+<meta name="mchatai-leaderboard-mode" content="winstreak">
 <title>Connect Four</title>
 <style>
   *{margin:0;padding:0;box-sizing:border-box;}
@@ -126,8 +131,16 @@
       if(checkWin(row,col)){
         gameOver=true;
         boardEl.style.pointerEvents='none';
-        turnEl.textContent=(current==='red'?'Red':'Yellow')+' Wins!';
-        announce((current==='red'?'Red':'Yellow')+' wins');
+        // In vs-CPU mode (default), red is the human. Label the result in
+        // human-vs-CPU terms so the leaderboard bridge can detect win/loss
+        // via DOM text scan. In 2P mode, fall back to color names.
+        if (vsCPU) {
+          if (current === cpuPlayer) { turnEl.textContent = 'CPU Won'; announce('CPU won'); }
+          else { turnEl.textContent = 'You Won!'; announce('You won'); }
+        } else {
+          turnEl.textContent=(current==='red'?'Red':'Yellow')+' Wins!';
+          announce((current==='red'?'Red':'Yellow')+' wins');
+        }
         return;
       }
       if(isDraw()){
