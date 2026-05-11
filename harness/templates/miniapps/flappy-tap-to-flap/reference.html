@@ -114,8 +114,14 @@
       gap: 16px;
       padding: 32px;
       pointer-events: none;
+      /* Hidden by default while the game is playing — without this the
+         "Game Over / Play Again" panel renders persistently on top of the
+         live game. Show class adds opacity:1 + pointer-events:auto. */
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.18s ease;
     }
-    #overlay.show { pointer-events: auto; }
+    #overlay.show { opacity: 1; visibility: visible; pointer-events: auto; }
     #overlay h2 {
       margin: 0;
       font-size: 36px;
