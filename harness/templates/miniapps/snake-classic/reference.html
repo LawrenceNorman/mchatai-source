@@ -295,14 +295,47 @@
     fitCanvas();
     window.addEventListener("resize", () => { fitCanvas(); render(); });
 
+    // Track whether the user has provided first input. The snake auto-runs
+    // straight right on creation; without waiting for first input it dies on
+    // the wall in <5s before the user even orients themselves. Fix: hold the
+    // tick loop until first input, show a "Tap or press an arrow to start" hint.
+    let started = false;
+
     function startGame(size) {
       game = new SnakeGame({size, startSpeedMs: 220, minSpeedMs: 70});
       game.newGame();
       overlayEl.classList.remove("show");
       bestEl.textContent = bestScore;
       if (tickHandle) clearInterval(tickHandle);
-      runTickLoop();
       render();
+      // Show "Tap to start" prompt; runTickLoop() fires only on first input.
+      started = false;
+      showStartPrompt();
+    }
+
+    function showStartPrompt() {
+      const hint = document.getElementById("start-prompt") || (() => {
+        const el = document.createElement("div");
+        el.id = "start-prompt";
+        el.textContent = "Tap or press an arrow to start";
+        el.style.cssText = "position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(15,23,42,0.85);color:#fff;padding:14px 22px;border-radius:999px;font-size:16px;font-weight:600;pointer-events:none;z-index:50;backdrop-filter:blur(4px);";
+        const wrap = canvas.parentElement;
+        if (wrap) { wrap.style.position = wrap.style.position || "relative"; wrap.appendChild(el); }
+        return el;
+      })();
+      hint.style.display = "block";
+    }
+
+    function hideStartPrompt() {
+      const hint = document.getElementById("start-prompt");
+      if (hint) hint.style.display = "none";
+    }
+
+    function ensureStarted() {
+      if (started) return;
+      started = true;
+      hideStartPrompt();
+      runTickLoop();
     }
 
     function runTickLoop() {
@@ -378,14 +411,15 @@
       if (!tracking) return;
       tracking = false;
       const dir = SnakeGame.directionFromSwipe(startX, startY, ev.clientX, ev.clientY, 25);
-      if (dir) game.setDirection(dir);
+      if (dir) { game.setDirection(dir); ensureStarted(); }
+      else if (!started) { ensureStarted(); } // tap-without-swipe also starts the game
     }, {passive: false});
 
     // Keyboard
     window.addEventListener("keydown", (ev) => {
       const map = {ArrowUp:"up",ArrowDown:"down",ArrowLeft:"left",ArrowRight:"right",w:"up",s:"down",a:"left",d:"right",W:"up",S:"down",A:"left",D:"right"};
       const dir = map[ev.key];
-      if (dir) { ev.preventDefault(); game.setDirection(dir); }
+      if (dir) { ev.preventDefault(); game.setDirection(dir); ensureStarted(); }
     });
 
     diffBtns.forEach(btn => {
