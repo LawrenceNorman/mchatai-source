@@ -39,7 +39,13 @@
 <h1>Connect Four</h1>
 <div id="turnIndicator" class="turn-indicator red">Red's Turn</div>
 <div id="board" class="board" role="grid" aria-label="Connect Four board"></div>
-<button id="newGameBtn" class="btn-new-game" role="button" aria-label="Start a new game">New Game</button>
+<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:10px">
+  <button id="newGameBtn" class="btn-new-game" role="button" aria-label="Start a new game">New Game</button>
+  <button id="modeBtn" type="button" aria-pressed="true"
+          style="padding:8px 14px;border-radius:999px;border:1px solid rgba(255,255,255,0.18);background:rgba(255,255,255,0.06);color:inherit;font-size:13px;font-weight:600;cursor:pointer">
+    vs CPU
+  </button>
+</div>
 <div id="ariaAnnounce" class="sr-only" aria-live="polite"></div>
 <script>
   document.addEventListener('DOMContentLoaded',()=>{
@@ -97,6 +103,11 @@
     function getCell(r,c){return boardEl.children[r*COLS+c];}
 
     /* ---------------- Game Logic ---------------- */
+    // Default mode: vs CPU. Red is human; Yellow is CPU. User can toggle
+    // 2-player via the "vs CPU" / "2P" toggle (added below the New Game btn).
+    let vsCPU = true;
+    let cpuPlayer = 'yellow';
+
     function play(col){
       if(gameOver) return;
       // locate lowest empty row
@@ -128,6 +139,67 @@
       current=current==='red'?'yellow':'red';
       updateTurnIndicator();
       announce((current==='red'?'Red':'Yellow')+"'s turn");
+
+      // After a human move, if vsCPU mode is on, let the CPU respond.
+      if (vsCPU && !gameOver && current === cpuPlayer) {
+        boardEl.style.pointerEvents='none';
+        setTimeout(() => {
+          const col = pickCPUColumn();
+          if (col >= 0) play(col);
+          if (!gameOver) boardEl.style.pointerEvents='';
+        }, 450); // small delay so the CPU move feels deliberate
+      }
+    }
+
+    /* CPU heuristic — three-rule selector:
+       1. If yellow can win this move, play it.
+       2. If red could win on its next move, block it.
+       3. Else: prefer center column (3), then adjacent. Randomized tiebreak. */
+    function pickCPUColumn() {
+      const human = cpuPlayer === 'yellow' ? 'red' : 'yellow';
+      // 1: win-if-possible
+      for (let c = 0; c < COLS; c++) {
+        const r = dropRowFor(c);
+        if (r === -1) continue;
+        if (wouldWin(r, c, cpuPlayer)) return c;
+      }
+      // 2: block-opponent
+      for (let c = 0; c < COLS; c++) {
+        const r = dropRowFor(c);
+        if (r === -1) continue;
+        if (wouldWin(r, c, human)) return c;
+      }
+      // 3: center-weighted random
+      const colWeights = [1, 2, 4, 8, 4, 2, 1];
+      const validCols = [];
+      for (let c = 0; c < COLS; c++) {
+        if (dropRowFor(c) !== -1) validCols.push({ c, w: colWeights[c] });
+      }
+      if (!validCols.length) return -1;
+      const total = validCols.reduce((s, v) => s + v.w, 0);
+      let r = Math.random() * total;
+      for (const v of validCols) { r -= v.w; if (r <= 0) return v.c; }
+      return validCols[validCols.length - 1].c;
+    }
+
+    function dropRowFor(col) {
+      for (let r = ROWS - 1; r >= 0; r--) if (!board[r][col]) return r;
+      return -1;
+    }
+
+    function wouldWin(r, c, color) {
+      board[r][c] = color;
+      // Inline checkWin for `color` rather than mutating `current`.
+      const dirs = [[0,1],[1,0],[1,1],[1,-1]];
+      let won = false;
+      for (const [dr,dc] of dirs) {
+        let count = 1;
+        for (let i = 1; valid(r+dr*i, c+dc*i) && board[r+dr*i][c+dc*i] === color; i++) count++;
+        for (let i = 1; valid(r-dr*i, c-dc*i) && board[r-dr*i][c-dc*i] === color; i++) count++;
+        if (count >= 4) { won = true; break; }
+      }
+      board[r][c] = null;
+      return won;
     }
 
     function isDraw(){for(let c=0;c<COLS;c++) if(!board[0][c]) return false; return true;}
@@ -159,6 +231,17 @@
 
     // Reset via click or keyboard (button already handles Enter/Space by default)
     newGameBtn.addEventListener('click',initBoard);
+
+    // vs CPU / 2P toggle.
+    const modeBtn = document.getElementById('modeBtn');
+    if (modeBtn) {
+      modeBtn.addEventListener('click', () => {
+        vsCPU = !vsCPU;
+        modeBtn.textContent = vsCPU ? 'vs CPU' : '2 Player';
+        modeBtn.setAttribute('aria-pressed', vsCPU ? 'true' : 'false');
+        initBoard(); // restart so CPU mode kicks in cleanly
+      });
+    }
 
     /* ---------------- Kick-off ---------------- */
     initBoard();
