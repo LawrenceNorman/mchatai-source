@@ -462,20 +462,30 @@
     }
 
     let tickHandle = null;
+    // Bug fix 2026-05-11: previous version called
+    //   tickHandle = setInterval(arguments.callee, grid.gravityMs());
+    // inside an arrow function to re-arm gravity at a faster level. Arrow
+    // functions don't have `arguments` (they inherit from the enclosing
+    // scope), and ES modules execute in strict mode where `arguments.callee`
+    // is forbidden anyway. After the first line-clear, the re-arm silently
+    // failed and the gravity timer died — pieces stopped falling after
+    // ~12 moves. User report 2026-05-11: "This tetris is broken after the
+    // first line or so." Fix: name the function so we can self-reference.
+    function tetrisTick() {
+      const result = grid.tick();
+      render();
+      if (result.locked) {
+        // Re-arm gravity at new level speed when lines were cleared (level up).
+        if (result.linesCleared > 0) {
+          clearInterval(tickHandle);
+          tickHandle = setInterval(tetrisTick, grid.gravityMs());
+        }
+        checkEnd();
+      }
+    }
     function startTickLoop() {
       if (tickHandle) clearInterval(tickHandle);
-      tickHandle = setInterval(() => {
-        const result = grid.tick();
-        render();
-        if (result.locked) {
-          // Re-arm gravity at new level speed
-          if (result.linesCleared > 0) {
-            clearInterval(tickHandle);
-            tickHandle = setInterval(arguments.callee, grid.gravityMs());
-          }
-          checkEnd();
-        }
-      }, grid.gravityMs());
+      tickHandle = setInterval(tetrisTick, grid.gravityMs());
     }
     startTickLoop();
 
