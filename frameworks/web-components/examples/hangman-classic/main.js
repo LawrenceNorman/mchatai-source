@@ -1,7 +1,7 @@
 import { getSwatchByID } from "../../resources/Swatches.js";
-import { HangmanClassicGame } from "./HangmanClassicGame.js";
+import { McHangmanAssembly } from "./McHangmanAssembly.js";
 
-const game = new HangmanClassicGame({
+const game = new McHangmanAssembly({
   root: "[data-web-component-example='hangman-classic']",
   hudTarget: "#hudMount",
   metaTarget: "#metaMount",
@@ -15,4 +15,4 @@ const game = new HangmanClassicGame({
 
 game.start();
 
-globalThis.mchatHangmanExample = game;
+globalThis.mchatHangmanAssembly = game;

@@ -1,7 +1,7 @@
 import { getSwatchByID } from "../../resources/Swatches.js";
-import { TetrisClassicGame } from "./TetrisClassicGame.js";
+import { McTetrisAssembly } from "./McTetrisAssembly.js";
 
-const game = new TetrisClassicGame({
+const game = new McTetrisAssembly({
   root: "[data-web-component-example='tetris-classic']",
   canvasId: "gameCanvas",
   nextCanvasId: "nextCanvas",
@@ -16,4 +16,4 @@ const game = new TetrisClassicGame({
 
 game.start();
 
-globalThis.mchatTetrisExample = game;
+globalThis.mchatTetrisAssembly = game;

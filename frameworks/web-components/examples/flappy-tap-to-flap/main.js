@@ -1,7 +1,7 @@
 import { getSwatchByID } from "../../resources/Swatches.js";
-import { FlappyClassicGame } from "./FlappyClassicGame.js";
+import { McFlappyAssembly } from "./McFlappyAssembly.js";
 
-const game = new FlappyClassicGame({
+const game = new McFlappyAssembly({
   canvasId: "gameCanvas",
   root: "[data-web-component-example='flappy-tap-to-flap']",
   hudTarget: "#hudMount",
@@ -12,4 +12,4 @@ const game = new FlappyClassicGame({
 
 game.start();
 
-globalThis.mchatFlappyExample = game;
+globalThis.mchatFlappyAssembly = game;

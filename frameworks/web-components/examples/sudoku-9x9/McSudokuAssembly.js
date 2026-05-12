@@ -3,7 +3,7 @@ import { ScoreBoard } from "../../ui/ScoreBoard.js";
 import { applySwatchVariables, getSwatchByID } from "../../resources/Swatches.js";
 
 /**
- * SudokuClassicGame — Lego golden-assembly composition.
+ * McSudokuAssembly — Lego golden-assembly composition.
  *
  * Wires:
  *   - entities.sudoku-board (SudokuBoard) — 9x9 grid w/ locked clues, notes, conflicts
@@ -14,7 +14,7 @@ import { applySwatchVariables, getSwatchByID } from "../../resources/Swatches.js
  * pills. Tap cell to select; tap a numpad button to set. Locked clue cells
  * are visually distinct and reject input.
  */
-export class SudokuClassicGame {
+export class McSudokuAssembly {
   constructor(options = {}) {
     this.rootSelector = options.root || "[data-web-component-example='sudoku-9x9']";
     this.root = document.querySelector(this.rootSelector);

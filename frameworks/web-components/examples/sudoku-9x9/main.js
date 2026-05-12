@@ -1,7 +1,7 @@
 import { getSwatchByID } from "../../resources/Swatches.js";
-import { SudokuClassicGame } from "./SudokuClassicGame.js";
+import { McSudokuAssembly } from "./McSudokuAssembly.js";
 
-const game = new SudokuClassicGame({
+const game = new McSudokuAssembly({
   root: "[data-web-component-example='sudoku-9x9']",
   boardTarget: "#boardMount",
   hudTarget: "#hudMount",
@@ -13,4 +13,4 @@ const game = new SudokuClassicGame({
 
 game.start();
 
-globalThis.mchatSudokuExample = game;
+globalThis.mchatSudokuAssembly = game;

@@ -5,7 +5,7 @@ import { applySwatchVariables, getSwatchByID } from "../../resources/Swatches.js
 const SUITS = ["H", "D", "C", "S"];
 
 /**
- * SolitaireClassicGame — Lego golden-assembly composition.
+ * McSolitaireAssembly — Lego golden-assembly composition.
  *
  * Wires:
  *   - entities.solitaire-klondike (SolitaireKlondike, CARD_SYMBOLS) — state machine + undo
@@ -16,7 +16,7 @@ const SUITS = ["H", "D", "C", "S"];
  * (tableau column or foundation slot) to move. Stock tap = draw 3. Foundation
  * watermarks show empty suit slots. Mobile-friendly: no drag required.
  */
-export class SolitaireClassicGame {
+export class McSolitaireAssembly {
   constructor(options = {}) {
     this.rootSelector = options.root || "[data-web-component-example='solitaire-klondike']";
     this.root = document.querySelector(this.rootSelector);

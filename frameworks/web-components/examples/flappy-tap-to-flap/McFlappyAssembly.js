@@ -3,7 +3,7 @@ import { ScoreBoard } from "../../ui/ScoreBoard.js";
 import { applySwatchVariables, getSwatchByID } from "../../resources/Swatches.js";
 
 /**
- * FlappyClassicGame — Lego golden-assembly composition.
+ * McFlappyAssembly — Lego golden-assembly composition.
  *
  * Wires together:
  *   - entities.flappy-bird (FlappyBird) — gravity + flap-impulse physics on a virtual world
@@ -14,7 +14,7 @@ import { applySwatchVariables, getSwatchByID } from "../../resources/Swatches.js
  * first flap. Tap anywhere on the canvas or press Space to flap. After a death,
  * the next tap restarts.
  */
-export class FlappyClassicGame {
+export class McFlappyAssembly {
   constructor(options = {}) {
     this.canvas = document.getElementById(options.canvasId || "gameCanvas");
     this.ctx = this.canvas?.getContext("2d") ?? null;

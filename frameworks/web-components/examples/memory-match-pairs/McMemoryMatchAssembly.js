@@ -9,7 +9,7 @@ const DIFFICULTIES = {
 };
 
 /**
- * MemoryMatchClassicGame — Lego golden-assembly composition.
+ * McMemoryMatchAssembly — Lego golden-assembly composition.
  *
  * Wires:
  *   - entities.memory-match-board (MemoryMatchBoard, MEMORY_DEFAULT_SYMBOLS)
@@ -20,7 +20,7 @@ const DIFFICULTIES = {
  * mismatched pairs flip back after a short delay. Difficulty pills change
  * the grid size. Mobile-first 4×4 default.
  */
-export class MemoryMatchClassicGame {
+export class McMemoryMatchAssembly {
   constructor(options = {}) {
     this.rootSelector = options.root || "[data-web-component-example='memory-match-pairs']";
     this.root = document.querySelector(this.rootSelector);

@@ -3,7 +3,7 @@ import { ScoreBoard } from "../../ui/ScoreBoard.js";
 import { applySwatchVariables, getSwatchByID } from "../../resources/Swatches.js";
 
 /**
- * HangmanClassicGame — Lego golden-assembly composition.
+ * McHangmanAssembly — Lego golden-assembly composition.
  *
  * Wires:
  *   - entities.hangman-game (HangmanGame, HANGMAN_DEFAULT_WORDS) — state machine
@@ -13,7 +13,7 @@ import { applySwatchVariables, getSwatchByID } from "../../resources/Swatches.js
  * Draws gallows scaffold + figure on canvas (one limb per wrong guess), renders
  * dash placeholders for the secret word, and a tappable A-Z keyboard.
  */
-export class HangmanClassicGame {
+export class McHangmanAssembly {
   constructor(options = {}) {
     this.rootSelector = options.root || "[data-web-component-example='hangman-classic']";
     this.root = document.querySelector(this.rootSelector);

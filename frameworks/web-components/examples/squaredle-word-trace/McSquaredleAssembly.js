@@ -22,7 +22,7 @@ const PUZZLES = [
 ];
 
 /**
- * SquaredleClassicGame — Lego golden-assembly composition.
+ * McSquaredleAssembly — Lego golden-assembly composition.
  *
  * Wires:
  *   - entities.word-trace-grid (WordTraceGrid) — 4x4 path tracing + word validation
@@ -34,7 +34,7 @@ const PUZZLES = [
  * Backtracking supported (drag back over previous cell). Found-words tray
  * shows committed words; score uses the entity's defaultScore (length²-ish).
  */
-export class SquaredleClassicGame {
+export class McSquaredleAssembly {
   constructor(options = {}) {
     this.rootSelector = options.root || "[data-web-component-example='squaredle-word-trace']";
     this.root = document.querySelector(this.rootSelector);

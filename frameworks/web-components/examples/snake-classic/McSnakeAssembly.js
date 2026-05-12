@@ -3,7 +3,7 @@ import { ScoreBoard } from "../../ui/ScoreBoard.js";
 import { applySwatchVariables, getSwatchByID } from "../../resources/Swatches.js";
 
 /**
- * SnakeClassicGame — Lego golden-assembly composition.
+ * McSnakeAssembly — Lego golden-assembly composition.
  *
  * Glue code that wires together:
  *   - entities.snake-game (SnakeGame) — pure game-state machine on an NxN grid
@@ -17,7 +17,7 @@ import { applySwatchVariables, getSwatchByID } from "../../resources/Swatches.js
  * The grid size is 18×18 by default; canvas is 360×360 so each cell renders
  * at 20px on mobile.
  */
-export class SnakeClassicGame {
+export class McSnakeAssembly {
   constructor(options = {}) {
     this.canvas = document.getElementById(options.canvasId || "gameCanvas");
     this.ctx = this.canvas?.getContext("2d") ?? null;

@@ -1,7 +1,7 @@
 import { getSwatchByID } from "../../resources/Swatches.js";
-import { MemoryMatchClassicGame } from "./MemoryMatchClassicGame.js";
+import { McMemoryMatchAssembly } from "./McMemoryMatchAssembly.js";
 
-const game = new MemoryMatchClassicGame({
+const game = new McMemoryMatchAssembly({
   root: "[data-web-component-example='memory-match-pairs']",
   boardTarget: "#boardMount",
   hudTarget: "#hudMount",
@@ -14,4 +14,4 @@ const game = new MemoryMatchClassicGame({
 
 game.start();
 
-globalThis.mchatMemoryExample = game;
+globalThis.mchatMemoryMatchAssembly = game;

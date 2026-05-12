@@ -1,7 +1,7 @@
 import { getSwatchByID } from "../../resources/Swatches.js";
-import { SwipeMergeClassicGame } from "./SwipeMergeClassicGame.js";
+import { McSwipeMergeAssembly } from "./McSwipeMergeAssembly.js";
 
-const game = new SwipeMergeClassicGame({
+const game = new McSwipeMergeAssembly({
   root: "[data-web-component-example='swipe-merge-2048']",
   boardTarget: "#boardMount",
   hudTarget: "#hudMount",
@@ -13,4 +13,4 @@ const game = new SwipeMergeClassicGame({
 
 game.start();
 
-globalThis.mchatSwipeMergeExample = game;
+globalThis.mchatSwipeMergeAssembly = game;

@@ -1,7 +1,7 @@
 import { getSwatchByID } from "../../resources/Swatches.js";
-import { SolitaireClassicGame } from "./SolitaireClassicGame.js";
+import { McSolitaireAssembly } from "./McSolitaireAssembly.js";
 
-const game = new SolitaireClassicGame({
+const game = new McSolitaireAssembly({
   root: "[data-web-component-example='solitaire-klondike']",
   stockTarget: "#stockMount",
   wasteTarget: "#wasteMount",
@@ -17,4 +17,4 @@ const game = new SolitaireClassicGame({
 
 game.start();
 
-globalThis.mchatSolitaireExample = game;
+globalThis.mchatSolitaireAssembly = game;
