@@ -1,0 +1,33 @@
+{
+  "$schemaVersion": "1.0.0",
+  "$description": "Registry of post-deploy enhancement offers shown after a wizard run when the user confirms 'Was this automation set up successfully? → Yes' (or taps the 'Looks great!' pill). Loaded by macOS EnhancementOfferRegistry.swift, evaluated by EnhancementOfferMatcher.swift. Each offer becomes a tap-pill on the post-success assistant message. Tapping fires AIHarness.continueDevelopment(for:withFeedback:) with prose lifted from feedbackPromptTemplate.",
+  "$lastUpdated": "2026-05-12 — initial framework, leaderboard + sound-effects offers",
+  "offers": [
+    {
+      "id": "offer.add-leaderboard",
+      "displayName": "Add Leaderboard",
+      "pitch": "Hosted high-score board so players compete and share rankings.",
+      "iconSymbol": "trophy.fill",
+      "recipeID": "recipe.with-leaderboard",
+      "appliesToContentCategories": ["miniApp", "game"],
+      "deterministicMatcher": "scoringGame",
+      "llmAppliesWhenPrompt": null,
+      "feedbackPromptTemplate": "prompts/add-leaderboard.md",
+      "alreadyAppliedMarker": { "addonsContains": "recipe.with-leaderboard" },
+      "keywords": ["leaderboard", "high score", "compete"]
+    },
+    {
+      "id": "offer.add-sound-effects",
+      "displayName": "Add Sound Effects",
+      "pitch": "Tap-friendly AudioManager + coherent SFX tied to game events.",
+      "iconSymbol": "speaker.wave.2.fill",
+      "recipeID": "recipe.with-sound-effects",
+      "appliesToContentCategories": ["miniApp", "game"],
+      "deterministicMatcher": null,
+      "llmAppliesWhenPrompt": "Would this artifact benefit from sound effects? Look for game-loop events (collision, score change, game over, level up) WITHOUT existing audio calls (new Audio, AudioContext, .play(), AudioManager). Reply yes ONLY when the artifact is an interactive game/animation that's currently silent. Reply no for static UIs, forms, or already-sonified games.",
+      "feedbackPromptTemplate": "prompts/add-sound-effects.md",
+      "alreadyAppliedMarker": { "componentsContains": "resources.audio-manager" },
+      "keywords": ["sound", "audio", "sfx", "music"]
+    }
+  ]
+}

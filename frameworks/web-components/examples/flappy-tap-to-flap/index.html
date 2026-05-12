@@ -1,0 +1,430 @@
+<!--
+  mchatai-web-components-used (canonical marker — do not remove)
+  recipe: recipe.flappy
+  components:
+    - entities.flappy-bird (entities/FlappyBird.js)
+    - ui.mini-header
+    - ui.scoreboard
+    - core.game-manager
+    - resources.swatches
+    - effects.score-rise
+  mode: source-copy
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#70c5ce">
+  <title>Flappy — Tap to Flap</title>
+  <script type="application/json" id="mchatai-web-components-used">
+{"recipe":"recipe.flappy","components":["entities.flappy-bird","ui.mini-header","ui.scoreboard","core.game-manager","resources.swatches","effects.score-rise"],"mode":"source-copy"}
+  </script>
+  <style>
+    :root {
+      --sky-1: #70c5ce;
+      --sky-2: #b6dde2;
+      --pipe: #6bbf2d;
+      --pipe-shadow: #4a8b1f;
+      --ground: #ded78b;
+      --ground-shadow: #c5be75;
+      --bird-body: #fbbf24;
+      --bird-belly: #fef3c7;
+      --bird-beak: #f97316;
+      --text: #ffffff;
+      --shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body { margin: 0; padding: 0; height: 100%; overscroll-behavior: none; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: linear-gradient(180deg, var(--sky-1) 0%, var(--sky-2) 100%);
+      color: var(--text);
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: manipulation;
+      padding: env(safe-area-inset-top, 0) 0 env(safe-area-inset-bottom, 0);
+    }
+    main {
+      flex: 1;
+      width: 100%;
+      max-width: 480px;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    #board {
+      width: 100%;
+      max-width: 460px;
+      height: auto;
+      aspect-ratio: 360 / 640;
+      background: linear-gradient(180deg, var(--sky-1) 0%, var(--sky-2) 100%);
+      box-shadow: var(--shadow);
+      touch-action: none;
+      display: block;
+    }
+    .hud {
+      position: absolute;
+      top: 12px;
+      left: 0;
+      right: 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 16px;
+      pointer-events: none;
+      font-variant-numeric: tabular-nums;
+    }
+    .score-big {
+      font-size: clamp(56px, 12vw, 80px);
+      font-weight: 900;
+      color: white;
+      text-shadow: 0 3px 0 rgba(0,0,0,0.3), 0 6px 12px rgba(0,0,0,0.4);
+      position: absolute;
+      top: 60px;
+      left: 50%;
+      transform: translateX(-50%);
+      pointer-events: none;
+      letter-spacing: -0.02em;
+    }
+    .best {
+      background: rgba(0,0,0,0.3);
+      padding: 6px 14px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+    /* Start / Game-over overlay */
+    #overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 16px;
+      padding: 32px;
+      pointer-events: none;
+      /* Hidden by default while the game is playing — without this the
+         "Game Over / Play Again" panel renders persistently on top of the
+         live game. Show class adds opacity:1 + pointer-events:auto. */
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.18s ease;
+    }
+    #overlay.show { opacity: 1; visibility: visible; pointer-events: auto; }
+    #overlay h2 {
+      margin: 0;
+      font-size: 36px;
+      color: white;
+      text-shadow: 0 3px 0 rgba(0,0,0,0.3), 0 6px 12px rgba(0,0,0,0.4);
+      text-align: center;
+    }
+    #overlay .stats-block {
+      background: rgba(0,0,0,0.3);
+      padding: 16px 24px;
+      border-radius: 16px;
+      font-size: 16px;
+      line-height: 1.7;
+      text-align: center;
+      color: white;
+    }
+    #overlay button {
+      min-height: 56px;
+      min-width: 220px;
+      padding: 16px 32px;
+      background: var(--bird-body);
+      color: #1f2937;
+      border: none;
+      border-radius: 999px;
+      font-size: 18px;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: var(--shadow);
+      letter-spacing: 0.02em;
+      animation: tap-pulse 1.4s ease-in-out infinite;
+    }
+    @keyframes tap-pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.06); }
+    }
+    .start-hint {
+      color: white;
+      font-size: 14px;
+      font-weight: 600;
+      text-shadow: 0 2px 0 rgba(0,0,0,0.3);
+      opacity: 0.9;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <canvas id="board" width="360" height="640"></canvas>
+    <div class="hud">
+      <span></span>
+      <span class="best">Best <span id="best">0</span></span>
+    </div>
+    <div class="score-big" id="score-big">0</div>
+    <div id="overlay">
+      <h2 id="overlay-title">Tap to Start</h2>
+      <div class="stats-block" id="overlay-stats" style="display:none"></div>
+      <button id="overlay-action">Start</button>
+      <div class="start-hint" id="start-hint">or press Space / ↑</div>
+    </div>
+  </main>
+
+  <script type="module">
+    /* BEGIN inline copy: FlappyBird.js */
+    class FlappyBird {
+      constructor(options = {}) {
+        this.width = options.width ?? 360;
+        this.height = options.height ?? 640;
+        this.gravity = options.gravity ?? 1400;
+        this.flapImpulse = options.flapImpulse ?? -360;
+        this.pipeSpeed = options.pipeSpeed ?? 140;
+        this.pipeWidth = options.pipeWidth ?? 60;
+        this.pipeGap = options.pipeGap ?? 160;
+        this.pipeIntervalSeconds = options.pipeIntervalSeconds ?? 1.6;
+        this.birdX = options.birdX ?? Math.floor(this.width * 0.22);
+        this.birdRadius = options.birdRadius ?? 16;
+        this.groundHeight = options.groundHeight ?? 60;
+        this.bird = {y: 0, vy: 0};
+        this.pipes = []; this.score = 0; this.gameOver = false; this.timeSinceLastPipe = 0;
+        this.state = "idle";
+      }
+      newGame() {
+        this.bird = {y: this.height * 0.4, vy: 0};
+        this.pipes = []; this.score = 0; this.gameOver = false; this.timeSinceLastPipe = 0;
+        this.state = "playing";
+      }
+      flap() { if (this.state !== "playing") return false; this.bird.vy = this.flapImpulse; return true; }
+      tick(dt) {
+        if (this.state !== "playing") return {died:false, scored:0, headY: this.bird.y};
+        this.bird.vy += this.gravity * dt;
+        this.bird.y += this.bird.vy * dt;
+        for (const p of this.pipes) p.x -= this.pipeSpeed * dt;
+        this.pipes = this.pipes.filter(p => p.x + this.pipeWidth > 0);
+        this.timeSinceLastPipe += dt;
+        if (this.timeSinceLastPipe >= this.pipeIntervalSeconds) { this.timeSinceLastPipe = 0; this._spawnPipe(); }
+        let scored = 0;
+        for (const p of this.pipes) if (!p.scored && p.x + this.pipeWidth < this.birdX) { p.scored = true; scored++; }
+        this.score += scored;
+        if (this.bird.y + this.birdRadius >= this.height - this.groundHeight) {
+          this.bird.y = this.height - this.groundHeight - this.birdRadius;
+          this.gameOver = true; this.state = "gameover";
+          return {died:true, scored, headY: this.bird.y};
+        }
+        if (this.bird.y - this.birdRadius < 0) { this.bird.y = this.birdRadius; this.bird.vy = 0; }
+        for (const p of this.pipes) if (this._birdHitsPipe(p)) {
+          this.gameOver = true; this.state = "gameover";
+          return {died:true, scored, headY: this.bird.y};
+        }
+        return {died:false, scored, headY: this.bird.y};
+      }
+      _birdHitsPipe(p) {
+        if (this.birdX + this.birdRadius < p.x) return false;
+        if (this.birdX - this.birdRadius > p.x + this.pipeWidth) return false;
+        if (this.bird.y - this.birdRadius < p.gapTop) return true;
+        if (this.bird.y + this.birdRadius > p.gapBottom) return true;
+        return false;
+      }
+      _spawnPipe() {
+        const margin = 80;
+        const top = margin, bottom = this.height - this.groundHeight - margin;
+        const center = top + Math.random() * (bottom - top);
+        this.pipes.push({x: this.width, gapTop: center - this.pipeGap/2, gapBottom: center + this.pipeGap/2, scored: false});
+      }
+      isGameOver() { return this.state === "gameover"; }
+    }
+    /* END inline copy: FlappyBird.js */
+
+    const game = new FlappyBird({width: 360, height: 640});
+    // Position the idle bird at a sensible pre-flap rest height so the
+    // start-overlay shows it floating mid-screen (not at world y=0 = upper-
+    // left). Only newGame() resets bird.y; idle init leaves it at 0.
+    game.bird.y = game.height * 0.4;
+    let bestScore = parseInt(localStorage.getItem("flappy-best") || "0", 10) || 0;
+
+    const canvas = document.getElementById("board");
+    const ctx = canvas.getContext("2d");
+    const scoreBigEl = document.getElementById("score-big");
+    const bestEl = document.getElementById("best");
+    const overlayEl = document.getElementById("overlay");
+    const overlayTitle = document.getElementById("overlay-title");
+    const overlayStats = document.getElementById("overlay-stats");
+    const overlayAction = document.getElementById("overlay-action");
+    const startHint = document.getElementById("start-hint");
+
+    function fitCanvas() {
+      const dpr = window.devicePixelRatio || 1;
+      const cssWidth = canvas.clientWidth;
+      const cssHeight = canvas.clientHeight;
+      canvas.width = Math.round(cssWidth * dpr);
+      canvas.height = Math.round(cssHeight * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+    requestAnimationFrame(() => { fitCanvas(); render(); });
+    window.addEventListener("resize", () => { fitCanvas(); render(); });
+
+    function render() {
+      const W = canvas.clientWidth;
+      const H = canvas.clientHeight;
+      const sx = W / game.width;
+      const sy = H / game.height;
+      // Sky already CSS-painted on canvas bg; clear with sky gradient anyway
+      const grad = ctx.createLinearGradient(0, 0, 0, H);
+      grad.addColorStop(0, getCSS("--sky-1"));
+      grad.addColorStop(1, getCSS("--sky-2"));
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, W, H);
+
+      // Pipes
+      ctx.fillStyle = getCSS("--pipe");
+      for (const p of game.pipes) {
+        const px = p.x * sx;
+        const pw = game.pipeWidth * sx;
+        // Top pipe
+        ctx.fillRect(px, 0, pw, p.gapTop * sy);
+        // Top pipe cap (slightly wider)
+        ctx.fillStyle = getCSS("--pipe-shadow");
+        ctx.fillRect(px - 4, p.gapTop * sy - 16, pw + 8, 16);
+        ctx.fillStyle = getCSS("--pipe");
+        // Bottom pipe
+        const bottomY = p.gapBottom * sy;
+        const bottomH = (game.height - game.groundHeight) * sy - bottomY;
+        ctx.fillRect(px, bottomY, pw, bottomH);
+        ctx.fillStyle = getCSS("--pipe-shadow");
+        ctx.fillRect(px - 4, bottomY, pw + 8, 16);
+        ctx.fillStyle = getCSS("--pipe");
+      }
+
+      // Ground
+      const groundY = (game.height - game.groundHeight) * sy;
+      ctx.fillStyle = getCSS("--ground");
+      ctx.fillRect(0, groundY, W, H - groundY);
+      ctx.fillStyle = getCSS("--ground-shadow");
+      ctx.fillRect(0, groundY, W, 6);
+
+      // Bird (rotated)
+      const bx = game.birdX * sx;
+      const by = game.bird.y * sy;
+      const r = game.birdRadius * Math.min(sx, sy);
+      const angle = Math.max(-Math.PI/3, Math.min(Math.PI/2, Math.atan2(game.bird.vy, 250)));
+      ctx.save();
+      ctx.translate(bx, by);
+      ctx.rotate(angle);
+      // Body
+      ctx.fillStyle = getCSS("--bird-body");
+      ctx.beginPath();
+      ctx.arc(0, 0, r, 0, Math.PI * 2);
+      ctx.fill();
+      // Belly
+      ctx.fillStyle = getCSS("--bird-belly");
+      ctx.beginPath();
+      ctx.arc(0, r * 0.3, r * 0.55, 0, Math.PI * 2);
+      ctx.fill();
+      // Eye
+      ctx.fillStyle = "white";
+      ctx.beginPath();
+      ctx.arc(r * 0.4, -r * 0.3, r * 0.3, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "black";
+      ctx.beginPath();
+      ctx.arc(r * 0.5, -r * 0.3, r * 0.13, 0, Math.PI * 2);
+      ctx.fill();
+      // Beak
+      ctx.fillStyle = getCSS("--bird-beak");
+      ctx.beginPath();
+      ctx.moveTo(r * 0.7, 0);
+      ctx.lineTo(r * 1.4, -r * 0.15);
+      ctx.lineTo(r * 1.4, r * 0.15);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
+
+    function getCSS(varName) {
+      return getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
+    }
+
+    function showStartOverlay() {
+      overlayTitle.textContent = "Tap to Start";
+      overlayStats.style.display = "none";
+      overlayAction.textContent = "Start";
+      startHint.style.display = "block";
+      overlayEl.classList.add("show");
+    }
+    function showGameOver() {
+      overlayTitle.textContent = "Game Over";
+      overlayStats.style.display = "block";
+      const isBest = game.score > 0 && game.score === bestScore;
+      overlayStats.innerHTML = `Score <strong>${game.score}</strong><br>Best <strong>${bestScore}</strong>${isBest ? "<br>🏆 New Best!" : ""}`;
+      overlayAction.textContent = "Play Again";
+      startHint.style.display = "block";
+      overlayEl.classList.add("show");
+    }
+
+    let lastTimestamp = 0;
+    let rafHandle = null;
+    function loop(ts) {
+      if (!lastTimestamp) lastTimestamp = ts;
+      const dt = Math.min(0.05, (ts - lastTimestamp) / 1000); // clamp dt to avoid huge jumps
+      lastTimestamp = ts;
+      const result = game.tick(dt);
+      if (result.scored > 0) scoreBigEl.textContent = game.score;
+      render();
+      if (game.isGameOver()) {
+        if (game.score > bestScore) {
+          bestScore = game.score;
+          localStorage.setItem("flappy-best", String(bestScore));
+        }
+        bestEl.textContent = bestScore;
+        cancelAnimationFrame(rafHandle);
+        rafHandle = null;
+        scoreBigEl.textContent = game.score;
+        showGameOver();
+        return;
+      }
+      rafHandle = requestAnimationFrame(loop);
+    }
+
+    function startGame() {
+      game.newGame();
+      scoreBigEl.textContent = "0";
+      overlayEl.classList.remove("show");
+      lastTimestamp = 0;
+      rafHandle = requestAnimationFrame(loop);
+    }
+
+    function flap() {
+      if (!rafHandle) startGame();
+      else game.flap();
+    }
+
+    // Tap anywhere on canvas
+    canvas.addEventListener("pointerdown", (ev) => { ev.preventDefault(); flap(); }, {passive: false});
+    overlayAction.addEventListener("pointerdown", (ev) => { ev.preventDefault(); ev.stopPropagation(); flap(); }, {passive: false});
+    // Keyboard: Space / ArrowUp
+    window.addEventListener("keydown", (ev) => {
+      if (ev.key === " " || ev.key === "ArrowUp") {
+        ev.preventDefault();
+        flap();
+      }
+    });
+
+    bestEl.textContent = bestScore;
+    showStartOverlay();
+    render();
+    console.log(`[Smoke] FlappyBird ready: world=${game.width}×${game.height}, gravity=${game.gravity}, pipeGap=${game.pipeGap}`);
+  </script>
+</body>
+</html>
