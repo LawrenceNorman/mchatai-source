@@ -1,8 +1,14 @@
 {
-  "version": 1,
+  "version": 2,
   "surface": "agent:default",
-  "description": "Default context recipe for autonomous AI agents (multi-turn agent runs). Lighter again than wizard recipes — agents typically have their own system prompt + skill catalog already injected, so the harness layer just adds user goal + recent history.",
+  "description": "Default context recipe for autonomous AI agents (multi-turn agent runs). Lighter again than wizard recipes — agents typically have their own system prompt + skill catalog already injected, so the harness layer just adds user goal + recent history. v2 (2026-05-12): added mchatai-fundamentals autoload at priority 88 so agents see the platform-primitives catalog (dictionaries / palettes / etc.) without each agent's prompt enumerating them by hand.",
   "layers": [
+    {
+      "id": "mchatai-fundamentals",
+      "loader": "mchatai-fundamentals",
+      "priority": 88,
+      "maxTokens": 600
+    },
     {
       "id": "user-goal",
       "loader": "user-goal",

@@ -23,7 +23,7 @@
 //              for ~260ms (the pop animation), then is up to the caller to
 //              remove. Use SpawnDrop.pop() for the auto-remove path.
 
-const CSS = `
+const SPAWN_DROP_CSS = `
 .spawn {
   animation: spawnPop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both;
 }
@@ -47,19 +47,19 @@ const CSS = `
 }
 `;
 
-let _cssInjected = false;
+let _spawn_dropInjected = false;
 
 export const SpawnDrop = {
-  css: CSS,
+  css: SPAWN_DROP_CSS,
 
   /** Inject keyframes + .spawn / .popping styles once. Idempotent. */
   injectCss(doc = document) {
-    if (_cssInjected) return;
+    if (_spawn_dropInjected) return;
     const style = doc.createElement("style");
     style.dataset.lego = "SpawnDrop";
-    style.textContent = CSS;
+    style.textContent = SPAWN_DROP_CSS;
     doc.head.appendChild(style);
-    _cssInjected = true;
+    _spawn_dropInjected = true;
   },
 
   /**
@@ -68,7 +68,7 @@ export const SpawnDrop = {
    */
   spawn(tileEl, { className = "spawn", durationMs = 360 } = {}) {
     if (!tileEl) return;
-    if (!_cssInjected) SpawnDrop.injectCss();
+    if (!_spawn_dropInjected) SpawnDrop.injectCss();
     tileEl.classList.add(className);
     setTimeout(() => tileEl.classList.remove(className), durationMs);
   },
@@ -80,7 +80,7 @@ export const SpawnDrop = {
    */
   pop(tileEl, { className = "popping", durationMs = 280 } = {}) {
     if (!tileEl) return Promise.resolve();
-    if (!_cssInjected) SpawnDrop.injectCss();
+    if (!_spawn_dropInjected) SpawnDrop.injectCss();
     tileEl.classList.add(className);
     return new Promise((resolve) => {
       setTimeout(() => {
@@ -90,5 +90,3 @@ export const SpawnDrop = {
     });
   },
 };
-
-export default SpawnDrop;

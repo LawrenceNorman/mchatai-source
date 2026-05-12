@@ -12,7 +12,7 @@
 //   ScoreRise.show(cellEl, "+50");
 //   ScoreRise.show(boardEl, "★ COMBO ×3", { color: "#ffd766", fontSize: 18 });
 
-const CSS = `
+const SCORE_RISE_CSS = `
 .score-popup {
   position: absolute;
   pointer-events: none;
@@ -33,19 +33,19 @@ const CSS = `
 }
 `;
 
-let _cssInjected = false;
+let _score_riseInjected = false;
 
 export const ScoreRise = {
-  css: CSS,
+  css: SCORE_RISE_CSS,
 
   /** Inject the .score-popup style + keyframes once. Idempotent. */
   injectCss(doc = document) {
-    if (_cssInjected) return;
+    if (_score_riseInjected) return;
     const style = doc.createElement("style");
     style.dataset.lego = "ScoreRise";
-    style.textContent = CSS;
+    style.textContent = SCORE_RISE_CSS;
     doc.head.appendChild(style);
-    _cssInjected = true;
+    _score_riseInjected = true;
   },
 
   /**
@@ -57,7 +57,7 @@ export const ScoreRise = {
    */
   show(parentEl, text, { color, fontSize, ttlMs = 950, className = "score-popup" } = {}) {
     if (!parentEl) return null;
-    if (!_cssInjected) ScoreRise.injectCss();
+    if (!_score_riseInjected) ScoreRise.injectCss();
     const popup = document.createElement("div");
     popup.className = className;
     popup.textContent = text;
@@ -68,5 +68,3 @@ export const ScoreRise = {
     return popup;
   },
 };
-
-export default ScoreRise;
