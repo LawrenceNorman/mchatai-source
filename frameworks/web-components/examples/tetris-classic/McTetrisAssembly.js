@@ -3,7 +3,7 @@ import { ScoreBoard } from "../../ui/ScoreBoard.js";
 import { applySwatchVariables, getSwatchByID } from "../../resources/Swatches.js";
 
 /**
- * TetrisClassicGame — Lego golden-assembly composition.
+ * McTetrisAssembly — Lego golden-assembly composition.
  *
  * Wires:
  *   - entities.tetris-board (TetrisBoard) — falling pieces, gravity, line clear, scoring
@@ -14,7 +14,7 @@ import { applySwatchVariables, getSwatchByID } from "../../resources/Swatches.js
  * lines cleared, current level. 5-button control pad (rotate / left / right /
  * down / hard-drop). Wait-for-first-input gate per lb-005.
  */
-export class TetrisClassicGame {
+export class McTetrisAssembly {
   constructor(options = {}) {
     this.rootSelector = options.root || "[data-web-component-example='tetris-classic']";
     this.root = document.querySelector(this.rootSelector);

@@ -1,7 +1,7 @@
 import { getSwatchByID } from "../../resources/Swatches.js";
-import { SnakeClassicGame } from "./SnakeClassicGame.js";
+import { McSnakeAssembly } from "./McSnakeAssembly.js";
 
-const game = new SnakeClassicGame({
+const game = new McSnakeAssembly({
   canvasId: "gameCanvas",
   root: "[data-web-component-example='snake-classic']",
   hudTarget: "#hudMount",
@@ -13,4 +13,4 @@ const game = new SnakeClassicGame({
 
 game.start();
 
-globalThis.mchatSnakeExample = game;
+globalThis.mchatSnakeAssembly = game;

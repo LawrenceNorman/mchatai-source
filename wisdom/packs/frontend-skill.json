@@ -1,6 +1,6 @@
 {
   "packID": "frontend-skill",
-  "version": 5,
+  "version": 7,
   "displayName": "Delightful Frontends \u2014 Taste Discipline",
   "description": "Hard rules for generating delightful frontends. Distilled from OpenAI's 'Designing Delightful Frontends with GPT-5' field guide (Apr 2026). Applies to mini-apps, webSPA landing pages and product UIs, and (where idiomatic) macOS/iOS UI. Source: Phase DF spec. The rubric is the non-negotiable first-impression bar.",
   "categories": [
@@ -226,7 +226,34 @@
         "RIGHT: const grid = new SnakeGame({size:20}); grid.newGame(); // populate snake[] before first render",
         "WRONG: const game = new FlappyBird(...); render(); // bird at default y=0, draws at top-left edge"
       ]
+    },
+    {
+      "id": "fs-018",
+      "rule": "Golden-assembly WRAPPER class names (the glue code in examples/<recipe>/<Wrapper>.js that composes catalog Legos into a runnable mini-app) MUST use a framework-private prefix like `Mc*Assembly` or `MchataiInternal*` \u2014 for example `McSnakeAssembly`, `McFlappyAssembly`, `McSudokuAssembly`. Do NOT use generic names like `SnakeGame`, `SnakeClassicGame`, `FlappyClassic`, `TetrisGame` etc. The catalog ENTITY exports (e.g. SnakeGame, FlappyBird, TetrisBoard) are already taken, and LLMs commonly pick the same name when generating their own glue code. When the wizard's golden-assembly fallback inlines our wrapper alongside LLM-generated content, name collisions produce a SyntaxError (`Identifier 'X' has already been declared`) and the install ships blank. The `Mc*Assembly` prefix is exceedingly unlikely to be coincidentally chosen by any LLM.",
+      "why": "2026-05-12: authored 9 golden-assembly wrappers initially named `SnakeClassicGame`, `FlappyClassicGame`, etc. Audit caught that these would collide with names LLMs naturally pick for their own classes (snake monolith named `class SnakeClassicGame` would shadow the wrapper at install time, breaking the entire script-module block). Renamed all 9 to `Mc<Game>Assembly` before the bug shipped. Generalizes to ALL future golden-assembly wrappers AND to global window-object names (use `globalThis.mchat<Slug>Assembly`, not `mchat<Slug>Example` or unprefixed names \u2014 anything an LLM might also write to).",
+      "severity": "error",
+      "appliesTo": "miniApp",
+      "examples": [
+        "RIGHT: export class McSnakeAssembly extends ... { ... } \u2014 Mc prefix is framework-private",
+        "RIGHT: globalThis.mchatSnakeAssembly = game; \u2014 Mchat prefix on globals",
+        "WRONG: export class SnakeGame { ... } \u2014 collides with the catalog's entities.snake-game export AND likely LLM naming",
+        "WRONG: export class SnakeClassicGame { ... } \u2014 generic name an LLM might also pick",
+        "WRONG: globalThis.snakeGame = game; \u2014 bare global, LLM-collision risk"
+      ]
+    },
+    {
+      "id": "fs-019",
+      "rule": "When IMPORTING from the catalog, NEVER declare a local class/function with the same name as the imported export. The 149 catalog export names include generic identifiers like `Ball`, `Card`, `Deck`, `Entity`, `GameManager`, `BoardShake`, `Goal`, `Player`, `Score`, `Timer` \u2014 these collide easily with LLM-natural naming. If you `import { Ball } from \"../../entities/Ball.js\"` and also `class Ball { ... }` in the same module, the local class wins and the import is effectively dead \u2014 your game uses YOUR Ball, not the catalog's, defeating the Lego contract. Symptom: install passes the gate (marker stamped, import line present) but the game uses none of the catalog's mechanics. Fix: rename your local class to anything DIFFERENT (e.g. `GameBall`, `MyBall`, `EnemyBall`) \u2014 or better, delete it and use the imported Ball directly.",
+      "why": "2026-05-12 catalog audit: 149 unique export names; many generic enough that an LLM will write `class Card { ... }` even after being told to `import { Card } from ...`. Local-class-shadows-import is a silent gate bypass \u2014 the marker says the Lego is in use, but the actual code is monolithic. Pairs with fs-018 (which fixes the inverse: avoid naming collisions when WE author the wrapper).",
+      "severity": "error",
+      "appliesTo": "miniApp",
+      "examples": [
+        "WRONG: import { Card } from '../../entities/Card.js'; class Card { ... } // local shadows import",
+        "WRONG: import { Ball } from '../../entities/Ball.js'; function Ball() { ... } // function shadows import",
+        "RIGHT: import { Card } from '../../entities/Card.js'; const card = new Card(...) // use the imported class directly",
+        "RIGHT: import { Card } from '../../entities/Card.js'; class MyCardView { constructor(card) { this.card = card; } } // wrap, don't replace"
+      ]
     }
   ],
-  "_last_updated": "2026-05-10"
+  "_last_updated": "2026-05-12"
 }

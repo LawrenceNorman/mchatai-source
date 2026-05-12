@@ -1,7 +1,7 @@
 import { getSwatchByID } from "../../resources/Swatches.js";
-import { SquaredleClassicGame } from "./SquaredleClassicGame.js";
+import { McSquaredleAssembly } from "./McSquaredleAssembly.js";
 
-const game = new SquaredleClassicGame({
+const game = new McSquaredleAssembly({
   root: "[data-web-component-example='squaredle-word-trace']",
   boardTarget: "#boardMount",
   hudTarget: "#hudMount",
@@ -15,4 +15,4 @@ const game = new SquaredleClassicGame({
 
 game.start();
 
-globalThis.mchatSquaredleExample = game;
+globalThis.mchatSquaredleAssembly = game;

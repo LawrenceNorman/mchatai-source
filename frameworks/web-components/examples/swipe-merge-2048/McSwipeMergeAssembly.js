@@ -17,7 +17,7 @@ const TILE_COLORS = {
 };
 
 /**
- * SwipeMergeClassicGame — Lego golden-assembly composition.
+ * McSwipeMergeAssembly — Lego golden-assembly composition.
  *
  * Wires:
  *   - entities.swipe-tile-grid (SwipeTileGrid) — 4x4 swipe-to-merge mechanics
@@ -28,7 +28,7 @@ const TILE_COLORS = {
  * (touch) + arrow keys (keyboard). Spawns 2 starting tiles, then one new
  * tile per move.
  */
-export class SwipeMergeClassicGame {
+export class McSwipeMergeAssembly {
   constructor(options = {}) {
     this.rootSelector = options.root || "[data-web-component-example='swipe-merge-2048']";
     this.root = document.querySelector(this.rootSelector);
