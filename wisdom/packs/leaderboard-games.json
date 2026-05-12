@@ -143,16 +143,27 @@
     },
     {
       "id": "lb-013-offline-graceful",
-      "rule": "Bridge calls MUST degrade gracefully when offline. `submit({score, …})` must return null without throwing when fetch() rejects (network down). `getTop()` must return [] when offline. The host game's `Leaderboard.submitFinal()` already handles null by hiding the rank card — DO NOT add try/catch wrappers that swallow other errors. Future enhancement: queue submits to localStorage on net failure, flush on next online tick.",
-      "why": "User 2026-05-11: \"if I download the mini-app I really want to be able run it offline.\" Installed mini-app bundles serve from file:// when offline; the bridge IIFE still attempts to POST to relay/v1/leaderboards which fails ECONNREFUSED. Caught fetch() rejections should resolve to null/[], not propagate. Future: add `lb-014-offline-queue` once we ship the queue-and-replay path.",
+      "rule": "Bridge calls MUST degrade gracefully when offline. `submit({score, …})` must return null without throwing when fetch() rejects (network down). `getTop()` must return [] (or cached rows) when offline. The host game's `Leaderboard.submitFinal()` already handles null by hiding the rank card — DO NOT add try/catch wrappers that swallow other errors.",
+      "why": "User 2026-05-11: \"if I download the mini-app I really want to be able run it offline.\" Installed mini-app bundles serve from file:// when offline; the bridge IIFE still attempts to POST to relay/v1/leaderboards which fails ECONNREFUSED. Caught fetch() rejections should resolve to null/[], not propagate.",
       "severity": "important",
       "appliesTo": ["miniapp", "webspa", "anyGame"],
       "examples": [
         "GOOD: `submit: async function (p) { try { const r = await fetch(SUBMIT_URL, ...); if (!r.ok) return null; return r.json(); } catch (_) { return null; } }`",
         "BAD: `submit: async function (p) { const r = await fetch(SUBMIT_URL, ...); return r.json(); }` // throws on offline; game-over panel never renders"
       ]
+    },
+    {
+      "id": "lb-014-offline-queue",
+      "rule": "When fetch() throws inside submit() (offline / DNS / unreachable), enqueue {score, metadata, ts} to localStorage keyed by BOARD_ID and return null. On the NEXT successful submit(), flush the queue oldest-first BEFORE the live submit so chronological intent is preserved. Cap queue at 20 entries; drop oldest on overflow. Server already dedups by uid so replaying older scores after a newer one is a no-op when the cached best wins. Drop entries on 4xx-non-429 responses (server rejected); preserve on 5xx (transient).",
+      "why": "Companion to lb-013. User 2026-05-11: \"hopefully you won't break that original path\" — and \"if I download the mini-app I really want to be able run it offline.\" Without a queue, playing offline silently discards the player's scores; with a queue, the score lands the next time the device has connectivity. Cached top-N (separate localStorage key `__mchatai_lb_top_<board>`) lets the game-over panel still show the most-recent top-3 even when offline. Filed 2026-05-11 with PR-5; implementation in functions/src/leaderboard.js readOfflineQueue/writeOfflineQueue/flushOfflineQueue/cacheTop/readCachedTop.",
+      "severity": "important",
+      "appliesTo": ["miniapp", "webspa", "anyGame"],
+      "examples": [
+        "GOOD: `try { resp = await fetch(...) } catch (netErr) { enqueueOfflineSubmit({score, metadata, ts: Date.now()}); return null; }` — and `try { await flushOfflineQueue(user); } catch (_) {}` at the top of next submit.",
+        "BAD: silently drop on offline — player loses their score with no recovery."
+      ]
     }
   ],
-  "_last_updated": "2026-05-11 — added lb-012 native-auth-bridge + lb-013 offline-graceful (PR-2)",
+  "_last_updated": "2026-05-11 — added lb-012 native-auth-bridge + lb-013 offline-graceful + lb-014 offline-queue (PR-2/PR-5)",
   "lastUpdated": "2026-05-11"
 }
