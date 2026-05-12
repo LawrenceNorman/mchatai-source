@@ -461,8 +461,27 @@
         "BAD: `fetch('/api/leaderboards/' + slug + '/scores', { method: 'POST', body: ... })` \u2014 bypasses bridge, no offline fallback, no rate-limit awareness.",
         "BAD: marker omits `addons: ['recipe.with-leaderboard']` so the gate's addon subset check passes vacuously \u2014 your code may have wired Leaderboard correctly, but downstream tooling (deploy diff, popularity signal, A/B between v1 and v2) loses the signal that this artifact is leaderboard-enabled."
       ]
+    },
+    {
+      "id": "offer-001-matcher-shape",
+      "rule": "Post-deploy enhancement offers are data, not code. Every new offer lives in `mchatai-source/harness/enhancement-offers/index.json` with this shape: `{id, displayName, pitch, iconSymbol?, recipeID, appliesToContentCategories[], deterministicMatcher?, llmAppliesWhenPrompt?, feedbackPromptTemplate, alreadyAppliedMarker, keywords?}`. The Swift-side matcher does TWO passes: (1) deterministic \u2014 when `deterministicMatcher` names a registered Swift classifier (today: 'scoringGame' \u2192 ScoringGameClassifier); (2) LLM \u2014 for every offer with `llmAppliesWhenPrompt`, one structured-JSON call (`{matched:[{id,rationale}]}`) classifies them all at once. Output IDs MUST be a subset of input offer IDs \u2014 hallucinated IDs are dropped silently. On any LLM failure the matcher returns deterministic-only results so the UI never goes dark.",
+      "why": "Filed 2026-05-12 alongside the spec write-up-an-excellent-witty-sparrow.md as the framework that generalizes the original hand-coded 'Add High Score' banner. Hand-coded bundling each new offer into Swift cost an App Store cycle per offer; this data-driven registry ships new offers via a single mchatai-source PR. Companion files: `enhancement-offers/prompts/<offer-id>.md` for FeedbackTicket prose; `enhancement-offers/judge-prompt.md` for the LLM system prompt. Strict subset-validation prevents the judge from inventing offer IDs that don't exist downstream.",
+      "severity": "critical",
+      "appliesTo": [
+        "miniApp",
+        "webspa",
+        "miniapp"
+      ],
+      "examples": [
+        "GOOD (deterministic offer): {\"id\": \"offer.add-leaderboard\", \"recipeID\": \"recipe.with-leaderboard\", \"deterministicMatcher\": \"scoringGame\", \"llmAppliesWhenPrompt\": null, \"alreadyAppliedMarker\": {\"addonsContains\": \"recipe.with-leaderboard\"}, \"feedbackPromptTemplate\": \"prompts/add-leaderboard.md\"}",
+        "GOOD (LLM-judged offer): {\"id\": \"offer.add-sound-effects\", \"recipeID\": \"recipe.with-sound-effects\", \"deterministicMatcher\": null, \"llmAppliesWhenPrompt\": \"Would this game benefit from SFX? Reply yes ONLY when it's interactive AND currently silent.\", \"alreadyAppliedMarker\": {\"componentsContains\": \"resources.audio-manager\"}}",
+        "GOOD (judge output): `{\"matched\":[{\"id\":\"offer.add-sound-effects\",\"rationale\":\"Game has tick() + onCollision events with no audio calls.\"}]}` \u2014 strict JSON, no fences, IDs from registry only.",
+        "BAD: judge returns `{\"matched\":[{\"id\":\"offer.add-multiplayer\",\"rationale\":\"...\"}]}` when 'offer.add-multiplayer' isn't in the input list. Matcher drops it silently + logs the hallucination.",
+        "BAD: putting offer prose inline in Swift (HarnessProductsView pre-2026-05-12 did this). Each new offer would have required a Swift rebuild + App Store cycle. Always put prose in `enhancement-offers/prompts/<offer-id>.md` and reference via `feedbackPromptTemplate`.",
+        "BAD: bypassing the registry and calling continueDevelopment with hand-built FeedbackTicket prose. Loses the dedup (alreadyAppliedMarker), loses telemetry (offer.id on the ownerNote), loses LLM-cache invalidation when the prompt changes."
+      ]
     }
   ],
-  "_last_updated": "2026-05-09 u-leaderboard-addon-recipe sharpened: explicit named-import shape + no try/catch fallback (after first canary used default-import + wrapped in try/catch)",
-  "lastUpdated": "2026-05-09"
+  "_last_updated": "2026-05-12 added offer-001-matcher-shape (Phase Offers framework)",
+  "lastUpdated": "2026-05-12"
 }
