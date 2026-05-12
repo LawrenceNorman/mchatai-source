@@ -1,0 +1,408 @@
+<!--
+  mchatai-web-components-used (canonical marker — do not remove)
+  recipe: recipe.hangman
+  components:
+    - entities.hangman-game (entities/HangmanGame.js)
+    - ui.mini-header
+    - ui.scoreboard
+    - ui.keyboard-input
+    - core.game-manager
+    - resources.swatches
+    - effects.score-rise
+  mode: source-copy
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#1e293b">
+  <title>Hangman — Word Guess</title>
+  <script type="application/json" id="mchatai-web-components-used">
+{"recipe":"recipe.hangman","components":["entities.hangman-game","ui.mini-header","ui.scoreboard","ui.keyboard-input","core.game-manager","resources.swatches"],"mode":"source-copy"}
+  </script>
+  <style>
+    :root {
+      --bg-1: #1e293b;
+      --bg-2: #0f172a;
+      --surface: #334155;
+      --text: #f1f5f9;
+      --accent: #fbbf24;
+      --good: #4ade80;
+      --bad: #f87171;
+      --muted: #64748b;
+      --shadow: 0 4px 12px rgba(0,0,0,0.4);
+    }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body { margin: 0; padding: 0; height: 100%; overscroll-behavior: none; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: linear-gradient(180deg, var(--bg-1) 0%, var(--bg-2) 100%);
+      color: var(--text);
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: manipulation;
+      padding: env(safe-area-inset-top, 0) 12px env(safe-area-inset-bottom, 0);
+    }
+    header {
+      width: 100%;
+      max-width: 480px;
+      padding: 16px 4px 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    header h1 {
+      margin: 0;
+      font-size: 22px;
+      letter-spacing: 0.05em;
+      color: var(--accent);
+      text-transform: uppercase;
+    }
+    .stats {
+      display: flex;
+      gap: 14px;
+      font-size: 13px;
+      font-variant-numeric: tabular-nums;
+    }
+    .stats strong { color: var(--good); margin-left: 6px; }
+    main {
+      width: 100%;
+      max-width: 480px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 8px 0 16px;
+      gap: 12px;
+    }
+    /* Gallows + hangman SVG */
+    #gallows {
+      width: min(70vw, 280px);
+      aspect-ratio: 1 / 1;
+    }
+    #gallows path, #gallows line, #gallows circle {
+      stroke: var(--text);
+      stroke-width: 4;
+      fill: none;
+      stroke-linecap: round;
+      transition: opacity 200ms ease-in;
+    }
+    #gallows .gallows-line { stroke: var(--muted); }
+    #gallows .body-part { opacity: 0; }
+    #gallows .body-part.show { opacity: 1; }
+    /* Masked word */
+    .word {
+      font-size: clamp(28px, 7vw, 40px);
+      font-weight: 800;
+      letter-spacing: 0.2em;
+      font-family: monospace;
+      text-align: center;
+      padding: 14px 8px;
+      min-height: 60px;
+    }
+    .word .reveal {
+      animation: reveal-pop 320ms ease-out;
+      color: var(--accent);
+    }
+    @keyframes reveal-pop {
+      0% { transform: scale(0.4); opacity: 0; }
+      60% { transform: scale(1.2); opacity: 1; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    /* On-screen keyboard */
+    #keyboard {
+      width: 100%;
+      max-width: 460px;
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 6px;
+    }
+    .key {
+      min-height: 48px;
+      padding: 8px 0;
+      background: var(--surface);
+      color: var(--text);
+      border: none;
+      border-radius: 8px;
+      font-size: 18px;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: var(--shadow);
+      touch-action: manipulation;
+      transition: background-color 120ms, color 120ms, opacity 120ms;
+    }
+    .key:active { background: var(--accent); color: var(--bg-2); }
+    .key.guessed-correct { background: var(--good); color: var(--bg-2); }
+    .key.guessed-wrong { background: var(--bad); color: white; opacity: 0.5; }
+    .key:disabled { cursor: default; }
+    /* Game-over overlay */
+    #overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(15,23,42,0.92);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 18px;
+      z-index: 100;
+      padding: 32px;
+    }
+    #overlay.show { display: flex; }
+    #overlay h2 { margin: 0; font-size: 32px; }
+    #overlay h2.won { color: var(--good); }
+    #overlay h2.lost { color: var(--bad); }
+    #overlay .word-reveal {
+      font-size: 24px;
+      font-weight: 700;
+      letter-spacing: 0.2em;
+      font-family: monospace;
+      color: var(--accent);
+    }
+    #overlay .stats-block {
+      font-size: 16px;
+      line-height: 1.6;
+      text-align: center;
+      opacity: 0.9;
+    }
+    #overlay button {
+      min-height: 48px;
+      min-width: 200px;
+      padding: 14px 28px;
+      background: var(--accent);
+      color: var(--bg-2);
+      border: none;
+      border-radius: 999px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: var(--shadow);
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Hangman</h1>
+    <div class="stats">
+      <span>Streak<strong id="streak">0</strong></span>
+      <span>Best<strong id="best">0</strong></span>
+    </div>
+  </header>
+
+  <main>
+    <svg id="gallows" viewBox="0 0 200 200">
+      <!-- Gallows scaffold -->
+      <line class="gallows-line" x1="20" y1="190" x2="180" y2="190"/>
+      <line class="gallows-line" x1="60" y1="190" x2="60" y2="20"/>
+      <line class="gallows-line" x1="60" y1="20" x2="140" y2="20"/>
+      <line class="gallows-line" x1="140" y1="20" x2="140" y2="40"/>
+      <!-- Hangman body parts (revealed by wrongCount 1..6) -->
+      <circle class="body-part" data-step="1" cx="140" cy="55" r="14"/>
+      <line class="body-part" data-step="2" x1="140" y1="69" x2="140" y2="120"/>
+      <line class="body-part" data-step="3" x1="140" y1="85" x2="115" y2="105"/>
+      <line class="body-part" data-step="4" x1="140" y1="85" x2="165" y2="105"/>
+      <line class="body-part" data-step="5" x1="140" y1="120" x2="120" y2="155"/>
+      <line class="body-part" data-step="6" x1="140" y1="120" x2="160" y2="155"/>
+    </svg>
+    <div class="word" id="word"></div>
+    <div id="keyboard" aria-label="Letter keyboard"></div>
+  </main>
+
+  <div id="overlay" role="dialog" aria-modal="true">
+    <h2 id="overlay-title">You Win!</h2>
+    <div class="word-reveal" id="overlay-word"></div>
+    <div class="stats-block" id="overlay-stats"></div>
+    <button id="overlay-restart">New Word</button>
+  </div>
+
+  <script type="module">
+    /* BEGIN inline copy: HangmanGame.js */
+    class HangmanGame {
+      constructor(options = {}) {
+        this.maxWrong = options.maxWrong ?? 6;
+        this.target = ""; this.guessed = new Set(); this.wrongCount = 0; this.state = "idle";
+      }
+      newRound(word) {
+        const upper = String(word ?? "").toUpperCase().replace(/[^A-Z]/g, "");
+        if (upper.length < 2) throw new Error(`hangman target must be ≥2 letters`);
+        this.target = upper; this.guessed = new Set(); this.wrongCount = 0; this.state = "playing";
+      }
+      guessLetter(letter) {
+        const L = String(letter ?? "").toUpperCase();
+        if (this.state !== "playing") return {kind:"ignored",letter:L,reason:"not-playing",wrongCount:this.wrongCount,state:this.state,masked:this.maskedWord()};
+        if (L.length !== 1 || L < "A" || L > "Z") return {kind:"ignored",letter:L,reason:"not-a-letter",wrongCount:this.wrongCount,state:this.state,masked:this.maskedWord()};
+        if (this.guessed.has(L)) return {kind:"repeat",letter:L,wrongCount:this.wrongCount,state:this.state,masked:this.maskedWord()};
+        this.guessed.add(L);
+        if (this.target.includes(L)) {
+          const positions = [];
+          for (let i=0;i<this.target.length;i++) if (this.target[i]===L) positions.push(i);
+          if (this.isFullyRevealed()) this.state = "won";
+          return {kind:"correct",letter:L,positions,wrongCount:this.wrongCount,state:this.state,masked:this.maskedWord()};
+        }
+        this.wrongCount++;
+        if (this.wrongCount >= this.maxWrong) this.state = "lost";
+        return {kind:"incorrect",letter:L,wrongCount:this.wrongCount,state:this.state,masked:this.maskedWord()};
+      }
+      maskedWord() {
+        let out = "";
+        for (const ch of this.target) {
+          if (ch === " ") out += " ";
+          else if (this.guessed.has(ch)) out += ch;
+          else out += "_";
+        }
+        return out;
+      }
+      isFullyRevealed() {
+        for (const ch of this.target) {
+          if (ch === " ") continue;
+          if (!this.guessed.has(ch)) return false;
+        }
+        return true;
+      }
+      isOver() { return this.state === "won" || this.state === "lost"; }
+      remainingLetters() {
+        const out = [];
+        for (let i=0;i<26;i++) { const L = String.fromCharCode(65+i); if (!this.guessed.has(L)) out.push(L); }
+        return out;
+      }
+    }
+    const HANGMAN_DEFAULT_WORDS = ["ANCHOR","APPLE","ARROW","AUTUMN","BAKERY","BANANA","BANJO","BASKET","BICYCLE","BIRTHDAY","BISCUIT","BLANKET","BLOSSOM","BOTTLE","BRANCH","BRIDGE","BUBBLE","BUTTON","CABBAGE","CACTUS","CAMEL","CANDLE","CANVAS","CARROT","CASTLE","CHAIR","CHEESE","CHERRY","CIRCUS","CLOUD","COMET","COMPASS","COTTON","COURAGE","CRAYON","CRYSTAL","DESERT","DIAMOND","DOLPHIN","DRAGON","EAGLE","EMERALD","FALCON","FEATHER","FLOWER","FOREST","FROZEN","GARDEN","GIRAFFE","GLACIER","GUITAR","HARBOR","HARVEST","HELMET","HONEY","ICEBERG","IGLOO","ISLAND","JACKET","JEWEL","JUNGLE","KETTLE","KEYBOARD","KITCHEN","LADDER","LANTERN","LIBRARY","LIZARD","MARBLE","MASTER","MEADOW","MIRROR","MOUNTAIN","MUSEUM","NATURE","ORANGE","ORCHARD","PARROT","PEBBLE","PENCIL","PENGUIN","PIANO","PIRATE","PLANET","PLAYFUL","POCKET","PUZZLE","RAINBOW","RIVER","ROBOT","SAILBOAT","SANDWICH","SHADOW","SILVER","SUMMER","TIGER","TURTLE","UMBRELLA","VOLCANO","WHISPER"];
+    /* END inline copy: HangmanGame.js */
+
+    const game = new HangmanGame({maxWrong: 6});
+    let streak = 0;
+    let bestStreak = parseInt(localStorage.getItem("hangman-best-streak") || "0", 10) || 0;
+
+    // DOM
+    const wordEl = document.getElementById("word");
+    const keyboardEl = document.getElementById("keyboard");
+    const streakEl = document.getElementById("streak");
+    const bestEl = document.getElementById("best");
+    const overlayEl = document.getElementById("overlay");
+    const overlayTitle = document.getElementById("overlay-title");
+    const overlayWord = document.getElementById("overlay-word");
+    const overlayStats = document.getElementById("overlay-stats");
+
+    // Build keyboard
+    const keyEls = {};
+    for (let i = 0; i < 26; i++) {
+      const L = String.fromCharCode(65 + i);
+      const k = document.createElement("button");
+      k.className = "key";
+      k.textContent = L;
+      k.dataset.l = L;
+      keyboardEl.appendChild(k);
+      keyEls[L] = k;
+    }
+
+    function pickWord() {
+      const w = HANGMAN_DEFAULT_WORDS[Math.floor(Math.random() * HANGMAN_DEFAULT_WORDS.length)];
+      return w;
+    }
+
+    function renderWord(prevMasked) {
+      const masked = game.maskedWord();
+      wordEl.innerHTML = "";
+      for (let i = 0; i < masked.length; i++) {
+        const span = document.createElement("span");
+        const ch = masked[i];
+        span.textContent = ch;
+        if (prevMasked && prevMasked[i] === "_" && ch !== "_") span.classList.add("reveal");
+        wordEl.appendChild(span);
+      }
+    }
+
+    function renderHangman() {
+      const parts = document.querySelectorAll("#gallows .body-part");
+      parts.forEach(p => {
+        const step = parseInt(p.dataset.step, 10);
+        p.classList.toggle("show", game.wrongCount >= step);
+      });
+    }
+
+    function renderKeyboard() {
+      for (let i = 0; i < 26; i++) {
+        const L = String.fromCharCode(65 + i);
+        const el = keyEls[L];
+        el.classList.remove("guessed-correct", "guessed-wrong");
+        if (game.guessed.has(L)) {
+          if (game.target.includes(L)) el.classList.add("guessed-correct");
+          else el.classList.add("guessed-wrong");
+          el.disabled = true;
+        } else {
+          el.disabled = false;
+        }
+      }
+    }
+
+    function checkEnd() {
+      if (!game.isOver()) return;
+      if (game.state === "won") {
+        streak++;
+        if (streak > bestStreak) {
+          bestStreak = streak;
+          localStorage.setItem("hangman-best-streak", String(bestStreak));
+        }
+        overlayTitle.textContent = "You won!";
+        overlayTitle.className = "won";
+      } else {
+        streak = 0;
+        overlayTitle.textContent = "Game over";
+        overlayTitle.className = "lost";
+      }
+      streakEl.textContent = streak;
+      bestEl.textContent = bestStreak;
+      overlayWord.textContent = game.target;
+      overlayStats.innerHTML = `Wrong guesses: <strong>${game.wrongCount}</strong>${game.state === "won" ? `<br>Streak: <strong>${streak}</strong>` : ""}`;
+      overlayEl.classList.add("show");
+    }
+
+    function newRound() {
+      game.newRound(pickWord());
+      renderWord();
+      renderHangman();
+      renderKeyboard();
+      overlayEl.classList.remove("show");
+    }
+
+    keyboardEl.addEventListener("pointerup", (ev) => {
+      const target = ev.target.closest(".key");
+      if (!target || target.disabled) return;
+      const before = game.maskedWord();
+      const result = game.guessLetter(target.dataset.l);
+      if (result.kind === "correct" || result.kind === "incorrect") {
+        renderWord(before);
+        renderHangman();
+        renderKeyboard();
+        checkEnd();
+      }
+    }, {passive: false});
+
+    window.addEventListener("keydown", (ev) => {
+      const k = ev.key.toUpperCase();
+      if (k.length === 1 && k >= "A" && k <= "Z" && !game.isOver()) {
+        const before = game.maskedWord();
+        game.guessLetter(k);
+        renderWord(before);
+        renderHangman();
+        renderKeyboard();
+        checkEnd();
+      }
+    });
+
+    document.getElementById("overlay-restart").addEventListener("pointerup", newRound);
+
+    streakEl.textContent = streak;
+    bestEl.textContent = bestStreak;
+    console.log(`[Smoke] HangmanGame ready. Word bank: ${HANGMAN_DEFAULT_WORDS.length} words`);
+    newRound();
+    console.log(`[Smoke] First word picked: target.length=${game.target.length} (hidden)`);
+  </script>
+</body>
+</html>
