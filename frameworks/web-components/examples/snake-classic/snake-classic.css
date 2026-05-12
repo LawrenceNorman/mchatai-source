@@ -1,0 +1,105 @@
+:root {
+  --snake-bg: #0f172a;
+  --snake-fg: #f1f5fa;
+  --snake-accent: #fde047;
+  --snake-body: #22c55e;
+  --snake-food: #ef4444;
+  --snake-meta: #94a3b8;
+  --snake-overlay: rgba(15, 23, 42, 0.86);
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  background: var(--snake-bg);
+  color: var(--snake-fg);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", system-ui, sans-serif;
+  min-height: 100vh;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.snake-shell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 18px 14px 28px;
+  max-width: 440px;
+  margin: 0 auto;
+}
+
+.snake-topbar {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+.snake-meta {
+  font-size: 13px;
+  color: var(--snake-meta);
+}
+
+.snake-stage {
+  position: relative;
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+}
+.snake-stage canvas {
+  display: block;
+  width: 100%;
+  max-width: 360px;
+  height: auto;
+  background: var(--snake-bg);
+}
+
+.snake-message {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 12px 22px;
+  background: var(--snake-overlay);
+  color: var(--snake-fg);
+  font-size: 15px;
+  line-height: 1.45;
+}
+.snake-message.is-hidden { display: none; }
+
+.snake-controls {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-rows: 1fr 1fr 1fr;
+  grid-template-areas:
+    ".   up    .  "
+    "left .    right"
+    ".   down  .  ";
+  gap: 6px;
+  width: 200px;
+}
+.snake-controls .dpad {
+  appearance: none;
+  border: none;
+  border-radius: 12px;
+  background: #1e293b;
+  color: var(--snake-accent);
+  font-size: 22px;
+  font-weight: 700;
+  padding: 14px 0;
+  cursor: pointer;
+  transition: background 0.12s ease, transform 0.08s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.snake-controls .dpad:active {
+  background: #334155;
+  transform: scale(0.96);
+}
+.snake-controls .up { grid-area: up; }
+.snake-controls .down { grid-area: down; }
+.snake-controls .left { grid-area: left; }
+.snake-controls .right { grid-area: right; }
