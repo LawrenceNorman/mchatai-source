@@ -1960,6 +1960,44 @@
       ]
     },
     {
+      "id": "ui.mute-toggle",
+      "name": "MuteToggle",
+      "category": "ui",
+      "path": "ui/MuteToggle.js",
+      "exports": [
+        "MuteToggle"
+      ],
+      "status": "ready",
+      "summary": "Tiny 🔊/🔇 pill that toggles AudioManager.setMuted + persists via localStorage. Floats top-right by default. Pairs with resources.audio-manager via recipe.with-sound-effects addon (Phase Offers 2026-05-12).",
+      "dependencies": [
+        "resources.audio-manager"
+      ],
+      "tags": [
+        "ui",
+        "audio",
+        "mute",
+        "toggle",
+        "addon:recipe.with-sound-effects"
+      ],
+      "contracts": {
+        "factory": "MuteToggle.mount(host, { audio, position? }) -> HTMLButtonElement",
+        "runtime": [
+          "host must be an HTMLElement (typically document.body or a game-chrome layer)",
+          "audio must be an AudioManager instance with isMuted/setMuted/toggleMuted/sfx",
+          "Re-calling mount on the same host returns the existing button (idempotent)"
+        ]
+      },
+      "goodFits": [
+        "every-game",
+        "asteroids",
+        "pong",
+        "snake",
+        "tetris",
+        "flappy",
+        "platformers"
+      ]
+    },
+    {
       "id": "ui.scoreboard",
       "name": "ScoreBoard",
       "category": "ui",
@@ -2387,7 +2425,11 @@
           "beep(options)",
           "noise(options)",
           "playEffect(name, options)",
-          "resume()"
+          "resume()",
+          "sfx(name)            // recipe.with-sound-effects v0.1: dispatcher for 'score'|'hit'|'gameover'|'levelup'|'click'|'powerup'",
+          "setMuted(bool)       // persists to localStorage via __mchatai_audio_muted",
+          "toggleMuted() -> bool",
+          "isMuted() -> bool"
         ]
       },
       "goodFits": [
@@ -4189,6 +4231,43 @@
         "ui.game-over-with-rank"
       ],
       "optionalComponents": []
+    },
+    {
+      "id": "recipe.with-sound-effects",
+      "name": "Add Sound Effects (addon)",
+      "isAddon": true,
+      "addonAppliesTo": [
+        "every-silent-interactive-game"
+      ],
+      "promptName": "sound effects addon",
+      "keywords": [
+        "sound",
+        "sfx",
+        "audio",
+        "noise",
+        "beep",
+        "music",
+        "soundscape"
+      ],
+      "templateIDs": [],
+      "starterComponents": [
+        "resources.audio-manager",
+        "ui.mute-toggle"
+      ],
+      "assemblyNotes": [
+        "This is an ADDON recipe. LAYERS ON TOP of the base game recipe — never replaces it. The marker MUST be `{recipe: <base-recipe-id>, addons: [\"recipe.with-sound-effects\"], components: [...all base + addon components...]}`.",
+        "IMPORT SHAPE — named exports only. From the artifact's `index.html`: `import { AudioManager } from \"./web-components/resources/AudioManager.js\";` and `import { MuteToggle } from \"./web-components/ui/MuteToggle.js\";`. From a sibling component: `../resources/AudioManager.js` and `./MuteToggle.js`.",
+        "USER-GESTURE GATE — iOS Safari requires a user gesture before the first AudioContext.resume(). DO NOT call `audio.sfx(...)` at module-load or before any tap/key. Instantiate the AudioManager AT module level (cheap, doesn't open the context), but defer the first sfx call to AFTER game-start (tap-to-start, first key press, mute-toggle click).",
+        "MOUNT THE TOGGLE — `MuteToggle.mount(document.body, { audio })` once per page. The toggle persists the mute state to localStorage; on next reload the player's choice is restored automatically.",
+        "WIRE THE COMMON EVENTS — on score increment: `audio.sfx('score')`. On collision/death/hit: `audio.sfx('hit')`. On game over: `audio.sfx('gameover')`. On level up: `audio.sfx('levelup')`. On menu/button taps if you want feedback: `audio.sfx('click')`. Pass unknown names safely — the dispatcher falls through to a soft default tone.",
+        "DO NOT layer on top of existing audio. If the base game already uses `new Audio(...)`, `AudioContext`, or has its own `.play()` calls, STOP and report 'already-sonified' to the user instead of double-wiring. The LLM judge filters most of these via the llmAppliesWhenPrompt criterion in offer.add-sound-effects but the assembly step is the last line of defense.",
+        "MOBILE-FIRST — the mute pill is 34×34px and floats top-right. Don't move it lower on mobile (it must not interfere with safe-area game HUD)."
+      ],
+      "requiredComponents": [
+        "resources.audio-manager",
+        "ui.mute-toggle"
+      ],
+      "optionalComponents": []
     }
   ],
   "sourceCatalogs": [
@@ -4705,7 +4784,10 @@
         "d-pad"
       ],
       "files": [
-        "examples/snake-classic/index.html"
+        "examples/snake-classic/index.html",
+        "examples/snake-classic/snake-classic.css",
+        "examples/snake-classic/main.js",
+        "examples/snake-classic/SnakeClassicGame.js"
       ],
       "notes": [
         "Self-contained single-file template — no separate .css or .js files. Marker is already stamped at the bottom of body.",

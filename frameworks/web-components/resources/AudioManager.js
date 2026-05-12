@@ -62,4 +62,72 @@ export class AudioManager {
     source.connect(gain).connect(ctx.destination);
     source.start();
   }
+
+  // ─── recipe.with-sound-effects v0.1 surface (2026-05-12) ──────────────────
+  // Higher-level API the addon recipe documents. Mute state persists across
+  // reloads via localStorage. iOS Safari resumes the AudioContext on first
+  // user gesture — DO NOT call sfx() at module load time; wait for tap/key.
+
+  // Lazy persistent-mute state. Read on first access; never throw on
+  // localStorage failure (private browsing, sandboxed contexts).
+  _mutedStorageKey() { return "__mchatai_audio_muted"; }
+
+  isMuted() {
+    if (typeof this._muted === "boolean") return this._muted;
+    try {
+      this._muted = localStorage.getItem(this._mutedStorageKey()) === "1";
+    } catch (_) {
+      this._muted = false;
+    }
+    return this._muted;
+  }
+
+  setMuted(value) {
+    this._muted = !!value;
+    try { localStorage.setItem(this._mutedStorageKey(), this._muted ? "1" : "0"); } catch (_) {}
+  }
+
+  toggleMuted() {
+    this.setMuted(!this.isMuted());
+    return this.isMuted();
+  }
+
+  // High-level SFX dispatcher used by the recipe.with-sound-effects addon.
+  // Names map to common game events; unknown names play a soft default
+  // tick so generators that pass through arbitrary event names still hear
+  // SOMETHING during testing.
+  sfx(name) {
+    if (this.isMuted()) return;
+    const ctx = this.ensureContext();
+    if (!ctx) return;
+    if (ctx.state === "suspended") {
+      try { ctx.resume(); } catch (_) {}
+    }
+    switch (name) {
+      case "score":
+        this.beep({ freq: 660, slideTo: 880, duration: 0.18, type: "square", volume: this.masterVolume * 2 });
+        break;
+      case "hit":
+        this.noise({ duration: 0.12, volume: this.masterVolume * 3 });
+        break;
+      case "gameover":
+        this.beep({ freq: 440, slideTo: 110, duration: 0.6, type: "sawtooth", volume: this.masterVolume * 2 });
+        break;
+      case "levelup":
+        // simple ascending arpeggio
+        this.beep({ freq: 523.25, duration: 0.12, type: "triangle" });
+        setTimeout(() => this.beep({ freq: 659.25, duration: 0.12, type: "triangle" }), 110);
+        setTimeout(() => this.beep({ freq: 783.99, duration: 0.18, type: "triangle" }), 220);
+        break;
+      case "click":
+        this.beep({ freq: 880, duration: 0.06, type: "sine", volume: this.masterVolume });
+        break;
+      case "powerup":
+        this.beep({ freq: 440, slideTo: 1320, duration: 0.28, type: "triangle", volume: this.masterVolume * 2 });
+        break;
+      default:
+        this.beep({ freq: 440, duration: 0.08, type: "sine", volume: this.masterVolume });
+        break;
+    }
+  }
 }
