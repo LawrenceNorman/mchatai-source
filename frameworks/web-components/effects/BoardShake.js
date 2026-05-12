@@ -13,7 +13,7 @@
 //   BoardShake.shake(boardEl);            // 350ms shake
 //   BoardShake.shake(inputEl, { intensity: "strong" });
 
-const CSS = `
+const BOARD_SHAKE_CSS = `
 .shake-fx {
   animation: shakeFx 0.35s ease;
 }
@@ -37,19 +37,19 @@ const CSS = `
 }
 `;
 
-let _cssInjected = false;
+let _board_shakeInjected = false;
 
 export const BoardShake = {
-  css: CSS,
+  css: BOARD_SHAKE_CSS,
 
   /** Inject the .shake-fx + .shake-fx-strong styles + keyframes once. */
   injectCss(doc = document) {
-    if (_cssInjected) return;
+    if (_board_shakeInjected) return;
     const style = doc.createElement("style");
     style.dataset.lego = "BoardShake";
-    style.textContent = CSS;
+    style.textContent = BOARD_SHAKE_CSS;
     doc.head.appendChild(style);
-    _cssInjected = true;
+    _board_shakeInjected = true;
   },
 
   /**
@@ -58,7 +58,7 @@ export const BoardShake = {
    */
   shake(el, { intensity = "normal", durationMs } = {}) {
     if (!el) return;
-    if (!_cssInjected) BoardShake.injectCss();
+    if (!_board_shakeInjected) BoardShake.injectCss();
     const cls = intensity === "strong" ? "shake-fx-strong" : "shake-fx";
     const ttl = durationMs ?? (intensity === "strong" ? 520 : 380);
     el.classList.remove(cls);
@@ -67,5 +67,3 @@ export const BoardShake = {
     setTimeout(() => el.classList.remove(cls), ttl);
   },
 };
-
-export default BoardShake;

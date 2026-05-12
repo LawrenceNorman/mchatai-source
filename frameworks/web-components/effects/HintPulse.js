@@ -29,7 +29,7 @@
 // the default `.hint` keyframes will be available; or override `hintClass`
 // in the constructor and supply your own.
 
-const CSS = `
+const HINT_PULSE_CSS = `
 @keyframes hintPulse {
   0%, 100% {
     transform: scale(1);
@@ -45,19 +45,19 @@ const CSS = `
 }
 `;
 
-let _cssInjected = false;
+let _hint_pulseInjected = false;
 
 export class HintPulse {
   static css = CSS;
 
   /** Inject default .hint keyframes once. Idempotent. */
   static injectCss(doc = document) {
-    if (_cssInjected) return;
+    if (_hint_pulseInjected) return;
     const style = doc.createElement("style");
     style.dataset.lego = "HintPulse";
-    style.textContent = CSS;
+    style.textContent = HINT_PULSE_CSS;
     doc.head.appendChild(style);
-    _cssInjected = true;
+    _hint_pulseInjected = true;
   }
 
   constructor({ boardEl, findHint, idleMs = 6000, holdMs = 2400, selectorFor, hintClass = "hint" } = {}) {

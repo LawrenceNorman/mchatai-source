@@ -15,7 +15,7 @@
 // Or pass your own parent + remove timing:
 //   PopBurst.spawn(cell, { ttlMs: 600, className: "pop-fx" });
 
-const CSS = `
+const POP_BURST_CSS = `
 .pop-fx {
   position: absolute;
   inset: 0;
@@ -44,19 +44,19 @@ const CSS = `
 }
 `;
 
-let _cssInjected = false;
+let _pop_burstInjected = false;
 
 export const PopBurst = {
-  css: CSS,
+  css: POP_BURST_CSS,
 
   /** Inject the @keyframes + .pop-fx style block once. Idempotent. */
   injectCss(doc = document) {
-    if (_cssInjected) return;
+    if (_pop_burstInjected) return;
     const style = doc.createElement("style");
     style.dataset.lego = "PopBurst";
-    style.textContent = CSS;
+    style.textContent = POP_BURST_CSS;
     doc.head.appendChild(style);
-    _cssInjected = true;
+    _pop_burstInjected = true;
   },
 
   /**
@@ -68,7 +68,7 @@ export const PopBurst = {
    */
   spawn(parentEl, { ttlMs = 520, className = "pop-fx" } = {}) {
     if (!parentEl) return null;
-    if (!_cssInjected) PopBurst.injectCss();
+    if (!_pop_burstInjected) PopBurst.injectCss();
     const fx = document.createElement("div");
     fx.className = className;
     parentEl.appendChild(fx);
@@ -76,5 +76,3 @@ export const PopBurst = {
     return fx;
   },
 };
-
-export default PopBurst;
