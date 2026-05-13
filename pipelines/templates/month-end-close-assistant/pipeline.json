@@ -1,0 +1,43 @@
+{
+  "id": "6A40CEAD-F327-4B19-B216-09003839D81F",
+  "name": "Month-End Close Assistant",
+  "description": "Turn exported close data into a human-reviewed close checklist, exception list, and follow-up plan.",
+  "components": ["component.finance-month-end-close"],
+  "steps": [
+    {
+      "id": "EA8E50D6-626E-49ED-B95D-FDD2244413CE",
+      "skillID": "builtin.csvTable",
+      "config": {
+        "dataSensitivity": "confidential",
+        "csvMode": "preview",
+        "outputFormat": "markdown",
+        "hasHeader": "true",
+        "limit": "500",
+        "maxChars": "50000"
+      }
+    },
+    {
+      "id": "35D4DC6A-297A-4F7A-98F5-A6657188CE94",
+      "skillID": "builtin.llmGenerate",
+      "config": {
+        "dataSensitivity": "confidential",
+        "llmMaxInputChars": "50000",
+        "llmMaxTokens": "4200",
+        "llmTimeout": "150",
+        "userPrompt": "You are the mChatAI+ Month-End Close Assistant. Analyze the exported finance table below as draft operational support for a human close owner.\n\nDo not make final accounting entries, tax conclusions, compliance conclusions, or audit sign-offs. If columns are missing, say so. Reference row numbers, account names, dates, vendors, customers, or amounts visible in the table whenever possible.\n\nProduce a markdown close support report with this exact structure:\n\n# Month-End Close Assistant\n\n## Scope\n- Dataset provided:\n- Period detected:\n- Currency detected:\n- Prepared date:\n\n## Close Readiness Summary\n5-8 bullets on what appears ready, blocked, or unclear.\n\n## Exception Register\nA table with columns: Priority, Issue, Evidence, Amount / Account, Recommended human follow-up.\n\n## Reconciliation Checks\nList apparent unmatched items, duplicate-looking entries, timing differences, missing references, unusual balances, or unexplained deltas.\n\n## Close Checklist\nA practical checklist grouped by cash, revenue, expenses, accruals, deferred revenue, payroll, taxes, and reporting package. Mark each item Ready, Needs Review, or Not Assessable.\n\n## Data Quality Notes\nHeaders, missing fields, suspicious formatting, date issues, currency issues, or row-count limitations.\n\n## Missing Data / Follow-Up\nSpecific files, exports, or fields needed before relying on this close review.\n\n## Review Note\nDraft close support for human review. Not accounting, tax, legal, audit, or compliance advice.\n\nFINANCE TABLE:\n{{INPUT}}"
+      }
+    },
+    {
+      "id": "C8003A7F-7E01-4826-8F94-24DCCFA95B68",
+      "skillID": "builtin.saveArtifact",
+      "config": {
+        "artifactName": "Month-End Close Assistant Report",
+        "artifactExtension": "md",
+        "productType": "com.mchatai.product.research.report",
+        "metadata.title": "Month-End Close Assistant Report",
+        "metadata.summary": "Draft month-end close checklist and exception register generated from exported finance data.",
+        "metadata.methodology": "CSV preview, close-readiness analysis, exception identification, and human-review guardrails."
+      }
+    }
+  ]
+}
