@@ -1,0 +1,43 @@
+{
+  "id": "5511C16F-7395-40C6-8ECB-49122B4A4B3A",
+  "name": "Cashflow Snapshot",
+  "description": "Summarize exported cash activity into inflow/outflow themes, pressure points, and near-term operator follow-ups.",
+  "components": ["component.finance-cashflow-snapshot"],
+  "steps": [
+    {
+      "id": "91B0546C-4D3A-44C0-98F3-5DAC3CA496A3",
+      "skillID": "builtin.csvTable",
+      "config": {
+        "dataSensitivity": "confidential",
+        "csvMode": "preview",
+        "outputFormat": "markdown",
+        "hasHeader": "true",
+        "limit": "700",
+        "maxChars": "60000"
+      }
+    },
+    {
+      "id": "9D6A8B82-2560-425F-A84B-60B39FF11996",
+      "skillID": "builtin.llmGenerate",
+      "config": {
+        "dataSensitivity": "confidential",
+        "llmMaxInputChars": "60000",
+        "llmMaxTokens": "3800",
+        "llmTimeout": "140",
+        "userPrompt": "You are the mChatAI+ Cashflow Snapshot workflow. Analyze the exported cash activity table below for operator planning. This is draft analysis for human review; do not provide tax, legal, accounting, investment, or financing advice.\n\nUse only visible table evidence. Reference dates, counterparties, categories, accounts, and amounts when available. If the table lacks opening/ending balances, say runway cannot be calculated from this input alone.\n\nProduce markdown with this exact structure:\n\n# Cashflow Snapshot\n\n## Scope\n- Period detected:\n- Accounts detected:\n- Currency detected:\n- Row count reviewed:\n\n## Operator Summary\n5-7 bullets on cash movement, pressure points, and follow-up priorities.\n\n## Inflows\nSummarize customer receipts, financing inflows, refunds, transfers, or other positive cash movements visible in the data.\n\n## Outflows\nSummarize payroll, vendors, software, rent, taxes, debt, owner draws, transfers, or other negative cash movements visible in the data.\n\n## Watch Items\nA table with columns: Priority, Item, Evidence, Amount / Date, Suggested human follow-up.\n\n## Possible Timing Or Categorization Issues\nFlag large uncategorized items, transfers that may double count, late receipts, unusually large expenses, missing counterparties, or inconsistent signs.\n\n## Missing Data / Follow-Up\nList missing balances, forecast assumptions, AR/AP aging, payroll schedule, debt schedule, or bank exports needed for a fuller cash forecast.\n\n## Review Note\nDraft cashflow support for human review. Not investment, tax, legal, accounting, financing, or compliance advice.\n\nCASH ACTIVITY TABLE:\n{{INPUT}}"
+      }
+    },
+    {
+      "id": "CE494ACA-B62A-431B-A21C-C659362BBC13",
+      "skillID": "builtin.saveArtifact",
+      "config": {
+        "artifactName": "Cashflow Snapshot Report",
+        "artifactExtension": "md",
+        "productType": "com.mchatai.product.research.report",
+        "metadata.title": "Cashflow Snapshot Report",
+        "metadata.summary": "Draft cashflow activity snapshot generated from exported finance rows.",
+        "metadata.methodology": "CSV preview, inflow/outflow review, watch-item identification, and human-review guardrails."
+      }
+    }
+  ]
+}

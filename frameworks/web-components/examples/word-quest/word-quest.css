@@ -52,70 +52,80 @@ button {
 .word-shell {
   width: min(820px, 100%);
   margin: 0 auto;
-  padding: var(--mchat-space-4);
+  padding: var(--mchat-space-3);
   display: grid;
-  gap: var(--mchat-space-4);
+  gap: var(--mchat-space-3);
 }
 
 .game-panel {
-  padding: var(--mchat-space-5);
+  padding: var(--mchat-space-4);
 }
 
+/* Compact HUD — three slim cells (SCORE / BEST / STREAK) in a single row
+   at ALL viewport sizes. The prior design stacked these into tall cards
+   on ≤760px, eating ~170px of vertical space before the grid even
+   appeared. `display: contents` on the scoreboard root lets its two inner
+   __item divs participate in this grid alongside .streak-card, so we get
+   a clean 3-up pill without restructuring the JS-driven markup. */
 .hud-row {
-  display: flex;
-  gap: var(--mchat-space-3);
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--mchat-space-2);
   align-items: stretch;
 }
 
-.mchatai-scoreboard,
-.streak-card {
-  flex: 1;
-  display: flex;
-  justify-content: space-between;
-  gap: var(--mchat-space-2);
-  padding: var(--mchat-space-3);
-  border-radius: var(--mchat-radius-lg);
-  background: #25284a;
+.mchatai-scoreboard {
+  display: contents;
 }
 
 .mchatai-scoreboard__item,
 .streak-card {
-  display: grid;
-  gap: var(--mchat-space-1);
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: var(--mchat-space-2);
+  padding: var(--mchat-space-2) var(--mchat-space-3);
+  border-radius: var(--mchat-radius-md);
+  background: #25284a;
+  min-height: 0;
 }
 
 .mchatai-scoreboard__label,
 .streak-card span {
   color: #b9b6c9;
-  font-size: 0.76rem;
+  font-size: 0.7rem;
+  font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.08em;
+  margin: 0;
 }
 
 .mchatai-scoreboard__value,
 .streak-card strong {
-  font-size: 1.45rem;
+  font-size: 1.15rem;
+  font-weight: 800;
 }
 
 .message {
-  min-height: 44px;
-  margin: var(--mchat-space-4) 0;
-  padding: var(--mchat-space-3);
+  min-height: 40px;
+  margin: var(--mchat-space-3) 0;
+  padding: var(--mchat-space-2) var(--mchat-space-3);
   border-radius: var(--mchat-radius-md);
   background: rgba(94, 225, 255, 0.08);
   color: var(--mchat-text);
+  font-size: 0.95rem;
 }
 
 .letter-grid {
   display: grid;
   gap: var(--mchat-space-2);
-  max-width: 390px;
+  max-width: 440px;
   margin: 0 auto;
 }
 
 .grid-row {
   display: grid;
-  grid-template-columns: repeat(5, minmax(44px, 1fr));
+  grid-template-columns: repeat(5, minmax(50px, 1fr));
   gap: var(--mchat-space-2);
 }
 
@@ -126,7 +136,7 @@ button {
   border-radius: var(--mchat-radius-md);
   background: #15182d;
   border: 2px solid rgba(255, 255, 255, 0.12);
-  font-size: clamp(1.25rem, 4vw, 2rem);
+  font-size: clamp(1.4rem, 4.5vw, 2.1rem);
   font-weight: 900;
 }
 
@@ -148,10 +158,10 @@ button {
 }
 
 .keyboard {
-  margin-top: var(--mchat-space-4);
+  margin-top: var(--mchat-space-3);
   display: grid;
   gap: var(--mchat-space-2);
-  max-width: 620px;
+  max-width: 640px;
   margin-left: auto;
   margin-right: auto;
 }
@@ -160,20 +170,26 @@ button {
 .actions {
   display: flex;
   justify-content: center;
-  gap: 7px;
+  gap: 6px;
 }
 
 .key,
 .actions button {
   border: 0;
   border-radius: var(--mchat-radius-md);
-  min-height: 42px;
+  min-height: 48px;
   padding: 0 var(--mchat-space-3);
   color: var(--mchat-text);
   background: #30365e;
   cursor: pointer;
   font-weight: 850;
   transition: transform 120ms ease, background 120ms ease, color 120ms ease;
+}
+
+.key {
+  flex: 1 1 0;
+  min-width: 30px;
+  max-width: 48px;
 }
 
 .key[data-status="correct"] {
@@ -217,12 +233,112 @@ button {
   75% { transform: translateX(6px); }
 }
 
+/* Tablet / narrow desktop — compress padding + chrome typography but keep
+   the HUD horizontal. Old design switched .hud-row to flex-direction:
+   column here, which is the change that ate the real estate. */
 @media (max-width: 760px) {
   .word-shell {
+    padding: var(--mchat-space-2);
+    gap: var(--mchat-space-2);
+  }
+  .game-panel {
     padding: var(--mchat-space-3);
   }
-
-  .hud-row {
-    flex-direction: column;
+  .mchatai-scoreboard__item,
+  .streak-card {
+    padding: 6px 10px;
+    gap: 6px;
+  }
+  .mchatai-scoreboard__label,
+  .streak-card span {
+    font-size: 0.62rem;
+    letter-spacing: 0.06em;
+  }
+  .mchatai-scoreboard__value,
+  .streak-card strong {
+    font-size: 1rem;
+  }
+  .grid-row {
+    grid-template-columns: repeat(5, minmax(44px, 1fr));
   }
 }
+
+/* Phone — keep everything horizontal but compress further. SCORE/BEST/STREAK
+   stack label-over-value inside each cell to avoid awkward narrow horizontal
+   pairings. Grid + keys shrink but stay tappable (≥38px target). */
+@media (max-width: 480px) {
+  .word-shell {
+    padding: var(--mchat-space-2);
+    gap: 6px;
+  }
+  .game-panel {
+    padding: var(--mchat-space-2);
+  }
+  .hud-row {
+    gap: 6px;
+  }
+  .mchatai-scoreboard__item,
+  .streak-card {
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+    padding: 4px 6px;
+  }
+  .mchatai-scoreboard__label,
+  .streak-card span {
+    font-size: 0.55rem;
+    letter-spacing: 0.04em;
+  }
+  .mchatai-scoreboard__value,
+  .streak-card strong {
+    font-size: 0.95rem;
+    line-height: 1.1;
+  }
+  .message {
+    margin: var(--mchat-space-2) 0;
+    padding: 6px 10px;
+    font-size: 0.88rem;
+    min-height: 32px;
+  }
+  .letter-grid {
+    gap: 5px;
+    max-width: 98vw;
+  }
+  .grid-row {
+    grid-template-columns: repeat(5, minmax(40px, 1fr));
+    gap: 5px;
+  }
+  .grid-cell {
+    font-size: clamp(1.05rem, 5vw, 1.5rem);
+  }
+  .keyboard {
+    margin-top: var(--mchat-space-2);
+    max-width: 100vw;
+    gap: 5px;
+  }
+  .key-row {
+    gap: 4px;
+  }
+  .key,
+  .actions button {
+    min-height: 42px;
+    padding: 0 var(--mchat-space-2);
+    font-size: 0.95rem;
+  }
+  .key {
+    min-width: 28px;
+    max-width: 42px;
+  }
+  .actions {
+    margin-top: var(--mchat-space-2);
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .actions button {
+    min-width: 72px;
+    padding: 0 10px;
+    font-size: 0.95rem;
+  }
+}
+</content>
+</invoke>
