@@ -8,7 +8,7 @@
       "summary": "14,855 valid 5-letter English words (Wordle guess set)",
       "language": "en",
       "license": "CC0",
-      "license_note": "Sourced from github.com/tabatkins/wordle-list \u2014 public-domain word list.",
+      "license_note": "Sourced from github.com/tabatkins/wordle-list — public-domain word list.",
       "files": [
         "english-5letter.js"
       ],
@@ -46,7 +46,42 @@
       },
       "fallback_bundled": true,
       "deprecated": false
+    },
+    {
+      "id": "english-words",
+      "version": "1.0.0",
+      "summary": "Webster's 2nd International Dictionary (1934, public domain) — 204,096 real English words, lowercase a-z, length 3-15, no proper nouns. Use for general word validation (spelling bee, hangman, scrabble, anagram, autocomplete, spell-check, dictionary lookup). For Wordle-style guess validation specifically, use english-5letter (smaller curated set). Note: 1934 source — gappy on modern technical terms (no 'javascript', 'coding'); use for general English vocabulary, not tech.",
+      "language": "en",
+      "license": "public-domain",
+      "license_note": "Webster's 2nd International Dictionary, 1934 copyright lapsed. Source: macOS /usr/share/dict/web2 (Berkeley FreeBSD).",
+      "files": [
+        "english-words.js"
+      ],
+      "format": "js-const:ENGLISH_WORDS",
+      "size_bytes": 2561306,
+      "surfaces": {
+        "native_swift": "MchataiContentService.shared.dictionary(id:)",
+        "wisdom_resource": "content/dictionaries/english-words.js",
+        "mcp_tool": "read_dictionary",
+        "runtime_global": "window.mchatai.dictionary",
+        "skill_namespace": "dictionary"
+      },
+      "fallback_bundled": true,
+      "deprecated": false,
+      "extra": {
+        "size_note": "2.5 MB inline — mini-apps using this dictionary will produce ~2.5 MB shell.js. The lazy-bundling shell generator only bundles dictionaries the artifact actually references, so non-word-game mini-apps pay zero cost.",
+        "use_cases": [
+          "spelling-bee",
+          "hangman",
+          "scrabble",
+          "anagram",
+          "autocomplete",
+          "spell-check",
+          "dictionary-lookup",
+          "word-puzzle"
+        ]
+      }
     }
   ],
-  "_notes": "First fundamental implementing MCHATAI_FUNDAMENTALS.md spec \u00a711. Surfaces: native_swift (shipped) + wisdom_resource (shipped) + runtime_global window.mchatai.dictionary (shipped Slice A) + mcp_tool read_dictionary (shipped Slice B 2026-05-12) + skill_namespace 'dictionary' \u2192 builtin.dictionary.{contains,suggest,random} (shipped Slice C 2026-05-12). Prompt-token {{DICTIONARY:id}} expander still deferred until a real generator asks for in-prompt content."
+  "_notes": "First fundamental implementing MCHATAI_FUNDAMENTALS.md spec §11. Surfaces: native_swift (shipped) + wisdom_resource (shipped) + runtime_global window.mchatai.dictionary (shipped Slice A) + mcp_tool read_dictionary (shipped Slice B 2026-05-12) + skill_namespace 'dictionary' → builtin.dictionary.{contains,suggest,random} (shipped Slice C 2026-05-12). english-words (2026-05-13): 204K-word Webster's 2nd Intl added for general English validation. Prompt-token {{DICTIONARY:id}} expander still deferred until a real generator asks for in-prompt content."
 }

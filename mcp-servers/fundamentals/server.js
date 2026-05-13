@@ -200,44 +200,75 @@ function listFundamentals(args) {
 // the id isn't a dictionary so callers don't accidentally read
 // non-dictionary fundamentals through the wrong tool.
 function readDictionary(args) {
+  return readCategoryFundamental(args, "dictionaries", "english-5letter", "js");
+}
+
+// Slice D — read_color_palette(id) returns the parsed palette JSON.
+// Symmetric to read_dictionary but for the color-palettes category. The
+// content is JSON (not JS-const) so we parse it once here so consumers
+// don't have to. Use this when generating native code or HTML that needs
+// the actual hex values inlined; mini-app generators should prefer the
+// runtime API window.mchatai.colorPalette(id) once it ships (currently
+// `nativeSwift` + `wisdom_resource` are the wired surfaces).
+function readColorPalette(args) {
+  return readCategoryFundamental(args, "color-palettes", "semantic", "json");
+}
+
+// Shared dispatch — readCategoryFundamental does the manifest lookup, file
+// resolution, missing-file error, and outer shape. Per-category response
+// shape diverges only on whether `content` is the raw JS-const text or
+// parsed JSON.
+function readCategoryFundamental(args, category, exampleID, kind) {
   const id = typeof args?.id === "string" ? args.id.trim() : "";
   if (!id) {
-    return { error: "Missing required parameter: id (e.g. 'english-5letter')" };
+    return { error: `Missing required parameter: id (e.g. '${exampleID}')` };
   }
-  const manifest = loadManifest("dictionaries");
+  const manifest = loadManifest(category);
   if (!manifest || !Array.isArray(manifest.fundamentals)) {
-    return { error: "Dictionary category not found on this source root" };
+    return { error: `Category not found on this source root: ${category}` };
   }
   const entry = manifest.fundamentals.find((f) => f.id === id);
   if (!entry) {
     return {
-      error: `Unknown dictionary id: ${id}`,
+      error: `Unknown ${category} id: ${id}`,
       availableIDs: manifest.fundamentals.map((f) => f.id)
     };
   }
   const primaryFile = Array.isArray(entry.files) && entry.files.length > 0
     ? entry.files[0]
-    : `${id}.js`;
-  const filePath = join(CONTENT_ROOT, "dictionaries", primaryFile);
+    : `${id}.${kind}`;
+  const filePath = join(CONTENT_ROOT, category, primaryFile);
   if (!existsSync(filePath)) {
     return {
-      error: `Source file missing on disk: content/dictionaries/${primaryFile}`,
+      error: `Source file missing on disk: content/${category}/${primaryFile}`,
       id,
       version: entry.version
     };
   }
-  const content = readFileSync(filePath, "utf8");
-  return {
+  const raw = readFileSync(filePath, "utf8");
+  const result = {
     id,
-    category: "dictionaries",
+    category,
     version: entry.version,
-    format: entry.format || "js-const",
+    format: entry.format || kind,
     file: primaryFile,
-    sizeBytes: content.length,
+    sizeBytes: raw.length,
     summary: entry.summary || "",
-    deprecated: entry.deprecated === true,
-    content
+    deprecated: entry.deprecated === true
   };
+  if (kind === "json") {
+    try {
+      result.content = JSON.parse(raw);
+    } catch (err) {
+      return {
+        error: `Failed to parse JSON content for ${category}/${id}: ${String(err && err.message ? err.message : err)}`,
+        id
+      };
+    }
+  } else {
+    result.content = raw;
+  }
+  return result;
 }
 
 // MCP server wiring
@@ -280,6 +311,23 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         required: ["id"],
         additionalProperties: false
       }
+    },
+    {
+      name: "read_color_palette",
+      description:
+        "Fetch a parsed mChatAI color-palette fundamental (e.g. 'semantic', 'css-named'). Returns the palette JSON parsed for direct consumption: { id, version, description, colors: [{name, hex, role?, tier?}] } plus metadata. Use this when generating an artifact that must inline color tokens (native iOS/Android, CSS-only mini-apps, design-system docs). A runtime API window.mchatai.colorPalette(id) is on the roadmap for mini-app shells but not yet wired — until then, mini-apps reference palettes through wisdom guidance + this MCP tool at generation time.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          id: {
+            type: "string",
+            description:
+              "Color-palette id (e.g. 'semantic', 'css-named'). Call list_fundamentals with category='color-palettes' to discover available ids."
+          }
+        },
+        required: ["id"],
+        additionalProperties: false
+      }
     }
   ]
 }));
@@ -292,6 +340,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       result = listFundamentals(args || {});
     } else if (name === "read_dictionary") {
       result = readDictionary(args || {});
+    } else if (name === "read_color_palette") {
+      result = readColorPalette(args || {});
     } else {
       result = { error: `Unknown tool: ${name}` };
     }
