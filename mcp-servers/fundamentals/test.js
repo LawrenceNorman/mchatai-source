@@ -206,6 +206,112 @@ assert(sample2.surfaces?.mcp_tool === "read_dictionary",
 assert(sample2.surfaces?.runtime_global === "window.mchatai.dictionary",
   "english-5letter manifest declares runtime_global");
 
+console.log("\ntest 13 — read_color_palette returns parsed JSON (Slice D+, runtime-gap fill)");
+function readColorPalette(id) {
+  const mf = loadManifest("color-palettes");
+  const entry = mf?.fundamentals?.find((f) => f.id === id);
+  if (!entry) return { error: `Unknown palette: ${id}` };
+  const file = entry.files?.[0] || `${id}.json`;
+  const path = join(CONTENT_ROOT, "color-palettes", file);
+  if (!existsSync(path)) return { error: `Missing: ${file}` };
+  const raw = readFileSync(path, "utf8");
+  let parsed;
+  try { parsed = JSON.parse(raw); } catch (e) { return { error: `JSON parse: ${e.message}` }; }
+  return {
+    id,
+    category: "color-palettes",
+    version: entry.version,
+    format: entry.format || "json",
+    file,
+    sizeBytes: raw.length,
+    content: parsed
+  };
+}
+
+const p1 = readColorPalette("semantic");
+assert(p1.error == null, "no error for valid palette id");
+assert(p1.id === "semantic", "palette id round-trips");
+assert(p1.category === "color-palettes", "palette category set");
+assert(p1.content && Array.isArray(p1.content.colors),
+  "semantic palette has colors array");
+const hasSuccess = p1.content.colors.some((c) => c.name === "success" || c.role === "success");
+assert(hasSuccess, "semantic palette includes a success color");
+const successBase = p1.content.colors.find((c) => c.role === "success" && c.tier === "base");
+assert(successBase?.hex && /^#[0-9A-F]{6}$/i.test(successBase.hex),
+  `success-base hex is a valid hex color (got ${successBase?.hex})`);
+
+console.log("\ntest 14 — read_color_palette({id:'css-named'}) works");
+const p2 = readColorPalette("css-named");
+assert(p2.error == null, "css-named palette reads cleanly");
+assert(Array.isArray(p2.content?.colors) && p2.content.colors.length >= 20,
+  `css-named has at least 20 colors (got ${p2.content?.colors?.length})`);
+const hasBlack = p2.content.colors.some((c) => c.name === "black" && c.hex === "#000000");
+assert(hasBlack, "css-named includes black=#000000");
+
+console.log("\ntest 15 — read_color_palette error path for unknown id");
+const p3 = readColorPalette("not-a-real-palette");
+assert(p3.error != null, `unknown palette returns error (got: ${JSON.stringify(p3).slice(0,80)})`);
+
+console.log("\ntest 16 — color-palettes manifest declares MCP surface (Slice D+)");
+const palManifest = loadManifest("color-palettes");
+const samplePal = palManifest.fundamentals.find((f) => f.id === "semantic");
+assert(samplePal?.surfaces?.mcp_tool === "read_color_palette",
+  "semantic palette manifest declares mcp_tool: read_color_palette");
+assert(samplePal?.surfaces?.native_swift?.includes("colorPalette"),
+  "semantic palette manifest declares native_swift accessor");
+
+console.log("\ntest 17 — tailwind-default palette is registered (3rd palette)");
+const tw = palManifest.fundamentals.find((f) => f.id === "tailwind-default");
+assert(tw != null, "tailwind-default palette present in manifest");
+assert(tw?.version === "1.0.0", `tailwind-default version is 1.0.0 (got ${tw?.version})`);
+assert(tw?.license === "MIT", `tailwind-default license is MIT (got ${tw?.license})`);
+
+console.log("\ntest 18 — read_color_palette({id:'tailwind-default'}) returns the full 242-color set");
+const p4 = readColorPalette("tailwind-default");
+assert(p4.error == null, "tailwind-default palette reads cleanly");
+assert(Array.isArray(p4.content?.colors), "tailwind-default has colors array");
+assert(p4.content.colors.length >= 240,
+  `tailwind-default has ≥240 colors (got ${p4.content?.colors?.length})`);
+// Sanity-check a few canonical Tailwind values
+const blue500 = p4.content.colors.find((c) => c.name === "blue-500");
+assert(blue500?.hex === "#3B82F6", `blue-500 is #3B82F6 (got ${blue500?.hex})`);
+const slate50 = p4.content.colors.find((c) => c.name === "slate-50");
+assert(slate50?.hex === "#F8FAFC", `slate-50 is #F8FAFC (got ${slate50?.hex})`);
+const rose950 = p4.content.colors.find((c) => c.name === "rose-950");
+assert(rose950?.hex === "#4C0519", `rose-950 is #4C0519 (got ${rose950?.hex})`);
+// Check tier diversity — every hue should have all 11 tiers
+const blueTiers = new Set(p4.content.colors.filter((c) => c.role === "blue").map((c) => c.tier));
+assert(blueTiers.size === 11, `blue family has all 11 tiers (got ${blueTiers.size})`);
+
+console.log("\ntest 19 — color-palettes manifest declares runtime_global (Slice D+ runtime API)");
+assert(samplePal?.surfaces?.runtime_global === "window.mchatai.colorPalette",
+  "semantic palette manifest declares runtime_global: window.mchatai.colorPalette");
+assert(tw?.surfaces?.runtime_global === "window.mchatai.colorPalette",
+  "tailwind-default palette manifest declares runtime_global: window.mchatai.colorPalette");
+
+
+console.log("\ntest 20 — english-words (general 200K-word dictionary) is registered");
+const ewEntry = dictManifest.fundamentals.find((f) => f.id === "english-words");
+assert(ewEntry != null, "english-words registered in dictionaries manifest");
+assert(ewEntry?.version === "1.0.0", `english-words version is 1.0.0 (got ${ewEntry?.version})`);
+assert(ewEntry?.license === "public-domain",
+  `english-words license is public-domain (got ${ewEntry?.license})`);
+assert((ewEntry?.size_bytes || 0) > 2_000_000,
+  `english-words is at least 2 MB (got ${ewEntry?.size_bytes})`);
+
+console.log("\ntest 21 — read_dictionary('english-words') returns the full set");
+const ew = readDictionary("english-words");
+assert(ew.error == null, "english-words dict reads cleanly");
+assert(ew.content.includes("ENGLISH_WORDS"), "english-words declares const ENGLISH_WORDS");
+// Common words present
+const ewSamples = ['"spell"', '"hello"', '"python"', '"moon"', '"hangman"'];
+for (const s of ewSamples) {
+  assert(ew.content.includes(s), `english-words contains ${s}`);
+}
+// "javascript" should NOT be present (1934 source, no modern tech words)
+assert(!ew.content.includes('"javascript"'),
+  "english-words deliberately gappy on modern tech terms (1934 source)");
+
 console.log(`\n--- summary ---`);
 console.log(`PASS=${passed} FAIL=${failed}`);
 if (failed > 0) {

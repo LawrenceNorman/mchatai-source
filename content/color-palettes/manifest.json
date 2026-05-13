@@ -9,12 +9,16 @@
       "language": "en",
       "license": "CC0",
       "license_note": "W3C CSS named colors are public-domain — names + hex values are spec-defined.",
-      "files": ["css-named.json"],
+      "files": [
+        "css-named.json"
+      ],
       "format": "json:color-palette/v1",
       "size_bytes": 2400,
       "surfaces": {
         "native_swift": "MchataiContentService.shared.colorPalette(id:)",
-        "wisdom_resource": "content/color-palettes/css-named.json"
+        "wisdom_resource": "content/color-palettes/css-named.json",
+        "mcp_tool": "read_color_palette",
+        "runtime_global": "window.mchatai.colorPalette"
       },
       "fallback_bundled": true,
       "deprecated": false
@@ -26,16 +30,41 @@
       "language": "en",
       "license": "CC0",
       "license_note": "Tailwind CSS is MIT-licensed; hex values are spec defaults, not branding marks.",
-      "files": ["semantic.json"],
+      "files": [
+        "semantic.json"
+      ],
       "format": "json:color-palette/v1",
       "size_bytes": 1100,
       "surfaces": {
         "native_swift": "MchataiContentService.shared.colorPalette(id:)",
-        "wisdom_resource": "content/color-palettes/semantic.json"
+        "wisdom_resource": "content/color-palettes/semantic.json",
+        "mcp_tool": "read_color_palette",
+        "runtime_global": "window.mchatai.colorPalette"
+      },
+      "fallback_bundled": true,
+      "deprecated": false
+    },
+    {
+      "id": "tailwind-default",
+      "version": "1.0.0",
+      "summary": "Tailwind CSS default palette (v3.x) — 22 hue families × 11 tiers (242 colors). MIT-licensed; the broad designer-curated palette LLMs reach for most often. Use for general UI, charts, and any artifact that needs >5 distinct hues.",
+      "language": "en",
+      "license": "MIT",
+      "license_note": "Tailwind CSS is MIT-licensed; hex values are spec defaults. Source: tailwindcss.com/docs/customizing-colors v3.4.",
+      "files": [
+        "tailwind-default.json"
+      ],
+      "format": "json:color-palette/v1",
+      "size_bytes": 20815,
+      "surfaces": {
+        "native_swift": "MchataiContentService.shared.colorPalette(id:)",
+        "wisdom_resource": "content/color-palettes/tailwind-default.json",
+        "mcp_tool": "read_color_palette",
+        "runtime_global": "window.mchatai.colorPalette"
       },
       "fallback_bundled": true,
       "deprecated": false
     }
   ],
-  "_notes": "Second fundamental category implementing MCHATAI_FUNDAMENTALS.md spec §8 (color-palettes). Shipped 2026-05-12 in Slice D. Surfaces v1: native_swift + wisdom_resource. Future surfaces deferred until consumers ask: mcp_tool read_color_palette, prompt_token {{COLOR_PALETTE:id}}, runtime_global window.mchatai.colorPalette, skill_namespace 'color' (e.g. builtin.color.nearest)."
+  "_notes": "Second fundamental category implementing MCHATAI_FUNDAMENTALS.md spec §8 (color-palettes). Shipped 2026-05-12 in Slice D. Surfaces v1: native_swift + wisdom_resource. Slice D+ (2026-05-13): mcp_tool read_color_palette added + tailwind-default palette appended (3rd palette, 242 colors) + runtime_global window.mchatai.colorPalette wired via MchataiMiniAppShellGenerator extension. Future surfaces deferred until consumers ask: prompt_token {{COLOR_PALETTE:id}}, skill_namespace 'color' (e.g. builtin.color.nearest)."
 }

@@ -101,7 +101,13 @@ export class WordQuestGame {
     this.renderGrid();
     this.updateKeyboardStatuses();
     this.renderStreak();
-    this.setMessage("Guess the hidden five-letter word.");
+    // Intentionally suppress the start-of-round prose — the empty board
+    // already communicates "you have 6 guesses, type a 5-letter word." The
+    // .message element is visually hidden via CSS by default (sr-only for
+    // ARIA) and re-appears only when setMessage adds the .alert class for
+    // genuine state changes (reject, win, lose). Keeps the mobile fold
+    // tight. 2026-05-13.
+    this.setMessage("", { alert: false });
   }
 
   addLetter(letter) {
@@ -157,7 +163,10 @@ export class WordQuestGame {
       this.loseRound();
       return;
     }
-    this.setMessage("Good guess. Keep narrowing it down.");
+    // Mid-round nudge — the colored tiles already say "good guess";
+    // suppress the prose so the message strip stays collapsed on mobile.
+    // 2026-05-13.
+    this.setMessage("", { alert: false });
   }
 
   handleAction(action) {
@@ -289,7 +298,17 @@ export class WordQuestGame {
     this.root.querySelector("#streak").textContent = String(this.streak);
   }
 
-  setMessage(message) {
-    this.root.querySelector("#message").textContent = message;
+  /// Set the status/alert message. By default an `.alert` class is added
+  /// so the message is visible (used by reject/win/lose callers). Pass
+  /// `{ alert: false }` to set the textContent without showing the strip
+  /// (still readable by screen readers via aria-live). When `message` is
+  /// empty, both the text and the alert class are cleared. 2026-05-13.
+  setMessage(message, options = {}) {
+    const el = this.root.querySelector("#message");
+    if (!el) return;
+    const text = message == null ? "" : String(message);
+    el.textContent = text;
+    const shouldAlert = options.alert !== false && text.length > 0;
+    el.classList.toggle("alert", shouldAlert);
   }
 }
