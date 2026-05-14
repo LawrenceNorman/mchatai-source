@@ -1,0 +1,43 @@
+{
+  "id": "5790081E-3A2F-4785-A1AB-7B881609D548",
+  "name": "Budget Variance Reviewer",
+  "description": "Review exported budget-versus-actual rows for material variances, likely drivers, and owner follow-ups.",
+  "components": ["component.finance-budget-variance"],
+  "steps": [
+    {
+      "id": "58FF06A4-B75A-48B3-BF64-42C83708F6D7",
+      "skillID": "builtin.csvTable",
+      "config": {
+        "dataSensitivity": "confidential",
+        "csvMode": "preview",
+        "outputFormat": "markdown",
+        "hasHeader": "true",
+        "limit": "700",
+        "maxChars": "60000"
+      }
+    },
+    {
+      "id": "808648CF-9621-476C-AB45-4DE7661B95DA",
+      "skillID": "builtin.llmGenerate",
+      "config": {
+        "dataSensitivity": "confidential",
+        "llmMaxInputChars": "60000",
+        "llmMaxTokens": "4200",
+        "llmTimeout": "150",
+        "userPrompt": "You are the mChatAI+ Budget Variance Reviewer. Analyze the exported budget-versus-actual table below for operator planning. This is draft analysis for human review; do not provide tax, legal, accounting, investment, financing, or compliance advice.\n\nUse only visible table evidence. Reference periods, departments, accounts, owners, budgets, actuals, variances, and percentages when available. If the table lacks budget, actual, or variance columns, say the review is not fully assessable.\n\nProduce markdown with this exact structure:\n\n# Budget Variance Reviewer\n\n## Scope\n- Period detected:\n- Departments / entities detected:\n- Currency detected:\n- Row count reviewed:\n\n## Executive Variance Summary\n5-8 bullets on the largest favorable and unfavorable variances, recurring themes, and immediate follow-up priorities.\n\n## Material Variances\nA table with columns: Priority, Area / Account, Budget, Actual, Variance, Likely driver, Suggested owner follow-up.\n\n## Favorable Variances\nList meaningful underspends or overperformance, with caveats about whether they may be timing differences or missing accruals.\n\n## Unfavorable Variances\nList meaningful overspends or underperformance, with visible evidence and practical follow-up questions.\n\n## Forecast / Timing Watch Items\nFlag likely timing issues, one-time items, run-rate changes, missing accruals, seasonality, or rows that should be considered in forecast updates.\n\n## Data Quality Notes\nNote missing columns, ambiguous signs, currency ambiguity, blank owners, inconsistent periods, or row-count limitations.\n\n## Missing Data / Follow-Up\nList the budget version, forecast assumptions, owner comments, purchase orders, accrual schedules, or prior-period comparisons needed before relying on the review.\n\n## Review Note\nDraft budget variance support for human review. Not accounting, tax, legal, audit, investment, financing, or compliance advice.\n\nBUDGET TABLE:\n{{INPUT}}"
+      }
+    },
+    {
+      "id": "1D423DED-4489-46C0-86C2-B1FACA7C5F53",
+      "skillID": "builtin.saveArtifact",
+      "config": {
+        "artifactName": "Budget Variance Reviewer Report",
+        "artifactExtension": "md",
+        "productType": "com.mchatai.product.research.report",
+        "metadata.title": "Budget Variance Reviewer Report",
+        "metadata.summary": "Draft budget-versus-actual variance review generated from exported finance rows.",
+        "metadata.methodology": "CSV preview, material variance review, timing/forecast watch-item analysis, and human-review guardrails."
+      }
+    }
+  ]
+}

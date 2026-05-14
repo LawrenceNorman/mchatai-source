@@ -1,0 +1,68 @@
+{
+  "schema_version": "1",
+  "description": "Doc registry for built-in skills tied to mChatAI Fundamentals categories (spec docs/MCHATAI_FUNDAMENTALS.md §5.2 + §8). Source-of-truth for the `describe_skill(id)` MCP tool. Mirrors entries in Skills/SkillCatalog.swift but lives in mchatai-source so it ships hot.",
+  "skills": [
+    {
+      "id": "builtin.dictionary.contains",
+      "name": "Dictionary Contains",
+      "category": "fundamentals/dictionaries",
+      "summary": "Checks whether a word exists in a registered dictionary fundamental. Outputs 'true' or 'false' as the pipeline text plus a typed containsResult bool on the SkillData bag.",
+      "arguments": [
+        { "key": "word",         "required": false, "description": "Word to look up. Falls back to the pipeline text when omitted.", "example": "start" },
+        { "key": "dictionaryID", "required": false, "description": "Dictionary fundamental id. Defaults to 'english-5letter'. Call list_fundamentals to see available ids.", "example": "english-5letter" }
+      ],
+      "outputs": {
+        "pipelineText": "'true' or 'false'",
+        "containsResult": "Bool"
+      }
+    },
+    {
+      "id": "builtin.dictionary.suggest",
+      "name": "Dictionary Suggest",
+      "category": "fundamentals/dictionaries",
+      "summary": "Returns up to N words from a dictionary fundamental that begin with the given prefix. Useful for autocomplete and partial-match validation.",
+      "arguments": [
+        { "key": "prefix",       "required": false, "description": "Prefix to match. Empty prefix returns the first N words alphabetically. Falls back to the pipeline text when omitted.", "example": "abr" },
+        { "key": "dictionaryID", "required": false, "description": "Dictionary fundamental id. Defaults to 'english-5letter'.", "example": "english-5letter" },
+        { "key": "max",          "required": false, "description": "Maximum number of suggestions (1–500). Default 20.", "example": "20" }
+      ],
+      "outputs": {
+        "pipelineText": "newline-separated list of matching words",
+        "suggestions": "[String]"
+      }
+    },
+    {
+      "id": "builtin.dictionary.random",
+      "name": "Dictionary Random",
+      "category": "fundamentals/dictionaries",
+      "summary": "Picks N random words from a dictionary fundamental (without replacement). Useful for daily-puzzle seeds, naming, mock data.",
+      "arguments": [
+        { "key": "dictionaryID", "required": false, "description": "Dictionary fundamental id. Defaults to 'english-5letter'.", "example": "english-5letter-answers" },
+        { "key": "count",        "required": false, "description": "How many random words to return (1–100). Default 1.", "example": "5" }
+      ],
+      "outputs": {
+        "pipelineText": "newline-separated list of random words",
+        "randomWords": "[String]"
+      }
+    },
+    {
+      "id": "builtin.unit.convert",
+      "name": "Unit Convert",
+      "category": "fundamentals/unit-conversions",
+      "summary": "Converts a numeric value between units in a unit-conversion fundamental (length/mass/volume/time). Linear-multiplicative tables only — temperature deferred until the data model supports non-linear conversions.",
+      "arguments": [
+        { "key": "table", "required": true,  "description": "Unit-conversion fundamental id: length, mass, volume, or time.", "example": "length" },
+        { "key": "from",  "required": true,  "description": "Source unit id (e.g. 'mi', 'us-gal', 'ft', 'kg'). Call read_unit_conversion(<table>) to enumerate available unit ids.", "example": "mi" },
+        { "key": "to",    "required": true,  "description": "Target unit id (e.g. 'km', 'L', 'm', 'lb').", "example": "km" },
+        { "key": "value", "required": false, "description": "Numeric value to convert. Falls back to pipeline text when omitted.", "example": "26.2" }
+      ],
+      "outputs": {
+        "pipelineText": "Converted value as a number string (e.g. '42.1648')",
+        "convertedValue": "Double",
+        "fromUnit": "String",
+        "toUnit": "String",
+        "table": "String"
+      }
+    }
+  ]
+}

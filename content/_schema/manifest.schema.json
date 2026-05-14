@@ -1,0 +1,114 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://mchatai.com/schemas/fundamentals/manifest.schema.json",
+  "title": "mChatAI Fundamental Category Manifest",
+  "description": "Schema for content/{category}/manifest.json files. Defined by docs/MCHATAI_FUNDAMENTALS.md §7. Ship 2026-05-14 as part of the §12 schema-gate resolution.",
+  "type": "object",
+  "required": ["schema_version", "category", "fundamentals"],
+  "additionalProperties": true,
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "enum": ["1"],
+      "description": "Schema major version. Bump only on contract-breaking changes (spec §9)."
+    },
+    "category": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]*$",
+      "description": "Kebab-case category id. Must match the parent directory name in content/<category>/."
+    },
+    "fundamentals": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/definitions/fundamentalEntry" }
+    },
+    "_notes": {
+      "type": "string",
+      "description": "Optional free-form notes for maintainers. Ignored at runtime."
+    }
+  },
+  "definitions": {
+    "fundamentalEntry": {
+      "type": "object",
+      "required": ["id", "version", "summary", "files"],
+      "additionalProperties": true,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]*$",
+          "description": "Kebab-case id, globally unique WITHIN the category (spec §7 field rules)."
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$",
+          "description": "Semver. Bump on content-changing updates."
+        },
+        "summary": {
+          "type": "string",
+          "minLength": 8,
+          "description": "One-line description shown in the autoload catalog + MCP list_fundamentals."
+        },
+        "language": {
+          "type": "string",
+          "description": "BCP-47 language code, or 'multi' for multi-language content."
+        },
+        "license": {
+          "type": "string",
+          "description": "License id (e.g. 'CC0', 'MIT', 'public-domain')."
+        },
+        "license_note": {
+          "type": "string",
+          "description": "Optional license detail / source URL."
+        },
+        "files": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 },
+          "description": "Content file basenames (relative to content/<category>/). First entry is the primary file."
+        },
+        "format": {
+          "type": "string",
+          "description": "Free-form format tag (e.g. 'js-const:NAME', 'json:color-palette/v1', 'text-line-per-word')."
+        },
+        "format_note": {
+          "type": "string"
+        },
+        "size_bytes": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Approximate uncompressed size of the primary file. Used for autoload catalog size_kb."
+        },
+        "surfaces": {
+          "type": "object",
+          "additionalProperties": { "type": "string" },
+          "description": "Map of surface intent → identifier. Known keys: mcp_tool, prompt_token, skill_namespace, runtime_global, native_swift, wisdom_resource. Unknown keys pass through.",
+          "properties": {
+            "mcp_tool":         { "type": "string" },
+            "prompt_token":     { "type": "string" },
+            "skill_namespace":  { "type": "string" },
+            "runtime_global":   { "type": "string" },
+            "native_swift":     { "type": "string" },
+            "wisdom_resource":  { "type": "string" }
+          }
+        },
+        "fallback_bundled": {
+          "type": "boolean",
+          "description": "True if a copy of the primary file ships in Resources/MchataiContent/<category>/ for offline first-launch. Set false for content too large to bundle (>1MB rule of thumb) — diagFundamentals will surface it under unbundledIDs."
+        },
+        "fallback_bundled_note": {
+          "type": "string",
+          "description": "Optional explanation when fallback_bundled is false — keeps the deliberate-omission obvious to QA agents reading the manifest."
+        },
+        "deprecated": {
+          "type": "boolean",
+          "default": false,
+          "description": "When true, accessors emit warnings on use. Per spec §9, remove after 2 minor binary versions."
+        },
+        "extra": {
+          "type": "object",
+          "description": "Category-specific fields. Free-form; not validated."
+        }
+      }
+    }
+  }
+}

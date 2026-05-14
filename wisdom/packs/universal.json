@@ -1,6 +1,6 @@
 {
   "packID": "universal",
-  "version": 7,
+  "version": 8,
   "displayName": "Universal Guidelines",
   "description": "Rules that apply to ALL generated apps regardless of category.",
   "categories": [
@@ -550,8 +550,33 @@
         "BAD (SyntaxError): text += scored.join('') + '<literal-newline-here>';   ← parse fails",
         "BAD (SyntaxError): const parts = shareText.split('<literal-newline-here>');   ← parse fails"
       ]
+    },
+    {
+      "id": "u-stop-reading-after-example",
+      "rule": "When you're using a `examples/<game>/` reference build from web-components (chess, candy-match, blackjack, poker, frogger, pacman, asteroids, etc.), READ AT MOST THREE FILES: `examples/<game>/index.html`, `examples/<game>/main.js`, `examples/<game>/<game>.css`. STOP. Do NOT then open every component source (ChessRules.js, ChessAI.js, MinimaxAI.js, Board8x8.js, MiniHeader.js, RestartOverlay.js, Leaderboard.js, Card.js, Deck.js, PokerHandEvaluator.js, BlackjackRules.js, …) one by one before you write the install. The example folder IS the canonical usage pattern that already shows how to import and call every component. Reading the underlying component sources is over-engineering with no positive return on the 300-second Claude Code budget. One game's example folder is ≤3 reads; the whole component catalog is 30+ reads and routinely hits `maxTurns-reached` without producing an artifact. Trust the example. Write the miniApp.",
+      "why": "Catalog regression 2026-05-14: Chess, Candy Crush, and Blackjack all HARD-FAILED with `maxTurns-reached events=44/57/…` because the LLM spent the entire 300s budget on Read tool calls reading ChessRules.js, ChessAI.js, MinimaxAI.js, Board8x8.js, MiniHeader.js, RestartOverlay.js, Leaderboard.js, Card.js, Deck.js, PokerHandEvaluator.js, BlackjackRules.js etc. one-by-one before reaching the write phase. Pac-Man (1 turn, 213s, 0 errors) and Frogger (1 turn, 244s, 0 errors) PASSED with the same recipe-load, same prompt format — difference is they trusted the example folder. Same regression, three games, three blocked installs.",
+      "severity": "critical",
+      "appliesTo": "universal",
+      "examples": [
+        "GOOD: 1) Read examples/chess/index.html. 2) Read examples/chess/main.js. 3) Read examples/chess/chess.css. Now I have the patterns. Writing the install index.html.",
+        "GOOD: 1) Read examples/candy-match/index.html. 2) Read examples/candy-match/main.js. Now write.",
+        "BAD: 1) Read examples/chess/main.js. 2) Read ChessRules.js (to see the API). 3) Read ChessAI.js. 4) Read MinimaxAI.js. 5) Read Board8x8.js. 6) Read MiniHeader.js. 7) Read RestartOverlay.js... (this is the over-reading regression — you will run out of budget before writing.)"
+      ]
+    },
+    {
+      "id": "u-no-shadow-of-imported-helper",
+      "rule": "When you `import` a utility from `./web-components/core/Physics2D.js` or any other shared module — `randomBetween`, `clamp`, `lerp`, `vec2`, `aabbIntersect`, `intersectsAABB`, `wrap`, etc. — do NOT also declare a local `function randomBetween(...) { ... }` (or `let`/`const`) with the same name in the same module. ES modules treat top-level `import` bindings as `const`; re-declaring with `function` (a hoisted binding) is a SyntaxError that prevents the entire `<script type=\"module\">` from executing. The page renders the static HTML shell only — no game logic runs, canvas stays empty. If you want a customized version, either ALIAS the import (`import { randomBetween as physRand } from …`) or pick a different local name (`randomInRange`, `localRandom`). If you don't need the imported version at all, REMOVE the import; don't keep it AND redeclare.",
+      "why": "Catalog regression 2026-05-14: Asteroids canary installed cleanly (6 components, 0 build errors) but ran 2 console SyntaxErrors at line 1406: `Cannot declare a function that shadows a let/const/class/function variable 'randomBetween'.` The LLM had `import { randomBetween } from './web-components/core/Physics2D.js'` at the top AND a local `function randomBetween(a, b) { ... }` further down. The module never executed; the canvas stayed empty. This is structurally indistinguishable from a working install except at runtime — every install-gate check (marker present, imports valid, recipe ID matches) passed, but the page was blank.",
+      "severity": "critical",
+      "appliesTo": "universal",
+      "examples": [
+        "GOOD: import { randomBetween } from './web-components/core/Physics2D.js'; // then USE randomBetween(0, 100) directly throughout the file — no redeclaration.",
+        "GOOD: import { randomBetween as physRand } from './web-components/core/Physics2D.js'; function randomBetween(a, b) { return physRand(a, b) * 1.5; } // aliasing the import frees the local name.",
+        "GOOD: function localRandom(a, b) { return Math.random() * (b - a) + a; } // no import, no collision.",
+        "BAD: import { randomBetween } from './web-components/core/Physics2D.js'; … function randomBetween(a, b) { return Math.random() * (b - a) + a; } // SyntaxError, module dead."
+      ]
     }
   ],
-  "_last_updated": "2026-05-13 added u-no-raw-newlines-in-string-literals (Phase LF.6 — install-time syntax safeguard)",
-  "lastUpdated": "2026-05-13"
+  "_last_updated": "2026-05-14T08:22:38Z",
+  "lastUpdated": "2026-05-14T08:22:38Z"
 }

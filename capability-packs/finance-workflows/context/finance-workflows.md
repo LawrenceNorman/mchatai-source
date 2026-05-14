@@ -49,6 +49,9 @@ For private business data, prefer CSV-first workflows before adding custom API p
 - Month-end close assistant: ingest exported trial balance, bank activity, invoices, and payments; produce checklist and exceptions.
 - GL reconciliation reviewer: identify unmatched rows, timing differences, duplicate-looking entries, and unexplained deltas.
 - Cashflow snapshot: summarize inflows, outflows, runway, late payments, and upcoming pressure points.
+- Budget variance reviewer: compare budget-versus-actual rows, flag material favorable/unfavorable variances, and produce owner follow-ups.
+- AP duplicate payment reviewer: identify duplicate-looking invoices, repeated payments, vendor outliers, and missing support.
+- AR aging collections prioritizer: prioritize overdue customer balances, aging/concentration risks, and collections follow-up.
 - Invoice/payment anomaly reviewer: flag duplicate invoice numbers, unusual amounts, missing payment references, and vendor/customer outliers.
 
 For private inputs:
