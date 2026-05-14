@@ -1,8 +1,8 @@
 #!/usr/bin/env node
-// mchatai-fundamentals MCP server — Slices A + B (2026-05-12).
+// mchatai-fundamentals MCP server — Slices A + B + C (2026-05-12 → 2026-05-14).
 //
-// Exposes two tools so external CLI agents (Claude Code / Codex / Gemini
-// CLI) can both discover and consume the platform's content primitives
+// Exposes three tools so external CLI agents (Claude Code / Codex / Gemini
+// CLI) can discover, consume, and INVOKE platform-shipped capabilities
 // without out-of-band knowledge:
 //
 //   list_fundamentals({category?})
@@ -19,6 +19,16 @@
 //     MchataiContentService.shared.dictionaryRawJS(id:) returns the same
 //     bytes; this tool exists so generators that can't load a JS shell
 //     (native iOS/Android, non-mini-app artifacts) get an inline path.
+//
+//   describe_skill({id})
+//     → {id, name, category, summary, arguments:[{key,required,description,
+//        example}], outputs:{...}}
+//     Returns the full SkillDoc for a built-in skill tied to a fundamental
+//     category (e.g. "builtin.dictionary.contains"). The autoload catalog's
+//     `skill: builtin.<noun>.*` surface announces existence; this tool
+//     closes the loop so an LLM that sees that announcement can actually
+//     compose a pipeline step around the skill. Source-of-truth lives at
+//     `skills/builtin-fundamentals-catalog.json` in mchatai-source.
 //
 // Schema parity: returns the same catalog shape MchataiContentService.
 // renderForPromptLayer() emits to the prompt-context autoload layer, so
@@ -143,6 +153,12 @@ function mapSurfaces(raw, id) {
   return out;
 }
 
+// LLM-reachable surfaces a fundamental SHOULD wire (spec §5). When any
+// are missing the catalog annotates `incomplete: [...]` so consumers don't
+// silently guess. Internal surfaces (nativeSwift, wisdomResource) are NOT
+// enforced — they're not consumer-reachable.
+const LLM_REACHABLE_SURFACES = new Set(["mcp", "promptToken", "skill", "runtime"]);
+
 function buildCatalog({ categoryFilter } = {}) {
   const categories = listCategories();
   const visible = categoryFilter
@@ -165,6 +181,8 @@ function buildCatalog({ categoryFilter } = {}) {
         item.size_kb = Math.round(entry.size_bytes / 1024);
       }
       if (Object.keys(surfaces).length > 0) item.surfaces = surfaces;
+      const missing = [...LLM_REACHABLE_SURFACES].filter((k) => !(k in surfaces)).sort();
+      if (missing.length > 0) item.incomplete = missing;
       if (entry.deprecated === true) item.deprecated = true;
       fundamentals.push(item);
     }
@@ -192,6 +210,53 @@ function listFundamentals(args) {
   }
 
   return buildCatalog({ categoryFilter });
+}
+
+// Slice C — describe_skill(id) returns the SkillDoc for a built-in skill
+// tied to a Fundamentals category. Source-of-truth lives at
+// `skills/builtin-fundamentals-catalog.json` and mirrors the entries in
+// Skills/SkillCatalog.swift on the binary side. The catalog is small
+// (4 skills today, ~one per fundamentals surface that needs a skill);
+// the runtime lookup is O(n) linear scan with mtime-based caching.
+const SKILLS_CATALOG_PATH = join(SOURCE_ROOT, "skills", "builtin-fundamentals-catalog.json");
+let cachedSkillsCatalog = null;
+let cachedSkillsMtime = 0;
+
+function loadSkillsCatalog() {
+  if (!existsSync(SKILLS_CATALOG_PATH)) return null;
+  const mtime = statSync(SKILLS_CATALOG_PATH).mtimeMs;
+  if (cachedSkillsCatalog && cachedSkillsMtime === mtime) return cachedSkillsCatalog;
+  try {
+    cachedSkillsCatalog = JSON.parse(readFileSync(SKILLS_CATALOG_PATH, "utf8"));
+    cachedSkillsMtime = mtime;
+    return cachedSkillsCatalog;
+  } catch (err) {
+    process.stderr.write(`[${SERVER_NAME}] skills catalog parse failed: ${err.message}\n`);
+    return null;
+  }
+}
+
+function describeSkill(args) {
+  const id = typeof args?.id === "string" ? args.id.trim() : "";
+  if (!id) {
+    return { error: "Missing required parameter: id (e.g. 'builtin.dictionary.contains')" };
+  }
+  const catalog = loadSkillsCatalog();
+  if (!catalog || !Array.isArray(catalog.skills)) {
+    return {
+      error: "Skills catalog not found at skills/builtin-fundamentals-catalog.json",
+      sourceRoot: SOURCE_ROOT
+    };
+  }
+  const skill = catalog.skills.find((s) => s.id === id);
+  if (!skill) {
+    return {
+      error: `Unknown skill id: ${id}`,
+      knownIDs: catalog.skills.map((s) => s.id),
+      hint: "Only Fundamentals-tied built-in skills are documented here today. For the full ~108-skill set, consult Skills/SkillCatalog.swift in the mChatAI+ binary."
+    };
+  }
+  return skill;
 }
 
 // Slice B — read_dictionary(id) returns the JS-const text. Reads the
@@ -328,6 +393,23 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         required: ["id"],
         additionalProperties: false
       }
+    },
+    {
+      name: "describe_skill",
+      description:
+        "Fetch the SkillDoc for a built-in skill tied to an mChatAI Fundamentals category. Returns argument schema, examples, and output bag keys so an LLM that saw `builtin.<noun>.*` in the fundamentals autoload catalog can compose a pipeline step around it correctly. Documented skills today: builtin.dictionary.contains/.suggest/.random and builtin.unit.convert. For non-fundamentals built-in skills, the response lists the documented IDs so the caller knows what's discoverable here.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          id: {
+            type: "string",
+            description:
+              "Skill id (e.g. 'builtin.dictionary.contains', 'builtin.unit.convert'). On unknown ids the tool returns the list of known ids in the catalog."
+          }
+        },
+        required: ["id"],
+        additionalProperties: false
+      }
     }
   ]
 }));
@@ -342,6 +424,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       result = readDictionary(args || {});
     } else if (name === "read_color_palette") {
       result = readColorPalette(args || {});
+    } else if (name === "describe_skill") {
+      result = describeSkill(args || {});
     } else {
       result = { error: `Unknown tool: ${name}` };
     }

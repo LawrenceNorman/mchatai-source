@@ -312,6 +312,39 @@ for (const s of ewSamples) {
 assert(!ew.content.includes('"javascript"'),
   "english-words deliberately gappy on modern tech terms (1934 source)");
 
+console.log("\ntest 22 — describe_skill returns SkillDoc for fundamentals skills");
+function describeSkill(id) {
+  const catalogPath = join(SOURCE_ROOT, "skills", "builtin-fundamentals-catalog.json");
+  if (!existsSync(catalogPath)) return { error: "Catalog missing" };
+  const catalog = JSON.parse(readFileSync(catalogPath, "utf8"));
+  const skill = (catalog.skills || []).find((s) => s.id === id);
+  if (!skill) return { error: `Unknown: ${id}`, knownIDs: (catalog.skills || []).map((s) => s.id) };
+  return skill;
+}
+
+const ds1 = describeSkill("builtin.dictionary.contains");
+assert(ds1.error == null, "describe builtin.dictionary.contains has no error");
+assert(ds1.name === "Dictionary Contains", `name 'Dictionary Contains' (got '${ds1.name}')`);
+assert(ds1.category === "fundamentals/dictionaries", "category set correctly");
+assert(Array.isArray(ds1.arguments) && ds1.arguments.length >= 2,
+  `≥2 arguments (got ${ds1.arguments?.length})`);
+assert(ds1.arguments.some((a) => a.key === "dictionaryID"),
+  "argument 'dictionaryID' documented");
+
+const ds2 = describeSkill("builtin.unit.convert");
+assert(ds2.error == null, "describe builtin.unit.convert has no error");
+assert(ds2.arguments.some((a) => a.key === "table" && a.required === true),
+  "argument 'table' is documented as required");
+assert(ds2.arguments.some((a) => a.key === "from" && a.required === true),
+  "argument 'from' is documented as required");
+assert(ds2.outputs && ds2.outputs.convertedValue,
+  "outputs map declares convertedValue");
+
+const ds3 = describeSkill("builtin.not.a.real.skill");
+assert(ds3.error != null, "unknown skill id returns error");
+assert(Array.isArray(ds3.knownIDs) && ds3.knownIDs.length >= 4,
+  `error response lists ≥4 known ids (got ${ds3.knownIDs?.length})`);
+
 console.log(`\n--- summary ---`);
 console.log(`PASS=${passed} FAIL=${failed}`);
 if (failed > 0) {
