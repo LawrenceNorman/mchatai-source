@@ -522,8 +522,36 @@
         "DO NOT: pick english-5letter for a spelling bee. Players type words of all lengths and english-5letter only has 5-letter words.",
         "DO NOT: pick english-words for a Wordle-shaped game. english-5letter is the curated Wordle guess set; english-words has 200K entries the daily-puzzle answer pool would never use."
       ]
+    },
+    {
+      "id": "u-install-relative-lego-imports",
+      "rule": "When emitting a Lego-composed mini-app, every `import { … } from \"./web-components/<category>/<File>.js\";` MUST use an INSTALL-RELATIVE path. The shipped HTML lives at `/installed/<id>/index.html` and its `web-components/` subdir is a sibling. Canonical form for ALL Lego imports — including addon components like `GameOverWithRank` and `Leaderboard` — is `./web-components/<category>/<File>.js` where `<category>` ∈ {core, entities, ui, effects, resources}. Do NOT use `../../ui/...` (that's the source-path the wisdom rules show in examples — it would resolve to a sibling dir of the install root that doesn't exist). Do NOT use `/web-components/...` (root-absolute also breaks). The wisdom rule and example assemblies show source-relative paths so a reader can navigate the catalog; the install path is different. ES module fetch failures are SILENT in WKWebView / headless Chrome dump-dom — no console error, just an empty page — so this bug looks identical to a stale build until you trace network requests.",
+      "why": "User feedback 2026-05-13: a leaderboard iteration on a working Wordle emitted `import { GameOverWithRank } from \"../../ui/GameOverWithRank.js\"` — the path from u-leaderboard-addon-recipe's example block. In the install bundle that resolves to `/installed/ui/GameOverWithRank.js` which doesn't exist; the ES module load aborted silently and the entire <script type=\"module\"> never ran. Grid + keyboard + leaderboard all blank. The install gate's marker + recipe + syntax checks all passed because the artifact is structurally valid — only the runtime path resolution is wrong. Mini-app install gate LF.6c now auto-rewrites these patterns, but the wisdom rule prevents the LLM from producing them in the first place.",
+      "severity": "critical",
+      "appliesTo": "universal",
+      "examples": [
+        "GOOD: import { GameOverWithRank } from \"./web-components/ui/GameOverWithRank.js\";",
+        "GOOD: import { GridBoard } from \"./web-components/entities/GridBoard.js\";",
+        "BAD: import { GameOverWithRank } from \"../../ui/GameOverWithRank.js\";  // resolves to /installed/ui/ which doesn't exist",
+        "BAD: import { Leaderboard } from \"/web-components/ui/Leaderboard.js\";  // root-absolute breaks on file:// and http://",
+        "BAD: import { ScoreBoard } from \"web-components/ui/ScoreBoard.js\";  // bare specifier without ./ is parsed as a package name"
+      ]
+    },
+    {
+      "id": "u-no-raw-newlines-in-string-literals",
+      "rule": "Never embed a literal newline character inside a single- or double-quoted JS string. JavaScript string literals (\"...\" and '...') cannot span multiple source lines — a raw line-break inside one is a SyntaxError that breaks the ENTIRE <script> module (no code in it runs, nothing renders). When you need a newline in a string value, either escape it (\"\\n\") or switch to a backtick template literal (`...`) which permits multi-line content. This applies everywhere — share-text builders, emoji rows, multi-line tooltips, .split() / .join() separators, regex string patterns. If the resulting code reads e.g. `text + \"\\n\"` or `split(\"\\n\")` or `\\`row1\\nrow2\\``, you are correct.",
+      "why": "User feedback 2026-05-13: a generated Wordle clone shipped a share-text builder with `+ \"<actual newline>\"` instead of `+ \"\\n\"`. The script-module parse failed at that line; the entire game never bootstrapped (empty grid, empty keyboard, 4 console errors). The mChatAI install gate marked the build OK (component-usage marker valid, 10 canonical Lego imports), the WebView showed only static HTML, and a human had to debug it. Single-character mistake, total artifact failure. This rule is universal because the failure mode is universal — any string with an embedded line in any web miniapp / webSPA / agent / pipeline-JS will silently break the surrounding module.",
+      "severity": "critical",
+      "appliesTo": "universal",
+      "examples": [
+        "GOOD: const shareText = `Row 1\\nRow 2`;",
+        "GOOD: text += scored.map(c => statusEmoji[c.status]).join('') + '\\n';",
+        "GOOD: const parts = shareText.split('\\n');",
+        "BAD (SyntaxError): text += scored.join('') + '<literal-newline-here>';   ← parse fails",
+        "BAD (SyntaxError): const parts = shareText.split('<literal-newline-here>');   ← parse fails"
+      ]
     }
   ],
-  "_last_updated": "2026-05-12 added offer-001-matcher-shape (Phase Offers framework)",
-  "lastUpdated": "2026-05-12"
+  "_last_updated": "2026-05-13 added u-no-raw-newlines-in-string-literals (Phase LF.6 — install-time syntax safeguard)",
+  "lastUpdated": "2026-05-13"
 }

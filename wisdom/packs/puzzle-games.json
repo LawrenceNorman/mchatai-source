@@ -1,6 +1,6 @@
 {
   "packID": "puzzle-games",
-  "version": 14,
+  "version": 15,
   "displayName": "Puzzle Game Guidelines",
   "description": "Quality rules for word search, crossword, sudoku, wordle, and other puzzle games.",
   "categories": [
@@ -742,7 +742,21 @@
         "RIGHT: GridAdventureEngine.pacmanArcadeMap() returns engine with maze + 4 ghosts (each with personality), pellets, fruit, power pellets. froggerLaneMap() returns same engine type with road/water tiles + vehicle/log actors.",
         "WRONG: GridAdventureEngine has `var gameMode: GameMode` field and switches behavior on it. Engine becomes a god object that handles every game type."
       ]
+    },
+    {
+      "id": "pz-row-completeness-check",
+      "rule": "To detect whether a Wordle-style guess row is fully filled, use `row.every(c => c)` (all cells truthy) or `row.some(c => !c)` (any cell empty). NEVER use `row.includes(\"\")` or `guess.includes(\"\")` — both `String.prototype.includes(\"\")` and `Array.prototype.includes(\"\")` ALWAYS return true (the empty string/element is considered present in every sequence), so the check fires 'Fill the full row first' even when the row is fully filled. Same trap for `\"\".indexOf(\"\") === 0` and similar empty-arg patterns.",
+      "why": "Filed 2026-05-13: AIWizard word-quest v27 emitted `if (guess.length !== WORD_LEN || guess.includes(\"\"))` for row-validation. `\"abcde\".includes(\"\")` returns true, so the OR is always-true and the toast 'Fill the full row first' fires on every Enter, blocking submission even with a complete row. JS spec: ECMA-262 §22.1.3.10 / §23.1.3.16 — searchString '' is found at index 0 of any string/array.",
+      "severity": "critical",
+      "appliesTo": "wordle",
+      "examples": [
+        "RIGHT (array of cell chars): if (row.length !== WORD_LEN || row.some(c => !c)) { toast('Fill the full row first'); return; }",
+        "RIGHT (array, positive form): if (row.length === WORD_LEN && row.every(c => c)) { submitGuess(row.join('')); }",
+        "RIGHT (joined string with placeholder '_' for empty): if (guessStr.length !== WORD_LEN || guessStr.includes('_')) { ... } — only correct when EMPTY cells render as a real character",
+        "WRONG: if (guess.length !== WORD_LEN || guess.includes('')) — second clause is always true",
+        "WRONG: if (guess.indexOf('') === -1) — indexOf('') always returns 0, never -1"
+      ]
     }
   ],
-  "_last_updated": "2026-05-05"
+  "_last_updated": "2026-05-13"
 }
