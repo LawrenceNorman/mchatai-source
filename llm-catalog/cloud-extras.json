@@ -1,0 +1,113 @@
+{
+  "_note": "Non-OpenRouter SKUs reachable via mchatai-cloud compute-proxy. Phase IM.3 (2026-05-15). iOS's OpenRouterCatalogService appends these synthetically so the picker can surface audio/image/video generation models. Routing happens at the compute-proxy via per-modality endpoints (/v1/audio/transcriptions, /v1/audio/speech, /v1/images/generations, /v1/videos/generations).",
+  "version": 1,
+  "updatedAt": "2026-05-15",
+  "extras": [
+    {
+      "id": "openai/whisper-1",
+      "name": "OpenAI: Whisper",
+      "providerLabel": "OpenAI",
+      "endpoint": "/v1/audio/transcriptions",
+      "outputModalities": ["text"],
+      "inputModalities": ["audio"],
+      "modality": "stt",
+      "pricing": { "perMinute": 0.006 },
+      "contextLength": null,
+      "available": true,
+      "notes": "Speech-to-text. Routed via api.mchatai.com → OpenAI. Whisper-1 is the canonical SKU."
+    },
+    {
+      "id": "openai/whisper-large-v3",
+      "name": "OpenAI: Whisper Large v3",
+      "providerLabel": "OpenAI",
+      "endpoint": "/v1/audio/transcriptions",
+      "outputModalities": ["text"],
+      "inputModalities": ["audio"],
+      "modality": "stt",
+      "pricing": { "perMinute": 0.006 },
+      "contextLength": null,
+      "available": true,
+      "notes": "Whisper Large v3. Compute-proxy aliases to whisper-1 at runtime."
+    },
+    {
+      "id": "openai/tts-1",
+      "name": "OpenAI: TTS 1",
+      "providerLabel": "OpenAI",
+      "endpoint": "/v1/audio/speech",
+      "outputModalities": ["audio"],
+      "inputModalities": ["text"],
+      "modality": "tts",
+      "pricing": { "per1MChars": 15.0 },
+      "contextLength": 4096,
+      "available": true,
+      "notes": "Text-to-speech. Voices: alloy, echo, fable, onyx, nova, shimmer."
+    },
+    {
+      "id": "openai/tts-1-hd",
+      "name": "OpenAI: TTS 1 HD",
+      "providerLabel": "OpenAI",
+      "endpoint": "/v1/audio/speech",
+      "outputModalities": ["audio"],
+      "inputModalities": ["text"],
+      "modality": "tts",
+      "pricing": { "per1MChars": 30.0 },
+      "contextLength": 4096,
+      "available": true,
+      "notes": "Higher-quality TTS. 2× the cost of tts-1."
+    },
+    {
+      "id": "openai/dall-e-3",
+      "name": "OpenAI: DALL·E 3",
+      "providerLabel": "OpenAI",
+      "endpoint": "/v1/images/generations",
+      "outputModalities": ["image"],
+      "inputModalities": ["text"],
+      "modality": "image",
+      "pricing": { "perImage": { "1024x1024": 0.040, "1024x1792": 0.080, "1792x1024": 0.080 } },
+      "contextLength": null,
+      "available": true,
+      "notes": "Image generation. Sizes: 1024×1024, 1024×1792, 1792×1024."
+    },
+    {
+      "id": "openai/gpt-image-1",
+      "name": "OpenAI: GPT-Image 1",
+      "providerLabel": "OpenAI",
+      "endpoint": "/v1/images/generations",
+      "outputModalities": ["image"],
+      "inputModalities": ["text", "image"],
+      "modality": "image",
+      "pricing": { "perImage": { "1024x1024": 0.040, "1024x1536": 0.080, "1536x1024": 0.080 } },
+      "contextLength": null,
+      "available": true,
+      "notes": "Newer OpenAI image-gen. Supports edits + variations."
+    },
+    {
+      "id": "google/veo-3",
+      "name": "Google: Veo 3 (Preview)",
+      "providerLabel": "Google",
+      "endpoint": "/v1/videos/generations",
+      "outputModalities": ["video"],
+      "inputModalities": ["text", "image"],
+      "modality": "video",
+      "pricing": { "perSecondVideo": 0.50, "notes": "Approximate; verify against Vertex AI pricing" },
+      "contextLength": null,
+      "available": false,
+      "available_reason": "Compute-proxy /v1/videos/generations endpoint shipped; needs Vertex AI service-account key to activate. See mchataiweb/docs/CLOUD_VEO_DEPLOY.md.",
+      "notes": "Video generation via Vertex AI."
+    },
+    {
+      "id": "elevenlabs/eleven-multilingual-v2",
+      "name": "ElevenLabs: Multilingual v2",
+      "providerLabel": "ElevenLabs",
+      "endpoint": "/v1/audio/speech",
+      "outputModalities": ["audio"],
+      "inputModalities": ["text"],
+      "modality": "tts",
+      "pricing": { "per1MChars": 30.0, "notes": "Approximate; ElevenLabs billing is character-credit based" },
+      "contextLength": 5000,
+      "available": false,
+      "available_reason": "Compute-proxy ElevenLabs provider shipped; needs ELEVENLABS_API_KEY in Secret Manager to activate. See mchataiweb/docs/CLOUD_ELEVENLABS_DEPLOY.md.",
+      "notes": "High-quality multilingual TTS. Route via provider:'elevenlabs' on the speech endpoint."
+    }
+  ]
+}
