@@ -55,6 +55,19 @@
       "ui/Leaderboard.js",
       "ui/GameOverWithRank.js",
       "ui/CloudAIToggle.js",
+      "ui/forms/Button.js",
+      "ui/forms/TextInput.js",
+      "ui/forms/Checkbox.js",
+      "ui/layout/AppShell.js",
+      "ui/layout/Modal.js",
+      "ui/layout/Column.js",
+      "ui/data/ListItem.js",
+      "ui/data/Card.js",
+      "ui/data/TagChip.js",
+      "ui/data/DataTable.js",
+      "ui/data/DonutChart.js",
+      "ui/feedback/TimerRing.js",
+      "ui/feedback/EmptyState.js",
       "resources/Swatches.js",
       "resources/AudioManager.js",
       "resources/SpriteRenderer.js",
@@ -2584,6 +2597,220 @@
         "platformer",
         "tower-defense"
       ]
+    },
+    {
+      "id": "ui.button",
+      "name": "Button",
+      "category": "ui",
+      "path": "ui/forms/Button.js",
+      "exports": ["Button"],
+      "status": "ready",
+      "summary": "Productivity-app button with primary/secondary/ghost/danger variants, sm/md/lg sizes, optional leading icon, disabled state. Themes via --mchat-accent and --mchat-radius-md.",
+      "tags": ["button", "form", "action", "miniapp", "productivity", "ui"],
+      "contracts": {
+        "constructor": "new Button({label, variant?, size?, icon?, onClick?, target?, disabled?, fullWidth?})",
+        "variants": "primary | secondary | ghost | danger",
+        "sizes": "sm | md | lg",
+        "methods": ["setLabel(text)", "setIcon(glyph)", "setVariant(name)", "setDisabled(flag)", "attach(target)", "detach()"],
+        "element": "btn.element — raw <button> for composition"
+      },
+      "goodFits": ["todo-list", "notes-app", "bookmark-manager", "pomodoro-timer", "kanban", "form-wizard", "settings-panel", "any-productivity-app"]
+    },
+    {
+      "id": "ui.text-input",
+      "name": "TextInput",
+      "category": "ui",
+      "path": "ui/forms/TextInput.js",
+      "exports": ["TextInput"],
+      "status": "ready",
+      "summary": "Single-line text entry with placeholder, optional label, leading icon, clearable affordance, onInput live callback, and Enter-to-submit semantics. Drop-in for add-task, search, note-title.",
+      "tags": ["input", "form", "text", "search", "miniapp", "productivity"],
+      "contracts": {
+        "constructor": "new TextInput({value?, placeholder?, label?, leadingIcon?, clearable?, size?, type?, onInput?, onSubmit?, onBlur?, target?})",
+        "methods": ["getValue()", "setValue(v)", "clear()", "focus()", "blur()", "setDisabled(flag)", "setPlaceholder(text)"],
+        "submitContract": "onSubmit(value, input) fires when user presses Enter — call input.clear() inside if you want add-and-clear UX"
+      },
+      "goodFits": ["todo-list", "search-bar", "notes-app", "bookmark-manager", "form-wizard", "chat-input", "any-productivity-app"]
+    },
+    {
+      "id": "ui.checkbox",
+      "name": "Checkbox",
+      "category": "ui",
+      "path": "ui/forms/Checkbox.js",
+      "exports": ["Checkbox"],
+      "status": "ready",
+      "summary": "Custom-styled checkbox with native <input> for accessibility, optional label, strike-through-when-checked todo behavior toggleable. Tracks --mchat-accent for the checked fill.",
+      "tags": ["checkbox", "toggle", "todo", "form", "miniapp"],
+      "contracts": {
+        "constructor": "new Checkbox({label?, checked?, disabled?, strikeOnCheck?, onChange?, target?})",
+        "methods": ["setChecked(value, silent?)", "toggle()", "isChecked()", "setLabel(text)", "setDisabled(flag)"],
+        "changeContract": "onChange(checked, box) fires on user toggle; programmatic setChecked(v, silent=true) suppresses it"
+      },
+      "goodFits": ["todo-list", "checklist", "kanban-card", "settings-panel", "habit-tracker", "any-productivity-app"]
+    },
+    {
+      "id": "ui.app-shell",
+      "name": "AppShell",
+      "category": "ui",
+      "path": "ui/layout/AppShell.js",
+      "exports": ["AppShell"],
+      "status": "ready",
+      "summary": "Header + sidebar + main + footer skeleton for productivity apps. Responsive collapse below 720px with hamburger toggle and dimming scrim. Slots are exposed as element references for composition.",
+      "tags": ["layout", "shell", "sidebar", "responsive", "miniapp", "productivity"],
+      "contracts": {
+        "constructor": "new AppShell({title?, subtitle?, sidebarWidth?, target?})",
+        "slots": ["shell.headerSlot", "shell.sidebarSlot", "shell.mainSlot", "shell.footerSlot"],
+        "methods": ["setTitle(text)", "setSubtitle(text)", "setSidebarWidth(px)", "openSidebar()", "closeSidebar()", "toggleSidebar()"],
+        "compositionRule": "Mount inside <body>; let it occupy 100vh. Append your widgets into the slots, do not reparent the slots themselves."
+      },
+      "goodFits": ["notes-app", "bookmark-manager", "kanban", "contacts-crm", "settings-panel", "any-list-and-detail-app"]
+    },
+    {
+      "id": "ui.modal",
+      "name": "Modal",
+      "category": "ui",
+      "path": "ui/layout/Modal.js",
+      "exports": ["Modal"],
+      "status": "ready",
+      "summary": "Dialog overlay with backdrop, ESC-to-dismiss, backdrop-click-to-dismiss, scrollable body, focus-first on open, header slot + body slot + footer slot. Sizes: sm/md/lg.",
+      "tags": ["modal", "dialog", "overlay", "miniapp", "productivity"],
+      "contracts": {
+        "constructor": "new Modal({title?, size?, dismissOnBackdrop?, dismissOnEscape?, showClose?, onOpen?, onClose?, target?})",
+        "slots": ["modal.headerSlot", "modal.bodySlot", "modal.footerSlot"],
+        "methods": ["open()", "close()", "toggle()", "setTitle(text)", "destroy()"],
+        "sizes": "sm | md | lg",
+        "compositionRule": "Append form fields to bodySlot, action buttons to footerSlot. Call open() to show, close() to dismiss."
+      },
+      "goodFits": ["add-bookmark-dialog", "edit-task-dialog", "confirm-delete", "settings-panel", "share-sheet", "any-productivity-app"]
+    },
+    {
+      "id": "ui.list-item",
+      "name": "ListItem",
+      "category": "ui",
+      "path": "ui/data/ListItem.js",
+      "exports": ["ListItem"],
+      "status": "ready",
+      "summary": "Single row in a list/sidebar: leading slot (checkbox/avatar/icon), primary + secondary text, trailing slot (badge/action). Click handler, active visual state, compact density variant.",
+      "tags": ["list", "row", "item", "miniapp", "productivity"],
+      "contracts": {
+        "constructor": "new ListItem({primary, secondary?, leading?, trailing?, onClick?, active?, density?, multiline?, target?})",
+        "slots": ["row.leadingEl (any DOM node via setLeading)", "row.trailingEl"],
+        "methods": ["setPrimary(text)", "setSecondary(text)", "setLeading(node|html)", "setTrailing(node|html)", "setActive(flag)"],
+        "clickContract": "onClick ignores events from interactive children (button/input/a) so embedded checkboxes/buttons fire their own handlers cleanly"
+      },
+      "goodFits": ["todo-list", "notes-sidebar", "bookmark-row", "contact-row", "kanban-card", "any-list-app"]
+    },
+    {
+      "id": "ui.timer-ring",
+      "name": "TimerRing",
+      "category": "ui",
+      "path": "ui/feedback/TimerRing.js",
+      "exports": ["TimerRing"],
+      "status": "ready",
+      "summary": "Circular SVG countdown ring with monospace time in the middle and optional caption. Self-paced setInterval ticker; pause/resume/reset. Color shifts to --mchat-success on complete.",
+      "tags": ["timer", "countdown", "ring", "progress", "pomodoro", "miniapp"],
+      "contracts": {
+        "constructor": "new TimerRing({totalSeconds, remaining?, size?, thickness?, caption?, onTick?, onComplete?, target?})",
+        "methods": ["start()", "pause()", "reset(totalSeconds?)", "setTotal(seconds)", "setRemaining(seconds)", "setCaption(text)", "isRunning()", "getRemaining()"],
+        "tickContract": "Internal interval at 250ms; onTick(remaining, ring) and onComplete(ring) fire as appropriate. For external timing, skip start() and use setRemaining()."
+      },
+      "goodFits": ["pomodoro-timer", "habit-tracker", "exercise-timer", "meditation-app", "kitchen-timer", "interval-trainer"]
+    },
+    {
+      "id": "ui.empty-state",
+      "name": "EmptyState",
+      "category": "ui",
+      "path": "ui/feedback/EmptyState.js",
+      "exports": ["EmptyState"],
+      "status": "ready",
+      "summary": "Placeholder shown when a list/grid is empty: large icon, title, subtitle, optional CTA button. Toggle show()/hide() based on item count.",
+      "tags": ["empty", "placeholder", "zero-state", "miniapp", "productivity"],
+      "contracts": {
+        "constructor": "new EmptyState({icon?, title, subtitle?, ctaLabel?, onCta?, target?})",
+        "methods": ["setTitle(text)", "setSubtitle(text)", "setIcon(glyph)", "setCta(label, handler)", "show()", "hide()", "toggle(visible)"],
+        "compositionRule": "Mount inside the list container; toggle visibility based on item count. Don't unmount/remount — keeps animations stable."
+      },
+      "goodFits": ["todo-list", "notes-app", "bookmark-manager", "search-results", "kanban-empty-column", "any-list-app"]
+    },
+    {
+      "id": "ui.column",
+      "name": "Column",
+      "category": "ui",
+      "path": "ui/layout/Column.js",
+      "exports": ["Column"],
+      "status": "ready",
+      "summary": "Kanban-style swimlane with header (title + count + slot), scrollable body, and optional + Add footer button. Width 280px desktop / 280px mobile-swipe.",
+      "tags": ["column", "kanban", "swimlane", "layout", "miniapp", "productivity"],
+      "contracts": {
+        "constructor": "new Column({title, accent?, count?, onAdd?, addLabel?, target?})",
+        "slots": ["col.bodySlot — scrollable card stack", "col.headerSlot — right of title", "col.footerSlot — bottom row"],
+        "methods": ["setTitle(text)", "setCount(n)", "setAccent(color)", "setOnAdd(fn)"]
+      },
+      "goodFits": ["kanban-board", "project-board", "group-by-status", "task-buckets", "spreadsheet-columns", "any-board-app"]
+    },
+    {
+      "id": "ui.card",
+      "name": "Card",
+      "category": "ui",
+      "path": "ui/data/Card.js",
+      "exports": ["Card"],
+      "status": "ready",
+      "summary": "Visual content card: optional image (16:9), title, subtitle, body, tag chips, trailing action row. Click handler ignores nested interactive children. <article> root for semantic grouping.",
+      "tags": ["card", "tile", "grid-item", "kanban-card", "miniapp", "productivity"],
+      "contracts": {
+        "constructor": "new Card({title, subtitle?, body?, image?, tags?, onClick?, target?})",
+        "methods": ["setTitle(text)", "setSubtitle(text)", "setBody(text)", "setImage(urlOrHtml)", "setTags(strings[])", "setTrailing(node)"],
+        "slots": ["card.bodySlot — free-form area below body", "card.footerSlot — bottom-right action row"]
+      },
+      "goodFits": ["kanban-board", "recipe-book", "portfolio", "product-grid", "movie-watchlist", "bookmark-grid"]
+    },
+    {
+      "id": "ui.tag-chip",
+      "name": "TagChip",
+      "category": "ui",
+      "path": "ui/data/TagChip.js",
+      "exports": ["TagChip"],
+      "status": "ready",
+      "summary": "Small colored pill for tags, categories, statuses. Variants: success/warning/danger/neutral. Optional custom color, optional dismissible × button, optional click handler.",
+      "tags": ["tag", "chip", "pill", "badge", "label", "miniapp", "productivity"],
+      "contracts": {
+        "constructor": "new TagChip({label, color?, variant?, showDot?, dismissible?, onClick?, onDismiss?, target?})",
+        "variants": "success | warning | danger | neutral",
+        "methods": ["setLabel(text)", "setColor(hex)", "setVariant(name)"]
+      },
+      "goodFits": ["bookmark-tags", "expense-categories", "status-pills", "skill-tags", "recipe-diet-badges", "filter-chips"]
+    },
+    {
+      "id": "ui.data-table",
+      "name": "DataTable",
+      "category": "ui",
+      "path": "ui/data/DataTable.js",
+      "exports": ["DataTable"],
+      "status": "ready",
+      "summary": "Sortable tabular display. Column config (key, label, width, align, sortable, render?), row click handler, empty state. Tabular-numeric alignment on right-aligned columns. Sticky header.",
+      "tags": ["table", "data-table", "list", "rows", "miniapp", "productivity"],
+      "contracts": {
+        "constructor": "new DataTable({columns:[{key,label,width?,align?,sortable?,render?}], rows:[{key:value}], onRowClick?, emptyText?, initialSort?, target?})",
+        "methods": ["setColumns(cols)", "setRows(rows)", "setSort(key, dir)"],
+        "renderContract": "column.render(value, row) -> string or DOM Node. Use for currency, dates, badges, action buttons."
+      },
+      "goodFits": ["expense-tracker", "invoice-generator", "crm-contacts", "crypto-watchlist", "leaderboard", "any-data-rows-app"]
+    },
+    {
+      "id": "ui.donut-chart",
+      "name": "DonutChart",
+      "category": "ui",
+      "path": "ui/data/DonutChart.js",
+      "exports": ["DonutChart"],
+      "status": "ready",
+      "summary": "Categorical breakdown SVG donut with center label/subtitle and optional legend. Auto-palette if colors not specified per slice. Pure SVG, no chart libs needed.",
+      "tags": ["chart", "donut", "pie", "breakdown", "stats", "miniapp", "productivity"],
+      "contracts": {
+        "constructor": "new DonutChart({data:[{label, value, color?}], centerLabel?, centerSubtitle?, size?, thickness?, showLegend?, valueFormat?, onSliceClick?, target?})",
+        "methods": ["setData(slices)", "setCenterLabel(text)", "setCenterSubtitle(text)"],
+        "valueFormat": "Function (value) => string for legend + slice tooltips. Default String(value)."
+      },
+      "goodFits": ["expense-tracker", "time-tracking", "polls", "category-stats", "budget-breakdown", "any-categorical-summary"]
     }
   ],
   "compositionRecipes": [
@@ -3855,6 +4082,119 @@
       ]
     },
     {
+      "id": "recipe.cribbage",
+      "name": "Cribbage Card Game",
+      "cloneTarget": "2-player Cribbage with pegging and show scoring",
+      "brandedAs": "Cribbage",
+      "promptName": "Cribbage clone (You vs CPU, peg to 121)",
+      "keywords": [
+        "cribbage",
+        "crib",
+        "pegging",
+        "his nobs",
+        "his knobs",
+        "fifteen two",
+        "go for 31",
+        "peg board",
+        "peg to 121",
+        "card scoring runs"
+      ],
+      "templateIDs": [],
+      "existingGames": [
+        "cribbage"
+      ],
+      "starterComponents": [
+        "ui.mini-header",
+        "core.turn-based-manager",
+        "entities.card",
+        "entities.deck",
+        "ui.scoreboard",
+        "resources.swatches",
+        "resources.audio-manager"
+      ],
+      "plannedNext": [
+        "entities.cribbage-rules",
+        "ui.peg-board"
+      ],
+      "requiredComponents": [
+        "core.turn-based-manager",
+        "entities.card",
+        "entities.deck",
+        "ui.mini-header",
+        "ui.scoreboard"
+      ],
+      "optionalComponents": [
+        "resources.audio-manager",
+        "resources.swatches"
+      ],
+      "assemblyNotes": [
+        "Cribbage rules inline: hand-deal (6 each, discard 2 to crib), pegging phase (count to 31 scoring 15s/pairs/runs/go), show phase scoring (15s/pairs/runs/flushes/his-nobs).",
+        "The crib alternates per hand - non-dealer's discards belong to dealer this hand, dealer alternates next hand.",
+        "First to 121 pegs wins. Track player+CPU pegs in ScoreBoard.",
+        "Display: both hands face-up at show phase; CPU's discards into crib stay hidden until show.",
+        "See examples/cribbage/ for a reference assembly using these Lego pieces with inline rules.",
+        "Use a visible peg board on the side (2 tracks, 121 holes each); animate peg advance as scoring happens."
+      ]
+    },
+    {
+      "id": "recipe.spades",
+      "name": "Spades Card Game",
+      "cloneTarget": "4-player partnership Spades to 500",
+      "brandedAs": "Spades",
+      "promptName": "Spades clone (You + 3 CPU partners, bid + trick-take)",
+      "keywords": [
+        "spades",
+        "spade game",
+        "trick taking",
+        "bid spades",
+        "nil bid",
+        "partnership trick",
+        "spades trump",
+        "follow suit",
+        "trick winner",
+        "4 player cards"
+      ],
+      "templateIDs": [],
+      "existingGames": [
+        "spades"
+      ],
+      "starterComponents": [
+        "ui.mini-header",
+        "core.turn-based-manager",
+        "entities.card",
+        "entities.deck",
+        "ui.scoreboard",
+        "resources.swatches",
+        "resources.audio-manager"
+      ],
+      "plannedNext": [
+        "entities.spades-rules",
+        "ui.trick-table"
+      ],
+      "requiredComponents": [
+        "core.turn-based-manager",
+        "entities.card",
+        "entities.deck",
+        "ui.mini-header",
+        "ui.scoreboard"
+      ],
+      "optionalComponents": [
+        "resources.audio-manager",
+        "resources.swatches"
+      ],
+      "assemblyNotes": [
+        "Spades is a 4-player partnership trick-taking game (You+North vs East+West).",
+        "Each hand: deal 13 cards each, each player bids 0-13 expected tricks (nil = 0 with special bonus/penalty).",
+        "Play 13 tricks following suit when possible; spades always trump.",
+        "Scoring per partnership: bidsMet => +10*bid + 1*overtricks; bidMissed => -10*bid; nilSuccess +100, nilFailure -100. Spade bag penalty optional.",
+        "Game to 500 (or first partnership to reach it).",
+        "Display: your 13 cards along bottom, current trick in center (4 cards labeled by seat), bid pills, partnership scores, who-leads marker.",
+        "See examples/spades/ for a reference using TurnBasedManager + Deck/Card with inline rules.",
+        "CARD SIZING (REQUIRED): user-hand cards must be 100-110px wide x 140-156px tall on desktop, 72-78px x 100-110px on mobile (640px width breakpoint). Opponent face-down backs tiny (28-40px wide) so they never dominate. Trick-center cards medium (78x110px desktop, 56x78px mobile). User feedback 2026-05-15: tiny 48x68px cards are unreadable; the user's own hand at the bottom is the focal point and must be clearly visible.",
+        "DO NOT include Hearts mechanics in Spades: no Pass Left phase, no 2-of-Clubs first lead, no Queen-of-Spades penalty, no Hearts Broken flag. The trump suit is SPADES; the broken flag is SPADES BROKEN."
+      ]
+    },
+    {
       "id": "recipe.checkers",
       "name": "Checkers Clone",
       "cloneTarget": "Checkers / Draughts board game",
@@ -4268,6 +4608,331 @@
         "ui.mute-toggle"
       ],
       "optionalComponents": []
+    },
+    {
+      "id": "recipe.todo-list",
+      "name": "Todo List App",
+      "cloneTarget": "Todoist-style task list with add/check/delete, filter All/Active/Done, and persistent storage",
+      "brandedAs": "TaskFlow",
+      "promptName": "Todoist clone called TaskFlow",
+      "keywords": [
+        "todo list",
+        "todo app",
+        "todo web app",
+        "todo list web app",
+        "todoist clone",
+        "task list",
+        "task tracker",
+        "task management",
+        "to-do list",
+        "to do list",
+        "checklist app",
+        "things to do",
+        "task organizer",
+        "build a todo",
+        "build me a todo",
+        "tasks app"
+      ],
+      "templateIDs": [],
+      "existingApps": ["todoist", "things-3", "microsoft-todo"],
+      "starterComponents": [
+        "ui.app-shell",
+        "ui.button",
+        "ui.text-input",
+        "ui.checkbox",
+        "ui.list-item",
+        "ui.empty-state"
+      ],
+      "assemblyNotes": [
+        "Layout: AppShell with title 'Tasks', the add-task TextInput in the header slot, the task list as <ul> of ListItem rows in the main slot, and EmptyState shown when zero tasks.",
+        "Add flow: TextInput with onSubmit handler — receives the typed value, push to state, clear the input, focus stays in input for rapid entry. NEVER lose focus on submit.",
+        "Each task row: ListItem with a Checkbox in the leading slot, primary text = task title, optional secondary = due date, trailing = a small ghost Button with × to delete.",
+        "Toggle done: Checkbox.onChange flips a `done` flag on the task. The Checkbox's built-in strikeOnCheck handles the line-through visual — do not add your own.",
+        "Filter tabs (All / Active / Done): three Button instances with variant='ghost' that swap to variant='primary' when active. Render the filtered list each click.",
+        "Counter: show 'N tasks left' below the list using a plain <p> with --mchat-text color. Update on every state mutation.",
+        "Persistence: store the array in localStorage under key 'taskflow.tasks'. Load on init, write on every mutation. Use window.mChatAI.storage if available, else localStorage.",
+        "EmptyState: title 'No tasks yet', subtitle 'Type above and press Enter to add your first task.', no CTA (the input is the CTA).",
+        "Do NOT build a custom drag-and-drop reordering UI in v1 — keep order = insertion order. Reorder is a v2 feature, premature in the foundation pass.",
+        "Mobile: full-bleed AppShell, sidebar collapses automatically via the built-in 720px breakpoint."
+      ],
+      "requiredComponents": [
+        "ui.button",
+        "ui.text-input",
+        "ui.checkbox",
+        "ui.list-item"
+      ],
+      "optionalComponents": [
+        "ui.app-shell",
+        "ui.empty-state"
+      ]
+    },
+    {
+      "id": "recipe.notes-app",
+      "name": "Notes App",
+      "cloneTarget": "Bear/Apple-Notes-style note app with sidebar list + editor pane and search",
+      "brandedAs": "Quick Notes",
+      "promptName": "Apple-Notes clone called Quick Notes",
+      "keywords": [
+        "notes app",
+        "notes web app",
+        "note taking",
+        "note-taking app",
+        "note-taking",
+        "build a notes",
+        "build me a notes",
+        "build notes",
+        "sidebar list of notes",
+        "apple notes clone",
+        "bear notes clone",
+        "notepad app",
+        "quick notes",
+        "note editor",
+        "sticky notes app",
+        "markdown notes",
+        "note keeping app",
+        "personal notes app"
+      ],
+      "templateIDs": [],
+      "existingApps": ["apple-notes", "bear", "simplenote"],
+      "starterComponents": [
+        "ui.app-shell",
+        "ui.text-input",
+        "ui.list-item",
+        "ui.button",
+        "ui.empty-state"
+      ],
+      "assemblyNotes": [
+        "Layout: AppShell with the note list as a <ul> of ListItem in the sidebarSlot, a TextInput at the top of mainSlot for the note title, and a <textarea> below it for the body.",
+        "Search: TextInput with placeholder 'Search notes…' mounted in the header slot. onInput filters the visible ListItem rows by title or body match (case-insensitive).",
+        "Sidebar rows: ListItem with primary=title, secondary=first 60 chars of body, onClick selects the note. Set active=true on the selected row, false on others.",
+        "Add note: a primary Button '+ New Note' in the sidebar header. Creates {id, title:'', body:'', createdAt: Date.now()}, selects it, focuses the title input.",
+        "Save: debounce 300ms on every keystroke in title or body, write the full notes array to localStorage under 'quicknotes.notes'.",
+        "Empty pane: when there are zero notes, show EmptyState in mainSlot with title 'No notes yet' and CTA 'Add your first note' that triggers the same handler as the + button.",
+        "When the user selects a note, render its title + body into the inputs. When they edit, update the in-memory note and re-render only the affected sidebar row's primary/secondary (do not re-render the whole list, breaks input focus).",
+        "Delete: a small ghost Button with 🗑 in mainSlot top-right. Confirm with `if (confirm('Delete this note?'))` (skip a modal in v1 — Modal exists for future use)."
+      ],
+      "requiredComponents": [
+        "ui.app-shell",
+        "ui.text-input",
+        "ui.list-item",
+        "ui.button"
+      ],
+      "optionalComponents": [
+        "ui.empty-state"
+      ]
+    },
+    {
+      "id": "recipe.bookmark-manager",
+      "name": "Bookmark Manager",
+      "cloneTarget": "Raindrop-style bookmark catalog with grid cards, tags, and add-via-modal",
+      "brandedAs": "Bookshelf",
+      "promptName": "Raindrop clone called Bookshelf",
+      "keywords": [
+        "bookmark manager",
+        "bookmark app",
+        "bookmark web app",
+        "bookmarks web app",
+        "bookmark organizer",
+        "raindrop clone",
+        "pocket clone",
+        "save links app",
+        "link library",
+        "url collection",
+        "read later app",
+        "bookmark catalog",
+        "build a bookmark",
+        "build me a bookmark"
+      ],
+      "templateIDs": [],
+      "existingApps": ["raindrop", "pocket", "pinboard"],
+      "starterComponents": [
+        "ui.app-shell",
+        "ui.modal",
+        "ui.button",
+        "ui.text-input",
+        "ui.list-item",
+        "ui.empty-state"
+      ],
+      "assemblyNotes": [
+        "Layout: AppShell with tag list as ListItem rows in sidebarSlot, bookmark grid in mainSlot. Header slot holds a search TextInput and a primary Button '+ Add Bookmark'.",
+        "Bookmark card: render each bookmark as ListItem with leading=favicon (use https://www.google.com/s2/favicons?domain=<host>&sz=32), primary=title, secondary=hostname, trailing=ghost Button × delete. Use multiline=true so titles wrap.",
+        "Add flow: + Add Bookmark opens a Modal titled 'Add bookmark'. Body has 3 stacked TextInputs (label, URL, tags comma-separated) and a save primary Button in footerSlot. On save, parse host from URL, push {id, title, url, host, tags:[], createdAt}, close modal, clear inputs.",
+        "Tag sidebar: ListItem rows with leading=• and trailing=count. Click filters mainSlot to bookmarks containing that tag. Use a synthetic 'All' row at top.",
+        "Search: TextInput in header slot, onInput filters the visible bookmark grid by title or host or tag (case-insensitive substring).",
+        "Empty: EmptyState in mainSlot when zero bookmarks. Title 'No bookmarks yet', subtitle 'Click + Add Bookmark to save your first link', CTA reuses the modal opener.",
+        "Persistence: localStorage 'bookshelf.bookmarks' (array). Load on init, write on every mutation."
+      ],
+      "requiredComponents": [
+        "ui.app-shell",
+        "ui.modal",
+        "ui.button",
+        "ui.text-input",
+        "ui.list-item"
+      ],
+      "optionalComponents": [
+        "ui.empty-state"
+      ]
+    },
+    {
+      "id": "recipe.pomodoro-timer",
+      "name": "Pomodoro Timer",
+      "cloneTarget": "Classic 25/5/15 Pomodoro timer with big circular countdown, controls, and session history",
+      "brandedAs": "Focus Tomato",
+      "promptName": "Pomodoro timer called Focus Tomato",
+      "keywords": [
+        "pomodoro",
+        "pomodoro timer",
+        "pomodoro web app",
+        "pomodoro app",
+        "focus timer",
+        "25 minute timer",
+        "productivity timer",
+        "study timer",
+        "work timer",
+        "tomato timer",
+        "deep work timer",
+        "build a pomodoro",
+        "build me a pomodoro"
+      ],
+      "templateIDs": [],
+      "existingApps": ["be-focused", "forest", "pomofocus"],
+      "starterComponents": [
+        "ui.timer-ring",
+        "ui.button",
+        "ui.list-item",
+        "ui.empty-state"
+      ],
+      "assemblyNotes": [
+        "Layout: centered single-column. Big TimerRing (size 280) at top, three Button controls below (Start, Pause, Reset), then a session history list as <ul> of ListItem rows. No AppShell — this is a single-purpose tool.",
+        "Modes: cycle through Focus(25min) → ShortBreak(5min) → Focus → Focus → Focus → LongBreak(15min) → repeat. Show the current mode as TimerRing's caption ('FOCUS', 'BREAK', 'LONG BREAK').",
+        "Auto-advance: when TimerRing.onComplete fires, push the completed session to history, switch to the next mode, reset the ring with the new total, do NOT auto-start (let user press Start — surprise-start is a known anti-pattern).",
+        "Controls: Start=primary, Pause=secondary, Reset=ghost. Toggle Start↔Pause labels based on ring.isRunning(). Reset stops the ring and rewinds to the current mode's total.",
+        "Session history: each completed focus session appends a ListItem with primary='Focus — 25:00', secondary=time-of-day (e.g. '2:14 PM'), leading=🍅 emoji. Cap at 12 most-recent entries.",
+        "Empty history: EmptyState 'No sessions yet' / 'Press Start to begin your first 25-minute focus.', no CTA (the Start button is the CTA).",
+        "Notifications: if window.Notification && Notification.permission === 'granted', fire Notification('Focus complete') on each completion. Request permission lazily on first Start click, not on page load.",
+        "Audio cue: a short beep (Web Audio API oscillator, 880Hz for 200ms) on session complete. Respect a muted state in localStorage 'tomato.muted'.",
+        "Persistence: store today's session count in localStorage 'tomato.today.YYYY-MM-DD'. Show 'N completed today' under the ring."
+      ],
+      "requiredComponents": [
+        "ui.timer-ring",
+        "ui.button",
+        "ui.list-item",
+        "ui.empty-state"
+      ],
+      "optionalComponents": []
+    },
+    {
+      "id": "recipe.kanban-board",
+      "name": "Kanban Board",
+      "cloneTarget": "Trello-style kanban board with columns, draggable cards, and detail modal",
+      "brandedAs": "TaskLanes",
+      "promptName": "Trello clone called TaskLanes",
+      "keywords": [
+        "kanban",
+        "kanban board",
+        "trello clone",
+        "trello-style",
+        "project board",
+        "task board",
+        "todo board",
+        "drag drop tasks",
+        "swimlanes",
+        "scrum board",
+        "agile board",
+        "build a kanban",
+        "build me a kanban",
+        "card board app",
+        "task columns"
+      ],
+      "templateIDs": [],
+      "existingApps": ["trello", "asana-board", "github-projects"],
+      "starterComponents": [
+        "ui.app-shell",
+        "ui.column",
+        "ui.card",
+        "ui.button",
+        "ui.text-input",
+        "ui.modal",
+        "ui.empty-state"
+      ],
+      "assemblyNotes": [
+        "Layout: AppShell with the board area in mainSlot. The board is a horizontal flex row of Column elements that scrolls horizontally on mobile.",
+        "Each Column has title + accent color + count + a + Add Card footer. Set onAdd to open the add-card flow (inline TextInput or Modal — prefer inline for speed).",
+        "Cards: Card with title (task name), subtitle (assignee/due date), body (description), tags (array of label strings). onClick opens a detail Modal.",
+        "Detail Modal: editable title TextInput, description textarea, status select (which column to move to), Save + Delete buttons. Persist on Save.",
+        "Move card between columns: in v1, use a 'Move to →' button on the card that cycles to next column. Drag-drop is a v2 feature; do NOT attempt HTML5 drag-drop here (it's brittle on iOS Safari).",
+        "Default columns: Backlog, To Do, In Progress, Done. Let users add/remove columns in v2 — v1 ships with these 4 fixed.",
+        "Persistence: localStorage 'tasklanes.board' = {columns: [...], cards: [...]}. Load on init, write on every mutation.",
+        "Empty column: EmptyState inside the column bodySlot when zero cards. Subtitle: 'No cards yet — click + Add Card'.",
+        "Mobile: AppShell handles sidebar collapse; the column row scrolls horizontally with momentum (touch-action: pan-x)."
+      ],
+      "requiredComponents": [
+        "ui.column",
+        "ui.card",
+        "ui.button",
+        "ui.text-input",
+        "ui.modal",
+        "ui.empty-state"
+      ],
+      "optionalComponents": [
+        "ui.app-shell"
+      ]
+    },
+    {
+      "id": "recipe.expense-tracker",
+      "name": "Expense Tracker",
+      "cloneTarget": "Mint-style expense logger with form, sortable table, and category donut chart",
+      "brandedAs": "Spendwise",
+      "promptName": "Mint clone called Spendwise",
+      "keywords": [
+        "expense tracker",
+        "expense logger",
+        "spending tracker",
+        "budget tracker",
+        "money tracker",
+        "expense app",
+        "mint clone",
+        "spending log",
+        "personal finance",
+        "build an expense",
+        "build me an expense",
+        "track my spending",
+        "expense web app"
+      ],
+      "templateIDs": [],
+      "existingApps": ["mint", "ynab", "buxfer"],
+      "starterComponents": [
+        "ui.app-shell",
+        "ui.modal",
+        "ui.button",
+        "ui.text-input",
+        "ui.data-table",
+        "ui.donut-chart",
+        "ui.tag-chip",
+        "ui.empty-state"
+      ],
+      "assemblyNotes": [
+        "Layout: AppShell title 'Spendwise', monthly summary at top of mainSlot (DonutChart on left + 'this month' KPI text on right), then the DataTable of expenses below.",
+        "Add flow: + Add Expense Button (primary) in header slot opens a Modal with 4 stacked TextInputs: date (type='date'), category (select-from-existing or new), amount (type='number'), note. Save button persists and closes.",
+        "DataTable columns: date (sortable), category (renders as TagChip with category color), amount (right-aligned, sortable, formatted as $X.XX), note (truncated), trailing × delete button.",
+        "DonutChart: data computed from the current month's expenses grouped by category. centerLabel = $TOTAL.XX, centerSubtitle = 'this month'. Use TagChip color for slice color (consistent palette).",
+        "Category colors: deterministic from category name (hash → palette index). Pass the same color to TagChip and DonutChart so they match visually.",
+        "Month switcher: prev/next month buttons in header slot; default = current month. State key 'spendwise.viewMonth' = 'YYYY-MM'.",
+        "Persistence: localStorage 'spendwise.expenses' = array of {id, date, category, amount, note}.",
+        "Empty: EmptyState in mainSlot when zero expenses this month, with CTA 'Add expense' that opens the Modal."
+      ],
+      "requiredComponents": [
+        "ui.modal",
+        "ui.button",
+        "ui.text-input",
+        "ui.data-table",
+        "ui.donut-chart",
+        "ui.tag-chip",
+        "ui.empty-state"
+      ],
+      "optionalComponents": [
+        "ui.app-shell"
+      ]
     }
   ],
   "sourceCatalogs": [
@@ -4998,6 +5663,117 @@
       "notes": [
         "Self-contained single-file template \u2014 no separate .css or .js files. Marker stamped.",
         "Canonical wiring: 4x4 letter grid with random distribution, pointer drag to trace adjacent cells (8-direction), backtrack support, dictionary check on commit, found-words tray."
+      ]
+    },
+    {
+      "id": "assembly.notes-app-quicknotes.foundation-lego",
+      "name": "Quick Notes Apple-Notes Golden Assembly",
+      "summary": "Runnable Apple-Notes clone branded as Quick Notes. AppShell sidebar + editor pane; TextInput search in header; + New Note creates+selects+focuses; auto-save on each keystroke via localStorage / window.mChatAI.storage.",
+      "recipeID": "recipe.notes-app",
+      "templateIDs": [],
+      "keywords": ["notes app", "note taking", "apple notes", "notepad", "quick notes"],
+      "files": [
+        "examples/notes-app-quicknotes/index.html",
+        "examples/notes-app-quicknotes/quicknotes.css",
+        "examples/notes-app-quicknotes/main.js"
+      ],
+      "notes": [
+        "Canonical wiring for a notes app: AppShell with sidebar (list of ListItem) + main (TextInput title + <textarea> body + delete Button) + header search TextInput.",
+        "Live editing keeps the sidebar row synced (primary=title, secondary=body preview)."
+      ]
+    },
+    {
+      "id": "assembly.bookmark-manager-bookshelf.foundation-lego",
+      "name": "Bookshelf Raindrop Golden Assembly",
+      "summary": "Runnable Raindrop clone branded as Bookshelf. AppShell with tag sidebar + bookmark grid + add Modal (label/URL/tags). Favicons via Google s2; tag chips on each row; search and tag-filter.",
+      "recipeID": "recipe.bookmark-manager",
+      "templateIDs": [],
+      "keywords": ["bookmark manager", "bookmark app", "raindrop", "pocket", "save links"],
+      "files": [
+        "examples/bookmark-manager-bookshelf/index.html",
+        "examples/bookmark-manager-bookshelf/bookshelf.css",
+        "examples/bookmark-manager-bookshelf/main.js"
+      ],
+      "notes": [
+        "Canonical wiring for a list-with-modal-add productivity app: AppShell + Modal containing stacked TextInput fields + footer Save/Cancel Buttons.",
+        "Tag chips are rendered inline inside the ListItem via querySelector(.mchatai-list-item__text).appendChild — pattern reusable for any row that needs a metadata strip."
+      ]
+    },
+    {
+      "id": "assembly.pomodoro-focus-tomato.foundation-lego",
+      "name": "Focus Tomato Pomodoro Golden Assembly",
+      "summary": "Runnable Pomodoro timer branded as Focus Tomato. TimerRing 280px + Start/Reset/Mute Button row + session history list. Cycle Focus(25)→Short(5)×4→Long(15). Beep + Notification on complete. Today counter persisted to localStorage.",
+      "recipeID": "recipe.pomodoro-timer",
+      "templateIDs": [],
+      "keywords": ["pomodoro", "pomodoro timer", "focus timer", "25 minute", "tomato timer"],
+      "files": [
+        "examples/pomodoro-focus-tomato/index.html",
+        "examples/pomodoro-focus-tomato/focus-tomato.css",
+        "examples/pomodoro-focus-tomato/main.js"
+      ],
+      "notes": [
+        "Canonical wiring for a single-purpose timer tool: no AppShell, centered TimerRing, Button row, ListItem history.",
+        "Notification permission request happens inside the Start click handler (a user gesture) per Safari/Chrome requirements."
+      ]
+    },
+    {
+      "id": "assembly.kanban-board-tasklanes.foundation-lego",
+      "name": "TaskLanes Trello Golden Assembly",
+      "summary": "Runnable Trello-style kanban clone branded as TaskLanes. AppShell + horizontal row of Columns (Backlog/Todo/Doing/Done) with Cards. Click card opens edit Modal with move-to-column buttons. Inline + Add card per column. localStorage persistence.",
+      "recipeID": "recipe.kanban-board",
+      "templateIDs": [],
+      "keywords": ["kanban", "kanban board", "trello", "project board", "task board"],
+      "files": [
+        "examples/kanban-board-tasklanes/index.html",
+        "examples/kanban-board-tasklanes/tasklanes.css",
+        "examples/kanban-board-tasklanes/main.js"
+      ],
+      "notes": [
+        "Canonical wiring for a board-style productivity app: AppShell with main pane only (no sidebar), board container is a horizontal flex row of Column elements, each Column contains a vertical stack of Cards.",
+        "Move-between-columns via the detail Modal's per-column buttons (v1). Drag-drop is deliberately deferred — too brittle on iOS Safari to ship without dedicated testing.",
+        "Sidebar slot is hidden via style.display='none' + grid-template-columns rewrite — for any single-pane productivity app that wants AppShell's header but not its sidebar."
+      ]
+    },
+    {
+      "id": "assembly.expense-tracker-spendwise.foundation-lego",
+      "name": "Spendwise Mint Golden Assembly",
+      "summary": "Runnable Mint-style expense tracker branded as Spendwise. AppShell + summary (DonutChart + $TOTAL) + DataTable of expenses + Add Modal. Category chips share color with donut slices via stable hash. Month nav. localStorage persistence.",
+      "recipeID": "recipe.expense-tracker",
+      "templateIDs": [],
+      "keywords": ["expense tracker", "expense logger", "spending tracker", "mint", "budget tracker"],
+      "files": [
+        "examples/expense-tracker-spendwise/index.html",
+        "examples/expense-tracker-spendwise/spendwise.css",
+        "examples/expense-tracker-spendwise/main.js"
+      ],
+      "notes": [
+        "Canonical wiring for a data-input + table + chart productivity app: DataTable with column.render returning DOM nodes (TagChip for category, $-formatted amount, delete Button).",
+        "Pattern: deterministic category color via hash → palette so TagChip and DonutChart slice match visually. Reuse this in any app with user-named categorical labels (recipes by tag, contacts by group, etc.).",
+        "Month navigation pattern: prev/next ghost Buttons + a label. State key '<app>.viewMonth' persisted in localStorage."
+      ]
+    },
+    {
+      "id": "assembly.todo-list-taskflow.foundation-lego",
+      "name": "TaskFlow Todoist Golden Assembly",
+      "summary": "Runnable Todoist clone branded as TaskFlow, composed from Button + TextInput + Checkbox + ListItem + EmptyState foundation Lego. Add/check/delete, filter All/Active/Done, persistent storage via localStorage or window.mChatAI.storage.",
+      "recipeID": "recipe.todo-list",
+      "templateIDs": [],
+      "keywords": [
+        "todo list",
+        "todo app",
+        "task list",
+        "todoist",
+        "task tracker"
+      ],
+      "files": [
+        "examples/todo-list-taskflow/index.html",
+        "examples/todo-list-taskflow/taskflow.css",
+        "examples/todo-list-taskflow/main.js"
+      ],
+      "notes": [
+        "Use this as the canonical wiring example for a productivity todo list: TextInput at top with Enter-to-add, list of ListItem rows with leading Checkbox + trailing \u00d7 Button, filter row of variant-swapping ghost/primary Buttons, EmptyState when zero tasks, footer counter + Clear Completed action.",
+        "Persistence prefers window.mChatAI.storage when available; falls back to localStorage so the example runs standalone in any browser.",
+        "First Lego golden assembly that uses only ui/* foundation components (no entities, no core engines). All future productivity recipes (notes, bookmarks, kanban, etc.) should follow this same shape."
       ]
     }
   ]

@@ -1,0 +1,331 @@
+/*
+ * Spades Lego example - 4-player partnership.
+ * You + 3 CPU. North is your partner. Game to 500.
+ */
+
+:root {
+  --sp-bg: #0a1322;
+  --sp-felt: #163a5e;
+  --sp-felt-deep: #0c2540;
+  --sp-rail: #1f4a78;
+  --sp-text: #fff8e8;
+  --sp-muted: #b8c8d8;
+  --sp-line: rgba(255, 255, 255, 0.16);
+  --sp-accent: #facc15;
+  --sp-red: #dc2626;
+  --sp-black: #111827;
+  --sp-ns: #38bdf8;
+  --sp-ew: #f59e0b;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  color: var(--sp-text);
+  background:
+    radial-gradient(circle at 30% 0%, rgba(56, 189, 248, 0.18), transparent 22rem),
+    linear-gradient(160deg, #050a14, var(--sp-bg));
+  font-family: "Avenir Next", "Trebuchet MS", system-ui, sans-serif;
+}
+
+button { font: inherit; }
+
+.spades-shell {
+  width: min(1100px, 100%);
+  margin: 0 auto;
+  padding: 12px;
+  display: grid;
+  gap: 12px;
+}
+
+.table {
+  padding: 14px;
+  border-radius: 14px;
+  background:
+    radial-gradient(circle at 50% 8%, rgba(255, 255, 255, 0.08), transparent 20rem),
+    linear-gradient(160deg, var(--sp-felt), var(--sp-felt-deep));
+  box-shadow: inset 0 0 0 5px var(--sp-rail);
+}
+
+.hud {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) repeat(4, minmax(80px, 130px));
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.hud-card {
+  background: rgba(0, 0, 0, 0.32);
+  border: 1px solid var(--sp-line);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 12px;
+  color: var(--sp-muted);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.hud-card strong { color: var(--sp-accent); font-size: 16px; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+.scores {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.score-row {
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--sp-line);
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 13px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.score-row span:last-child {
+  color: var(--sp-accent);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.board {
+  display: grid;
+  grid-template-areas:
+    ".    north  .   "
+    "west center east"
+    ".    you    .   ";
+  grid-template-columns: 1fr 2fr 1fr;
+  grid-template-rows: auto 1fr auto;
+  gap: 10px;
+  padding: 12px;
+  min-height: 320px;
+}
+
+.seat {
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--sp-line);
+  border-radius: 8px;
+  padding: 10px;
+  text-align: center;
+}
+
+.seat-north { grid-area: north; }
+.seat-west  { grid-area: west; align-self: center; }
+.seat-east  { grid-area: east; align-self: center; }
+.seat-you   { grid-area: you; }
+
+.seat.active { border-color: var(--sp-accent); box-shadow: 0 0 0 1px var(--sp-accent); }
+.seat.partner { background: rgba(56, 189, 248, 0.08); }
+
+.seat-label { font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--sp-muted); margin-bottom: 4px; }
+.seat-bid { font-size: 14px; color: var(--sp-accent); font-weight: 700; }
+.seat-tricks { font-size: 11px; color: var(--sp-muted); }
+
+/* Opponent fan — tiny stack of card backs by each seat label.
+   Stays informational; user's bottom hand dominates the screen. */
+.opponent-fan {
+  display: flex;
+  justify-content: center;
+  gap: 0;
+  margin-top: 6px;
+  min-height: 40px;
+}
+
+.trick-center {
+  grid-area: center;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px dashed var(--sp-line);
+  border-radius: 12px;
+  min-height: 140px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px;
+}
+
+.trick-center .played-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.trick-center .played-seat {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--sp-muted);
+}
+
+/*
+ * Card-sizing UX rule for trick-taking games (user feedback 2026-05-15):
+ *  - Your own hand at the bottom must be LARGE and clearly readable, even
+ *    on mobile — those cards are what you're acting on.
+ *  - Opponents' hands belong in the seat areas as SMALL fanned card backs
+ *    (or just a count badge) — they're informational, not interactive,
+ *    and should never dominate the screen.
+ *  - Currently-played trick cards in the center sit between those two
+ *    sizes: clearly visible but not as big as your hand.
+ *
+ *  Reference: Hearts mobile game where own cards are ~58px wide overlapping
+ *  along the bottom and the user can read every rank/suit while opponents
+ *  are tiny vertical stacks of backs by their seat label.
+ */
+
+/*
+ * User-feedback 2026-05-15 #2: the player's hand must take advantage of
+ * the FULL screen width. A 13-card hand should fan as one row on both
+ * desktop (~1280px) and mobile (~375px), not wrap into 3 narrow rows.
+ *
+ * The math: with cardWidth W and overlap O, the row width for N cards is
+ *   row = (N-1) * (W - O) + W
+ * Set W=108, O=72 on desktop -> 13 cards = 12*36 + 108 = 540px
+ * Set W=78,  O=54 on mobile  -> 13 cards = 12*24 + 78  = 366px (fits 375px viewport)
+ */
+.hand {
+  display: flex;
+  justify-content: center;
+  gap: 0;
+  padding: 12px 4px 6px;
+  flex-wrap: nowrap;
+  width: 100%;
+  overflow-x: visible; /* let the fan span edge-to-edge */
+}
+
+/* Default card sizing (the user's hand at the bottom). */
+.card {
+  width: 108px;
+  height: 152px;
+  border-radius: 9px;
+  background: #fdfdfb;
+  color: var(--sp-black);
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.45);
+  user-select: none;
+  cursor: pointer;
+  flex: 0 0 auto;
+  margin-right: -72px; /* aggressive overlap so 13 cards fit in one row */
+  transition: transform 0.12s, box-shadow 0.12s, margin 0.12s;
+}
+
+.hand .card:last-child { margin-right: 0; }
+.hand .card:not(.disabled):hover { transform: translateY(-14px); margin-right: -28px; z-index: 2; box-shadow: 0 10px 18px rgba(0, 0, 0, 0.6); }
+
+.card[data-color="red"] { color: var(--sp-red); }
+.card.disabled { opacity: 0.5; cursor: not-allowed; }
+
+.card .card-corner { position: absolute; display: flex; flex-direction: column; align-items: center; font-weight: 700; }
+.card .card-corner-tl { top: 8px; left: 10px; }
+.card .card-corner-br { bottom: 8px; right: 10px; transform: rotate(180deg); }
+.card .card-corner .rank { font-size: 20px; line-height: 1; }
+.card .card-corner .suit { font-size: 16px; line-height: 1; }
+.card .card-center { font-size: 50px; line-height: 1; }
+
+/*
+ * Opponent / face-down cards. ALWAYS smaller than your hand — these are
+ * informational. Used in trick-center too.
+ */
+.card[data-face-down="true"] {
+  width: 50px;
+  height: 70px;
+  background: linear-gradient(135deg, #1e3a8a, #0c1d4a);
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 12px;
+  font-weight: 700;
+  margin-right: -34px; /* dense stack for opponent fans */
+}
+
+.card[data-face-down="true"] .card-corner,
+.card[data-face-down="true"] .card-center { display: none; }
+
+/* Trick-center: medium-size, all 4 visible, no overlap. */
+.trick-center .card {
+  width: 78px;
+  height: 110px;
+  margin-right: 0;
+}
+.trick-center .card .card-corner .rank { font-size: 14px; }
+.trick-center .card .card-corner .suit { font-size: 11px; }
+.trick-center .card .card-center { font-size: 32px; }
+
+.bidding {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  justify-content: center;
+  padding: 8px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 8px;
+  border: 1px solid var(--sp-line);
+}
+
+.bid-label { font-size: 13px; color: var(--sp-muted); }
+
+.bid-buttons { display: flex; gap: 4px; flex-wrap: wrap; }
+.bid-buttons button {
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--sp-line);
+  color: var(--sp-text);
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+  min-width: 36px;
+}
+.bid-buttons button:hover { background: rgba(250, 204, 21, 0.18); border-color: var(--sp-accent); }
+
+.message {
+  text-align: center;
+  font-size: 13px;
+  color: var(--sp-muted);
+  margin: 10px 0;
+  min-height: 1.3em;
+}
+
+.actions { display: flex; gap: 8px; justify-content: center; }
+
+.actions button {
+  background: rgba(250, 204, 21, 0.25);
+  border: 1px solid var(--sp-accent);
+  color: var(--sp-accent);
+  padding: 9px 18px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  letter-spacing: 0.05em;
+}
+
+.actions button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+@media (max-width: 720px) {
+  /* User's hand stays generously readable on phones — fan to fit 375px. */
+  .hand .card { width: 78px; height: 110px; margin-right: -54px; border-radius: 7px; padding: 5px; }
+  .hand .card .card-corner-tl { top: 5px; left: 6px; }
+  .hand .card .card-corner-br { bottom: 5px; right: 6px; }
+  .hand .card .card-corner .rank { font-size: 16px; }
+  .hand .card .card-corner .suit { font-size: 12px; }
+  .hand .card .card-center { font-size: 34px; }
+
+  /* Opponent backs shrink further on mobile so own hand dominates. */
+  .card[data-face-down="true"] { width: 28px; height: 40px; margin-right: -22px; }
+
+  /* Trick-center cards stay medium so action is visible. */
+  .trick-center .card { width: 56px; height: 78px; }
+  .trick-center .card .card-corner .rank { font-size: 12px; }
+  .trick-center .card .card-center { font-size: 22px; }
+
+  /* Compact seat header text on phones. */
+  .seat-label { font-size: 10px; }
+  .seat-bid { font-size: 12px; }
+  .seat-tricks { font-size: 10px; }
+}

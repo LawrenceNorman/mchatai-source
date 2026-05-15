@@ -1,0 +1,260 @@
+/*
+ * Poker (Texas Hold'em) Lego example styles.
+ *
+ * Card sizing chosen DELIBERATELY larger than blackjack — user feedback
+ * 2026-05-15: "cards were a little small" on prior heads-up builds. The
+ * defaults here (110px x 156px) give clearly readable rank + suit at
+ * desktop sizes without overflowing a mid-size window. Mobile @media
+ * trims back to fit narrower viewports.
+ */
+
+:root {
+  --pk-bg: #061a10;
+  --pk-felt: #0e6b3f;
+  --pk-felt-deep: #08402a;
+  --pk-rail: #5a2e1a;
+  --pk-rail-shine: rgba(255, 220, 180, 0.18);
+  --pk-text: #fff8e8;
+  --pk-muted: #b6d1c3;
+  --pk-line: rgba(255, 255, 255, 0.16);
+  --pk-accent: #facc15;
+  --pk-red: #dc2626;
+  --pk-black: #111827;
+  --pk-chip: #f8e8c8;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  color: var(--pk-text);
+  background:
+    radial-gradient(circle at 50% 0%, rgba(250, 204, 21, 0.18), transparent 28rem),
+    radial-gradient(circle at 20% 90%, rgba(34, 197, 94, 0.12), transparent 24rem),
+    linear-gradient(160deg, #02100a, var(--pk-bg));
+  font-family: "Avenir Next", "Trebuchet MS", system-ui, sans-serif;
+}
+
+button { font: inherit; }
+
+.poker-shell {
+  width: min(960px, 100%);
+  margin: 0 auto;
+  padding: 12px;
+  display: grid;
+  gap: 12px;
+}
+
+.table {
+  padding: 16px;
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 50% 8%, rgba(255, 255, 255, 0.10), transparent 18rem),
+    linear-gradient(160deg, var(--pk-felt), var(--pk-felt-deep));
+  box-shadow: inset 0 0 0 6px var(--pk-rail), inset 0 0 0 8px var(--pk-rail-shine);
+}
+
+.hud {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) repeat(3, minmax(90px, 130px));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.hud-card {
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--pk-line);
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-size: 13px;
+  color: var(--pk-muted);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.hud-card strong {
+  color: var(--pk-accent);
+  font-size: 18px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.seat-zone {
+  background: rgba(0, 0, 0, 0.22);
+  border: 1px solid var(--pk-line);
+  border-radius: 14px;
+  padding: 12px;
+  margin-bottom: 12px;
+}
+
+.seat-header {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  margin-bottom: 8px;
+}
+
+.seat-header h2 {
+  margin: 0;
+  font-size: 16px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--pk-accent);
+}
+
+.seat-header .stack {
+  color: var(--pk-muted);
+  font-size: 13px;
+}
+
+.seat-header .stack strong {
+  color: var(--pk-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.seat-header .status {
+  margin-left: auto;
+  color: var(--pk-muted);
+  font-size: 12px;
+  font-style: italic;
+}
+
+.community-zone {
+  text-align: center;
+  margin-bottom: 12px;
+}
+
+.community-label {
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  color: var(--pk-muted);
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.cards {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  min-height: 156px;
+}
+
+/*
+ * CARD — larger than blackjack default. Rank + suit easily readable at
+ * normal desktop view distance.
+ */
+.card {
+  width: 110px;
+  height: 156px;
+  border-radius: 10px;
+  background: #fdfdfb;
+  color: var(--pk-black);
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(0, 0, 0, 0.05);
+  user-select: none;
+}
+
+.card[data-color="red"] { color: var(--pk-red); }
+
+.card .card-corner {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  font-weight: 700;
+}
+
+.card .card-corner-tl {
+  top: 8px;
+  left: 10px;
+}
+
+.card .card-corner-br {
+  bottom: 8px;
+  right: 10px;
+  transform: rotate(180deg);
+}
+
+.card .card-corner .rank {
+  font-size: 22px;
+  line-height: 1;
+}
+
+.card .card-corner .suit {
+  font-size: 18px;
+  line-height: 1;
+}
+
+.card .card-center {
+  font-size: 52px;
+  line-height: 1;
+}
+
+.card[data-face-down="true"] {
+  background:
+    repeating-linear-gradient(45deg, rgba(255,255,255,0.06) 0 6px, transparent 6px 12px),
+    linear-gradient(135deg, #6b2c1f, #2e120a);
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+}
+
+.message {
+  text-align: center;
+  font-size: 14px;
+  color: var(--pk-muted);
+  margin: 12px 0;
+  min-height: 1.3em;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.actions button {
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--pk-line);
+  color: var(--pk-text);
+  padding: 10px 18px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 14px;
+  letter-spacing: 0.05em;
+  transition: background 0.12s, border-color 0.12s, transform 0.05s;
+}
+
+.actions button:hover:not(:disabled) {
+  background: rgba(250, 204, 21, 0.18);
+  border-color: var(--pk-accent);
+}
+
+.actions button:active:not(:disabled) { transform: translateY(1px); }
+
+.actions button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+#dealButton {
+  background: rgba(250, 204, 21, 0.25);
+  border-color: var(--pk-accent);
+  color: var(--pk-accent);
+}
+
+@media (max-width: 640px) {
+  .card { width: 78px; height: 110px; }
+  .card .card-corner .rank { font-size: 16px; }
+  .card .card-corner .suit { font-size: 13px; }
+  .card .card-center { font-size: 36px; }
+  .hud { grid-template-columns: 1fr 1fr; }
+}

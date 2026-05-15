@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Texas Hold'em — Lego Assembly</title>
+    <link rel="stylesheet" href="./poker.css">
+    <script type="application/json" id="mchatai-web-components-used">
+      {
+        "recipe": "recipe.poker",
+        "components": [
+          "ui.mini-header",
+          "core.turn-based-manager",
+          "entities.card",
+          "entities.deck",
+          "entities.poker-hand-evaluator",
+          "ui.scoreboard",
+          "resources.swatches",
+          "resources.audio-manager"
+        ],
+        "mode": "module-imports",
+        "cloneTarget": "Texas Hold'em Poker",
+        "brandedAs": "Heads-Up Poker"
+      }
+    </script>
+  </head>
+  <body>
+    <main class="poker-shell" data-poker-app>
+      <header data-mini-header aria-label="App header"></header>
+
+      <section class="table" aria-label="Poker table">
+        <div class="hud">
+          <div id="scoreboard"></div>
+          <div class="hud-card">Pot <strong id="pot">0</strong></div>
+          <div class="hud-card">To call <strong id="toCall">0</strong></div>
+          <div class="hud-card">Phase <strong id="phase">Pre-flop</strong></div>
+        </div>
+
+        <div class="seat-zone opponent-zone">
+          <div class="seat-header">
+            <h2>CPU</h2>
+            <span class="stack">Stack <strong id="cpuStack">100</strong></span>
+            <span id="cpuStatus" class="status">Waiting…</span>
+          </div>
+          <div class="cards" id="cpuCards" aria-live="polite"></div>
+        </div>
+
+        <div class="community-zone">
+          <div class="community-label">Community</div>
+          <div class="cards community" id="communityCards" aria-live="polite"></div>
+        </div>
+
+        <div class="seat-zone player-zone">
+          <div class="seat-header">
+            <h2>You</h2>
+            <span class="stack">Stack <strong id="playerStack">100</strong></span>
+            <span id="playerStatus" class="status">Your move</span>
+          </div>
+          <div class="cards" id="playerCards" aria-live="polite"></div>
+        </div>
+
+        <p class="message" id="message" role="status" aria-live="polite">Press Deal to start a hand.</p>
+
+        <div class="actions">
+          <button id="dealButton" type="button">Deal</button>
+          <button id="checkButton" type="button">Check</button>
+          <button id="callButton" type="button">Call</button>
+          <button id="raiseButton" type="button">Raise</button>
+          <button id="foldButton" type="button">Fold</button>
+        </div>
+      </section>
+    </main>
+
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>
