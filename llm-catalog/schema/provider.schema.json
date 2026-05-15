@@ -1,0 +1,182 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/LawrenceNorman/mchatai-source/main/llm-catalog/schema/provider.schema.json",
+  "title": "Provider Catalog File",
+  "description": "Schema for a single mchatai-source/llm-catalog/providers/<id>.json file. Each file enumerates the LLM models available from one provider, including pricing, capabilities, and lifecycle status. Read by mChatAI+ (macOS + iOS), mchataiweb Cloud Functions, and LLMCostTracker at runtime.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "providerID",
+    "displayName",
+    "apiBaseURL",
+    "apiStyle",
+    "keychainKey",
+    "defaultModel",
+    "lastSyncedAt",
+    "syncSource",
+    "models"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "Optional schema pointer; convention is the relative path '../schema/provider.schema.json'."
+    },
+    "providerID": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$",
+      "minLength": 2,
+      "maxLength": 32,
+      "description": "Stable lowercase identifier. MUST match the filename: providers/<providerID>.json."
+    },
+    "displayName": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 80
+    },
+    "apiBaseURL": {
+      "type": "string",
+      "format": "uri",
+      "description": "The HTTPS endpoint used for chat completions. Provider-specific; not all are OpenAI-compatible."
+    },
+    "apiStyle": {
+      "type": "string",
+      "enum": ["anthropic", "openai", "google", "ollama"],
+      "description": "Which request/response shape the consumer should use. Many third-party providers (xAI, Mistral, Together, DeepSeek, Perplexity, OpenRouter) speak the 'openai' style."
+    },
+    "keychainKey": {
+      "type": "string",
+      "minLength": 1,
+      "description": "macOS/iOS Keychain key under which the API key is stored. Ignored by Node consumers (which use Firebase Functions secrets)."
+    },
+    "defaultModel": {
+      "type": "string",
+      "description": "Must be the 'name' of one of the 'models[]' entries whose status is 'active'."
+    },
+    "lastSyncedAt": {
+      "type": "string",
+      "format": "date",
+      "description": "ISO yyyy-mm-dd. When the cron last touched this file (or when it was hand-edited)."
+    },
+    "syncSource": {
+      "type": "string",
+      "enum": ["cron", "hand-maintained"],
+      "description": "'cron' = scheduledModelCatalogSync may rewrite this file. 'hand-maintained' = cron leaves it alone (Apple Foundation, Ollama, etc.)."
+    },
+    "models": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/model" }
+    }
+  },
+  "$defs": {
+    "model": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "displayName",
+        "status",
+        "inputPerMillion",
+        "outputPerMillion",
+        "costTier",
+        "equivalentTier",
+        "capabilities"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The provider's SKU as accepted by their API (e.g. 'gemini-2.5-flash', 'claude-sonnet-4-6', 'meta-llama/Llama-4-Scout-17B-16E-Instruct'). Unique within this provider file."
+        },
+        "displayName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "status": {
+          "type": "string",
+          "enum": ["active", "deprecated", "retired"],
+          "description": "'active' = pickers should offer it. 'deprecated' = still callable, picker may show a 'deprecated' badge, planner may avoid. 'retired' = no longer reachable; consumers MUST resolve to 'replacedBy'."
+        },
+        "addedAt": {
+          "type": "string",
+          "format": "date",
+          "description": "ISO yyyy-mm-dd when this model first appeared in the catalog. Optional for legacy entries; required when the cron inserts a new model."
+        },
+        "deprecatedAt": {
+          "type": "string",
+          "format": "date",
+          "description": "Only present when status is 'deprecated' or 'retired'."
+        },
+        "retiredAt": {
+          "type": "string",
+          "format": "date",
+          "description": "Only present when status is 'retired'."
+        },
+        "replacedBy": {
+          "type": "string",
+          "description": "The 'name' of another model (same or different provider, written as 'providerID:name' if cross-provider) that consumers should fall back to. REQUIRED when status is 'retired'."
+        },
+        "inputPerMillion": {
+          "type": "number",
+          "minimum": 0,
+          "description": "USD per 1M input tokens. 0 for on-device / free models. May be 0 if pricingSource is 'unknown' — consumers should treat that as conservative-ceiling rather than 'free'."
+        },
+        "outputPerMillion": {
+          "type": "number",
+          "minimum": 0,
+          "description": "USD per 1M output tokens."
+        },
+        "pricingSource": {
+          "type": "string",
+          "enum": ["openrouter", "provider-direct", "hand-maintained", "on-device", "unknown"],
+          "description": "Where the pricing came from. Optional; defaults to 'hand-maintained' for seed entries. 'on-device' applies to Apple Foundation."
+        },
+        "costTier": {
+          "type": "string",
+          "enum": ["low", "medium", "high"],
+          "description": "Rough cost bucket used by the picker UI."
+        },
+        "equivalentTier": {
+          "type": "string",
+          "enum": ["T0-fast", "T1-balanced", "T2-power"],
+          "description": "Which escalation-ladder rung this model occupies. Used for cross-provider failover."
+        },
+        "capabilities": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": ["chat", "vision", "thinking", "reasoning", "search", "code", "audio", "file"]
+          },
+          "description": "Feature flags consumers gate on. 'thinking' (Gemini-style extended-thinking budgets) is distinct from 'reasoning' (o-series, R1, Sonar-Reasoning)."
+        },
+        "contextTokens": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Maximum total context window (input tokens). Optional; consumers use this to bound retrieval/truncation."
+        },
+        "maxOutputTokens": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Provider-imposed cap on output tokens. Optional; LLMGenerateSkill's llmMaxTokens is still clamped 64-32000 by the consumer."
+        },
+        "notes": {
+          "type": "string",
+          "maxLength": 480,
+          "description": "Free-form humans-only context (e.g. 'Gemini's thinking tokens count against maxTokens — budget 800+ for validation'). Never used for behavior."
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "status": { "const": "retired" } }, "required": ["status"] },
+          "then": { "required": ["replacedBy", "retiredAt"] }
+        },
+        {
+          "if": { "properties": { "status": { "const": "deprecated" } }, "required": ["status"] },
+          "then": { "required": ["deprecatedAt"] }
+        }
+      ]
+    }
+  }
+}
