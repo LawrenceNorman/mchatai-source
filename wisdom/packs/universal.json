@@ -616,8 +616,22 @@
         "BAD: Keeping both `function randomBetween` declarations and hoping ES hoisting resolves it. It does not — the module fails to parse and the canvas stays blank.",
         "BAD: Replying with a brand-new full HTML artifact that still contains TWO `function randomBetween` declarations. The same gate will reject; the LLM has not actually addressed the rejection."
       ]
+    },
+    {
+      "id": "u-card-game-hand-edge-to-edge",
+      "rule": "For card-game mini-apps (spades, hearts, bridge, euchre, cribbage, poker, anything with a player hand of 5+ cards): the user's own hand MUST be the visual focal point and fit in ONE row at both desktop and mobile widths. Use this proven pattern: (a) the hand container spans full width - escape any parent grid cell via `grid-column: 1 / -1` or position outside the seat-grid; (b) cards do NOT wrap - `flex-wrap: nowrap`; (c) cards overlap aggressively via negative margin so the math works on a 375px-wide phone. Sizing for a 13-card hand: desktop card 100-110px wide x 140-156px tall with margin-right around -72px (effective 36px per card -> 13 cards ~540px total). Mobile card 72-78px x 100-110px with margin-right around -54px (effective 24px per card -> 13 cards ~366px total). On hover, the active card lifts (translateY -12px) and its right margin relaxes (-16 to -24px) so the rank is fully readable before the click. Opponent hands are face-down `card.back` stacks at 28-40px wide tucked next to each seat label - tiny, informational, never dominant. NEVER wrap a 13-card hand into 3-4 narrow rows; the player needs to see every card at a glance.",
+      "why": "Catalog regression 2026-05-15: a Spades v3 canary shipped with user-hand cards at 48x68px constrained inside a 3-column grid cell, wrapping to 4 cards per row on desktop and 3 per row on mobile. User-feedback: 'cards are too small', 'I cannot even see my own cards', 'not releasable'. Even after a card-size CSS patch, the cards still wrapped because the hand was constrained by the parent grid. The release-quality fix is full-width edge-to-edge fanning with aggressive overlap on small screens.",
+      "severity": "critical",
+      "appliesTo": "universal",
+      "examples": [
+        "GOOD (spades, 13 cards): .player-hand { width:100%; flex-wrap:nowrap; padding:4px 6px } .seat-south { grid-column:1/-1 } .player-hand .card { width:108px; height:152px; margin-right:-72px } @media (max-width:640px) { .player-hand .card { width:78px; height:110px; margin-right:-54px } }",
+        "GOOD (heads-up poker, 2 hole cards): .player-hand { flex-wrap:nowrap; gap:8px } .player-hand .card { width:110px; height:156px; margin-right:0 } - no overlap needed when N<=5; full size each.",
+        "GOOD (cribbage, 6 cards pre-discard / 4 post): .player-hand .card { width:96px; height:134px; margin-right:-24px } - light overlap, every card still distinct.",
+        "BAD: .player-hand { flex-wrap:wrap; max-width:400px } .player-hand .card { width:48px } - cards wrap into 3-4 narrow rows, user sees only part of their hand at a time, especially bad on mobile.",
+        "BAD: A 3-column board grid with `.seat-south { grid-area: south }` where south is the middle column only - the player's hand gets ~33% of viewport width instead of 100%. Fix with `grid-column: 1 / -1` so the south seat spans all columns."
+      ]
     }
   ],
-  "_last_updated": "2026-05-14T23:30:00Z",
-  "lastUpdated": "2026-05-14T23:30:00Z"
+  "_last_updated": "2026-05-15T18:55:00Z",
+  "lastUpdated": "2026-05-15T18:55:00Z"
 }

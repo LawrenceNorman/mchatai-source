@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Cribbage Lego Assembly</title>
+    <link rel="stylesheet" href="./cribbage.css">
+    <script type="application/json" id="mchatai-web-components-used">
+      {
+        "recipe": "recipe.cribbage",
+        "components": [
+          "ui.mini-header",
+          "core.turn-based-manager",
+          "entities.card",
+          "entities.deck",
+          "ui.scoreboard",
+          "resources.swatches",
+          "resources.audio-manager"
+        ],
+        "mode": "module-imports",
+        "cloneTarget": "Cribbage",
+        "brandedAs": "Cribbage"
+      }
+    </script>
+  </head>
+  <body>
+    <main class="cribbage-shell" data-cribbage-app>
+      <header data-mini-header aria-label="App header"></header>
+
+      <section class="board" aria-label="Cribbage board">
+        <div class="hud">
+          <div id="scoreboard"></div>
+          <div class="hud-card">Phase <strong id="phase">Deal</strong></div>
+          <div class="hud-card">Cut <strong id="cutCard">-</strong></div>
+          <div class="hud-card">Pegs You <strong id="pegsYou">0</strong> / 121</div>
+          <div class="hud-card">Pegs CPU <strong id="pegsCpu">0</strong> / 121</div>
+        </div>
+
+        <div class="hands">
+          <div class="hand-zone opponent-zone">
+            <div class="hand-header">
+              <h2>CPU</h2>
+              <span class="dealer-tag" id="cpuDealerTag">Dealer</span>
+            </div>
+            <div class="cards" id="cpuCards" aria-live="polite"></div>
+          </div>
+
+          <div class="middle-zone">
+            <div class="middle-label">Crib</div>
+            <div class="cards crib" id="cribCards" aria-live="polite"></div>
+            <div class="middle-label">Pegging Pile (count <span id="peggingCount">0</span> / 31)</div>
+            <div class="cards pegging" id="peggingCards" aria-live="polite"></div>
+          </div>
+
+          <div class="hand-zone player-zone">
+            <div class="hand-header">
+              <h2>You</h2>
+              <span class="dealer-tag" id="youDealerTag">-</span>
+            </div>
+            <div class="cards" id="playerCards" aria-live="polite"></div>
+          </div>
+        </div>
+
+        <aside class="peg-board" aria-label="Peg board">
+          <div class="peg-track">
+            <div class="peg-track-label">You</div>
+            <div class="peg-track-holes" id="pegTrackYou"></div>
+          </div>
+          <div class="peg-track">
+            <div class="peg-track-label">CPU</div>
+            <div class="peg-track-holes" id="pegTrackCpu"></div>
+          </div>
+        </aside>
+
+        <p class="message" id="message" role="status" aria-live="polite">Press Deal to start. Discard 2 cards to the crib, then peg.</p>
+
+        <div class="actions">
+          <button id="dealButton" type="button">Deal</button>
+          <button id="discardButton" type="button">Discard to Crib</button>
+          <button id="playButton" type="button">Play Card</button>
+          <button id="goButton" type="button">Go</button>
+        </div>
+      </section>
+    </main>
+
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>

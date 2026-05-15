@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Spades Lego Assembly</title>
+    <link rel="stylesheet" href="./spades.css">
+    <script type="application/json" id="mchatai-web-components-used">
+      {
+        "recipe": "recipe.spades",
+        "components": [
+          "ui.mini-header",
+          "core.turn-based-manager",
+          "entities.card",
+          "entities.deck",
+          "ui.scoreboard",
+          "resources.swatches",
+          "resources.audio-manager"
+        ],
+        "mode": "module-imports",
+        "cloneTarget": "Spades",
+        "brandedAs": "Spades"
+      }
+    </script>
+  </head>
+  <body>
+    <main class="spades-shell" data-spades-app>
+      <header data-mini-header aria-label="App header"></header>
+
+      <section class="table" aria-label="Spades table">
+        <div class="hud">
+          <div id="scoreboard"></div>
+          <div class="hud-card">Phase <strong id="phase">Deal</strong></div>
+          <div class="hud-card">Hand <strong id="handNum">1</strong></div>
+          <div class="hud-card">Spades Broken <strong id="spadesBroken">No</strong></div>
+          <div class="hud-card">Trick <strong id="trickNum">0</strong>/13</div>
+        </div>
+
+        <div class="scores" aria-label="Partnership scores">
+          <div class="score-row"><span>You + North</span><span id="scoreNS">0</span></div>
+          <div class="score-row"><span>East + West</span><span id="scoreEW">0</span></div>
+        </div>
+
+        <div class="board">
+          <div class="seat seat-north">
+            <div class="seat-label" id="seat-north">North (partner)</div>
+            <div class="seat-bid" id="bid-north">-</div>
+            <div class="seat-tricks" id="tricks-north">0</div>
+            <div class="opponent-fan" id="fan-north" aria-hidden="true"></div>
+          </div>
+          <div class="seat seat-west">
+            <div class="seat-label" id="seat-west">West</div>
+            <div class="seat-bid" id="bid-west">-</div>
+            <div class="seat-tricks" id="tricks-west">0</div>
+            <div class="opponent-fan" id="fan-west" aria-hidden="true"></div>
+          </div>
+          <div class="trick-center" id="trickCenter" aria-live="polite"></div>
+          <div class="seat seat-east">
+            <div class="seat-label" id="seat-east">East</div>
+            <div class="seat-bid" id="bid-east">-</div>
+            <div class="seat-tricks" id="tricks-east">0</div>
+            <div class="opponent-fan" id="fan-east" aria-hidden="true"></div>
+          </div>
+          <div class="seat seat-you"><div class="seat-label" id="seat-you">You</div><div class="seat-bid" id="bid-you">-</div><div class="seat-tricks" id="tricks-you">0</div></div>
+        </div>
+
+        <div class="hand" id="playerHand" aria-label="Your hand"></div>
+
+        <div class="bidding" id="biddingControls" hidden>
+          <span class="bid-label">Your bid:</span>
+          <div class="bid-buttons" id="bidButtons"></div>
+        </div>
+
+        <p class="message" id="message" role="status" aria-live="polite">Press Deal to start. Bid 0-13 tricks. Nil = 0 with bonus or penalty.</p>
+
+        <div class="actions">
+          <button id="dealButton" type="button">Deal</button>
+        </div>
+      </section>
+    </main>
+
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>
