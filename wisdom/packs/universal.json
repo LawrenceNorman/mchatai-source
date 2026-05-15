@@ -1,6 +1,6 @@
 {
   "packID": "universal",
-  "version": 8,
+  "version": 11,
   "displayName": "Universal Guidelines",
   "description": "Rules that apply to ALL generated apps regardless of category.",
   "categories": [
@@ -575,8 +575,49 @@
         "GOOD: function localRandom(a, b) { return Math.random() * (b - a) + a; } // no import, no collision.",
         "BAD: import { randomBetween } from './web-components/core/Physics2D.js'; … function randomBetween(a, b) { return Math.random() * (b - a) + a; } // SyntaxError, module dead."
       ]
+    },
+    {
+      "id": "u-iteration-is-a-patch-not-a-rewrite",
+      "rule": "When the prompt's ITERATION CONTEXT section is present — i.e. you are refining an already-installed mini-app — output a JSON PATCH, not a new full HTML artifact. For visual-only edits, use the single-patch `cssAppend` shape. For logic/feature edits (add a CPU player, change a constant, add a new Lego piece, wire a new event), use the `patches` array shape: `{\"id\": \"<existing-id>\", \"patches\": [ {\"op\": \"jsAppend\", \"code\": \"…\"}, {\"op\": \"jsReplace\", \"find\": \"…\", \"replace\": \"…\"}, {\"op\": \"addModule\", \"path\": \"web-components/entities/Foo.js\", \"source\": \"…\"}, {\"op\": \"cssAppend\", \"code\": \"…\"} ] }`. Patch op semantics: `jsAppend` appends inside the existing `<script type=\"module\">` body before `</script>`. `jsReplace` substitutes exactly one occurrence of `find` with `replace` (0 or 2+ matches reject the patch — include enough context to make `find` unique). `addModule` writes a new file at `<install-dir>/<path>` — you must ALSO emit a `jsReplace` adding the corresponding `import` line in the same patches array. `cssAppend` mirrors the legacy single-patch CSS protocol. DO NOT emit `<html>`/`<head>`/`<body>` tags. DO NOT re-emit the whole artifact. DO NOT change code outside what the user asked. If the request truly requires a wholesale rewrite (e.g. \"convert this to a different game type\"), respond with `{\"id\": \"<existing-id>\", \"fullRebuildRequired\": true, \"reason\": \"<one-line>\"}` and the harness will fall back to regeneration.",
+      "why": "Catalog regression 2026-05-14 (HKI-001): Chess V1 (2-player) shipped working; user asked 'make black a CPU player'; wizard re-planned, re-selected the recipe, declared `entities/MinimaxAI.js` in the marker, generator emitted a full HTML artifact without importing MinimaxAI → install-gate rejected → V1 was wiped, no V2 installed, user ended with nothing playable. Iterations should patch V1 in place; full re-emission carries two failure modes (gate rejection wipes V1; the regenerated spec drops features V1 had).",
+      "severity": "critical",
+      "appliesTo": "universal",
+      "examples": [
+        "GOOD (logic edit): User said 'add a Play Again button'. Emit: {\"id\":\"…\",\"patches\":[ {\"op\":\"jsAppend\",\"code\":\"function setupPlayAgain(){ const btn=document.createElement('button'); btn.textContent='Play Again'; btn.onclick=()=>location.reload(); document.body.appendChild(btn); } setupPlayAgain();\"}, {\"op\":\"cssAppend\",\"code\":\"button{padding:10px 20px;font-size:1rem;}\"} ]}",
+        "GOOD (add CPU): User said 'make black a CPU'. Emit: {\"id\":\"…\",\"patches\":[ {\"op\":\"addModule\",\"path\":\"web-components/entities/MinimaxAI.js\",\"source\":\"export class MinimaxAI { pickMove(state){ /* …full body… */ } }\"}, {\"op\":\"jsReplace\",\"find\":\"import { Board8x8 } from \\\"./web-components/entities/Board8x8.js\\\";\",\"replace\":\"import { Board8x8 } from \\\"./web-components/entities/Board8x8.js\\\";\\nimport { MinimaxAI } from \\\"./web-components/entities/MinimaxAI.js\\\";\"}, {\"op\":\"jsAppend\",\"code\":\"const ai = new MinimaxAI(); /* …turn handler hook… */\"} ]}",
+        "GOOD (change constant): User said 'change difficulty from 3 to 5'. Emit: {\"id\":\"…\",\"patches\":[ {\"op\":\"jsReplace\",\"find\":\"const DIFFICULTY = 3;\",\"replace\":\"const DIFFICULTY = 5;\"} ]}",
+        "GOOD (full rebuild): User said 'rewrite this as breakout'. Emit: {\"id\":\"…\",\"fullRebuildRequired\":true,\"reason\":\"game type change requires fresh build, not in-place patch\"}",
+        "BAD: User said 'add a CPU player'. You emit a full new HTML artifact with `<html>…</html>` re-doing every feature. The install gate may reject it (missing import for marker-declared MinimaxAI), wiping V1 and shipping nothing. Always patch."
+      ]
+    },
+    {
+      "id": "u-lego-rules-applymove-mutates-in-place",
+      "rule": "Lego rules-module methods like `rules.applyMove(board, move, color)`, `rules.move(...)`, `rules.tryMove(...)` MUTATE the board array in place and return a BOOLEAN indicating whether the move was legal. They DO NOT return a new board. NEVER write `board = rules.applyMove(board, …)` — that assigns `true`/`false` to your board variable, and every subsequent move silently no-ops because `board[index]` becomes undefined. ALWAYS treat the return as a validity check: `if (!rules.applyMove(board, index, currentPlayer)) return;` — bail on illegal moves, then continue with the (now-mutated-in-place) board. This applies to TicTacToeRules, ChessRules, CheckersRules, ConnectFourRules, and any other Lego rules-module with `applyMove`-shaped methods. The canonical example at `examples/<game>/main.js` or `examples/<game>/<GameName>.js` shows the correct pattern.",
+      "why": "Catalog regression 2026-05-14: tic-tac-toe shipped with `board = rules.applyMove(board, index, currentPlayer);` at the click handler. First click made `board` equal `true`; every subsequent click hit `if (gameOver || board[index]) return;` where `board[index]` was undefined → click no-op'd. Game was unplayable but install-gate passed (marker valid, imports resolved). The module's own docstring says 'applyMove(board, move) mutates in place' AND the canonical example at examples/tic-tac-toe/TicTacToeGame.js:95 uses `if (!this.rules.applyMove(this.board, index, HUMAN)) return;` — LLM had the right pattern available, ignored it.",
+      "severity": "critical",
+      "appliesTo": "universal",
+      "examples": [
+        "GOOD: if (!rules.applyMove(board, index, currentPlayer)) return; // bail on illegal move; board is now mutated in place with the legal one.",
+        "GOOD: const ok = rules.applyMove(board, move, AI); if (!ok) { console.warn('AI picked illegal move'); return; } render(board);",
+        "BAD: board = rules.applyMove(board, index, currentPlayer); // board is now `true` or `false`. Game becomes unplayable on the next click.",
+        "BAD: const newBoard = rules.applyMove(board, index, color); // newBoard is true/false, not a new board. Don't 'capture' the result as state."
+      ]
+    },
+    {
+      "id": "u-fix-duplicate-function-by-deleting-one",
+      "rule": "When the install-gate's parse-check rejects your previous artifact with `Duplicate top-level function declaration: function <NAME>(...) appears twice at module scope`, repair by DELETING the second declaration. ES module strict-mode treats top-level function declarations as lexical bindings — declaring `function <NAME>(…){…}` twice at module scope is a SyntaxError that prevents the entire `<script type=\"module\">` from executing (canvas stays blank). The two declarations were almost certainly written by accident (cut/paste glitch); one of them is redundant. Pick exactly ONE of the repairs below — do not invent new ones. (1) If the bodies are identical or near-identical, delete the SECOND copy entirely. (2) If you ALSO imported `<NAME>` from a `./web-components/<…>.js` module, the local declaration is the redundancy — delete the local; the import is the single source of truth. (3) If you specifically wanted a tweaked LOCAL version on top of an import, rename the local to `local<NAME>` or `myLocalName` so the names no longer collide — never rename the imported binding. Do NOT keep both declarations and rely on hoisting; ES modules are strict and reject this. Do NOT respond by emitting a fresh full HTML artifact that re-introduces the same duplicate — the auto-fix turn must shrink the previous output, not rewrite it.",
+      "why": "Catalog regression 2026-05-14 (HKI-004): Asteroids canary emitted `function randomBetween(min, max){ … }` at lines 897 AND 1402 — bodies were byte-identical. Install-gate's LF.10c pre-check caught the duplicate and kicked back for an auto-fix; the LLM's auto-fix retry produced ANOTHER broken artifact with the same duplicate instead of repairing the specific pattern. The deterministic deletion is structurally safe (identical bodies → same behavior) and unblocks installs immediately; this rule exists so the LLM tier ALSO repairs the pattern correctly when the deterministic patcher's stricter byte-identical guard can't act.",
+      "severity": "critical",
+      "appliesTo": "universal",
+      "examples": [
+        "GOOD: Rejection says `Duplicate top-level function declaration: function randomBetween appears twice at module scope`. Search the file for `function randomBetween(`. Two occurrences. Delete the SECOND one in full (signature + body + trailing newline). Keep the first.",
+        "GOOD: Rejection names `function clamp`. You also have `import { clamp } from './web-components/core/Physics2D.js'`. Delete the LOCAL `function clamp(…){…}`; rely on the import.",
+        "GOOD: You wanted a slightly-different local `randomBetween`. Rename the local to `localRandomBetween` (and update its call sites). Leave the catalog import alone.",
+        "BAD: Keeping both `function randomBetween` declarations and hoping ES hoisting resolves it. It does not — the module fails to parse and the canvas stays blank.",
+        "BAD: Replying with a brand-new full HTML artifact that still contains TWO `function randomBetween` declarations. The same gate will reject; the LLM has not actually addressed the rejection."
+      ]
     }
   ],
-  "_last_updated": "2026-05-14T08:22:38Z",
-  "lastUpdated": "2026-05-14T08:22:38Z"
+  "_last_updated": "2026-05-14T23:30:00Z",
+  "lastUpdated": "2026-05-14T23:30:00Z"
 }
