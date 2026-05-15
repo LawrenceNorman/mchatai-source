@@ -83,18 +83,66 @@ try {
   fail("Invalid mchatai-web-components-used JSON marker.", { error: error.message });
 }
 
-if (expectedRecipeID && marker.recipe !== expectedRecipeID) {
-  fail("Generated artifact used the wrong web-components recipe.", {
-    expectedRecipeID,
-    actualRecipeID: marker.recipe
-  });
+const catalog = JSON.parse(readText(catalogPath));
+
+// HKI-007 / HKI-R-009 follow-up (2026-05-15) — accept three input forms for
+// expectedRecipeID and resolve to canonical `recipe.<name>` before comparison:
+//   1. `recipe.<name>` — canonical _index.json compositionRecipes form.
+//   2. `<name>` (bare recipe name) — e.g. `chess`, `maze-arcade`.
+//   3. `<game-id>` (bare game/template id from good-games.json) — e.g. `pacman`,
+//      `space-invaders`, `asteroids-arcade`. Resolved via good-games[].family
+//      → `recipe.<family>` lookup. This is what basename-derived verify loops
+//      (`recipe=$(basename "$d" | sed 's/com.mchatai.wizard.//')`) end up
+//      passing — game-id ≠ recipe-id, but good-games.json knows the mapping.
+// Cross-recipe mismatches still fail loudly; only namespace gaps are bridged.
+const goodGamesPath = resolve(here, "../catalog/good-games.json");
+const goodGames = existsSync(goodGamesPath)
+  ? (() => { try { return JSON.parse(readText(goodGamesPath)); } catch { return null; } })()
+  : null;
+const goodGamesByID = new Map(
+  Array.isArray(goodGames?.games)
+    ? goodGames.games.filter(g => g && g.id).map(g => [g.id, g])
+    : []
+);
+const catalogRecipeIDs = new Set(
+  (Array.isArray(catalog.compositionRecipes) ? catalog.compositionRecipes
+    : Array.isArray(catalog.recipes) ? catalog.recipes
+    : []).map(r => r && r.id).filter(Boolean)
+);
+
+function normalizeRecipeID(id) {
+  return typeof id === "string" ? id.replace(/^recipe\./, "") : id;
+}
+
+function resolveExpectedRecipeID(input) {
+  if (typeof input !== "string" || !input) return input;
+  if (input.startsWith("recipe.") && catalogRecipeIDs.has(input)) return input;
+  const asRecipe = `recipe.${input.replace(/^recipe\./, "")}`;
+  if (catalogRecipeIDs.has(asRecipe)) return asRecipe;
+  // Game-id lookup: input matches a good-games entry → use its family.
+  const game = goodGamesByID.get(input);
+  if (game && typeof game.family === "string") {
+    const candidate = `recipe.${game.family}`;
+    if (catalogRecipeIDs.has(candidate)) return candidate;
+  }
+  return input;
+}
+
+if (expectedRecipeID) {
+  const resolved = resolveExpectedRecipeID(expectedRecipeID);
+  if (normalizeRecipeID(marker.recipe) !== normalizeRecipeID(resolved)) {
+    fail("Generated artifact used the wrong web-components recipe.", {
+      expectedRecipeID,
+      resolvedRecipeID: resolved !== expectedRecipeID ? resolved : undefined,
+      actualRecipeID: marker.recipe
+    });
+  }
 }
 
 if (!Array.isArray(marker.components) || marker.components.length === 0) {
   fail("Component marker must list at least one component id.", { marker });
 }
 
-const catalog = JSON.parse(readText(catalogPath));
 const componentByID = new Map((catalog.components || []).map((component) => [component.id, component]));
 const unknownComponents = marker.components.filter((id) => !componentByID.has(id));
 
