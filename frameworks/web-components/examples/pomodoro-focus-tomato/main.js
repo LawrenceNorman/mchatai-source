@@ -30,13 +30,14 @@ function loadHistory() {
 function saveHistory(h) {
   try { localStorage.setItem(HISTORY_KEY, JSON.stringify(h.slice(-50))); } catch (e) {}
 }
-function isMuted() { return localStorage.getItem(MUTED_KEY) === "1"; }
+function isMuted() { try { return localStorage.getItem(MUTED_KEY) === "1"; } catch (e) { return false; } }
 function setMuted(v) { try { localStorage.setItem(MUTED_KEY, v ? "1" : "0"); } catch (e) {} }
+function safeGetInt(key, fallback) { try { return parseInt(localStorage.getItem(key) || String(fallback), 10); } catch (e) { return fallback; } }
 
 let cycleIndex = 0;
 let currentMode = () => MODES.find(m => m.name === CYCLE[cycleIndex % CYCLE.length]);
 let history = loadHistory();
-let todaysCount = parseInt(localStorage.getItem(todayKey()) || "0", 10);
+let todaysCount = safeGetInt(todayKey(), 0);
 
 const root = document.querySelector("[data-app]");
 const todayEl = root.querySelector("[data-today]");
