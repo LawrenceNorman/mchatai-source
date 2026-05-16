@@ -1,6 +1,117 @@
 {
-  "_note": "Non-OpenRouter SKUs surfaced in the iOS picker. After Phase IM.3.1 (2026-05-15) decision: OpenRouter-only architecture (Path B). All audio/image generation now routes through OpenRouter chat-completions models (openai/gpt-audio, openai/gpt-image, google/gemini-2.5-flash-image (Nano Banana), etc.) — no separate direct-provider integrations on iOS. Veo and ElevenLabs cut: Veo lacks an OpenRouter route; ElevenLabs would have added a new vendor relationship the platform doesn't want.",
-  "version": 2,
-  "updatedAt": "2026-05-15",
-  "extras": []
+  "_note": "Direct-provider SKUs (TTS, STT, image-gen, video-gen) surfaced in the iOS/macOS picker alongside the OpenRouter chat catalog. Phase IM.11 (2026-05-16) — repopulated after the architecture decision to keep direct ownership for OpenAI, Anthropic, Google Gemini, and ElevenLabs (with OR failover via the compute-proxy). Schema consumed by mchatai/.../OpenRouterCatalogService.fetchCloudExtras.",
+  "version": 3,
+  "updatedAt": "2026-05-16",
+  "extras": [
+    {
+      "id": "openai/whisper-1",
+      "name": "Whisper",
+      "providerLabel": "OpenAI",
+      "endpoint": "/v1/audio/transcriptions",
+      "inputModalities": ["audio"],
+      "outputModalities": ["text"],
+      "modality": "stt",
+      "available": true,
+      "notes": "Speech-to-text via OpenAI Whisper. Routed through the compute-proxy."
+    },
+    {
+      "id": "openai/whisper-large-v3",
+      "name": "Whisper Large v3",
+      "providerLabel": "OpenAI",
+      "endpoint": "/v1/audio/transcriptions",
+      "inputModalities": ["audio"],
+      "outputModalities": ["text"],
+      "modality": "stt",
+      "available": true,
+      "notes": "Speech-to-text. Alias of whisper-1 server-side."
+    },
+    {
+      "id": "openai/tts-1",
+      "name": "TTS-1",
+      "providerLabel": "OpenAI",
+      "endpoint": "/v1/audio/speech",
+      "inputModalities": ["text"],
+      "outputModalities": ["audio"],
+      "modality": "tts",
+      "available": true,
+      "notes": "OpenAI TTS, fast standard quality. 6 built-in voices."
+    },
+    {
+      "id": "openai/tts-1-hd",
+      "name": "TTS-1 HD",
+      "providerLabel": "OpenAI",
+      "endpoint": "/v1/audio/speech",
+      "inputModalities": ["text"],
+      "outputModalities": ["audio"],
+      "modality": "tts",
+      "available": true,
+      "notes": "OpenAI TTS, high-definition quality. Slower but cleaner."
+    },
+    {
+      "id": "elevenlabs/eleven_multilingual_v2",
+      "name": "ElevenLabs Multilingual v2",
+      "providerLabel": "ElevenLabs",
+      "endpoint": "/v1/audio/speech",
+      "inputModalities": ["text"],
+      "outputModalities": ["audio"],
+      "modality": "tts",
+      "available": true,
+      "notes": "ElevenLabs premium TTS. 5 voice options."
+    },
+    {
+      "id": "elevenlabs/eleven_flash_v2_5",
+      "name": "ElevenLabs Flash v2.5",
+      "providerLabel": "ElevenLabs",
+      "endpoint": "/v1/audio/speech",
+      "inputModalities": ["text"],
+      "outputModalities": ["audio"],
+      "modality": "tts",
+      "available": true,
+      "notes": "Lower-latency ElevenLabs TTS. Cheaper than v2."
+    },
+    {
+      "id": "openai/dall-e-3",
+      "name": "DALL-E 3",
+      "providerLabel": "OpenAI",
+      "endpoint": "/v1/images/generations",
+      "inputModalities": ["text"],
+      "outputModalities": ["image"],
+      "modality": "image",
+      "available": true,
+      "notes": "OpenAI DALL-E 3 image generation."
+    },
+    {
+      "id": "openai/gpt-image-1",
+      "name": "GPT Image 1",
+      "providerLabel": "OpenAI",
+      "endpoint": "/v1/images/generations",
+      "inputModalities": ["text", "image"],
+      "outputModalities": ["image"],
+      "modality": "image",
+      "available": true,
+      "notes": "OpenAI newest image gen with multimodal input."
+    },
+    {
+      "id": "google/veo-2",
+      "name": "Veo 2.0",
+      "providerLabel": "Google",
+      "endpoint": "/v1/videos/generations",
+      "inputModalities": ["text"],
+      "outputModalities": ["video"],
+      "modality": "video",
+      "available": true,
+      "notes": "Vertex AI Veo 2 — text-to-video. Supports 5/6/7/8s at $0.25/sec."
+    },
+    {
+      "id": "google/veo-3",
+      "name": "Veo 3.0",
+      "providerLabel": "Google",
+      "endpoint": "/v1/videos/generations",
+      "inputModalities": ["text"],
+      "outputModalities": ["video"],
+      "modality": "video",
+      "available": true,
+      "notes": "Vertex AI Veo 3 — text-to-video. Supports 4/6/8s at $0.50/sec."
+    }
+  ]
 }
