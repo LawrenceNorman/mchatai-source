@@ -50,9 +50,12 @@ function todayISO() {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
 }
 
+function safeGet(key) { try { return localStorage.getItem(key); } catch (e) { return null; } }
+function safeSet(key, value) { try { localStorage.setItem(key, value); } catch (e) {} }
+
 let expenses = load();
-let viewMonth = localStorage.getItem("spendwise.viewMonth") || monthKey(new Date());
-function setViewMonth(k) { viewMonth = k; try { localStorage.setItem("spendwise.viewMonth", k); } catch(e){} }
+let viewMonth = safeGet("spendwise.viewMonth") || monthKey(new Date());
+function setViewMonth(k) { viewMonth = k; safeSet("spendwise.viewMonth", k); }
 
 const shell = new AppShell({
   title: "Spendwise",

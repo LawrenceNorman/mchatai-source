@@ -27,8 +27,12 @@ function save(notes) {
 }
 function uid() { return "n_" + Math.random().toString(36).slice(2, 10); }
 
+function safeGet(key) { try { return localStorage.getItem(key); } catch (e) { return null; } }
+function safeSet(key, value) { try { localStorage.setItem(key, value); } catch (e) {} }
+function safeRemove(key) { try { localStorage.removeItem(key); } catch (e) {} }
+
 let notes = load();
-let selectedId = localStorage.getItem(SELECTED_KEY) || (notes[0] ? notes[0].id : null);
+let selectedId = safeGet(SELECTED_KEY) || (notes[0] ? notes[0].id : null);
 let query = "";
 
 const shell = new AppShell({
@@ -63,7 +67,7 @@ const addBtn = new Button({
     const n = { id: uid(), title: "", body: "", createdAt: Date.now() };
     notes.unshift(n);
     selectedId = n.id;
-    localStorage.setItem(SELECTED_KEY, selectedId);
+    safeSet(SELECTED_KEY, selectedId);
     save(notes);
     render();
     titleInput.focus();
@@ -108,7 +112,7 @@ const delBtn = new Button({
     if (typeof confirm === "function" && !confirm("Delete this note?")) return;
     notes = notes.filter(x => x.id !== n.id);
     selectedId = notes[0] ? notes[0].id : null;
-    if (selectedId) localStorage.setItem(SELECTED_KEY, selectedId); else localStorage.removeItem(SELECTED_KEY);
+    if (selectedId) safeSet(SELECTED_KEY, selectedId); else safeRemove(SELECTED_KEY);
     save(notes);
     render();
   }
@@ -153,7 +157,7 @@ function renderSidebar() {
       target: sideList,
       onClick: () => {
         selectedId = n.id;
-        localStorage.setItem(SELECTED_KEY, selectedId);
+        safeSet(SELECTED_KEY, selectedId);
         render();
       }
     });
