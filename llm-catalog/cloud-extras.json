@@ -1,6 +1,6 @@
 {
-  "_note": "Direct-provider SKUs (TTS, STT, image-gen, video-gen) surfaced in the iOS/macOS picker alongside the OpenRouter chat catalog. Phase IM.11 (2026-05-16) — repopulated after the architecture decision to keep direct ownership for OpenAI, Anthropic, Google Gemini, and ElevenLabs (with OR failover via the compute-proxy). Schema consumed by mchatai/.../OpenRouterCatalogService.fetchCloudExtras.",
-  "version": 4,
+  "_note": "Direct-provider SKUs (TTS, STT, image-gen, video-gen) surfaced in the iOS/macOS picker alongside the OpenRouter chat catalog. Phase IM.18 (2026-05-16) — added explicit `costNote` per entry so the picker shows real rates (e.g., '$15/M chars') instead of a misleading 'Free' badge. Rates are raw upstream USD; the compute-proxy applies its 20% markup before deducting compute tokens. Schema consumed by mchatai/.../OpenRouterCatalogService.fetchCloudExtras.",
+  "version": 5,
   "updatedAt": "2026-05-16",
   "extras": [
     {
@@ -12,7 +12,8 @@
       "outputModalities": ["text"],
       "modality": "stt",
       "available": true,
-      "notes": "Speech-to-text via OpenAI Whisper. Routed through the compute-proxy."
+      "notes": "Speech-to-text via OpenAI Whisper. Routed through the compute-proxy.",
+      "costNote": "$0.006/min"
     },
     {
       "id": "openai/whisper-large-v3",
@@ -23,7 +24,8 @@
       "outputModalities": ["text"],
       "modality": "stt",
       "available": true,
-      "notes": "Speech-to-text. Alias of whisper-1 server-side."
+      "notes": "Speech-to-text. Alias of whisper-1 server-side.",
+      "costNote": "$0.006/min"
     },
     {
       "id": "openai/tts-1",
@@ -34,7 +36,8 @@
       "outputModalities": ["audio"],
       "modality": "tts",
       "available": true,
-      "notes": "OpenAI TTS, fast standard quality. 6 built-in voices."
+      "notes": "OpenAI TTS, fast standard quality. 6 built-in voices.",
+      "costNote": "$15/M chars"
     },
     {
       "id": "openai/tts-1-hd",
@@ -45,7 +48,8 @@
       "outputModalities": ["audio"],
       "modality": "tts",
       "available": true,
-      "notes": "OpenAI TTS, high-definition quality. Slower but cleaner."
+      "notes": "OpenAI TTS, high-definition quality. Slower but cleaner.",
+      "costNote": "$30/M chars"
     },
     {
       "id": "elevenlabs/eleven_multilingual_v2",
@@ -56,7 +60,8 @@
       "outputModalities": ["audio"],
       "modality": "tts",
       "available": true,
-      "notes": "ElevenLabs premium TTS. 5 voice options."
+      "notes": "ElevenLabs premium TTS. 5 voice options.",
+      "costNote": "$30/M chars"
     },
     {
       "id": "elevenlabs/eleven_flash_v2_5",
@@ -67,7 +72,8 @@
       "outputModalities": ["audio"],
       "modality": "tts",
       "available": true,
-      "notes": "Lower-latency ElevenLabs TTS. Cheaper than v2."
+      "notes": "Lower-latency ElevenLabs TTS. Cheaper than v2.",
+      "costNote": "$15/M chars"
     },
     {
       "id": "openai/dall-e-3",
@@ -78,7 +84,8 @@
       "outputModalities": ["image"],
       "modality": "image",
       "available": true,
-      "notes": "OpenAI DALL-E 3 image generation."
+      "notes": "OpenAI DALL-E 3 image generation. $0.04/image at 1024x1024.",
+      "costNote": "$0.04/image"
     },
     {
       "id": "openai/gpt-image-1",
@@ -89,7 +96,8 @@
       "outputModalities": ["image"],
       "modality": "image",
       "available": true,
-      "notes": "OpenAI newest image gen with multimodal input."
+      "notes": "OpenAI newest image gen with multimodal input. $0.04/image at 1024x1024.",
+      "costNote": "$0.04/image"
     },
     {
       "id": "google/lyria-3-pro-preview",
@@ -100,7 +108,7 @@
       "outputModalities": ["audio"],
       "modality": "music",
       "available": true,
-      "notes": "Google Lyria 3 — text-to-music. Routed via OpenRouter."
+      "notes": "Google Lyria 3 — text-to-music. Free during OpenRouter preview but still counts against your 20 free calls/day."
     },
     {
       "id": "google/lyria-3-clip-preview",
@@ -111,7 +119,7 @@
       "outputModalities": ["audio"],
       "modality": "music",
       "available": true,
-      "notes": "Google Lyria 3 short-clip preview. Routed via OpenRouter."
+      "notes": "Google Lyria 3 short-clip preview. Free during OpenRouter preview; still counts against your 20 free calls/day."
     },
     {
       "id": "google/veo-2",
@@ -122,7 +130,8 @@
       "outputModalities": ["video"],
       "modality": "video",
       "available": true,
-      "notes": "Vertex AI Veo 2 — text-to-video. Supports 5/6/7/8s at $0.25/sec."
+      "notes": "Vertex AI Veo 2 — text-to-video. Supports 5/6/7/8s. 5s = $1.25.",
+      "costNote": "$0.25/sec"
     },
     {
       "id": "google/veo-3",
@@ -133,7 +142,8 @@
       "outputModalities": ["video"],
       "modality": "video",
       "available": true,
-      "notes": "Vertex AI Veo 3 — text-to-video. Supports 4/6/8s at $0.50/sec."
+      "notes": "Vertex AI Veo 3 — text-to-video. Supports 4/6/8s. 4s = $2.00.",
+      "costNote": "$0.50/sec"
     }
   ]
 }
