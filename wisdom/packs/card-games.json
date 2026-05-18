@@ -657,7 +657,21 @@
         "Data: import { Card } from '<webcomponents>/entities/Card.js'; const c = new Card('5', 'hearts');",
         "DO NOT: render Jack/Queen/King as emoji smiley faces or images — use the letter (J/Q/K) with the suit symbol like all other ranks"
       ]
+    },
+    {
+      "id": "cg-round-end-pause-or-continue",
+      "rule": "After a scoring sub-round closes (cribbage: hitting 31, a Go, the last card played; trick games like hearts/spades/whist: a completed trick; blackjack: a dealer reveal; any moment where points are awarded and the table is about to clear), the game MUST give the player time to absorb what happened before resetting. Use ONE of: (a) an explicit 'Continue' button the player clicks to advance — preferred, deterministic, respects both slow and fast players; (b) a fixed pause of at least 5 seconds during which the final pile/score/highlight remains visible and the player CANNOT auto-advance past the moment. Do NOT chain CPU plays through setTimeout into an immediate reset/clear of the play area — the player will see cards flicker into a pile and then vanish before they can read the score or recognize the combination (e.g., 'wait, was that a 15-2 pair-2 for 4?'). The Continue button SHOULD be on the same affordance band as the existing action buttons (Play / Go) so the player's hand doesn't have to wander; the message accompanying it MUST name (i) WHO scored, (ii) WHAT they scored, and (iii) WHY (e.g., 'CPU hit 31 — round resets to 0', 'You scored Go for being last to play', 'Last card — on to The Show'). The same pattern applies to trick games (after a trick is taken, hold the trick visible until the player advances or 5s elapse) and to any turn-based game where the CPU produces points faster than a human can read.",
+      "why": "User feedback 2026-05-18: 'after a CPU turn goes and it is the end of a round, allow the player at least 5 seconds (or some kind of button the player needs to hit to continue) so the player can evaluate the final hand and go oh yeah that's what that is rather than wondering what just happened, or a hand that ends in 31 or a go or whatever. I've noticed the same issue with other card games so there might be a universal rule here.' Without this pause, scoring events feel arbitrary — the player sees points appear on the board but cannot tie them to the cards that produced them, which erodes trust in the rules engine and removes the strategic learning loop.",
+      "severity": "important",
+      "appliesTo": "card-games, turn-based-games",
+      "examples": [
+        "Cribbage pegging: count reaches 31 → keep pile + count visible, show 'CPU hit 31 — round resets to 0  Continue ▸' button, ONLY clear the pile when the button is clicked.",
+        "Cribbage Go: both players can't play → award Go point, keep pile visible, show 'You scored Go (last to play). Round resets to 0  Continue ▸' button.",
+        "Hearts trick taken: 4th card laid → keep the trick visible (do not animate cards into the taker's pile) until the player clicks Continue OR ≥5s elapses.",
+        "RIGHT (deterministic): controls.innerHTML=''; controls.appendChild(continueBtn); continueBtn.onclick = () => { pegPile=[]; pegCount=0; resetRound(); };",
+        "WRONG: setTimeout(() => { pegPile=[]; pegCount=0; renderHands(); cpuPlay(); }, 800); — the player has no time to absorb the 31, and on a fast machine 800ms looks like a glitch."
+      ]
     }
   ],
-  "_last_updated": "2026-05-04"
+  "_last_updated": "2026-05-18"
 }

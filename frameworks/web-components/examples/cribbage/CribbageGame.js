@@ -89,6 +89,26 @@ export class CribbageGame {
     $(this.root, "#discardButton").addEventListener("click", () => this.commitDiscard());
     $(this.root, "#playButton").addEventListener("click", () => this.playSelectedCard());
     $(this.root, "#goButton").addEventListener("click", () => this.declareGo());
+    $(this.root, "#continueButton").addEventListener("click", () => {
+      const cb = this._pendingContinue;
+      this._pendingContinue = null;
+      $(this.root, "#continueButton").hidden = true;
+      if (cb) cb();
+    });
+  }
+
+  // Pause + Continue at a scoring-event boundary so the player can absorb
+  // what happened before the table clears (universal wisdom rule
+  // cg-round-end-pause-or-continue). The pile + count remain visible
+  // until the player clicks Continue.
+  pauseAndContinue(message, callback) {
+    this.setMessage(message + "  —  press Continue.");
+    this._pendingContinue = callback;
+    const btn = $(this.root, "#continueButton");
+    btn.hidden = false;
+    // Disable other action buttons while paused
+    $(this.root, "#playButton").disabled = true;
+    $(this.root, "#goButton").disabled = true;
   }
 
   // ----- Phase: deal -----
@@ -258,29 +278,50 @@ export class CribbageGame {
       const pts = this.peggingCount === 31 ? 0 : 1; // already scored 31 above
       if (pts) this.score(this.lastToPlay, pts, "go");
     }
-    // Reset count, continue pegging if cards remain.
-    this.peggingPile = [];
-    this.peggingCount = 0;
-    if (this.playerHand.length === 0 && this.cpuHand.length === 0) {
-      this.beginShow();
-      return;
-    }
-    this.activeBetter = this.lastToPlay === "player" ? "cpu" : "player";
-    if (!opponentHand.length) this.activeBetter = this.activeBetter === "player" ? "cpu" : "player";
-    this.lastToPlay = null;
+    const who = this.lastToPlay === "player" ? "You" : "CPU";
+    const handsEmpty = this.playerHand.length === 0 && this.cpuHand.length === 0;
+    const msg = handsEmpty
+      ? `${who} laid the last card. On to The Show.`
+      : `${who} scored Go (last to play). Round resets to 0.`;
     this.render();
-    if (this.activeBetter === "cpu") setTimeout(() => this.cpuPlay(), 600);
-  }
-
-  afterPlay() {
-    if (this.peggingCount === 31 || (this.playerHand.length === 0 && this.cpuHand.length === 0)) {
+    this.pauseAndContinue(msg, () => {
+      // Reset count, continue pegging if cards remain.
       this.peggingPile = [];
       this.peggingCount = 0;
-      this.lastToPlay = null;
       if (this.playerHand.length === 0 && this.cpuHand.length === 0) {
         this.beginShow();
         return;
       }
+      this.activeBetter = this.lastToPlay === "player" ? "cpu" : "player";
+      if (!opponentHand.length) this.activeBetter = this.activeBetter === "player" ? "cpu" : "player";
+      this.lastToPlay = null;
+      this.render();
+      if (this.activeBetter === "cpu") setTimeout(() => this.cpuPlay(), 600);
+    });
+  }
+
+  afterPlay() {
+    const hitThirtyOne = this.peggingCount === 31;
+    const handsEmpty = this.playerHand.length === 0 && this.cpuHand.length === 0;
+    if (hitThirtyOne || handsEmpty) {
+      this.render();
+      const who = this.lastToPlay === "player" ? "You" : "CPU";
+      const msg = handsEmpty
+        ? `${who} laid the last card. On to The Show.`
+        : `${who} hit 31 — round resets to 0.`;
+      this.pauseAndContinue(msg, () => {
+        this.peggingPile = [];
+        this.peggingCount = 0;
+        this.lastToPlay = null;
+        if (this.playerHand.length === 0 && this.cpuHand.length === 0) {
+          this.beginShow();
+          return;
+        }
+        this.activeBetter = this.activeBetter === "player" ? "cpu" : "player";
+        this.render();
+        if (this.activeBetter === "cpu") setTimeout(() => this.cpuPlay(), 600);
+      });
+      return;
     }
     this.activeBetter = this.activeBetter === "player" ? "cpu" : "player";
     this.render();
@@ -447,7 +488,9 @@ export class CribbageGame {
 
   updateButtons() {
     $(this.root, "#dealButton").disabled = (this.phase !== "idle");
-    $(this.root, "#discardButton").disabled = !(this.phase === "discard" && this.selected.size === 2);
+    const discardBtn = $(this.root, "#discardButton");
+    discardBtn.disabled = !(this.phase === "discard" && this.selected.size === 2);
+    discardBtn.textContent = this.dealer === "player" ? "Discard to Your Crib" : "Discard to CPU's Crib";
     $(this.root, "#playButton").disabled = !(this.phase === "pegging" && this.activeBetter === "player" && this.selected.size === 1);
     $(this.root, "#goButton").disabled = !(this.phase === "pegging" && this.activeBetter === "player");
   }
