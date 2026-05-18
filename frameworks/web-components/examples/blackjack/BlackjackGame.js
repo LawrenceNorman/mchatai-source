@@ -160,13 +160,27 @@ export class BlackjackGame {
   }
 
   playDealer() {
+    // Wisdom rule cg-round-end-pause-or-continue: pace the dealer's
+    // reveal + hits so the player sees each card appear before the
+    // outcome message overwrites the moment. Without this every dealer
+    // sequence collapses into a single frame and the player can't tie
+    // the result to the cards.
     this.phase = "dealer";
     this.dealerHoleHidden = false;
     this.turns.setPhase("dealer");
-    while (this.rules.shouldDealerHit(this.dealerCards)) {
-      this.dealerCards.push(this.drawCard());
-    }
-    this.finishHand("Dealer stands.");
+    this.render();
+    const tick = () => {
+      if (this.rules.shouldDealerHit(this.dealerCards)) {
+        this.dealerCards.push(this.drawCard());
+        this.render();
+        setTimeout(tick, 650);
+      } else {
+        // Brief settle moment so the player reads the final dealer total
+        // before the outcome message lands.
+        setTimeout(() => this.finishHand("Dealer stands."), 650);
+      }
+    };
+    setTimeout(tick, 500);
   }
 
   finishHand(prefix) {

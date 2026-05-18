@@ -85,6 +85,24 @@ export class SpadesGame {
 
   bind() {
     $(this.root, "#dealButton").addEventListener("click", () => this.dealHand());
+    $(this.root, "#continueButton").addEventListener("click", () => {
+      const cb = this._pendingContinue;
+      this._pendingContinue = null;
+      $(this.root, "#continueButton").hidden = true;
+      $(this.root, "#dealButton").disabled = false;
+      if (cb) cb();
+    });
+  }
+
+  // Pause + Continue at a scoring-event boundary (wisdom rule
+  // cg-round-end-pause-or-continue). Use at end-of-hand before scoring is
+  // applied, so the player can see who took the last trick and the
+  // hand-trick tally before the table resets.
+  pauseAndContinue(message, callback) {
+    this.setMessage(message + "  —  press Continue.");
+    this._pendingContinue = callback;
+    $(this.root, "#continueButton").hidden = false;
+    $(this.root, "#dealButton").disabled = true;
   }
 
   // ----- dealing -----
@@ -219,15 +237,27 @@ export class SpadesGame {
       this.tricks[winner] += 1;
       this.setMessage(`${this.label(winner)} takes the trick.`);
       this.render();
-      setTimeout(() => {
+      const isLastTrick = this.trickNum + 1 > 13;
+      const advance = () => {
         this.currentTrick = [];
         this.trickNum += 1;
-        if (this.trickNum > 13) { this.endHand(); return; }
+        if (this.trickNum > 13) {
+          // End-of-hand: pause so player sees who took the last trick and
+          // the trick tally (NS vs EW) before scoring is applied.
+          const tally = `You ${this.tricks.you}  North ${this.tricks.north}  East ${this.tricks.east}  West ${this.tricks.west}`;
+          this.render();
+          this.pauseAndContinue(`Hand ${this.handNum} done. ${this.label(winner)} took the last trick. Tricks: ${tally}.`, () => this.endHand());
+          return;
+        }
         this.activeSeat = winner;
         this.leader = winner;
         this.render();
         if (this.activeSeat !== "you") setTimeout(() => this.cpuPlay(this.activeSeat), 500);
-      }, 800);
+      };
+      // Hold the last trick of a hand visible 1.4s before pausing (so the
+      // user sees the fourth card before the message switches to the
+      // hand-summary); mid-hand tricks clear at 800ms.
+      setTimeout(advance, isLastTrick ? 1400 : 800);
       return;
     }
     this.activeSeat = nextSeat(this.activeSeat);

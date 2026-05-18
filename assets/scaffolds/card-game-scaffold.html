@@ -23,6 +23,18 @@ body{background:radial-gradient(ellipse at center,#0d6b3a 0%,#054821 100%);color
 #toast.error{background:#dc2626;color:#fff}
 #toast.warn{background:#f59e0b;color:#000}
 
+/* Pause-and-continue banner — universal wisdom rule
+   cg-round-end-pause-or-continue. At scoring-event boundaries (end of
+   a trick, end of a hand, dealer reveal) the table state stays visible
+   and a Continue button waits for the player. */
+#pauseOverlay{position:fixed;inset:0;background:rgba(0,0,0,0.45);display:none;align-items:center;justify-content:center;z-index:300}
+#pauseOverlay.show{display:flex}
+#pauseOverlay .panel{background:#0f172a;color:#fff;padding:18px 22px;border-radius:10px;border:1px solid #475569;box-shadow:0 8px 24px rgba(0,0,0,0.5);max-width:min(440px,90vw);display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center}
+#pauseOverlay .msg{font-size:15px;font-weight:600;line-height:1.4;color:#fbbf24}
+#pauseOverlay .sub{font-size:11px;color:#94a3b8;letter-spacing:0.5px}
+#pauseOverlay button.continue{padding:9px 22px;font-size:13px;background:#fbbf24;color:#1e293b;border:none;border-radius:6px;font-weight:700;cursor:pointer;letter-spacing:0.5px}
+#pauseOverlay button.continue:hover{background:#fcd34d}
+
 /* Scores panel — flexbox gap, NO absolute positioning (vq) */
 .scores{position:absolute;top:60px;left:20px;background:rgba(0,0,0,0.7);padding:10px 14px;border-radius:6px;display:flex;flex-direction:column;gap:6px;font-family:'Courier New',monospace;font-size:13px;color:#fff;border:1px solid #334155;min-width:140px}
 .scores h3{font-size:11px;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px}
@@ -151,6 +163,14 @@ button.action:disabled{opacity:0.4;cursor:not-allowed}
 <div class="controls" id="controls"></div>
 
 <div id="toast"></div>
+
+<div id="pauseOverlay" role="dialog" aria-modal="true" aria-live="polite">
+  <div class="panel">
+    <div class="msg" id="pauseMsg"></div>
+    <div class="sub">Review the play, then continue</div>
+    <button class="continue" id="pauseContinueBtn" type="button">Continue ▸</button>
+  </div>
+</div>
 
 <script>
 // ═══════════════════════════════════════════════════════════════
@@ -295,6 +315,25 @@ function toast(msg, kind = '') {
   t.className = 'show ' + kind;
   clearTimeout(toast._timer);
   toast._timer = setTimeout(() => t.classList.remove('show'), 1800);
+}
+
+// Pause + Continue at a scoring-event boundary (universal wisdom rule
+// cg-round-end-pause-or-continue). The table state stays visible until
+// the player clicks Continue; no auto-advance. Use this at end-of-hand,
+// dealer-reveal, last-trick-of-hand, or any moment where the CPU
+// produces points faster than a human can absorb them.
+function pauseAndContinue(message, callback) {
+  const overlay = document.getElementById('pauseOverlay');
+  const msgEl = document.getElementById('pauseMsg');
+  const btn = document.getElementById('pauseContinueBtn');
+  msgEl.textContent = message;
+  overlay.classList.add('show');
+  const onClick = () => {
+    btn.removeEventListener('click', onClick);
+    overlay.classList.remove('show');
+    callback();
+  };
+  btn.addEventListener('click', onClick);
 }
 
 // ─── Hearts rules ──────────────────────────────────────────
@@ -639,28 +678,40 @@ function scheduleCpuTurn() {
 function resolveTrick() {
   const winner = trickWinner();
   const points = trickPoints();
-  toast(`${winner === 'you' ? 'You' : winner.charAt(0).toUpperCase() + winner.slice(1)} took the trick (${points}pt)`, points > 0 ? 'warn' : 'success');
+  const winnerLabel = winner === 'you' ? 'You' : winner.charAt(0).toUpperCase() + winner.slice(1);
+  toast(`${winnerLabel} took the trick (${points}pt)`, points > 0 ? 'warn' : 'success');
   // HUB-24 — track hand-level points separately so shoot-the-moon detection
   // at endHand has the per-hand totals; cumulative scoring is applied AFTER
   // moon-shot adjudication so a shooter who would otherwise be -26 ends up
   // with a clean +0 for the hand.
   handScores[winner] += points;
   tricksThisHand += 1;
-  trick = [];
-  renderTrick();
-  if (hands.you.length === 0) {
-    setTimeout(endHand, 1000);
-  } else {
-    leadPlayer = winner;
-    currentPlayer = winner;
-    setActiveLight();
-    // HUB-24 v3 — re-render the hand once currentPlayer is set so the new
-    // lead player's onclick handlers are attached. Without this, when the
-    // user wins a trick the cards have stale onclick=null from when the
-    // previous CPU was rendered as the active player.
-    renderHands();
-    if (currentPlayer !== 'you') scheduleCpuTurn();
-  }
+  // Hold the trick visible briefly on point-bearing tricks so the player can
+  // see who took what (cg-round-end-pause-or-continue applies softly here);
+  // pointless tricks clear fast so play feels snappy.
+  const clearDelay = points > 0 ? 1400 : 500;
+  setTimeout(() => {
+    trick = [];
+    renderTrick();
+    if (hands.you.length === 0) {
+      // End-of-hand: keep the just-finished trick state context (handScores)
+      // visible by pausing the player BEFORE scoring is applied. The
+      // accompanying message names who took the last trick and previews
+      // that scoring is next.
+      const pointBits = PLAYERS.map(p => `${p === 'you' ? 'You' : p[0].toUpperCase()+p.slice(1)} ${handScores[p]}`).join('  ');
+      pauseAndContinue(`Hand ${handNum} done. ${winnerLabel} took the last trick. Hand points: ${pointBits}.`, endHand);
+    } else {
+      leadPlayer = winner;
+      currentPlayer = winner;
+      setActiveLight();
+      // HUB-24 v3 — re-render the hand once currentPlayer is set so the new
+      // lead player's onclick handlers are attached. Without this, when the
+      // user wins a trick the cards have stale onclick=null from when the
+      // previous CPU was rendered as the active player.
+      renderHands();
+      if (currentPlayer !== 'you') scheduleCpuTurn();
+    }
+  }, clearDelay);
 }
 
 function endHand() {
@@ -670,11 +721,14 @@ function endHand() {
   for (const p of PLAYERS) {
     if (handScores[p] === 26) { moonShooter = p; break; }
   }
+  let moonMsg = null;
   if (moonShooter) {
     for (const p of PLAYERS) {
       scores[p] += (p === moonShooter ? 0 : 26);
     }
-    toast(`${moonShooter === 'you' ? 'You' : moonShooter.charAt(0).toUpperCase() + moonShooter.slice(1)} SHOT THE MOON!`, 'success');
+    const shooterLabel = moonShooter === 'you' ? 'You' : moonShooter.charAt(0).toUpperCase() + moonShooter.slice(1);
+    moonMsg = `${shooterLabel} SHOT THE MOON! ${moonShooter === 'you' ? 'Everyone else takes' : 'You take'} 26.`;
+    toast(`${shooterLabel} SHOT THE MOON!`, 'success');
   } else {
     for (const p of PLAYERS) scores[p] += handScores[p];
   }
@@ -698,7 +752,11 @@ function endHand() {
     phase = 'gameover';
     return;
   }
-  setTimeout(newHand, 2000);
+  // Pause so the player can read the new cumulative scores (and the moon
+  // message if any) before the next hand is dealt and the table resets.
+  const scoreBits = PLAYERS.map(p => `${p === 'you' ? 'You' : p[0].toUpperCase()+p.slice(1)} ${scores[p]}`).join('  ');
+  const msg = moonMsg ? `${moonMsg}  Scores: ${scoreBits}.` : `Hand ${handNum} scored. Totals: ${scoreBits}.`;
+  pauseAndContinue(msg, newHand);
 }
 
 // HUB-24 — leaderboard hook. Hearts is "lower is better"; the hosted-page
