@@ -1,6 +1,6 @@
 {
   "packID": "board-games",
-  "version": 12,
+  "version": 13,
   "displayName": "Board Game Guidelines",
   "description": "Quality rules for chess, checkers, tic-tac-toe, and other board/grid games.",
   "categories": [
@@ -23,7 +23,7 @@
     {
       "id": "bg-001",
       "rule": "The human player clicks/taps to make moves. AI opponent moves automatically AFTER the human. Never auto-play both sides.",
-      "why": "Same as card games \u2014 the #1 bug is auto-playing both players.",
+      "why": "Same as card games — the #1 bug is auto-playing both players.",
       "severity": "critical",
       "appliesTo": "board-games",
       "examples": [
@@ -67,15 +67,15 @@
     },
     {
       "id": "bg-005",
-      "rule": "If the game has a human player, there MUST be at least one AI/computer opponent to play against. Never generate a game where the user has to play both sides manually. For web mini-apps using Lego components, mount one of the provided AI components \u2014 `entities/ChessAI` for chess, `entities/CheckersAI` for checkers, or `entities/SimpleOpponent` (random legal moves) as the universal fallback for any TurnBasedManager-driven game. After the human moves, schedule the AI's reply via `setTimeout(() => { const m = ai.pickMove(board, aiColor); if (m) applyMove(m); }, 350)` \u2014 the small delay sells 'thinking' and gives the human time to register their own move. ChessAI default depth is 2; raise to 3 for stronger play. CheckersAI default depth is 3.",
-      "why": "Users ask for a 'playable' game expecting someone to play against. A board with no opponent forces the user to move pieces for both sides, which is not a game \u2014 it's a demo. Until 2026-05-02 our chess/checkers golden assemblies HAD this bug \u2014 the user moved white and the board froze waiting for them to also move black. Adding the AI components and this rule together closes the loop. The marker check `requiresAIOpponent` now refuses to publish a 2-player game without one of the registered AI components OR an inline `selectComputerMove`/`cpuTurn`/equivalent function.",
+      "rule": "If the game has a human player, there MUST be at least one AI/computer opponent to play against. Never generate a game where the user has to play both sides manually. For web mini-apps using Lego components, mount one of the provided AI components — `entities/ChessAI` for chess, `entities/CheckersAI` for checkers, or `entities/SimpleOpponent` (random legal moves) as the universal fallback for any TurnBasedManager-driven game. After the human moves, schedule the AI's reply via `setTimeout(() => { const m = ai.pickMove(board, aiColor); if (m) applyMove(m); }, 350)` — the small delay sells 'thinking' and gives the human time to register their own move. ChessAI default depth is 2; raise to 3 for stronger play. CheckersAI default depth is 3.",
+      "why": "Users ask for a 'playable' game expecting someone to play against. A board with no opponent forces the user to move pieces for both sides, which is not a game — it's a demo. Until 2026-05-02 our chess/checkers golden assemblies HAD this bug — the user moved white and the board froze waiting for them to also move black. Adding the AI components and this rule together closes the loop. The marker check `requiresAIOpponent` now refuses to publish a 2-player game without one of the registered AI components OR an inline `selectComputerMove`/`cpuTurn`/equivalent function.",
       "severity": "critical",
       "appliesTo": "board-games",
       "examples": [
         "GOOD (Lego): import { ChessAI } from '../../entities/ChessAI.js'; const ai = new ChessAI({ rules, depth: 2 }); after human move: setTimeout(() => ai.playMove(board, 'black'), 350);",
-        "GOOD fallback: import { SimpleOpponent } from '../../entities/SimpleOpponent.js'; \u2014 random legal moves are still better than no opponent.",
-        "BAD: chess game where after white moves the board says 'BLACK to move' but never moves anything \u2014 the human has to click for both colors. This is the bug the wisdom rule was added to prevent.",
-        "Tic-tac-toe: build a small inline minimax (depth \u22649 is fast on the 3x3 board) for perfect play, or use SimpleOpponent for easy mode."
+        "GOOD fallback: import { SimpleOpponent } from '../../entities/SimpleOpponent.js'; — random legal moves are still better than no opponent.",
+        "BAD: chess game where after white moves the board says 'BLACK to move' but never moves anything — the human has to click for both colors. This is the bug the wisdom rule was added to prevent.",
+        "Tic-tac-toe: build a small inline minimax (depth ≤9 is fast on the 3x3 board) for perfect play, or use SimpleOpponent for easy mode."
       ]
     },
     {
@@ -92,20 +92,20 @@
     },
     {
       "id": "bg-007",
-      "rule": "If `window.mChatAI?.cloud?.isAvailable()` is true, offer a 'Strong AI' difficulty toggle that calls `window.mChatAI.cloud.llm()` for move selection instead of the built-in heuristic. Label it '\u26a1 Strong AI' with a token cost badge. Fall back to built-in AI if the call fails or is not available.",
+      "rule": "If `window.mChatAI?.cloud?.isAvailable()` is true, offer a 'Strong AI' difficulty toggle that calls `window.mChatAI.cloud.llm()` for move selection instead of the built-in heuristic. Label it '⚡ Strong AI' with a token cost badge. Fall back to built-in AI if the call fails or is not available.",
       "why": "Cloud AI opponents dramatically improve the game experience for serious players. The local AI (random/minimax-depth-3) can be beaten easily. Cloud LLM move selection provides human-level challenge without bloating the app bundle.",
       "severity": "recommended",
       "appliesTo": "board-games",
       "examples": [
-        "Difficulty selector: [Easy] [Medium] [\u26a1 Strong AI (1 token/game)]",
+        "Difficulty selector: [Easy] [Medium] [⚡ Strong AI (1 token/game)]",
         "Cloud move: window.mChatAI.cloud.llm({ prompt: 'You are a chess grandmaster. Board FEN: ' + fen + '. What is the best move? Respond with only the move in algebraic notation.' }).then(move => makeMove(move.trim()))",
         "Fallback: if cloud call fails or times out >3s, use local AI and show toast 'Using local AI'"
       ]
     },
     {
       "id": "bg-restart-button",
-      "rule": "Every game MUST present a VISIBLE on-screen restart/play-again button when the game ends (game-over, you-win, level-complete). Do NOT rely solely on a menu shortcut like Cmd+N or 'Game > New Game' \u2014 users don't discover those mid-play. The restart UI must: (a) appear automatically when the terminal phase is reached, (b) be visually distinct (colored button or large tappable area), (c) clearly say 'Restart' / 'Play Again' / 'New Game' (not just 'OK' or unlabeled), (d) when tapped, fully reset all game state (score, lives, level, score-multiplier, fuel, terrain \u2014 anything that accumulated during play). Keep the menu-bar shortcut too (e.g. Cmd+N), but the on-screen button is the primary affordance.",
-      "why": "User feedback 2026-05-04 on shipped Lunar Lander: 'There is no restart button for the game: That should be a fundamental wisdom rule to all games if we don't have that already.' The shipped Lunar Lander rendered 'GAME OVER score=0' as static HUD text with no UI affordance. Users had to discover Cmd+N from the menu bar. Same pattern was hit by earlier shipped Pong, BurgerTime, Joust \u2014 they all have the menu shortcut but lack a tappable on-screen restart. This is the single most common 'it's a great game but UX feels rough' complaint.",
+      "rule": "Every game MUST present a VISIBLE on-screen restart/play-again button when the game ends (game-over, you-win, level-complete). Do NOT rely solely on a menu shortcut like Cmd+N or 'Game > New Game' — users don't discover those mid-play. The restart UI must: (a) appear automatically when the terminal phase is reached, (b) be visually distinct (colored button or large tappable area), (c) clearly say 'Restart' / 'Play Again' / 'New Game' (not just 'OK' or unlabeled), (d) when tapped, fully reset all game state (score, lives, level, score-multiplier, fuel, terrain — anything that accumulated during play). Keep the menu-bar shortcut too (e.g. Cmd+N), but the on-screen button is the primary affordance.",
+      "why": "User feedback 2026-05-04 on shipped Lunar Lander: 'There is no restart button for the game: That should be a fundamental wisdom rule to all games if we don't have that already.' The shipped Lunar Lander rendered 'GAME OVER score=0' as static HUD text with no UI affordance. Users had to discover Cmd+N from the menu bar. Same pattern was hit by earlier shipped Pong, BurgerTime, Joust — they all have the menu shortcut but lack a tappable on-screen restart. This is the single most common 'it's a great game but UX feels rough' complaint.",
       "severity": "high",
       "examples": [
         "RIGHT (SwiftUI overlay): When phase becomes .gameOver, render `VStack { Text('GAME OVER').font(.largeTitle); Text('Score: \\(score)'); Button('Play Again') { restart() }.buttonStyle(.borderedProminent) }.padding(20).background(...).overlay(...)`",
@@ -118,8 +118,8 @@
     },
     {
       "id": "game-warm-gradient-background",
-      "rule": "Game backgrounds MUST be warm/atmospheric \u2014 radial-gradient or layered linear-gradient with at least one color highlight per corner. NOT pure black, NOT plain solid color. The web Candy Match reference uses a layered gradient: base purple (#1f1026) + radial yellow glow at top-left + radial cyan glow at top-right. Same pattern works for any game: pick a primary color matching the game's theme (purple for candy, dark blue for space, dark green for forest), add 1-2 radial corner glows in complementary colors. SwiftUI: use ZStack { Color + RadialGradient + RadialGradient }.ignoresSafeArea(). The warmth makes the game feel like a finished product instead of a wireframe.",
-      "why": "User feedback 2026-05-04 on the catalog Match3: 'The black background is lame'. Switched to layered radial-gradient (purple base + yellow + cyan corners) per the web Candy Match reference. The atmosphere is the difference between a play-test prototype and a polished app \u2014 and it costs ~12 lines of SwiftUI to add. Apply broadly: arcade games, board games, card games, puzzles all benefit.",
+      "rule": "Game backgrounds MUST be warm/atmospheric — radial-gradient or layered linear-gradient with at least one color highlight per corner. NOT pure black, NOT plain solid color. The web Candy Match reference uses a layered gradient: base purple (#1f1026) + radial yellow glow at top-left + radial cyan glow at top-right. Same pattern works for any game: pick a primary color matching the game's theme (purple for candy, dark blue for space, dark green for forest), add 1-2 radial corner glows in complementary colors. SwiftUI: use ZStack { Color + RadialGradient + RadialGradient }.ignoresSafeArea(). The warmth makes the game feel like a finished product instead of a wireframe.",
+      "why": "User feedback 2026-05-04 on the catalog Match3: 'The black background is lame'. Switched to layered radial-gradient (purple base + yellow + cyan corners) per the web Candy Match reference. The atmosphere is the difference between a play-test prototype and a polished app — and it costs ~12 lines of SwiftUI to add. Apply broadly: arcade games, board games, card games, puzzles all benefit.",
       "severity": "medium",
       "examples": [
         "RIGHT (SwiftUI): ZStack { Color(red: 0.12, green: 0.06, blue: 0.15).ignoresSafeArea(); RadialGradient(gradient: Gradient(colors: [Color.yellow.opacity(0.22), .clear]), center: UnitPoint(x: 0.2, y: 0.1), startRadius: 0, endRadius: 360); RadialGradient(...) }",
@@ -130,32 +130,32 @@
     },
     {
       "id": "game-tile-shine-and-gradient",
-      "rule": "Every clickable/interactive tile in a game (candy in match-3, card in solitaire, key on a piano keyboard, etc.) MUST have: (a) a vertical or 145\u00b0 linear-gradient fill, NOT a flat color. (b) An inner highlight \u2014 a rotated semi-transparent white blob or arc, inset ~12% from the edges, that gives the tile a 3D / glossy appearance. (c) A subtle 1.5pt white-with-low-opacity stroke for definition. (d) A drop-shadow whose color is the tile's BOTTOM gradient color so the tile feels grounded. The web Candy Match reference does this in CSS with `.tile::before { inset: 12%; background: rgba(255,255,255,0.22); transform: rotate(18deg) }`. SwiftUI equivalent: ZStack { RoundedRectangle.fill(LinearGradient(top, bottom)); RoundedRectangle.fill(.white.opacity(0.22)).scaleEffect(0.62).rotationEffect(.degrees(-18)); RoundedRectangle.stroke(.white.opacity(0.28), lineWidth: 1.5) }.shadow(color: bottomColor.opacity(0.5), radius: 6, y: 4).",
+      "rule": "Every clickable/interactive tile in a game (candy in match-3, card in solitaire, key on a piano keyboard, etc.) MUST have: (a) a vertical or 145° linear-gradient fill, NOT a flat color. (b) An inner highlight — a rotated semi-transparent white blob or arc, inset ~12% from the edges, that gives the tile a 3D / glossy appearance. (c) A subtle 1.5pt white-with-low-opacity stroke for definition. (d) A drop-shadow whose color is the tile's BOTTOM gradient color so the tile feels grounded. The web Candy Match reference does this in CSS with `.tile::before { inset: 12%; background: rgba(255,255,255,0.22); transform: rotate(18deg) }`. SwiftUI equivalent: ZStack { RoundedRectangle.fill(LinearGradient(top, bottom)); RoundedRectangle.fill(.white.opacity(0.22)).scaleEffect(0.62).rotationEffect(.degrees(-18)); RoundedRectangle.stroke(.white.opacity(0.28), lineWidth: 1.5) }.shadow(color: bottomColor.opacity(0.5), radius: 6, y: 4).",
       "why": "User feedback 2026-05-04 on the catalog Match3: 'The jewels look kind of lame, the graphics are very flat and boring.' Adding the gradient + inner shine + colored shadow makes a flat shape look like a candy-shop jewel without bundling any art assets. Same trick works for cards (gradient front + back), keys (white-to-cream gradient + shine), pieces (color-toned gradient + shadow).",
       "severity": "medium",
       "examples": [
-        "RIGHT (Match3 candy): see /Users/lawrencenorman/mystuff/src/mchatai_platform/mchatai-source/frameworks/macos-components/examples/match3/ContentView.swift (function candyTileBody) \u2014 gradient + inner shine + stroke + colored shadow",
-        "RIGHT (web Candy Match): see frameworks/web-components/examples/candy-match/candy-match.css \u2014 .tile + .tile::before + .tile.kind-N gradient classes",
-        "WRONG: RoundedRectangle.fill(Color.red) + Image(systemName: 'sparkle') with no gradient, no shine, no shadow \u2014 reads as a wireframe placeholder",
+        "RIGHT (Match3 candy): see /Users/lawrencenorman/mystuff/src/mchatai_platform/mchatai-source/frameworks/macos-components/examples/match3/ContentView.swift (function candyTileBody) — gradient + inner shine + stroke + colored shadow",
+        "RIGHT (web Candy Match): see frameworks/web-components/examples/candy-match/candy-match.css — .tile + .tile::before + .tile.kind-N gradient classes",
+        "WRONG: RoundedRectangle.fill(Color.red) + Image(systemName: 'sparkle') with no gradient, no shine, no shadow — reads as a wireframe placeholder",
         "Reskin guidance: when the user asks for a different theme (e.g. 'space-themed match-3'), keep the gradient+shine+stroke STRUCTURE, only swap the gradient color pairs."
       ]
     },
     {
       "id": "game-animation-choreography",
-      "rule": "Every game state transition that the player triggers MUST have a visible animation, not a snap-cut. Specifically: (1) Tile/piece moves: spring-animation (response: 0.25-0.35, dampingFraction: 0.7) with offset interpolation. (2) Tile-swap (match-3, sliding puzzles): both tiles slide simultaneously toward each other, then settle. (3) Tile/piece removal: scale to 1.3\u00d7 + fade-out (.easeOut, 0.18s). (4) Refill / collapse (match-3, tetris): new tiles slide DOWN from above using SwiftUI .transition(.asymmetric(insertion: .move(edge: .top).combined(with: .opacity), removal: .opacity)). (5) Cascade chain: stagger animations by 0.20-0.25s per chain pass so the player can see each step. (6) Score increment: animate with .contentTransition(.numericText()) or a brief scale-pulse on the score number. NEVER use snap-cuts on user-initiated state changes \u2014 even 0.1s of motion is the difference between 'game' and 'spreadsheet'.",
+      "rule": "Every game state transition that the player triggers MUST have a visible animation, not a snap-cut. Specifically: (1) Tile/piece moves: spring-animation (response: 0.25-0.35, dampingFraction: 0.7) with offset interpolation. (2) Tile-swap (match-3, sliding puzzles): both tiles slide simultaneously toward each other, then settle. (3) Tile/piece removal: scale to 1.3× + fade-out (.easeOut, 0.18s). (4) Refill / collapse (match-3, tetris): new tiles slide DOWN from above using SwiftUI .transition(.asymmetric(insertion: .move(edge: .top).combined(with: .opacity), removal: .opacity)). (5) Cascade chain: stagger animations by 0.20-0.25s per chain pass so the player can see each step. (6) Score increment: animate with .contentTransition(.numericText()) or a brief scale-pulse on the score number. NEVER use snap-cuts on user-initiated state changes — even 0.1s of motion is the difference between 'game' and 'spreadsheet'.",
       "why": "User feedback 2026-05-04 on the catalog Match3: 'the animations are still pretty lame, the jewels don't slide down, there is no pulsing hints, nothing.' Borrowing the web Candy Match's animation choreography (swap glide + pop+fade match + slide-from-top refill) made the game feel alive instead of teleporty. Apply broadly: chess piece moves should glide, card flips should rotate, hop-games should arc, everything you click should respond visibly.",
       "severity": "high",
       "examples": [
         "RIGHT (swap glide): withAnimation(.easeInOut(duration: 0.18)) { tileOffsets[a] = ...; tileOffsets[b] = ... }; DispatchQueue.main.asyncAfter(deadline: .now() + 0.20) { engine.swap(a, b); tileOffsets[a] = .zero; tileOffsets[b] = .zero }",
         "RIGHT (pop fade): withAnimation(.easeOut(duration: 0.20)) { poppingTiles.formUnion(matched); ... } -> tile body uses .scaleEffect(isPopping ? 1.3 : 1.0).opacity(isPopping ? 0 : 1)",
         "RIGHT (cascade stagger): for (i, event) in events.enumerated() { DispatchQueue.main.asyncAfter(deadline: .now() + Double(i) * 0.24) { ... } }",
-        "WRONG: engine.swap(a, b); engine.findMatches(); engine.collapse(); engine.refill() \u2014 all in one synchronous frame; the user sees the board jump from old state to new state with zero feedback.",
+        "WRONG: engine.swap(a, b); engine.findMatches(); engine.collapse(); engine.refill() — all in one synchronous frame; the user sees the board jump from old state to new state with zero feedback.",
         "Anti-pattern: rendering NEW tiles in their final position. They should slide IN from off-screen / above. Use transitions: .move(edge: .top).combined(with: .opacity)."
       ]
     },
     {
       "id": "game-idle-hint-pulse",
-      "rule": "After ~5 seconds of player idleness in a game with valid-move gameplay (match-3, sudoku, mahjong-tile-matching, etc.), the game MUST surface a hint by visibly pulsing one valid move. The hint should: (a) compute a real valid move via the engine's findPossibleSwap / findPossibleMove API, (b) animate the involved tiles with a soft scale (1.05x) + glow pulse on a 1s ease-in-out cycle, (c) cancel the hint as soon as the player makes any move. This is the difference between 'I'm stuck' and 'this game wants me to figure it out alone.' Cap idle threshold at 5-8s \u2014 any longer feels like punishment.",
+      "rule": "After ~5 seconds of player idleness in a game with valid-move gameplay (match-3, sudoku, mahjong-tile-matching, etc.), the game MUST surface a hint by visibly pulsing one valid move. The hint should: (a) compute a real valid move via the engine's findPossibleSwap / findPossibleMove API, (b) animate the involved tiles with a soft scale (1.05x) + glow pulse on a 1s ease-in-out cycle, (c) cancel the hint as soon as the player makes any move. This is the difference between 'I'm stuck' and 'this game wants me to figure it out alone.' Cap idle threshold at 5-8s — any longer feels like punishment.",
       "why": "User feedback 2026-05-04 on the catalog Match3: 'no pulsing hints, nothing'. The web Candy Match doesn't have this either, but it's a UX standard for tile-swap puzzlers. Added to Match3 with a Timer.publish(every: 1) ticker + lastMoveAt tracking + findPossibleSwap helper. Same pattern works for Mahjong (highlight a matchable pair), Sudoku (highlight a cell with only one valid digit), Solitaire (highlight a moveable card).",
       "severity": "medium",
       "examples": [
@@ -167,35 +167,35 @@
     },
     {
       "id": "anim-squash-stretch-falling-landing",
-      "rule": "Falling tiles in tile-based games (match-3, Tetris, sliding-tile, Bejeweled, Threes) MUST deform: stretch vertically (sx\u22480.92, sy\u22481.12) while falling, squash horizontally (sx\u22481.18, sy\u22480.86) for ~130ms when they land. This is principle #1 of the 12 Disney principles (squash-and-stretch) \u2014 the difference between 'graphic moves' and 'candy lands.' Tiles that scale uniformly or just translate feel weightless and stickered onto the board. The squash is volume-preserving (sx*sy\u22481.0).",
+      "rule": "Falling tiles in tile-based games (match-3, Tetris, sliding-tile, Bejeweled, Threes) MUST deform: stretch vertically (sx≈0.92, sy≈1.12) while falling, squash horizontally (sx≈1.18, sy≈0.86) for ~130ms when they land. This is principle #1 of the 12 Disney principles (squash-and-stretch) — the difference between 'graphic moves' and 'candy lands.' Tiles that scale uniformly or just translate feel weightless and stickered onto the board. The squash is volume-preserving (sx*sy≈1.0).",
       "why": "Real Candy Crush production animations validated 2026-05-04 via web research + Match3 catalog reference rebuild (v6). Without squash-stretch the user said 'they feel like pngs that are just being animated.' With it the tiles read as having weight.",
       "severity": "high",
       "appliesTo": "tileBasedGame",
       "examples": [
         "RIGHT: phaseScales(.falling) returns (0.92, 1.12); phaseScales(.squashing) returns (1.18, 0.86); driven by AnimationIntensity.fallStretch and .squashAmount.",
-        "RIGHT (with AnimationIntensity): use the `effects.animation-intensity` Lego component \u2014 one struct field controls both stretch and squash, presets handle game pace.",
+        "RIGHT (with AnimationIntensity): use the `effects.animation-intensity` Lego component — one struct field controls both stretch and squash, presets handle game pace.",
         "WRONG: tiles use a uniform scale (1.0,1.0) the entire fall; reads as weightless icons sliding."
       ]
     },
     {
       "id": "anim-bulge-shrink-not-flat-fade",
-      "rule": "Match clears (or any 'item disappears with feedback' moment) MUST bulge before they shrink \u2014 anticipation (12 principles #4) + follow-through (#5). Sequence: (a) scale up 1.20\u20131.30\u00d7 over 60\u2013100ms with easeOut, (b) shrink to 0 + fade with easeIn over 80\u2013110ms. A flat fade (just opacity 1\u21920) feels mechanical; bulge-shrink feels satisfying. The eye registers 'something is about to happen' (bulge) BEFORE the disappearance (shrink). The whole motion takes ~180ms.",
-      "why": "v3/v4/v5 of the catalog Match3 used flat fades and the user reported 'animations are lacking, feels flat.' v6 with bulge-shrink read as 'satisfying pop.' Universal animation principle \u2014 applies to card flips, item pickups, balloon pops, any binary disappear event.",
+      "rule": "Match clears (or any 'item disappears with feedback' moment) MUST bulge before they shrink — anticipation (12 principles #4) + follow-through (#5). Sequence: (a) scale up 1.20–1.30× over 60–100ms with easeOut, (b) shrink to 0 + fade with easeIn over 80–110ms. A flat fade (just opacity 1→0) feels mechanical; bulge-shrink feels satisfying. The eye registers 'something is about to happen' (bulge) BEFORE the disappearance (shrink). The whole motion takes ~180ms.",
+      "why": "v3/v4/v5 of the catalog Match3 used flat fades and the user reported 'animations are lacking, feels flat.' v6 with bulge-shrink read as 'satisfying pop.' Universal animation principle — applies to card flips, item pickups, balloon pops, any binary disappear event.",
       "severity": "high",
       "examples": [
         "RIGHT: withAnimation(.easeOut(duration: 0.08)) { phase = .bulging }; sleep 80ms; withAnimation(.easeIn(duration: 0.10)) { phase = .shrinking }; commit clear after shrink.",
         "RIGHT (with AnimationIntensity): bulgeAmount=0.25, bulgeDuration=0.08, shrinkDuration=0.11 are the standard preset.",
-        "WRONG: withAnimation(.easeOut) { tile.opacity = 0; tile.scale = 0 }  \u2014 single-phase fade-shrink, no anticipation, feels mechanical."
+        "WRONG: withAnimation(.easeOut) { tile.opacity = 0; tile.scale = 0 }  — single-phase fade-shrink, no anticipation, feels mechanical."
       ]
     },
     {
       "id": "anim-per-phase-curves-not-one-global",
-      "rule": "Tile-based games MUST use DIFFERENT animation curves for different phases. Bulging = .easeOut(0.08) (fast pop). Shrinking = .easeIn(0.10) (accelerate as it disappears). Landing = .spring(response:0.18, dampingFraction:0.45) (bouncy). Idle restore = .spring(0.20, 0.78) (settle). One global animation curve for everything reads as 'boring spring on everything' \u2014 different timings per phase is what separates 'alive' from 'sterile.'",
-      "why": "Real Candy Crush uses different curves per phase (researched 2026-05-04). v3/v4/v5 of catalog Match3 used one global spring; user feedback was 'feels flat.' v6 with per-phase curves was the first one that 'felt like candy.' Universal \u2014 applies to any squash-stretch animated UI.",
+      "rule": "Tile-based games MUST use DIFFERENT animation curves for different phases. Bulging = .easeOut(0.08) (fast pop). Shrinking = .easeIn(0.10) (accelerate as it disappears). Landing = .spring(response:0.18, dampingFraction:0.45) (bouncy). Idle restore = .spring(0.20, 0.78) (settle). One global animation curve for everything reads as 'boring spring on everything' — different timings per phase is what separates 'alive' from 'sterile.'",
+      "why": "Real Candy Crush uses different curves per phase (researched 2026-05-04). v3/v4/v5 of catalog Match3 used one global spring; user feedback was 'feels flat.' v6 with per-phase curves was the first one that 'felt like candy.' Universal — applies to any squash-stretch animated UI.",
       "severity": "high",
       "examples": [
         "RIGHT: animationFor(.bulging) returns .easeOut(0.08); animationFor(.shrinking) returns .easeIn(0.10); animationFor(.squashing) returns .spring(response:0.18, dampingFraction:0.45). Apply each via .animation(animationFor(phase), value: phase) on the tile.",
-        "WRONG: withAnimation(.spring) wrapping the entire match-resolve cycle \u2014 every phase rides one curve, feels uniform."
+        "WRONG: withAnimation(.spring) wrapping the entire match-resolve cycle — every phase rides one curve, feels uniform."
       ]
     },
     {
@@ -206,63 +206,63 @@
       "examples": [
         "RIGHT: `private let intensity: AnimationIntensity = .standard  // AnimationIntensity: standard (match-3 = mechanics-driven feedback)` then use `intensity.bulgeAmount`, `intensity.flashScale`, etc. throughout the View.",
         "RIGHT (override individual): `var i = AnimationIntensity.standard; i.flashScale = 0.5; i.flashOpacity = 0.4 // dial flashes back further` and assign to `intensity`.",
-        "WRONG: hardcoded `.scaleEffect(1.25)`, `.font(.system(size: 92))`, `.spring(response: 0.18, dampingFraction: 0.45)` scattered across the View \u2014 impossible to retune as a unit."
+        "WRONG: hardcoded `.scaleEffect(1.25)`, `.font(.system(size: 92))`, `.spring(response: 0.18, dampingFraction: 0.45)` scattered across the View — impossible to retune as a unit."
       ]
     },
     {
       "id": "anim-flash-overlays-transparent-not-solid",
-      "rule": "Per-event flash overlays (sparkle for 3-match, burst for 4-match, lightning for 5-match \u2014 and any equivalent 'event happened here' visual) should be SCALED DOWN and SEMI-TRANSPARENT, not full-size solid graphics. Rule of thumb: glyph size ~60% of cell size, opacity 0.4\u20130.6, halo radius modest. Overly large/solid flash overlays read as 'sticker pasted on top of the gameplay' rather than 'effect emanating from the gameplay.' Real production overlays are accents, not centerpieces. Avoid giant text labels like '\u26a1 5-MATCH \u26a1' \u2014 the game-mechanic feedback (score increment, board change) is the centerpiece; the flash is punctuation.",
-      "why": "User feedback 2026-05-04 on catalog Match3 v6.3: 'the animation with the star and the lightning bolt are a bit too big and should probably be a little more transparent.' v6.4 flashes use scale=0.6 + opacity=0.55 + halo=18, removed text labels \u2014 and the flashes still register but no longer dominate. AnimationIntensity captures this as `flashScale: 0.6, flashOpacity: 0.55` in the standard preset.",
+      "rule": "Per-event flash overlays (sparkle for 3-match, burst for 4-match, lightning for 5-match — and any equivalent 'event happened here' visual) should be SCALED DOWN and SEMI-TRANSPARENT, not full-size solid graphics. Rule of thumb: glyph size ~60% of cell size, opacity 0.4–0.6, halo radius modest. Overly large/solid flash overlays read as 'sticker pasted on top of the gameplay' rather than 'effect emanating from the gameplay.' Real production overlays are accents, not centerpieces. Avoid giant text labels like '⚡ 5-MATCH ⚡' — the game-mechanic feedback (score increment, board change) is the centerpiece; the flash is punctuation.",
+      "why": "User feedback 2026-05-04 on catalog Match3 v6.3: 'the animation with the star and the lightning bolt are a bit too big and should probably be a little more transparent.' v6.4 flashes use scale=0.6 + opacity=0.55 + halo=18, removed text labels — and the flashes still register but no longer dominate. AnimationIntensity captures this as `flashScale: 0.6, flashOpacity: 0.55` in the standard preset.",
       "severity": "medium",
       "examples": [
         "RIGHT: Image(systemName: \"sparkles\").font(.system(size: 56 * intensity.flashScale, weight: .black)).foregroundStyle(color.opacity(intensity.flashOpacity)).shadow(color: color.opacity(intensity.flashOpacity * 0.8), radius: intensity.flashHaloRadius)",
-        "RIGHT: NO 'YOU DID IT' / '5-MATCH' text labels \u2014 the score increment + board change communicates the event.",
-        "WRONG: opaque 96pt bolt.fill + 150pt circle + 60pt halo + giant Text('\u26a1 5-MATCH \u26a1') label centered on top of the board. Reads as 'graphic asset' not 'effect.'"
+        "RIGHT: NO 'YOU DID IT' / '5-MATCH' text labels — the score increment + board change communicates the event.",
+        "WRONG: opaque 96pt bolt.fill + 150pt circle + 60pt halo + giant Text('⚡ 5-MATCH ⚡') label centered on top of the board. Reads as 'graphic asset' not 'effect.'"
       ]
     },
     {
       "id": "audio-use-sound-engine-component",
-      "rule": "Game-flavor mini-apps (arcade, match-3, card, puzzle, board games \u2014 anything in the 'game' bucket) SHOULD use the `effects.sound-engine` Lego component instead of building their own AVAudioPlayer plumbing. SoundEngine provides pooled players (low-latency overlap), debounced playback, music fade in/out, persistent UserDefaults mute, semantic SFX enum (match3Pop / arcadeLaser / cardSlide / etc.), and intensity presets (.subtle/.standard/.punchy/.soft). 25 CC0 SFX from Kenney are bundled in `assets/sfx/*.m4a`. Generated apps should declare `@ObservedObject private var sound = SoundEngine.shared` and call `sound.play(.match3Pop)`. Add `resources: [.copy(\"SFX\")]` to the SwiftPM target.",
-      "why": "Filed 2026-05-04 after building SoundEngine component for catalog Match3 v7. User feedback: 'sound effects really add to the overall game experience.' Without a shared engine, every game reinvents pool management, debouncing, mute toggle, music fades \u2014 and gets 2-3 of them wrong (jarring volumes, no fade, plays on every render).",
+      "rule": "Game-flavor mini-apps (arcade, match-3, card, puzzle, board games — anything in the 'game' bucket) SHOULD use the `effects.sound-engine` Lego component instead of building their own AVAudioPlayer plumbing. SoundEngine provides pooled players (low-latency overlap), debounced playback, music fade in/out, persistent UserDefaults mute, semantic SFX enum (match3Pop / arcadeLaser / cardSlide / etc.), and intensity presets (.subtle/.standard/.punchy/.soft). 25 CC0 SFX from Kenney are bundled in `assets/sfx/*.m4a`. Generated apps should declare `@ObservedObject private var sound = SoundEngine.shared` and call `sound.play(.match3Pop)`. Add `resources: [.copy(\"SFX\")]` to the SwiftPM target.",
+      "why": "Filed 2026-05-04 after building SoundEngine component for catalog Match3 v7. User feedback: 'sound effects really add to the overall game experience.' Without a shared engine, every game reinvents pool management, debouncing, mute toggle, music fades — and gets 2-3 of them wrong (jarring volumes, no fade, plays on every render).",
       "severity": "high",
       "examples": [
         "RIGHT: import effects.sound-engine; @ObservedObject private var sound = SoundEngine.shared; on match-clear: sound.play(.match3Pop, pitchSemitones: cascadeDepth * 2)",
-        "RIGHT (mute button): Button { sound.muted.toggle() } label: { Image(systemName: sound.muted ? \"speaker.slash.fill\" : \"speaker.wave.2.fill\") } \u2014 required by audio-always-mute-toggle rule.",
+        "RIGHT (mute button): Button { sound.muted.toggle() } label: { Image(systemName: sound.muted ? \"speaker.slash.fill\" : \"speaker.wave.2.fill\") } — required by audio-always-mute-toggle rule.",
         "WRONG: build AVAudioPlayer pool ad-hoc in ContentView; reinvent debouncing; forget mute persistence; skip music fades."
       ]
     },
     {
       "id": "audio-always-mute-toggle",
-      "rule": "Any game with sound MUST expose a visible, persistent mute toggle in the always-visible UI (not hidden in a settings menu). Default state: unmuted at modest volume (intensity.standard.sfxVolume = 0.65). Mute state MUST persist across app restarts via UserDefaults. Use SF Symbols `speaker.wave.2.fill` (unmuted) / `speaker.slash.fill` (muted). Optional but recommended: bind to keyboard shortcut 'M'. SoundEngine.muted handles the persistence \u2014 just observe `sound.muted` for the icon swap.",
-      "why": "Universal UX rule. Users tab between games, take calls, share screens. Burying mute deep in a settings menu means the next time they alt-tab in, the SFX surprise everyone in the room. Filed 2026-05-04 alongside SoundEngine ship \u2014 incorporated as default behavior in the engine itself but the visible-button is a View-level requirement that can't be enforced by the Lego.",
+      "rule": "Any game with sound MUST expose a visible, persistent mute toggle in the always-visible UI (not hidden in a settings menu). Default state: unmuted at modest volume (intensity.standard.sfxVolume = 0.65). Mute state MUST persist across app restarts via UserDefaults. Use SF Symbols `speaker.wave.2.fill` (unmuted) / `speaker.slash.fill` (muted). Optional but recommended: bind to keyboard shortcut 'M'. SoundEngine.muted handles the persistence — just observe `sound.muted` for the icon swap.",
+      "why": "Universal UX rule. Users tab between games, take calls, share screens. Burying mute deep in a settings menu means the next time they alt-tab in, the SFX surprise everyone in the room. Filed 2026-05-04 alongside SoundEngine ship — incorporated as default behavior in the engine itself but the visible-button is a View-level requirement that can't be enforced by the Lego.",
       "severity": "high",
       "examples": [
-        "RIGHT: speaker icon in the bottom controls bar, always visible. Tap \u2192 mute persists.",
+        "RIGHT: speaker icon in the bottom controls bar, always visible. Tap → mute persists.",
         "RIGHT: keyboardShortcut(\"m\", modifiers: []) for power-users + .help() tooltip.",
         "WRONG: mute hidden in a 'Preferences' menu / hamburger / kebab. Surfacing-cost too high."
       ]
     },
     {
       "id": "audio-pitch-shift-cascades",
-      "rule": "For match-3 / cascade / chain-reaction games, pitch-shift the SFX +2 semitones per cascade depth (depth 0 = neutral, depth 1 = +2, depth 2 = +4, etc.). Creates the satisfying ascending arpeggio Candy Crush is famous for. Use `sound.play(sfx, pitchSemitones: depth * 2)`. SoundEngine supports this via `enableRate = true` on the underlying AVAudioPlayer pool. Cap at depth 6 (= +12 semitones = double pitch) \u2014 beyond that AVAudioPlayer artifacts become obvious. Apply same pattern to: combo counters in arcade games (each combo bumps pitch), enemy-streak-kills, multi-line-clear in Tetris.",
-      "why": "Real Candy Crush production behavior validated 2026-05-04 via web research + Match3 v7 implementation. Without pitch-shift, every cascade pop sounds identical \u2192 user can't tell they're chaining. With pitch-shift, the ear hears 'thing 1, thing 2, thing 3' as ascending tones and the cascade feels satisfying. Universal \u2014 applies to any game with chainable events.",
+      "rule": "For match-3 / cascade / chain-reaction games, pitch-shift the SFX +2 semitones per cascade depth (depth 0 = neutral, depth 1 = +2, depth 2 = +4, etc.). Creates the satisfying ascending arpeggio Candy Crush is famous for. Use `sound.play(sfx, pitchSemitones: depth * 2)`. SoundEngine supports this via `enableRate = true` on the underlying AVAudioPlayer pool. Cap at depth 6 (= +12 semitones = double pitch) — beyond that AVAudioPlayer artifacts become obvious. Apply same pattern to: combo counters in arcade games (each combo bumps pitch), enemy-streak-kills, multi-line-clear in Tetris.",
+      "why": "Real Candy Crush production behavior validated 2026-05-04 via web research + Match3 v7 implementation. Without pitch-shift, every cascade pop sounds identical → user can't tell they're chaining. With pitch-shift, the ear hears 'thing 1, thing 2, thing 3' as ascending tones and the cascade feels satisfying. Universal — applies to any game with chainable events.",
       "severity": "medium",
       "appliesTo": "tileBasedGame, arcadeGame, puzzleGame",
       "examples": [
-        "RIGHT: sound.play(.match3Pop, pitchSemitones: cascadeDepth * 2) \u2014 direct swap = neutral, first cascade = +2, second = +4, etc.",
+        "RIGHT: sound.play(.match3Pop, pitchSemitones: cascadeDepth * 2) — direct swap = neutral, first cascade = +2, second = +4, etc.",
         "RIGHT (combos): sound.play(.arcadeExplosion, pitchSemitones: min(comboCount, 6) * 2)",
-        "WRONG: same flat tone on every cascade pop \u2014 user can't tell they're chaining."
+        "WRONG: same flat tone on every cascade pop — user can't tell they're chaining."
       ]
     },
     {
       "id": "audio-debounce-events-not-renders",
-      "rule": "Sound effects must fire on DISCRETE GAME EVENTS (match resolved, button tapped, enemy hit, level up), NOT inside SwiftUI render or `body` evaluation. SoundEngine debounces internally (30ms window per SFX), but if you call `sound.play(.x)` from a `.onAppear` / `body` getter / @State observer that fires on every render, you'll hammer the engine \u2014 and the debounce will silently drop most of them but the ones that DO play will be misaligned with what the user did. Place SFX calls inside the action handlers: `Button(action: { sound.play(.uiButtonTap); ...real action... })` or inside the engine-event loop where matches resolve.",
-      "why": "Same anti-pattern as 'wrote tile content into ForEach Text() body' \u2014 render-time side effects = unpredictable. Filed 2026-05-04 after wiring Match3: original instinct was to call sound.play(.match3Pop) inside the `flashView` ViewBuilder. That would have fired on every flash render, not just when the flash was created. Moved into the cascade-loop where events.kind is known once per resolution.",
+      "rule": "Sound effects must fire on DISCRETE GAME EVENTS (match resolved, button tapped, enemy hit, level up), NOT inside SwiftUI render or `body` evaluation. SoundEngine debounces internally (30ms window per SFX), but if you call `sound.play(.x)` from a `.onAppear` / `body` getter / @State observer that fires on every render, you'll hammer the engine — and the debounce will silently drop most of them but the ones that DO play will be misaligned with what the user did. Place SFX calls inside the action handlers: `Button(action: { sound.play(.uiButtonTap); ...real action... })` or inside the engine-event loop where matches resolve.",
+      "why": "Same anti-pattern as 'wrote tile content into ForEach Text() body' — render-time side effects = unpredictable. Filed 2026-05-04 after wiring Match3: original instinct was to call sound.play(.match3Pop) inside the `flashView` ViewBuilder. That would have fired on every flash render, not just when the flash was created. Moved into the cascade-loop where events.kind is known once per resolution.",
       "severity": "high",
       "examples": [
         "RIGHT: in the cascade loop where match events resolve, exactly once per event: `for event in previewEvents { sound.play(matchSFX(for: event.kind), pitchSemitones: event.cascadeDepth * 2) }`",
-        "WRONG: `var body: some View { Text(\"\\(score)\").onAppear { sound.play(.scoreTick) } }` \u2014 fires every render.",
-        "WRONG: `.onChange(of: engine.score) { sound.play(.coinPickup) }` triggers on EVERY score change including the +30 from a 3-match \u2192 could fire 6+ times in a single cascade. Either debounce upstream or fire on the discrete match event, not the score derivative."
+        "WRONG: `var body: some View { Text(\"\\(score)\").onAppear { sound.play(.scoreTick) } }` — fires every render.",
+        "WRONG: `.onChange(of: engine.score) { sound.play(.coinPickup) }` triggers on EVERY score change including the +30 from a 3-match → could fire 6+ times in a single cascade. Either debounce upstream or fire on the discrete match event, not the score derivative."
       ]
     },
     {
@@ -273,13 +273,13 @@
       "examples": [
         "RIGHT: SoundEngine.shared.intensity = .standard  // SoundIntensity: standard (match-3)",
         "RIGHT (override): var i = SoundIntensity.standard; i.sfxVolume = 0.5; i.musicVolume = 0.25; SoundEngine.shared.intensity = i",
-        "WRONG: hardcoded `sound.play(.match3Pop, volume: 0.7)` everywhere \u2014 impossible to retune as a unit."
+        "WRONG: hardcoded `sound.play(.match3Pop, volume: 0.7)` everywhere — impossible to retune as a unit."
       ]
     },
     {
       "id": "audio-music-fades-not-cuts",
-      "rule": "Background music tracks MUST fade in (1.0\u20131.5s) and fade out (1.0s) \u2014 NEVER hard-cut. Hard cuts are jarring and feel like a glitch. SoundEngine.loop(_:fadeIn:) handles this: `sound.loop(.puzzleAmbient, fadeIn: 1.5)`. Track switches: stopMusic(fadeOut: 0.3) THEN loop(.next, fadeIn: 1.0) \u2014 for a clean crossfade-via-stop. App-quit / sheet-dismiss / scene-change: stopMusic(fadeOut: 1.0) before transition. SFX are exempt \u2014 they're already short, fade is built into the sound itself.",
-      "why": "Universal audio production rule. Hard cuts on long-form audio = listener notices the seam = breaks immersion. Filed 2026-05-04 with SoundEngine ship \u2014 the engine enforces fade defaults so hard cuts only happen if a generator explicitly passes 0.",
+      "rule": "Background music tracks MUST fade in (1.0–1.5s) and fade out (1.0s) — NEVER hard-cut. Hard cuts are jarring and feel like a glitch. SoundEngine.loop(_:fadeIn:) handles this: `sound.loop(.puzzleAmbient, fadeIn: 1.5)`. Track switches: stopMusic(fadeOut: 0.3) THEN loop(.next, fadeIn: 1.0) — for a clean crossfade-via-stop. App-quit / sheet-dismiss / scene-change: stopMusic(fadeOut: 1.0) before transition. SFX are exempt — they're already short, fade is built into the sound itself.",
+      "why": "Universal audio production rule. Hard cuts on long-form audio = listener notices the seam = breaks immersion. Filed 2026-05-04 with SoundEngine ship — the engine enforces fade defaults so hard cuts only happen if a generator explicitly passes 0.",
       "severity": "medium",
       "examples": [
         "RIGHT: sound.loop(.puzzleAmbient, fadeIn: 1.5) on game start; sound.stopMusic(fadeOut: 1.0) on game-over screen.",
@@ -288,84 +288,84 @@
     },
     {
       "id": "level-use-level-manager-component",
-      "rule": "Progression-flavored games (match-3, arcade-with-waves, puzzles-with-difficulty-tiers, runners, idle clickers, platformers with progressing stages) MUST use the `effects.level-manager` Lego component instead of inventing target-score / progression math from scratch. LevelManager provides: difficulty curves (.casual 1.5\u00d7 / .standard 1.4\u00d7 / .hardcore 1.3\u00d7 / .accelerating / .custom), per-level moves budget, suggestedPaletteSize / suggestedSpawnRateMultiplier / suggestedAnimationIntensity helpers, persistent currentLevel via UserDefaults, and a celebration window (`celebratingLevelUp` / `celebrationProgress`) for the banner + SFX. Wire it as `@StateObject private var levels = LevelManager(gameID: \"<game>\", baseTarget: <num>, baseMovesAllowed: <num>, curve: .standard)`.",
-      "why": "Filed 2026-05-04 alongside LevelManager ship. Without a shared component, every progression game writes ad-hoc 'targetScore *= 1.5' arithmetic, forgets to persist current level, and has no celebration moment \u2014 users finish level 1, see the same screen, and lose engagement. LevelManager + the celebration window turn 'beat target' into a reward.",
+      "rule": "Progression-flavored games (match-3, arcade-with-waves, puzzles-with-difficulty-tiers, runners, idle clickers, platformers with progressing stages) MUST use the `effects.level-manager` Lego component instead of inventing target-score / progression math from scratch. LevelManager provides: difficulty curves (.casual 1.5× / .standard 1.4× / .hardcore 1.3× / .accelerating / .custom), per-level moves budget, suggestedPaletteSize / suggestedSpawnRateMultiplier / suggestedAnimationIntensity helpers, persistent currentLevel via UserDefaults, and a celebration window (`celebratingLevelUp` / `celebrationProgress`) for the banner + SFX. Wire it as `@StateObject private var levels = LevelManager(gameID: \"<game>\", baseTarget: <num>, baseMovesAllowed: <num>, curve: .standard)`.",
+      "why": "Filed 2026-05-04 alongside LevelManager ship. Without a shared component, every progression game writes ad-hoc 'targetScore *= 1.5' arithmetic, forgets to persist current level, and has no celebration moment — users finish level 1, see the same screen, and lose engagement. LevelManager + the celebration window turn 'beat target' into a reward.",
       "severity": "high",
       "appliesTo": "progressionGame",
       "examples": [
         "RIGHT: @StateObject private var levels = LevelManager(gameID: \"match3\", baseTarget: 1500, baseMovesAllowed: 30, curve: .standard); HUD reads `Text(\"LEVEL \\(levels.currentLevel)\")` and `Text(\"\\(levels.currentTarget)\")`. On target hit: `levels.advance()`.",
         "RIGHT (UI): scaleEffect on level pill = `1.0 + levels.celebrationProgress * 0.20`; level-up banner opacity = `Double(levels.celebrationProgress)`.",
-        "RIGHT (palette growth): `engine.symbols = Array([\"A\",\"B\",\"C\",\"D\",\"E\",\"F\",\"G\",\"H\"].prefix(levels.suggestedPaletteSize))` \u2014 palette starts at 5 colors, grows by +1 every 5 levels, capped at 8.",
+        "RIGHT (palette growth): `engine.symbols = Array([\"A\",\"B\",\"C\",\"D\",\"E\",\"F\",\"G\",\"H\"].prefix(levels.suggestedPaletteSize))` — palette starts at 5 colors, grows by +1 every 5 levels, capped at 8.",
         "WRONG: hardcoded `private let targetScore = 1500`, no progression. User beats it, sees nothing change, exits app, never returns.",
-        "WRONG: ad-hoc `if score >= 1500 { score = 0; targetScore = 2500 }` \u2014 no curve, no persistence, no celebration."
+        "WRONG: ad-hoc `if score >= 1500 { score = 0; targetScore = 2500 }` — no curve, no persistence, no celebration."
       ]
     },
     {
       "id": "level-celebrate-the-level-up-moment",
-      "rule": "When a player advances a level, the UI MUST acknowledge it with a 1-3 second celebration: (a) a prominent 'LEVEL N' banner that inflates and fades, (b) a level-up SFX (SoundEngine.play(.levelUp) \u2014 pitch-shift +2 semitones for stronger effect), (c) a brief scale/glow pulse on the level pill / score readout, (d) a tactile pause (~0.5\u20131s) before the new board / wave is presented. Skipping the celebration means the player isn't told they accomplished something \u2014 and the dopamine hit of progression is the entire reason to play. LevelManager provides `celebratingLevelUp: Bool` and `celebrationProgress: CGFloat` (0\u21921\u21920 across the window) \u2014 bind animations to these.",
-      "why": "Universal game-design principle. Filed 2026-05-04 with LevelManager ship. Without celebration, a level-up feels like a level-down \u2014 the user hits the target and the game just changes the number. With celebration (banner + SFX + pulse), the user FEELS the win. Match3 v8 implementation: level pill scaleEffect(1.0 + celebrationProgress * 0.20), banner Text scaleEffect(0.7 + celebrationProgress * 0.6) + opacity(celebrationProgress), levelUp SFX with +2 pitch.",
+      "rule": "When a player advances a level, the UI MUST acknowledge it with a 1-3 second celebration: (a) a prominent 'LEVEL N' banner that inflates and fades, (b) a level-up SFX (SoundEngine.play(.levelUp) — pitch-shift +2 semitones for stronger effect), (c) a brief scale/glow pulse on the level pill / score readout, (d) a tactile pause (~0.5–1s) before the new board / wave is presented. Skipping the celebration means the player isn't told they accomplished something — and the dopamine hit of progression is the entire reason to play. LevelManager provides `celebratingLevelUp: Bool` and `celebrationProgress: CGFloat` (0→1→0 across the window) — bind animations to these.",
+      "why": "Universal game-design principle. Filed 2026-05-04 with LevelManager ship. Without celebration, a level-up feels like a level-down — the user hits the target and the game just changes the number. With celebration (banner + SFX + pulse), the user FEELS the win. Match3 v8 implementation: level pill scaleEffect(1.0 + celebrationProgress * 0.20), banner Text scaleEffect(0.7 + celebrationProgress * 0.6) + opacity(celebrationProgress), levelUp SFX with +2 pitch.",
       "severity": "high",
       "examples": [
-        "RIGHT: levels.advance() triggers celebrationProgress ramp 0\u21921 over 0.5s, plateau 0.5s, 1\u21920 over 2s. View binds banner opacity/scale to celebrationProgress; SFX plays at the start.",
-        "RIGHT (audio sequence): on target hit \u2192 sound.play(.victory) \u2192 450ms pause \u2192 sound.play(.levelUp, pitchSemitones: 2) \u2192 levels.advance() triggers banner.",
+        "RIGHT: levels.advance() triggers celebrationProgress ramp 0→1 over 0.5s, plateau 0.5s, 1→0 over 2s. View binds banner opacity/scale to celebrationProgress; SFX plays at the start.",
+        "RIGHT (audio sequence): on target hit → sound.play(.victory) → 450ms pause → sound.play(.levelUp, pitchSemitones: 2) → levels.advance() triggers banner.",
         "WRONG: levels.advance() called silently with no UI reaction. Player isn't sure if anything happened.",
         "WRONG: instant snap-cut to next level (no banner, no SFX, no delay). Feels like a glitch."
       ]
     },
     {
       "id": "level-replay-not-demote",
-      "rule": "When a player fails a level (out of moves, lives depleted, time up), the game MUST allow replay of the SAME level \u2014 never auto-demote to a lower level or back to L1. Save the player's progression at all times. RESTART buttons should reset score/moves WITHIN the current level, not bump levels.currentLevel down. Players who hit a hard level will replay it many times; demoting them would be a punishment that destroys engagement. The only way to drop a level should be a deliberate user action (e.g. a 'Reset Progress' settings toggle, never the in-game RESTART button).",
-      "why": "Filed 2026-05-04 alongside LevelManager. Hardcoded into LevelManager API: `replayCurrentLevel()` is a no-op on persistence; only `reset()` (explicit reset-progress action) resets currentLevel to 1. Universal UX rule \u2014 applied incorrectly, players quit the game forever after one rage-fail.",
+      "rule": "When a player fails a level (out of moves, lives depleted, time up), the game MUST allow replay of the SAME level — never auto-demote to a lower level or back to L1. Save the player's progression at all times. RESTART buttons should reset score/moves WITHIN the current level, not bump levels.currentLevel down. Players who hit a hard level will replay it many times; demoting them would be a punishment that destroys engagement. The only way to drop a level should be a deliberate user action (e.g. a 'Reset Progress' settings toggle, never the in-game RESTART button).",
+      "why": "Filed 2026-05-04 alongside LevelManager. Hardcoded into LevelManager API: `replayCurrentLevel()` is a no-op on persistence; only `reset()` (explicit reset-progress action) resets currentLevel to 1. Universal UX rule — applied incorrectly, players quit the game forever after one rage-fail.",
       "severity": "high",
       "examples": [
         "RIGHT: RESTART button rebuilds engine, refreshes moves to levels.currentMovesAllowed, but does NOT touch levels.currentLevel.",
-        "RIGHT: 'Reset Progress' in settings menu calls levels.reset() \u2014 opt-in only.",
+        "RIGHT: 'Reset Progress' in settings menu calls levels.reset() — opt-in only.",
         "WRONG: RESTART resets currentLevel to 1. Player who beat 5 levels and rage-quit on L6 has to redo all 5."
       ]
     },
     {
       "id": "level-grow-difficulty-via-multiple-knobs",
-      "rule": "Higher levels should feel different across MULTIPLE dimensions, not just 'higher target number.' For tile/match games: grow the symbol palette (LevelManager.suggestedPaletteSize: 5\u21926 at L5, 7 at L10, 8 at L15), shrink moves budget if pacing demands it (.accelerating curve), bump animation intensity (LevelManager.suggestedAnimationIntensity: 'subtle' L1-4 \u2192 'standard' L5-9 \u2192 'punchy' L10+). For arcade games: spawn-rate (LevelManager.suggestedSpawnRateMultiplier: 1.0\u00d7 \u2192 3.0\u00d7 capped at L20+), enemy variety, projectile speed, intermittent boss waves at L5/L10/L15. The TARGET getting larger is just one knob \u2014 alone, it produces 'same game, takes longer.' Multi-knob progression produces 'this level FEELS different.'",
+      "rule": "Higher levels should feel different across MULTIPLE dimensions, not just 'higher target number.' For tile/match games: grow the symbol palette (LevelManager.suggestedPaletteSize: 5→6 at L5, 7 at L10, 8 at L15), shrink moves budget if pacing demands it (.accelerating curve), bump animation intensity (LevelManager.suggestedAnimationIntensity: 'subtle' L1-4 → 'standard' L5-9 → 'punchy' L10+). For arcade games: spawn-rate (LevelManager.suggestedSpawnRateMultiplier: 1.0× → 3.0× capped at L20+), enemy variety, projectile speed, intermittent boss waves at L5/L10/L15. The TARGET getting larger is just one knob — alone, it produces 'same game, takes longer.' Multi-knob progression produces 'this level FEELS different.'",
       "why": "Filed 2026-05-04 with LevelManager ship. Real Candy Crush / Bejeweled / etc. grow many things per level (board shape, special-tile generation rate, blockers, mission types). Reference apps in the catalog should at minimum grow palette + intensity for tile games, spawn-rate + intensity for arcade games. LevelManager exposes the suggested helpers so generators don't have to invent them.",
       "severity": "medium",
       "appliesTo": "progressionGame",
       "examples": [
         "RIGHT (match-3): L1: 5 colors, .standard intensity. L5: 6 colors, .standard. L10: 7 colors, .punchy. L15: 8 colors, .punchy. Each level feels harder for a NEW reason.",
         "RIGHT (arcade): L1: 2 enemies, slow projectiles, .standard intensity. L5: 4 enemies, faster projectiles, .standard. L10: 6 enemies + occasional bomb-spawn, .punchy.",
-        "WRONG: every level identical except target=basicTarget*1.4^N. Player perceives 'same game just slower to finish' \u2014 no surprise, no novelty, drops off."
+        "WRONG: every level identical except target=basicTarget*1.4^N. Player perceives 'same game just slower to finish' — no surprise, no novelty, drops off."
       ]
     },
     {
       "id": "level-pick-curve-by-game-pace",
-      "rule": "Choose LevelCurve by intended play session length: `.casual` (1.5\u00d7 per level, fast ramp) for short kid-friendly sessions where players should reach high levels in 10-15 minutes. `.standard` (1.4\u00d7) for mechanics-driven games (match-3, minesweeper) where 30-60 min sessions are typical. `.hardcore` (1.3\u00d7, slow ramp) for endurance/idle/score-attack games designed for long-term engagement. `.accelerating` (gentle 1.3\u00d7 early, climbs to 1.6\u00d7 by L20+) for games that should onboard easily but become a real challenge \u2014 typical for puzzle franchises. `.custom` for games with non-monotonic difficulty (boss levels, breather levels, jumps).",
-      "why": "Filed 2026-05-04. Same generator-mental-model pattern as AnimationIntensity / SoundIntensity \u2014 pick a preset by game pace, not by inventing arithmetic. Wrong curve = engagement disaster: hardcore curve on a casual game = players quit at L4; casual curve on hardcore = players hit L99 in an hour and have nothing left.",
+      "rule": "Choose LevelCurve by intended play session length: `.casual` (1.5× per level, fast ramp) for short kid-friendly sessions where players should reach high levels in 10-15 minutes. `.standard` (1.4×) for mechanics-driven games (match-3, minesweeper) where 30-60 min sessions are typical. `.hardcore` (1.3×, slow ramp) for endurance/idle/score-attack games designed for long-term engagement. `.accelerating` (gentle 1.3× early, climbs to 1.6× by L20+) for games that should onboard easily but become a real challenge — typical for puzzle franchises. `.custom` for games with non-monotonic difficulty (boss levels, breather levels, jumps).",
+      "why": "Filed 2026-05-04. Same generator-mental-model pattern as AnimationIntensity / SoundIntensity — pick a preset by game pace, not by inventing arithmetic. Wrong curve = engagement disaster: hardcore curve on a casual game = players quit at L4; casual curve on hardcore = players hit L99 in an hour and have nothing left.",
       "severity": "medium",
       "examples": [
-        "RIGHT: LevelManager(gameID: \"kid-game\", curve: .casual) \u2014 fast progression, frequent level-up celebrations.",
-        "RIGHT: LevelManager(gameID: \"match3\", curve: .standard) \u2014 balanced.",
-        "RIGHT: LevelManager(gameID: \"score-attack\", curve: .hardcore) \u2014 slow ramp.",
+        "RIGHT: LevelManager(gameID: \"kid-game\", curve: .casual) — fast progression, frequent level-up celebrations.",
+        "RIGHT: LevelManager(gameID: \"match3\", curve: .standard) — balanced.",
+        "RIGHT: LevelManager(gameID: \"score-attack\", curve: .hardcore) — slow ramp.",
         "WRONG: pick a curve based on coin flip / didn't think about pace; ship a casual-curve match-3 (player ceiling-hits at L20) or hardcore-curve casual game (player gives up at L4)."
       ]
     },
     {
       "id": "level-persist-level-not-score",
-      "rule": "Persist `currentLevel` (the structural progression) via UserDefaults. Do NOT persist `currentScore` (the within-level progress) \u2014 it should reset on app launch. Players don't expect to resume a partially-played level mid-game; they expect to come back, see their level number, and start that level fresh. LevelManager handles the level persistence under key 'LevelManager.<gameID>.currentLevel'. SoundEngine.muted is also persisted (separately). Anything else (current score, board state, current cascade depth, hint pair) is ephemeral.",
+      "rule": "Persist `currentLevel` (the structural progression) via UserDefaults. Do NOT persist `currentScore` (the within-level progress) — it should reset on app launch. Players don't expect to resume a partially-played level mid-game; they expect to come back, see their level number, and start that level fresh. LevelManager handles the level persistence under key 'LevelManager.<gameID>.currentLevel'. SoundEngine.muted is also persisted (separately). Anything else (current score, board state, current cascade depth, hint pair) is ephemeral.",
       "why": "Filed 2026-05-04 with LevelManager. Saving mid-level state is high-effort + low-value: requires Codable engine state, can desync if engine impl changes, players have to mentally context-switch back into a half-finished puzzle. Saving level-only is what users expect from casual-game UX.",
       "severity": "medium",
       "examples": [
-        "RIGHT: LevelManager persists currentLevel automatically. App launches \u2192 onAppear sets engine.symbols based on suggestedPaletteSize, moves = currentMovesAllowed, status = 'Level N \u2014 target M'. Score starts at 0.",
+        "RIGHT: LevelManager persists currentLevel automatically. App launches → onAppear sets engine.symbols based on suggestedPaletteSize, moves = currentMovesAllowed, status = 'Level N — target M'. Score starts at 0.",
         "WRONG: persist current Match3Engine state across launches. Brittle, annoying for users, breaks when engine model evolves."
       ]
     },
     {
       "id": "score-show-personal-best-on-game-over",
-      "rule": "Personal best / high-score should be surfaced in the GAME-OVER (or run-summary) panel, NOT in the always-visible in-play HUD. During active play, in-play high-score chrome (BEST pills, live 'X to beat' / '+N ahead' deltas) is visual noise that distracts from the actual gameplay \u2014 players are mid-decision and don't want a constant comparison ticker. The end-of-run panel is when the comparison is meaningful: it's a single moment, the player has earned their score, and seeing 'Best: 12,450' alongside 'Your run: 11,200' creates the natural motivation to play again. Use HighScoreManager.commit(score:) at game-over \u2192 it returns true on a new best, fires celebrationProgress for a 'NEW BEST!' flourish on the panel. The in-play HUD shows ONLY the active counters (score / level / moves / time).",
-      "why": "Filed 2026-05-04. Initial implementation v9 put BEST + live delta + 'NEW BEST!' chrome in the always-visible HUD. User feedback: 'why did you go so overboard with the highscore thing? this is a super ugly header. have you seen a high score on a game, it shouldn't show up until the game is done so the user doesn't get so distracted.' Established games (Candy Crush, Bejeweled, Threes, every console arcade game) put high score in the game-over screen \u2014 never as constant in-play chrome. v9.1 moved it to a modal that appears only at moves==0.",
+      "rule": "Personal best / high-score should be surfaced in the GAME-OVER (or run-summary) panel, NOT in the always-visible in-play HUD. During active play, in-play high-score chrome (BEST pills, live 'X to beat' / '+N ahead' deltas) is visual noise that distracts from the actual gameplay — players are mid-decision and don't want a constant comparison ticker. The end-of-run panel is when the comparison is meaningful: it's a single moment, the player has earned their score, and seeing 'Best: 12,450' alongside 'Your run: 11,200' creates the natural motivation to play again. Use HighScoreManager.commit(score:) at game-over → it returns true on a new best, fires celebrationProgress for a 'NEW BEST!' flourish on the panel. The in-play HUD shows ONLY the active counters (score / level / moves / time).",
+      "why": "Filed 2026-05-04. Initial implementation v9 put BEST + live delta + 'NEW BEST!' chrome in the always-visible HUD. User feedback: 'why did you go so overboard with the highscore thing? this is a super ugly header. have you seen a high score on a game, it shouldn't show up until the game is done so the user doesn't get so distracted.' Established games (Candy Crush, Bejeweled, Threes, every console arcade game) put high score in the game-over screen — never as constant in-play chrome. v9.1 moved it to a modal that appears only at moves==0.",
       "severity": "high",
       "appliesTo": "scoredGame",
       "examples": [
         "RIGHT: in-play HUD = SCORE | LEVEL | MOVES (just active counters). Game-over panel = OUT OF MOVES / NEW BEST! header, big run-total readout, 'Best: 12,450' line with trophy icon, PLAY AGAIN button.",
-        "RIGHT: highScores.commit(totalScore) at moves==0 OR game-end \u2192 returns true on new best \u2192 panel header flips to 'NEW BEST!' with gold styling.",
+        "RIGHT: highScores.commit(totalScore) at moves==0 OR game-end → returns true on new best → panel header flips to 'NEW BEST!' with gold styling.",
         "WRONG: BEST pill always visible in the HUD with live 'N to beat' / '+N ahead' delta during play. Distracts from the gameplay decision.",
         "WRONG: 'NEW BEST!' celebration that fires DURING play (e.g. mid-cascade). Save it for the game-over moment so it's a clean reward."
       ]
@@ -373,46 +373,46 @@
     {
       "id": "score-cumulative-vs-per-level",
       "rule": "Multi-level games MUST track BOTH a cumulative score (carries across levels in the session) AND a per-level score (zeros each level for progress-toward-target). Surface BOTH in the HUD: TOTAL = cumulative session score (this is what you compare against personal best); LEVEL SCORE = this level's progress, drives the level-progress bar / star thresholds / level-up trigger. Wiring: `totalScore = baseTotalForLevel + engine.score`. On level-up: `baseTotalForLevel = totalScore` (anchor the new level's floor), then re-seed engine (engine.score back to 0). Without two-tier scores, players who beat 5 levels see 'their score' reset on level transitions and lose the sense of session progress.",
-      "why": "Filed 2026-05-04 after user feedback 'after going to a new level my score gets reset to 0 instead of setting some additional point goal.' Same conceptual error as level-replay-not-demote \u2014 UX should never feel like progress was wiped. Match-3 / RPG / arcade-with-waves / endless-mode all benefit. Two-score model is also what HighScoreManager.commit(score:) should be called with \u2014 the cumulative TOTAL, not the per-level score.",
+      "why": "Filed 2026-05-04 after user feedback 'after going to a new level my score gets reset to 0 instead of setting some additional point goal.' Same conceptual error as level-replay-not-demote — UX should never feel like progress was wiped. Match-3 / RPG / arcade-with-waves / endless-mode all benefit. Two-score model is also what HighScoreManager.commit(score:) should be called with — the cumulative TOTAL, not the per-level score.",
       "severity": "high",
       "appliesTo": "progressionGame",
       "examples": [
         "RIGHT: HUD shows TOTAL: 12,450 prominently; LEVEL SCORE: 320 / 3,000 below it. On level-up, TOTAL stays at 12,450 + earnings; LEVEL SCORE flips to 0 / 4,200 for the new level.",
-        "RIGHT: highScores.commit(score: totalScore) \u2014 commits cumulative session total, not per-level.",
+        "RIGHT: highScores.commit(score: totalScore) — commits cumulative session total, not per-level.",
         "WRONG: only show engine.score, which resets every level. User thinks they're starting over each time.",
-        "WRONG: commit per-level score to HighScoreManager \u2014 your 'best' becomes 'highest single level' instead of 'longest run.'"
+        "WRONG: commit per-level score to HighScoreManager — your 'best' becomes 'highest single level' instead of 'longest run.'"
       ]
     },
     {
       "id": "score-floor-mutating-counters-at-zero",
-      "rule": "Mutable in-game counters (moves remaining, lives, ammo, time) MUST be guarded by `max(0, \u2026)` and gated at their entry points. A `moves -= 1` followed by a refund-on-fail pattern can race or compound \u2014 multiple events firing close together can push the counter negative. Pattern: `guard moves > 0 else { /* show out-of-moves UI */; return }` BEFORE the action, then `moves = max(0, moves - 1)` only after the action commits successfully. Failed actions (bad swap / missed shot / etc.) should NOT charge the counter \u2014 players punished for mis-timing input churn out fast.",
-      "why": "Filed 2026-05-04 after user reported 'somehow I managed to get to -1 moves' in catalog Match3 v8. Bug was: `moves -= 1` ran before the swap-success check; refund only happened on the mis-input path. Fixed with explicit guard at entry + max(0,\u2026) on the decrement + don't-charge-bad-swaps. Universal pattern for any decrementing counter.",
+      "rule": "Mutable in-game counters (moves remaining, lives, ammo, time) MUST be guarded by `max(0, …)` and gated at their entry points. A `moves -= 1` followed by a refund-on-fail pattern can race or compound — multiple events firing close together can push the counter negative. Pattern: `guard moves > 0 else { /* show out-of-moves UI */; return }` BEFORE the action, then `moves = max(0, moves - 1)` only after the action commits successfully. Failed actions (bad swap / missed shot / etc.) should NOT charge the counter — players punished for mis-timing input churn out fast.",
+      "why": "Filed 2026-05-04 after user reported 'somehow I managed to get to -1 moves' in catalog Match3 v8. Bug was: `moves -= 1` ran before the swap-success check; refund only happened on the mis-input path. Fixed with explicit guard at entry + max(0,…) on the decrement + don't-charge-bad-swaps. Universal pattern for any decrementing counter.",
       "severity": "high",
       "examples": [
-        "RIGHT: guard moves > 0 else { status = \"Out of moves \u2014 RESTART to retry\"; sound.play(.uiError); return }; ... if !didSwap { sound.play(.uiError); return /* don't charge */ }; moves = max(0, moves - 1)",
-        "WRONG: moves -= 1; if !didSwap { moves += 1; return }  \u2014 racy under rapid input, can bottom out below 0.",
+        "RIGHT: guard moves > 0 else { status = \"Out of moves — RESTART to retry\"; sound.play(.uiError); return }; ... if !didSwap { sound.play(.uiError); return /* don't charge */ }; moves = max(0, moves - 1)",
+        "WRONG: moves -= 1; if !didSwap { moves += 1; return }  — racy under rapid input, can bottom out below 0.",
         "WRONG: charge a move on failed actions. Player who mis-drags loses count for nothing."
       ]
     },
     {
       "id": "score-engine-init-must-zero-score",
-      "rule": "Game engines that run `resolveCascades()` / equivalent setup logic during init MUST explicitly zero the score at the end of init. Initial-fill cascades produce score increments that are NOT user-earned. Without explicit zeroing, fresh games + level-up board re-seeds start at 200-1000+ ghost score depending on seed luck. Pattern in init: `_ = resolveCascades(); lastResolvedMatches = []; score = 0`. Engine.swap() / engine.advance() \u2014 the user-driven entry points \u2014 are the only paths that should award score.",
+      "rule": "Game engines that run `resolveCascades()` / equivalent setup logic during init MUST explicitly zero the score at the end of init. Initial-fill cascades produce score increments that are NOT user-earned. Without explicit zeroing, fresh games + level-up board re-seeds start at 200-1000+ ghost score depending on seed luck. Pattern in init: `_ = resolveCascades(); lastResolvedMatches = []; score = 0`. Engine.swap() / engine.advance() — the user-driven entry points — are the only paths that should award score.",
       "why": "Filed 2026-05-04 from real bug in catalog Match3Engine. init() called resolveCascades() to clear initial-fill matches before showing the board, which awarded score for each cascade. Only the event log was cleared, not the score. User report: 'my score never starts at 0.' Same pattern applies to Tetris (initial cleared rows during piece-spawn-warmup), RPG (XP from seed-creation enemies), any game with auto-resolve in init.",
       "severity": "high",
       "examples": [
         "RIGHT: init() { ... refillAll(); _ = resolveCascades(); lastResolvedMatches = []; score = 0 }",
-        "WRONG: init() runs resolveCascades() (which awards score), then only clears event log \u2014 fresh games start at 200-1000 'ghost' points."
+        "WRONG: init() runs resolveCascades() (which awards score), then only clears event log — fresh games start at 200-1000 'ghost' points."
       ]
     },
     {
       "id": "score-format-with-thousands-separators",
-      "rule": "Score readouts \u22651000 MUST use thousands separators ('12,450' not '12450'; '1,234,567' not '1234567'). Numeric readability drops sharply past 4 digits without separators. HighScoreManager.formatNumber(_:) provides the canonical formatter (uses NumberFormatter with .decimal style); use it for ALL score-like numbers (current score, best score, target, total, delta). Targets that are still 4-digit (like '1500') can be unformatted but consistency is better \u2014 format everything once you cross the threshold.",
+      "rule": "Score readouts ≥1000 MUST use thousands separators ('12,450' not '12450'; '1,234,567' not '1234567'). Numeric readability drops sharply past 4 digits without separators. HighScoreManager.formatNumber(_:) provides the canonical formatter (uses NumberFormatter with .decimal style); use it for ALL score-like numbers (current score, best score, target, total, delta). Targets that are still 4-digit (like '1500') can be unformatted but consistency is better — format everything once you cross the threshold.",
       "why": "Filed 2026-05-04 with HighScoreManager ship. Universal readability rule. '125000' is a wall of digits; '125,000' is instantly parseable. Costs nothing, consistency is high-value.",
       "severity": "low",
       "examples": [
-        "RIGHT: Text(HighScoreManager.formatNumber(totalScore)) \u2192 '12,450'",
-        "RIGHT: Text(\"+\\(HighScoreManager.formatNumber(delta)) ahead\") \u2192 '+1,200 ahead'",
-        "WRONG: Text(\"\\(totalScore)\") \u2192 '12450' (no separator)"
+        "RIGHT: Text(HighScoreManager.formatNumber(totalScore)) → '12,450'",
+        "RIGHT: Text(\"+\\(HighScoreManager.formatNumber(delta)) ahead\") → '+1,200 ahead'",
+        "WRONG: Text(\"\\(totalScore)\") → '12450' (no separator)"
       ]
     },
     {
@@ -500,16 +500,62 @@
     },
     {
       "id": "game-atomic-state-transitions-not-async",
-      "rule": "Game state transitions (level-up, game-over, round-restart, board reseed) MUST be SYNCHRONOUS and ATOMIC. Do NOT split state mutation across `Task { try await Task.sleep(...) }` segments where the visual celebration runs in parallel with state-resetting code. While the user waits for sleeps to complete, they can swap / fire / tap, and the next render-driven turn reads HALF-MUTATED state \u2014 causing a cluster of bugs: score resets to 0 (new turn reads stale baseTotalForLevel), counters don't refresh (UI bound to var that hasn't been reassigned yet), RESTART takes you to the wrong level (level-number advanced but engine hasn't been swapped). The fix: do all state mutation in ONE turn (typically inside one `withAnimation` block), and run the celebration banner via a parallel @Published value (e.g. LevelManager.celebrationProgress) that the View animates from independently. SFX is fine to fire as a delayed Task \u2014 audio-only, no state mutation, can't race.",
-      "why": "Filed 2026-05-04 from Match3 v9 \u2192 v9.2 incident. v9 split level-up across two `try await Task.sleep` segments (450ms + 650ms) with state-resets happening AFTER the sleeps. User reported three distinct bugs that were all the same race: 'my score went back to 0 at a certain level' (next cascade read stale baseTotalForLevel), 'moves didn't reset after some levels' (UI bound to moves var that hadn't been reassigned yet), 'RESTART only takes me back to the previous level' (RESTART read half-mutated state \u2014 level number advanced but engine not yet swapped). v9.2 made the entire transition atomic in one withAnimation block; banner animation runs from levels.celebrationProgress which advances on its own.",
+      "rule": "Game state transitions (level-up, game-over, round-restart, board reseed) MUST be SYNCHRONOUS and ATOMIC. Do NOT split state mutation across `Task { try await Task.sleep(...) }` segments where the visual celebration runs in parallel with state-resetting code. While the user waits for sleeps to complete, they can swap / fire / tap, and the next render-driven turn reads HALF-MUTATED state — causing a cluster of bugs: score resets to 0 (new turn reads stale baseTotalForLevel), counters don't refresh (UI bound to var that hasn't been reassigned yet), RESTART takes you to the wrong level (level-number advanced but engine hasn't been swapped). The fix: do all state mutation in ONE turn (typically inside one `withAnimation` block), and run the celebration banner via a parallel @Published value (e.g. LevelManager.celebrationProgress) that the View animates from independently. SFX is fine to fire as a delayed Task — audio-only, no state mutation, can't race.",
+      "why": "Filed 2026-05-04 from Match3 v9 → v9.2 incident. v9 split level-up across two `try await Task.sleep` segments (450ms + 650ms) with state-resets happening AFTER the sleeps. User reported three distinct bugs that were all the same race: 'my score went back to 0 at a certain level' (next cascade read stale baseTotalForLevel), 'moves didn't reset after some levels' (UI bound to moves var that hadn't been reassigned yet), 'RESTART only takes me back to the previous level' (RESTART read half-mutated state — level number advanced but engine not yet swapped). v9.2 made the entire transition atomic in one withAnimation block; banner animation runs from levels.celebrationProgress which advances on its own.",
       "severity": "high",
       "appliesTo": "stateTransition",
       "examples": [
-        "RIGHT (atomic): when level target hit \u2192 run all in one turn: `levels.advance(); engine = newEngine; moves = levels.currentMovesAllowed; baseTotalForLevel = totalScore; victoryAnnounced = false`. The banner animates from levels.celebrationProgress (a @Published 0\u21921\u21920 value the controller advances internally). SFX fires as a one-shot Task \u2014 audio only.",
-        "RIGHT (visual delay decoupled from state): celebration banner reads `if levels.celebratingLevelUp { ... .opacity(Double(levels.celebrationProgress)) }`. Banner can take 3 seconds to fade out \u2014 gameplay state is already consistent at frame 1.",
+        "RIGHT (atomic): when level target hit → run all in one turn: `levels.advance(); engine = newEngine; moves = levels.currentMovesAllowed; baseTotalForLevel = totalScore; victoryAnnounced = false`. The banner animates from levels.celebrationProgress (a @Published 0→1→0 value the controller advances internally). SFX fires as a one-shot Task — audio only.",
+        "RIGHT (visual delay decoupled from state): celebration banner reads `if levels.celebratingLevelUp { ... .opacity(Double(levels.celebrationProgress)) }`. Banner can take 3 seconds to fade out — gameplay state is already consistent at frame 1.",
         "WRONG: `Task { try await Task.sleep(450ms); levels.advance(); try await Task.sleep(650ms); engine = newEngine; moves = newMoves }`. During the sleeps, user input lands on stale state.",
-        "WRONG: setting `victoryAnnounced = false` inside an async withAnimation that runs LATER than other state mutations \u2014 gives the next turn's runCascadeLoop() permission to re-fire the win condition before the engine has been swapped.",
-        "Acceptable async (audio only): `Task { try await Task.sleep(350ms); sound.play(.levelUp) }` \u2014 no state mutation, no race possible."
+        "WRONG: setting `victoryAnnounced = false` inside an async withAnimation that runs LATER than other state mutations — gives the next turn's runCascadeLoop() permission to re-fire the win condition before the engine has been swapped.",
+        "Acceptable async (audio only): `Task { try await Task.sleep(350ms); sound.play(.levelUp) }` — no state mutation, no race possible."
+      ]
+    },
+    {
+      "id": "bg-import-rules-do-not-inline",
+      "rule": "When building chess, checkers, or other classic board games, IMPORT the existing Rules + AI Lego from entities/ (ChessRules + ChessAI, CheckersRules + CheckersAI). Do NOT inline-implement legal-move generation, minimax, or piece-square-table eval. The shipped Lego already handles edge cases (king moves, en passant, captures) and integrates with MinimaxAI for alpha-beta search.",
+      "why": "Inline implementations consistently ship bugs the Lego already fixed. Examples we have seen: a chess artifact with a purely random move picker (no minimax at all); a checkers artifact that hard-coded forced-capture rules so the player could not decline a jump; both shipped before the Lego entities existed and have now been retrofitted by direct GCS patch. Each patch only fixes ONE published artifact. The fix MUST land in the Lego so the next prompt-generated game inherits it.",
+      "severity": "critical",
+      "appliesTo": "board-games",
+      "examples": [
+        "import { ChessRules } from \"./entities/ChessRules.js\"; import { ChessAI } from \"./entities/ChessAI.js\";",
+        "import { CheckersRules } from \"./entities/CheckersRules.js\"; import { CheckersAI } from \"./entities/CheckersAI.js\";",
+        "BAD: writing your own getLegalMoves() / minimax() / evaluateBoard() inside the game module."
+      ]
+    },
+    {
+      "id": "bg-checkers-captures-optional-by-default",
+      "rule": "In checkers/draughts, captures are OPTIONAL by default. The player may decline a jump and play a normal move instead. CheckersRules.legalMoves() already returns both jump moves and simple moves together; do not filter out simple moves when a jump is available unless the user opted into tournament-strict mode.",
+      "why": "Forced captures frustrate casual players. The user explicitly asked for this: \"forces jumping when player wants other moves. Should be optional unless tournament-strict.\" Defaulting to optional is friendlier and matches casual checkers conventions; tournament-strict is opt-in via a constructor option.",
+      "severity": "high",
+      "appliesTo": "board-games",
+      "examples": [
+        "new CheckersRules() // optional captures (default)",
+        "new CheckersRules({ forceCaptures: true }) // tournament-strict",
+        "Status text should read JUMP AVAILABLE when a jump exists, NOT JUMP REQUIRED."
+      ]
+    },
+    {
+      "id": "bg-chess-ai-default-depth-three",
+      "rule": "ChessAI default search depth is 3, not 2. Depth 2 plays at a beginner level (often missing material threats); depth 3 plays competently and still moves in under 1 second on typical hardware. Pass { depth: 4 } only if you can afford ~3 second think times.",
+      "why": "A user reported the prior depth-2 default produced random-feeling moves: \"I want a version of chess that is more competitive.\" Depth 3 with material + PST eval gives an opponent that defends pieces, threatens captures, and plays sensible openings.",
+      "severity": "high",
+      "appliesTo": "board-games",
+      "examples": [
+        "new ChessAI({ rules, depth: 3 }) // recommended default",
+        "new ChessAI({ rules, depth: 4 }) // strong, slow"
+      ]
+    },
+    {
+      "id": "bg-unicode-piece-text-shadow",
+      "rule": "When rendering Unicode chess/checkers/cards glyphs (\\u2654-\\u265F, suit symbols) on light-colored squares, apply a text-shadow such as text-shadow: 0 0 1px rgba(0,0,0,0.35), 0 1px 2px rgba(0,0,0,0.30) to the cell or piece element. Hollow white-piece glyphs on light-tan board squares are nearly invisible without this.",
+      "why": "User reported \"better B/W contrast\" as a chess ask. Unicode chess outline-style white pieces (U+2654-U+2659) lack their own fill, so they read poorly on light squares without a stroke or shadow. Black pieces (U+265A-U+265F) are solid but still benefit slightly.",
+      "severity": "medium",
+      "appliesTo": "board-games",
+      "examples": [
+        ".cell { text-shadow: 0 0 1px rgba(0,0,0,0.35), 0 1px 2px rgba(0,0,0,0.30); }",
+        "Or apply text-stroke equivalent via SVG filter for sharper outlines."
       ]
     }
   ],

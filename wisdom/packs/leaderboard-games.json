@@ -1,17 +1,31 @@
 {
   "packID": "leaderboard-games",
-  "version": 1,
+  "version": 2,
   "displayName": "Leaderboard-Ready Mini-Games",
   "description": "Patterns extracted from shipping the v1 hosted high-score service across 10+ games on mchatai.com. Every rule here is rooted in a real bug we shipped + had to fix. Apply when generating ANY web mini-app that should integrate with window.mChatAI.leaderboard.",
-  "categories": ["miniapp", "webspa", "anyGame"],
-  "keywords": ["leaderboard", "high score", "game over", "scoring", "competitive", "win streak"],
+  "categories": [
+    "miniapp",
+    "webspa",
+    "anyGame"
+  ],
+  "keywords": [
+    "leaderboard",
+    "high score",
+    "game over",
+    "scoring",
+    "competitive",
+    "win streak"
+  ],
   "guidelines": [
     {
       "id": "lb-001-mode-meta",
       "rule": "Declare the scoring model up front via `<meta name=\"mchatai-leaderboard-mode\" content=\"default|winstreak|fastest|fewest-moves\">` in <head>. The bridge IIFE reads this to decide what to submit on game-over. `default` = numeric score from DOM (Flappy/Snake/Tetris/2048/Sudoku/etc — anything with a meaningful per-game score). `winstreak` = consecutive wins vs CPU, tracked in localStorage, submits the streak as score (Tic-Tac-Toe, Connect Four, Chess, Checkers, Mastermind). `fastest` = lowest is best, submit elapsed seconds (mini-crossword, sudoku speed runs). `fewest-moves` = lowest is best, submit move count (chess mate-in-N, sudoku optimization).",
       "why": "Turn-based games have no natural per-game numeric score — submitting `1` on every win creates a meaningless ranking. User 2026-05-11 on Connect Four: \"what are the points and wins on this? Maybe research this a little bit for games like this.\" Hand-curated templates that omit the meta tag all default to numeric mode, which is correct for arcade games. Filed in: mchatai-source/harness/templates/miniapps/tic-tac-toe-vs-ai/reference.html (winstreak), connect-four-board-game (winstreak).",
       "severity": "important",
-      "appliesTo": ["miniapp", "webspa"],
+      "appliesTo": [
+        "miniapp",
+        "webspa"
+      ],
       "examples": [
         "GOOD (Tic-Tac-Toe): <meta name=\"mchatai-leaderboard-mode\" content=\"winstreak\">",
         "GOOD (Snake): no meta tag — default numeric-score mode is correct",
@@ -24,7 +38,9 @@
       "rule": "For winstreak-mode games, the host page must emit clear win/loss text in the DOM when a game ends. The bridge polls body.innerText for these patterns: WIN = /\\b(you (win|won)|\\bwhite (wins?|won))\\b/i; LOSS = /\\b(you (lost|lose)|game over|defeat|cpu (wins?|won)|computer (wins?|won)|ai (wins?|won))\\b/i. Use 'You Won!' / 'CPU Won' rather than color names ('Red Wins!' / 'Yellow Wins!') when in vs-CPU mode so the bridge can disambiguate human-vs-CPU. Color names are fine in 2-player mode where there's no ambiguity.",
       "why": "Connect Four originally said 'Red Wins!' regardless of which side the human played, so the bridge couldn't tell if it was a win or a loss for the player. User 2026-05-11 hit this when the leaderboard started filling with worthless rows. Fix shipped 2026-05-11 in connect-four-board-game/reference.html.",
       "severity": "important",
-      "appliesTo": ["miniapp"],
+      "appliesTo": [
+        "miniapp"
+      ],
       "examples": [
         "GOOD: turnIndicator.textContent = current === cpuPlayer ? 'CPU Won' : 'You Won!'",
         "BAD: turnIndicator.textContent = (current === 'red' ? 'Red' : 'Yellow') + ' Wins!' // bridge can't tell who's who"
@@ -35,7 +51,11 @@
       "rule": "NEVER use `arguments.callee` inside a `setInterval`/`setTimeout` callback to self-reference. Always name the function so you can pass it by name when re-arming. Reason: ES modules run in strict mode where `arguments.callee` is a TypeError, AND arrow functions don't have `arguments` at all — they inherit from the enclosing scope, which is almost always the wrong reference.",
       "why": "tetris-classic/reference.html had `tickHandle = setInterval(arguments.callee, grid.gravityMs())` inside an arrow function inside the tick callback. After the first line clear (~12 pieces in) it would try to re-arm gravity at a faster speed, fail silently, and the gravity timer died. User 2026-05-11: \"This tetris is broken after the first line or so, the pieces quit dropping for some reason about a dozen or so moves into the game.\" Fixed 2026-05-11.",
       "severity": "critical",
-      "appliesTo": ["miniapp", "webspa", "anyGame"],
+      "appliesTo": [
+        "miniapp",
+        "webspa",
+        "anyGame"
+      ],
       "examples": [
         "GOOD: function tetrisTick() { … if (lineCleared) { clearInterval(h); h = setInterval(tetrisTick, faster); } }",
         "BAD: setInterval(() => { … h = setInterval(arguments.callee, faster); }, ms) // arrow function, no arguments",
@@ -47,7 +67,10 @@
       "rule": "Game-over / Play-Again overlays must START with `opacity: 0; visibility: hidden;` and use a `.show` class that flips both to visible. Do NOT make the overlay visible by default with only `pointer-events` toggled — visually the overlay then renders on top of the live game and players see 'Game Over' before they've even tapped Start.",
       "why": "flappy-tap-to-flap/reference.html had `#overlay { display: flex; pointer-events: none; }` always-visible. User 2026-05-11: \"Flappy bird is still broken with the 'Play Again' screen up as I'm trying to play it.\" Fixed 2026-05-11 with `opacity: 0; visibility: hidden;` + `.show { opacity: 1; visibility: visible; }` + 180ms transition.",
       "severity": "important",
-      "appliesTo": ["miniapp", "webspa"],
+      "appliesTo": [
+        "miniapp",
+        "webspa"
+      ],
       "examples": [
         "GOOD CSS: #overlay { opacity: 0; visibility: hidden; transition: opacity 0.18s ease; } #overlay.show { opacity: 1; visibility: visible; }",
         "BAD: #overlay { display: flex; pointer-events: none; } #overlay.show { pointer-events: auto; } // visually always there"
@@ -58,7 +81,10 @@
       "rule": "Auto-tick games (Snake, Flappy, Tetris) must wait for the player's first input before starting the gravity / movement loop. Render the board + show a 'Tap or press an arrow to start' overlay on game init. Start the tick loop only when the first directional input arrives. Without this gate, mobile players who tap-to-start the page get an immediate game-over because the snake/bird/piece moved before they could even orient.",
       "why": "snake-classic/reference.html ran startGame() at module-load which spawned the snake moving right at 220ms/tick. With a 20×20 board the snake hit the wall in ~2s before the user knew where the snake was. User 2026-05-11 saw 'Game Over' on first page load. Fixed 2026-05-11.",
       "severity": "important",
-      "appliesTo": ["miniapp", "webspa"],
+      "appliesTo": [
+        "miniapp",
+        "webspa"
+      ],
       "examples": [
         "GOOD: let started = false; function ensureStarted() { if (started) return; started = true; hideStartPrompt(); runTickLoop(); } document.addEventListener('keydown', ev => { if (arrowMap[ev.key]) { setDirection(arrowMap[ev.key]); ensureStarted(); } });",
         "BAD: startGame(); runTickLoop(); // snake dies on the wall before user can move"
@@ -69,7 +95,10 @@
       "rule": "Auto-injected game-over panels (the bridge's top-3 + rank card) MUST be anchored to the TOP of the viewport (`top: 16px`) — NEVER the bottom. The host game's 'Play Again' / 'New Game' / 'Restart' button is always at the bottom of the play area, and bottom-anchored ranking panels cover it. Top anchoring leaves the host game's restart UI fully accessible.",
       "why": "Connect Four 2026-05-11: user said \"with connect 4, there isn't a play again button, is it obscured by the Ranking screen?\" — yes. The bridge's score panel was at bottom:16px and covered the New Game button. Fixed 2026-05-11 in leaderboard.js bridge IIFE.",
       "severity": "important",
-      "appliesTo": ["miniapp", "webspa"],
+      "appliesTo": [
+        "miniapp",
+        "webspa"
+      ],
       "examples": [
         "GOOD bridge panel: position:fixed; top: max(16px, env(safe-area-inset-top, 16px)); left:50%; transform:translateX(-50%);",
         "BAD: position:fixed; bottom: max(16px, env(safe-area-inset-bottom, 16px)); // covers the game's Play Again"
@@ -80,7 +109,10 @@
       "rule": "Do NOT render your own leaderboard-related UI (trophy icons, View Leaderboard links, score-submission buttons, 'Sign in to save' CTAs) inside generated game templates. The bridge IIFE injected by `serveUserProject` provides ALL of that automatically: trophy pill (stacked above Hub), game-over panel with top-3 + your rank + sign-in CTA, auto-submit on game-over text detection. Adding your own creates duplicates that compete for screen space.",
       "why": "Several rounds of template-side leaderboard UI ended up overlapping the bridge UI. The bridge already handles trophy + panel + submit + CTA — templates just need the meta tag from lb-001 and clear win/loss DOM text per lb-002.",
       "severity": "important",
-      "appliesTo": ["miniapp", "webspa"],
+      "appliesTo": [
+        "miniapp",
+        "webspa"
+      ],
       "examples": [
         "GOOD: template emits <meta name=\"mchatai-leaderboard-mode\" content=\"winstreak\">, paints 'You Won!' on win, paints 'CPU Won' on loss. Bridge handles the rest.",
         "BAD: template imports Leaderboard component AND adds its own 'Submit Score' button AND a custom 🏆 link"
@@ -91,7 +123,10 @@
       "rule": "When designing a game template, leave at least 138px of free space at bottom-right of the viewport. The bridge stacks three pills there: Trophy (bottom:98px), Hub (bottom:58px), Feedback (bottom:18px). Putting game controls in that corner causes the pills to occlude them. D-pad → bottom-center. Action buttons → bottom-left. Restart/New Game → bottom-center above the controls.",
       "why": "Multiple games shipped with their own bottom-right action buttons that got overlapped by the bridge pill stack. User screenshots 2026-05-11 showed the trophy pill colliding with Connect Four's `?` help button (which was top-right, but the principle generalizes).",
       "severity": "important",
-      "appliesTo": ["miniapp", "webspa"],
+      "appliesTo": [
+        "miniapp",
+        "webspa"
+      ],
       "examples": [
         "GOOD: D-pad fixed bottom-center; New Game button just above it (also center); score HUD top-left/top-right corners.",
         "BAD: 'Restart' button fixed bottom-right at right:16px;bottom:16px; — directly under the Feedback pill"
@@ -102,7 +137,10 @@
       "rule": "Client code MUST NOT track 'should I post my score?' itself. Just call `window.mChatAI.leaderboard.submit({score, metadata})` on every game-over. The server handler deduplicates by uid: it looks up the user's existing row, UPDATES IN PLACE only if the new score is higher, skips the write otherwise. This means it's safe to post your score on every single win — the leaderboard will show one row per user (their best).",
       "why": "Connect Four winstreak was appending a new row per win ('Ops 1', 'Ops 2', 'Ops 3'). User 2026-05-11: \"This seems pretty messy.\" Fixed server-side in handleLeaderboardSubmit 2026-05-11.",
       "severity": "important",
-      "appliesTo": ["miniapp", "webspa"],
+      "appliesTo": [
+        "miniapp",
+        "webspa"
+      ],
       "examples": [
         "GOOD: on every win → Leaderboard.submit({score:streak}). Server keeps only the highest.",
         "BAD client-side logic: if (score > localStorage.getItem('lastPosted')) Leaderboard.submit(...); // unnecessary"
@@ -113,7 +151,11 @@
       "rule": "Generated mini-apps (and the mchatai.com SPA) MUST NOT ship a service worker that caches index.html or hashed bundles. Safari's SW lifecycle is sticky — old SWs survive across deploys and serve stale cached HTML referencing dead bundle hashes → blank page. Trust Firebase Hosting's `Cache-Control: no-cache` on SPA HTML + `immutable` on /static/** instead.",
       "why": "Multiple Safari blank-page reports across rounds. Real root cause: CRA's default SW intercepting all GETs. Fixed 2026-05-11 with self-uninstalling stub at public/service-worker.js + auto-unregister in src/index.js. Filed: gotchas_spa_service_worker_safari_stale.md.",
       "severity": "critical",
-      "appliesTo": ["miniapp", "webspa", "website"],
+      "appliesTo": [
+        "miniapp",
+        "webspa",
+        "website"
+      ],
       "examples": [
         "GOOD: no SW registration anywhere in generated mini-app HTML.",
         "BAD: <script>navigator.serviceWorker.register('/sw.js')</script> in generated game"
@@ -124,7 +166,10 @@
       "rule": "When adding any global floating affordance to /u/<slug>/ generated games (trophy, info button, etc), match the existing Hub + Feedback pill styling: `background:rgba(40,40,46,0.92); border:1px solid rgba(255,255,255,0.12); border-radius:999px; padding:6px 12px 6px 10px; font-size:12px; color:#fff;`. Subscribe to the Hub pill's `.idle` class via MutationObserver so all pills fade together. Same z-index (2147483646) or one less so the feedback panel can stack on top when opened.",
       "why": "User 2026-05-11: \"the hub icon is faint and does not have a pill around it. IT SHOULD LOOK LIKE the Hub and Feedback icons.\" Trio-of-pills design is the established visual language on /u/<slug>/. Filed 2026-05-11 in functions/src/leaderboard.js showLeaderboardButton().",
       "severity": "important",
-      "appliesTo": ["miniapp", "webspa"],
+      "appliesTo": [
+        "miniapp",
+        "webspa"
+      ],
       "examples": [
         "GOOD: copy the #mchatai-back-pill CSS byte-for-byte, add a MutationObserver on its .idle class for parity.",
         "BAD: a custom-styled floating button that doesn't match the trio (white pill on dark game, oversized, animated)"
@@ -135,7 +180,11 @@
       "rule": "Any `window.mChatAI.services.*` bridge that requires the player's identity (leaderboard, newsletter, orders, subscribers, …) MUST consume `window.__MCHATAI_BOOTSTRAP_TOKEN__` when present and call `signInWithCustomToken(auth, token)` on the WebView's Firebase JS SDK BEFORE the bridge starts treating currentUser as authoritative. The native iOS/macOS host injects this token at document-start via WKUserScript; without honoring it, every native-hosted WebView treats the player as anonymous even though they're signed in on the phone.",
       "why": "WKWebView Firebase JS SDK auth state lives in IndexedDB scoped to the WebView; native FirebaseAuth state lives in Keychain. The two stores DO NOT share. Solution: native fetches a custom token via POST /relay/v1/auth/web-session-token (Authorization: Bearer <native ID token>), then injects it as window.__MCHATAI_BOOTSTRAP_TOKEN__ via WKUserScript before any page scripts run. User 2026-05-11: \"it would be nice if my logged in state from my iOS app login could carry over to the mini-app.\" Filed in mchataiweb functions/src/leaderboard.js loadSDK() + mchatai/CommunityHub/WebSessionBridge.swift.",
       "severity": "critical",
-      "appliesTo": ["miniapp", "webspa", "anyGame"],
+      "appliesTo": [
+        "miniapp",
+        "webspa",
+        "anyGame"
+      ],
       "examples": [
         "GOOD: after authStateReady(), check `if (window.__MCHATAI_BOOTSTRAP_TOKEN__ && !isRealSignedInUser(auth.currentUser)) await auth.signInWithCustomToken(authInstance, token); delete window.__MCHATAI_BOOTSTRAP_TOKEN__;`",
         "BAD: ignore the property and ALWAYS prompt for OAuth from the WebView — Google rejects WKWebView's UA, sign-in fails, score never posts"
@@ -146,7 +195,11 @@
       "rule": "Bridge calls MUST degrade gracefully when offline. `submit({score, …})` must return null without throwing when fetch() rejects (network down). `getTop()` must return [] (or cached rows) when offline. The host game's `Leaderboard.submitFinal()` already handles null by hiding the rank card — DO NOT add try/catch wrappers that swallow other errors.",
       "why": "User 2026-05-11: \"if I download the mini-app I really want to be able run it offline.\" Installed mini-app bundles serve from file:// when offline; the bridge IIFE still attempts to POST to relay/v1/leaderboards which fails ECONNREFUSED. Caught fetch() rejections should resolve to null/[], not propagate.",
       "severity": "important",
-      "appliesTo": ["miniapp", "webspa", "anyGame"],
+      "appliesTo": [
+        "miniapp",
+        "webspa",
+        "anyGame"
+      ],
       "examples": [
         "GOOD: `submit: async function (p) { try { const r = await fetch(SUBMIT_URL, ...); if (!r.ok) return null; return r.json(); } catch (_) { return null; } }`",
         "BAD: `submit: async function (p) { const r = await fetch(SUBMIT_URL, ...); return r.json(); }` // throws on offline; game-over panel never renders"
@@ -157,10 +210,36 @@
       "rule": "When fetch() throws inside submit() (offline / DNS / unreachable), enqueue {score, metadata, ts} to localStorage keyed by BOARD_ID and return null. On the NEXT successful submit(), flush the queue oldest-first BEFORE the live submit so chronological intent is preserved. Cap queue at 20 entries; drop oldest on overflow. Server already dedups by uid so replaying older scores after a newer one is a no-op when the cached best wins. Drop entries on 4xx-non-429 responses (server rejected); preserve on 5xx (transient).",
       "why": "Companion to lb-013. User 2026-05-11: \"hopefully you won't break that original path\" — and \"if I download the mini-app I really want to be able run it offline.\" Without a queue, playing offline silently discards the player's scores; with a queue, the score lands the next time the device has connectivity. Cached top-N (separate localStorage key `__mchatai_lb_top_<board>`) lets the game-over panel still show the most-recent top-3 even when offline. Filed 2026-05-11 with PR-5; implementation in functions/src/leaderboard.js readOfflineQueue/writeOfflineQueue/flushOfflineQueue/cacheTop/readCachedTop.",
       "severity": "important",
-      "appliesTo": ["miniapp", "webspa", "anyGame"],
+      "appliesTo": [
+        "miniapp",
+        "webspa",
+        "anyGame"
+      ],
       "examples": [
         "GOOD: `try { resp = await fetch(...) } catch (netErr) { enqueueOfflineSubmit({score, metadata, ts: Date.now()}); return null; }` — and `try { await flushOfflineQueue(user); } catch (_) {}` at the top of next submit.",
         "BAD: silently drop on offline — player loses their score with no recovery."
+      ]
+    },
+    {
+      "id": "lb-015-cumulative-across-levels",
+      "rule": "In level-based games (match-three, candy match, puzzle ladders), the leaderboard score MUST be cumulative across all cleared levels in the run, not the per-level reset value. Maintain a cumulativeScore variable that adds each clearedLevel.score on level complete; expose it to the hosted-page leaderboard bridge via a hidden <span data-mchatai-score id=\"leaderboardScore\">N</span> element.",
+      "why": "Per-level reset is the default the bridge will read (it picks up [id*=\"score\"]). Leaderboards then show the score from whichever level the player was on when they ran out of moves, which is often tiny. Players who cleared 7 levels and got stuck on level 8 should see their full run on the board.",
+      "severity": "high",
+      "appliesTo": "leaderboard-games",
+      "examples": [
+        "let cumulativeScore = 0; on level-complete: cumulativeScore += levelScore; document.getElementById(\"leaderboardScore\").textContent = String(cumulativeScore);",
+        "The hidden span is read by pickScoreFromDOM tier-1 selector ([data-mchatai-score])."
+      ]
+    },
+    {
+      "id": "lb-016-many-levels-or-endless",
+      "rule": "Level-based games MUST ship with at least 8 levels of progressive difficulty, OR be endless with rising targets/declining moves. Looping back to level 1 after 3 levels is shipped repeatedly and feels broken; the final-level path should say \"New Game+\" and reset cumulative on explicit user action, not auto-loop.",
+      "why": "User shipped a candy-match with only 3 levels that looped back to level 1, breaking the leaderboard run and frustrating the user mid-play. Future candy-match / puzzle-ladder generations should ship 8-12 levels by default, plus an explicit New Game+ flow.",
+      "severity": "high",
+      "appliesTo": "leaderboard-games",
+      "examples": [
+        "const LEVELS = [{target:1500,moves:30},{target:3000,moves:30},{target:5000,moves:28},{target:7500,moves:26},{target:10500,moves:25},{target:14000,moves:24},{target:18000,moves:22},{target:22500,moves:22},{target:28000,moves:20},{target:34500,moves:20},{target:42000,moves:18},{target:50000,moves:18}];",
+        "On last-level win: button label = \"New Game+\", click handler resets cumulativeScore and starts level 0."
       ]
     }
   ],

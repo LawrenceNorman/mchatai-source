@@ -1,0 +1,48 @@
+{
+  "id": "relevance-scorer",
+  "schemaVersion": "1.0",
+  "version": "1.0.0",
+  "title": "Score for Relevance",
+  "shortDescription": "Score this page (or every link on a listing) for relevance to your interests.",
+  "icon": "scope",
+  "tint": "blue",
+  "recommendedModel": "qwen2.5:7b",
+  "form": [
+    {
+      "id": "context",
+      "label": "What are you looking for?",
+      "help": "Describe your platform, project, or interest. The agent judges relevance against this text.",
+      "type": "textarea",
+      "placeholder": "e.g. I'm building a macOS app platform that lets users author mini-apps, agents, and pipelines. I care about LLM tool use, on-device inference, and agentic workflows.",
+      "required": true,
+      "minHeight": 140
+    },
+    {
+      "id": "threshold",
+      "label": "Deep-dive threshold",
+      "help": "When scanning a listing page, only items scoring at or above this get a full-content deep dive (otherwise the short-pass score is the final answer).",
+      "type": "slider",
+      "min": 0,
+      "max": 100,
+      "default": 70,
+      "step": 5,
+      "suffix": "%"
+    }
+  ],
+  "execution": {
+    "supportsListingScan": true,
+    "singlePage": {
+      "system": "You are a strict relevance-scoring engine. Output ONE JSON object with keys: score (integer 0-100), reason (one short sentence, max 25 words), keyConnections (array of up to 3 short strings, each <= 8 words, naming the specific overlaps with the user's interest). No prose outside the JSON. No markdown. No code fences. No leading/trailing whitespace.",
+      "userTemplate": "USER INTEREST:\n{{context}}\n\nPAGE URL: {{url}}\n\nFULL CONTENT:\n{{pageText}}\n\nRespond with JSON only."
+    },
+    "listingShortPass": {
+      "system": "You are a strict relevance-scoring engine. Output ONE JSON object with keys: score (integer 0-100) and reason (one short sentence, max 20 words). No prose outside the JSON. No markdown. No code fences.",
+      "userTemplate": "USER INTEREST:\n{{context}}\n\nCANDIDATE:\nTitle: {{title}}\nSnippet: {{snippet}}\n\nRespond with JSON only."
+    }
+  },
+  "results": {
+    "kind": "scored-table",
+    "scoreKey": "score",
+    "primaryTextKey": "reason"
+  }
+}
