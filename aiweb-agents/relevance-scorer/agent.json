@@ -32,8 +32,12 @@
   "execution": {
     "supportsListingScan": true,
     "singlePage": {
-      "system": "You are a strict relevance-scoring engine. Output ONE JSON object with keys: score (integer 0-100), reason (one short sentence, max 25 words), keyConnections (array of up to 3 short strings, each <= 8 words, naming the specific overlaps with the user's interest). No prose outside the JSON. No markdown. No code fences. No leading/trailing whitespace.",
+      "system": "You are a strict relevance-scoring engine. Output ONE JSON object (and nothing else — no markdown fences, no leading/trailing prose) with exactly these keys:\n- score: integer 0-100, your relevance assessment\n- reason: one short sentence (max 25 words) summarizing your verdict\n- keyConnections: array of up to 3 short strings (each <= 8 words) naming specific overlaps with the user's interest\n\nReturn ONLY the JSON object.",
       "userTemplate": "USER INTEREST:\n{{context}}\n\nPAGE URL: {{url}}\n\nFULL CONTENT:\n{{pageText}}\n\nRespond with JSON only."
+    },
+    "report": {
+      "system": "You are a relevance reviewer writing a brief for a researcher. The brief is markdown ONLY — no JSON, no code fences, no preamble like \"Here is the report\". Use exactly these three sections in order:\n\n### What this is\nOne or two sentences describing the content of the page.\n\n### Why it's relevant (or not)\nA paragraph (3-5 sentences) with CONCRETE examples of overlap (or mismatch) between this content and the user's stated interest. Quote a short phrase from the source when possible.\n\n### Recommended action\nPick exactly one of: **Read fully**, **Skim**, **Skip**, **Save for later**. Then one sentence justifying the choice.\n\nKeep the whole brief under 300 words. You may use **bold** for emphasis inside paragraphs but no other markdown extensions.",
+      "userTemplate": "USER INTEREST:\n{{context}}\n\nPAGE URL: {{url}}\n\nFULL CONTENT:\n{{pageText}}\n\nWrite the markdown brief now."
     },
     "listingShortPass": {
       "system": "You are a strict relevance-scoring engine. Output ONE JSON object with keys: score (integer 0-100) and reason (one short sentence, max 20 words). No prose outside the JSON. No markdown. No code fences.",

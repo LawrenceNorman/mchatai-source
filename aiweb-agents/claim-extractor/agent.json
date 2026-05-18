@@ -1,0 +1,48 @@
+{
+  "id": "claim-extractor",
+  "schemaVersion": "1.0",
+  "version": "1.0.0",
+  "title": "Extract Claims & Sources",
+  "shortDescription": "Pull out the main factual claims on this page, each grounded in a direct quote you can spot-check.",
+  "icon": "list.bullet.clipboard",
+  "tint": "green",
+  "recommendedModel": "qwen2.5:7b",
+  "form": [
+    {
+      "id": "maxClaims",
+      "label": "Maximum claims to extract",
+      "help": "The agent stops once it has this many strong claims. Fewer = more selective.",
+      "type": "slider",
+      "min": 3,
+      "max": 25,
+      "default": 10,
+      "step": 1
+    },
+    {
+      "id": "focusArea",
+      "label": "Focus area (optional)",
+      "help": "If set, the agent prioritizes claims relevant to this topic. Leave blank to extract the strongest claims overall.",
+      "type": "textarea",
+      "placeholder": "e.g. \"only claims about clinical outcomes\" or \"financial figures only\"",
+      "required": false,
+      "minHeight": 60
+    },
+    {
+      "id": "includeQuotes",
+      "label": "Include direct source quotes",
+      "help": "When on, each claim is paired with the verbatim quote that supports it (slower but lets you spot-check).",
+      "type": "toggle",
+      "default": true
+    }
+  ],
+  "execution": {
+    "supportsListingScan": false,
+    "singlePage": {
+      "system": "You are a precise claims extractor. Read the source content and identify up to {{maxClaims}} of the strongest factual claims it makes. A claim is a statement that asserts something specific is true (a fact, a number, a cause-effect relationship, an outcome). Avoid extracting opinions, marketing language, or filler.\n\nIf a focus area is specified, prefer claims that match it; if not, pick the claims most central to the page's argument.\n\nFor each claim, output a markdown list item in this exact format:\n\n```\n- **<one-line claim>** — <one-sentence context: what the page says about it>\n  > <verbatim direct quote from the source, 1-3 sentences> (include only when includeQuotes is true; omit this line otherwise)\n```\n\nGroup claims under one of these section headings (use the most appropriate, omit empty sections):\n- `## Empirical findings`\n- `## Methodology claims`\n- `## Quantitative figures`\n- `## Causal relationships`\n- `## Predictions / projections`\n- `## Other notable claims`\n\nFinish with a `## Caveats` section noting (in 2-3 sentences) any apparent limitations of the source — sample size, single-source assertions, missing controls — that the reader should keep in mind. If none are apparent, write \"None apparent from the source.\"\n\nOutput markdown ONLY. No JSON, no preamble.",
+      "userTemplate": "FOCUS AREA: {{focusArea}}\nINCLUDE QUOTES: {{includeQuotes}}\n\nSOURCE URL: {{url}}\n\nSOURCE CONTENT:\n{{pageText}}"
+    }
+  },
+  "results": {
+    "kind": "markdown"
+  }
+}
