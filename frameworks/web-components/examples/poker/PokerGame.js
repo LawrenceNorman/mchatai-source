@@ -113,6 +113,24 @@ export class PokerGame {
     $(this.root, "#callButton").addEventListener("click", () => this.act("call"));
     $(this.root, "#raiseButton").addEventListener("click", () => this.act("raise"));
     $(this.root, "#foldButton").addEventListener("click", () => this.act("fold"));
+    $(this.root, "#continueButton").addEventListener("click", () => {
+      const cb = this._pendingContinue;
+      this._pendingContinue = null;
+      $(this.root, "#continueButton").hidden = true;
+      $(this.root, "#dealButton").disabled = false;
+      if (cb) cb();
+    });
+  }
+
+  // Pause + Continue at the showdown so the player can read both hole
+  // cards + the hand-evaluation reason ("Two Pair beats Pair") before
+  // the pot is awarded and the table resets. Wisdom rule
+  // cg-round-end-pause-or-continue.
+  pauseAndContinue(message, callback) {
+    this.setMessage(message + "  —  press Continue.");
+    this._pendingContinue = callback;
+    $(this.root, "#continueButton").hidden = false;
+    $(this.root, "#dealButton").disabled = true;
   }
 
   // ── Hand lifecycle ────────────────────────────────────────────────
@@ -294,7 +312,13 @@ export class PokerGame {
       winner = "split";
       reason = `Tie — ${HAND_NAMES[playerBest.name] || playerBest.name}`;
     }
-    this.endHand({ winner, reason });
+    // Render the revealed CPU hand + community before pausing so the
+    // player can see both hands while reading the result.
+    this.render();
+    const headline = winner === "split"
+      ? `Split pot — ${reason}.`
+      : `${labelFor(winner)} wins ${this.pot} — ${reason}.`;
+    this.pauseAndContinue(headline, () => this.endHand({ winner, reason }));
   }
 
   endHand({ winner, reason }) {
