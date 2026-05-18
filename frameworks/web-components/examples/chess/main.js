@@ -19,7 +19,10 @@ const game = new ChessGame({
   restartHostTarget: "[data-app]",
   rankCardHostTarget: "#rankCard",
   humanColor: "white",
-  ai: new ChessAI({ rules: new ChessRules(), depth: 2 })
+  // Depth 3 is the recommended default (wisdom rule bg-chess-ai-default-depth-three):
+  // depth 2 played at beginner level; depth 3 with PST + capture-first move
+  // ordering plays competently and still moves in under ~1s on typical hardware.
+  ai: new ChessAI({ rules: new ChessRules(), depth: 3 })
 });
 
 game.start();

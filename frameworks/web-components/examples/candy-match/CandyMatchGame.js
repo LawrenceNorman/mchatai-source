@@ -1,3 +1,17 @@
+// This example demonstrates a SINGLE-LEVEL match-three (MOVES = 24 budget).
+// For level-based gameplay (8+ levels with cumulative leaderboard scoring),
+// import LevelProgression and call it from newGame()/handleTile():
+//
+//   import { LevelProgression } from "../../entities/LevelProgression.js";
+//   this.lp = new LevelProgression({ onLevelChange: (i, meta) => { this.moves = meta.moves; this.render(); } });
+//   this.lp.mount();    // injects hidden [data-mchatai-score] for leaderboard
+//   this.lp.start();
+//   // ...on each move: if (this.scoreboard.score >= this.lp.currentMeta().target) endLevel(true);
+//   // ...on out of moves: this.lp.recordLevelScore(score); show overlay; on click -> this.lp.advance() or .newGamePlus()
+//
+// See wisdom rules lb-015-cumulative-across-levels and lb-016-many-levels-or-endless
+// for the policy; see entities/LevelProgression.js for the full usage docstring.
+
 import { TurnBasedManager } from "../../core/TurnBasedManager.js";
 import { GridBoard } from "../../entities/GridBoard.js";
 import { TileSwapper } from "../../entities/TileSwapper.js";
