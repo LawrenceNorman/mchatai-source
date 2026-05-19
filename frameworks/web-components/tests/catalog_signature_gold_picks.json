@@ -1,0 +1,113 @@
+{
+  "$schema_version": "1.0.0",
+  "purpose": "Gold-pick fixtures for catalog signature sufficiency (validate_catalog.mjs Tier 2). Each case asserts: GIVEN this user prompt, the listed components' signatures (summary + tags + goodFits) should contain at least one keyword overlap with prompt tokens. Failure means the SIGNATURE is undertelling - a stage-1 picker cannot find this component from surface text alone. Cases include incremental/composite goals (e.g. speed-chess = chess + timer) that the deterministic recipe matcher cannot solve today.",
+  "tokenRules": {
+    "minSummaryOverlap": 1,
+    "ignoreTokens": ["build", "a", "an", "the", "game", "app", "and", "with", "for", "to", "of", "in", "on", "or", "make", "create", "new", "version"]
+  },
+  "universalComponents": {
+    "_comment": "Components that a stage-1 picker should ALWAYS include for a given category (per recipe convention / wisdom rule), regardless of prompt text. The validator verifies they exist in the catalog but skips the prompt-overlap check for them. Add to expectedComponents in cases anyway - the validator de-duplicates against this list.",
+    "game": [
+      "ui.mini-header",
+      "ui.restart-overlay",
+      "ui.leaderboard"
+    ]
+  },
+  "cases": [
+    {
+      "id": "plain-chess",
+      "prompt": "build a chess game",
+      "expectedComponents": [
+        "core.turn-based-manager",
+        "entities.board8x8",
+        "entities.chess-rules",
+        "entities.chess-ai",
+        "ui.leaderboard",
+        "ui.mini-header",
+        "ui.restart-overlay"
+      ]
+    },
+    {
+      "id": "speed-chess",
+      "prompt": "build a speed chess game with a 5 minute countdown clock per player and flag-fall",
+      "expectedComponents": [
+        "core.turn-based-manager",
+        "entities.board8x8",
+        "entities.chess-rules",
+        "entities.chess-ai",
+        "ui.timer-ring",
+        "ui.mini-header",
+        "ui.restart-overlay"
+      ]
+    },
+    {
+      "id": "blitz-checkers",
+      "prompt": "blitz checkers with a 3 minute timer for each player",
+      "expectedComponents": [
+        "core.turn-based-manager",
+        "entities.checkers-rules",
+        "entities.checkers-ai",
+        "ui.timer-ring",
+        "ui.mini-header",
+        "ui.restart-overlay"
+      ]
+    },
+    {
+      "id": "asteroids-classic",
+      "prompt": "build an asteroids arcade game with a vector ship, rotation, thrust, bullets, and asteroid splitting",
+      "expectedComponents": [
+        "core.game-manager",
+        "core.physics2d",
+        "entities.entity",
+        "entities.space-ship",
+        "entities.asteroid",
+        "entities.projectile",
+        "ui.mini-header"
+      ]
+    },
+    {
+      "id": "pomodoro",
+      "prompt": "build a pomodoro focus timer with 25 minute focus and 5 minute break cycles",
+      "expectedComponents": [
+        "ui.timer-ring",
+        "ui.button"
+      ]
+    },
+    {
+      "id": "word-quest",
+      "prompt": "build a wordle clone with five letter answers, six guesses, green yellow gray feedback, and a virtual keyboard",
+      "expectedComponents": [
+        "core.turn-based-manager",
+        "entities.letter-grid",
+        "entities.grid-board",
+        "ui.keyboard-input",
+        "ui.scoreboard",
+        "ui.mini-header",
+        "ui.restart-overlay"
+      ]
+    },
+    {
+      "id": "ttt-with-timer",
+      "prompt": "tic tac toe with a turn timer and best of three rounds",
+      "expectedComponents": [
+        "core.turn-based-manager",
+        "entities.tic-tac-toe-rules",
+        "ui.timer-ring",
+        "ui.mini-header",
+        "ui.restart-overlay"
+      ]
+    },
+    {
+      "id": "pong",
+      "prompt": "build a pong arcade game with two paddles, a ball, and score",
+      "expectedComponents": [
+        "core.game-manager",
+        "core.physics2d",
+        "entities.paddle",
+        "entities.ball",
+        "ui.scoreboard",
+        "ui.mini-header"
+      ]
+    }
+  ]
+}
