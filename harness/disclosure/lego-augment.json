@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "lastUpdated": "2026-05-18",
+  "description": "Phase WL.3 - per-backend opt-in for the LLM stage-1 web-components augmenter. When enabled, the harness runs an extra LLM call BEFORE the main generation step. It sees the goal + the deterministic matcher's recipe pick + the tight catalog index, and may add components to the selection. Example: 'speed chess with countdown clock' matches recipe.chess (no timer-ring) and the augmenter adds ui.timer-ring so the wizard imports the canonical component instead of reinventing a clock. Off by default everywhere. Graduate per-backend once veracity stabilizes (analogous to disclosure/cli-mode.json LF.3 model).",
+  "graduationCriteria": {
+    "summary": "A backend graduates from disabled to enabled for an artifact type when the augmenter's add-rate produces measurable component-reuse-hint hits without regressing recipe-match accuracy. Track via ComponentUsageLedger + augmentation outcome telemetry.",
+    "graduationThresholdDefault": 0.6,
+    "manualOverride": "Operators can pin via DynamicConfigService key augment.<backend>.<artifactType>.modeOverride = enabled | disabled."
+  },
+  "perBackend": {
+    "claude": {
+      "miniApp": {
+        "enabled": false,
+        "model": "haiku",
+        "timeoutMs": 5000,
+        "maxAdds": 4,
+        "rationale": "Default off until stage-1 picker ships end-to-end. Claude CLI's tool-call veracity is high; expected first graduation target once telemetry confirms add-rate."
+      }
+    },
+    "codex": {
+      "miniApp": {
+        "enabled": false,
+        "model": "haiku",
+        "timeoutMs": 5000,
+        "maxAdds": 4,
+        "rationale": "Default off; mirrors Claude's planned rollout."
+      }
+    }
+  },
+  "default": {
+    "miniApp": {
+      "enabled": false,
+      "model": "haiku",
+      "timeoutMs": 5000,
+      "maxAdds": 4,
+      "rationale": "Unknown backends default to disabled. The deterministic matcher's pick is used as-is."
+    }
+  }
+}
