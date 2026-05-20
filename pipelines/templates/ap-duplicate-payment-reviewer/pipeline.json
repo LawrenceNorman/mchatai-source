@@ -6,31 +6,18 @@
   "steps": [
     {
       "id": "606F8230-8D7A-49D1-A53E-A2FD482CB55B",
-      "skillID": "builtin.csvTable",
+      "skillID": "builtin.csvFinanceReport",
       "config": {
         "dataSensitivity": "confidential",
         "csvMode": "preview",
         "outputFormat": "markdown",
         "hasHeader": "true",
         "limit": "700",
-        "maxChars": "60000"
-      }
-    },
-    {
-      "id": "EA5303FD-96E2-4182-819B-9BBF1091FC43",
-      "skillID": "builtin.llmGenerate",
-      "config": {
-        "dataSensitivity": "confidential",
+        "maxChars": "60000",
         "llmMaxInputChars": "60000",
         "llmMaxTokens": "4200",
         "llmTimeout": "150",
-        "userPrompt": "You are the mChatAI+ AP Duplicate Payment Reviewer. Analyze the exported accounts payable table below for exception review. This is draft analysis for human review; do not approve reversals, book entries, vendor disputes, tax treatment, legal conclusions, or audit sign-offs.\n\nUse only visible table evidence. Reference vendors, invoice numbers, payment IDs, dates, amounts, currencies, memos, check/ACH references, and row numbers when available. Treat possible duplicates as candidates only, not confirmed errors.\n\nProduce markdown with this exact structure:\n\n# AP Duplicate Payment Reviewer\n\n## Scope\n- Period detected:\n- Vendors detected:\n- Currency detected:\n- Row count reviewed:\n\n## Exception Summary\n5-8 bullets on duplicate-looking payments, repeated invoice patterns, large/vendor-specific risks, and immediate follow-up priorities.\n\n## Duplicate Candidates\nA table with columns: Priority, Vendor, Evidence, Amount / Dates, Why it may be duplicate, Suggested human follow-up.\n\n## Repeated Invoice Or Reference Patterns\nList repeated invoice numbers, payment references, amounts, dates, vendor names, or memo similarities visible in the data.\n\n## Vendor And Payment Outliers\nFlag unusual large payments, split payments, round-dollar patterns, missing approvals, missing invoice IDs, negative payments, credits, or stale unpaid items.\n\n## Data Quality Notes\nNote missing invoice IDs, blank vendors, inconsistent signs, currency ambiguity, date issues, or row-count limitations.\n\n## Missing Data / Follow-Up\nList invoice PDFs, approval records, vendor statements, payment confirmations, void/refund records, or ERP exports needed to confirm exceptions.\n\n## Review Note\nDraft AP exception support for human review. Not accounting, tax, legal, audit, financing, or compliance advice.\n\nAP TABLE:\n{{INPUT}}"
-      }
-    },
-    {
-      "id": "2638B538-5275-4312-8C91-1E137D6DF059",
-      "skillID": "builtin.saveArtifact",
-      "config": {
+        "userPrompt": "You are the mChatAI+ AP Duplicate Payment Reviewer. Analyze the exported accounts payable table below for exception review. This is draft analysis for human review; do not approve reversals, book entries, vendor disputes, tax treatment, legal conclusions, or audit sign-offs.\n\nUse only visible table evidence. Reference vendors, invoice numbers, payment IDs, dates, amounts, currencies, memos, check/ACH references, and row numbers when available. Treat possible duplicates as candidates only, not confirmed errors.\n\nProduce markdown with this exact structure:\n\n# AP Duplicate Payment Reviewer\n\n## Scope\n- Period detected:\n- Vendors detected:\n- Currency detected:\n- Row count reviewed:\n\n## Exception Summary\n5-8 bullets on duplicate-looking payments, repeated invoice patterns, large/vendor-specific risks, and immediate follow-up priorities.\n\n## Duplicate Candidates\nA table with columns: Priority, Vendor, Evidence, Amount / Dates, Why it may be duplicate, Suggested human follow-up.\n\n## Repeated Invoice Or Reference Patterns\nList repeated invoice numbers, payment references, amounts, dates, vendor names, or memo similarities visible in the data.\n\n## Vendor And Payment Outliers\nFlag unusual large payments, split payments, round-dollar patterns, missing approvals, missing invoice IDs, negative payments, credits, or stale unpaid items.\n\n## Data Quality Notes\nNote missing invoice IDs, blank vendors, inconsistent signs, currency ambiguity, date issues, or row-count limitations.\n\n## Missing Data / Follow-Up\nList invoice PDFs, approval records, vendor statements, payment confirmations, void/refund records, or ERP exports needed to confirm exceptions.\n\n## Review Note\nDraft AP exception support for human review. Not accounting, tax, legal, audit, financing, or compliance advice.\n\nAP TABLE:\n{{INPUT}}",
         "artifactName": "AP Duplicate Payment Reviewer Report",
         "artifactExtension": "md",
         "productType": "com.mchatai.product.research.report",

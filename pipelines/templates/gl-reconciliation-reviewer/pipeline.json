@@ -2,35 +2,24 @@
   "id": "83449A1A-305D-433C-8DCB-5283AE57C9BE",
   "name": "GL Reconciliation Reviewer",
   "description": "Review exported general-ledger or reconciliation rows for unmatched items, duplicates, timing differences, and follow-up actions.",
-  "components": ["component.finance-gl-reconciliation"],
+  "components": [
+    "component.finance-gl-reconciliation"
+  ],
   "steps": [
     {
       "id": "F5A672BF-1CA9-4152-92B6-0C59C9D8F33B",
-      "skillID": "builtin.csvTable",
+      "skillID": "builtin.csvFinanceReport",
       "config": {
         "dataSensitivity": "confidential",
         "csvMode": "preview",
         "outputFormat": "markdown",
         "hasHeader": "true",
         "limit": "700",
-        "maxChars": "60000"
-      }
-    },
-    {
-      "id": "82558221-E07B-4D47-B63A-91C18363B04D",
-      "skillID": "builtin.llmGenerate",
-      "config": {
-        "dataSensitivity": "confidential",
+        "maxChars": "60000",
         "llmMaxInputChars": "60000",
         "llmMaxTokens": "4200",
         "llmTimeout": "150",
-        "userPrompt": "You are the mChatAI+ GL Reconciliation Reviewer. Review the table below for reconciliation support. This is draft analysis for a human finance owner; do not post entries, approve adjustments, or make final accounting decisions.\n\nUse only visible table evidence. Reference row numbers, account names, dates, references, counterparties, and amounts when available. If a needed column is missing, mark the conclusion as not assessable.\n\nProduce markdown with this exact structure:\n\n# GL Reconciliation Reviewer\n\n## Scope\n- Account / ledger detected:\n- Period detected:\n- Currency detected:\n- Row count reviewed:\n\n## Reconciliation Summary\nConcise status: likely matched, needs review, blocked, or not assessable.\n\n## Exceptions And Matches To Review\nA table with columns: Priority, Pattern, Evidence, Amount / Reference, Recommended human action.\n\n## Duplicate-Looking Items\nList possible duplicate amounts, invoice IDs, journal IDs, dates, vendors, customers, or memo patterns.\n\n## Timing Differences\nList items that may be timing differences between systems or periods.\n\n## Unexplained Deltas / Outliers\nIdentify unusual amounts, signs, missing references, stale open items, or account-class inconsistencies.\n\n## Data Quality Notes\nNote missing headers, inconsistent dates, blank references, currency ambiguity, truncation, or parse limitations.\n\n## Missing Data / Follow-Up\nSpecific exports, columns, or supporting docs needed for a complete reconciliation.\n\n## Review Note\nDraft reconciliation support for human review. Not accounting, tax, legal, audit, or compliance advice.\n\nRECONCILIATION TABLE:\n{{INPUT}}"
-      }
-    },
-    {
-      "id": "526AAE8A-9545-40AC-9156-A10313E6EE07",
-      "skillID": "builtin.saveArtifact",
-      "config": {
+        "userPrompt": "You are the mChatAI+ GL Reconciliation Reviewer. Review the table below for reconciliation support. This is draft analysis for a human finance owner; do not post entries, approve adjustments, or make final accounting decisions.\n\nUse only visible table evidence. Reference row numbers, account names, dates, references, counterparties, and amounts when available. If a needed column is missing, mark the conclusion as not assessable.\n\nProduce markdown with this exact structure:\n\n# GL Reconciliation Reviewer\n\n## Scope\n- Account / ledger detected:\n- Period detected:\n- Currency detected:\n- Row count reviewed:\n\n## Reconciliation Summary\nConcise status: likely matched, needs review, blocked, or not assessable.\n\n## Exceptions And Matches To Review\nA table with columns: Priority, Pattern, Evidence, Amount / Reference, Recommended human action.\n\n## Duplicate-Looking Items\nList possible duplicate amounts, invoice IDs, journal IDs, dates, vendors, customers, or memo patterns.\n\n## Timing Differences\nList items that may be timing differences between systems or periods.\n\n## Unexplained Deltas / Outliers\nIdentify unusual amounts, signs, missing references, stale open items, or account-class inconsistencies.\n\n## Data Quality Notes\nNote missing headers, inconsistent dates, blank references, currency ambiguity, truncation, or parse limitations.\n\n## Missing Data / Follow-Up\nSpecific exports, columns, or supporting docs needed for a complete reconciliation.\n\n## Review Note\nDraft reconciliation support for human review. Not accounting, tax, legal, audit, or compliance advice.\n\nRECONCILIATION TABLE:\n{{INPUT}}",
         "artifactName": "GL Reconciliation Reviewer Report",
         "artifactExtension": "md",
         "productType": "com.mchatai.product.research.report",
