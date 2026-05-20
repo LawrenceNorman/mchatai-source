@@ -1,0 +1,62 @@
+{
+  "version": 1,
+  "lastUpdated": "2026-05-19",
+  "description": "Phase WX-D (2026-05-19) — hot-patchable rules for CLI failure classification. Read by CLIFailureMitigator (skeleton; not yet wired into AIHarness) after each CLI Outcome whose terminationReason indicates failure. Rules are checked top-to-bottom by priority (higher first); first match wins. Vendor error-shape changes ship as PRs to this file; no Swift rebuild required (CLAUDE.md ABSOLUTE RULE #1).",
+  "schema": {
+    "rules[].id": "Stable identifier used in telemetry + chat status messages.",
+    "rules[].description": "Human-readable explanation of when this rule fires and why the chosen action is right.",
+    "rules[].priority": "Integer. Higher priority rules are checked first. Tie-break: first in array.",
+    "rules[].match.backend": "Optional. 'claude' | 'codex' | 'gemini' | '*'. Restricts which CLI backend this rule applies to.",
+    "rules[].match.terminationReasonContains": "Optional substring match against Outcome.terminationReason. Skips the event scan when absent (rule fires on any failed outcome).",
+    "rules[].match.eventType": "Optional. Event type string (e.g. 'rate_limit_event', 'error', 'tool_error'). When set, at least one event of this type must exist in the transcript.",
+    "rules[].match.bodyContains": "Optional substring match against the raw JSON line of the matched event.",
+    "rules[].match.jsonEquals": "Optional dict of dotted-path -> expected string. Every path must resolve and equal its expected value within the matched event's JSON body.",
+    "rules[].action": "'cascade' | 'retryWithParamTweak' | 'retryWithContentPatch'",
+    "rules[].params": "Action-specific knobs. See per-action notes below.",
+    "rules[].userChatTemplate": "Status message appended to the wizard session chat. Supports {placeholder} substitution from the matched event's JSON body."
+  },
+  "actionContracts": {
+    "cascade": {
+      "description": "Skip the current backend and move directly to the next in the cascade order. No retry on the same backend.",
+      "params": {}
+    },
+    "retryWithParamTweak": {
+      "description": "Re-run the SAME backend with adjusted runtime parameters. Use when the failure is transient and a config tweak (backoff, raised maxTurns, raised timeout) is likely to succeed.",
+      "params": {
+        "backoffSeconds": "Integer literal OR a path expression like 'header:retry-after' or 'event:rate_limit_info.resetsAt' (resolved to delta from now). Default 0 (no delay).",
+        "maxRetries": "Integer. Cap on retry attempts. Default 1.",
+        "maxTurnsBump": "Integer added to runtime maxTurns. Default 0.",
+        "timeoutBumpSeconds": "Integer added to runtime timeout. Default 0."
+      }
+    },
+    "retryWithContentPatch": {
+      "description": "Append/override CLAUDE.md (or AGENTS.md / GEMINI.md) context for this backend in the workDir, then re-run the SAME backend. Use when the failure is a CLI-specific behavior (e.g. context overflow, tool misuse) the agent context can correct.",
+      "params": {
+        "agentContextAppend": "Text to append to <backend>'s agent-context markdown file in workDir. Plain text; no templating.",
+        "maxRetries": "Integer. Default 1."
+      }
+    }
+  },
+  "rules": [
+    {
+      "id": "claude-five-hour-window-exhausted-cascade",
+      "description": "Claude CLI emitted a rate_limit_event indicating the 5-hour subscription window is exhausted AND org-level overage is disabled. Pay-as-you-go overflow won't fire, so retrying the same backend with backoff is pointless — the only path forward is to cascade to codex/gemini.",
+      "priority": 100,
+      "match": {
+        "backend": "claude",
+        "eventType": "rate_limit_event",
+        "jsonEquals": {
+          "rate_limit_info.rateLimitType": "five_hour",
+          "rate_limit_info.overageStatus": "rejected",
+          "rate_limit_info.status": "exceeded"
+        }
+      },
+      "action": "cascade",
+      "userChatTemplate": "Claude CLI: 5-hour rate-limit window exhausted, overage disabled at org level. Cascading to next backend."
+    }
+  ],
+  "_realDataNotes": [
+    "2026-05-19 — captured first real rate_limit_event body (74f5bebb session, Phase WX-D inline archive). status='allowed' (warning, not exceeded), overageStatus='rejected', resetsAt=1779253200 (~1hr ahead). The rule above strictly matches status='exceeded' — a status='allowed' warning is informational only and should not trigger cascade.",
+    "Need more failure shapes before adding rules for: codex maxTurns-exhausted-but-progress (current data shows pure exploration loops), gemini tool_error variants, auth-expired patterns. Add a rule here only when we have a real captured event body that justifies the action."
+  ]
+}

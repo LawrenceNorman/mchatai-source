@@ -1,6 +1,6 @@
 {
   "packID": "universal",
-  "version": 12,
+  "version": 13,
   "displayName": "Universal Guidelines",
   "description": "Rules that apply to ALL generated apps regardless of category.",
   "categories": [
@@ -16,8 +16,7 @@
       "appliesTo": "all",
       "examples": [
         "Game: user needs buttons to make decisions",
-        "Tool: user needs input fields and action buttons",
-        "Tracker: user needs add/edit/delete controls"
+        "Tool: user needs input fields and action buttons"
       ]
     },
     {
@@ -39,8 +38,7 @@
       "appliesTo": "all",
       "examples": [
         "Show 'Your turn' indicator in games",
-        "Show loading states during async operations",
-        "Show success/error feedback after actions"
+        "Show loading states during async operations"
       ]
     },
     {
@@ -72,8 +70,7 @@
       "appliesTo": "all",
       "examples": [
         "Fold/Call/Raise buttons must be in their own row BELOW the player's cards, not overlapping them",
-        "Use flexbox or grid with proper gap spacing",
-        "Controls should have at least 8px margin from adjacent elements"
+        "Use flexbox or grid with proper gap spacing"
       ]
     },
     {
@@ -84,8 +81,7 @@
       "appliesTo": "all",
       "examples": [
         "Use renderCard('A', '♠') for card faces, not plain text",
-        "Use the .chip CSS classes for chip displays",
-        "Use the felt gradient CSS for the table background"
+        "Use the .chip CSS classes for chip displays"
       ]
     },
     {
@@ -96,9 +92,7 @@
       "appliesTo": "all",
       "examples": [
         "If scaffold first line is `// swift-tools-version:5.9`, your output's first line must be the same — not `// swift-tools-version: 6.0`",
-        "If scaffold has `platforms: [.macOS(.v13)]`, keep `.v13` — do not upgrade to `.v14`, `.v15`, `.v16`",
-        "If Cargo.toml has `edition = \"2021\"`, keep `2021` — do not bump to `2024`",
-        "If package.json has `\"engines\": { \"node\": \">=18\" }`, keep `>=18` — do not bump"
+        "If scaffold has `platforms: [.macOS(.v13)]`, keep `.v13` — do not upgrade to `.v14`, `.v15`, `.v16`"
       ]
     },
     {
@@ -109,10 +103,7 @@
       "appliesTo": "all",
       "examples": [
         "If the scaffold has 3 .package() entries, your output must have 3 .package() entries — do not consolidate, do not omit, do not substitute",
-        "If the scaffold has 3 .product() on the target dependencies, your output must have 3 .product() — they are all imported by scaffold code",
-        "If scaffold shows 'from: \"5.6.0\"', copy '5.6.0' exactly. Do NOT write '5.10.0', '^5.0.0', or bump the minor version",
-        "If scaffold declares platforms: [.macOS(.v13)], match .v13 exactly — not .v12, .v14, or .v15",
-        "Before emitting Package.swift, RECOUNT: did I keep all .package() entries? All .product() entries? Did I copy versions byte-for-byte?"
+        "If the scaffold has 3 .product() on the target dependencies, your output must have 3 .product() — they are all imported by scaffold code"
       ]
     },
     {
@@ -123,8 +114,7 @@
       "appliesTo": "miniapp, webspa, website",
       "examples": [
         "BAD: const r = await fetch('https://api.weather.gov/points/47.6,-122.3') — blocked by CSP in production, looks fine in preview",
-        "GOOD: const proxied = 'https://mchatai.com/proxy/fetch?url=' + encodeURIComponent('https://api.weather.gov/points/47.6,-122.3'); const r = await fetch(proxied)",
-        "If the host you need is NOT on the proxy allowlist, the call will return HTTP 403 with a JSON body explaining how to add it. Tell the user — don't silently fall back to a third-party CORS proxy in production."
+        "GOOD: const proxied = 'https://mchatai.com/proxy/fetch?url=' + encodeURIComponent('https://api.weather.gov/points/47.6,-122.3'); const r = await fetch(proxied)"
       ]
     },
     {
@@ -135,8 +125,7 @@
       "appliesTo": "all",
       "examples": [
         "Card game: AI opponents make decisions automatically after human acts",
-        "Board game: computer picks a legal move after human's turn",
-        "Fighting/sports game: AI-controlled opponent"
+        "Board game: computer picks a legal move after human's turn"
       ]
     },
     {
@@ -147,8 +136,7 @@
       "appliesTo": "all",
       "examples": [
         "BAD: Chess() constructor where .moves() returns [] and .board() returns []",
-        "BAD: Comment saying 'for the sake of token limits this is a stub'",
-        "GOOD: Full inline implementation of game logic, even if verbose"
+        "BAD: Comment saying 'for the sake of token limits this is a stub'"
       ]
     },
     {
@@ -159,8 +147,7 @@
       "appliesTo": "all",
       "examples": [
         "GOOD: let bankroll = parseInt(localStorage.getItem('bj_bankroll')) || 100;",
-        "GOOD: if (!bankroll || bankroll <= 0) bankroll = DEFAULT_BANKROLL;",
-        "BAD: let bankroll = localStorage.getItem('bankroll'); // null on first load"
+        "GOOD: if (!bankroll || bankroll <= 0) bankroll = DEFAULT_BANKROLL;"
       ]
     },
     {
@@ -171,8 +158,7 @@
       "appliesTo": "all",
       "examples": [
         "GOOD: .triangle { position:relative; } .triangle::before { content:''; position:absolute; inset:0; clip-path:polygon(50% 0,100% 100%,0 100%); background:#c9a176; z-index:0; } .triangle > .checker { position:relative; z-index:1; }",
-        "BAD: .triangle { clip-path:polygon(50% 0,100% 100%,0 100%); } .triangle > .checker { ... } — checkers clipped by triangle",
-        "GOOD: For card stacks, use z-index layering (each card above the previous) with parent position:relative, children position:absolute, no overflow:hidden on parent"
+        "BAD: .triangle { clip-path:polygon(50% 0,100% 100%,0 100%); } .triangle > .checker { ... } — checkers clipped by triangle"
       ]
     },
     {
@@ -194,8 +180,7 @@
       "appliesTo": "all",
       "examples": [
         "GOOD (flex): .stack { display:flex; flex-direction:column-reverse; align-items:center; } .stack > .checker { margin-bottom:-18px; } .stack > .checker:first-child { margin-bottom:0; }",
-        "GOOD (absolute): pieces[i].style.top = (i * 20) + 'px'; parent is position:relative",
-        "BAD: All pieces at top:0 — only top piece visible"
+        "GOOD (absolute): pieces[i].style.top = (i * 20) + 'px'; parent is position:relative"
       ]
     },
     {
@@ -206,8 +191,7 @@
       "appliesTo": "all",
       "examples": [
         "GOOD: `.bg-board { ... }` copied verbatim from Component Library",
-        "GOOD: `container.innerHTML = renderDiceTray([3,5]);` using provided helper",
-        "BAD: Hand-rolling a backgammon board CSS grid when the pack has one"
+        "GOOD: `container.innerHTML = renderDiceTray([3,5]);` using provided helper"
       ]
     },
     {
@@ -218,8 +202,7 @@
       "appliesTo": "all",
       "examples": [
         "GOOD: .board { width:800px; height:550px; aspect-ratio:13/9; } or with explicit min-width/min-height on children",
-        "BAD: .board { flex:1; display:grid; } inside a min-height container",
-        "GOOD for responsive: .board { width:min(90vw,800px); aspect-ratio:13/9; }"
+        "BAD: .board { flex:1; display:grid; } inside a min-height container"
       ]
     },
     {
@@ -230,9 +213,7 @@
       "appliesTo": "all",
       "examples": [
         "On game over: if (window.mChatAI?.leaderboard) { window.mChatAI.leaderboard.submit({ score, metadata: { level, moves } }).then(r => showRankBadge(r.rank, r.percentile)); }",
-        "Fetch top scores: window.mChatAI.leaderboard.getTop(10).then(scores => renderLeaderboardTable(scores));",
-        "Rank badge: 'You placed #7 out of 1,234 players! (Top 1%)'",
-        "Show leaderboard table: displayName, score, platform icon, submittedAt"
+        "Fetch top scores: window.mChatAI.leaderboard.getTop(10).then(scores => renderLeaderboardTable(scores));"
       ]
     },
     {
@@ -243,9 +224,7 @@
       "appliesTo": "all",
       "examples": [
         "AI Hint button: if (window.mChatAI?.cloud?.isAvailable()) { btn.textContent = 'AI Hint ⚡ 1 token'; btn.onclick = () => window.mChatAI.cloud.aiHint(gameState); } else { btn.textContent = 'AI Hint'; btn.disabled = true; btn.title = 'Requires mChatAI+ account'; }",
-        "TTS narration: window.mChatAI.cloud.tts({ text: 'Round 3 begins!', voice: 'nova' }).then(url => new Audio(url).play());",
-        "Quiz generation: window.mChatAI.cloud.llm({ prompt: 'Generate 5 trivia questions about ' + topic }).then(q => loadQuestions(JSON.parse(q)));",
-        "Cost badge: small pill showing '⚡ 2 tokens' next to any cloud feature button"
+        "TTS narration: window.mChatAI.cloud.tts({ text: 'Round 3 begins!', voice: 'nova' }).then(url => new Audio(url).play());"
       ]
     },
     {
@@ -256,10 +235,7 @@
       "appliesTo": "miniapp, webspa",
       "examples": [
         "BAD: `.textContent = 'Score: 0\\\\n\\\\nLives: 3'` — page shows literally 'Score: 0\\n\\nLives: 3'",
-        "GOOD: `.innerHTML = 'Score: 0<br><br>Lives: 3'` — real line breaks rendered",
-        "GOOD: `.textContent = 'Score: 0\\n\\nLives: 3'` with single backslash — compiles to real newlines, needs `white-space: pre-line` on the element",
-        "GOOD: template literal with embedded actual newlines: `` `Score: 0\\n\\nLives: 3` ``",
-        "BAD: template literal with escaped backslash: `` `Score: 0\\\\n\\\\nLives: 3` ``"
+        "GOOD: `.innerHTML = 'Score: 0<br><br>Lives: 3'` — real line breaks rendered"
       ]
     },
     {
@@ -270,10 +246,7 @@
       "appliesTo": "all",
       "examples": [
         "GOAL: 'Atari Adventure with castles and dragons' → ✓ no scaffold matches → build from scratch, no scaffold reads.",
-        "GOAL: 'Hearts card game' → ✓ card-game-scaffold.html is correct; extend it.",
-        "GOAL: 'Tower Defense zombie game' → ✓ no scaffold matches → build from scratch. Do NOT extend breakout-scaffold just because 'brick-breaker' shares 'game' in its name.",
-        "BAD: user asked for Asteroids; generator reads card-game-scaffold.html 'for reference' and ships with Hearts-shaped boilerplate.",
-        "BAD: evaluator rubric reports 'application is a card game — cards justified' because it read scaffold references in CLAUDE.md instead of the actual generated HTML."
+        "GOAL: 'Hearts card game' → ✓ card-game-scaffold.html is correct; extend it."
       ]
     },
     {
@@ -284,8 +257,7 @@
       "appliesTo": "all",
       "examples": [
         "GOOD: evaluator reads generated HTML, finds `<canvas>` rendering dragons + castles + rooms → concludes 'adventure game', rates CARDS_JUSTIFIED as N/A.",
-        "BAD: evaluator reads CLAUDE.md section on 'Card games', concludes 'this is a card game', rates CARDS_JUSTIFIED 2/2 based on the scaffold reference instead of the actual HTML.",
-        "CHECK: before answering any genre-assuming criterion, open the generated HTML in the file specified by the user's artifact and search for the actual components (cards, boards, sprites, canvases). Don't infer genre from ambient context."
+        "BAD: evaluator reads CLAUDE.md section on 'Card games', concludes 'this is a card game', rates CARDS_JUSTIFIED 2/2 based on the scaffold reference instead of the actual HTML."
       ]
     },
     {
@@ -296,10 +268,7 @@
       "appliesTo": "all",
       "examples": [
         "GOOD: tokens.json says primary=#7C3AED → CSS `:root { --primary: #7C3AED; }`, hero buttons use `var(--primary)`, hover state uses tokens.colors.accent.",
-        "GOOD: meta.json says referenceStyle=cinematic-dark + tokens.componentHints includes glass-panels-with-blur → cards get `background: rgba(28,28,32,0.6); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.08)`.",
-        "GOOD: tokens.spacing.baseUnit=8 → all paddings/margins use 8/16/24/32px (multiples of 8). tokens.radii.md=12 → cards `border-radius: 12px`.",
-        "BAD: tokens.json present but generator picks `#1abc9c` and `#3498db` from its own knowledge → palette is wrong, user-picked archetype is ignored, the entire VD.7 pre-pick UX is wasted.",
-        "CHECK: before writing any CSS color or font value, run `cat visual-brief/tokens.json` (or read the file via your tool). If the file exists, those values are mandatory inputs, not suggestions. If the file doesn't exist, fall back to taste — that means the user opted out via Skip and you have license to choose."
+        "GOOD: meta.json says referenceStyle=cinematic-dark + tokens.componentHints includes glass-panels-with-blur → cards get `background: rgba(28,28,32,0.6); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.08)`."
       ]
     },
     {
@@ -310,11 +279,7 @@
       "appliesTo": "miniapp, webspa, website",
       "examples": [
         "GOOD (Lego): import { MiniHeader } from '../../ui/MiniHeader.js'; MiniHeader.mount('[data-mini-header]', { title: 'Chess' }); — title-only, ~28px tall on mobile.",
-        "GOOD (non-Lego): <h1 style='font-size:clamp(0.95rem,3.4vw,1.2rem); margin:4px 8px'>Tower Defense</h1>.",
-        "GOOD HUD row: 4 cards at 36px tall each, side-by-side flex with `flex-wrap: wrap` so they reflow to 2x2 on narrow screens; value text 1rem, label text 0.7rem.",
-        "BAD: <section class='hero'><p class='eyebrow'>X clone assembled from blocks</p><h1>Title</h1><p class='brief'>...</p></section> — anything > 50px on mobile is too much.",
-        "BAD: HUD card with `font-size: 2rem` on the value and `padding: 24px` — eats viewport.",
-        "BAD: any `vw`-based clamp on a header where the upper bound is > 1.5rem."
+        "GOOD (non-Lego): <h1 style='font-size:clamp(0.95rem,3.4vw,1.2rem); margin:4px 8px'>Tower Defense</h1>."
       ]
     },
     {
@@ -325,10 +290,7 @@
       "appliesTo": "all",
       "examples": [
         "BAD eyebrow: 'Chess clone assembled from Lego blocks' — exposes our component model to the player.",
-        "BAD crossword clue: 'Container holding mini-app components (8 letters)' — meta-content, not real trivia.",
-        "GOOD: title 'Chess', subtitle 'Drag a piece to a highlighted square'.",
-        "GOOD: title 'Word Quest', subtitle 'Six guesses. Five letters.'",
-        "If you generate puzzle/quiz/dialogue content, the source for clues/answers/lines must be REAL-WORLD facts, vocabulary, or fiction — never a description of the platform that produced them."
+        "BAD crossword clue: 'Container holding mini-app components (8 letters)' — meta-content, not real trivia."
       ]
     },
     {
@@ -364,9 +326,7 @@
       "appliesTo": "all",
       "examples": [
         "GOOD (Lego): import { RestartOverlay } from '../../ui/RestartOverlay.js'; const restart = new RestartOverlay({ host: '[data-app]', onRestart: () => game.reset() }); /* on game-over */ restart.show({ title: 'Game Over', subtitle: `Score: ${score}`, buttonLabel: 'Play Again' });",
-        "GOOD (non-Lego): a centered <div> overlay with backdrop blur and a single <button onclick='restart()'>Play Again</button> that's ≥60×200px, focusable, Enter-bindable.",
-        "BAD: rendering 'GAME OVER score=0' as static HUD text and waiting for the user to discover Cmd+N from the menu bar.",
-        "BAD: a tiny 24-pixel reset icon in the corner that's easy to miss mid-play."
+        "GOOD (non-Lego): a centered <div> overlay with backdrop blur and a single <button onclick='restart()'>Play Again</button> that's ≥60×200px, focusable, Enter-bindable."
       ]
     },
     {
@@ -377,9 +337,7 @@
       "appliesTo": "miniApp",
       "examples": [
         "GOOD: top of CSS file: `:root { /* mchat-swatch-defaults — synchronous FOUC fallback */ --mchat-background: #020617; --mchat-accent: #22d3ee; --mchat-radius-md: 12px; --mchat-space-3: 12px; --mchat-font-display: 'Avenir Next', 'Trebuchet MS', sans-serif; /* …all 25 canonical tokens… */ }` — then consume them: `.card { padding: var(--mchat-space-3); border-radius: var(--mchat-radius-md); background: var(--mchat-surface); }`",
-        "GOOD: keep `.chess-square { background: #f8e7c8 }` (cream) and `.chess-square.dark { background: #7a4b2d }` (saddle) hardcoded — those are domain-art colors, not theme. Same for piece colors, atmospheric backdrop gradient endpoints, and game-specific symbol colors.",
-        "BAD: `:root { --piano-bg: #07111f; --piano-accent: #22d3ee; --piano-warm: #facc15; }` — invented per-app namespace. The user's chosen swatch sets --mchat-background but never --piano-bg, so the piano stays its original color forever.",
-        "BAD: deleting the :root { --mchat-* } block 'because Swatches.js sets the vars from JS' — CSS paints synchronously when the <link rel=stylesheet> resolves, but JS modules execute after first paint. Without the :root fallback, the page renders white (FOUC) until applySwatchVariables runs. See memory/project_swatch_token_fouc_pattern.md."
+        "GOOD: keep `.chess-square { background: #f8e7c8 }` (cream) and `.chess-square.dark { background: #7a4b2d }` (saddle) hardcoded — those are domain-art colors, not theme. Same for piece colors, atmospheric backdrop gradient endpoints, and game-specific symbol colors."
       ]
     },
     {
@@ -390,9 +348,7 @@
       "appliesTo": "miniApp",
       "examples": [
         "GOOD: catalog says `entities.chess-rules` exports `ChessRules`. LLM reads `./web-components/entities/ChessRules.js`, sees `setupStandardBoard(board)`, `legalMoves(board, row, col)`, `applyMove(board, move)`. Imports and uses those exact signatures.",
-        "GOOD (with MCP): tool-call `mchatai-web-components.read_component('entities.chess-rules')` → returns source + CONTEXT.md → LLM uses verified signatures.",
-        "BAD: catalog mentions `core.game-manager`. LLM imports it and calls `gameManager.initialize()` (invented) instead of `gameManager.start()` (real). Source was right there in `./web-components/core/GameManager.js` but never read.",
-        "BAD: LLM ignores the catalog index entirely and writes a self-contained monolith. Validator rejects via missing-marker gate."
+        "GOOD (with MCP): tool-call `mchatai-web-components.read_component('entities.chess-rules')` → returns source + CONTEXT.md → LLM uses verified signatures."
       ]
     },
     {
@@ -407,10 +363,7 @@
       ],
       "examples": [
         "RIGHT (compact 3-pill): [Score 1,200] [Level 3 — Target 5,000 with progress bar + ★★☆] [Moves 22] — answers: how am I doing? what am I aiming at? how much time left?",
-        "RIGHT (combo as transient): on a 3+ chain, briefly fly `Combo x3!` text from the board center; never as a persistent pill that says `Combo X1`.",
-        "WRONG: in-play HUD with [SCORE 60] [BEST 240] [MOVES 22] [COMBO X1] [CLEARED 0] — 3 of 5 are noise. BEST belongs in game-over, COMBO×1 is meaningless, CLEARED 0 is meaningless until first match.",
-        "WRONG: showing `DIFFICULTY: Medium` always-on; it never changes mid-game. Move to a settings menu.",
-        "Counter-example: Sudoku timer or Tetris next-piece preview — these change meaningfully every second and DO belong in the HUD."
+        "RIGHT (combo as transient): on a 3+ chain, briefly fly `Combo x3!` text from the board center; never as a persistent pill that says `Combo X1`."
       ]
     },
     {
@@ -421,9 +374,7 @@
       "appliesTo": "all",
       "examples": [
         "RIGHT (CLI agent ends turn): write index.html + sidecar files to cwd; respond with 'I've written index.html (8 components, recipe.chess marker). The host will install and preview it.'",
-        "WRONG: write chess.html, then run `open chess.html` — opens stale tmp file in Safari, user sees a different palette and inconsistent layout from what the host previews.",
-        "WRONG: spin up `python3 -m http.server 8080 &` 'so the user can play it' — the host already does this in-process via its webview.",
-        "Acceptable exception: the user EXPLICITLY asks to test in their system browser ('open the file for me'). Default behavior remains do-not-open."
+        "WRONG: write chess.html, then run `open chess.html` — opens stale tmp file in Safari, user sees a different palette and inconsistent layout from what the host previews."
       ]
     },
     {
@@ -434,10 +385,7 @@
       "appliesTo": "anyGame",
       "examples": [
         "RIGHT: Pong loads with 'Player vs CPU'. CPU paddle tracks ball with slight delay. Toggle in controls: 'Switch to 2 Players'.",
-        "RIGHT: Tic-Tac-Toe loads with 'You vs CPU'. CPU plays minimax or rule-based moves. Toggle: '2 Player Mode'.",
-        "RIGHT: Connect Four / Checkers / Chess all load with player vs AI by default.",
-        "WRONG: Pong loads requiring both W/S and ↑/↓ on one keyboard. Solo player can only watch ball bounce.",
-        "WRONG: Connect Four loads with red-then-yellow alternating without an AI opponent."
+        "RIGHT: Tic-Tac-Toe loads with 'You vs CPU'. CPU plays minimax or rule-based moves. Toggle: '2 Player Mode'."
       ]
     },
     {
@@ -451,15 +399,7 @@
       ],
       "examples": [
         "GOOD imports (named, curly braces): `import { GameOverWithRank } from \"./web-components/ui/GameOverWithRank.js\"; import { Leaderboard } from \"./web-components/ui/Leaderboard.js\";`",
-        "GOOD: on game-over: `await GameOverWithRank.show({ host: document.querySelector('#game-over'), score: state.score, metadata: { level, moves }, onRestart: () => game.restart() });` — no try/catch wrapper, no fallback panel.",
-        "GOOD marker: `<script type='application/json' id='mchatai-web-components-used'>{\"recipe\":\"recipe.snake\",\"addons\":[\"recipe.with-leaderboard\"],\"components\":[\"core.game-manager\",\"entities.grid-board\",\"ui.scoreboard\",\"ui.leaderboard\",\"ui.game-over-with-rank\"],\"mode\":\"module-imports\"}</script>`",
-        "GOOD: when submitFinal resolves null (anonymous player), GameOverWithRank automatically renders 'Sign in at mchatai.com to post your score →' — don't override or hide that.",
-        "BAD: `import GameOverWithRank from \"./web-components/ui/GameOverWithRank.js\";` — default-import on a named export. `GameOverWithRank` is undefined at runtime; calling `.show(...)` throws TypeError. Hit on the first leaderboard canary 2026-05-09.",
-        "BAD: `try { await GameOverWithRank.show({...}); } catch (e) { showCustomFallbackPanel(); }` — the component never throws (no-op-safe contract). The catch routes a real bug (e.g. wrong import shape resolving to undefined) into the fallback so the UI looks 'mostly-fine' while never actually working. Just call it; trust the contract.",
-        "BAD: calling `await Leaderboard.submitFinal(score, meta)` after every move — spams the rate-limit + breaks score-show-personal-best-on-game-over + renders the rank card during gameplay.",
-        "BAD: handcrafting `if (!user) { showCustomSigninModal(); }` — inconsistent with every other game's CTA, fragments the funnel, and the user has to re-implement auth state in each generated game.",
-        "BAD: `fetch('/api/leaderboards/' + slug + '/scores', { method: 'POST', body: ... })` — bypasses bridge, no offline fallback, no rate-limit awareness.",
-        "BAD: marker omits `addons: ['recipe.with-leaderboard']` so the gate's addon subset check passes vacuously — your code may have wired Leaderboard correctly, but downstream tooling (deploy diff, popularity signal, A/B between v1 and v2) loses the signal that this artifact is leaderboard-enabled."
+        "GOOD: on game-over: `await GameOverWithRank.show({ host: document.querySelector('#game-over'), score: state.score, metadata: { level, moves }, onRestart: () => game.restart() });` — no try/catch wrapper, no fallback panel."
       ]
     },
     {
@@ -474,11 +414,7 @@
       ],
       "examples": [
         "GOOD (deterministic offer): {\"id\": \"offer.add-leaderboard\", \"recipeID\": \"recipe.with-leaderboard\", \"deterministicMatcher\": \"scoringGame\", \"llmAppliesWhenPrompt\": null, \"alreadyAppliedMarker\": {\"addonsContains\": \"recipe.with-leaderboard\"}, \"feedbackPromptTemplate\": \"prompts/add-leaderboard.md\"}",
-        "GOOD (LLM-judged offer): {\"id\": \"offer.add-sound-effects\", \"recipeID\": \"recipe.with-sound-effects\", \"deterministicMatcher\": null, \"llmAppliesWhenPrompt\": \"Would this game benefit from SFX? Reply yes ONLY when it's interactive AND currently silent.\", \"alreadyAppliedMarker\": {\"componentsContains\": \"resources.audio-manager\"}}",
-        "GOOD (judge output): `{\"matched\":[{\"id\":\"offer.add-sound-effects\",\"rationale\":\"Game has tick() + onCollision events with no audio calls.\"}]}` — strict JSON, no fences, IDs from registry only.",
-        "BAD: judge returns `{\"matched\":[{\"id\":\"offer.add-multiplayer\",\"rationale\":\"...\"}]}` when 'offer.add-multiplayer' isn't in the input list. Matcher drops it silently + logs the hallucination.",
-        "BAD: putting offer prose inline in Swift (HarnessProductsView pre-2026-05-12 did this). Each new offer would have required a Swift rebuild + App Store cycle. Always put prose in `enhancement-offers/prompts/<offer-id>.md` and reference via `feedbackPromptTemplate`.",
-        "BAD: bypassing the registry and calling continueDevelopment with hand-built FeedbackTicket prose. Loses the dedup (alreadyAppliedMarker), loses telemetry (offer.id on the ownerNote), loses LLM-cache invalidation when the prompt changes."
+        "GOOD (LLM-judged offer): {\"id\": \"offer.add-sound-effects\", \"recipeID\": \"recipe.with-sound-effects\", \"deterministicMatcher\": null, \"llmAppliesWhenPrompt\": \"Would this game benefit from SFX? Reply yes ONLY when it's interactive AND currently silent.\", \"alreadyAppliedMarker\": {\"componentsContains\": \"resources.audio-manager\"}}"
       ]
     },
     {
@@ -489,10 +425,7 @@
       "appliesTo": "universal",
       "examples": [
         "Semantic status pill (HTML/CSS): const palette = window.mchatai.colorPalette('semantic'); el.style.background = palette.role('error'); el.style.color = palette.role('error', 'dark');",
-        "Tailwind chart series (HTML/CSS): const t = window.mchatai.colorPalette('tailwind-default'); chart.colors = ['blue-500', 'emerald-500', 'amber-500', 'rose-500'].map(n => t.hex(n));",
-        "Inline (gen-time, when runtime API isn't available yet): paste the hex tokens from the autoload catalog's palette refs. Comment the source: `/* tailwind blue-600 */ background: #2563EB;`",
-        "DO NOT: invent a new palette inline when `semantic` covers the role you need. Status colors specifically should ALWAYS come from `semantic`.",
-        "DO NOT: mix palettes within one artifact — pick one base palette per UI."
+        "Tailwind chart series (HTML/CSS): const t = window.mchatai.colorPalette('tailwind-default'); chart.colors = ['blue-500', 'emerald-500', 'amber-500', 'rose-500'].map(n => t.hex(n));"
       ]
     },
     {
@@ -503,9 +436,7 @@
       "appliesTo": "universal",
       "examples": [
         "Read once, use many times: const sem = window.mchatai.colorPalette('semantic'); document.querySelector('.btn-error').style.background = sem.role('error');",
-        "Hover/active states: const tw = window.mchatai.colorPalette('tailwind-default'); btn.style.setProperty('--bg', tw.hex('blue-500')); btn.style.setProperty('--bg-hover', tw.hex('blue-600'));",
-        "Unknown id graceful fallback: window.mchatai.colorPalette('not-a-real-id').hex('whatever') → null (no throw)",
-        "DO NOT: paste the palette's entire colors array into your artifact's source — the runtime API was built specifically so you don't have to."
+        "Hover/active states: const tw = window.mchatai.colorPalette('tailwind-default'); btn.style.setProperty('--bg', tw.hex('blue-500')); btn.style.setProperty('--bg-hover', tw.hex('blue-600'));"
       ]
     },
     {
@@ -516,11 +447,7 @@
       "appliesTo": "universal",
       "examples": [
         "Wordle-shaped game (5-letter grid, color feedback, 6 guesses): const guesses = window.mchatai.dictionary('english-5letter'); const answers = window.mchatai.dictionary('english-5letter-answers'); const today = answers.words()[Math.floor(Date.now()/86400000) % answers.size()];",
-        "Spelling bee / hangman / scrabble (any word length): const dict = window.mchatai.dictionary('english-words'); if (!dict.contains(input)) toast('Not in dictionary');",
-        "Autocomplete from prefix (any length): const all = window.mchatai.dictionary('english-words').words(); const matches = all.filter(w => w.startsWith(prefix)).slice(0, 10);",
-        "DO NOT: ship `const VALID = ['CAT','DOG','BIRD']` as your dictionary. Real validation needs a real wordlist — that's what the platform provides.",
-        "DO NOT: pick english-5letter for a spelling bee. Players type words of all lengths and english-5letter only has 5-letter words.",
-        "DO NOT: pick english-words for a Wordle-shaped game. english-5letter is the curated Wordle guess set; english-words has 200K entries the daily-puzzle answer pool would never use."
+        "Spelling bee / hangman / scrabble (any word length): const dict = window.mchatai.dictionary('english-words'); if (!dict.contains(input)) toast('Not in dictionary');"
       ]
     },
     {
@@ -531,10 +458,7 @@
       "appliesTo": "universal",
       "examples": [
         "GOOD: import { GameOverWithRank } from \"./web-components/ui/GameOverWithRank.js\";",
-        "GOOD: import { GridBoard } from \"./web-components/entities/GridBoard.js\";",
-        "BAD: import { GameOverWithRank } from \"../../ui/GameOverWithRank.js\";  // resolves to /installed/ui/ which doesn't exist",
-        "BAD: import { Leaderboard } from \"/web-components/ui/Leaderboard.js\";  // root-absolute breaks on file:// and http://",
-        "BAD: import { ScoreBoard } from \"web-components/ui/ScoreBoard.js\";  // bare specifier without ./ is parsed as a package name"
+        "GOOD: import { GridBoard } from \"./web-components/entities/GridBoard.js\";"
       ]
     },
     {
@@ -545,10 +469,7 @@
       "appliesTo": "universal",
       "examples": [
         "GOOD: const shareText = `Row 1\\nRow 2`;",
-        "GOOD: text += scored.map(c => statusEmoji[c.status]).join('') + '\\n';",
-        "GOOD: const parts = shareText.split('\\n');",
-        "BAD (SyntaxError): text += scored.join('') + '<literal-newline-here>';   ← parse fails",
-        "BAD (SyntaxError): const parts = shareText.split('<literal-newline-here>');   ← parse fails"
+        "GOOD: text += scored.map(c => statusEmoji[c.status]).join('') + '\\n';"
       ]
     },
     {
@@ -559,8 +480,7 @@
       "appliesTo": "universal",
       "examples": [
         "GOOD: 1) Read examples/chess/index.html. 2) Read examples/chess/main.js. 3) Read examples/chess/chess.css. Now I have the patterns. Writing the install index.html.",
-        "GOOD: 1) Read examples/candy-match/index.html. 2) Read examples/candy-match/main.js. Now write.",
-        "BAD: 1) Read examples/chess/main.js. 2) Read ChessRules.js (to see the API). 3) Read ChessAI.js. 4) Read MinimaxAI.js. 5) Read Board8x8.js. 6) Read MiniHeader.js. 7) Read RestartOverlay.js... (this is the over-reading regression — you will run out of budget before writing.)"
+        "GOOD: 1) Read examples/candy-match/index.html. 2) Read examples/candy-match/main.js. Now write."
       ]
     },
     {
@@ -571,9 +491,7 @@
       "appliesTo": "universal",
       "examples": [
         "GOOD: import { randomBetween } from './web-components/core/Physics2D.js'; // then USE randomBetween(0, 100) directly throughout the file — no redeclaration.",
-        "GOOD: import { randomBetween as physRand } from './web-components/core/Physics2D.js'; function randomBetween(a, b) { return physRand(a, b) * 1.5; } // aliasing the import frees the local name.",
-        "GOOD: function localRandom(a, b) { return Math.random() * (b - a) + a; } // no import, no collision.",
-        "BAD: import { randomBetween } from './web-components/core/Physics2D.js'; … function randomBetween(a, b) { return Math.random() * (b - a) + a; } // SyntaxError, module dead."
+        "GOOD: import { randomBetween as physRand } from './web-components/core/Physics2D.js'; function randomBetween(a, b) { return physRand(a, b) * 1.5; } // aliasing the import frees the local name."
       ]
     },
     {
@@ -584,10 +502,7 @@
       "appliesTo": "universal",
       "examples": [
         "GOOD (logic edit): User said 'add a Play Again button'. Emit: {\"id\":\"…\",\"patches\":[ {\"op\":\"jsAppend\",\"code\":\"function setupPlayAgain(){ const btn=document.createElement('button'); btn.textContent='Play Again'; btn.onclick=()=>location.reload(); document.body.appendChild(btn); } setupPlayAgain();\"}, {\"op\":\"cssAppend\",\"code\":\"button{padding:10px 20px;font-size:1rem;}\"} ]}",
-        "GOOD (add CPU): User said 'make black a CPU'. Emit: {\"id\":\"…\",\"patches\":[ {\"op\":\"addModule\",\"path\":\"web-components/entities/MinimaxAI.js\",\"source\":\"export class MinimaxAI { pickMove(state){ /* …full body… */ } }\"}, {\"op\":\"jsReplace\",\"find\":\"import { Board8x8 } from \\\"./web-components/entities/Board8x8.js\\\";\",\"replace\":\"import { Board8x8 } from \\\"./web-components/entities/Board8x8.js\\\";\\nimport { MinimaxAI } from \\\"./web-components/entities/MinimaxAI.js\\\";\"}, {\"op\":\"jsAppend\",\"code\":\"const ai = new MinimaxAI(); /* …turn handler hook… */\"} ]}",
-        "GOOD (change constant): User said 'change difficulty from 3 to 5'. Emit: {\"id\":\"…\",\"patches\":[ {\"op\":\"jsReplace\",\"find\":\"const DIFFICULTY = 3;\",\"replace\":\"const DIFFICULTY = 5;\"} ]}",
-        "GOOD (full rebuild): User said 'rewrite this as breakout'. Emit: {\"id\":\"…\",\"fullRebuildRequired\":true,\"reason\":\"game type change requires fresh build, not in-place patch\"}",
-        "BAD: User said 'add a CPU player'. You emit a full new HTML artifact with `<html>…</html>` re-doing every feature. The install gate may reject it (missing import for marker-declared MinimaxAI), wiping V1 and shipping nothing. Always patch."
+        "GOOD (add CPU): User said 'make black a CPU'. Emit: {\"id\":\"…\",\"patches\":[ {\"op\":\"addModule\",\"path\":\"web-components/entities/MinimaxAI.js\",\"source\":\"export class MinimaxAI { pickMove(state){ /* …full body… */ } }\"}, {\"op\":\"jsReplace\",\"find\":\"import { Board8x8 } from \\\"./web-components/entities/Board8x8.js\\\";\",\"replace\":\"import { Board8x8 } from \\\"./web-components/entities/Board8x8.js\\\";\\nimport { MinimaxAI } from \\\"./web-components/entities/MinimaxAI.js\\\";\"}, {\"op\":\"jsAppend\",\"code\":\"const ai = new MinimaxAI(); /* …turn handler hook… */\"} ]}"
       ]
     },
     {
@@ -598,9 +513,7 @@
       "appliesTo": "universal",
       "examples": [
         "GOOD: if (!rules.applyMove(board, index, currentPlayer)) return; // bail on illegal move; board is now mutated in place with the legal one.",
-        "GOOD: const ok = rules.applyMove(board, move, AI); if (!ok) { console.warn('AI picked illegal move'); return; } render(board);",
-        "BAD: board = rules.applyMove(board, index, currentPlayer); // board is now `true` or `false`. Game becomes unplayable on the next click.",
-        "BAD: const newBoard = rules.applyMove(board, index, color); // newBoard is true/false, not a new board. Don't 'capture' the result as state."
+        "GOOD: const ok = rules.applyMove(board, move, AI); if (!ok) { console.warn('AI picked illegal move'); return; } render(board);"
       ]
     },
     {
@@ -611,10 +524,7 @@
       "appliesTo": "universal",
       "examples": [
         "GOOD: Rejection says `Duplicate top-level function declaration: function randomBetween appears twice at module scope`. Search the file for `function randomBetween(`. Two occurrences. Delete the SECOND one in full (signature + body + trailing newline). Keep the first.",
-        "GOOD: Rejection names `function clamp`. You also have `import { clamp } from './web-components/core/Physics2D.js'`. Delete the LOCAL `function clamp(…){…}`; rely on the import.",
-        "GOOD: You wanted a slightly-different local `randomBetween`. Rename the local to `localRandomBetween` (and update its call sites). Leave the catalog import alone.",
-        "BAD: Keeping both `function randomBetween` declarations and hoping ES hoisting resolves it. It does not — the module fails to parse and the canvas stays blank.",
-        "BAD: Replying with a brand-new full HTML artifact that still contains TWO `function randomBetween` declarations. The same gate will reject; the LLM has not actually addressed the rejection."
+        "GOOD: Rejection names `function clamp`. You also have `import { clamp } from './web-components/core/Physics2D.js'`. Delete the LOCAL `function clamp(…){…}`; rely on the import."
       ]
     },
     {
@@ -625,10 +535,7 @@
       "appliesTo": "universal",
       "examples": [
         "GOOD (spades, 13 cards): .player-hand { width:100%; flex-wrap:nowrap; padding:4px 6px } .seat-south { grid-column:1/-1 } .player-hand .card { width:108px; height:152px; margin-right:-72px } @media (max-width:640px) { .player-hand .card { width:78px; height:110px; margin-right:-54px } }",
-        "GOOD (heads-up poker, 2 hole cards): .player-hand { flex-wrap:nowrap; gap:8px } .player-hand .card { width:110px; height:156px; margin-right:0 } - no overlap needed when N<=5; full size each.",
-        "GOOD (cribbage, 6 cards pre-discard / 4 post): .player-hand .card { width:96px; height:134px; margin-right:-24px } - light overlap, every card still distinct.",
-        "BAD: .player-hand { flex-wrap:wrap; max-width:400px } .player-hand .card { width:48px } - cards wrap into 3-4 narrow rows, user sees only part of their hand at a time, especially bad on mobile.",
-        "BAD: A 3-column board grid with `.seat-south { grid-area: south }` where south is the middle column only - the player's hand gets ~33% of viewport width instead of 100%. Fix with `grid-column: 1 / -1` so the south seat spans all columns."
+        "GOOD (heads-up poker, 2 hole cards): .player-hand { flex-wrap:nowrap; gap:8px } .player-hand .card { width:110px; height:156px; margin-right:0 } - no overlap needed when N<=5; full size each."
       ]
     },
     {
@@ -639,11 +546,16 @@
       "appliesTo": "all",
       "examples": [
         "HUD using `display:flex; justify-content:space-between` with 2 children pushes the second child to the top-right corner — instead use `display:grid; grid-template-columns:1fr auto 1fr` to keep content centered with empty right column.",
-        "BAD: <div style=\"position:fixed; top:10px; right:10px\">Score: 42</div>",
-        "GOOD: <div style=\"position:fixed; top:10px; left:50%; transform:translateX(-50%)\">Score: 42</div>"
+        "BAD: <div style=\"position:fixed; top:10px; right:10px\">Score: 42</div>"
       ]
     }
   ],
   "_last_updated": "2026-05-15T18:55:00Z",
-  "lastUpdated": "2026-05-15T18:55:00Z"
+  "lastUpdated": "2026-05-19",
+  "_changeLog": [
+    {
+      "date": "2026-05-19",
+      "change": "Capped examples to <=2 per guideline (was up to 10). Defense-in-depth against Claude CLI Read tool 25k-token limit; primary fix is removing the Read instruction from harness/prompts/cli-project-context.md since wisdom-universal is already injected into CLAUDE.context.md. Removed 94 surplus examples."
+    }
+  ]
 }
