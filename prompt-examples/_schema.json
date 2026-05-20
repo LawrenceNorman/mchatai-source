@@ -1,0 +1,75 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Prompt Example (Phase PC)",
+  "description": "Single curated prompt example for the mChatAI iOS Prompt Catalog. Shipped by mchatai-source PR; synced into the endProducts Firestore collection by functions/sync-prompt-catalog.js as contentCategory='prompt'. Schema fields parallel the new fields on EndProduct.swift.",
+  "type": "object",
+  "required": ["id", "title", "category", "prompt", "version"],
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]*[a-z0-9]$",
+      "maxLength": 80,
+      "description": "Stable slug; becomes EndProduct.id as com.mchatai.prompt.{appletId}.{id}"
+    },
+    "title": {
+      "type": "string",
+      "maxLength": 60,
+      "description": "Short display name in gallery cards"
+    },
+    "summary": {
+      "type": "string",
+      "maxLength": 280,
+      "description": "1-2 sentence description shown on long-press / detail"
+    },
+    "category": {
+      "type": "string",
+      "description": "Bucket key for tag filter UI; valid values are applet-specific"
+    },
+    "prompt": {
+      "type": "string",
+      "minLength": 10,
+      "maxLength": 1500,
+      "description": "The actual prompt text loaded into the Make sheet on tap"
+    },
+    "modelHint": {
+      "type": ["string", "null"],
+      "description": "Optional model ID to auto-select on pick (user can still override)"
+    },
+    "tags": {
+      "type": "array",
+      "items": {"type": "string"},
+      "maxItems": 10
+    },
+    "ageRating": {
+      "type": "string",
+      "enum": ["4+", "9+", "12+", "17+"]
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "previewURL": {
+      "type": ["string", "null"],
+      "description": "GCS public URL to 1024px PNG preview (image prompts); filled by PC.2 asset-gen script"
+    },
+    "previewThumbURL": {
+      "type": ["string", "null"],
+      "description": "GCS public URL to 256px thumbnail (image prompts); filled by PC.2"
+    },
+    "audioPreviewURL": {
+      "type": ["string", "null"],
+      "description": "GCS public URL to 10-15s m4a clip (audio prompts); filled by PC.2"
+    },
+    "previewDurationSec": {
+      "type": ["number", "null"],
+      "minimum": 1,
+      "maximum": 30,
+      "description": "Length of audio preview in seconds (audio prompts)"
+    },
+    "promptVariables": {
+      "type": ["null"],
+      "description": "RESERVED FOR v2. v1 must be null. v2 will allow {key} substitution in the prompt body."
+    }
+  }
+}

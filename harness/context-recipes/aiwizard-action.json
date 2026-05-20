@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "surface": "aiwizard-action",
+  "description": "Phase WX-K.5 (2026-05-20) — minimal recipe for the `action` chip per HARNESS_PATHWAY_TAXONOMY.md. Fires for one-shot side-effect dispatches (send email / post slack / set reminder / create calendar event / open file). The dispatcher parses the goal into {service, params} via a small LLM call, renders a confirm card with editable fields, fires the appropriate skill only on user confirmation. Destructive verbs (delete / unsubscribe / payment) require explicit Yes-No confirm even at 0.99 classifier confidence. mchatai-fundamentals included because actions touch platform-level primitives (contacts, calendar, file system). Action service catalog (gmail / slack / calendar / reminders / filesystem) lives in mchatai-source/action-services/_index.json and is read directly by the dispatcher, not by a context layer (the inventory is too small to justify a dedicated loader).",
+  "layers": [
+    {
+      "id": "user-goal",
+      "loader": "user-goal",
+      "priority": 60,
+      "maxTokens": 800
+    },
+    {
+      "id": "mchatai-fundamentals",
+      "loader": "mchatai-fundamentals",
+      "priority": 88,
+      "maxTokens": 2000
+    },
+    {
+      "id": "history-recent",
+      "loader": "history-recent",
+      "priority": 50,
+      "maxTokens": 1500,
+      "options": {
+        "limit": 4,
+        "includeAssistant": true
+      }
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "surface": "aiwizard-answer",
+  "description": "Phase WX-K.1 (2026-05-20) — minimal recipe for the `answer` chip per HARNESS_PATHWAY_TAXONOMY.md. Fires for plain Q&A / joke / definition / explainer / chit-chat prompts (mode=answer in the classifier). Target body size <3KB for a 100-byte goal. Two layers only: user-goal + history-recent. Deliberately excludes wisdom-universal, mchatai-fundamentals, web-components, capability packs, and every code-gen layer — the LLM's general knowledge is the deliverable. If a future feedback case justifies adding a layer, add it as a conditional load gated on goal keywords; do NOT make it a default.",
+  "layers": [
+    {
+      "id": "user-goal",
+      "loader": "user-goal",
+      "priority": 60,
+      "maxTokens": 800
+    },
+    {
+      "id": "history-recent",
+      "loader": "history-recent",
+      "priority": 50,
+      "maxTokens": 1500,
+      "options": {
+        "limit": 4,
+        "includeAssistant": true
+      }
+    }
+  ]
+}

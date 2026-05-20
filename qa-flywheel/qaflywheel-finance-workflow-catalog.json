@@ -1,0 +1,94 @@
+{
+  "$schema_version": "1.1.0",
+  "catalog_version": "2026.05.20-wxk7-finance-workflow-seed",
+  "last_updated": "2026-05-20",
+  "difficulty_definitions": {
+    "L1": "Single LLM step over a single financial input (statement / CSV).",
+    "L2": "Multi-step workflow with categorization + summary.",
+    "L3": "Persistent state across runs, alerts, rebalancing logic."
+  },
+  "coverage_status": {
+    "finance-workflow": "v1 seed — 3 entries (2026-05-20) covering expense tracker / P&L compiler / portfolio. Phase WX-K.7 backfill. aiwizard-finance-workflow.json recipe has 5 layers including the finance-workflows-pack (~10-15KB total)."
+  },
+  "entries": [
+    {
+      "id": "finance-l2-expense-tracker-001",
+      "goal": "Weekly expense tracker workflow with category auto-tagging: import a CSV bank statement, categorize transactions (groceries/dining/transport/etc), output a markdown summary by category.",
+      "artifact_type": "pipeline",
+      "category": "finance",
+      "difficulty": "L2",
+      "dispatch": "runWizard",
+      "expected_layers": [
+        "pipeline-builder-pack",
+        "wisdom-universal",
+        "user-goal"
+      ],
+      "forbidden_layers": [
+        "miniapp-builder-pack",
+        "web-components",
+        "macos-app-builder-pack",
+        "macos-components",
+        "framework-scaffold",
+        "webspa-builder-pack",
+        "wisdom-framework",
+        "frontend-skill-guidance",
+        "visual-design-rubric-pack",
+        "layout-reference",
+        "browser-qa-pack"
+      ],
+      "notes": "Authored as a `pipeline` artifact (existing default recipe). Future `finance-workflow` recipe routing would migrate this entry to artifact_type=finance-workflow once the wizard can pick that recipe directly."
+    },
+    {
+      "id": "finance-l2-pnl-compiler-002",
+      "goal": "Monthly P&L compiler from CSV exports of my bank statements: pull last month's transactions, categorize, compute revenue minus expenses by category, output markdown table.",
+      "artifact_type": "pipeline",
+      "category": "finance",
+      "difficulty": "L2",
+      "dispatch": "runWizard",
+      "expected_layers": [
+        "pipeline-builder-pack",
+        "wisdom-universal",
+        "user-goal"
+      ],
+      "forbidden_layers": [
+        "miniapp-builder-pack",
+        "web-components",
+        "macos-app-builder-pack",
+        "macos-components",
+        "framework-scaffold",
+        "webspa-builder-pack",
+        "wisdom-framework",
+        "frontend-skill-guidance",
+        "visual-design-rubric-pack",
+        "layout-reference",
+        "browser-qa-pack"
+      ]
+    },
+    {
+      "id": "finance-l3-portfolio-rebalance-003",
+      "goal": "Stock portfolio tracking workflow: read holdings from a Google Sheet, fetch current prices, compute drift from target allocation, alert if any position drifts >5% from target.",
+      "artifact_type": "pipeline",
+      "category": "finance",
+      "difficulty": "L3",
+      "dispatch": "runWizard",
+      "expected_layers": [
+        "pipeline-builder-pack",
+        "wisdom-universal",
+        "user-goal"
+      ],
+      "forbidden_layers": [
+        "miniapp-builder-pack",
+        "web-components",
+        "macos-app-builder-pack",
+        "macos-components",
+        "framework-scaffold",
+        "webspa-builder-pack",
+        "wisdom-framework",
+        "frontend-skill-guidance",
+        "visual-design-rubric-pack",
+        "layout-reference",
+        "browser-qa-pack"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "surface": "aiwizard-advisory",
+  "description": "Phase WX-K.4 (2026-05-20) — minimal recipe for the `advisory` chip per HARNESS_PATHWAY_TAXONOMY.md. Fires for recommendation / comparison / 'what should I use' prompts that benefit from tone-of-voice guidance (wisdom-universal) and may invoke web-search tools. Distinguishes from `answer` chip by the inclusion of wisdom-universal (manners + citation discipline) — the recommendation pattern has different tone needs than 'tell me a joke'. v1 omits explicit web-search tool registration; the LLM can still recommend without live web access. Future K.4.b may add a `web-search-tool` layer registering WebSearchSkill / PerplexitySearchSkill for tool-calling.",
+  "layers": [
+    {
+      "id": "user-goal",
+      "loader": "user-goal",
+      "priority": 60,
+      "maxTokens": 800
+    },
+    {
+      "id": "wisdom-universal",
+      "loader": "wisdom-universal",
+      "priority": 90,
+      "maxTokens": 3000
+    },
+    {
+      "id": "history-recent",
+      "loader": "history-recent",
+      "priority": 50,
+      "maxTokens": 1500,
+      "options": {
+        "limit": 4,
+        "includeAssistant": true
+      }
+    }
+  ]
+}

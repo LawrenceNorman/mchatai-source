@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "surface": "aiwizard-endproduct",
+  "description": "Phase WX-K.3 (2026-05-20) — minimal recipe for the `endproduct` chip per HARNESS_PATHWAY_TAXONOMY.md. Fires for single-call media or document generation (image / audio-music / audio-voice / video / document / quiz / icon / podcast). Target body size <5KB. The chip's subtype (e.g., image) is set on HarnessGoal.category by the classifier; the dispatcher reads the per-subtype prompt-template.md from mchatai-source/endproduct-pathways/{subtype}/ before calling the subtype-specific gen API (DreamSnapImageGenService for image, future Lyria service for audio-music, etc.). v1 ships with the same 3-layer shape as refine — user-goal carries the user's request, user-references carries any attached source image/style ref, history-recent carries prior conversation. Future versions (K.3.b+) may add endproduct-prompt-template + endproduct-model-picker loaders for explicit per-subtype context injection.",
+  "layers": [
+    {
+      "id": "user-goal",
+      "loader": "user-goal",
+      "priority": 60,
+      "maxTokens": 800
+    },
+    {
+      "id": "user-references",
+      "loader": "user-references",
+      "priority": 78,
+      "maxTokens": 6000,
+      "options": {
+        "includeImageData": true
+      }
+    },
+    {
+      "id": "history-recent",
+      "loader": "history-recent",
+      "priority": 50,
+      "maxTokens": 1500,
+      "options": {
+        "limit": 4,
+        "includeAssistant": true
+      }
+    }
+  ]
+}
