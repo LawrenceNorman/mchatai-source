@@ -223,6 +223,42 @@ for (const a of assemblies) {
   }
 }
 
+// Phase WL.gate (2026-05-19) — assemblies whose source code references a
+// canonical token API MUST have their parent recipe list the providing
+// component in requiredComponents. Otherwise the wizard's marker omits the
+// component, the inliner skips its source, and the artifact renders as a
+// black canvas (ReferenceError: getSwatchByID is not defined). Caught
+// 25 recipes during C5 invader / C6 crossword screenshot review.
+const TOKEN_API_RULES = [
+  {
+    needles: ["getSwatchByID", "applySwatchVariables"],
+    requires: "resources.swatches",
+    reason: "calls Swatches API"
+  }
+];
+const recipeByID = new Map(recipes.map(r => [r.id, r]));
+for (const a of assemblies) {
+  const aid = a?.id || "<missing-id>";
+  const rid = typeof a?.recipeID === "string" ? a.recipeID : null;
+  const r = rid ? recipeByID.get(rid) : null;
+  if (!r) continue;
+  const reqs = new Set(Array.isArray(r.requiredComponents) ? r.requiredComponents : []);
+  const files = Array.isArray(a?.files) ? a.files : [];
+  for (const fpath of files) {
+    if (typeof fpath !== "string") continue;
+    const full = resolve(here, "..", fpath);
+    if (!existsSync(full)) continue;
+    let text;
+    try { text = readFileSync(full, "utf8"); } catch { continue; }
+    for (const rule of TOKEN_API_RULES) {
+      if (!rule.needles.some(n => text.includes(n))) continue;
+      if (!reqs.has(rule.requires)) {
+        err("recipe", rid, `assembly ${aid} ${rule.reason} but recipe.requiredComponents is missing ${rule.requires}`);
+      }
+    }
+  }
+}
+
 // Library entryPoints should match real component paths.
 const entryPoints = Array.isArray(catalog?.library?.entryPoints) ? catalog.library.entryPoints : [];
 for (const ep of entryPoints) {

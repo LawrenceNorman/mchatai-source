@@ -100,9 +100,7 @@ If your Goal does NOT match the native-macOS signals above, continue to the HTML
 
 **Before writing ANY UI code**, read these in order:
 
-1. **Quality rules (always):**
-   - `/Users/lawrencenorman/mystuff/src/mchatai_platform/mchatai-source/wisdom/packs/universal.json`
-   - `/Users/lawrencenorman/mystuff/src/mchatai_platform/mchatai-source/wisdom/packs/visual-quality.json`
+1. **Quality rules** — ALREADY in your context above. Look for `## Wizard Wisdom — Quality Guidelines` (Universal, Visual Quality, and any framework-specific sections rendered there). **Do NOT Read the source `.json` files** — they may exceed the Read tool's 25k-token limit and the rendered text is the same content. If you need to look up a specific rule by id (e.g. `u-031`), search the rendered guidelines section in this context.
 
 2. **ONLY IF your Goal explicitly matches one of the genres below by name or obvious description**, read the matching asset pack. Otherwise skip this section entirely and build from scratch.
 
