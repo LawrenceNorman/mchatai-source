@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "surface": "aiwizard-refine",
+  "description": "Phase WX-K.2 (2026-05-20) — minimal recipe for the `refine` chip per HARNESS_PATHWAY_TAXONOMY.md. Fires when the user provides content (paste, attachment, URL) AND asks for a transformation (translate / summarize / rewrite / extract / OCR / format). Same shape as aiwizard-answer.json + the user-references layer that carries the attached content. Body size <3KB + attached content. If no content is attached, the user-references layer returns nil and the recipe degenerates to answer-mode behavior (same context shape as aiwizard-answer.json). Deliberately excludes wisdom packs, web-components, capability packs, and all code-gen layers.",
+  "layers": [
+    {
+      "id": "user-goal",
+      "loader": "user-goal",
+      "priority": 60,
+      "maxTokens": 800
+    },
+    {
+      "id": "user-references",
+      "loader": "user-references",
+      "priority": 78,
+      "maxTokens": 6000,
+      "options": {
+        "includeImageData": false
+      }
+    },
+    {
+      "id": "history-recent",
+      "loader": "history-recent",
+      "priority": 50,
+      "maxTokens": 1500,
+      "options": {
+        "limit": 4,
+        "includeAssistant": true
+      }
+    }
+  ]
+}

@@ -11,11 +11,15 @@
     {
       "id": "context",
       "label": "What are you looking for?",
-      "help": "Describe your platform, project, or interest. The agent judges relevance against this text.",
+      "help": "Describe your platform, project, or interest. Tap ✨ Enhance to expand a short description into a tuned scoring prompt for this specific website.",
       "type": "textarea",
       "placeholder": "e.g. I'm building a macOS app platform that lets users author mini-apps, agents, and pipelines. I care about LLM tool use, on-device inference, and agentic workflows.",
       "required": true,
-      "minHeight": 140
+      "minHeight": 140,
+      "enhancement": {
+        "system": "You are a relevance-prompt engineer. Your job is to take a user's brief description of what they're looking for and a sample of the website they want scored, and produce an expanded scoring prompt that lets a downstream LLM judge each item on that website for relevance.\n\nThe output MUST follow this structure (plain text, no markdown headers, no code fences, no JSON):\n\n1. Opening: 1-2 sentences restating the user's core interest in their own words but MORE SPECIFIC — name concrete tools, technologies, libraries, or surfaces the user mentioned (or that obviously belong to their domain).\n\n2. A section labelled `HIGH PRIORITY (score 80-95):` with 4-6 specific topic bullets, each tied to the user's interest. These should be the kinds of items they'd MOST want surfaced.\n\n3. A section labelled `MEDIUM (50-79):` with 2-4 adjacent topics — relevant but not core.\n\n4. A section labelled `LOW PRIORITY (skip, score under 30):` with 4-6 topics that are likely TO APPEAR on the website (based on the content sample) but are off-topic for this user. Be specific to filter signal from noise.\n\n5. A closing paragraph with 2-3 `Strongly prefer:` criteria the scorer should weight — e.g. open code, measurable deltas, reproducible without massive compute, adaptable in a short time.\n\nAim for 220-320 words total. The output is consumed verbatim by another LLM as its `USER INTEREST` block, so make it self-contained, action-oriented, and free of meta-commentary. Do NOT include greeting/sign-off lines. Do NOT say `Here is the expanded prompt`.",
+        "userTemplate": "USER'S BRIEF DESCRIPTION:\n{{currentValue}}\n\nWEBSITE URL: {{url}}\n\nWEBSITE CONTENT SAMPLE (first ~3000 chars):\n{{pageText}}\n\nProduce the expanded scoring prompt now."
+      }
     },
     {
       "id": "threshold",

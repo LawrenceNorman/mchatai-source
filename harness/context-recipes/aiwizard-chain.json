@@ -1,0 +1,30 @@
+{
+  "$schema_version": "1.0.0",
+  "version": 1,
+  "surface": "aiwizard-chain",
+  "description": "Phase WX-K.6 (2026-05-20) — minimal recipe for the `chain` chip per HARNESS_PATHWAY_TAXONOMY.md. Fires when the user describes a multi-step task that composes other chips (e.g., 'PDF → MP3', 'research topic → write article → generate cover image → post to Slack'). Total context <10KB. The dispatcher runs a cheap LLM call against the goal + the chain-composer template (mchatai-source/wizard/prompts/chain-composer.md) to propose a JSON array of steps. Each step has {chip, subtype, goal, inputFrom?} and recursively delegates to its leaf chip's pathway (chain steps cannot themselves be chain — the executor rejects). After execution, the user is offered Save-as-Workflow promotion (BlueprintPromotionService activation path, deferred to K.6.b).",
+  "layers": [
+    {
+      "id": "user-goal",
+      "loader": "user-goal",
+      "priority": 60,
+      "maxTokens": 800
+    },
+    {
+      "id": "mchatai-fundamentals",
+      "loader": "mchatai-fundamentals",
+      "priority": 88,
+      "maxTokens": 2000
+    },
+    {
+      "id": "history-recent",
+      "loader": "history-recent",
+      "priority": 50,
+      "maxTokens": 1500,
+      "options": {
+        "limit": 4,
+        "includeAssistant": true
+      }
+    }
+  ]
+}

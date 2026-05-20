@@ -1,0 +1,77 @@
+{
+  "$schema_version": "1.0.0",
+  "version": "2026.05.20-wxk5-seed",
+  "description": "Phase WX-K.5 — service registry for the `action` chip per HARNESS_PATHWAY_TAXONOMY.md. The dispatcher reads this catalog at runtime, picks the matching service from the user's goal text + classifier output, parses params from the goal via an LLM extract call, renders a confirm card, and fires the corresponding skill. `destructive: true` services require an explicit Yes-No confirm regardless of classifier confidence.",
+  "services": [
+    {
+      "id": "gmail.send",
+      "display_name": "Send Email (Gmail)",
+      "skill_id": "GmailSkill",
+      "triggers": ["send", "email", "compose", "draft an email", "send a message"],
+      "param_schema": {
+        "to": "recipient address or known contact name",
+        "subject": "string",
+        "body": "string"
+      },
+      "destructive": false,
+      "wired": false,
+      "auth": "google-oauth"
+    },
+    {
+      "id": "slack.post",
+      "display_name": "Post to Slack",
+      "skill_id": "SlackSkill",
+      "triggers": ["post to slack", "send to slack", "message #", "ping #"],
+      "param_schema": {
+        "channel": "channel name (with or without #)",
+        "text": "message body"
+      },
+      "destructive": false,
+      "wired": false,
+      "auth": "slack-oauth"
+    },
+    {
+      "id": "calendar.create",
+      "display_name": "Create Calendar Event",
+      "skill_id": "CalendarSkill",
+      "triggers": ["add to calendar", "schedule", "create an event", "book a meeting"],
+      "param_schema": {
+        "title": "event title",
+        "start": "ISO datetime",
+        "end": "ISO datetime (optional, default +1h)",
+        "calendar": "calendar name (optional, default primary)"
+      },
+      "destructive": false,
+      "wired": false,
+      "auth": "eventkit"
+    },
+    {
+      "id": "reminders.create",
+      "display_name": "Set Reminder",
+      "skill_id": "RemindersSkill",
+      "triggers": ["set a reminder", "remind me", "remind me to"],
+      "param_schema": {
+        "title": "reminder text",
+        "due": "ISO datetime (optional)",
+        "list": "reminder list name (optional, default Reminders)"
+      },
+      "destructive": false,
+      "wired": false,
+      "auth": "eventkit"
+    },
+    {
+      "id": "filesystem.open",
+      "display_name": "Open File / URL",
+      "skill_id": "SystemOpenSkill",
+      "triggers": ["open", "show me the file", "reveal in finder"],
+      "param_schema": {
+        "path": "filesystem path or URL"
+      },
+      "destructive": false,
+      "wired": false,
+      "auth": "none"
+    }
+  ],
+  "destructive_verbs": ["delete", "unsubscribe", "remove permanently", "drop table", "wipe", "purge", "cancel subscription"],
+  "wired_phase_note": "WX-K.5.a (this ship) ships the dispatcher in dry-run mode — it logs what it WOULD call and posts the confirm card, but doesn't actually invoke the skill. WX-K.5.b adds real skill invocation + the per-service OAuth / EventKit / NSWorkspace wiring on a service-by-service basis."
+}
