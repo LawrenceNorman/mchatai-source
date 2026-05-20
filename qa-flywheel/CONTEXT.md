@@ -85,6 +85,8 @@ Rule of thumb when proposing a new entry: *"If I described this to a competent d
 | `notes` | string | Freeform — why this case is in the catalog, or why it's flaky. |
 | `flaky` | bool | **New 2026-04-24.** Marks entries that have failed repeatedly in batch runs. Rotation strategies should **deprioritize** flaky entries until reworked — don't burn compute on a known hard case. Flip to false once the entry has a clean run post-rework. |
 | `flaky_history` | array | **New 2026-04-24.** Append-only list of failure snapshots: `{run: "<ISO-stamp-slug>", tier: "L?", outcome: "<desc>", concurrency: N, note: "..."}`. Lets the coverage report + rotation picker see the failure pattern without scanning JSONL logs. |
+| `expected_layers` | string[] | **New 2026-05-20 (Phase WX-J.1).** Context-recipe layer IDs that MUST appear in the assembled `systemPrompt` for this entry's `artifact_type`. IDs come from `mchatai-source/harness/context-recipes/aiwizard-<type>.json` (top-level `layers[].id`). The audit tunnel `diagPromptPathwayAudit` (Phase WX-J.2) fails the entry if any expected ID is missing from a non-skipped trace. Leave absent for entries not yet audited — the validator only enforces ID-shape when the field is present. |
+| `forbidden_layers` | string[] | **New 2026-05-20 (Phase WX-J.1).** Layer IDs that MUST NOT appear in the assembled `systemPrompt`. Used to assert cross-artifact contamination is absent (e.g., a `miniApp` entry forbids `wisdom-macos-pack` if such a layer existed for `macOSApp` builds only). IDs are validated against the union of layer IDs across ALL `aiwizard-*.json` recipes so cross-recipe leak is detectable. Audit reports a surplus when a forbidden ID fires. |
 
 ## Non-negotiables
 
