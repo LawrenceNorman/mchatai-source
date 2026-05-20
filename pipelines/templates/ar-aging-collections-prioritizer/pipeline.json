@@ -2,35 +2,24 @@
   "id": "BD035E83-5C2C-4929-B75F-D435183AF5EA",
   "name": "AR Aging Collections Prioritizer",
   "description": "Review exported AR aging or invoice rows and prioritize overdue balances, customer follow-ups, and collection risks.",
-  "components": ["component.finance-ar-aging"],
+  "components": [
+    "component.finance-ar-aging"
+  ],
   "steps": [
     {
       "id": "1A5490EF-6907-44A2-BBB2-30972B26C6A9",
-      "skillID": "builtin.csvTable",
+      "skillID": "builtin.csvFinanceReport",
       "config": {
         "dataSensitivity": "confidential",
         "csvMode": "preview",
         "outputFormat": "markdown",
         "hasHeader": "true",
         "limit": "700",
-        "maxChars": "60000"
-      }
-    },
-    {
-      "id": "80E0F655-F164-4BFD-B7C4-2AE696F72588",
-      "skillID": "builtin.llmGenerate",
-      "config": {
-        "dataSensitivity": "confidential",
+        "maxChars": "60000",
         "llmMaxInputChars": "60000",
         "llmMaxTokens": "4200",
         "llmTimeout": "150",
-        "userPrompt": "You are the mChatAI+ AR Aging Collections Prioritizer. Analyze the exported accounts receivable table below for collections planning. This is draft analysis for human review; do not make credit decisions, legal collections decisions, revenue recognition conclusions, tax conclusions, or compliance determinations.\n\nUse only visible table evidence. Reference customers, invoice numbers, due dates, aging buckets, balances, currencies, promised payment notes, and row numbers when available. Do not invent customer context or payment promises.\n\nProduce markdown with this exact structure:\n\n# AR Aging Collections Prioritizer\n\n## Scope\n- Period / as-of date detected:\n- Customers detected:\n- Currency detected:\n- Row count reviewed:\n\n## Collections Priority Summary\n5-8 bullets on the highest-value overdue balances, oldest items, concentration risks, and immediate follow-up priorities.\n\n## Priority Follow-Up List\nA table with columns: Priority, Customer, Evidence, Amount / Aging, Suggested human follow-up, Missing context.\n\n## Aging And Concentration Themes\nSummarize balances by aging bucket or customer concentration when visible. If aging buckets are missing, say so.\n\n## Dispute / Risk Indicators\nFlag credits, negative balances, partial payments, stale invoices, missing due dates, unusually old balances, repeated customers, or unclear statuses.\n\n## Cash Forecast Implications\nIdentify collections items that may affect near-term cash planning, but avoid making forecasts unless payment dates or promises are visible.\n\n## Data Quality Notes\nNote missing invoice IDs, blank due dates, ambiguous signs, currency ambiguity, customer-name inconsistencies, or row-count limitations.\n\n## Missing Data / Follow-Up\nList customer contacts, invoice PDFs, payment history, dispute notes, credit memos, promised-pay dates, or CRM records needed before outreach.\n\n## Review Note\nDraft AR collections support for human review. Not accounting, tax, legal, audit, credit, financing, or compliance advice.\n\nAR TABLE:\n{{INPUT}}"
-      }
-    },
-    {
-      "id": "451487EE-828C-4DD2-9A56-3EEF0EFE042A",
-      "skillID": "builtin.saveArtifact",
-      "config": {
+        "userPrompt": "You are the mChatAI+ AR Aging Collections Prioritizer. Analyze the exported accounts receivable table below for collections planning. This is draft analysis for human review; do not make credit decisions, legal collections decisions, revenue recognition conclusions, tax conclusions, or compliance determinations.\n\nUse only visible table evidence. Reference customers, invoice numbers, due dates, aging buckets, balances, currencies, promised payment notes, and row numbers when available. Do not invent customer context or payment promises.\n\nProduce markdown with this exact structure:\n\n# AR Aging Collections Prioritizer\n\n## Scope\n- Period / as-of date detected:\n- Customers detected:\n- Currency detected:\n- Row count reviewed:\n\n## Collections Priority Summary\n5-8 bullets on the highest-value overdue balances, oldest items, concentration risks, and immediate follow-up priorities.\n\n## Priority Follow-Up List\nA table with columns: Priority, Customer, Evidence, Amount / Aging, Suggested human follow-up, Missing context.\n\n## Aging And Concentration Themes\nSummarize balances by aging bucket or customer concentration when visible. If aging buckets are missing, say so.\n\n## Dispute / Risk Indicators\nFlag credits, negative balances, partial payments, stale invoices, missing due dates, unusually old balances, repeated customers, or unclear statuses.\n\n## Cash Forecast Implications\nIdentify collections items that may affect near-term cash planning, but avoid making forecasts unless payment dates or promises are visible.\n\n## Data Quality Notes\nNote missing invoice IDs, blank due dates, ambiguous signs, currency ambiguity, customer-name inconsistencies, or row-count limitations.\n\n## Missing Data / Follow-Up\nList customer contacts, invoice PDFs, payment history, dispute notes, credit memos, promised-pay dates, or CRM records needed before outreach.\n\n## Review Note\nDraft AR collections support for human review. Not accounting, tax, legal, audit, credit, financing, or compliance advice.\n\nAR TABLE:\n{{INPUT}}",
         "artifactName": "AR Aging Collections Prioritizer Report",
         "artifactExtension": "md",
         "productType": "com.mchatai.product.research.report",

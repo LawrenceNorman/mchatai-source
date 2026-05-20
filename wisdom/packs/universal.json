@@ -1,6 +1,6 @@
 {
   "packID": "universal",
-  "version": 13,
+  "version": 16,
   "displayName": "Universal Guidelines",
   "description": "Rules that apply to ALL generated apps regardless of category.",
   "categories": [
@@ -78,7 +78,7 @@
       "rule": "Use the CSS/SVG assets provided in the asset pack prompts. If a renderCard() function, card back SVG, felt texture CSS, or chip styles are provided, USE THEM. Do not reinvent simpler versions.",
       "why": "Asset packs provide tested, polished visuals. LLMs often ignore injected assets and create inferior replacements.",
       "severity": "important",
-      "appliesTo": "all",
+      "appliesTo": "anyGame",
       "examples": [
         "Use renderCard('A', '♠') for card faces, not plain text",
         "Use the .chip CSS classes for chip displays"
@@ -122,7 +122,7 @@
       "rule": "For ANY game with a human player: there MUST be at least one computer/AI opponent. Never make the user play both sides. The AI opponent does not need to be sophisticated — even random legal moves are acceptable — but it MUST exist so the user has someone to play against.",
       "why": "Users who ask for a 'playable game' expect an opponent. A game where you control both sides is a sandbox, not a game. This is the #2 most common complaint after auto-pilot.",
       "severity": "critical",
-      "appliesTo": "all",
+      "appliesTo": "anyGame",
       "examples": [
         "Card game: AI opponents make decisions automatically after human acts",
         "Board game: computer picks a legal move after human's turn"
@@ -133,7 +133,7 @@
       "rule": "NEVER use library stubs, shims, or abbreviated implementations. If the app needs a chess engine, game physics, or any complex logic — write it inline. Do NOT include a 'minified' library that is actually a stub returning empty values. Do NOT write comments like 'for brevity', 'abridged', 'for the sake of token limits', 'include full X in production'. Every line of code must be real, working logic.",
       "why": "Models under token pressure produce fake 'minified' libraries that are actually stubs — e.g., a chess.js stub where every method returns null. This produces an app that looks correct on first glance but is completely non-functional. The Evaluator will flag any stub as an automatic failure.",
       "severity": "critical",
-      "appliesTo": "all",
+      "appliesTo": "anyGame",
       "examples": [
         "BAD: Chess() constructor where .moves() returns [] and .board() returns []",
         "BAD: Comment saying 'for the sake of token limits this is a stub'"
@@ -144,7 +144,7 @@
       "rule": "When using localStorage for game state (bankroll, score, progress), ALWAYS validate on load. If the saved value is missing, zero, negative, or corrupted, reset to the default starting value. Never trust localStorage blindly — it may have stale data from a previous session, be zero from a game-over state, or be absent on first load.",
       "why": "A Blackjack game that reads bankroll from localStorage showed $0 on first load because the key didn't exist yet and parseInt returned NaN which displayed as 0. The game was unplayable despite having zero console errors.",
       "severity": "critical",
-      "appliesTo": "all",
+      "appliesTo": "anyGame",
       "examples": [
         "GOOD: let bankroll = parseInt(localStorage.getItem('bj_bankroll')) || 100;",
         "GOOD: if (!bankroll || bankroll <= 0) bankroll = DEFAULT_BANKROLL;"
@@ -155,7 +155,7 @@
       "rule": "NEVER use clip-path, overflow:hidden, or mask on a container that holds interactive game pieces (checkers, cards, tokens, characters). The child elements will be clipped by the parent's shape and become partially hidden or unclickable. If you need a shaped background (like a triangle), use a ::before or ::after pseudo-element for the shape, leave the parent as a plain rectangle, and place the game pieces inside the parent with z-index higher than the pseudo-element.",
       "why": "Backgammon mini-app used clip-path:polygon(...) on the .triangle parent holding the checker children. The checkers got clipped by the triangle shape — their round tops poked out above the triangle line and the bottoms were hidden, and they were unclickable outside the triangle bounds. Same problem would occur for chess squares with corner badges, hex boards with tokens, etc.",
       "severity": "critical",
-      "appliesTo": "all",
+      "appliesTo": "anyGame",
       "examples": [
         "GOOD: .triangle { position:relative; } .triangle::before { content:''; position:absolute; inset:0; clip-path:polygon(50% 0,100% 100%,0 100%); background:#c9a176; z-index:0; } .triangle > .checker { position:relative; z-index:1; }",
         "BAD: .triangle { clip-path:polygon(50% 0,100% 100%,0 100%); } .triangle > .checker { ... } — checkers clipped by triangle"
@@ -166,7 +166,7 @@
       "rule": "Interactive game pieces (checkers, cards, chips, tokens) must have z-index HIGHER than their background decoration. Set position:relative on pieces so z-index takes effect. The stacking order from bottom to top should be: board background (z-index 0), board decorations / triangles / grid lines (z-index 1), pieces (z-index 2), selected / highlighted state (z-index 3), dragged piece (z-index 10).",
       "why": "Game pieces rendered beneath board decorations are unselectable because clicks hit the decoration, not the piece. Even when visible they look wrong because they appear 'behind' the board.",
       "severity": "critical",
-      "appliesTo": "all",
+      "appliesTo": "anyGame",
       "examples": [
         "GOOD: .piece { position:relative; z-index:2; } .piece.selected { z-index:3; } .piece.dragging { z-index:10; }",
         "GOOD: Use a fixed stacking context by setting position:relative on the board container itself"
@@ -177,7 +177,7 @@
       "rule": "For pieces that STACK vertically (checkers on a backgammon point, poker chips, cards in a pile): use position:absolute with computed top values, or use flexbox with negative margins (e.g. margin-top:-18px for 30px pieces = 40% overlap). Never stack them flat on top of each other — the user must be able to see the count visually.",
       "why": "Backgammon points can hold 5+ checkers which need to stack. Without proper stacking CSS they all render at the same position (looks like 1 piece), or they fall outside the point (looks broken).",
       "severity": "important",
-      "appliesTo": "all",
+      "appliesTo": "anyGame",
       "examples": [
         "GOOD (flex): .stack { display:flex; flex-direction:column-reverse; align-items:center; } .stack > .checker { margin-bottom:-18px; } .stack > .checker:first-child { margin-bottom:0; }",
         "GOOD (absolute): pieces[i].style.top = (i * 20) + 'px'; parent is position:relative"
@@ -199,7 +199,7 @@
       "rule": "Use explicit numeric dimensions for any game container that renders pieces at specific positions. Do NOT use `flex:1` or `1fr` units as the only size constraint — they collapse to 0 when the parent doesn't have a defined size, making the entire board invisible.",
       "why": "Backgammon board disappeared because `.board { display:grid; grid-template-columns:repeat(13,1fr); }` had no explicit width/height, and its parent chain used min-height instead of height. The grid collapsed to 0x0 and nothing rendered.",
       "severity": "critical",
-      "appliesTo": "all",
+      "appliesTo": "anyGame",
       "examples": [
         "GOOD: .board { width:800px; height:550px; aspect-ratio:13/9; } or with explicit min-width/min-height on children",
         "BAD: .board { flex:1; display:grid; } inside a min-height container"
@@ -243,7 +243,7 @@
       "rule": "Only use a scaffold file (e.g., `card-game-scaffold.html`, `space-invaders-scaffold.html`, `snake-scaffold.html`, `breakout-scaffold.html`) if the user's Goal EXPLICITLY matches the scaffold's genre. An 'Atari Adventure' goal is NOT a card game. A 'Tower Defense' goal is NOT a brick-breaker. A 'Word Puzzle' goal is NOT an arcade shooter. When the goal doesn't match any listed scaffold, build the artifact from scratch using only the universal + visual-quality wisdom rules. Reading a scaffold 'to see the structure' when the genres don't match is a direct path to shipping the wrong game entirely.",
       "why": "Seen 3x across 2026-04-22/23: user requested Atari Adventure but the generator read `card-game-scaffold.html` (listed in cli-project-context.md under 'Card games') and shipped Hearts code under an Atari title. The evaluator then rubric-scored the output as 'a card game' because the CLAUDE.md scaffold reference was still in-context. Root cause: scaffold catalog is a reference CATALOG but CLI agents treat file-path mentions as read-me-now signals. Rule forces explicit genre match before any scaffold read.",
       "severity": "critical",
-      "appliesTo": "all",
+      "appliesTo": "anyGame",
       "examples": [
         "GOAL: 'Atari Adventure with castles and dragons' → ✓ no scaffold matches → build from scratch, no scaffold reads.",
         "GOAL: 'Hearts card game' → ✓ card-game-scaffold.html is correct; extend it."
@@ -323,7 +323,7 @@
       "rule": "Every game with a terminal phase (game-over / you-win / level-complete / mission-failed / bunker-overrun) MUST display a visible on-screen restart affordance. For Lego web-component artifacts, mount `ui/RestartOverlay` (path: `ui/RestartOverlay.js`, export: `RestartOverlay`) and call `overlay.show({ title, subtitle, buttonLabel, onRestart })` when the terminal phase is reached. For non-Lego artifacts, render a centered modal with a button ≥ 60px tall and ≥ 200px wide, labeled clearly ('Restart' / 'Play Again' / 'New Game' — NOT 'OK' or unlabeled), that fully resets game state when tapped. Keyboard support (Enter/Space) is required. Menu-bar shortcuts (Cmd+N, Ctrl+N) are a power-user nicety, NOT a substitute for the on-screen button.",
       "why": "User feedback 2026-05-04 on Lunar Lander: 'There is no restart button for the game: That should be a fundamental wisdom rule to all games if we don't have that already.' Same pattern hit shipped Pong, BurgerTime, Joust, Tower Defense — they have menu shortcuts but lack a tappable on-screen affordance. This is the single most common 'great game but UX feels rough' complaint. Marker check `requiresRestartButton` enforces presence of the component import OR an inline restart-element with text matching `restart|play again|new game` that becomes visible during a terminal phase.",
       "severity": "critical",
-      "appliesTo": "all",
+      "appliesTo": "anyGame",
       "examples": [
         "GOOD (Lego): import { RestartOverlay } from '../../ui/RestartOverlay.js'; const restart = new RestartOverlay({ host: '[data-app]', onRestart: () => game.reset() }); /* on game-over */ restart.show({ title: 'Game Over', subtitle: `Score: ${score}`, buttonLabel: 'Play Again' });",
         "GOOD (non-Lego): a centered <div> overlay with backdrop blur and a single <button onclick='restart()'>Play Again</button> that's ≥60×200px, focusable, Enter-bindable."
@@ -510,7 +510,7 @@
       "rule": "Lego rules-module methods like `rules.applyMove(board, move, color)`, `rules.move(...)`, `rules.tryMove(...)` MUTATE the board array in place and return a BOOLEAN indicating whether the move was legal. They DO NOT return a new board. NEVER write `board = rules.applyMove(board, …)` — that assigns `true`/`false` to your board variable, and every subsequent move silently no-ops because `board[index]` becomes undefined. ALWAYS treat the return as a validity check: `if (!rules.applyMove(board, index, currentPlayer)) return;` — bail on illegal moves, then continue with the (now-mutated-in-place) board. This applies to TicTacToeRules, ChessRules, CheckersRules, ConnectFourRules, and any other Lego rules-module with `applyMove`-shaped methods. The canonical example at `examples/<game>/main.js` or `examples/<game>/<GameName>.js` shows the correct pattern.",
       "why": "Catalog regression 2026-05-14: tic-tac-toe shipped with `board = rules.applyMove(board, index, currentPlayer);` at the click handler. First click made `board` equal `true`; every subsequent click hit `if (gameOver || board[index]) return;` where `board[index]` was undefined → click no-op'd. Game was unplayable but install-gate passed (marker valid, imports resolved). The module's own docstring says 'applyMove(board, move) mutates in place' AND the canonical example at examples/tic-tac-toe/TicTacToeGame.js:95 uses `if (!this.rules.applyMove(this.board, index, HUMAN)) return;` — LLM had the right pattern available, ignored it.",
       "severity": "critical",
-      "appliesTo": "universal",
+      "appliesTo": "anyGame",
       "examples": [
         "GOOD: if (!rules.applyMove(board, index, currentPlayer)) return; // bail on illegal move; board is now mutated in place with the legal one.",
         "GOOD: const ok = rules.applyMove(board, move, AI); if (!ok) { console.warn('AI picked illegal move'); return; } render(board);"
@@ -532,7 +532,7 @@
       "rule": "For card-game mini-apps (spades, hearts, bridge, euchre, cribbage, poker, anything with a player hand of 5+ cards): the user's own hand MUST be the visual focal point and fit in ONE row at both desktop and mobile widths. Use this proven pattern: (a) the hand container spans full width - escape any parent grid cell via `grid-column: 1 / -1` or position outside the seat-grid; (b) cards do NOT wrap - `flex-wrap: nowrap`; (c) cards overlap aggressively via negative margin so the math works on a 375px-wide phone. Sizing for a 13-card hand: desktop card 100-110px wide x 140-156px tall with margin-right around -72px (effective 36px per card -> 13 cards ~540px total). Mobile card 72-78px x 100-110px with margin-right around -54px (effective 24px per card -> 13 cards ~366px total). On hover, the active card lifts (translateY -12px) and its right margin relaxes (-16 to -24px) so the rank is fully readable before the click. Opponent hands are face-down `card.back` stacks at 28-40px wide tucked next to each seat label - tiny, informational, never dominant. NEVER wrap a 13-card hand into 3-4 narrow rows; the player needs to see every card at a glance.",
       "why": "Catalog regression 2026-05-15: a Spades v3 canary shipped with user-hand cards at 48x68px constrained inside a 3-column grid cell, wrapping to 4 cards per row on desktop and 3 per row on mobile. User-feedback: 'cards are too small', 'I cannot even see my own cards', 'not releasable'. Even after a card-size CSS patch, the cards still wrapped because the hand was constrained by the parent grid. The release-quality fix is full-width edge-to-edge fanning with aggressive overlap on small screens.",
       "severity": "critical",
-      "appliesTo": "universal",
+      "appliesTo": "anyGame",
       "examples": [
         "GOOD (spades, 13 cards): .player-hand { width:100%; flex-wrap:nowrap; padding:4px 6px } .seat-south { grid-column:1/-1 } .player-hand .card { width:108px; height:152px; margin-right:-72px } @media (max-width:640px) { .player-hand .card { width:78px; height:110px; margin-right:-54px } }",
         "GOOD (heads-up poker, 2 hole cards): .player-hand { flex-wrap:nowrap; gap:8px } .player-hand .card { width:110px; height:156px; margin-right:0 } - no overlap needed when N<=5; full size each."
@@ -548,14 +548,40 @@
         "HUD using `display:flex; justify-content:space-between` with 2 children pushes the second child to the top-right corner — instead use `display:grid; grid-template-columns:1fr auto 1fr` to keep content centered with empty right column.",
         "BAD: <div style=\"position:fixed; top:10px; right:10px\">Score: 42</div>"
       ]
+    },
+    {
+      "id": "u-no-base64-data-uris",
+      "rule": "NEVER embed `data:<anything>;base64,...` URIs in generated mini-app HTML — image, audio, video, font, ANY type. Even one ~50KB base64 blob can exhaust the LLM's output-token budget, truncating the response mid-string and leaving an unclosed `\\`\\`\\`miniapp` fence that the parser rejects. Replacements: (1) Audio cues → Web Audio API oscillator (4-line beep generator, ~200 bytes); (2) Icons → inline SVG strings or Unicode emoji (⏸ ▶ 🔔 ⏱); (3) Fonts → -apple-system / system-ui (already required, no @import); (4) Sample data → inline JS arrays/objects, not base64-encoded JSON.",
+      "why": "Multi-Timer 2026-05-20 reproed twice: with audio cue at zero, OpenAI agentic loop embedded data:audio/wav;base64,...50KB+... in the html JSON-stringified field, output truncated mid-base64, no closing ```miniapp fence, parser gives nil, wizard silently fails. Same exhaustion happens with data:image (already forbidden) and would happen with data:video, data:font, etc. The fix is structural: forbid ALL base64 data URIs regardless of media type.",
+      "severity": "critical",
+      "appliesTo": [
+        "miniApp",
+        "webSPA"
+      ],
+      "examples": [
+        "BAD: `<audio src=\"data:audio/wav;base64,UklGRi...(50KB)...\">` — output token exhaustion",
+        "GOOD: const ctx = new AudioContext(); const osc = ctx.createOscillator(); osc.frequency.value = 880; osc.connect(ctx.destination); osc.start(); setTimeout(() => osc.stop(), 200);  // 200-byte beep"
+      ]
     }
   ],
   "_last_updated": "2026-05-15T18:55:00Z",
-  "lastUpdated": "2026-05-19",
+  "lastUpdated": "2026-05-20",
   "_changeLog": [
     {
       "date": "2026-05-19",
       "change": "Capped examples to <=2 per guideline (was up to 10). Defense-in-depth against Claude CLI Read tool 25k-token limit; primary fix is removing the Read instruction from harness/prompts/cli-project-context.md since wisdom-universal is already injected into CLAUDE.context.md. Removed 94 surplus examples."
+    },
+    {
+      "date": "2026-05-19",
+      "change": "Phase WX-G: relabeled 12 game-themed rules from appliesTo=\"all\"/\"universal\" to \"anyGame\". These rules are specifically about card/board game mechanics (game pieces, clip-path, chess stubs, AI opponents, scaffolds) and were inflating the systemPrompt for non-game miniApps (multi-timer, decision-maker, phonetic trainer) by ~32KB. Combined with Swift HarnessWisdomService.swift:436 (Phase WX-G code fix) that no longer treats all miniApps as games."
+    },
+    {
+      "date": "2026-05-20",
+      "change": "Phase WX-P (Phase WX-H/H2 follow-up): added u-no-base64-data-uris CRITICAL rule. Multi-Timer canary reproed (OpenAI agentic, 62KB rawResponse): LLM embeds 20KB+ base64 icons in mini-app HTML, exhausts output-token budget, response truncated mid-string, no closing ```miniapp fence, gate rejection. Forbidding the pattern in the wisdom layer is the surgical fix."
+    },
+    {
+      "date": "2026-05-20",
+      "change": "Phase WX-P2: broadened u-no-base64-data-uris to forbid ALL data:*;base64,... URIs (image, audio, video, font, anything). Initial v1 only banned data:image; LLM substituted data:audio/wav for the multi-timer audio cue and hit the same truncation. Web Audio API code replacement provided."
     }
   ]
 }
