@@ -49,6 +49,15 @@
 
   "default": "retro-neon",
 
+  "mediaGoalHints": [
+    "image", "photo", "picture", "illustration", "artwork", "render",
+    "drawing", "painting", "sketch",
+    "video", "clip", "movie", "animation",
+    "song", "music", "track", "beat", "melody", "instrumental",
+    "speech", "narration", "voiceover", "tts", "audio clip"
+  ],
+  "_mediaGoalHintsNotes": "Phase SWATCH-GUARD (2026-05-21) — when the user's goal contains any of these substrings (lowercased), the harness skips swatch derivation entirely. Rationale: swatches are CSS theming for web-component mini-apps; they have no meaning for image/video/song/speech generation, but goals like 'Generate a watercolor sunset image' were getting wrapped with a 'USE SWATCH sunset-arcade' directive that polluted the user-visible chat log. Tune freely without rebuild — add/remove substrings as the wizard's intent classifier evolves.",
+
   "steeringTemplate": "=== SWATCH DECISION (NON-NEGOTIABLE) ===\nUse swatch ID \"{derivedID}\" — derived from theme adjectives in the goal.\nFORBIDDEN: any swatch other than \"{derivedID}\".\nREQUIRED: applySwatchVariables(document.documentElement, getSwatchByID(\"{derivedID}\"))\nREQUIRED: top of CSS :root block must mirror buildSwatchDefaultsCSS(\"{derivedID}\") values verbatim — copy from resources/Swatches.js. The flat color tokens are different per swatch (background/surface/text/accent/accentWarm/stroke/shadow); the structural tokens (radius/space/type/font) are identical across all swatches.\n\n=== USER GOAL ===\n{goal}",
   "_steeringTemplateNotes": "Prepended to the user goal when deriveSwatchIDFromGoal returns a non-nil match. Placeholders: {derivedID} = matched swatch ID (one of the keys above); {goal} = original user goal text. Tunable from mchatai-source — push + refreshMchataisourceCache + relaunch picks up changes (no Swift rebuild). Empirical note 2026-05-05: even FORBIDDEN/REQUIRED language with prepend placement was ignored by the LLM in TOK.7 canary v2 + v3 — the swatch picked still defaulted to retro-neon despite directive saying 'use sunset-arcade'. Treat this as best-effort LLM-soft guidance; the post-generation patcher (TBD) is the deterministic guarantee. Tune freely without rebuild.",
 
