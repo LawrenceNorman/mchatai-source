@@ -1,0 +1,27 @@
+{
+  "id": "E2F2964C-C582-4C2F-AACA-A56379801EBA",
+  "name": "Marketing Analytics Rollup",
+  "description": "Weekly founder briefing from whatever metrics blob the operator pastes in (or future skill-aggregated data from Plausible / HubSpot / YouTube). Produces a one-page markdown: top headlines, win/loss table, 3-action focus list, next week's content topic seeds. Read it Monday morning with coffee.",
+  "components": [
+    "component.llm-to-doc-save"
+  ],
+  "steps": [
+    {
+      "id": "3C324ED6-09C8-4924-A8FC-000DC8E0ECB7",
+      "skillID": "builtin.llmGenerate",
+      "config": {
+        "llmMaxTokens": "3000",
+        "llmTimeout": "120",
+        "userPrompt": "You are writing the weekly founder briefing for mChatAI's marketing machine. Audience: Lawrence Norman, solo founder, reads this once a week with coffee on Monday morning. Voice: blunt, specific, no cheerleading, no apologising. ASCII only.\n\nGiven the metrics blob below (could be Plausible aggregate output, raw paste from a dashboard, HubSpot contact counts, YouTube stats, podcast listens, GitHub stars, manual bullet notes, or some mix), produce ONE markdown briefing in this EXACT format and nothing else:\n\n---\n\n# Weekly Marketing Briefing\n\n**Week of:** <YYYY-MM-DD covering the latest 7 days; infer from the data or use today's date>\n**One-line summary:** <12 to 20 words. The single sentence Lawrence would tell a friend over coffee.>\n\n## What moved\n\n<Bulleted list, 3-6 bullets. Each bullet: one metric + the number + the change vs prior period (write 'no baseline yet' if unknown) + 1 sentence of WHY in plain English. Use this exact format per bullet:\n\n- **<metric name>**: <number> (<delta>). <one-sentence why>.\n\nIf the source data does not contain a metric, do NOT invent it. Skip silently or write 'no data this week'.>\n\n## Wins\n\n<2-4 short bullets. A win is something that worked better than expected. Be specific: which post, which platform, which recipe. Cite numbers when available.>\n\n## Losses\n\n<2-4 short bullets. A loss is something that underperformed or broke. Don't sugar-coat. If nothing notable failed, write 'Nothing flagged this week' rather than padding.>\n\n## Three things to do this week\n\n<EXACTLY three numbered items. Each is one sentence. Each should be a concrete action Lawrence can take in under 30 min, not a category. Bad: 'improve SEO'. Good: 'Run the SEO Landing Page pipeline on the 5 keywords from list-A.txt and ship them by Wednesday.'>\n\n## Next week's content topic seeds\n\n<3-5 bullets. Each is a candidate topic for the next Marketing Day Orchestrator run, derived from what's working THIS week. Format:\n\n- <Topic phrase, max 12 words> - based on <which metric or audience signal>.\n\nThese should be plausible enough that Lawrence can paste one straight into the orchestrator input.>\n\n## Honest call-out\n\n<One paragraph, 2-4 sentences. The thing Lawrence would not write himself because it's uncomfortable. The 'you are spending all your effort on X but Y is what's actually moving the needle' note. If the data doesn't support a strong call-out this week, write 'No strong signal yet - need at least 2 more weeks of data to see real patterns.' instead of inventing one.>\n\nWriting rules:\n- ASCII only. No smart quotes, no em-dashes (use ' - ' surrounded by spaces).\n- Numbers must come from the source data. Do NOT invent figures, percentages, or comparisons. If you can't compute a delta, say 'no baseline yet'.\n- Do NOT use the phrases: 'great job', 'crushing it', 'amazing growth', 'on fire', 'unlocked', 'rockstar', 'thrilled', 'in today's fast-paced'.\n- Briefing length: under 600 words including section headings.\n- Skip empty politeness. Lawrence asked for the briefing; just deliver it.\n\nMETRICS BLOB:\n{{INPUT}}"
+      }
+    },
+    {
+      "id": "DC60AC97-66AD-47EF-ACBB-0FB638C31141",
+      "skillID": "builtin.saveArtifact",
+      "config": {
+        "artifactName": "Marketing Analytics Briefing",
+        "artifactExtension": "md"
+      }
+    }
+  ]
+}
