@@ -9,11 +9,12 @@
 You are analyzing N agent trajectories for the harness recipe `{recipeID}`.
 
 Each trajectory is a JSON object with:
+- `schemaVersion`: integer. **Trust telemetry fields only on schemaVersion>=2.** Schema 1 has empty `activeLayers`/`agentActions`/`finalArtifactPaths` arrays — those are placeholder gaps from an earlier client version, NOT a recipe property. Do not draw conclusions about "no context layers fired" or "no actions recorded" from schema 1 entries; treat them as goal+outcome-only and skip the empty fields.
 - `goal`: the user's original prompt (already PII-scrubbed client-side)
-- `activeLayers`: which context layers fired during the session
-- `agentActions`: the agent's tool calls + auto-fix attempts
-- `outcome`: `succeeded` | `failed` | `iterated`
-- `finalArtifactPaths`: paths to installed artifact files (no bodies)
+- `activeLayers`: which context layers fired during the session, formatted "<layerID>:<chars>" or "<layerID>:SKIP-<reason>" (schema 2+)
+- `agentActions`: session shape signals — turns, userTurns, assistantTurns, intent, recommendedType, wisdomCount, etc. (schema 2+)
+- `outcome`: `succeeded` | `failed`
+- `finalArtifactPaths`: artifact identifiers (e.g., "miniApp:<bundleID>", "deployHost:<host>"), no contents (schema 2+)
 
 Produce a CONTEXT MAP - a constant-sized (<=1024 tokens) orientation artifact that helps future agents working on this recipe.
 
