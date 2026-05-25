@@ -1,0 +1,27 @@
+{
+  "id": "A7ECC4D7-296F-4344-A97A-3C8EB182CCE5",
+  "name": "Marketing Social Posts",
+  "description": "Turn a blog post or topic into platform-tailored social drafts: X thread, LinkedIn post, Bluesky thread, Reddit submission, HackerNews submission. Saves all variants as one markdown digest Lawrence reviews and dispatches.",
+  "components": [
+    "component.llm-to-doc-save"
+  ],
+  "steps": [
+    {
+      "id": "3ED5C768-FA15-464B-9272-F48EFD23C188",
+      "skillID": "builtin.llmGenerate",
+      "config": {
+        "llmMaxTokens": "3500",
+        "llmTimeout": "120",
+        "userPrompt": "You are writing platform-tailored social drafts for mChatAI's marketing machine. Each platform has different culture, format, and length. Hero audience: indie creators and prosumer Mac users. Voice: direct, helpful, no hype, no emoji unless the example shows one. ASCII only.\n\nGiven the source below, produce ALL of the following sections in this EXACT order and EXACT format. Each section is independent; do not cross-reference between them.\n\n## X / Twitter Thread\n\nFormat: numbered tweets 1/N through N/N, one per line. Each tweet <= 270 chars (leave 10 chars headroom). 5 to 8 tweets total.\nRules: First tweet is the hook (no '1/N' prefix on the hook  -  just the hook text). Subsequent tweets prefixed with '2/N', '3/N' etc. No hashtag spam (max 1 hashtag in the final tweet). Last tweet ends with one of: link to mchatai.com, link to a specific recipe, or 'reply if you build with it'. Use line breaks within a tweet for rhythm. Avoid threadbro tropes ('here are 5 things I learned', 'a thread:').\n\n## LinkedIn Post\n\nFormat: single post, 800-1500 chars total. Three to four short paragraphs separated by blank lines.\nRules: Open with one concrete observation (a result, a number, a moment), not 'I've been thinking about...'. Body explains the insight in plain English. Close with a question that invites reply OR a link to the blog post. Hashtags at the end, 3-5 max, lowercase kebab-case.\n\n## Bluesky Thread\n\nFormat: 3 to 5 posts, each <= 290 chars (leave 10 char headroom on 300). Number as 1/N..N/N.\nRules: Same hook tone as X but slightly more technical (Bluesky audience skews dev). No marketing pivot at the end  -  close with a useful pointer.\n\n## Reddit Submission (r/SideProject or r/IndieGaming or r/MacApps  -  Lawrence picks subreddit at dispatch time)\n\nFormat:\n\n  Title: <max 280 chars, leading with the result, no clickbait, no 'I built'>\n\n  Body:\n  <2-4 paragraphs of plain markdown body, 400-1000 chars. Sound like a real person sharing, not a marketer. Mention specifics: the problem, what you tried, what worked. Disclose that you built mChatAI in one sentence near the end if and only if the post is about mChatAI itself  -  Reddit hates undisclosed promotion.>\n\n## Hacker News Submission (Show HN, only for major launches or technical deep dives)\n\nFormat:\n\n  Title: <Show HN: <concrete one-line description, no buzzwords, no question marks, max 80 chars>>\n\n  First comment (post the body as the first comment per HN convention):\n  <3-5 paragraphs in plain text (HN strips markdown). Explain what it is, why it exists, how it works at a high level, and one honest limitation. Link to a specific page on mchatai.com, not the homepage. End with: 'Happy to answer questions.'>\n\nGeneral rules for all platforms:\n- ASCII only. No smart quotes, no em-dashes (use ' - ' surrounded by spaces).\n- Do NOT invent product features or stats.\n- Do NOT use phrases: 'I'm excited to announce', 'thrilled', 'unlocks', 'game-changer', 'revolutionary', 'we're proud to', 'in today's world'.\n- One link maximum per post (Twitter / Bluesky / Reddit / HN). LinkedIn 0 links unless explicitly asked.\n- Names: 'mChatAI' (capital A, capital I; no space). Product surfaces: Pipelines, Recipes, Skills, Agents, Hub, AIWizard, mChatAIShell.\n\nSOURCE:\n{{INPUT}}"
+      }
+    },
+    {
+      "id": "922C2A44-BBB0-4216-9F21-39BB5C9EDD34",
+      "skillID": "builtin.saveArtifact",
+      "config": {
+        "artifactName": "Marketing Social Drafts",
+        "artifactExtension": "md"
+      }
+    }
+  ]
+}

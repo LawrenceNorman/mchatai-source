@@ -1,0 +1,25 @@
+{
+  "_comment": "PEEK distillation policy. Read at Cloud Function invocation time via raw.githubusercontent.com (zero-redeploy per CLAUDE.md Rule #1). ASCII-only - Swift decoder rejects non-ASCII in JSON files it reads (memory gotchas_swift_decoder_non_ascii_strings.md).",
+  "version": 1,
+  "useHarnessLadder": true,
+  "ladderOrder": ["anthropic", "openai", "gemini"],
+  "modelByProvider": {
+    "anthropic": "claude-sonnet-4-6",
+    "openai": "gpt-4o-mini",
+    "gemini": "gemini-2.5-pro"
+  },
+  "tokenBudget": 1024,
+  "minTrajectoriesForDistill": 10,
+  "retentionCapPerRecipe": 50,
+  "retentionDays": 90,
+  "trajectoryUploadCapBytes": 32768,
+  "_notes": {
+    "useHarnessLadder": "When true, resolveDistillerBackend() tries ladderOrder providers and returns the first with a valid API key configured. When false, distillContextMap() rejects calls without an explicit distillerModel argument.",
+    "ladderOrder": "Cloud Functions have no local CLI access; this is the API-only fallback chain. Mirrors the spirit of HarnessCLIBackendResolver (Claude Code -> Codex -> Gemini CLI -> Anthropic API) at the API tier.",
+    "tokenBudget": "Hard cap on serialized map size. Distiller schema validator throws if exceeded. Maps to ~4096 chars at the chars/token=4 estimator used by HarnessContextAssembler.",
+    "minTrajectoriesForDistill": "distillContextMap rejects if context_map_trajectories count per recipeID is below this threshold. Prevents distillation on too-small samples.",
+    "retentionCapPerRecipe": "pruneContextMapTrajectories deletes anything beyond the 50 most-recent per recipeID. Per-recipe quota.",
+    "retentionDays": "pruneContextMapTrajectories deletes anything older than 90 days regardless of count. Global TTL.",
+    "trajectoryUploadCapBytes": "uploadContextMapTrajectory rejects payloads larger than this. 32 KB per trajectory is generous; typical session captures under 4 KB."
+  }
+}

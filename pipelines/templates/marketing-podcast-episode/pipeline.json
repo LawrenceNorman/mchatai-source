@@ -1,0 +1,50 @@
+{
+  "id": "B9E76598-F257-46F4-BB04-A9AFE29EBF5C",
+  "name": "Marketing Podcast Episode",
+  "description": "Turn a week's topics into a Made in mChatAI podcast episode: show notes (markdown) + spoken script + TTS audio file. Ready to upload to GCS and add to mchataiweb/public/podcast-content/_index.json.",
+  "components": [
+    "component.llm-to-speech-notify",
+    "component.llm-to-doc-save"
+  ],
+  "steps": [
+    {
+      "id": "7FFE9A23-8DDF-4E7B-B5FD-A475FEE039F3",
+      "skillID": "builtin.llmGenerate",
+      "config": {
+        "llmMaxTokens": "2500",
+        "llmTimeout": "90",
+        "userPrompt": "You are writing show notes for the Made in mChatAI podcast (weekly, 15-25 min, hosted by Lawrence Norman). Audience: indie creators and prosumer Mac users who build games, tools, podcasts, and automations using AI. Voice: warm, direct, helpful. ASCII only.\n\nGiven the topic or week's notes below, produce structured show notes in markdown.\n\nRequired sections (use these exact H2 headings):\n\n## Cold open\n2-3 sentences. The hook that earns the first 30 seconds.\n\n## This week's build\n5-7 minutes worth. What got made, the prompt used, the surprising moment, the link to play it.\n\n## Recipe of the week\n5-7 minutes. One agentic recipe explained: setup, what it does, what it unlocks. Name the integrations honestly (no marketing names invented).\n\n## Community spotlight\n2-3 minutes. One creator's published mini-app from the Hub, plus their prompt and what's clever about it.\n\n## What's shipping next\n2-3 minutes. Concrete: name the feature, give an honest ETA range, or say 'no ETA yet'. No promises.\n\n## Links mentioned\nBullet list of every URL referenced.\n\nWeek's topic / raw notes:\n{{INPUT}}\n\nASCII only  -  no smart quotes, no em-dashes, no curly apostrophes. Output the show notes only, no preamble."
+      }
+    },
+    {
+      "id": "0D201608-5962-4CAA-A1C6-96DE8E54BE5D",
+      "skillID": "builtin.saveArtifact",
+      "config": {
+        "artifactName": "Podcast Show Notes",
+        "artifactExtension": "md"
+      }
+    },
+    {
+      "id": "05B373C7-B35C-48F4-839B-8C3291E3944D",
+      "skillID": "builtin.llmGenerate",
+      "config": {
+        "llmMaxTokens": "3000",
+        "llmTimeout": "120",
+        "userPrompt": "Convert these show notes into a natural spoken script for a single-host podcast. ASCII only.\n\nRules:\n- This will be read by text-to-speech, so write only what should be spoken.\n- No markdown, no headings, no bullet points, no bracketed stage directions.\n- Use natural transitions between segments ('Up next', 'A quick note before we move on', 'And one more thing this week').\n- Spell out numbers under ten. Spell out abbreviations on first mention.\n- For URLs, say 'visit m-chat-a-i dot com slash recipes', not the raw URL.\n- Use contractions naturally (it's, you're, that's).\n- Open with: 'Welcome back to Made in mChatAI. I'm Lawrence Norman.'\n- Close with: 'Thanks for listening. Until next week.'\n- Length target: 2000-3000 spoken words (12-18 minutes at normal pace).\n- Keep the energy steady; this is a conversational tech show, not a hype reel.\n\nSHOW NOTES:\n{{INPUT}}"
+      }
+    },
+    {
+      "id": "FA59BDB3-C8B6-42E5-9C18-43ABA5BF07E9",
+      "skillID": "builtin.ttsGenerate",
+      "config": {}
+    },
+    {
+      "id": "FD26DF9E-EE38-4633-9147-B3138772B7CB",
+      "skillID": "builtin.saveArtifact",
+      "config": {
+        "audioArtifactName": "Podcast Episode Audio",
+        "saveText": "false"
+      }
+    }
+  ]
+}
