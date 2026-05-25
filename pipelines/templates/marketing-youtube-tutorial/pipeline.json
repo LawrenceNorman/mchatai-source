@@ -1,0 +1,50 @@
+{
+  "id": "6C2DAC79-36B9-458C-AFBB-3E3385A1B6CF",
+  "name": "Marketing YouTube Tutorial",
+  "description": "Plan a YouTube tutorial: script + storyboard + thumbnail concept + TTS narration audio. Lawrence does the actual screen recording in the morning hour; this pipeline does everything else.",
+  "components": [
+    "component.llm-to-speech-notify",
+    "component.llm-to-doc-save"
+  ],
+  "steps": [
+    {
+      "id": "75FA67B1-F84F-40F5-B63C-868A5E01F402",
+      "skillID": "builtin.llmGenerate",
+      "config": {
+        "llmMaxTokens": "4500",
+        "llmTimeout": "180",
+        "userPrompt": "You are planning a tutorial video for the mChatAI YouTube channel. Target playlist: 5-Minute Builds. Audience: indie creators and prosumer Mac users who want to build games, tools, podcasts, and automations using AI. Voice: warm, direct, helpful, no hype. ASCII only.\n\nTotal video length: 4 to 7 minutes. Format: 60s setup, 3 to 4 minutes build, 60s polish + call to action.\n\nGiven the topic below, produce ONE markdown document with these EXACT sections (use these H2 headings):\n\n## Title\nOne line. Max 60 chars. Outcome-led. No clickbait. No question marks. Example: 'Build a Wordle clone on your Mac in 90 seconds'.\n\n## Hook (first 15 seconds, on-camera)\nWhat the viewer sees and hears in the first 15 seconds. Two sentences max. Establish the outcome (what they will have built by the end) and the time investment.\n\n## Storyboard\nNumbered scene list. For each scene give: timestamp range, what is on screen (specific UI surface in mChatAI), what the host says (one sentence), and any callouts to overlay in post. 8 to 14 scenes. Use this exact row format:\n\n  Scene 1 (0:00 - 0:15) | ON SCREEN: <thing> | SAYS: <one sentence> | OVERLAY: <text or none>\n\n## Full Narration Script\nThe complete spoken transcript, paragraph form. This is what the host says, no markdown, no headings, no bracketed directions. Open with the hook. End with a clear call to action: a specific URL or recipe to try. 600 to 1000 words.\n\n## Thumbnail Concept\nTwo to three sentence visual description for a 1280x720 thumbnail. Specify: primary subject, color palette (3 colors), text overlay (max 5 words, no punctuation), composition. Optimised for the YouTube grid (mobile + dark mode preview).\n\n## Description (YouTube field)\n3 short paragraphs. First paragraph: what the viewer will build, who it is for. Second: the prompt or recipe used inside mChatAI. Third: where to go next. Max 1200 chars total.\n\n## Tags (YouTube field)\nComma-separated list. 10 to 15 lowercase tags. Mix product (mchatai, macos, ai-tools) with topic (e.g. wordle, web-game, javascript).\n\n## Chapters (YouTube field)\nTimestamps + chapter titles, one per line, in this exact format (YouTube auto-detects):\n\n  0:00 Hook\n  0:15 Setup\n  1:00 Build the thing\n  ...\n\nGeneral rules:\n- ASCII only. No smart quotes, no em-dashes (use ' - ' surrounded by spaces). No curly apostrophes.\n- Do NOT invent product features or stats.\n- Names: mChatAI (capital A, capital I; no space). Product surfaces: AIWizard, Pipelines, Recipes, Skills, Agents, Hub, mChatAIShell.\n- Skip phrases: 'in today's fast-paced world', 'unlock', 'game-changer', 'thrilled to share'.\n\nTOPIC:\n{{INPUT}}"
+      }
+    },
+    {
+      "id": "ECABA088-F246-4B94-90C5-9AF9D83B3C95",
+      "skillID": "builtin.saveArtifact",
+      "config": {
+        "artifactName": "YouTube Tutorial Plan",
+        "artifactExtension": "md"
+      }
+    },
+    {
+      "id": "CC810C24-37D2-4CBB-8A83-03DFCB5368BC",
+      "skillID": "builtin.llmGenerate",
+      "config": {
+        "llmMaxTokens": "2500",
+        "llmTimeout": "120",
+        "userPrompt": "Extract ONLY the Full Narration Script section from the document below, and convert it into a spoken transcript optimised for text-to-speech. ASCII only.\n\nRules:\n- Output ONLY the spoken text. No markdown, no headings, no bullet points, no bracketed directions, no scene numbers.\n- Use natural conversational transitions ('next', 'here is the move', 'one thing to notice', 'and that is it').\n- Spell out numbers under ten. Spell out abbreviations on first mention.\n- For URLs and product names, say 'm chat a i dot com slash recipes', not the raw URL. Say 'a i wizard', not 'AIWizard'.\n- Use contractions naturally (it's, you're, that's, here's).\n- Keep the length close to the original (600 to 1000 spoken words).\n\nDOCUMENT:\n{{INPUT}}"
+      }
+    },
+    {
+      "id": "672527F6-BF39-491A-B840-E592A05D50B3",
+      "skillID": "builtin.ttsGenerate",
+      "config": {}
+    },
+    {
+      "id": "00B06C5B-C3C4-4060-8CF2-5F458CE2E98E",
+      "skillID": "builtin.saveArtifact",
+      "config": {
+        "audioArtifactName": "YouTube Tutorial Voiceover",
+        "saveText": "false"
+      }
+    }
+  ]
+}
