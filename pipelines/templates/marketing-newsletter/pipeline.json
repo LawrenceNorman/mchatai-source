@@ -1,0 +1,27 @@
+{
+  "id": "64F1498E-B352-4708-A361-04A4CAD756B0",
+  "name": "Marketing Newsletter",
+  "description": "Turn a blog post (or weekly digest) into a send-ready HTML newsletter with two A/B subject lines and a preview-text line. Output is an HTML file Lawrence reviews and dispatches via the SendGrid Email skill.",
+  "components": [
+    "component.llm-to-doc-save"
+  ],
+  "steps": [
+    {
+      "id": "936A1FF7-B2D9-4AA6-B987-922A2D2A8C99",
+      "skillID": "builtin.llmGenerate",
+      "config": {
+        "llmMaxTokens": "4000",
+        "llmTimeout": "120",
+        "userPrompt": "You are writing a newsletter for The Weekly Build, the Sunday newsletter from mChatAI. Audience: indie creators and prosumer Mac users who subscribed for one short, useful email per week. Voice: warm, direct, no marketing fluff, no hype, no preamble. ASCII only.\n\nGiven the source below, produce ONE complete deliverable in this EXACT format and nothing else:\n\n---\nSUBJECT_A: <subject line variant A, max 60 chars, no exclamation marks, no all-caps, no 'You won't believe', concrete benefit>\nSUBJECT_B: <subject line variant B, same constraints, different angle (curiosity vs benefit, question vs statement)>\nPREVIEW: <preview text shown in inbox under the subject, max 90 chars, complements but does not repeat the subject>\nFROM_NAME: mChatAI\nFROM_EMAIL: hello@mchatai.com\nREPLY_TO: hello@mchatai.com\n---\n<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"utf-8\">\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n  <title>(use SUBJECT_A here)</title>\n</head>\n<body style=\"margin:0; padding:0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background:#f6f7f9; color:#111827;\">\n  <table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" width=\"100%\" style=\"background:#f6f7f9; padding:24px 0;\">\n    <tr><td align=\"center\">\n      <table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" width=\"600\" style=\"max-width:600px; background:#ffffff; border-radius:12px; padding:32px;\">\n        <tr><td>\n          <p style=\"margin:0 0 8px; font-size:0.85rem; color:#6b7280;\">The Weekly Build &middot; <span style=\"color:#9ca3af;\">mChatAI</span></p>\n          <h1 style=\"margin:0 0 16px; font-size:1.6rem; line-height:1.25; color:#111827;\">(opening line, the hook)</h1>\n          (write 3-5 short paragraphs of warm, conversational copy. Each paragraph in its own &lt;p style=\"margin:0 0 14px; color:#374151; line-height:1.65;\"&gt;...&lt;/p&gt; tag. Each paragraph should stand alone  -  readers scan. Bold the most important phrase in each paragraph with &lt;strong&gt;.)\n          <p style=\"margin:28px 0 12px; color:#374151; line-height:1.65;\">If this is useful, the rest is on the blog &mdash; <a href=\"https://mchatai.com/blog\" style=\"color:#3b82f6;\">read the full post</a>.</p>\n          <hr style=\"border:none; border-top:1px solid #e5e7eb; margin:32px 0;\">\n          <p style=\"margin:0; color:#9ca3af; font-size:0.78rem;\">You subscribed at mchatai.com. <a href=\"%%unsubscribe_url%%\" style=\"color:#9ca3af;\">Unsubscribe</a>.</p>\n        </td></tr>\n      </table>\n    </td></tr>\n  </table>\n</body>\n</html>\n\nWriting rules:\n- ASCII only in the subject lines, preview, and body. No smart quotes, no em-dashes (use ' - ' surrounded by spaces if needed).\n- Body length: 200-400 words. Readers should finish in under 90 seconds.\n- Subject lines must NOT include the words 'free', 'amazing', 'unlock', 'discover', 'must-read', 'game-changer', 'revolutionary'.\n- Include exactly one outbound link in the body (the 'read the full post' CTA above) plus the unsubscribe link. Do NOT inject extra links unless the source explicitly references them.\n- Do NOT write any preamble before the front-matter block. Do NOT add any text after the closing &lt;/html&gt;.\n\nSOURCE:\n{{INPUT}}"
+      }
+    },
+    {
+      "id": "54373010-FF07-4695-945F-97619A341410",
+      "skillID": "builtin.saveArtifact",
+      "config": {
+        "artifactName": "Marketing Newsletter",
+        "artifactExtension": "html"
+      }
+    }
+  ]
+}

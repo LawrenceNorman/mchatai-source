@@ -1,0 +1,45 @@
+{
+  "id": "7E9CB23E-DE4E-42AC-A3BB-A5F2F145B70C",
+  "name": "Marketing Blog Post",
+  "description": "Turn a topic (or a research brief) into a publish-ready blog post with YAML frontmatter for mchatai.com/blog. Three LLM passes: outline, draft, polish + frontmatter.",
+  "components": [
+    "component.llm-to-doc-save"
+  ],
+  "steps": [
+    {
+      "id": "94715803-A661-447C-998A-93E0F0ED6699",
+      "skillID": "builtin.llmGenerate",
+      "config": {
+        "llmMaxTokens": "1400",
+        "llmTimeout": "60",
+        "userPrompt": "You are writing for the mChatAI blog. Audience: indie creators and prosumer Mac users who want to build games, tools, podcasts, and automations using AI. Voice: direct, helpful, no hype, no jargon. Skip phrases like 'in today's fast-paced world' or 'unlock the power of'.\n\nGiven the topic below, produce a detailed section-by-section outline.\n\nRequirements:\n- 4 to 6 main sections with clear H2 headings.\n- 2 to 3 bullet sub-points per section noting what to cover.\n- Open with a hook section that earns the reader's attention in two sentences.\n- Close with a section that gives the reader a concrete next action.\n- Return the outline only  -  no prose yet.\n\nTOPIC:\n{{INPUT}}"
+      }
+    },
+    {
+      "id": "BD9ADE3A-3C41-46DA-8B62-EC68B4D3C98C",
+      "skillID": "builtin.llmGenerate",
+      "config": {
+        "llmMaxTokens": "4000",
+        "llmTimeout": "180",
+        "userPrompt": "Expand this outline into a full blog post for the mChatAI blog.\n\nRequirements:\n- Write 2 to 4 paragraphs of engaging prose per section.\n- Use the H2 headings from the outline. Use H3 sparingly.\n- Tone: direct, helpful, conversational, ASCII only (no smart quotes, no em-dashes  -  use a regular hyphen).\n- Open with a compelling 2-sentence hook, no preamble.\n- Use markdown formatting.\n- If you reference a specific mChatAI feature, name it plainly (Pipelines, AIWizard, Hub, Recipes, Skills, Agents, mChatAIShell).\n- Do NOT invent stats, screenshots, or quotes.\n- Do NOT include marketing fluff. If a sentence does not earn its place, cut it.\n- End with a concrete call to action: which page on mchatai.com to visit next, or which recipe to try.\n\nOUTLINE:\n{{INPUT}}"
+      }
+    },
+    {
+      "id": "6D59F0C1-2A4A-4217-969F-B58B90E337A2",
+      "skillID": "builtin.llmGenerate",
+      "config": {
+        "llmMaxTokens": "4500",
+        "llmTimeout": "120",
+        "userPrompt": "Polish this blog post and prepend a YAML frontmatter block so it can be published to mchatai.com/blog. ASCII only  -  no smart quotes, no em-dashes, no curly apostrophes.\n\nReturn EXACTLY this format and nothing else:\n\n---\nslug: <kebab-case, max 60 chars, no stop words, derived from the title>\ntitle: <title, max 70 chars, no clickbait>\nsummary: <one sentence, 120-200 chars, mirrors the post's hook>\nauthor: mChatAI\npublishedAt: <today's date as YYYY-MM-DD; you can guess from your turn timestamp>\ntags: [<3-5 lowercase kebab-case tags relevant to this post; pick from: creator, recipe, automation, podcast, mac, prompt-engineering, game, mini-app, integration, behind-the-magic, ai-inbox, ai-calendar>]\nseries: <one of: Built in mChatAI, Recipe of the Week, Behind the Magic, SaaS Replacements, Founder Notes>\nreadingMinutes: <integer estimate>\n---\n\n<the polished post body, in markdown>\n\nPolish rules:\n- Fix awkward phrasing and trim filler.\n- Strengthen the hook if it's weak.\n- Convert any em-dashes to hyphens, smart quotes to straight quotes.\n- Ensure every section's first sentence stands alone as a hook.\n- If the post mentions an API key or paid service, add a parenthetical note about the free-tier path if one exists.\n\nPOST DRAFT:\n{{INPUT}}"
+      }
+    },
+    {
+      "id": "2DBF39DA-0E89-43E8-95AE-80AD7A543C65",
+      "skillID": "builtin.saveArtifact",
+      "config": {
+        "artifactName": "Marketing Blog Post",
+        "artifactExtension": "md"
+      }
+    }
+  ]
+}
