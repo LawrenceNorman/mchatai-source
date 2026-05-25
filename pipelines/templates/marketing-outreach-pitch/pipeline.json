@@ -1,0 +1,27 @@
+{
+  "id": "5D83F938-884C-4B24-81DA-196A6D48A02E",
+  "name": "Marketing Outreach Pitch",
+  "description": "Draft a personalized PR / partnership / podcast-guest pitch from a target outlet description + a hook. Produces outlet-research notes + 3 pitch variants (cold, warm-intro, follow-up) + cadence plan + VERIFY-tagged contact placeholders that Lawrence must confirm before sending. NEVER auto-sends.",
+  "components": [
+    "component.llm-to-doc-save"
+  ],
+  "steps": [
+    {
+      "id": "BC68D014-69C3-403D-8E64-ADE4EBDE288E",
+      "skillID": "builtin.llmGenerate",
+      "config": {
+        "llmMaxTokens": "4500",
+        "llmTimeout": "180",
+        "userPrompt": "You are drafting an outreach pitch from mChatAI (a native macOS app that turns prompts into playable games, automations, podcasts, and tools). Goal: get a substantive response - a podcast invite, a write-up, a partnership conversation, a guest post slot. ASCII only.\n\nThe pitch must NOT sound AI-written. It must NOT exaggerate. It must NOT invent journalist names, email addresses, or past coverage. When you don't know something verifiable, output a `VERIFY:` placeholder so the human reviewer fills it in before sending.\n\nINPUT FORMAT (in the source below, expect any of):\n- Target outlet name + URL (e.g. 'MacStories | https://www.macstories.net').\n- A podcast name + host + recent episode topic.\n- An individual journalist + their beat.\n- A free-form description of who you want to reach.\n\nPlus a hook: the specific reason to reach out NOW (a launch, a new feature, a community milestone, a relevant data point).\n\nReturn EXACTLY this format and nothing else:\n\n---\n\n## Target\n- Name: <outlet / show / person>\n- URL: <homepage or about page>\n- What they cover (in 2 sentences): <your inference from the input>\n- Why this target is a fit (in 1 sentence): <the angle for THIS outlet>\n- Best contact to research: <VERIFY: editor/host/journalist name + email format like firstname@outlet.com if the input suggests one; otherwise VERIFY: research at /about page>\n- Submission method to verify: <VERIFY: tip line URL / pitch form / DM on X / email>\n\n## The hook (1 sentence)\n<The single reason to reach out this week. Specific. No fluff.>\n\n## Pitch A - Cold email (max 150 words)\n\n  Subject: <max 60 chars, no exclamation marks, no all-caps, references something the outlet recently covered when known>\n\n  Body:\n  <2-4 short paragraphs. Open with a one-line observation about something they published or do (use VERIFY: if specific). State the hook in one sentence. Offer the angle in one sentence. Close with one clear ask. Sign as 'Lawrence Norman, mChatAI'.>\n\n## Pitch B - Warm intro angle (max 150 words)\n\n  Subject: <same constraints; this variant assumes a mutual contact or shared community>\n\n  Body:\n  <Same structure as A, but opens with the shared connection. If no mutual is known, output `VERIFY: name a mutual contact or remove this variant`.>\n\n## Pitch C - Follow-up (for 7-10 days after no reply)\n\n  Subject: Re: <Pitch A subject>\n\n  Body:\n  <50-90 words. Acknowledge they're busy. Add ONE new piece of value (a number, a screenshot link, a new development). Restate the ask in one sentence.>\n\n## Suggested cadence\n- Day 0: send Pitch A or B (pick at review).\n- Day 8: send Pitch C if no reply.\n- Day 15: drop politely. Move on; do not send a third.\n\n## Personalization hooks (use these in the pitches above)\n<Bullet list of 3-5 specific, verifiable touchpoints from the input - 'they covered $TOPIC on $DATE' / 'host asked about $X on episode #N' / 'their pricing page mentions $FEATURE'. If a hook can't be verified from the input, prefix with VERIFY:.>\n\n## Pre-send checklist\n- [ ] All `VERIFY:` markers replaced with real, sourced information.\n- [ ] Subject line is not all-caps and contains no exclamation marks.\n- [ ] Pitch references at least one specific thing the outlet did.\n- [ ] No mention of revenue, traction, or claims you cannot back up with a public link.\n- [ ] Reply-to address is hello@mchatai.com.\n- [ ] If pitching a podcast, attached two-line bio + headshot URL.\n\nWriting rules:\n- ASCII only. No smart quotes, no em-dashes (use ' - ' surrounded by spaces).\n- Do NOT fabricate journalist names, email addresses, prior coverage, or pricing tiers. Use VERIFY: instead.\n- Do NOT use the phrases: 'thrilled', 'I'm excited to', 'game-changer', 'revolutionary', 'unlock', 'cutting-edge', 'industry-leading', 'leverage', 'circle back', 'touch base', 'in today's world'.\n- Be specific about what mChatAI is. Avoid 'AI-powered platform' style mush.\n- Keep the bar high: a pitch reviewer should be able to send Pitch A with 5 minutes of VERIFY: work and zero rewriting.\n\nSOURCE (target + hook):\n{{INPUT}}"
+      }
+    },
+    {
+      "id": "76F5311F-6005-47AB-8557-54457AC0C425",
+      "skillID": "builtin.saveArtifact",
+      "config": {
+        "artifactName": "Marketing Outreach Pitch",
+        "artifactExtension": "md"
+      }
+    }
+  ]
+}
