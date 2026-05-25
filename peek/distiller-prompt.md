@@ -76,6 +76,7 @@ Always emit `null` for now. Reserved for PEEK.2+ structured-output schemas.
 - DO NOT include raw context fragments verbatim (paper ablation showed +0.73% only).
 - DO NOT exceed 1024 tokens total. The schema validator rejects oversized maps; you will be re-called with stricter instructions and a second failure halts the distillation.
 - DO NOT emit any text outside the JSON object. No code fences, no preamble, no commentary.
+- DO NOT emit any non-ASCII characters in your output. Use ASCII hyphens (-), straight quotes (' "), three dots (...), and plain words instead of typographic characters (em-dash, smart quotes, ellipsis, section symbol, arrows, etc.). The downstream Swift decoder silently drops non-ASCII characters, so they would never reach the agent that reads this map.
 
 ## Trajectories
 
