@@ -1,0 +1,27 @@
+{
+  "id": "88045B8E-B469-48A6-96DE-9A339B1F593D",
+  "name": "Marketing Short-Form Clips",
+  "description": "Plan 3 to 5 short-form vertical clips (30-60s each) for TikTok / YouTube Shorts / Instagram Reels from a long-form video transcript or a single topic. Output: a per-clip storyboard with hook text, B-roll callouts, on-screen captions, and platform-tailored upload copy.",
+  "components": [
+    "component.llm-to-doc-save"
+  ],
+  "steps": [
+    {
+      "id": "789AE597-7A0D-47B4-841E-4DFA9717694F",
+      "skillID": "builtin.llmGenerate",
+      "config": {
+        "llmMaxTokens": "3500",
+        "llmTimeout": "120",
+        "userPrompt": "You are planning short-form vertical clips for mChatAI's marketing machine. Each clip targets TikTok, YouTube Shorts, and Instagram Reels (they share the same cut, with platform-specific upload copy). Hero audience: indie creators and prosumer Mac users. Voice: punchy, concrete, no hype, no fake urgency. ASCII only.\n\nClip rules:\n- Length: 30 to 60 seconds each.\n- First 1 to 3 seconds is the hook (visual + text). If the viewer is not held by second 3, they swipe.\n- One idea per clip. Do NOT bundle.\n- Vertical 9:16 aspect ratio.\n- Captions are required (most viewers watch muted).\n- Avoid: 'wait for it', 'POV:', 'this is wild', 'you won't believe', 'must-watch', generic countdown hooks.\n\nGiven the source below (either a long-form transcript with timestamps OR a topic), produce 3 to 5 clip plans. For each clip, use this EXACT format (one block per clip):\n\n## Clip <N> - <punchy one-line title, max 60 chars>\n\nDuration: <integer seconds, 30-60>\nSource timestamp: <start - end if source is a transcript with times; 'n/a' if topic-only>\n\nHook (0-3s):\n  Visual: <what is on screen in the first 3 seconds, one sentence>\n  On-screen text: <max 8 words, all caps, no punctuation>\n  Voiceover/audio: <one sentence said in the first 3 seconds, or 'silent'>\n\nBeats (rest of clip):\n  - <0:03 - 0:XX> <what happens, one sentence> | Caption: <max 12 words>\n  - <next beat>\n  - <next beat>\n  - <final beat with call to action>\n\nEnd card (last 2 seconds):\n  Visual: <e.g. 'mchatai.com text-only on solid background'>\n  Text: <max 6 words, includes the URL or recipe slug>\n\nUpload copy:\n  TikTok caption: <up to 150 chars, 2-3 lowercase hashtags at end>\n  YouTube Shorts title: <up to 90 chars, ends with #Shorts>\n  Instagram Reels caption: <up to 200 chars, 3-5 hashtags>\n\nAfter all clips, add:\n\n## Shot list (assets needed)\nBullet list of every screen recording, B-roll moment, image, or stock clip required to assemble the clips. Group by 'screen recordings', 'B-roll', 'stock'.\n\nGeneral rules:\n- ASCII only. No smart quotes, no em-dashes (use ' - ' surrounded by spaces).\n- Do NOT invent product features or stats.\n- Names: mChatAI (capital A, capital I, no space). Product surfaces: AIWizard, Pipelines, Recipes, Skills, Agents, Hub.\n- Skip phrases: 'unlock', 'game-changer', 'level up your', 'thrilled to share'.\n\nSOURCE (transcript or topic):\n{{INPUT}}"
+      }
+    },
+    {
+      "id": "060A0B8C-D8D7-4E7F-AE3D-5203D28A94AF",
+      "skillID": "builtin.saveArtifact",
+      "config": {
+        "artifactName": "Short-Form Clip Plan",
+        "artifactExtension": "md"
+      }
+    }
+  ]
+}
