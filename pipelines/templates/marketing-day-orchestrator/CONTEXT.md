@@ -39,15 +39,36 @@ tags: [marketing, orchestrator, daily, composition, marketing-machine]
 
 ## What This Does
 
-Three sequential composition steps via `builtin.runPipeline`:
+Two sequential composition steps via `builtin.runPipeline`:
 
 1. **Marketing Blog Post** runs first. Its output (markdown with YAML frontmatter) becomes the day's source of truth.
 2. **Marketing Social Posts** runs with `preserveParentText: true` so it derives from the blog post (not from step 1's child output stack). Output: a per-platform drafts digest.
-3. **Marketing Newsletter** runs with `preserveParentText: true` for the same reason. Output: a send-ready HTML email with A/B subject lines.
 
-All three child pipelines save their outputs as separate artifacts. Lawrence reviews and dispatches each in his morning hour.
+Both child pipelines save their outputs as separate artifacts. Lawrence reviews and dispatches each in his morning hour.
 
-`continueOnFailure: true` on steps 2 and 3 means a single channel failure (e.g. LLM provider blip on social) doesn't abort the whole day — newsletter still gets a shot.
+`continueOnFailure: true` on step 2 means a single-channel social-drafts failure (e.g. LLM provider blip) doesn't lose the blog post.
+
+## Newsletter step is intentionally OFF (re-add when list exists)
+
+The original orchestrator had a third **Marketing Newsletter** step. It was removed 2026-05-25 because the EmailCapture widget had no signups yet — generating newsletter drafts that go nowhere just adds morning-hour clutter.
+
+**Re-add Newsletter when**: the `newsletter_signups` Firestore collection reaches ~25 entries. The Marketing Analytics Rollup briefing surfaces this count weekly.
+
+**How to re-add** (5 minutes):
+
+```json
+{
+  "id": "33E278F7-A0F3-4B4D-B32F-F1B7E6D2011C",
+  "skillID": "builtin.runPipeline",
+  "config": {
+    "pipelineName": "Marketing Newsletter",
+    "preserveParentText": "true",
+    "continueOnFailure": "true"
+  }
+}
+```
+
+Drop that block after the Social Posts step in `pipeline.json`, push to mchatai-source, run `refreshMchataisourceCache`.
 
 ## How To Use
 
