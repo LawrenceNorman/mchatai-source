@@ -1,7 +1,7 @@
 {
-  "version": 9,
+  "version": 10,
   "surface": "aiwizard",
-  "description": "Default context recipe for AIWizard macOS-app generation. Loads in priority order: framework scaffold > macOS app builder capability pack > active memory > universal wisdom > framework-specific wisdom > native macOS Lego components > component-reuse-hints > frontend-skill guidance > feature manifest > user goal > recent history. Each layer skips cleanly when its prerequisite isn't available. v2 added active-memory layer (Phase MA.3). v3 adds excludeTitlePatterns to drop CCAA / AgentRuntime / ScheduledJob log spam from retrieval results. v4 (2026-04-20): Phase DF — added frontend-skill-guidance layer at priority 82. v5 (Phase CAP): added macos-app-builder capability pack at priority 98. v6 (2026-05-02): added macos-components layer at priority 84 for source-copy SwiftUI Lego components. v7 (2026-05-02): macos-components now renders contracts/assembly only; the Harness attaches canonical source-copy files after a valid marker. v8 (2026-05-04): Phase QS.3 — added component-reuse-hints layer at priority 83 so the LLM sees per-component HIGH/MEDIUM/LOW reuse verdicts when picking Legos. v9 (2026-05-17): skip frontend-skill-guidance for CLI backends on native macOS app runs; keep macOS safety wisdom loaded, but avoid dragging the web/landing-page taste pack into every SwiftUI generation.",
+  "description": "Default context recipe for AIWizard macOS-app generation. Loads in priority order: framework scaffold > macOS app builder capability pack > active memory > universal wisdom > framework-specific wisdom (pinned to macos-app pack) > native macOS Lego components > component-reuse-hints > feature manifest > user goal > recent history. Each layer skips cleanly when its prerequisite isn't available. v2 added active-memory layer (Phase MA.3). v3 adds excludeTitlePatterns to drop CCAA / AgentRuntime / ScheduledJob log spam from retrieval results. v4 (2026-04-20): Phase DF added frontend-skill-guidance layer at priority 82. v5 (Phase CAP): added macos-app-builder capability pack at priority 98. v6 (2026-05-02): added macos-components layer at priority 84 for source-copy SwiftUI Lego components. v7 (2026-05-02): macos-components now renders contracts/assembly only; the Harness attaches canonical source-copy files after a valid marker. v8 (2026-05-04): Phase QS.3 added component-reuse-hints layer at priority 83 so the LLM sees per-component HIGH/MEDIUM/LOW reuse verdicts when picking Legos. v9 (2026-05-17): skip frontend-skill-guidance for CLI backends on native macOS app runs. v10 (2026-05-26): pin wisdom-framework to packID=macos-app (was relying on HarnessGoal.category resolver which is nil on this path, silently falling back to universal); remove frontend-skill-guidance entirely (web/landing taste pack has no business shaping SwiftUI generation, and the v9 skipForBackends guard was not being honored at assembly time). Recovers ~14KB context per call and unlocks the real 172KB macos-app wisdom pack.",
   "layers": [
     {
       "id": "framework-scaffold",
@@ -47,9 +47,12 @@
     },
     {
       "id": "wisdom-framework",
-      "loader": "wisdom-framework",
+      "loader": "wisdom-pack",
       "priority": 85,
-      "maxTokens": 3000
+      "maxTokens": 3000,
+      "options": {
+        "packID": "macos-app"
+      }
     },
     {
       "id": "macos-components",
@@ -69,16 +72,6 @@
       "maxTokens": 1500,
       "options": {
         "maxHintTokens": 1500
-      }
-    },
-    {
-      "id": "frontend-skill-guidance",
-      "loader": "wisdom-pack",
-      "priority": 82,
-      "maxTokens": 3500,
-      "skipForBackends": ["claude", "codex", "gemini"],
-      "options": {
-        "packID": "frontend-skill"
       }
     },
     {
