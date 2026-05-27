@@ -1,0 +1,71 @@
+{
+  "schemaVersion": 1,
+  "flowName": "AIWebDemoFlow",
+  "description": "AI Web summarizes a live webpage. User opens AI Web, navigates to a Wikipedia article, taps the wand button, and an AI-generated summary appears. Works in simulator with network access + mChatAI Cloud configured.",
+  "scenes": [
+    {
+      "name": "Open on home",
+      "narration": "Reading the web shouldn't mean reading everything.",
+      "requires": ["chat-card", "web-ai-card"],
+      "fallbackNarration": null,
+      "actions": [
+        {"type": "beat", "seconds": 2.0}
+      ]
+    },
+    {
+      "name": "Tap Web AI",
+      "narration": "Web AI turns any page into a quick read.",
+      "requires": ["Search or enter"],
+      "fallbackNarration": "Web AI is a browser with a summary button built in.",
+      "actions": [
+        {"type": "tapCard", "id": "web-ai-card"},
+        {"type": "beat", "seconds": 3.0}
+      ]
+    },
+    {
+      "name": "Type a URL",
+      "narration": "Open any webpage - here's the Wikipedia article on artificial intelligence.",
+      "requires": ["wikipedia"],
+      "fallbackNarration": "Pull up any webpage that interests you.",
+      "actions": [
+        {"type": "tapTextInput", "placeholder": "Search or enter"},
+        {"type": "beat", "seconds": 0.5},
+        {"type": "type", "text": "en.wikipedia.org/wiki/Artificial_intelligence"},
+        {"type": "beat", "seconds": 1.0},
+        {"type": "typeReturn"},
+        {"type": "beat", "seconds": 5.0}
+      ]
+    },
+    {
+      "name": "Tap the wand",
+      "narration": "Tap the wand to let AI distill it for you.",
+      "requires": ["Summarizing"],
+      "fallbackNarration": "Tap the wand and AI condenses the page.",
+      "actions": [
+        {"type": "tapButton", "match": "wand.and.stars"},
+        {"type": "beat", "seconds": 3.0}
+      ]
+    },
+    {
+      "name": "Show the summary",
+      "narration": "A few seconds later you have the key points without the slog.",
+      "requires": ["Summary"],
+      "fallbackNarration": "AI extracts the key points without the slog.",
+      "actions": [
+        {"type": "beat", "seconds": 8.0}
+      ]
+    },
+    {
+      "name": "Back to home",
+      "narration": "Get mChatAI on the App Store today.",
+      "requires": ["chat-card", "web-ai-card"],
+      "fallbackNarration": null,
+      "actions": [
+        {"type": "navigateBack"},
+        {"type": "beat", "seconds": 0.8},
+        {"type": "navigateBack"},
+        {"type": "beat", "seconds": 2.0}
+      ]
+    }
+  ]
+}

@@ -1,0 +1,87 @@
+{
+  "schemaVersion": 1,
+  "flowName": "ChatDemoFlow",
+  "description": "Focused 45-60s clip of the Chat surface: open Chat, ask for a Walrus joke, show the model selector. Returns to home so it can be composed into a reel.",
+  "scenes": [
+    {
+      "name": "Open on home",
+      "narration": "mChatAI brings every AI model to your iPhone.",
+      "requires": ["chat-card", "ai-todo-card"],
+      "fallbackNarration": null,
+      "actions": [
+        {"type": "beat", "seconds": 2.0}
+      ]
+    },
+    {
+      "name": "Tap Chat",
+      "narration": "Tap Chat to start a conversation.",
+      "requires": ["Apple Foundation LLM", "Enter message"],
+      "fallbackNarration": "Tap Chat to open the chat surface.",
+      "actions": [
+        {"type": "tapCard", "id": "chat-card"},
+        {"type": "beat", "seconds": 3.0}
+      ]
+    },
+    {
+      "name": "Type a question",
+      "narration": "Type your question right into the chat.",
+      "requires": ["Tell me a joke about a Walrus"],
+      "fallbackNarration": "Type your question - the keyboard comes up just like any iOS app.",
+      "actions": [
+        {"type": "tapTextInput", "placeholder": "Enter message"},
+        {"type": "beat", "seconds": 0.6},
+        {"type": "type", "text": "Tell me a joke about a Walrus"},
+        {"type": "beat", "seconds": 2.0}
+      ]
+    },
+    {
+      "name": "Send the message",
+      "narration": "Send it - and your message lands in the conversation.",
+      "requires": ["Tell me a joke about a Walrus"],
+      "fallbackNarration": "Send it from the keyboard or the arrow button.",
+      "actions": [
+        {"type": "tapButton", "match": "arrow.up"},
+        {"type": "beat", "seconds": 3.0}
+      ]
+    },
+    {
+      "name": "Tap the model pill",
+      "narration": "Want to switch models? Tap the pill at the top of the chat.",
+      "requires": ["Select a Chat Model"],
+      "fallbackNarration": "Tap the pill at the top of the chat.",
+      "actions": [
+        {"type": "tapButton", "match": "Chat model"},
+        {"type": "beat", "seconds": 2.5}
+      ]
+    },
+    {
+      "name": "Show the picker",
+      "narration": "Apple Foundation runs on-device for free. mChatAI Cloud unlocks more models with no API keys required.",
+      "requires": ["Apple Foundation LLM", "mChatAI Cloud"],
+      "fallbackNarration": "Pick the model that fits your task.",
+      "actions": [
+        {"type": "beat", "seconds": 5.0}
+      ]
+    },
+    {
+      "name": "Dismiss the picker",
+      "narration": "Pick what you need and tap Done.",
+      "requires": ["Apple Foundation LLM", "Enter message"],
+      "fallbackNarration": "Tap Done to return to the chat.",
+      "actions": [
+        {"type": "tapNavBarButton", "label": "Done"},
+        {"type": "beat", "seconds": 2.0}
+      ]
+    },
+    {
+      "name": "Back to home",
+      "narration": "Get mChatAI on the App Store today.",
+      "requires": ["chat-card", "ai-todo-card"],
+      "fallbackNarration": null,
+      "actions": [
+        {"type": "navigateBack"},
+        {"type": "beat", "seconds": 2.0}
+      ]
+    }
+  ]
+}

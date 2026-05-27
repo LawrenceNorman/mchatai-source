@@ -1,0 +1,89 @@
+{
+  "schemaVersion": 1,
+  "flowName": "AIWriteDemoFlow",
+  "description": "Focused 40-50s clip of AI Write: open a blank doc, type a rough draft, tap sparkles, choose Improve, see the polished result, return home. Requires an active AI provider configured in mChatAI+ for the Improve step to stream output.",
+  "scenes": [
+    {
+      "name": "Open on home",
+      "narration": "Drafting better — without leaving the keyboard.",
+      "requires": ["chat-card", "ai-write-card"],
+      "fallbackNarration": null,
+      "actions": [
+        {"type": "beat", "seconds": 2.0}
+      ]
+    },
+    {
+      "name": "Tap AI Write",
+      "narration": "AI Write is a clean editor with AI built right in.",
+      "requires": ["Edit title"],
+      "fallbackNarration": "AI Write opens a clean editor with AI built in.",
+      "actions": [
+        {"type": "tapCard", "id": "ai-write-card"},
+        {"type": "beat", "seconds": 3.0}
+      ]
+    },
+    {
+      "name": "Type a rough draft",
+      "narration": "Start with whatever you've got - rough is fine.",
+      "requires": ["the quick brown fox"],
+      "fallbackNarration": "Just type whatever you've got - rough drafts are welcome.",
+      "actions": [
+        {"type": "tapTextInput", "placeholder": ""},
+        {"type": "beat", "seconds": 0.5},
+        {"type": "type", "text": "the quick brown fox jumps over the lazy dog. its a beautiful day outside."},
+        {"type": "beat", "seconds": 3.0}
+      ]
+    },
+    {
+      "name": "Tap the sparkles button",
+      "narration": "Tap the sparkles for AI assistance.",
+      "requires": ["Assist"],
+      "fallbackNarration": "Tap the sparkles to open the AI assist sheet.",
+      "actions": [
+        {"type": "tapButton", "match": "sparkles"},
+        {"type": "beat", "seconds": 2.5}
+      ]
+    },
+    {
+      "name": "Choose Improve",
+      "narration": "Improve cleans up grammar and tightens prose in one shot.",
+      "requires": ["Improve", "Fix Grammar"],
+      "fallbackNarration": "Pick from ten built-in writing actions.",
+      "actions": [
+        {"type": "beat", "seconds": 4.0}
+      ]
+    },
+    {
+      "name": "Tap Improve",
+      "narration": "Tap it and watch the rewrite stream back in real time.",
+      "requires": ["Output"],
+      "fallbackNarration": "The polished version streams in live.",
+      "actions": [
+        {"type": "tapButton", "match": "Improve"},
+        {"type": "beat", "seconds": 6.0}
+      ]
+    },
+    {
+      "name": "Replace the draft",
+      "narration": "Like what you see? Replace the draft with one tap.",
+      "requires": ["The quick brown fox"],
+      "fallbackNarration": "Replace the draft or append the new text - your call.",
+      "actions": [
+        {"type": "tapButton", "match": "Replace Draft"},
+        {"type": "beat", "seconds": 3.0}
+      ]
+    },
+    {
+      "name": "Back to home",
+      "narration": "Get mChatAI on the App Store today.",
+      "requires": ["chat-card", "ai-write-card"],
+      "fallbackNarration": null,
+      "actions": [
+        {"type": "tapNavBarButton", "label": "Done"},
+        {"type": "beat", "seconds": 1.0},
+        {"type": "navigateBack"},
+        {"type": "beat", "seconds": 2.0}
+      ]
+    }
+  ]
+}

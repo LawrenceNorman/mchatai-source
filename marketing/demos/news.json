@@ -1,0 +1,66 @@
+{
+  "schemaVersion": 1,
+  "flowName": "AINewsDemoFlow",
+  "description": "AI News summarizes articles on tap. User opens AI News, picks an article, and AI condenses it to the essentials. Works in simulator with network + mChatAI Cloud configured.",
+  "scenes": [
+    {
+      "name": "Open on home",
+      "narration": "Get the news without losing your day.",
+      "requires": ["chat-card", "ai-news-card"],
+      "fallbackNarration": null,
+      "actions": [
+        {"type": "beat", "seconds": 2.0}
+      ]
+    },
+    {
+      "name": "Tap AI News",
+      "narration": "AI News pulls global headlines and condenses them.",
+      "requires": ["AI News"],
+      "fallbackNarration": "AI News pulls global headlines and condenses them.",
+      "actions": [
+        {"type": "tapCard", "id": "ai-news-card"},
+        {"type": "beat", "seconds": 4.0}
+      ]
+    },
+    {
+      "name": "Browse the headlines",
+      "narration": "Skim what's trending - tap anything you want the full picture on.",
+      "requires": [],
+      "fallbackNarration": null,
+      "actions": [
+        {"type": "beat", "seconds": 4.0}
+      ]
+    },
+    {
+      "name": "Pick a headline",
+      "narration": "Pick a story - AI will fetch and summarize it.",
+      "requires": ["AI Summary"],
+      "fallbackNarration": "Pick a story and AI fetches plus summarizes it for you.",
+      "actions": [
+        {"type": "tapButton", "match": "headline"},
+        {"type": "beat", "seconds": 6.0}
+      ]
+    },
+    {
+      "name": "Show the summary",
+      "narration": "The gist, fast. No scroll-fatigue.",
+      "requires": ["Summary"],
+      "fallbackNarration": "Skim the AI summary instead of the full article.",
+      "actions": [
+        {"type": "beat", "seconds": 6.0}
+      ]
+    },
+    {
+      "name": "Back to home",
+      "narration": "Get mChatAI on the App Store today.",
+      "requires": ["chat-card", "ai-news-card"],
+      "fallbackNarration": null,
+      "actions": [
+        {"type": "navigateBack"},
+        {"type": "beat", "seconds": 0.8},
+        {"type": "navigateBack"},
+        {"type": "beat", "seconds": 2.0}
+      ]
+    }
+  ]
+}
