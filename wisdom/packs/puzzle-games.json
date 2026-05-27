@@ -756,7 +756,35 @@
         "WRONG: if (guess.length !== WORD_LEN || guess.includes('')) — second clause is always true",
         "WRONG: if (guess.indexOf('') === -1) — indexOf('') always returns 0, never -1"
       ]
+    },
+    {
+      "id": "pg-016",
+      "rule": "Crossword grids MUST be word-valid in BOTH directions. Every contiguous letter sequence of length >=2 between black cells (or grid edges) — across AND down — MUST be a real English word verified against `window.mchatai.dictionary('english')` (or `english-3letter`/`english-4letter`/`english-5letter` for length-specific checks) before the puzzle is rendered. Validation must run on the GRID itself, not just on the cells the clues point at — a clue 'Vision organs' with intended answer EYES (4 letters) placed in a 5-cell slot, padded to EVYES to fit, is a critical failure. The clue's length MUST match the slot length AND every cross-word formed by intersecting letters MUST also be valid. If a slot can't be filled with a real word that satisfies every intersection, regenerate the puzzle (different theme, different grid pattern) rather than ship invented gibberish. Apply equally to LLM-generated puzzles, procedural puzzles, and hand-curated puzzle banks — same validation pass before any puzzle is shown to the user.",
+      "why": "Reported 2026-05-27 (Mini Crossword v3 in production): 3-Down clue 'Vision organs' rendered as EVYES (not a word) because the LLM placed EYES into a 5-cell slot without validating the resulting grid sequences. 5-Across read STLES (also gibberish, clue was 'Manners'). Players who tried to solve hit unsolvable cells and lost trust in the puzzle. pg-006 mentions 'all clues must have correct answers in the grid' but didn't make explicit that EVERY cross-direction sequence must also be a valid word — that gap is what shipped EVYES/STLES. The runtime API window.mchatai.dictionary (docs/MCHATAI_FUNDAMENTALS.md) makes this trivially enforceable — one .contains() call per across+down slot before render.",
+      "severity": "critical",
+      "appliesTo": "crossword",
+      "examples": [
+        "RIGHT (validate before render): const dict = window.mchatai.dictionary('english'); const slots = collectSlots(grid); for (const slot of slots) { if (!dict.contains(slot.letters.toLowerCase())) { throw new Error(`Invalid grid: ${slot.direction} at (${slot.row},${slot.col}) = ${slot.letters} not in dictionary`); } }",
+        "RIGHT (LLM prompt anchor): 'Before emitting the puzzle JSON, mentally trace every across AND down sequence between black cells; reject the grid if ANY sequence is not a real English word. Do NOT pad short answers with random letters to fit longer slots — change the grid pattern instead.'",
+        "RIGHT (clue↔slot length check): assert(clue.answer.length === slot.length, `Clue ${n} answer '${clue.answer}' (${clue.answer.length}ch) does not fit ${slot.direction} slot at (${slot.row},${slot.col}) which is ${slot.length}ch`)",
+        "WRONG: place EYES (4 letters) into a 5-cell down slot by padding with a random letter → EVYES (not a word, breaks the cross-word at every intersection)",
+        "WRONG: validate only the across answers and skip down (or vice versa) — both directions form words and both must be valid",
+        "WRONG: ship a fallback puzzle on validation failure that itself wasn't validated — the fallback bank MUST pass the same checks"
+      ]
+    },
+    {
+      "id": "pg-017",
+      "rule": "Daily/replayable puzzle games SHOULD aim for a bank of >=100 unique puzzles (was: >=10 in pg-bank-rule; raised 2026-05-27 per user feedback 'please have at least 100 valid crosswords'). For LLM-generated puzzles this means the recipe must include a 'generate-bank' phase that produces 100+ puzzles AT GENERATION TIME, validates each via pg-016, persists the validated bank to local storage, and rotates by day-of-year. For hand-curated banks (MiniCrosswordBank.swift et al.) treat <=10 as v1 catalog only — file a followup to grow before promoting to user-facing recipe lists. Showing 'Puzzle 3 of 100' is a quality signal; 'Puzzle 3 of 5' tells the user the bank is thin.",
+      "why": "User feedback 2026-05-27 on the catalog Mini Crossword: 'I should be able to go to the next crossword. Please have at least 100 valid crosswords!'. Prior bank rule (pg-bank-rule) set the floor at 10 — that was a v1 minimum but doesn't satisfy users who play daily and burn through the bank in a fortnight. Generating 100 at install time (with strict pg-016 validation per puzzle) is a one-time cost that pays off for the life of the install.",
+      "severity": "important",
+      "appliesTo": "crossword,sudoku,connections,daily-puzzle",
+      "examples": [
+        "RIGHT (LLM-generated bank): on first launch, run 100 generate+validate loops; each loop calls the cloud LLM to propose a grid, then runs pg-016 dictionary checks; if a grid fails, regenerate; persist the 100 valid puzzles to IndexedDB keyed by recipe + grid hash.",
+        "RIGHT (curated bank growth): MiniCrosswordBank.swift starts at 10, scheduled growth to 100 tracked as an explicit followup ticket. Show 'Puzzle X of N' in UI so the user sees current bank size.",
+        "WRONG: ship 5 hand-curated puzzles and call it done — users hit the end of the bank in a week and stop playing.",
+        "WRONG: generate puzzles on-the-fly with no validation cache — every load risks an invalid grid (pg-016) AND wastes tokens regenerating the same content."
+      ]
     }
   ],
-  "_last_updated": "2026-05-13"
+  "_last_updated": "2026-05-27"
 }
