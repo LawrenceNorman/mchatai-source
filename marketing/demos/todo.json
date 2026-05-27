@@ -1,0 +1,90 @@
+{
+  "schemaVersion": 1,
+  "flowName": "TodoDemoFlow",
+  "description": "Focused 35-45s clip of the AI ToDo applet: open ToDo, create a list if first-run, add two tasks, show them in the list, return to home.",
+  "scenes": [
+    {
+      "name": "Open on home",
+      "narration": "Stay on top of what needs doing.",
+      "requires": ["chat-card", "ai-todo-card"],
+      "fallbackNarration": null,
+      "actions": [
+        {"type": "beat", "seconds": 2.0}
+      ]
+    },
+    {
+      "name": "Tap AI ToDo",
+      "narration": "AI ToDo gives you a clean list to organize your day.",
+      "requires": ["AI ToDo"],
+      "fallbackNarration": "Tap AI ToDo to open your tasks.",
+      "actions": [
+        {"type": "tapCard", "id": "ai-todo-card"},
+        {"type": "beat", "seconds": 3.0}
+      ]
+    },
+    {
+      "name": "Create first list if first-run",
+      "narration": "Lists let you group related tasks. Start with one.",
+      "requires": ["No tasks yet"],
+      "fallbackNarration": "Lists keep your work organized.",
+      "actions": [
+        {"type": "tapButton", "match": "Create First List"},
+        {"type": "beat", "seconds": 2.0}
+      ]
+    },
+    {
+      "name": "Tap the plus to add a task",
+      "narration": "Tap the plus button to add a new task.",
+      "requires": ["New Todo"],
+      "fallbackNarration": "Add tasks with the plus button up top.",
+      "actions": [
+        {"type": "tapButton", "match": "New Todo"},
+        {"type": "beat", "seconds": 1.5}
+      ]
+    },
+    {
+      "name": "Type the task",
+      "narration": "Type what you need to do - it saves automatically.",
+      "requires": ["Buy groceries for tonight"],
+      "fallbackNarration": "Type your task - it saves automatically as you go.",
+      "actions": [
+        {"type": "type", "text": "Buy groceries for tonight"},
+        {"type": "beat", "seconds": 2.5}
+      ]
+    },
+    {
+      "name": "Add a second task",
+      "narration": "Add as many as you need - same simple flow.",
+      "requires": ["Schedule dentist appointment"],
+      "fallbackNarration": "Add as many tasks as you need.",
+      "actions": [
+        {"type": "typeReturn"},
+        {"type": "beat", "seconds": 1.0},
+        {"type": "tapButton", "match": "New Todo"},
+        {"type": "beat", "seconds": 1.0},
+        {"type": "type", "text": "Schedule dentist appointment"},
+        {"type": "beat", "seconds": 2.0},
+        {"type": "typeReturn"}
+      ]
+    },
+    {
+      "name": "Show the list",
+      "narration": "Everything you typed is right there, synced across your devices.",
+      "requires": ["Buy groceries for tonight", "Schedule dentist appointment"],
+      "fallbackNarration": "Your tasks live in one tidy list.",
+      "actions": [
+        {"type": "beat", "seconds": 4.0}
+      ]
+    },
+    {
+      "name": "Back to home",
+      "narration": "Get mChatAI on the App Store today.",
+      "requires": ["chat-card", "ai-todo-card"],
+      "fallbackNarration": null,
+      "actions": [
+        {"type": "navigateBack"},
+        {"type": "beat", "seconds": 2.0}
+      ]
+    }
+  ]
+}

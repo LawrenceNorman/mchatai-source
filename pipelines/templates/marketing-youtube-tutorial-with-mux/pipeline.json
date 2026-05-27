@@ -1,0 +1,29 @@
+{
+  "id": "9AB4AA8C-D3AB-47D0-BB50-C311874EB3AB",
+  "name": "Marketing YouTube Tutorial With Mux",
+  "description": "Mux a screen recording (MP4) and narration audio (WAV) into a YouTube-ready MP4 via the video-muxer microservice. Input: a JSON object with video_path, audio_path, output_path. See CONTEXT.md for the prerequisite Audio Script Creator step.",
+  "components": [
+    "component.microservice-call",
+    "component.save-artifact"
+  ],
+  "steps": [
+    {
+      "id": "AC263AFB-F107-45C4-946B-8F3EAE8E9B32",
+      "skillID": "builtin.shell.microserviceCall",
+      "config": {
+        "service": "official.video-muxer",
+        "endpoint": "/mux",
+        "method": "POST"
+      }
+    },
+    {
+      "id": "929109DC-94FC-4DDE-ADD7-667B9BDFE403",
+      "skillID": "builtin.saveArtifact",
+      "config": {
+        "artifactName": "Muxed Marketing Video",
+        "artifactExtension": "json",
+        "saveText": "true"
+      }
+    }
+  ]
+}

@@ -1,0 +1,94 @@
+{
+  "schemaVersion": 1,
+  "flowName": "MapGuideDemoFlow",
+  "description": "MapGuide tour configuration. Shows how the AI tour planner takes preferences (travel mode, distance, sources, categories) to build personalized walking tours. Stops before the actual tour generation because that requires an explicit picked location which the simulator's GPS override doesn't auto-fill — real-device version (Phase D) will show full tour generation + AI Guide Insight per stop.",
+  "simulatorLocation": {
+    "lat": 40.7580,
+    "lon": -73.9855,
+    "name": "Times Square, NYC"
+  },
+  "scenes": [
+    {
+      "name": "Open on home",
+      "narration": "Heading somewhere new? Let AI plan the route.",
+      "requires": ["chat-card", "map-card"],
+      "fallbackNarration": null,
+      "actions": [
+        {"type": "beat", "seconds": 2.0}
+      ]
+    },
+    {
+      "name": "Tap Map",
+      "narration": "Open Map to see what's around you.",
+      "requires": ["mapguide-gps-button"],
+      "fallbackNarration": "Open Map to see what's around you.",
+      "actions": [
+        {"type": "tapCard", "id": "map-card"},
+        {"type": "beat", "seconds": 4.0}
+      ]
+    },
+    {
+      "name": "Open Tours",
+      "narration": "Tap Tours to discover guided walks around your location.",
+      "requires": ["Start a Tour"],
+      "fallbackNarration": "Tap Tours to find guided walks nearby.",
+      "actions": [
+        {"type": "tapButton", "match": "mapguide-tours-button"},
+        {"type": "beat", "seconds": 3.0}
+      ]
+    },
+    {
+      "name": "Start a tour",
+      "narration": "Start a tour - the AI will pick the best stops.",
+      "requires": ["Walking"],
+      "fallbackNarration": "Start a tour and the AI picks the best stops.",
+      "actions": [
+        {"type": "tapButton", "match": "Start a Tour"},
+        {"type": "beat", "seconds": 3.5}
+      ]
+    },
+    {
+      "name": "Configure travel mode",
+      "narration": "Walking, biking, or driving - pick what fits.",
+      "requires": ["Walking", "Biking", "Driving"],
+      "fallbackNarration": "Walking, biking, or driving - pick what fits.",
+      "actions": [
+        {"type": "beat", "seconds": 4.5}
+      ]
+    },
+    {
+      "name": "Pick sources",
+      "narration": "Sources from Wikipedia and Apple Maps for rich coverage.",
+      "requires": ["Wikipedia", "Apple Maps"],
+      "fallbackNarration": "Wikipedia plus Apple Maps for rich place coverage.",
+      "actions": [
+        {"type": "swipeUp"},
+        {"type": "beat", "seconds": 4.0}
+      ]
+    },
+    {
+      "name": "Pick categories",
+      "narration": "Filter by what you care about - history, museums, landmarks, parks.",
+      "requires": ["History", "Museums"],
+      "fallbackNarration": "Filter by history, museums, landmarks - what you care about.",
+      "actions": [
+        {"type": "swipeUp"},
+        {"type": "beat", "seconds": 5.0}
+      ]
+    },
+    {
+      "name": "Back to home",
+      "narration": "Real-time AI tours, ready when you are. Get mChatAI on the App Store.",
+      "requires": ["chat-card", "map-card"],
+      "fallbackNarration": null,
+      "actions": [
+        {"type": "tapButton", "match": "Cancel"},
+        {"type": "beat", "seconds": 0.8},
+        {"type": "tapNavBarButton", "label": "Done"},
+        {"type": "beat", "seconds": 0.8},
+        {"type": "navigateBack"},
+        {"type": "beat", "seconds": 2.0}
+      ]
+    }
+  ]
+}
