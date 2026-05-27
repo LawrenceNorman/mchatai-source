@@ -19,8 +19,8 @@
   "guidelines": [
     {
       "id": "lb-001-mode-meta",
-      "rule": "Declare the scoring model up front via `<meta name=\"mchatai-leaderboard-mode\" content=\"default|winstreak|fastest|fewest-moves\">` in <head>. The bridge IIFE reads this to decide what to submit on game-over. `default` = numeric score from DOM (Flappy/Snake/Tetris/2048/Sudoku/etc — anything with a meaningful per-game score). `winstreak` = consecutive wins vs CPU, tracked in localStorage, submits the streak as score (Tic-Tac-Toe, Connect Four, Chess, Checkers, Mastermind). `fastest` = lowest is best, submit elapsed seconds (mini-crossword, sudoku speed runs). `fewest-moves` = lowest is best, submit move count (chess mate-in-N, sudoku optimization).",
-      "why": "Turn-based games have no natural per-game numeric score — submitting `1` on every win creates a meaningless ranking. User 2026-05-11 on Connect Four: \"what are the points and wins on this? Maybe research this a little bit for games like this.\" Hand-curated templates that omit the meta tag all default to numeric mode, which is correct for arcade games. Filed in: mchatai-source/harness/templates/miniapps/tic-tac-toe-vs-ai/reference.html (winstreak), connect-four-board-game (winstreak).",
+      "rule": "Declare the scoring model up front via `<meta name=\"mchatai-leaderboard-mode\" content=\"default|winstreak|fastest|fewest-moves\">` in <head>. The bridge IIFE reads this to decide what to submit on game-over. `default` = numeric score from DOM (Flappy/Snake/falling-block puzzle/2048/Sudoku/etc — anything with a meaningful per-game score). `winstreak` = consecutive wins vs CPU, tracked in localStorage, submits the streak as score (Tic-Tac-Toe, four-in-a-row, Chess, Checkers, code-breaking puzzle). `fastest` = lowest is best, submit elapsed seconds (mini-crossword, sudoku speed runs). `fewest-moves` = lowest is best, submit move count (chess mate-in-N, sudoku optimization).",
+      "why": "Turn-based games have no natural per-game numeric score — submitting `1` on every win creates a meaningless ranking. User 2026-05-11 on four-in-a-row: \"what are the points and wins on this? Maybe research this a little bit for games like this.\" Hand-curated templates that omit the meta tag all default to numeric mode, which is correct for arcade games. Filed in: mchatai-source/harness/templates/miniapps/tic-tac-toe-vs-ai/reference.html (winstreak), connect-four-board-game (winstreak).",
       "severity": "important",
       "appliesTo": [
         "miniapp",
@@ -30,13 +30,13 @@
         "GOOD (Tic-Tac-Toe): <meta name=\"mchatai-leaderboard-mode\" content=\"winstreak\">",
         "GOOD (Snake): no meta tag — default numeric-score mode is correct",
         "GOOD (Mini-Crossword): <meta name=\"mchatai-leaderboard-mode\" content=\"fastest\">",
-        "BAD: submitting score=1 on each Connect Four win → leaderboard fills with rows of `1`"
+        "BAD: submitting score=1 on each four-in-a-row win → leaderboard fills with rows of `1`"
       ]
     },
     {
       "id": "lb-002-win-loss-text",
       "rule": "For winstreak-mode games, the host page must emit clear win/loss text in the DOM when a game ends. The bridge polls body.innerText for these patterns: WIN = /\\b(you (win|won)|\\bwhite (wins?|won))\\b/i; LOSS = /\\b(you (lost|lose)|game over|defeat|cpu (wins?|won)|computer (wins?|won)|ai (wins?|won))\\b/i. Use 'You Won!' / 'CPU Won' rather than color names ('Red Wins!' / 'Yellow Wins!') when in vs-CPU mode so the bridge can disambiguate human-vs-CPU. Color names are fine in 2-player mode where there's no ambiguity.",
-      "why": "Connect Four originally said 'Red Wins!' regardless of which side the human played, so the bridge couldn't tell if it was a win or a loss for the player. User 2026-05-11 hit this when the leaderboard started filling with worthless rows. Fix shipped 2026-05-11 in connect-four-board-game/reference.html.",
+      "why": "four-in-a-row originally said 'Red Wins!' regardless of which side the human played, so the bridge couldn't tell if it was a win or a loss for the player. User 2026-05-11 hit this when the leaderboard started filling with worthless rows. Fix shipped 2026-05-11 in connect-four-board-game/reference.html.",
       "severity": "important",
       "appliesTo": [
         "miniapp"
@@ -78,7 +78,7 @@
     },
     {
       "id": "lb-005-wait-for-first-input",
-      "rule": "Auto-tick games (Snake, Flappy, Tetris) must wait for the player's first input before starting the gravity / movement loop. Render the board + show a 'Tap or press an arrow to start' overlay on game init. Start the tick loop only when the first directional input arrives. Without this gate, mobile players who tap-to-start the page get an immediate game-over because the snake/bird/piece moved before they could even orient.",
+      "rule": "Auto-tick games (Snake, Flappy, falling-block puzzle) must wait for the player's first input before starting the gravity / movement loop. Render the board + show a 'Tap or press an arrow to start' overlay on game init. Start the tick loop only when the first directional input arrives. Without this gate, mobile players who tap-to-start the page get an immediate game-over because the snake/bird/piece moved before they could even orient.",
       "why": "snake-classic/reference.html ran startGame() at module-load which spawned the snake moving right at 220ms/tick. With a 20×20 board the snake hit the wall in ~2s before the user knew where the snake was. User 2026-05-11 saw 'Game Over' on first page load. Fixed 2026-05-11.",
       "severity": "important",
       "appliesTo": [
@@ -93,7 +93,7 @@
     {
       "id": "lb-006-restart-not-obscured",
       "rule": "Auto-injected game-over panels (the bridge's top-3 + rank card) MUST be anchored to the TOP of the viewport (`top: 16px`) — NEVER the bottom. The host game's 'Play Again' / 'New Game' / 'Restart' button is always at the bottom of the play area, and bottom-anchored ranking panels cover it. Top anchoring leaves the host game's restart UI fully accessible.",
-      "why": "Connect Four 2026-05-11: user said \"with connect 4, there isn't a play again button, is it obscured by the Ranking screen?\" — yes. The bridge's score panel was at bottom:16px and covered the New Game button. Fixed 2026-05-11 in leaderboard.js bridge IIFE.",
+      "why": "four-in-a-row 2026-05-11: user said \"with connect 4, there isn't a play again button, is it obscured by the Ranking screen?\" — yes. The bridge's score panel was at bottom:16px and covered the New Game button. Fixed 2026-05-11 in leaderboard.js bridge IIFE.",
       "severity": "important",
       "appliesTo": [
         "miniapp",
@@ -121,7 +121,7 @@
     {
       "id": "lb-008-mobile-first-pill-stack",
       "rule": "When designing a game template, leave at least 138px of free space at bottom-right of the viewport. The bridge stacks three pills there: Trophy (bottom:98px), Hub (bottom:58px), Feedback (bottom:18px). Putting game controls in that corner causes the pills to occlude them. D-pad → bottom-center. Action buttons → bottom-left. Restart/New Game → bottom-center above the controls.",
-      "why": "Multiple games shipped with their own bottom-right action buttons that got overlapped by the bridge pill stack. User screenshots 2026-05-11 showed the trophy pill colliding with Connect Four's `?` help button (which was top-right, but the principle generalizes).",
+      "why": "Multiple games shipped with their own bottom-right action buttons that got overlapped by the bridge pill stack. User screenshots 2026-05-11 showed the trophy pill colliding with four-in-a-row's `?` help button (which was top-right, but the principle generalizes).",
       "severity": "important",
       "appliesTo": [
         "miniapp",
@@ -135,7 +135,7 @@
     {
       "id": "lb-009-dedup-via-server",
       "rule": "Client code MUST NOT track 'should I post my score?' itself. Just call `window.mChatAI.leaderboard.submit({score, metadata})` on every game-over. The server handler deduplicates by uid: it looks up the user's existing row, UPDATES IN PLACE only if the new score is higher, skips the write otherwise. This means it's safe to post your score on every single win — the leaderboard will show one row per user (their best).",
-      "why": "Connect Four winstreak was appending a new row per win ('Ops 1', 'Ops 2', 'Ops 3'). User 2026-05-11: \"This seems pretty messy.\" Fixed server-side in handleLeaderboardSubmit 2026-05-11.",
+      "why": "four-in-a-row winstreak was appending a new row per win ('Ops 1', 'Ops 2', 'Ops 3'). User 2026-05-11: \"This seems pretty messy.\" Fixed server-side in handleLeaderboardSubmit 2026-05-11.",
       "severity": "important",
       "appliesTo": [
         "miniapp",
