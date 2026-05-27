@@ -4841,6 +4841,8 @@
       "assemblyNotes": [
         "Build a recognizable compact crossword clone: small square grid, black cells, numbered starts, Across/Down clue lists, selected cell/word highlighting, keyboard entry, timer, score, and persistent best time.",
         "Until dedicated CrosswordGrid and ClueSet blocks are promoted, keep the crossword puzzle data small and explicit in glue code.",
+        "CRITICAL (wisdom pg-016): every contiguous letter sequence between black cells in the grid, BOTH across AND down, MUST be a real English word. Validate each slot with window.mchatai.dictionary('english').contains(letters.toLowerCase()) BEFORE rendering. Do NOT pad short answers with random letters to fit longer slots (e.g. EYES into a 5-cell slot becoming EVYES) -- change the grid pattern instead. The clue's intended answer length MUST equal the slot length.",
+        "BANK SIZE (wisdom pg-017): aim for >=100 unique puzzles. Generate the bank once at install time, validate each puzzle via the pg-016 check, persist to local storage, rotate by day-of-year, expose Prev/Next nav, and show 'Puzzle X of N' in the HUD. v1 catalog reference may ship a smaller seed bank but should grow toward 100.",
         "Instantiate documented component constructors directly; there is no framework-level initialize() API."
       ],
       "plannedNext": [
