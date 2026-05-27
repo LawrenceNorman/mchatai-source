@@ -2,7 +2,7 @@
   "packID": "mobile-frontend",
   "version": 2,
   "displayName": "Mobile-First Frontend Guidelines",
-  "description": "Quality rules for mini-apps designed primarily for phones (iOS / Android). Focus on touch ergonomics, viewport sizing, no-keyboard interaction, gesture handling, and thumb-reach UX. Apply when the goal mentions 'mobile', 'phone', 'iOS', 'Android', 'touch', or any classic mobile-game name (PvZ, Jetpack Joyride, Candy Crush, Flappy Bird, etc).",
+  "description": "Quality rules for mini-apps designed primarily for phones (iOS / Android). Focus on touch ergonomics, viewport sizing, no-keyboard interaction, gesture handling, and thumb-reach UX. Apply when the goal mentions 'mobile', 'phone', 'iOS', 'Android', 'touch', or any classic mobile-game name (PvZ, jetpack side-scroller, match-three puzzle, tap-to-flap arcade, etc).",
   "categories": [
     "miniApp",
     "mobile",
@@ -19,15 +19,14 @@
     "drag",
     "thumb",
     "portrait",
-    "candy crush",
-    "plants vs zombies",
-    "jetpack joyride",
-    "flappy bird",
     "tower defense lite",
     "slot machine",
     "idle clicker",
     "match-3",
-    "endless runner"
+    "endless runner",
+    "tap-to-flap arcade",
+    "jetpack side-scroller",
+    "lane-defense"
   ],
   "guidelines": [
     {
@@ -102,7 +101,7 @@
     {
       "id": "mob-007",
       "rule": "PORTRAIT orientation by default for mobile mini-apps. Use a media query OR JavaScript orientation check to render an 'rotate phone' message if landscape is required and the user is portrait (or vice versa). Most casual mobile games are PORTRAIT — match user expectation.",
-      "why": "Phones are held in portrait 80%+ of the time. Landscape-only mobile games friction the casual player. PvZ, Candy Crush, Jetpack Joyride: all portrait. The exception is racing / shooters that need wide screen — those should explicitly prompt for landscape.",
+      "why": "Phones are held in portrait 80%+ of the time. Landscape-only mobile games friction the casual player. PvZ, match-three puzzle, jetpack side-scroller: all portrait. The exception is racing / shooters that need wide screen — those should explicitly prompt for landscape.",
       "severity": "important",
       "appliesTo": "miniApp",
       "examples": [
@@ -149,7 +148,7 @@
     },
     {
       "id": "mob-011",
-      "rule": "For DRAG-mechanics games (PvZ plant placement, Candy Crush swipe, Jetpack tap-to-rise): use the Pointer Events API consistently. Capture the pointer with `setPointerCapture` so a finger that drags off the original element keeps firing pointermove on it. Critical for slow drags that exit the source element's bounds.",
+      "rule": "For DRAG-mechanics games (PvZ plant placement, match-three puzzle swipe, Jetpack tap-to-rise): use the Pointer Events API consistently. Capture the pointer with `setPointerCapture` so a finger that drags off the original element keeps firing pointermove on it. Critical for slow drags that exit the source element's bounds.",
       "why": "Without setPointerCapture, dragging a card off its origin breaks the drag mid-gesture (no more pointermove fires). The user's finger left the original button's bounds, so the browser stops sending events to it.",
       "severity": "important",
       "appliesTo": "miniApp",
@@ -174,7 +173,7 @@
     {
       "id": "mob-013",
       "rule": "Lane-tap and rhythm games must use FORGIVING hit-detection: when the user taps a lane, hit the LOWEST visible tile in that lane regardless of its exact y position. Do NOT require the tile's bottom edge to have crossed into a narrow strike-zone band before the tap counts. Strict 'must be inside the band' detection feels broken on mobile (humans tap ~80-200ms early in anticipation; sub-pixel timing is impossible with finger input).",
-      "why": "Real incident 2026-04-25: Piano Tiles 097 used `if (!target || target.y + target.h < strikeTop) gameOver('You tapped white.')` — meaning a tile that was 99% on-screen but hadn't quite crossed the strike-zone top counted as 'white'. User reported 'I can barely hit a black tile 1 time out of 10.' The strict band-check assumes pixel-perfect human reflexes; real users tap with anticipation. Forgiving lane-mode (tap = hit lowest visible tile in that lane) is the canonical Piano Tiles / Beatstar / Tap Tap Revenge approach.",
+      "why": "Real incident 2026-04-25: tap-tile rhythm 097 used `if (!target || target.y + target.h < strikeTop) gameOver('You tapped white.')` — meaning a tile that was 99% on-screen but hadn't quite crossed the strike-zone top counted as 'white'. User reported 'I can barely hit a black tile 1 time out of 10.' The strict band-check assumes pixel-perfect human reflexes; real users tap with anticipation. Forgiving lane-mode (tap = hit lowest visible tile in that lane) is the canonical tap-tile rhythm / Beatstar / tap-rhythm game approach.",
       "severity": "important",
       "appliesTo": "miniApp",
       "examples": [
@@ -191,7 +190,7 @@
     },
     {
       "id": "mob-014",
-      "rule": "When a game's mechanic isn't immediately obvious from a single screenshot (Stack Tower's slide-and-drop, Pinball's plunger, Helix Jump's drag-to-rotate), include a TAP-TO-START overlay with: 1-line goal (`Stack as high as you can`), 1-line how (`Tap to drop the moving block`), 1-line outcome (`Misalign and you lose part of the block`). 3 lines max. The user shouldn't need a tutorial to learn the input.",
+      "rule": "When a game's mechanic isn't immediately obvious from a single screenshot (Stack Tower's slide-and-drop, Pinball's plunger, helix-drop arcade's drag-to-rotate), include a TAP-TO-START overlay with: 1-line goal (`Stack as high as you can`), 1-line how (`Tap to drop the moving block`), 1-line outcome (`Misalign and you lose part of the block`). 3 lines max. The user shouldn't need a tutorial to learn the input.",
       "why": "Real incident 2026-04-25: Stack Tower 103 had correct mechanics but user reported 'I kind of don't get it but it seems like the play mechanics are a bit odd.' Without an explicit goal/input/outcome explanation, novel mobile mechanics feel broken when they're working as designed. The cost of a 3-line overlay is ~30s of LLM time; the cost of confusion is total — user closes the game.",
       "severity": "important",
       "appliesTo": "miniApp",
@@ -208,7 +207,7 @@
     {
       "id": "mob-015",
       "rule": "Direction controls (left/right/up/down) MUST use ARROW GLYPHS (◀ ▶ ▲ ▼ or unicode ← → ↑ ↓ or SVG triangles), NEVER text labels like 'Left' / 'Right' / 'Up' / 'Down'. Action buttons (Punch, Fire, Jump, Plant, Spin) MAY use a single short verb but should prefer an icon + verb together (🥊 PUNCH, ▶ PLAY, ⚡ FIRE). Localizing buttons via text breaks for non-English players AND eats horizontal space that's already scarce on mobile.",
-      "why": "Real incident 2026-04-27: Atari Boxing canary 140 shipped with 3 text-labeled buttons 'Move Left | Punch | Move Right' on a portrait phone. The 'Move' prefix is redundant noise; arrows would be instantly recognizable in any language. Text buttons also force wider hit areas which compete for the bottom-strip real estate where actions need to live. Genre convention (every classic mobile fighter, runner, shmup) uses glyphs not labels.",
+      "why": "Real incident 2026-04-27: Boxing canary 140 shipped with 3 text-labeled buttons 'Move Left | Punch | Move Right' on a portrait phone. The 'Move' prefix is redundant noise; arrows would be instantly recognizable in any language. Text buttons also force wider hit areas which compete for the bottom-strip real estate where actions need to live. Genre convention (every classic mobile fighter, runner, shmup) uses glyphs not labels.",
       "severity": "important",
       "appliesTo": "miniApp",
       "examples": [
@@ -223,7 +222,7 @@
     {
       "id": "mob-016",
       "rule": "Mobile control LAYOUT must group related controls together using thumb-arc geometry: directional/movement controls form a CLUSTER on one side (D-pad shape OR a single drag-pad zone covering bottom-left ~40% of viewport), action buttons form a CLUSTER on the other side (bottom-right ~30%, stacked or arc-arranged). NEVER scatter movement and action buttons in a single horizontal row across the bottom — players cannot reach the far button with the same thumb that's currently pressing the near one, AND a 'left | action | right' linear strip puts the action button BETWEEN the two direction buttons, blocking thumb travel between them.",
-      "why": "Real incident 2026-04-27: Boxing canary 140 placed Move Left / Punch / Move Right in a single horizontal row at the bottom. Players holding the phone two-handed had to alternate left+right thumbs awkwardly because the action button (Punch) sat in the middle, separating the directional pair. Two-zone touch interaction (left-half = movement, right-half = action) is the canonical mobile fighting/runner layout. PvZ, Jetpack Joyride, Temple Run, Mortal Kombat Mobile, every Atari Boxing port — all use cluster-by-thumb geometry.",
+      "why": "Real incident 2026-04-27: Boxing canary 140 placed Move Left / Punch / Move Right in a single horizontal row at the bottom. Players holding the phone two-handed had to alternate left+right thumbs awkwardly because the action button (Punch) sat in the middle, separating the directional pair. Two-zone touch interaction (left-half = movement, right-half = action) is the canonical mobile fighting/runner layout. PvZ, jetpack side-scroller, endless runner, Mortal Kombat Mobile, every Boxing port — all use cluster-by-thumb geometry.",
       "severity": "important",
       "appliesTo": "miniApp",
       "examples": [
