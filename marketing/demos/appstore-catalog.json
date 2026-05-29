@@ -1,0 +1,147 @@
+{
+  "schemaVersion": 1,
+  "flowName": "AppStoreCatalog",
+  "description": "App Store screenshot catalog. Walks the simulator through each headline state — home, chat with AI answer, model picker, AI Write rewrite, AI Web summary, AI News summary, AI ToDo populated, MapGuide tour config — and saves a high-quality PNG at the simulator's native resolution. Run on iPhone 17 Pro Max for 6.9\" (1320x2868) App Store submission.",
+  "scenes": [
+    {
+      "name": "01 home",
+      "narration": "Home screen showing the AI applet grid.",
+      "requires": ["chat-card", "ai-todo-card", "ai-write-card"],
+      "fallbackNarration": null,
+      "actions": [
+        {"type": "beat", "seconds": 2.0},
+        {"type": "appstoreShot", "label": "01-home"}
+      ]
+    },
+    {
+      "name": "02 chat ask question",
+      "narration": "Tap Chat, type a Walrus joke, send.",
+      "requires": ["Apple Foundation LLM"],
+      "fallbackNarration": null,
+      "actions": [
+        {"type": "tapCard", "id": "chat-card"},
+        {"type": "beat", "seconds": 2.5},
+        {"type": "tapTextInput", "placeholder": "Enter message"},
+        {"type": "beat", "seconds": 0.5},
+        {"type": "type", "text": "Tell me a joke about a Walrus"},
+        {"type": "beat", "seconds": 1.5},
+        {"type": "tapButton", "match": "arrow.up"},
+        {"type": "beat", "seconds": 5.0},
+        {"type": "appstoreShot", "label": "02-chat-walrus-joke"}
+      ]
+    },
+    {
+      "name": "03 model picker",
+      "narration": "Open the model picker.",
+      "requires": ["Apple Foundation LLM", "mChatAI Cloud"],
+      "fallbackNarration": null,
+      "actions": [
+        {"type": "tapButton", "match": "Chat model"},
+        {"type": "beat", "seconds": 3.0},
+        {"type": "appstoreShot", "label": "03-model-picker"},
+        {"type": "tapNavBarButton", "label": "Done"},
+        {"type": "beat", "seconds": 1.0},
+        {"type": "navigateBack"},
+        {"type": "beat", "seconds": 1.5}
+      ]
+    },
+    {
+      "name": "04 ai write improve",
+      "narration": "AI Write with the polished output sheet.",
+      "requires": ["The quick brown fox"],
+      "fallbackNarration": null,
+      "actions": [
+        {"type": "tapCard", "id": "ai-write-card"},
+        {"type": "beat", "seconds": 2.5},
+        {"type": "tapTextInput", "placeholder": ""},
+        {"type": "beat", "seconds": 0.5},
+        {"type": "type", "text": "the quick brown fox jumps over the lazy dog. its a beautiful day outside."},
+        {"type": "beat", "seconds": 1.5},
+        {"type": "tapButton", "match": "sparkles"},
+        {"type": "beat", "seconds": 3.0},
+        {"type": "tapButton", "match": "Improve"},
+        {"type": "beat", "seconds": 6.0},
+        {"type": "appstoreShot", "label": "04-aiwrite-improve"},
+        {"type": "tapNavBarButton", "label": "Done"},
+        {"type": "beat", "seconds": 1.0},
+        {"type": "navigateBack"},
+        {"type": "beat", "seconds": 1.5}
+      ]
+    },
+    {
+      "name": "05 ai web summary",
+      "narration": "AI Web reading a Wikipedia article + AI Summary.",
+      "requires": ["AI Summary"],
+      "fallbackNarration": null,
+      "actions": [
+        {"type": "tapCard", "id": "web-ai-card"},
+        {"type": "beat", "seconds": 3.0},
+        {"type": "tapTextInput", "placeholder": "Search or enter"},
+        {"type": "beat", "seconds": 0.5},
+        {"type": "type", "text": "en.wikipedia.org/wiki/Artificial_intelligence"},
+        {"type": "beat", "seconds": 1.0},
+        {"type": "typeReturn"},
+        {"type": "beat", "seconds": 5.0},
+        {"type": "tapButton", "match": "wand.and.stars"},
+        {"type": "beat", "seconds": 8.0},
+        {"type": "appstoreShot", "label": "05-aiweb-summary"},
+        {"type": "navigateBack"},
+        {"type": "beat", "seconds": 1.0},
+        {"type": "navigateBack"},
+        {"type": "beat", "seconds": 1.5}
+      ]
+    },
+    {
+      "name": "06 ai news summary",
+      "narration": "AI News with an article + AI Summary.",
+      "requires": ["AI Summary"],
+      "fallbackNarration": null,
+      "actions": [
+        {"type": "tapCard", "id": "ai-news-card"},
+        {"type": "beat", "seconds": 5.0},
+        {"type": "tapButton", "match": "The New York Times"},
+        {"type": "beat", "seconds": 7.0},
+        {"type": "appstoreShot", "label": "06-ainews-summary"},
+        {"type": "navigateBack"},
+        {"type": "beat", "seconds": 1.0},
+        {"type": "navigateBack"},
+        {"type": "beat", "seconds": 1.5}
+      ]
+    },
+    {
+      "name": "07 ai todo populated",
+      "narration": "AI ToDo with a populated task list.",
+      "requires": [],
+      "fallbackNarration": null,
+      "actions": [
+        {"type": "tapCard", "id": "ai-todo-card"},
+        {"type": "beat", "seconds": 3.0},
+        {"type": "appstoreShot", "label": "07-aitodo-populated"},
+        {"type": "navigateBack"},
+        {"type": "beat", "seconds": 1.5}
+      ]
+    },
+    {
+      "name": "08 mapguide tour config",
+      "narration": "MapGuide AI tour planner with rich filters.",
+      "requires": ["Walking", "Wikipedia"],
+      "fallbackNarration": null,
+      "actions": [
+        {"type": "tapCard", "id": "map-card"},
+        {"type": "beat", "seconds": 4.0},
+        {"type": "tapButton", "match": "mapguide-tours-button"},
+        {"type": "beat", "seconds": 2.5},
+        {"type": "tapButton", "match": "Start a Tour"},
+        {"type": "beat", "seconds": 4.0},
+        {"type": "swipeUp"},
+        {"type": "beat", "seconds": 2.5},
+        {"type": "appstoreShot", "label": "08-mapguide-tour-config"}
+      ]
+    }
+  ],
+  "simulatorLocation": {
+    "lat": 40.7580,
+    "lon": -73.9855,
+    "name": "Times Square, NYC"
+  }
+}
