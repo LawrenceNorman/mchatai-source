@@ -108,6 +108,14 @@ export class PlatformerGame {
     if (["ArrowLeft", "a", "A"].includes(k)) { this.input.left = pressed; handled = true; }
     if (["ArrowRight", "d", "D"].includes(k)) { this.input.right = pressed; handled = true; }
     if ([" ", "ArrowUp", "w", "W"].includes(k)) { this.input.jump = pressed; handled = true; }
+    // Row 10k (2026-05-29): Enter restarts the game so iOS viewer's
+    // built-in Enter key + soft-keyboard Return both reach the restart
+    // path. Only fire on keydown (pressed === true) to avoid double-restart
+    // on the keyup half of a single press.
+    if (k === "Enter" && pressed) {
+      this.restart();
+      handled = true;
+    }
     if (handled) {
       // Prevent page scroll on arrow/space when we own the input. Without
       // this the browser scrolls the document on every keypress and the
@@ -209,7 +217,7 @@ export class PlatformerGame {
     if (!keepScore) {
       this.scoreboard.reset();
     }
-    this.message.textContent = "Arrow keys or WASD to run. Space to jump.";
+    this.message.textContent = "Arrow keys or WASD to run. Space to jump. Enter to restart.";
   }
 
   updateHUD() {

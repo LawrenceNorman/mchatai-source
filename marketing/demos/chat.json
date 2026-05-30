@@ -1,47 +1,41 @@
 {
   "schemaVersion": 1,
   "flowName": "ChatDemoFlow",
-  "description": "Focused 45-60s clip of the Chat surface: open Chat, ask for a Walrus joke, show the model selector. Returns to home so it can be composed into a reel.",
+  "description": "Focused ~35s clip of the Chat surface: open Chat, ask Apple Foundation a question, show the model selector breadth. Narration-paced — each scene ends when the narrator finishes. (Phase TM 2026-05-29: tightened — removed arbitrary post-action beats; narrations sized so dialog fills the wait time where actions need to settle.)",
   "scenes": [
     {
       "name": "Open on home",
-      "narration": "mChatAI brings every AI model to your iPhone.",
+      "narration": "mChatAI brings dozens of AI models to your iPhone.",
       "requires": ["chat-card", "ai-todo-card"],
       "fallbackNarration": null,
-      "actions": [
-        {"type": "beat", "seconds": 2.0}
-      ]
+      "actions": []
     },
     {
       "name": "Tap Chat",
-      "narration": "Tap Chat to start a conversation.",
+      "narration": "Tap Chat to open a conversation with any model you choose.",
       "requires": ["Apple Foundation LLM", "Enter message"],
       "fallbackNarration": "Tap Chat to open the chat surface.",
       "actions": [
-        {"type": "tapCard", "id": "chat-card"},
-        {"type": "beat", "seconds": 3.0}
+        {"type": "tapCard", "id": "chat-card"}
       ]
     },
     {
       "name": "Type a question",
-      "narration": "Type your question right into the chat.",
+      "narration": "Type your question right into the chat — the keyboard pops up like any iOS app.",
       "requires": ["Tell me a joke about a Walrus"],
-      "fallbackNarration": "Type your question - the keyboard comes up just like any iOS app.",
+      "fallbackNarration": "Type your question — the keyboard pops up like any iOS app.",
       "actions": [
         {"type": "tapTextInput", "placeholder": "Enter message"},
-        {"type": "beat", "seconds": 0.6},
-        {"type": "type", "text": "Tell me a joke about a Walrus"},
-        {"type": "beat", "seconds": 2.0}
+        {"type": "type", "text": "Tell me a joke about a Walrus"}
       ]
     },
     {
       "name": "Send the message",
-      "narration": "Send it - and your message lands in the conversation.",
+      "narration": "Send it — and Apple Foundation runs the model on-device, so your conversation never leaves the phone.",
       "requires": ["Tell me a joke about a Walrus"],
-      "fallbackNarration": "Send it from the keyboard or the arrow button.",
+      "fallbackNarration": "Send it from the keyboard or the arrow button — Apple Foundation runs locally.",
       "actions": [
-        {"type": "tapButton", "match": "arrow.up"},
-        {"type": "beat", "seconds": 3.0}
+        {"type": "tapButton", "match": "arrow.up"}
       ]
     },
     {
@@ -50,18 +44,15 @@
       "requires": ["Select a Chat Model"],
       "fallbackNarration": "Tap the pill at the top of the chat.",
       "actions": [
-        {"type": "tapButton", "match": "Chat model"},
-        {"type": "beat", "seconds": 2.5}
+        {"type": "tapButton", "match": "Chat model"}
       ]
     },
     {
-      "name": "Show the picker",
-      "narration": "Apple Foundation runs on-device for free. mChatAI Cloud unlocks more models with no API keys required.",
+      "name": "Show the model picker",
+      "narration": "Apple Foundation runs on-device for free. Sign into mChatAI Cloud and you unlock dozens more models — no API keys required.",
       "requires": ["Apple Foundation LLM", "mChatAI Cloud"],
       "fallbackNarration": "Pick the model that fits your task.",
-      "actions": [
-        {"type": "beat", "seconds": 5.0}
-      ]
+      "actions": []
     },
     {
       "name": "Dismiss the picker",
@@ -69,8 +60,7 @@
       "requires": ["Apple Foundation LLM", "Enter message"],
       "fallbackNarration": "Tap Done to return to the chat.",
       "actions": [
-        {"type": "tapNavBarButton", "label": "Done"},
-        {"type": "beat", "seconds": 2.0}
+        {"type": "tapNavBarButton", "label": "Done"}
       ]
     },
     {
@@ -79,8 +69,7 @@
       "requires": ["chat-card", "ai-todo-card"],
       "fallbackNarration": null,
       "actions": [
-        {"type": "navigateBack"},
-        {"type": "beat", "seconds": 2.0}
+        {"type": "navigateBack"}
       ]
     }
   ]
