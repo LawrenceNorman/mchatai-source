@@ -63,10 +63,11 @@ export class PlatformerPlayer extends Entity {
   }
 
   draw(ctx) {
-    // Plumber-style character: red cap + skin face + overalls + boots
-    // + facing-aware eyes. Replaces the flat fillRect the user saw as
-    // a yellow block. Width 28 / height 36 default; everything scales
-    // off this.width / this.height fractions.
+    // Row 10k (2026-05-29): generic adventurer sprite (teal jumpsuit +
+    // headband, no red-cap-blue-overalls Mario combo). Width 28 / height 36
+    // default; everything scales off this.width / this.height fractions.
+    // Original "plumber-style" rendering was too close to a trademarked
+    // character; user-facing artifacts must read as generic.
     const x = this.x;
     const y = this.y;
     const w = this.width;
@@ -78,36 +79,29 @@ export class PlatformerPlayer extends Entity {
     ctx.beginPath();
     ctx.ellipse(x + w / 2, y + h + 1, w * 0.5, 3, 0, 0, Math.PI * 2);
     ctx.fill();
-    // overalls (lower body)
-    ctx.fillStyle = "#1d4ed8";
+    // pants / lower body (slate)
+    ctx.fillStyle = "#475569";
     ctx.fillRect(x, y + h * 0.45, w, h * 0.55);
-    // shirt (upper torso)
-    ctx.fillStyle = "#dc2626";
+    // jumpsuit / upper torso (teal)
+    ctx.fillStyle = "#0d9488";
     ctx.fillRect(x + 1, y + h * 0.30, w - 2, h * 0.20);
-    // arms (subtle swing when moving)
+    // arms (subtle swing when moving) — match torso
     const armSwing = (this.vx !== 0 ? Math.sin(performance.now() / 90) * 2 : 0);
     ctx.fillRect(x - 2, y + h * 0.32 + armSwing, 5, h * 0.18);
     ctx.fillRect(x + w - 3, y + h * 0.32 - armSwing, 5, h * 0.18);
-    // boots
-    ctx.fillStyle = "#451a03";
+    // boots (dark slate)
+    ctx.fillStyle = "#1e293b";
     ctx.fillRect(x, y + h - 5, w * 0.45, 5);
     ctx.fillRect(x + w * 0.55, y + h - 5, w * 0.45, 5);
-    // overall straps
-    ctx.fillStyle = "#1d4ed8";
-    ctx.fillRect(x + w * 0.30, y + h * 0.30, 3, h * 0.16);
-    ctx.fillRect(x + w * 0.62, y + h * 0.30, 3, h * 0.16);
-    // overall buttons
-    ctx.fillStyle = "#fbbf24";
-    ctx.beginPath();
-    ctx.arc(x + w * 0.31, y + h * 0.50, 1.6, 0, Math.PI * 2);
-    ctx.arc(x + w * 0.66, y + h * 0.50, 1.6, 0, Math.PI * 2);
-    ctx.fill();
-    // face (skin tone)
-    ctx.fillStyle = "#fde68a";
+    // belt accent
+    ctx.fillStyle = "#1e293b";
+    ctx.fillRect(x, y + h * 0.45 - 2, w, 2);
+    // belt buckle
+    ctx.fillStyle = "#facc15";
+    ctx.fillRect(x + w * 0.45, y + h * 0.45 - 2, w * 0.1, 2);
+    // face (neutral tan)
+    ctx.fillStyle = "#d6b88c";
     ctx.fillRect(x + 3, y + h * 0.10, w - 6, h * 0.22);
-    // mustache
-    ctx.fillStyle = "#451a03";
-    ctx.fillRect(x + 5, y + h * 0.26, w - 10, 3);
     // eyes (facing-aware)
     ctx.fillStyle = "#0a1a05";
     const eyeOffset = facing > 0 ? 1 : -1;
@@ -115,17 +109,18 @@ export class PlatformerPlayer extends Entity {
     ctx.arc(x + w * 0.35 + eyeOffset, y + h * 0.18, 1.5, 0, Math.PI * 2);
     ctx.arc(x + w * 0.65 + eyeOffset, y + h * 0.18, 1.5, 0, Math.PI * 2);
     ctx.fill();
-    // red cap with brim that points in facing direction
-    ctx.fillStyle = "#dc2626";
-    ctx.fillRect(x + 1, y, w - 2, h * 0.12);
+    // headband — thin teal stripe across forehead (replaces the cap, no
+    // brim that points facing — keeps the silhouette unique without
+    // implying any specific character)
+    ctx.fillStyle = "#0d9488";
+    ctx.fillRect(x + 1, y + h * 0.06, w - 2, h * 0.06);
+    // headband knot trailing in facing direction (small accent)
+    ctx.fillStyle = "#0d9488";
     if (facing > 0) {
-      ctx.fillRect(x + w * 0.55, y + h * 0.10, w * 0.35, 3);
+      ctx.fillRect(x + w - 2, y + h * 0.05, 4, h * 0.08);
     } else {
-      ctx.fillRect(x + w * 0.10, y + h * 0.10, w * 0.35, 3);
+      ctx.fillRect(x - 2, y + h * 0.05, 4, h * 0.08);
     }
-    // cap emblem (yellow square)
-    ctx.fillStyle = "#fde68a";
-    ctx.fillRect(x + w * 0.42, y + h * 0.04, w * 0.16, h * 0.04);
     ctx.restore();
   }
 }
