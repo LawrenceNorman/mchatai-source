@@ -77,6 +77,22 @@ export class McSolitaireAssembly {
         this._onTableauClick(col, idx);
       });
     }
+    // 2026-05-31: dblclick on the waste OR the top card of a tableau pile
+    // promotes that card directly to its suit's foundation. The single-
+    // click two-step (pick up + drop on foundation) is precise but slow;
+    // double-tap is the muscle-memory shortcut every solitaire player
+    // expects. Falls back silently when the card can't legally promote.
+    if (this.wasteMount) {
+      this.wasteMount.addEventListener("dblclick", () => this._dblTapPromoteWaste());
+    }
+    if (this.tableauMount) {
+      this.tableauMount.addEventListener("dblclick", (e) => {
+        const card = e.target.closest("[data-tableau-col]");
+        if (!card) return;
+        const col = +card.dataset.tableauCol;
+        this._dblTapPromoteTableau(col);
+      });
+    }
     if (this.newDealBtn) this.newDealBtn.addEventListener("click", () => this.start());
     if (this.undoBtn) this.undoBtn.addEventListener("click", () => {
       if (this.game.undo()) {
@@ -156,6 +172,49 @@ export class McSolitaireAssembly {
       this.scoreBoard.setScore(this.game.score);
     }
     this.selection = null;
+    this._renderAll();
+  }
+
+  // 2026-05-31: double-tap promotion helpers. Send the waste-top or the
+  // top card of a tableau column directly to its suit's foundation when
+  // legal. Clears any single-click selection first so the player can
+  // double-tap without first deselecting whatever was previously selected.
+  _dblTapPromoteWaste() {
+    this.selection = null;
+    const card = this.game.wasteTop();
+    if (!card) return;
+    const foundationIdx = SUITS.indexOf(card.suit);
+    if (foundationIdx < 0) return;
+    if (!this.game.canStackFoundation(card, card.suit)) {
+      this._renderAll();
+      return;
+    }
+    const result = this.game.moveFromWaste("foundation", foundationIdx);
+    if (result && result.ok) {
+      this.scoreBoard.setScore(this.game.score);
+      if (this.game.isWon()) this._showMessage("🎉 You won! Tap New Deal to play again.");
+    }
+    this._renderAll();
+  }
+
+  _dblTapPromoteTableau(col) {
+    this.selection = null;
+    const pile = this.game.tableau[col];
+    if (!pile || pile.length === 0) return;
+    const topIdx = pile.length - 1;
+    const card = pile[topIdx];
+    if (!card || !card.faceUp) return;
+    const foundationIdx = SUITS.indexOf(card.suit);
+    if (foundationIdx < 0) return;
+    if (!this.game.canStackFoundation(card, card.suit)) {
+      this._renderAll();
+      return;
+    }
+    const result = this.game.moveFromTableau(col, topIdx, "foundation", foundationIdx);
+    if (result && result.ok) {
+      this.scoreBoard.setScore(this.game.score);
+      if (this.game.isWon()) this._showMessage("🎉 You won! Tap New Deal to play again.");
+    }
     this._renderAll();
   }
 

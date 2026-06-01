@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no,viewport-fit=cover">
+<title>BOARD GAME</title>
+<!--
+  board-game-monolith scaffold (extracted 2026-05-30 from checkers-mono
+  published artifact). Proven pattern for 8x8 grid games (checkers, chess,
+  reversi, go, draughts variants). Use this whenever a goal says "board game"
+  or names a specific 8x8 grid game.
+
+  WHY MONOLITH not Lego-imports: known-good shipped board games at
+  mchatai.com/u/.../checkers-mono and similar paths are all monoliths with
+  zero module imports. The Lego-imports pipeline (entities.board8x8 +
+  entities.chess-rules + entities.chess-ai + marker) has consistently
+  produced black-screen artifacts for chess/kanban/beat-gate-runner due
+  to API-shape mismatches between LLM-generated callsites and the Lego
+  component constructor signatures. The monolith approach below avoids
+  every one of those failure modes.
+
+  WHAT TO FILL IN (search for `// FILL:` comments):
+    1. piece types + initial-board layout in newBoard()
+    2. legal-move generator for your specific game in getAllLegalMoves()
+    3. piece rendering in renderPiece()
+    4. CSS piece styling (.piece.<your-types>)
+    5. Game title, score labels, controls per game spec
+-->
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:#FFFFFF;color:#000;font-family:'IBM Plex Mono','Courier New',monospace;font-weight:700;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none;touch-action:manipulation}
+body{display:flex;flex-direction:column;align-items:center;padding:8px;gap:8px;min-height:100vh;min-height:100dvh}
+.row{width:100%;max-width:480px}
+.panel{border:4px solid #000;background:#FFFFFF}
+.header{padding:8px 12px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.title{font-size:20px;letter-spacing:3px}
+.status-bar{padding:8px 12px;display:flex;justify-content:space-between;align-items:center;font-size:13px;letter-spacing:1px}
+.turn-info{display:flex;align-items:center;gap:8px}
+.dot{width:14px;height:14px;border:3px solid #000;display:inline-block}
+.dot.light{background:#FFF}
+.dot.dark{background:#000}
+.score{display:flex;gap:6px;font-size:11px}
+.score span{padding:3px 6px;border:2px solid #000}
+.board-wrap{width:100%;max-width:480px;aspect-ratio:1;border:4px solid #000;background:#000}
+.board{width:100%;height:100%;display:grid;grid-template-columns:repeat(8,1fr);grid-template-rows:repeat(8,1fr)}
+.cell{position:relative;display:flex;align-items:center;justify-content:center}
+.cell.sq-light{background:#FFFFFF}
+.cell.sq-dark{background:#525252}
+.cell.last-move{box-shadow:inset 0 0 0 4px #EAB308}
+.cell.valid{cursor:pointer}
+.cell.valid::after{content:'';position:absolute;inset:25%;background:#22C55E;border:3px solid #000;border-radius:50%;z-index:1;pointer-events:none;animation:pulseGreen 0.9s ease-in-out infinite}
+@keyframes pulseGreen{0%,100%{transform:scale(1)}50%{transform:scale(1.18)}}
+/* FILL: piece styles per game */
+.piece{position:relative;width:80%;height:80%;display:flex;align-items:center;justify-content:center;z-index:2;pointer-events:none;font-size:30px;font-weight:900}
+.piece.light{background:#FFFFFF;border:3px solid #000;border-radius:50%}
+.piece.dark{background:#000000;color:#FFF;border:3px solid #000;border-radius:50%}
+.piece.selected{outline:4px solid #EAB308;outline-offset:1px;z-index:4}
+.controls{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.btn{background:#FFFFFF;color:#000;border:4px solid #000;padding:14px 12px;font:inherit;font-weight:700;text-transform:uppercase;cursor:pointer;letter-spacing:2px;font-size:13px}
+.btn.primary{background:#EAB308}
+.btn:active{background:#000;color:#FFF;transform:translate(2px,2px)}
+</style>
+</head><body>
+<div class="row panel header"><div class="title">BOARD GAME</div></div>
+<div class="row panel status-bar">
+  <div class="turn-info"><span class="dot" id="turnDot"></span><span id="status">YOUR TURN</span></div>
+  <div class="score"><span id="scoreA">A 0</span><span id="scoreB">B 0</span></div>
+</div>
+<div class="board-wrap"><div class="board" id="board"></div></div>
+<div class="row controls">
+  <button class="btn" id="newBtn">NEW GAME</button>
+  <button class="btn primary" id="undoBtn">UNDO</button>
+</div>
+<script>
+(function(){
+  // Pattern proven by checkers-mono. Adapted for any 8x8 board game.
+  // No imports. No `new SomeClass()` for game logic. Pure plain JS.
+  var LIGHT='light', DARK='dark';
+  var HUMAN=LIGHT, CPU=DARK;
+
+  var state = {
+    board: null,            // 2D array of cells; each cell is null OR a piece object
+    current: LIGHT,
+    selected: null,         // [row, col] or null
+    validMoves: [],         // array of {from:[r,c], to:[r,c], ...} for current player
+    history: [],            // for UNDO
+    busy: false,
+    gameOver: false
+  };
+
+  // FILL: build the initial board. Return 8x8 array; each cell is a piece
+  // object like {type:'pawn',color:LIGHT} or null. Example for checkers:
+  //   for(var r=0;r<3;r++) for(var c=0;c<8;c++) if((r+c)%2===1) b[r][c]={color:DARK,king:false};
+  function newBoard(){
+    var b=[];
+    for(var r=0;r<8;r++){
+      var row=[];
+      for(var c=0;c<8;c++) row.push(null);
+      b.push(row);
+    }
+    // FILL ME: place initial pieces here.
+    return b;
+  }
+
+  function cloneBoard(b){
+    var nb=[];
+    for(var r=0;r<8;r++){
+      var row=[];
+      for(var c=0;c<8;c++){
+        var p=b[r][c];
+        row.push(p ? Object.assign({}, p) : null);
+      }
+      nb.push(row);
+    }
+    return nb;
+  }
+
+  // FILL: legal-move generator for THIS game. Return array of move objects
+  // like {from:[r,c], to:[r,c], captures:[]}. The render() and onCellClick()
+  // below expect this shape. Use cloneBoard for any lookahead.
+  function getAllLegalMoves(board, color){
+    var moves = [];
+    // FILL ME: walk board, for each piece of `color`, push valid destinations.
+    return moves;
+  }
+
+  // FILL: apply a move (immutable). Return new board.
+  function applyMove(board, move){
+    var nb = cloneBoard(board);
+    var piece = nb[move.from[0]][move.from[1]];
+    nb[move.from[0]][move.from[1]] = null;
+    for(var i=0;i<(move.captures||[]).length;i++){
+      var cap = move.captures[i];
+      nb[cap[0]][cap[1]] = null;
+    }
+    nb[move.to[0]][move.to[1]] = piece;
+    return nb;
+  }
+
+  // FILL: how to draw a piece as DOM. Return a <div> element.
+  // For chess use Unicode: ♔-♟. For checkers use a colored circle.
+  function renderPiece(piece, isSelected){
+    var el = document.createElement('div');
+    var cls = 'piece ' + piece.color;
+    if(isSelected) cls += ' selected';
+    el.className = cls;
+    // FILL: el.textContent = pieceGlyph(piece);  // chess use Unicode glyph
+    return el;
+  }
+
+  function render(){
+    var boardEl = document.getElementById('board');
+    boardEl.innerHTML = '';
+
+    var validTo = {};
+    if(state.selected && !state.busy){
+      for(var i=0;i<state.validMoves.length;i++){
+        var m = state.validMoves[i];
+        if(m.from[0]===state.selected[0] && m.from[1]===state.selected[1]){
+          validTo[m.to[0]+','+m.to[1]] = true;
+        }
+      }
+    }
+
+    for(var r=0;r<8;r++){
+      for(var c=0;c<8;c++){
+        var cell = document.createElement('div');
+        var isDarkSq = ((r+c)%2 === 1);
+        cell.className = 'cell ' + (isDarkSq?'sq-dark':'sq-light');
+        cell.dataset.r = r; cell.dataset.c = c;
+        var piece = state.board[r][c];
+        if(piece){
+          var isSel = state.selected && state.selected[0]===r && state.selected[1]===c;
+          cell.appendChild(renderPiece(piece, isSel));
+        }
+        if(validTo[r+','+c]) cell.classList.add('valid');
+        (function(rr,cc){
+          cell.addEventListener('click', function(){ onCellClick(rr,cc); });
+        })(r,c);
+        boardEl.appendChild(cell);
+      }
+    }
+
+    var dot = document.getElementById('turnDot');
+    var st = document.getElementById('status');
+    dot.className = 'dot';
+    if(state.gameOver) st.textContent = 'GAME OVER';
+    else if(state.current===HUMAN){ dot.classList.add('light'); st.textContent = 'YOUR TURN'; }
+    else { dot.classList.add('dark'); st.textContent = "OPPONENT'S TURN"; }
+  }
+
+  function onCellClick(r, c){
+    if(state.busy || state.gameOver || state.current !== HUMAN) return;
+    var piece = state.board[r][c];
+
+    // Tap a friendly piece -> select it (if it has any moves).
+    if(piece && piece.color === HUMAN){
+      var canMove = false;
+      for(var i=0;i<state.validMoves.length;i++){
+        if(state.validMoves[i].from[0]===r && state.validMoves[i].from[1]===c){ canMove=true; break; }
+      }
+      if(!canMove){ if(state.selected){ state.selected=null; render(); } return; }
+      if(state.selected && state.selected[0]===r && state.selected[1]===c){
+        state.selected = null; render(); return;
+      }
+      state.selected = [r,c]; render(); return;
+    }
+
+    // Tap an empty/valid destination after selecting -> move.
+    if(state.selected){
+      var move = null;
+      for(var i=0;i<state.validMoves.length;i++){
+        var m = state.validMoves[i];
+        if(m.from[0]===state.selected[0] && m.from[1]===state.selected[1] &&
+           m.to[0]===r && m.to[1]===c){ move = m; break; }
+      }
+      if(move){
+        executeMove(move);
+      } else {
+        state.selected = null;
+        render();
+      }
+    }
+  }
+
+  function executeMove(move){
+    state.busy = true;
+    state.history.push({ board: cloneBoard(state.board), current: state.current });
+    state.board = applyMove(state.board, move);
+    state.selected = null;
+    state.current = (state.current === LIGHT) ? DARK : LIGHT;
+    state.validMoves = getAllLegalMoves(state.board, state.current);
+    state.busy = false;
+    render();
+    // FILL: if(state.current === CPU) schedule pickAIMove + executeMove.
+  }
+
+  function startNewGame(){
+    state.board = newBoard();
+    state.current = LIGHT;
+    state.selected = null;
+    state.history = [];
+    state.gameOver = false;
+    state.busy = false;
+    state.validMoves = getAllLegalMoves(state.board, LIGHT);
+    render();
+  }
+
+  document.getElementById('newBtn').addEventListener('click', function(){
+    if(state.busy) return;
+    startNewGame();
+  });
+
+  document.getElementById('undoBtn').addEventListener('click', function(){
+    if(state.busy || state.history.length === 0) return;
+    var prev = state.history.pop();
+    state.board = prev.board;
+    state.current = prev.current;
+    state.selected = null;
+    state.gameOver = false;
+    state.validMoves = getAllLegalMoves(state.board, state.current);
+    render();
+  });
+
+  startNewGame();
+})();
+</script>
+</body></html>
