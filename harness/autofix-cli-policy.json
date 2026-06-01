@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "lastUpdated": "2026-06-01",
+  "notes": "Per-CLI flags injected into the WizardCLIRunner extraArgs for the mini-app auto-fix path (autoFixMiniAppWithCLI in AIHarness+MiniAppOps.swift). Lets us pin a fast model per CLI without rebuilding mChatAI+ — ship via mchatai-source PR + refreshMchataisourceCache tunnel command. Phase ROUTE+2, see project_phase_route_cli_first_autofix memory.",
+  "perCLI": {
+    "claude": {
+      "extraArgs": ["--model", "haiku"],
+      "rationale": "Texas Hold em canary 2026-06-01: opus default 83s with maxTurns-reached + 11KB thinking; sonnet 187s with 11KB thinking; haiku 63s with 8KB thinking (best of three). `--effort low` was tried and made it WORSE (111s, 17KB thinking — possible cache-state interference). claude is rarely reached in practice because codex (25–55s, no extended thinking) runs first in the cascade and usually succeeds. This pin is a marginal improvement for the claude-runs-second case."
+    },
+    "codex": {
+      "extraArgs": [],
+      "rationale": "Default codex CLI model already finishes the canary in 25–55s and 4/4 canary runs returned a successful 100%-size edit. No pin until a benchmark shows a faster alternative."
+    },
+    "gemini": {
+      "extraArgs": [],
+      "rationale": "Antigravity routes through StepwiseRunner (per cli-invocation.json orchestration.mode=stepwise). Model selection is the stepwise planner's job, not a CLI flag. Leaving extraArgs empty avoids passing flags Stepwise would ignore."
+    }
+  }
+}
