@@ -12,23 +12,17 @@ import { ScoreRise } from "../../effects/ScoreRise.js";
 
 // Inline-assembler safety: when the inline assembler bundles this example
 // for single-file delivery it may strip the imports above without inlining
-// the effect class bodies. Capture each effect via `typeof X !== "undefined"`
-// (the only typeof form that survives undeclared identifiers) so the rest
-// of this file can null-check via Effects.X. Plain `X?.method()` throws
-// ReferenceError when X is undeclared — guard once, here.
-const Effects = (() => {
-  const grab = (name) => {
-    try {
-      // eslint-disable-next-line no-new-func
-      return new Function("name", `return typeof ${name} !== "undefined" ? ${name} : null;`)(name);
-    } catch (_) { return null; }
-  };
-  return {
-    BoardShake: grab("BoardShake"),
-    PopBurst:   grab("PopBurst"),
-    ScoreRise:  grab("ScoreRise")
-  };
-})();
+// the effect class bodies. Capture each effect via direct typeof X !==
+// "undefined" (the only form that survives undeclared identifiers).
+// Earlier versions used the dynamic ctor pattern to look up names from a
+// string, but the hub deploy security scanner rejects that pattern as a
+// code-injection risk (2026-05-30). Since the effect names are fixed at
+// author time, explicit checks per effect are equivalent and safe.
+let _bs, _pb, _sr;
+try { _bs = (typeof BoardShake !== "undefined") ? BoardShake : null; } catch (_) { _bs = null; }
+try { _pb = (typeof PopBurst   !== "undefined") ? PopBurst   : null; } catch (_) { _pb = null; }
+try { _sr = (typeof ScoreRise  !== "undefined") ? ScoreRise  : null; } catch (_) { _sr = null; }
+const Effects = { BoardShake: _bs, PopBurst: _pb, ScoreRise: _sr };
 
 export class MinesweeperGame {
   constructor(options = {}) {
