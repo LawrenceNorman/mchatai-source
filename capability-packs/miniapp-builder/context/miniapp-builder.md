@@ -8,13 +8,25 @@ allows bundled ES module sidecars under `./web-components/`.
 ## Build Contract
 
 - Output a complete mini-app artifact in the platform's `miniapp` JSON shape.
+- **Single-file rule (hard requirement when no Web Components Recipe is
+  present)**: the `html` field MUST be one self-contained HTML document. All
+  CSS goes inside `<style>...</style>`. All JavaScript goes inside
+  `<script>...</script>` (inline). **Do NOT** reference external sidecar files
+  like `./styles.css`, `./game.js`, `./main.js`, `./app.js`, or use
+  `fetch("./X.js")` to load script source at runtime. The miniapp JSON schema
+  has a single `html` field — anything you reference via `./X.ext` will 404 at
+  load time because the installer cannot extract additional files from your
+  output. Inline everything. (2026-06-02 — pre-install validator rejects
+  artifacts that violate this rule.)
 - If a Web Components Recipe is present, prefer `<script type="module">` imports
   from `./web-components/<component-path>`, include the
   `mchatai-web-components-used` marker, and let the installer bundle those
-  catalog modules. Do not rewrite the selected components into a one-off
+  catalog modules. The `./web-components/` subdir is the ONLY external-path
+  reference the installer can satisfy (it symlinks the catalog into the
+  install dir). Do not rewrite the selected components into a one-off
   monolithic class.
-- If no Web Components Recipe is present, keep the artifact self-contained.
-  Inline CSS and JavaScript are preferred.
+- If no Web Components Recipe is present, keep the artifact self-contained
+  per the single-file rule above. Inline CSS and JavaScript are mandatory.
 - The first screen is the usable app, game, or tool. Do not create a marketing
   landing page unless the user explicitly asks for one.
 - Use browser-native APIs conservatively. Avoid features that are unreliable in

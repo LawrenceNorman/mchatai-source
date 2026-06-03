@@ -97,6 +97,22 @@ CRITICAL RULES FOR MINI APPS:
 }
 ```
 
+### Single-file rule (HARD requirement, 2026-06-02)
+
+The `html` field above is the ENTIRE artifact. There is no other file. Inline
+EVERYTHING:
+
+- All CSS goes inside `<style>...</style>` tags
+- All JavaScript goes inside `<script>...</script>` tags (literally inline)
+- DO NOT write `<link rel="stylesheet" href="./styles.css">` — there is no `./styles.css`
+- DO NOT write `<script src="./game.js">` — there is no `./game.js`
+- DO NOT write `fetch("./game.js").then(r => r.text()).then(eval)` — fetch will 404
+
+The pre-install validator rejects any artifact with a dangling external file
+reference. The renderer is a `file://`-mode WKWebView with no server; only the
+inlined `index.html` you emit + (when a Web Components Recipe is present) the
+symlinked `./web-components/` catalog dir are reachable. Anything else 404s.
+
 ## Mini App Quality Standards
 Build apps that feel POLISHED and COMPLETE, not prototypes. Follow these standards:
 

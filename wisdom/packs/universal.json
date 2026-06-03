@@ -1,6 +1,6 @@
 {
   "packID": "universal",
-  "version": 16,
+  "version": 17,
   "displayName": "Universal Guidelines",
   "description": "Rules that apply to ALL generated apps regardless of category.",
   "categories": [
@@ -550,6 +550,20 @@
       ]
     },
     {
+      "id": "u-no-camera-microphone-getusermedia",
+      "rule": "NEVER call `navigator.mediaDevices.getUserMedia` or use `<input type=\"file\" capture>` in generated mini-apps. The mChatAI+ WebView denies media-capture requests at the WKUIDelegate layer, so any feature that requires the camera or microphone will silently fail (the promise rejects with NotAllowedError). If the user's goal sounds like it needs a camera (Stop-Motion, photo booth, AR effects, video diary, etc.), redesign the app to use placeholder images, an emoji/sticker grid, file picker (image/* without `capture`), or simulated stop-motion via canvas drawing — do not attempt the live capture. Apps that ask the user to grant camera access will fail and leave the screen blank.",
+      "why": "Real incident 2026-06-01: a generated Stop-Motion-for-kids mini-app called getUserMedia, the prompt-for-permission flow crashed mChatAI+ (no WKUIDelegate.requestMediaCapturePermissionFor handler at the time). The host app now denies the permission cleanly, but the underlying problem remains — the app still doesn't work for the user. The right fix is to design AROUND the constraint, not against it.",
+      "severity": "critical",
+      "appliesTo": [
+        "miniApp",
+        "webSPA"
+      ],
+      "examples": [
+        "BAD: navigator.mediaDevices.getUserMedia({video:true}).then(stream => video.srcObject = stream) — permission denied at host layer, promise rejects, video stays blank.",
+        "GOOD (stop-motion alternative): let the user click an emoji-grid to drop characters onto a canvas frame-by-frame; render the frames as a flipbook via setInterval(swap, 200)."
+      ]
+    },
+    {
       "id": "u-no-base64-data-uris",
       "rule": "NEVER embed `data:<anything>;base64,...` URIs in generated mini-app HTML — image, audio, video, font, ANY type. Even one ~50KB base64 blob can exhaust the LLM's output-token budget, truncating the response mid-string and leaving an unclosed `\\`\\`\\`miniapp` fence that the parser rejects. Replacements: (1) Audio cues → Web Audio API oscillator (4-line beep generator, ~200 bytes); (2) Icons → inline SVG strings or Unicode emoji (⏸ ▶ 🔔 ⏱); (3) Fonts → -apple-system / system-ui (already required, no @import); (4) Sample data → inline JS arrays/objects, not base64-encoded JSON.",
       "why": "Multi-Timer 2026-05-20 reproed twice: with audio cue at zero, OpenAI agentic loop embedded data:audio/wav;base64,...50KB+... in the html JSON-stringified field, output truncated mid-base64, no closing ```miniapp fence, parser gives nil, wizard silently fails. Same exhaustion happens with data:image (already forbidden) and would happen with data:video, data:font, etc. The fix is structural: forbid ALL base64 data URIs regardless of media type.",
@@ -582,6 +596,10 @@
     {
       "date": "2026-05-20",
       "change": "Phase WX-P2: broadened u-no-base64-data-uris to forbid ALL data:*;base64,... URIs (image, audio, video, font, anything). Initial v1 only banned data:image; LLM substituted data:audio/wav for the multi-timer audio cue and hit the same truncation. Web Audio API code replacement provided."
+    },
+    {
+      "date": "2026-06-03",
+      "change": "Phase ROUTE+CAM: added u-no-camera-microphone-getusermedia CRITICAL rule. Stop-Motion-for-kids canary called getUserMedia, crashed the app for lack of a WKUIDelegate.requestMediaCapturePermissionFor handler. Host layer now denies cleanly (won't crash) — wisdom rule pushes LLM to design around the constraint (placeholder images, emoji grid, file picker, simulated stop-motion via canvas) instead of attempting live capture."
     }
   ]
 }
