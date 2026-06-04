@@ -1,6 +1,6 @@
 {
   "packID": "universal",
-  "version": 18,
+  "version": 19,
   "displayName": "Universal Guidelines",
   "description": "Rules that apply to ALL generated apps regardless of category.",
   "categories": [
@@ -20,17 +20,17 @@
       ]
     },
     {
-      "id": "u-no-camera-microphone-getusermedia",
-      "rule": "NEVER call `navigator.mediaDevices.getUserMedia` or use `<input type=\"file\" capture>` in generated mini-apps. The mChatAI+ WebView denies media-capture requests at the WKUIDelegate layer, so any feature that requires the camera or microphone will silently fail (the promise rejects with NotAllowedError). If the user's goal sounds like it needs a camera (Stop-Motion, photo booth, AR effects, video diary, etc.), redesign the app to use placeholder images, an emoji/sticker grid, file picker (image/* without `capture`), or simulated stop-motion via canvas drawing — do not attempt the live capture. Apps that ask the user to grant camera access will fail and leave the screen blank.",
-      "why": "Real incident 2026-06-01: a generated Stop-Motion-for-kids mini-app called getUserMedia, the prompt-for-permission flow crashed mChatAI+ (no WKUIDelegate.requestMediaCapturePermissionFor handler at the time). The host app now denies the permission cleanly, but the underlying problem remains — the app still doesn't work for the user. The right fix is to design AROUND the constraint, not against it.",
-      "severity": "critical",
+      "id": "u-camera-microphone-best-practices",
+      "rule": "Camera and microphone (`navigator.mediaDevices.getUserMedia`) ARE now supported in mChatAI+ mini-apps for photo, video, and audio capture. The host displays a standard macOS permission prompt the first time. Best practices: (1) call getUserMedia ONLY when the user explicitly taps a 'Take Photo' / 'Start Recording' / 'Enable Camera' button — never auto-start on page load; (2) catch the rejection — if the user denies permission, show a clear inline message with a Retry button, never leave the screen blank; (3) always release the MediaStream tracks (`stream.getTracks().forEach(t => t.stop())`) when capture is done; (4) display a live preview `<video>` element so the user knows the camera is active; (5) for SINGLE photo capture, prefer a discrete shutter-click UX (draw current video frame to a `<canvas>`, save as data URL, stop the stream) over continuous recording.",
+      "why": "Earlier (Phase ROUTE+CAM 2026-06-01) media capture was disabled in mini-apps because the WebView lacked a permission delegate and crashed the host on prompt. Fixed 2026-06-04 (Phase ROUTE+CAM-ENABLE): WKUIDelegate now returns `.prompt`, the standard NSCameraUsageDescription / NSMicrophoneUsageDescription dialogs fire, and entitlements were added to both Debug + DirectDownload builds. Mini-apps can now do Stop Motion / photo booth / DreamSnap-style video / voice memos. The wisdom shifts from 'don't use camera' to 'use camera politely and clean up after yourself'.",
+      "severity": "important",
       "appliesTo": [
         "miniApp",
         "webSPA"
       ],
       "examples": [
-        "BAD: navigator.mediaDevices.getUserMedia({video:true}).then(stream => video.srcObject = stream) — permission denied at host layer, promise rejects, video stays blank.",
-        "GOOD (stop-motion alternative): let the user click an emoji-grid to drop characters onto a canvas frame-by-frame; render the frames as a flipbook via setInterval(swap, 200)."
+        "GOOD: const stream = await navigator.mediaDevices.getUserMedia({video: true}); video.srcObject = stream; // user tapped the 'Enable Camera' button first; release with stream.getTracks().forEach(t => t.stop()) when done.",
+        "BAD: window.onload = () => navigator.mediaDevices.getUserMedia(...) — auto-prompting on load before the user knows what the app does is jarring; wait for an explicit tap."
       ]
     },
     {
