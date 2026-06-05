@@ -1,6 +1,6 @@
 {
   "packID": "universal",
-  "version": 21,
+  "version": 22,
   "displayName": "Universal Guidelines",
   "description": "Rules that apply to ALL generated apps regardless of category.",
   "categories": [
@@ -21,7 +21,7 @@
     },
     {
       "id": "u-camera-microphone-best-practices",
-      "rule": "Camera and microphone are supported in mChatAI+ mini-apps via TWO paths — pick the right one. (A) For SINGLE-SHOT PHOTO capture (Stop Motion frames, photo booths, profile pictures): `const { dataUrl, width, height } = await window.mChatAI.camera.takePhoto({ mirror: true })` — opens a native macOS sheet with live preview + shutter + Cancel; returns a JPEG data URL. (A2) For SHORT VIDEO CLIP capture (DreamSnap clips, video diary, AR demos): `const { dataUrl, durationMs, width, height, mimeType } = await window.mChatAI.camera.takeVideo({ maxSeconds: 10, mirror: true, audio: true })` — opens a native sheet with Record/Stop and a live timer; returns an mp4 data URL. Note: keep `maxSeconds` <= 15 for embedding inline (10s 480p ≈ 3-5MB encoded, fine for a data URL; longer clips bloat the page memory). Both Promises reject with 'USER_CANCELLED' / 'PERMISSION_DENIED' / 'NO_CAMERA' — you MUST catch and surface inline. (B) For LIVE VIDEO PREVIEW or real-time effects/filters, use `navigator.mediaDevices.getUserMedia` directly — macOS shows the standard permission prompt. Best practices for the raw getUserMedia path: (1) call ONLY after explicit user tap; (2) catch rejection + show retry UI; (3) release tracks (`stream.getTracks().forEach(t => t.stop())`) when done; (4) show a live `<video>` preview while active. NEVER auto-start camera on page load via either path.",
+      "rule": "Camera and microphone work in TWO host environments — your mini-app must detect which one it's in and pick the right API. **(A) Inside mChatAI+** (macOS or iOS app): the native bridge `window.mChatAI.camera.takePhoto({mirror?})` and `window.mChatAI.camera.takeVideo({maxSeconds?, mirror?, audio?})` is available — opens a native capture sheet, returns a JPEG/MP4 data URL. **(B) Published to the hub** (random web browser): the bridge is NOT defined; use `navigator.mediaDevices.getUserMedia({video: true, audio: false})` and capture-to-canvas yourself. **ALWAYS write mini-apps with a runtime-detection wrapper** so the same code works in both environments: `async function snapPhoto() { if (window.mChatAI?.camera?.takePhoto) { return (await window.mChatAI.camera.takePhoto({mirror: true})).dataUrl; } const stream = await navigator.mediaDevices.getUserMedia({video: true}); /* ... show live preview, on shutter draw video frame to a canvas, return canvas.toDataURL('image/jpeg'), then stream.getTracks().forEach(t => t.stop()) */ }`. Best practices for either path: (1) call ONLY after explicit user tap — never auto-start on page load; (2) catch rejections — bridge rejects with 'USER_CANCELLED' / 'PERMISSION_DENIED' / 'NO_CAMERA' / 'CAPTURE_FAILED', getUserMedia rejects with a DOMException whose `name` is `NotAllowedError`/`NotFoundError`/etc.; (3) show a clear inline retry message on rejection, never leave the screen blank; (4) release MediaStream tracks when capture is done; (5) for SHORT video on the web, use `MediaRecorder(stream, {mimeType: 'video/webm'})` since browsers reliably support webm. The bridge gives a polished native sheet on mChatAI+; getUserMedia gives a working in-page capture flow on the hub. Both paths shipped together = mini-app feels right in both homes.",
       "why": "Earlier (Phase ROUTE+CAM 2026-06-01) media capture was disabled in mini-apps because the WebView lacked a permission delegate and crashed the host on prompt. Fixed 2026-06-04 (Phase ROUTE+CAM-ENABLE): WKUIDelegate now returns `.prompt`, the standard NSCameraUsageDescription / NSMicrophoneUsageDescription dialogs fire, and entitlements were added to both Debug + DirectDownload builds. Mini-apps can now do Stop Motion / photo booth / DreamSnap-style video / voice memos. The wisdom shifts from 'don't use camera' to 'use camera politely and clean up after yourself'.",
       "severity": "important",
       "appliesTo": [
@@ -29,8 +29,8 @@
         "webSPA"
       ],
       "examples": [
-        "GOOD (single-shot photo): const r = await window.mChatAI.camera.takePhoto({ mirror: true }).catch(e => { showError(e.message); return null; }); if (r) img.src = r.dataUrl;",
-        "GOOD (short video clip): const r = await window.mChatAI.camera.takeVideo({ maxSeconds: 10, audio: true }).catch(e => null); if (r) { videoEl.src = r.dataUrl; durationLabel.textContent = (r.durationMs/1000).toFixed(1) + 's'; }"
+        "GOOD (env-aware photo): async function snap() { try { if (window.mChatAI?.camera?.takePhoto) { return (await window.mChatAI.camera.takePhoto({mirror:true})).dataUrl; } const s = await navigator.mediaDevices.getUserMedia({video:true}); /* preview + shutter draws to canvas, then s.getTracks().forEach(t=>t.stop()) */ } catch(e) { showError(e.name||e.message); } }",
+        "GOOD (env-aware video): async function record() { if (window.mChatAI?.camera?.takeVideo) { const r = await window.mChatAI.camera.takeVideo({maxSeconds:10}); return r.dataUrl; } const s = await navigator.mediaDevices.getUserMedia({video:true, audio:true}); const rec = new MediaRecorder(s, {mimeType:'video/webm'}); /* start, stop on user tap, blob → URL.createObjectURL */ }"
       ]
     },
     {
