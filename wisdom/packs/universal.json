@@ -1,6 +1,6 @@
 {
   "packID": "universal",
-  "version": 22,
+  "version": 23,
   "displayName": "Universal Guidelines",
   "description": "Rules that apply to ALL generated apps regardless of category.",
   "categories": [
@@ -21,7 +21,7 @@
     },
     {
       "id": "u-camera-microphone-best-practices",
-      "rule": "Camera and microphone work in TWO host environments — your mini-app must detect which one it's in and pick the right API. **(A) Inside mChatAI+** (macOS or iOS app): the native bridge `window.mChatAI.camera.takePhoto({mirror?})` and `window.mChatAI.camera.takeVideo({maxSeconds?, mirror?, audio?})` is available — opens a native capture sheet, returns a JPEG/MP4 data URL. **(B) Published to the hub** (random web browser): the bridge is NOT defined; use `navigator.mediaDevices.getUserMedia({video: true, audio: false})` and capture-to-canvas yourself. **ALWAYS write mini-apps with a runtime-detection wrapper** so the same code works in both environments: `async function snapPhoto() { if (window.mChatAI?.camera?.takePhoto) { return (await window.mChatAI.camera.takePhoto({mirror: true})).dataUrl; } const stream = await navigator.mediaDevices.getUserMedia({video: true}); /* ... show live preview, on shutter draw video frame to a canvas, return canvas.toDataURL('image/jpeg'), then stream.getTracks().forEach(t => t.stop()) */ }`. Best practices for either path: (1) call ONLY after explicit user tap — never auto-start on page load; (2) catch rejections — bridge rejects with 'USER_CANCELLED' / 'PERMISSION_DENIED' / 'NO_CAMERA' / 'CAPTURE_FAILED', getUserMedia rejects with a DOMException whose `name` is `NotAllowedError`/`NotFoundError`/etc.; (3) show a clear inline retry message on rejection, never leave the screen blank; (4) release MediaStream tracks when capture is done; (5) for SHORT video on the web, use `MediaRecorder(stream, {mimeType: 'video/webm'})` since browsers reliably support webm. The bridge gives a polished native sheet on mChatAI+; getUserMedia gives a working in-page capture flow on the hub. Both paths shipped together = mini-app feels right in both homes.",
+      "rule": "Camera and microphone work in TWO host environments via `window.mChatAI.camera.takePhoto({mirror?, quality?})` and `window.mChatAI.camera.takeVideo({maxSeconds?, mirror?, audio?})`. Inside **mChatAI+** (macOS or iOS) → native AVFoundation capture sheet. Published to the **hub** → a web polyfill is injected at serve time that runs `navigator.mediaDevices.getUserMedia` + an in-page overlay. Either path returns `{dataUrl, width, height}` (photo) or `{dataUrl, durationMs, width, height, mimeType}` (video). Rejects with 'USER_CANCELLED'/'PERMISSION_DENIED'/'NO_CAMERA'/'CAPTURE_FAILED'. Same code, three environments — DO NOT branch on `if (window.mChatAI?.camera?.takePhoto)` anymore; just call it. Best practices: (1) call ONLY after explicit user tap — never on page load; (2) await + catch, show an inline retry message on rejection (never leave a blank screen); (3) for live previews/effects (filters, AR), use `navigator.mediaDevices.getUserMedia` directly and release tracks (`stream.getTracks().forEach(t => t.stop())`) when done.",
       "why": "Earlier (Phase ROUTE+CAM 2026-06-01) media capture was disabled in mini-apps because the WebView lacked a permission delegate and crashed the host on prompt. Fixed 2026-06-04 (Phase ROUTE+CAM-ENABLE): WKUIDelegate now returns `.prompt`, the standard NSCameraUsageDescription / NSMicrophoneUsageDescription dialogs fire, and entitlements were added to both Debug + DirectDownload builds. Mini-apps can now do Stop Motion / photo booth / DreamSnap-style video / voice memos. The wisdom shifts from 'don't use camera' to 'use camera politely and clean up after yourself'.",
       "severity": "important",
       "appliesTo": [
@@ -29,8 +29,39 @@
         "webSPA"
       ],
       "examples": [
-        "GOOD (env-aware photo): async function snap() { try { if (window.mChatAI?.camera?.takePhoto) { return (await window.mChatAI.camera.takePhoto({mirror:true})).dataUrl; } const s = await navigator.mediaDevices.getUserMedia({video:true}); /* preview + shutter draws to canvas, then s.getTracks().forEach(t=>t.stop()) */ } catch(e) { showError(e.name||e.message); } }",
-        "GOOD (env-aware video): async function record() { if (window.mChatAI?.camera?.takeVideo) { const r = await window.mChatAI.camera.takeVideo({maxSeconds:10}); return r.dataUrl; } const s = await navigator.mediaDevices.getUserMedia({video:true, audio:true}); const rec = new MediaRecorder(s, {mimeType:'video/webm'}); /* start, stop on user tap, blob → URL.createObjectURL */ }"
+        "GOOD (single call works in mChatAI+ macOS, iOS, AND the hub on any browser): try { const r = await window.mChatAI.camera.takePhoto({mirror:true}); img.src = r.dataUrl; } catch(e) { showError(e.message); }",
+        "GOOD (video): try { const r = await window.mChatAI.camera.takeVideo({maxSeconds:10, audio:true}); videoEl.src = r.dataUrl; durationLabel.textContent = (r.durationMs/1000).toFixed(1) + 's'; } catch(e) { if (e.message !== 'USER_CANCELLED') showError(e.message); }"
+      ]
+    },
+    {
+      "id": "u-share-bridge",
+      "rule": "Use `window.mChatAI.share.send({title?, text?, url?, dataUrl?})` to invoke the native share sheet on macOS/iOS or `navigator.share` (with copy-link fallback) on the web. Resolves to `{shared: true}` on completion; rejects with 'USER_CANCELLED' / 'NOT_SUPPORTED' / 'SHARE_FAILED: ...'. Pass any combo of fields — `dataUrl` (image/photo) attaches as a File on platforms that support it. Always wire a 'Share' button into game-over screens and content-creation outputs — the bridge handles platform-specific UX for you.",
+      "why": "Hub-published mini-apps go viral when sharing is one tap. `navigator.share` works on iOS Safari and Android Chrome; desktop browsers fall back to clipboard-copy with a toast — handled in the polyfill so you don't write fallback code.",
+      "severity": "recommended",
+      "appliesTo": ["miniApp", "webSPA"],
+      "examples": [
+        "GOOD: shareBtn.addEventListener('click', async () => { try { await window.mChatAI.share.send({title: 'My high score', text: 'I scored ' + score + ' in ' + GAME_NAME, url: location.href}); } catch(e) { if (e.message !== 'USER_CANCELLED') showError(e.message); } });",
+        "GOOD (share a captured photo): const photo = await window.mChatAI.camera.takePhoto(); await window.mChatAI.share.send({title: 'Look!', dataUrl: photo.dataUrl, url: location.href});"
+      ]
+    },
+    {
+      "id": "u-location-bridge",
+      "rule": "Use `window.mChatAI.location.getCurrent({accuracy?, timeoutSeconds?})` for a one-shot location fix. `accuracy` is 'best' | 'balanced' (default) | 'fast'. Resolves with `{latitude, longitude, accuracyMeters, timestampMs}`. Rejects with 'PERMISSION_DENIED' / 'NO_LOCATION' / 'LOCATION_FAILED: ...'. Native CoreLocation inside mChatAI+; `navigator.geolocation` polyfill on the web. Use for weather cards, treasure hunts, nearby-finder, photo-trip tagging. Never call without explicit user tap on a 'Find my location' button — surprise permission prompts are the #1 complaint.",
+      "why": "Geolocation has been universal across browsers for a decade; the bridge gives ONE call site for both native and web while keeping the permission UX kid-friendly inside mChatAI+.",
+      "severity": "recommended",
+      "appliesTo": ["miniApp", "webSPA"],
+      "examples": [
+        "GOOD: const r = await window.mChatAI.location.getCurrent({accuracy: 'balanced'}); const weather = await fetch('https://api.weather.example/lat=' + r.latitude + '&lon=' + r.longitude).then(r => r.json());"
+      ]
+    },
+    {
+      "id": "u-scanner-bridge",
+      "rule": "Use `window.mChatAI.scanner.scanQR({timeoutSeconds?})` to scan a QR or barcode. Resolves with `{text, format}`. Rejects with 'PERMISSION_DENIED' / 'NO_CAMERA' / 'USER_CANCELLED' / 'SCAN_FAILED: ...'. Native AVCaptureMetadataOutput inside mChatAI+; web polyfill uses getUserMedia + BarcodeDetector API (Chrome/Edge). Safari users without BarcodeDetector see a camera with a hint to install mChatAI+ for instant decoding. Use for multiplayer pairing, classroom treasure hunts, AR scavenger games. The bridge can also decode EAN/UPC/Code128/etc. — useful for grocery/library/inventory mini-apps.",
+      "why": "QR scanning is a high-value UX that's painful to roll yourself with getUserMedia + jsQR. The bridge gives instant native decoding on mChatAI+ and graceful fallback on the web.",
+      "severity": "recommended",
+      "appliesTo": ["miniApp", "webSPA"],
+      "examples": [
+        "GOOD: scanBtn.addEventListener('click', async () => { try { const r = await window.mChatAI.scanner.scanQR(); doSomethingWith(r.text); } catch(e) { if (e.message !== 'USER_CANCELLED') showError(e.message); } });"
       ]
     },
     {
