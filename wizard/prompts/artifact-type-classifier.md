@@ -75,8 +75,9 @@ The user's LEADING verb structure binds tighter than any keyword inside the prom
 | "Send [recipient] [content]" / "Set a reminder [for date] [to do X]" / "Post [content] to [channel]" / "Schedule [event] [for date]" / "Open [path]" — direct imperative with all params parseable | `action` | This is the canonical action shape — leading imperative + concrete object |
 | "Read [text/this] aloud" / "Narrate [text/this]" / "Speak [text]" / "TTS [text]" / "Convert [X] to speech" / "Generate (an MP3 / audio) of [X]" / "Make me an audio version of [X]" | `endproduct` + `subtype: "audio-voice"` | The user wants AUDIO output, NOT a text answer. mChatAI HAS TTS — never refuse with "I can't read aloud as a text model" |
 | "Recommend [a/the best] [X]" / "Should I [use/pick] [X] or [Y]" / "Which [X] is better" / "What [X] should I use" | `advisory` | recommendation/comparison |
+| "Gather [me] [a list of X]" / "Research [X]" / "Find me all [X]" / "Give me a list of [X]" / "Give me a [competitive landscape / market analysis] of [X]" / "Compile [data/list] on [X]" — research and list-gathering asks that need web search + synthesis | `pipeline` if a recurring cadence is stated ("weekly", "monthly", "daily", "every Monday"); otherwise `chain` | NEVER `miniApp` — the user wants researched CONTENT delivered, not an app built. These are multi-step (search, extract, synthesize) by nature. |
 
-**Mnemonic:** verb position outranks verb identity. "Set a reminder" alone is `action`. "Tell me how to set a reminder" is `answer`. "Make me an app to set reminders" is `miniApp`.
+**Mnemonic:** verb position outranks verb identity. "Set a reminder" alone is `action`. "Tell me how to set a reminder" is `answer`. "Make me an app to set reminders" is `miniApp`. "Gather me a list of companies" is `chain` (research), NOT an app.
 
 ## Disambiguation tactics
 
@@ -91,6 +92,8 @@ The user's LEADING verb structure binds tighter than any keyword inside the prom
 **When in doubt between `chain` and a single chip:** chain is multi-step with TEMPORAL/SEQUENTIAL structure. If you can see "first X then Y" or "and then" or arrow connectors (→ / ->) AND the steps belong to different chips, it's a chain. Otherwise it's a single chip.
 
 **Heavyweight chips** (`unityGame`, `macOSApp`, `microservice`) require explicit keywords. Without "unity"/"native mac"/"microservice"/"fastapi" in the goal, downgrade to `miniApp`.
+
+**When in doubt between `miniApp` and research (`chain`/`pipeline`):** does the user want an INTERACTIVE TOOL or RESEARCHED CONTENT? "Build me a competitor tracker app" = miniApp (they want a UI). "Give me a competitive landscape analysis of X" = chain (they want the analysis itself). List-gathering ("gather", "find me all", "compile a list") is always content, never an app — route to `chain`, or `pipeline` when a recurring cadence is stated.
 
 ## Examples
 
@@ -224,6 +227,30 @@ Input: `FastAPI sentiment analysis service.`
 Output:
 ```json
 {"chip":"microservice","confidence":0.96,"reason":"explicit FastAPI + service noun"}
+```
+
+Input: `Gather me an email list of all of the medium sized immigration companies in the US.`
+Output:
+```json
+{"chip":"chain","confidence":0.92,"reason":"one-shot list-gathering research ask (search + extract + compile) — content deliverable, not an app"}
+```
+
+Input: `Give me a monthly competitive landscape update on companies using AI in US immigration.`
+Output:
+```json
+{"chip":"pipeline","confidence":0.94,"reason":"research deliverable with explicit recurring cadence ('monthly') — reusable scheduled pipeline"}
+```
+
+Input: `Find me all of the significant recent articles on AI and immigration trends.`
+Output:
+```json
+{"chip":"chain","confidence":0.92,"reason":"one-shot research sweep (search + filter + summarize) — researched content, not a build"}
+```
+
+Input: `Give me a list of articles I can write on a weekly basis with supporting documentation for LinkedIn and my blog.`
+Output:
+```json
+{"chip":"pipeline","confidence":0.9,"reason":"recurring cadence ('weekly basis') + research/ideation deliverable — reusable content pipeline"}
 ```
 
 Input: `do the thing with the stuff`
