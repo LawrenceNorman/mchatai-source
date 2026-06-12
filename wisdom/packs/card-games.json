@@ -315,7 +315,8 @@
         "RIGHT (HTML/CSS): background: radial-gradient(circle at 20% 10%, rgba(250,204,21,0.22), transparent 28rem), radial-gradient(circle at 80% 0%, rgba(34,211,238,0.16), transparent 26rem), linear-gradient(145deg, #170b1c 0%, #1f1026 48%, #35141d 100%);",
         "WRONG: backgroundColor = .black, .ignoresSafeArea(), nothing else. Reads like a debug build.",
         "Board game color picks: chess = warm beige + dark walnut accents; checkers = forest green felt + tan corner glow; poker = dark green felt + brass corner highlights."
-      ]
+      ],
+      "appliesTo": "miniApp"
     },
     {
       "id": "game-tile-shine-and-gradient",
@@ -327,7 +328,8 @@
         "RIGHT (web Candy Match): see frameworks/web-components/examples/candy-match/candy-match.css — .tile + .tile::before + .tile.kind-N gradient classes",
         "WRONG: RoundedRectangle.fill(Color.red) + Image(systemName: 'sparkle') with no gradient, no shine, no shadow — reads as a wireframe placeholder",
         "Reskin guidance: when the user asks for a different theme (e.g. 'space-themed match-3'), keep the gradient+shine+stroke STRUCTURE, only swap the gradient color pairs."
-      ]
+      ],
+      "appliesTo": "miniApp"
     },
     {
       "id": "game-animation-choreography",
@@ -340,7 +342,8 @@
         "RIGHT (cascade stagger): for (i, event) in events.enumerated() { DispatchQueue.main.asyncAfter(deadline: .now() + Double(i) * 0.24) { ... } }",
         "WRONG: engine.swap(a, b); engine.findMatches(); engine.collapse(); engine.refill() — all in one synchronous frame; the user sees the board jump from old state to new state with zero feedback.",
         "Anti-pattern: rendering NEW tiles in their final position. They should slide IN from off-screen / above. Use transitions: .move(edge: .top).combined(with: .opacity)."
-      ]
+      ],
+      "appliesTo": "miniApp"
     },
     {
       "id": "game-idle-hint-pulse",
@@ -379,24 +382,26 @@
     },
     {
       "id": "anim-per-phase-curves-not-one-global",
-      "rule": "Tile-based games MUST use DIFFERENT animation curves for different phases. Bulging = .easeOut(0.08) (fast pop). Shrinking = .easeIn(0.10) (accelerate as it disappears). Landing = .spring(response:0.18, dampingFraction:0.45) (bouncy). Idle restore = .spring(0.20, 0.78) (settle). One global animation curve for everything reads as 'boring spring on everything' — different timings per phase is what separates 'alive' from 'sterile.'",
+      "rule": "Tile-based games MUST use DIFFERENT animation curves for different phases. Pop/bulge = a fast ease-out (CSS cubic-bezier(0.2, 0.8, 0.2, 1), ~80ms). Shrink/clear = ease-in (~100ms, accelerate as it disappears). Land/drop = an overshoot 'spring' feel (cubic-bezier(0.34, 1.56, 0.64, 1), ~180ms). Idle restore = a gentle settle (~200ms ease-out). One global transition curve for everything reads as 'boring ease on everything' - different timings per phase is what separates 'alive' from 'sterile'.",
       "why": "Real match-three puzzle uses different curves per phase (researched 2026-05-04). v3/v4/v5 of catalog Match3 used one global spring; user feedback was 'feels flat.' v6 with per-phase curves was the first one that 'felt like candy.' Universal — applies to any squash-stretch animated UI.",
       "severity": "high",
       "examples": [
         "RIGHT: animationFor(.bulging) returns .easeOut(0.08); animationFor(.shrinking) returns .easeIn(0.10); animationFor(.squashing) returns .spring(response:0.18, dampingFraction:0.45). Apply each via .animation(animationFor(phase), value: phase) on the tile.",
         "WRONG: withAnimation(.spring) wrapping the entire match-resolve cycle — every phase rides one curve, feels uniform."
-      ]
+      ],
+      "appliesTo": "miniApp"
     },
     {
       "id": "anim-use-animation-intensity-preset",
-      "rule": "Game generators creating tile-based or arcade games SHOULD use the `effects.animation-intensity` Lego component instead of hardcoding squash/bulge/spring magic numbers in ContentView. Pick a preset based on game pace: `.subtle` for productivity-flavored puzzles (crossword/word/sudoku/utility), `.standard` for mechanics-driven games (match-3/minesweeper/breakout), `.punchy` for arcade-action (asteroids/pacman/plants-vs-zombies/kids-games). One preset switch rescales every effect together; individual fields can be overridden for fine-tuning. Stamp the preset choice into a `// AnimationIntensity: subtle` comment near the property declaration so it's scannable.",
+      "rule": "Centralize the squash/bulge/spring magnitudes behind ONE intensity scale (a CSS custom property like --anim-intensity, or a single JS constant) instead of hardcoding magic numbers per effect. Pick a level by game pace: subtle for productivity-flavored puzzles (crossword/word/sudoku/utility), standard for mechanics-driven games (match-3/minesweeper/breakout), punchy for arcade-action (asteroids/pacman/kids-games). One value rescales every effect together; individual effects can override. Comment the choice (/* anim-intensity: subtle */) so it is scannable.",
       "why": "Without a shared knob struct, tuning means hunting for magic numbers across the View; copying numbers from one game to another forgets to scale them for pace. AnimationIntensity centralizes the tuning surface. Filed 2026-05-04 after Match3 v6 work + user request 'might almost be nice to define controls that allow us to dial up and down some of this stuff so we can quickly tune a given game or app.'",
       "severity": "medium",
       "examples": [
         "RIGHT: `private let intensity: AnimationIntensity = .standard  // AnimationIntensity: standard (match-3 = mechanics-driven feedback)` then use `intensity.bulgeAmount`, `intensity.flashScale`, etc. throughout the View.",
         "RIGHT (override individual): `var i = AnimationIntensity.standard; i.flashScale = 0.5; i.flashOpacity = 0.4 // dial flashes back further` and assign to `intensity`.",
         "WRONG: hardcoded `.scaleEffect(1.25)`, `.font(.system(size: 92))`, `.spring(response: 0.18, dampingFraction: 0.45)` scattered across the View — impossible to retune as a unit."
-      ]
+      ],
+      "appliesTo": "miniApp"
     },
     {
       "id": "anim-flash-overlays-transparent-not-solid",
@@ -411,14 +416,15 @@
     },
     {
       "id": "audio-use-sound-engine-component",
-      "rule": "Game-flavor mini-apps (arcade, match-3, card, puzzle, board games — anything in the 'game' bucket) SHOULD use the `effects.sound-engine` Lego component instead of building their own AVAudioPlayer plumbing. SoundEngine provides pooled players (low-latency overlap), debounced playback, music fade in/out, persistent UserDefaults mute, semantic SFX enum (match3Pop / arcadeLaser / cardSlide / etc.), and intensity presets (.subtle/.standard/.punchy/.soft). 25 CC0 SFX from Kenney are bundled in `assets/sfx/*.m4a`. Generated apps should declare `@ObservedObject private var sound = SoundEngine.shared` and call `sound.play(.match3Pop)`. Add `resources: [.copy(\"SFX\")]` to the SwiftPM target.",
+      "rule": "Game-flavor web mini-apps (arcade, match-3, card, puzzle, board games) SHOULD use the resources.audio-manager Lego component for sound instead of hand-rolling new Audio() / AudioContext plumbing. AudioManager provides pooled low-latency playback, a debounce guard, music fade in/out, a persisted mute (localStorage), and a semantic SFX dispatcher (audio.sfx('match'), 'hit', 'gameover', 'levelup', 'click'). It is iOS-Safari-safe (defers the first AudioContext.resume() to a user gesture). Pair with ui.mute-toggle, or apply the recipe.with-sound-effects addon. Do not double-wire: if the base game already has its own audio, stop and report 'already-sonified'.",
       "why": "Filed 2026-05-04 after building SoundEngine component for catalog Match3 v7. User feedback: 'sound effects really add to the overall game experience.' Without a shared engine, every game reinvents pool management, debouncing, mute toggle, music fades — and gets 2-3 of them wrong (jarring volumes, no fade, plays on every render).",
       "severity": "high",
       "examples": [
         "RIGHT: import effects.sound-engine; @ObservedObject private var sound = SoundEngine.shared; on match-clear: sound.play(.match3Pop, pitchSemitones: cascadeDepth * 2)",
         "RIGHT (mute button): Button { sound.muted.toggle() } label: { Image(systemName: sound.muted ? \"speaker.slash.fill\" : \"speaker.wave.2.fill\") } — required by audio-always-mute-toggle rule.",
         "WRONG: build AVAudioPlayer pool ad-hoc in ContentView; reinvent debouncing; forget mute persistence; skip music fades."
-      ]
+      ],
+      "appliesTo": "miniApp"
     },
     {
       "id": "audio-always-mute-toggle",
@@ -433,10 +439,10 @@
     },
     {
       "id": "audio-pitch-shift-cascades",
-      "rule": "For match-3 / cascade / chain-reaction games, pitch-shift the SFX +2 semitones per cascade depth (depth 0 = neutral, depth 1 = +2, depth 2 = +4, etc.). Creates the satisfying ascending arpeggio match-three puzzle is famous for. Use `sound.play(sfx, pitchSemitones: depth * 2)`. SoundEngine supports this via `enableRate = true` on the underlying AVAudioPlayer pool. Cap at depth 6 (= +12 semitones = double pitch) — beyond that AVAudioPlayer artifacts become obvious. Apply same pattern to: combo counters in arcade games (each combo bumps pitch), enemy-streak-kills, multi-line-clear in falling-block puzzle.",
+      "rule": "For match-3 / cascade / chain-reaction games, pitch-shift the SFX up per cascade depth (depth 0 = neutral, depth 1 = +2 semitones, depth 2 = +4, etc.) for the satisfying ascending arpeggio match-three is famous for. With resources.audio-manager / Web Audio, raise pitch by setting the source playbackRate to 2 ** (semitones/12) (e.g. depth*2 semitones). Cap at depth 6 (+12 semitones = double pitch); beyond that it sounds chipmunky. Apply the same pattern to combo counters, enemy streak-kills, and multi-line-clear in falling-block puzzle.",
       "why": "Real match-three puzzle production behavior validated 2026-05-04 via web research + Match3 v7 implementation. Without pitch-shift, every cascade pop sounds identical → user can't tell they're chaining. With pitch-shift, the ear hears 'thing 1, thing 2, thing 3' as ascending tones and the cascade feels satisfying. Universal — applies to any game with chainable events.",
       "severity": "medium",
-      "appliesTo": "tileBasedGame, arcadeGame, puzzleGame",
+      "appliesTo": "miniApp",
       "examples": [
         "RIGHT: sound.play(.match3Pop, pitchSemitones: cascadeDepth * 2) — direct swap = neutral, first cascade = +2, second = +4, etc.",
         "RIGHT (combos): sound.play(.arcadeExplosion, pitchSemitones: min(comboCount, 6) * 2)",
@@ -445,14 +451,15 @@
     },
     {
       "id": "audio-debounce-events-not-renders",
-      "rule": "Sound effects must fire on DISCRETE GAME EVENTS (match resolved, button tapped, enemy hit, level up), NOT inside SwiftUI render or `body` evaluation. SoundEngine debounces internally (30ms window per SFX), but if you call `sound.play(.x)` from a `.onAppear` / `body` getter / @State observer that fires on every render, you'll hammer the engine — and the debounce will silently drop most of them but the ones that DO play will be misaligned with what the user did. Place SFX calls inside the action handlers: `Button(action: { sound.play(.uiButtonTap); ...real action... })` or inside the engine-event loop where matches resolve.",
+      "rule": "Sound effects must fire on DISCRETE GAME EVENTS (match resolved, button tapped, enemy hit, level up), NOT inside a render/draw loop or reactive re-render. Web Audio resumes lazily on the first user gesture; debounce repeated SFX yourself (a ~30ms per-sound guard). If you call audio.sfx('x') from inside a requestAnimationFrame draw callback or a render that fires every frame, you hammer the engine and the SFX drift out of sync with what the user did. Place SFX calls inside the event handler where the thing happens (the click/keydown listener, or the engine step where matches resolve) - never the render.",
       "why": "Same anti-pattern as 'wrote tile content into ForEach Text() body' — render-time side effects = unpredictable. Filed 2026-05-04 after wiring Match3: original instinct was to call sound.play(.match3Pop) inside the `flashView` ViewBuilder. That would have fired on every flash render, not just when the flash was created. Moved into the cascade-loop where events.kind is known once per resolution.",
       "severity": "high",
       "examples": [
         "RIGHT: in the cascade loop where match events resolve, exactly once per event: `for event in previewEvents { sound.play(matchSFX(for: event.kind), pitchSemitones: event.cascadeDepth * 2) }`",
         "WRONG: `var body: some View { Text(\"\\(score)\").onAppear { sound.play(.scoreTick) } }` — fires every render.",
         "WRONG: `.onChange(of: engine.score) { sound.play(.coinPickup) }` triggers on EVERY score change including the +30 from a 3-match → could fire 6+ times in a single cascade. Either debounce upstream or fire on the discrete match event, not the score derivative."
-      ]
+      ],
+      "appliesTo": "miniApp"
     },
     {
       "id": "audio-pick-intensity-by-game-pace",
@@ -477,10 +484,10 @@
     },
     {
       "id": "level-use-level-manager-component",
-      "rule": "Progression-flavored games (match-3, arcade-with-waves, puzzles-with-difficulty-tiers, runners, idle clickers, platformers with progressing stages) MUST use the `effects.level-manager` Lego component instead of inventing target-score / progression math from scratch. LevelManager provides: difficulty curves (.casual 1.5× / .standard 1.4× / .hardcore 1.3× / .accelerating / .custom), per-level moves budget, suggestedPaletteSize / suggestedSpawnRateMultiplier / suggestedAnimationIntensity helpers, persistent currentLevel via UserDefaults, and a celebration window (`celebratingLevelUp` / `celebrationProgress`) for the banner + SFX. Wire it as `@StateObject private var levels = LevelManager(gameID: \"<game>\", baseTarget: <num>, baseMovesAllowed: <num>, curve: .standard)`.",
+      "rule": "Progression-flavored games (match-3, arcade-with-waves, puzzles-with-difficulty-tiers, runners, idle clickers, platformers with stages) SHOULD use the web level Lego components instead of inventing target-score / progression math from scratch: entities.level-content-data (data-driven campaign + DifficultyScaler + localStorage save/load; LevelContentData.generate({ count, baseTarget, scale }) builds a smooth curve), entities.level-progression (runtime state + cumulative score for the hosted-page leaderboard bridge), and ui.level-select-screen (the picker). Read scaled gameplay knobs via level.params.<knob> instead of hardcoding per-level. Or apply the recipe.with-level-progression addon, which composes all three.",
       "why": "Filed 2026-05-04 alongside LevelManager ship. Without a shared component, every progression game writes ad-hoc 'targetScore *= 1.5' arithmetic, forgets to persist current level, and has no celebration moment — users finish level 1, see the same screen, and lose engagement. LevelManager + the celebration window turn 'beat target' into a reward.",
       "severity": "high",
-      "appliesTo": "progressionGame",
+      "appliesTo": "miniApp",
       "examples": [
         "RIGHT: @StateObject private var levels = LevelManager(gameID: \"match3\", baseTarget: 1500, baseMovesAllowed: 30, curve: .standard); HUD reads `Text(\"LEVEL \\(levels.currentLevel)\")` and `Text(\"\\(levels.currentTarget)\")`. On target hit: `levels.advance()`.",
         "RIGHT (UI): scaleEffect on level pill = `1.0 + levels.celebrationProgress * 0.20`; level-up banner opacity = `Double(levels.celebrationProgress)`.",
@@ -606,10 +613,10 @@
     },
     {
       "id": "game-atomic-state-transitions-not-async",
-      "rule": "Game state transitions (level-up, game-over, round-restart, board reseed) MUST be SYNCHRONOUS and ATOMIC. Do NOT split state mutation across `Task { try await Task.sleep(...) }` segments where the visual celebration runs in parallel with state-resetting code. While the user waits for sleeps to complete, they can swap / fire / tap, and the next render-driven turn reads HALF-MUTATED state — causing a cluster of bugs: score resets to 0 (new turn reads stale baseTotalForLevel), counters don't refresh (UI bound to var that hasn't been reassigned yet), RESTART takes you to the wrong level (level-number advanced but engine hasn't been swapped). The fix: do all state mutation in ONE turn (typically inside one `withAnimation` block), and run the celebration banner via a parallel @Published value (e.g. LevelManager.celebrationProgress) that the View animates from independently. SFX is fine to fire as a delayed Task — audio-only, no state mutation, can't race.",
+      "rule": "Game state transitions (level-up, game-over, round-restart, board reseed) MUST be SYNCHRONOUS and ATOMIC. Do NOT split a state mutation across setTimeout / await segments where the visual celebration runs in parallel with state-resetting code. While the user waits for timers they can tap/swap/fire, and the next frame reads HALF-MUTATED state - a cluster of bugs: score resets to 0 (new turn reads a stale baseline), counters do not refresh (UI bound to a value not yet reassigned), RESTART lands on the wrong level (level advanced but the engine was not swapped). Fix: do ALL state mutation in one synchronous step, and run the celebration banner via an independent timer / CSS animation that reads its own progress value. SFX is fine to fire on a delay - audio-only, no state mutation, cannot race.",
       "why": "Filed 2026-05-04 from Match3 v9 → v9.2 incident. v9 split level-up across two `try await Task.sleep` segments (450ms + 650ms) with state-resets happening AFTER the sleeps. User reported three distinct bugs that were all the same race: 'my score went back to 0 at a certain level' (next cascade read stale baseTotalForLevel), 'moves didn't reset after some levels' (UI bound to moves var that hadn't been reassigned yet), 'RESTART only takes me back to the previous level' (RESTART read half-mutated state — level number advanced but engine not yet swapped). v9.2 made the entire transition atomic in one withAnimation block; banner animation runs from levels.celebrationProgress which advances on its own.",
       "severity": "high",
-      "appliesTo": "stateTransition",
+      "appliesTo": "miniApp",
       "examples": [
         "RIGHT (atomic): when level target hit → run all in one turn: `levels.advance(); engine = newEngine; moves = levels.currentMovesAllowed; baseTotalForLevel = totalScore; victoryAnnounced = false`. The banner animates from levels.celebrationProgress (a @Published 0→1→0 value the controller advances internally). SFX fires as a one-shot Task — audio only.",
         "RIGHT (visual delay decoupled from state): celebration banner reads `if levels.celebratingLevelUp { ... .opacity(Double(levels.celebrationProgress)) }`. Banner can take 3 seconds to fade out — gameplay state is already consistent at frame 1.",
