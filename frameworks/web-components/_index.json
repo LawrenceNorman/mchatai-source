@@ -3367,6 +3367,37 @@
           "CROSSWORD_BANK: Array<{answer,clue,difficulty,category}>"
         ]
       }
+    },
+    {
+      "id": "resources.spanish-phrasebook",
+      "name": "SpanishPhrasebook",
+      "category": "resources",
+      "path": "resources/SpanishPhrasebook.js",
+      "exports": [
+        "SPANISH_PHRASES"
+      ],
+      "status": "ready",
+      "summary": "Deep Spanish<->English travel phrasebook: 421 { es (accented Spanish), en (ASCII English), category } phrases across greetings, dining, directions, hotel, shopping, transport, emergencies, time/numbers. Feed SPANISH_PHRASES to a language memory-match (pair es<->en via MemoryMatchBoard.buildPairDeck) or flashcards via entities.content-dictionary. DATA module.",
+      "tags": [
+        "spanish",
+        "language",
+        "phrasebook",
+        "vocabulary",
+        "translation",
+        "data",
+        "content"
+      ],
+      "goodFits": [
+        "language-memory-match",
+        "spanish-flashcards",
+        "vocabulary-quiz",
+        "phrase-trainer"
+      ],
+      "contracts": {
+        "data": [
+          "SPANISH_PHRASES: Array<{es,en,category}>"
+        ]
+      }
     }
   ],
   "compositionRecipes": [
@@ -5965,6 +5996,51 @@
       "optionalComponents": [
         "ui.text-input",
         "ui.keyboard-input",
+        "resources.audio-manager"
+      ]
+    },
+    {
+      "id": "recipe.language-memory",
+      "name": "Language Phrase Match",
+      "promptName": "language phrase memory match",
+      "keywords": [
+        "spanish",
+        "language learning",
+        "vocabulary",
+        "phrase match",
+        "translation match",
+        "language memory",
+        "spanish phrases",
+        "match the translation",
+        "vocabulary game",
+        "flashcard match"
+      ],
+      "templateIDs": [],
+      "existingGames": [],
+      "starterComponents": [
+        "entities.memory-match-board",
+        "resources.spanish-phrasebook",
+        "ui.mini-header",
+        "ui.scoreboard",
+        "resources.swatches",
+        "resources.audio-manager"
+      ],
+      "assemblyNotes": [
+        "Build a memory match where each pair is a Spanish phrase and its English translation (NON-identical cards that share a hidden pair id). Use the deep bank: `import { SPANISH_PHRASES } from \"./web-components/resources/SpanishPhrasebook.js\"; import { MemoryMatchBoard } from \"./web-components/entities/MemoryMatchBoard.js\";`",
+        "DECK: pick N pairs from the bank and build a non-identical deck with the dedicated helper: `const pairs = shuffle(SPANISH_PHRASES).slice(0, rows*cols/2).map(p => ({ a: p.es, b: p.en })); board.setCards(MemoryMatchBoard.buildPairDeck(pairs, rows*cols));`. buildPairDeck makes the es card and en card share a `value` (so they match) but keep distinct `face` text (what you render). Do NOT use buildShuffledDeck here - that is for IDENTICAL pairs (emoji).",
+        "RENDER cell.face (the phrase text), not cell.value (the hidden pair id). Show '' or a back design when state==='down'; show cell.face when 'up'/'matched'. Match logic is identical to any memory game: flipCard(r,c) -> 'first'|'match'|'mismatch'; on 'mismatch' setTimeout(~900ms) then board.resolveMismatch().",
+        "SIZES: 4x4 (8 pairs) easy, 4x6 (12) medium, 6x6 (18) hard. Phrase tiles need more room than emoji - use a readable font-size, word-break, and >=44px touch targets (mob-002).",
+        "VARIANT - flashcards/quiz instead of match: feed the same bank to entities.content-dictionary as { prompt: p.es, answer: p.en } and draw/check/hint. The bank also carries `category` so you can theme a round (dining, directions, etc.).",
+        "The bank is the deep content (421 phrases, ~one per day of the year); swap SpanishPhrasebook for any other { es/en } or { term/definition } bank to reskin to another language or subject without touching the game logic."
+      ],
+      "requiredComponents": [
+        "entities.memory-match-board",
+        "resources.spanish-phrasebook"
+      ],
+      "optionalComponents": [
+        "ui.mini-header",
+        "ui.scoreboard",
+        "resources.swatches",
         "resources.audio-manager"
       ]
     }

@@ -54,8 +54,12 @@ export class MemoryMatchBoard extends GridBoard {
     this.misses = 0; // mismatched pairs
   }
 
-  /** Set up cards from a list of pair-values. e.g. ['A','B','C','A','B','C'].
-   *  values.length MUST equal rows*cols. Use shuffle() before passing. */
+  /** Set up cards. Each entry is EITHER a plain pair-value (e.g. 'A' or an
+   *  emoji - identical-pair games) OR an object { value, face } for NON-identical
+   *  pairs (e.g. Spanish<->English: both cards share `value` but show different
+   *  `face` text). Matching is always by `value`; you render `face`. For the
+   *  plain-value case `face` defaults to the value, so existing games are
+   *  unchanged. values.length MUST equal rows*cols. Use shuffle()/buildPairDeck. */
   setCards(values) {
     if (values.length !== this.rows * this.cols) {
       throw new Error(`setCards expected ${this.rows * this.cols} values; got ${values.length}`);
@@ -63,7 +67,9 @@ export class MemoryMatchBoard extends GridBoard {
     let i = 0;
     for (let r = 0; r < this.rows; r += 1) {
       for (let c = 0; c < this.cols; c += 1) {
-        this.set(r, c, { value: values[i], state: "down" });
+        const v = values[i];
+        const isObj = v && typeof v === "object";
+        this.set(r, c, { value: isObj ? v.value : v, face: isObj ? v.face : v, state: "down" });
         i += 1;
       }
     }
@@ -71,6 +77,25 @@ export class MemoryMatchBoard extends GridBoard {
     this.matchedCount = 0;
     this.moves = 0;
     this.misses = 0;
+  }
+
+  /** Build a shuffled deck for NON-identical pairs (match A to its partner B,
+   *  e.g. a Spanish phrase to its English translation, a term to its definition,
+   *  a flag to its country). `pairs` is [{a, b}] or [[a, b]]; each becomes two
+   *  cards { value: <pair index>, face: a } and { value: <same>, face: b }.
+   *  Returns totalCells shuffled card objects to hand to setCards(). */
+  static buildPairDeck(pairs, totalCells) {
+    if (totalCells % 2 !== 0) throw new Error(`totalCells must be even; got ${totalCells}`);
+    const need = totalCells / 2;
+    if (pairs.length < need) throw new Error(`need ${need} pairs; got ${pairs.length}`);
+    const picked = pairs.slice(0, need);
+    const cards = [];
+    picked.forEach((p, i) => {
+      const a = Array.isArray(p) ? p[0] : p.a;
+      const b = Array.isArray(p) ? p[1] : p.b;
+      cards.push({ value: i, face: a }, { value: i, face: b });
+    });
+    return MemoryMatchBoard.shuffle(cards);
   }
 
   /** Build a card-value list from a symbol/icon array. Each symbol gets
