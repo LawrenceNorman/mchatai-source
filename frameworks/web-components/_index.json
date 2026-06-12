@@ -5128,6 +5128,7 @@
         "resources.audio-manager"
       ],
       "assemblyNotes": [
+        "THIS IS A THIN ASSEMBLY (~40 lines of glue), NOT a from-scratch build. Do NOT create a bank of full puzzles (no 'dictionary of 100 puzzles'), and do NOT write grid-layout, numbering, or interlock logic - CrosswordGenerator builds the numbered grid by interlocking words from CROSSWORD_BANK (425 words), and CrosswordBoard renders it and handles all input. Your whole job: import the 3 blocks, generate ONE puzzle from a daily seed, hand it to CrosswordBoard, and add the app-specific glue (localStorage save, Check/Reset). If your plan has a step about authoring puzzle data or grid algorithms, DELETE it.",
         "Build a recognizable compact crossword: numbered square grid, black '#' cells, Across/Down clue lists, selected-cell/word highlighting, keyboard entry, timer, score, persistent best time.",
         "USE THE DEDICATED BLOCKS - do NOT hand-author a grid or hardcode puzzle data. Import the bank + generator + board: `import { CROSSWORD_BANK } from \"./web-components/resources/CrosswordDictionary.js\"; import { CrosswordGenerator } from \"./web-components/entities/CrosswordGenerator.js\"; import { CrosswordBoard } from \"./web-components/ui/CrosswordBoard.js\";`",
         "GENERATE THEN PLAY: `const puzzle = new CrosswordGenerator({ size: 9, maxWords: 14, seed: daySeed }).generate(CROSSWORD_BANK); new CrosswordBoard({ root: document.getElementById('app'), puzzle, title: 'Mini Crossword', onSolved: ({seconds}) => {/* save best */} }).start();`",
