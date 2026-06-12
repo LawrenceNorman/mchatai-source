@@ -16,6 +16,8 @@
       "id": "a1b2c3d4-0003-4abc-8def-000000000003",
       "skillID": "builtin.llmGenerate",
       "config": {
+        "llmProvider": "anthropic",
+        "llmFailoverProviders": "google,openai",
         "systemPrompt": "You are a rigorous research writer. You write ONLY from the supplied search results. You never invent facts, statistics, dates, quotes, or URLs.",
         "userPrompt": "Write a FOCUSED, substantive article of about 450-550 words on the topic implied by the search results below. Keep it to ~500 words so it stays compact. RULES: (1) Ground EVERY factual claim, statistic, date, and quote ONLY in the SEARCH RESULTS below. (2) After each sourced claim add an inline marker like [1], [2] matching the numbered result. (3) End with a '## Sources' section listing each cited source as '[n] Title - URL' using the EXACT URLs from the results. Never write a URL that is not present below. (4) If the results are thin or off-topic, say so plainly instead of padding. (5) No hype words (revolutionary, game-changing, seamless, cutting-edge). Plain ASCII only.\n\nSEARCH RESULTS:\n{{INPUT}}",
         "llmMaxInputChars": "14000",
@@ -29,6 +31,7 @@
       "config": {
         "llmValidationMode": "true",
         "llmProvider": "google",
+        "llmFailoverProviders": "openai,anthropic",
         "systemPrompt": "You are a strict fact-checking editor. You FAIL drafts that contain fabricated or unsupported content. You answer with exactly one token of verdict and nothing else.",
         "userPrompt": "Audit the research article below. Check ALL of: (A) every inline-cited claim is supported by a source named in the article's own '## Sources' list; (B) no statistic, date, named figure, or quote appears that is not attributable to a listed source; (C) a '## Sources' section exists with at least 2 entries, each containing a real http(s) URL; (D) no hype-only or filler-only paragraphs; (E) plain ASCII only. If ALL pass, reply with exactly the single word: VALID. If ANY fail, reply with exactly: PIPELINE_VALIDATION_FAILED: <one short reason>. Output nothing else.\n\nARTICLE:\n{{INPUT}}",
         "llmMaxTokens": "900",
