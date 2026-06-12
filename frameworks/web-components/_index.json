@@ -3160,9 +3160,163 @@
         "puzzle-ladder",
         "tile-puzzle"
       ]
+    },
+    {
+      "id": "entities.content-dictionary",
+      "name": "ContentDictionary",
+      "category": "entities",
+      "path": "entities/ContentDictionary.js",
+      "exports": [
+        "ContentDictionary"
+      ],
+      "status": "ready",
+      "summary": "Generic content bank for content-DRIVEN games (trivia/quiz, crossword/anagram clue->word, flashcards, riddles, guess-the-X, geography). Items are { prompt, answer, hints?, category?, difficulty?, tags?, aliases? }. draw(filter) pulls a non-repeating item (seeded deterministic order for daily-puzzle / canary replay), check(item, guess) validates case-insensitively against answer + aliases, hint(item, n) reveals progressively. Sibling of entities.word-dictionary (which is for word-TRACE membership/prefix games). Plain JS class, NOT a custom element.",
+      "tags": [
+        "content",
+        "dictionary",
+        "trivia",
+        "quiz",
+        "crossword",
+        "flashcards",
+        "deterministic"
+      ],
+      "contracts": {
+        "factory": "new ContentDictionary(items, { seed? })",
+        "helpers": [
+          "draw({ category?, difficulty?, tag? })",
+          "check(item, guess)",
+          "hint(item, index)",
+          "filter(query)",
+          "categories()",
+          "difficulties()",
+          "remaining(filter)",
+          "resetRound()"
+        ]
+      },
+      "goodFits": [
+        "trivia-quiz",
+        "crossword",
+        "flashcards",
+        "word-logic",
+        "guess-the-thing"
+      ]
+    },
+    {
+      "id": "entities.level-content-data",
+      "name": "LevelContentData",
+      "category": "entities",
+      "path": "entities/LevelContentData.js",
+      "exports": [
+        "LevelContentData"
+      ],
+      "status": "ready",
+      "summary": "Data-driven level definitions + difficulty scaling + save/load. The CONTENT half of multi-level games (entities.level-progression is the runtime STATE half; ui.level-select-screen is the picker). Levels are { targetScore?, moveBudget?, timeLimit?, difficulty?, params?, rewards?, unlocks? }; params is the scaled gameplay knob bag (enemySpeed, spawnRate, gridSize) so games read level.params.X instead of hardcoding per-level branches. generate({ count, baseTarget, scale }) builds a smooth curve (honors wisdom lb-016, 8+ levels). toProgressionLevels() projects to the { target, moves } shape LevelProgression consumes. Persists furthest-unlocked + per-level best to localStorage for continue-from-level. Plain JS class.",
+      "tags": [
+        "levels",
+        "content",
+        "difficulty",
+        "progression",
+        "save-load",
+        "campaign"
+      ],
+      "contracts": {
+        "factory": "new LevelContentData(levels, { storageKey?, storage? })",
+        "helpers": [
+          "LevelContentData.generate({ count, baseTarget, targetGrowth?, scale?, baseMoves? })",
+          "level(i)",
+          "toProgressionLevels()",
+          "furthestUnlocked()",
+          "isUnlocked(i)",
+          "bestScore(i)",
+          "recordClear(i, score)",
+          "resetProgress()"
+        ]
+      },
+      "goodFits": [
+        "match-three",
+        "tower-defense",
+        "puzzle-ladder",
+        "arcade-campaign",
+        "minesweeper-variants"
+      ]
+    },
+    {
+      "id": "ui.level-select-screen",
+      "name": "LevelSelectScreen",
+      "category": "ui",
+      "path": "ui/LevelSelectScreen.js",
+      "exports": [
+        "LevelSelectScreen"
+      ],
+      "status": "ready",
+      "summary": "Responsive level-picker grid for multi-level / campaign games. Renders a card per level: unlocked = tappable, locked = dimmed with a lock glyph, plus a difficulty badge, level name, and the player's best score. Reads unlock + best-score state from a LevelContentData instance; fires onSelect(index, level) on tap. Mobile-first (>=88px tap targets, keyboard accessible), uses canonical --mchat-* swatch tokens with inline fallbacks (FOUC-safe). show()/hide()/refresh(). Plain JS class, NOT a custom element.",
+      "tags": [
+        "levels",
+        "level-select",
+        "menu",
+        "campaign",
+        "ui",
+        "picker"
+      ],
+      "contracts": {
+        "factory": "new LevelSelectScreen({ host, data, title?, onSelect? })",
+        "helpers": [
+          "show()",
+          "hide()",
+          "render()",
+          "refresh()"
+        ]
+      },
+      "goodFits": [
+        "match-three",
+        "puzzle-ladder",
+        "tower-defense",
+        "arcade-campaign"
+      ]
     }
   ],
   "compositionRecipes": [
+    {
+      "id": "recipe.with-level-progression",
+      "name": "Add Levels / Campaign (addon)",
+      "isAddon": true,
+      "addonAppliesTo": [
+        "any-single-screen-game-that-could-have-stages"
+      ],
+      "promptName": "level progression addon",
+      "keywords": [
+        "levels",
+        "level select",
+        "campaign",
+        "stages",
+        "difficulty",
+        "progression",
+        "harder",
+        "new levels",
+        "more levels"
+      ],
+      "templateIDs": [],
+      "starterComponents": [
+        "entities.level-content-data",
+        "entities.level-progression",
+        "ui.level-select-screen"
+      ],
+      "assemblyNotes": [
+        "This is an ADDON recipe. LAYERS ON TOP of the base game recipe - never replaces it. The marker MUST be `{recipe: <base-recipe-id>, addons: [\"recipe.with-level-progression\"], components: [...all base + addon components...]}`. This is the canonical answer to 'add levels' / 'make it a campaign' / 'add harder stages' on an existing single-screen game.",
+        "IMPORT SHAPE - named exports only: `import { LevelContentData } from \"./web-components/entities/LevelContentData.js\";` `import { LevelProgression } from \"./web-components/entities/LevelProgression.js\";` `import { LevelSelectScreen } from \"./web-components/ui/LevelSelectScreen.js\";`.",
+        "DATA, STATE, PICKER - keep the three roles separate. LevelContentData is the campaign DATA (use `LevelContentData.generate({ count, baseTarget, scale: { <gameKnob>: [start, end] } })` so difficulty scales smoothly instead of hardcoding per-level numbers; read scaled knobs via `level.params.<knob>` in the game loop). LevelProgression is the runtime STATE during a level (`new LevelProgression({ levels: data.toProgressionLevels() })`). LevelSelectScreen is the PICKER (`new LevelSelectScreen({ host, data, onSelect: (i) => startLevel(data.level(i)) })`).",
+        "SAVE/LOAD - LevelContentData persists furthest-unlocked + per-level best to localStorage. On level clear call `data.recordClear(i, score)`; the picker's `refresh()` then shows the next level unlocked and the new best. Pass `{ storageKey: '<game>-progress' }` to namespace per game.",
+        "WISDOM lb-016 - ship 8+ levels (or endless). `LevelContentData.generate` warns under 8. For endless games, generate a long curve and loop the last level's params with an explicit 'Endless' label rather than auto-restarting at level 1.",
+        "DO NOT double-implement - if the base game already has its own level/stage system, STOP and report 'already-staged' instead of layering a second progression."
+      ],
+      "requiredComponents": [
+        "entities.level-content-data",
+        "ui.level-select-screen"
+      ],
+      "optionalComponents": [
+        "entities.level-progression"
+      ]
+    },
     {
       "id": "recipe.open-world-asteroids",
       "name": "Open-World Vector Blast",
