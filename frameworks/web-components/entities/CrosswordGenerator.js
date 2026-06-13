@@ -2,7 +2,8 @@
 
 /**
  * Deterministic crossword GENERATOR. Give it a big bank of { answer, clue }
- * items (see resources/crossword-dictionary.json - 400+ entries) and it
+ * items (see resources/CrosswordDictionary.js, which exports CROSSWORD_BANK -
+ * 425 entries) and it
  * assembles a real interlocking mini/midi crossword: a filled grid, block
  * cells, clue numbering, and across/down clue lists. This is the piece that
  * turns a deep dictionary into "good crosswords" automatically.
@@ -16,11 +17,12 @@
  * mode + golden-replay QA). Same seed + same bank + same options => identical
  * grid. No Math.random() (it breaks replay).
  *
- * Usage:
- *   import { CrosswordGenerator } from "./web-components/CrosswordGenerator.js";
- *   import BANK from "./web-components/crossword-dictionary.json" assert { type: "json" };
+ * Usage (install-relative import paths - copy EXACTLY; the bundled files live
+ * under ./web-components/<category>/<File>.js, NOT flat under ./web-components/):
+ *   import { CrosswordGenerator } from "./web-components/entities/CrosswordGenerator.js";
+ *   import { CROSSWORD_BANK } from "./web-components/resources/CrosswordDictionary.js";
  *   const gen = new CrosswordGenerator({ size: 9, maxWords: 14, seed: 42 });
- *   const puz = gen.generate(BANK.entries);
+ *   const puz = gen.generate(CROSSWORD_BANK);   // pass the array straight in
  *   // puz = { size, grid:[[ "C"|"#"|null ]], blocks, numbers:{"r,c":n},
  *   //         across:[{number,row,col,answer,clue}], down:[...], wordCount }
  *   // grid[r][c] is the SOLUTION letter, "#" is a block, null is unused (render as block).

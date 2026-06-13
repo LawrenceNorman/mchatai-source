@@ -7,18 +7,20 @@
  * cell highlighting, the active-word strip, a Check button, and a win state.
  *
  * Pairs with entities/CrosswordGenerator.js (the puzzle maker) and
- * resources/crossword-dictionary.json (the 400+ word bank). Together they are
+ * resources/CrosswordDictionary.js (which exports CROSSWORD_BANK, the 425-word
+ * bank). Together they are
  * the whole "deep dictionary -> good crossword" stack; a generated app only
- * has to: gen.generate(bank) -> new CrosswordBoard({ root, puzzle }).start().
+ * has to: gen.generate(CROSSWORD_BANK) -> new CrosswordBoard({ root, puzzle }).start().
  *
  * Optional deps are duck-typed so the board works standalone or richer when the
  * AudioManager / Swatches Lego are present.
  *
- * Usage:
- *   import { CrosswordGenerator } from "./web-components/CrosswordGenerator.js";
- *   import { CrosswordBoard } from "./web-components/CrosswordBoard.js";
- *   import BANK from "./web-components/crossword-dictionary.json" assert { type: "json" };
- *   const puzzle = new CrosswordGenerator({ size: 9, maxWords: 12, seed: 3 }).generate(BANK.entries);
+ * Usage (install-relative import paths - copy EXACTLY; the bundled files live
+ * under ./web-components/<category>/<File>.js, NOT flat under ./web-components/):
+ *   import { CrosswordGenerator } from "./web-components/entities/CrosswordGenerator.js";
+ *   import { CrosswordBoard } from "./web-components/ui/CrosswordBoard.js";
+ *   import { CROSSWORD_BANK } from "./web-components/resources/CrosswordDictionary.js";
+ *   const puzzle = new CrosswordGenerator({ size: 9, maxWords: 12, seed: 3 }).generate(CROSSWORD_BANK);
  *   new CrosswordBoard({ root: document.getElementById("app"), puzzle,
  *     onSolved: () => console.log("solved!") }).start();
  */
