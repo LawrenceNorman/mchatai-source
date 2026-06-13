@@ -188,17 +188,26 @@ export class CrosswordGenerator {
     if (this._cell(grid, endR + dr, endC + dc, N) !== null) return -1;
 
     let crosses = 0;
+    let collinearRun = 0;
     for (let k = 0; k < len; k++) {
       const r = row + dr * k;
       const c = col + dc * k;
       const cur = grid[r][c];
       if (cur === null) {
+        collinearRun = 0;
         // new cell: perpendicular neighbors must be empty (no parallel touch)
         const pr = dir === ACROSS ? 1 : 0;
         const pc = dir === ACROSS ? 0 : 1;
         if (this._cell(grid, r - pr, c - pc, N) !== null) return -1;
         if (this._cell(grid, r + pr, c + pc, N) !== null) return -1;
       } else if (cur === answer[k]) {
+        // Two+ consecutive pre-filled cells along our OWN direction means an
+        // existing same-direction word is overlaid/collinear here (e.g. placing
+        // SKIN down over an already-placed SKI down): that produces a slot whose
+        // grid letters (SKIN) no longer match the clue we'd attach (SKI's). A
+        // single filled cell flanked by nulls is a normal perpendicular crossing.
+        collinearRun++;
+        if (collinearRun >= 2) return -1; // collinear overlap, reject
         crosses++; // valid crossing
       } else {
         return -1; // letter conflict
