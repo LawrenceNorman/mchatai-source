@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<!--
+  mChatAI endproduct/document scaffold.
+  Self-contained, OFFLINE (no CDN / no external fetch) so it renders identically
+  in the macOS preview, the iOS bridge Preview tab, and a published static page.
+  The Swift dispatcher (dispatchEndproductDocument) substitutes two placeholders:
+    {{DOC_TITLE}} -> plain-text document title
+    {{DOC_BODY}}  -> semantic HTML body (h2/p/ul/figure/blockquote ...)
+  The :root token block is a synchronous fallback (no FOUC) — later swatch
+  theming can override these vars without touching markup. Reserved image slots
+  ({{HERO_IMAGE}} + .doc-figure placeholders) are additive for a future
+  image-embedding pass; absent today they render as nothing.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="color-scheme" content="light dark" />
+<meta name="mchatai-artifact-kind" content="document" />
+<title>{{DOC_TITLE}}</title>
+<style>
+  :root {
+    --doc-bg: #f7f6f3;
+    --doc-surface: #ffffff;
+    --doc-fg: #1f2430;
+    --doc-muted: #5b6473;
+    --doc-accent: #3a6df0;
+    --doc-rule: #e7e4dd;
+    --doc-maxw: 720px;
+    --doc-serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Times New Roman", serif;
+    --doc-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, Roboto, Helvetica, Arial, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --doc-bg: #14161b;
+      --doc-surface: #1b1e26;
+      --doc-fg: #e8eaf0;
+      --doc-muted: #9aa3b2;
+      --doc-accent: #6ea0ff;
+      --doc-rule: #2a2f3a;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--doc-bg);
+    color: var(--doc-fg);
+    font-family: var(--doc-sans);
+    line-height: 1.65;
+    -webkit-text-size-adjust: 100%;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  }
+  .doc-shell {
+    max-width: var(--doc-maxw);
+    margin: 0 auto;
+    padding: clamp(20px, 5vw, 48px) clamp(18px, 5vw, 40px) 64px;
+  }
+  .doc-hero { margin: 0 0 22px; }
+  .doc-hero img { width: 100%; height: auto; border-radius: 14px; display: block; }
+  .doc-kicker {
+    font-family: var(--doc-sans);
+    font-size: 0.78rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--doc-accent);
+    font-weight: 700;
+    margin: 0 0 8px;
+  }
+  h1.doc-title {
+    font-family: var(--doc-serif);
+    font-size: clamp(1.9rem, 6vw, 2.7rem);
+    line-height: 1.12;
+    letter-spacing: -0.01em;
+    margin: 0 0 28px;
+    color: var(--doc-fg);
+  }
+  .doc-body { font-size: clamp(1.02rem, 2.5vw, 1.14rem); }
+  .doc-body h2 {
+    font-family: var(--doc-serif);
+    font-size: clamp(1.35rem, 4vw, 1.7rem);
+    line-height: 1.2;
+    margin: 2em 0 0.5em;
+  }
+  .doc-body h3 {
+    font-family: var(--doc-sans);
+    font-size: clamp(1.08rem, 3vw, 1.25rem);
+    font-weight: 700;
+    margin: 1.6em 0 0.4em;
+  }
+  .doc-body p { margin: 0 0 1.05em; }
+  .doc-body ul, .doc-body ol { margin: 0 0 1.05em; padding-left: 1.4em; }
+  .doc-body li { margin: 0 0 0.4em; }
+  .doc-body a { color: var(--doc-accent); }
+  .doc-body strong { font-weight: 700; }
+  .doc-body blockquote {
+    margin: 1.4em 0;
+    padding: 0.2em 0 0.2em 1.1em;
+    border-left: 3px solid var(--doc-accent);
+    color: var(--doc-muted);
+    font-style: italic;
+  }
+  .doc-body figure { margin: 1.6em 0; }
+  .doc-body figure img { width: 100%; height: auto; border-radius: 12px; display: block; }
+  .doc-body figcaption { font-size: 0.85rem; color: var(--doc-muted); margin-top: 0.5em; text-align: center; }
+  .doc-body hr { border: none; border-top: 1px solid var(--doc-rule); margin: 2em 0; }
+  .doc-footer {
+    margin-top: 48px;
+    padding-top: 18px;
+    border-top: 1px solid var(--doc-rule);
+    font-size: 0.82rem;
+    color: var(--doc-muted);
+  }
+  @media print {
+    body { background: #fff; }
+    .doc-shell { max-width: none; }
+  }
+</style>
+</head>
+<body>
+  <main class="doc-shell">
+    <div class="doc-hero">{{HERO_IMAGE}}</div>
+    <h1 class="doc-title">{{DOC_TITLE}}</h1>
+    <article class="doc-body">
+      {{DOC_BODY}}
+    </article>
+    <footer class="doc-footer">Created with mChatAI</footer>
+  </main>
+</body>
+</html>
