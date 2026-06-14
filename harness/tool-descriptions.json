@@ -1,0 +1,18 @@
+{
+  "schema_version": "1",
+  "description": "Trigger-led descriptions for the core agentic tools (ToolDefinitionCatalog.coreTools). Per CLAUDE.md ABSOLUTE RULE #1 the binary is a skeleton: this file is the source of truth, edited + git pushed to retune how strongly Fable/Claude reach for each tool with zero Swift rebuild. The Swift loader (ToolDescriptionContent) reads this; the in-binary strings are only a frozen offline fallback. Fable-5 under-reaches for tools when told only WHAT a tool does, so each description leads with the trigger condition ('Call this when ...'). Keep values ASCII-only (the source catalog decoder drops non-ASCII recipe strings).",
+  "tools": {
+    "read_file": "Call this when you need to see a file's current contents before editing it, quoting it, or reasoning about code, config, logs, or generated output. Always read a file before you write to it. Returns numbered lines; pass start_line/end_line for large files.",
+    "write_file": "Call this when you need to create a new file or replace an existing file's entire contents after deciding on a change. Creates parent directories. It OVERWRITES the whole file, so read_file first if you only mean to change part of it.",
+    "search_code": "Call this when you need to find where a symbol, string, function, or pattern appears across the codebase before reading or editing, instead of opening files blindly. Returns matching lines with file paths and line numbers (regex supported).",
+    "list_directory": "Call this when you need to discover what files and folders exist at a path before reading or searching, for example to orient yourself in an unfamiliar project. Pass recursive to see a deeper tree.",
+    "run_bash": "Call this when you need to run a shell command to make something happen or observe real state: build, run tests, git operations, install dependencies, or inspect the system. Prefer the dedicated read_file/search_code/list_directory tools for inspecting files.",
+    "screenshot": "Call this when you need to visually verify on-screen output, for example to confirm a UI rendered correctly, a mini-app is playable, or to compare against an expected layout. Captures the current screen.",
+    "web_search": "Call this when the answer depends on current, external, or factual information you are not certain of, such as recent events, documentation, prices, library APIs, or people. Returns ranked results; follow up with web_fetch to read a specific page.",
+    "web_fetch": "Call this when you have a specific URL, often from web_search, whose full page content you need to read or quote. Fetches and returns the page text.",
+    "memory_search": "Call this when the task may depend on context the platform already knows, such as user preferences, earlier artifacts, agent memory, or vault notes, before asking the user or assuming. Returns matching memory entries.",
+    "call_skill": "Call this when a registered platform skill already does what you need, such as image generation, API integrations, data transforms, or publishing, so you reuse a skill instead of reimplementing it. Run list_skills first to discover skill IDs and their inputs.",
+    "call_mcp_tool": "Call this when the capability you need lives on a connected MCP server (filesystem, git, github, fetch, sqlite, and others) rather than in a core tool or platform skill. Provide the server id, tool name, and arguments.",
+    "list_skills": "Call this when you are unsure which platform skills exist or what their IDs are, before using call_skill. Returns the skills you can invoke."
+  }
+}
