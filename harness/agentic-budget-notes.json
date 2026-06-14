@@ -1,0 +1,8 @@
+{
+  "schema_version": "1",
+  "description": "System-prompt addendum the AgenticLoop injects when an agentic run approaches its token / cost / turn budget, so the model self-moderates (consolidates tool calls, wraps up) instead of getting truncated at the wall. Per CLAUDE.md ABSOLUTE RULE #1 the wording lives here, edited + git pushed with zero Swift rebuild; the Swift loader (AgenticBudgetContent) carries a frozen embedded fallback. Placeholders: {usedPct} (0-100), {turn}, {maxTurns}. warnThreshold/criticalThreshold are fractions of the most-consumed budget (max of token / cost / turn fraction). ASCII only.",
+  "warnThreshold": 0.6,
+  "criticalThreshold": 0.85,
+  "warnTemplate": "Budget check: you have used about {usedPct}% of your task budget (turn {turn} of {maxTurns}). Start consolidating - prefer fewer, higher-value tool calls and begin moving toward your final answer. Do not start large new lines of work you cannot finish within the remaining budget.",
+  "criticalTemplate": "Budget nearly exhausted: about {usedPct}% used (turn {turn} of {maxTurns}). Wrap up now. Stop exploring, finish any in-progress edit, and produce your final answer this turn or next. If you cannot fully complete the task, return the best result you have so far and clearly state what remains."
+}
