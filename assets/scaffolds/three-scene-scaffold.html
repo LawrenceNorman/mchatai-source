@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<!--
+  mChatAI web-components-3d scaffold: three-scene-scaffold.html
+
+  Canonical minimal index.html for a three.js (WebGL2) mini-app. The generator
+  fills in the GAME-SPECIFIC sections (marked GENERATOR FILL) and leaves the
+  loading backbone untouched.
+
+  HARD RULES (do not edit):
+  - The LOCAL relative importmap below is emitted in <head> BEFORE the first
+    module <script>. It maps the bare specifier 'three' and the PREFIX
+    'three/addons/' to LOCAL vendored files under ./resources/three/. No CDN,
+    no network. Offline-safe under file://.
+  - WebGL2 only (THREE.WebGLRenderer via core.three-scene-rig). Never WebGPU.
+  - The mchatai-artifact-kind meta tag flags this as a WebGL scene so the macOS
+    render probe does not apply the 2D grid/board "looksUnplayable" heuristic.
+  - All paths are relative; the assembler copies ./web-components-3d/ and
+    ./resources/three/ into the installed artifact dir so the bundle is
+    self-contained.
+  - ASCII only everywhere.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <meta name="mchatai-artifact-kind" content="three-scene" />
+  <title>mChatAI 3D Mini-App</title>
+
+  <!-- LOCAL relative importmap. MUST come before the first module <script>.
+       Bare 'three' -> the vendored core module. PREFIX 'three/addons/' -> the
+       vendored addons tree so addon-to-addon cross-imports resolve locally. -->
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "./resources/three/three.module.min.js",
+      "three/addons/": "./resources/three/addons/"
+    }
+  }
+  </script>
+
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #0b1020;
+    }
+    canvas {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <!--
+    The canvas is created by core.three-scene-rig and appended to document.body.
+    The HUD overlay (Play button, score, pause, game-over) is created by
+    ui.three-hud-overlay and floats over the canvas.
+  -->
+
+  <script type="module">
+    // ----- imports (canonical specifiers + relative Lego paths) -----------
+    // three itself resolves through the importmap above.
+    import * as THREE from 'three';
+
+    // Shared web-components-3d Lego. Relative to this index.html; the assembler
+    // copies these into ./web-components-3d/ at install time.
+    import { ThreeSceneRig } from './web-components-3d/core/three-scene-rig.js';
+    import { ThreeGameLoop, ThreeGameState } from './web-components-3d/core/three-game-loop.js';
+    import { ThreeHudOverlay } from './web-components-3d/ui/three-hud-overlay.js';
+
+    // Marker so the 3D usage check can verify Lego adoption. The generator sets
+    // the recipe id and the full component list it actually imported.
+    // GENERATOR FILL: set recipe + components to match the chosen recipe.
+    window.__mchataiWebComponentsUsed = {
+      recipe: 'recipe.three-scene',
+      components: [
+        'resources.three-core',
+        'core.three-scene-rig',
+        'core.three-game-loop',
+        'ui.three-hud-overlay'
+      ]
+    };
+
+    // ----- one AudioContext, unlocked on first tap by the loop ------------
+    const AudioCtor = window.AudioContext || window.webkitAudioContext || null;
+    const audioContext = AudioCtor ? new AudioCtor() : null;
+
+    // ----- build the scene rig (scene + camera + WebGLRenderer + lights) --
+    const rig = new ThreeSceneRig({
+      container: document.body,
+      clearColor: 0x0b1020,
+      cameraPosition: [0, 6, 12],
+      cameraTarget: [0, 0, 0]
+    });
+    rig.installDrawCallMonitor({
+      warnThreshold: 100,
+      onWarn: (stats) => {
+        // Keep this quiet in production; surfaced for dev/probe only.
+        if (window.__mchataiDebug) {
+          console.warn('draw calls over budget:', stats.drawCalls);
+        }
+      }
+    });
+
+    // ----- GENERATOR FILL: build the playfield --------------------------
+    // Create your meshes, ground, player, obstacles here and add them to
+    // rig.scene. Pool reusable objects; dispose them in teardown(). Example
+    // placeholder ground + a spinning marker so the scene is never blank.
+    const playfield = new THREE.Group();
+    rig.scene.add(playfield);
+
+    const ground = new THREE.Mesh(
+      new THREE.PlaneGeometry(40, 40),
+      new THREE.MeshStandardMaterial({ color: 0x2a3358, roughness: 0.95 })
+    );
+    ground.rotation.x = -Math.PI / 2;
+    ground.receiveShadow = true;
+    playfield.add(ground);
+
+    const marker = new THREE.Mesh(
+      new THREE.BoxGeometry(1.4, 1.4, 1.4),
+      new THREE.MeshStandardMaterial({ color: 0xffd76a, roughness: 0.4, metalness: 0.1 })
+    );
+    marker.position.set(0, 0.7, 0);
+    marker.castShadow = true;
+    playfield.add(marker);
+
+    // ----- unified input state (populated by listeners below) ------------
+    // GENERATOR FILL: a real game routes device input through a controls Lego
+    // (controls.virtual-joystick-3d, controls.tilt-input, etc) into this shape.
+    const input = { move: { x: 0, y: 0 }, look: { x: 0, y: 0 }, actionA: false, actionB: false };
+
+    function onKey(event, down) {
+      switch (event.code) {
+        case 'ArrowLeft': case 'KeyA': input.move.x = down ? -1 : 0; break;
+        case 'ArrowRight': case 'KeyD': input.move.x = down ? 1 : 0; break;
+        case 'ArrowUp': case 'KeyW': input.move.y = down ? 1 : 0; break;
+        case 'ArrowDown': case 'KeyS': input.move.y = down ? -1 : 0; break;
+        case 'Space': input.actionA = down; break;
+        case 'Escape': if (down) { loop.togglePause(); refreshHud(); } break;
+        default: break;
+      }
+    }
+    const onKeyDown = (e) => onKey(e, true);
+    const onKeyUp = (e) => onKey(e, false);
+    window.addEventListener('keydown', onKeyDown);
+    window.addEventListener('keyup', onKeyUp);
+
+    // ----- HUD overlay (Play / pause / game-over + tap-to-start) ---------
+    const hud = new ThreeHudOverlay({
+      title: 'mChatAI 3D Mini-App',
+      subtitle: 'Tap Play to start. Sound enabled on first tap.',
+      buttonLabel: 'Play',
+      onButton: () => startOrResume()
+    });
+
+    function refreshHud() {
+      if (loop.state === ThreeGameState.PLAYING) {
+        hud.hidePanel();
+      } else if (loop.state === ThreeGameState.PAUSED) {
+        hud.showPanel('Paused', 'Tap Resume to continue.', 'Resume');
+      } else if (loop.state === ThreeGameState.GAMEOVER) {
+        hud.showPanel('Game Over', 'Score: ' + score, 'Play Again');
+      } else {
+        hud.showPanel('mChatAI 3D Mini-App', 'Tap Play to start.', 'Play');
+      }
+    }
+
+    let score = 0;
+
+    function startOrResume() {
+      if (loop.state === ThreeGameState.GAMEOVER || loop.state === ThreeGameState.MENU) {
+        resetGame();
+      }
+      loop.play();
+      refreshHud();
+    }
+
+    function resetGame() {
+      // GENERATOR FILL: reset player position, score, spawns, etc.
+      score = 0;
+      marker.rotation.set(0, 0, 0);
+    }
+
+    // ----- the loop: fixed-step update + per-frame render ----------------
+    const loop = new ThreeGameLoop({
+      renderer: rig.renderer,
+      scene: rig.scene,
+      camera: rig.camera,
+      audioContext: audioContext,
+      onAudioUnlock: () => { /* transport / SFX may start here */ },
+      onStateChange: () => refreshHud(),
+      onResize: () => { /* rig handles camera aspect; reflow HUD if needed */ },
+      // Fixed-timestep simulation. Runs only while PLAYING.
+      onUpdate: (dt) => {
+        // GENERATOR FILL: advance gameplay using dt (seconds). Example:
+        marker.rotation.y += dt * (1.5 + input.move.x);
+        playfield.position.x = THREE.MathUtils.clamp(
+          playfield.position.x - input.move.x * dt * 4, -8, 8
+        );
+        score += Math.floor(dt * 100);
+        hud.setLeft('Score ' + score);
+      },
+      // Per-display-frame render hook (interpolation factor in [0,1]).
+      onRender: () => {
+        rig.sample(); // refresh the draw-call monitor snapshot
+      }
+    });
+
+    refreshHud();
+
+    // ----- teardown ------------------------------------------------------
+    function teardown() {
+      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('keyup', onKeyUp);
+      window.removeEventListener('pagehide', teardown);
+      loop.dispose();   // stops the loop, drops its listeners
+      hud.dispose();    // removes the overlay DOM
+      rig.dispose();    // frees geometries/materials/textures + WebGL context
+    }
+    window.addEventListener('pagehide', teardown);
+  </script>
+</body>
+</html>

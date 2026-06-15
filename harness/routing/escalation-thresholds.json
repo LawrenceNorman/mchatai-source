@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "lastUpdated": "2026-06-14",
+  "_source_of_truth": true,
+  "_comment": "Borrow #1 FrugalGPT cheap-first/score/escalate thresholds. Read by EscalationPolicy (mChatAI+ Swift); the binary carries identical _fallback_only defaults. Per-TaskCategory: min_completeness = the 0..1 cheap-quality bar the returned text must clear to avoid escalating; expected_min_tokens = length floor for a complete answer of this kind; require_syntax = gate the score on a balanced-fence/bracket check (code only); max_retries = escalation hops after the first cheap rung. Edit + git push + refreshMchataisourceCache ships with no rebuild. The Swift enforcer clamps min_completeness to 0..1 and max_retries to 0..3 and falls back per-key on anything missing/malformed, so a bad edit can never disable scoring or hard-loop escalation. cost_budget_tokens is a soft WARN guard, never a hard abort.",
+  "cost_budget_tokens": 120000,
+  "thresholds": {
+    "coding":   { "min_completeness": 0.60, "expected_min_tokens": 200, "require_syntax": true,  "max_retries": 2 },
+    "planning": { "min_completeness": 0.50, "expected_min_tokens": 150, "require_syntax": false, "max_retries": 2 },
+    "research": { "min_completeness": 0.50, "expected_min_tokens": 150, "require_syntax": false, "max_retries": 2 },
+    "creative": { "min_completeness": 0.45, "expected_min_tokens": 120, "require_syntax": false, "max_retries": 1 },
+    "analysis": { "min_completeness": 0.50, "expected_min_tokens": 150, "require_syntax": false, "max_retries": 2 },
+    "simple":   { "min_completeness": 0.40, "expected_min_tokens": 20,  "require_syntax": false, "max_retries": 1 }
+  },
+  "default": { "min_completeness": 0.50, "expected_min_tokens": 100, "require_syntax": false, "max_retries": 2 }
+}

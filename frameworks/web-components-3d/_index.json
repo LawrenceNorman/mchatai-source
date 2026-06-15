@@ -1,0 +1,470 @@
+{
+  "$schema_version": "1.0.0",
+  "last_updated": "2026-06-13",
+  "notes": "Catalog for reusable three.js WebGL2 3D mini-app Lego blocks. SIBLING to frameworks/web-components (2D). AIWizard should compose 3D games from these modules rather than emit a three.js monolith. WebGL2 only, no WebGPU, no CDN, no network. Offline-safe under file://. Every game emits a LOCAL relative importmap before the first module script: maps 'three' to ./resources/three/three.module.min.js and the prefix 'three/addons/' to ./resources/three/addons/. The render loop MUST increment window.__threeFrameCount. ASCII only everywhere. Recipe entries keep keywords/starterComponents/requiredComponents/optionalComponents as flat ASCII string arrays with no nested dicts.",
+  "library": {
+    "id": "framework.web-components-3d",
+    "name": "3D Web Mini-App Lego Blocks (three.js)",
+    "platform": "web",
+    "runtime": "vanilla-es6-modules",
+    "preferredDistribution": "bundled",
+    "alternateDistribution": "bundled",
+    "importStyle": "local-importmap",
+    "renderer": "webgl2",
+    "vendoredThreeVersion": "r160",
+    "probeSignals": [
+      "hasWebGLContext",
+      "window.__threeFrameCount",
+      "local-importmap-gate"
+    ],
+    "entryPoints": [
+      "core/three-game-loop.js",
+      "core/three-scene-rig.js",
+      "ui/three-hud-overlay.js",
+      "effects/fog-atmosphere.js",
+      "effects/gradient-skybox.js",
+      "controls/virtual-joystick-3d.js",
+      "controls/one-button-action.js"
+    ]
+  },
+  "categories": [
+    {
+      "id": "core",
+      "displayName": "Core Engines",
+      "description": "Game loop and scene rig. Every 3D game imports both. Fixed-timestep update(dt), interpolated render, WebGL2 renderer build, lighting recipe, dispose-on-teardown."
+    },
+    {
+      "id": "controls",
+      "displayName": "Controls",
+      "description": "Unified input layer. All sources (keyboard, pointer, touch) populate a single input state {move, look, actionA, actionB}; genre logic never branches on device."
+    },
+    {
+      "id": "effects",
+      "displayName": "Effects",
+      "description": "Reusable presentation wins: atmosphere fog, gradient skybox, pooled particles, screen shake. dispose-on-teardown and pooling enforced."
+    },
+    {
+      "id": "ui",
+      "displayName": "UI",
+      "description": "Absolutely-positioned HTML/CSS overlays drawn over the WebGL canvas. HUD, score, pause, restart, and reuse of 2D game-over-with-rank for sign-in CTA parity."
+    },
+    {
+      "id": "resources",
+      "displayName": "Resources",
+      "description": "Vendored three.js bundle and addon families. External-bundle markers; the actual binaries live in resources/three/ and are copied into each installed artifact."
+    }
+  ],
+  "components": [
+    {
+      "id": "core.three-game-loop",
+      "name": "ThreeGameLoop",
+      "category": "core",
+      "path": "core/three-game-loop.js",
+      "exports": [
+        "ThreeGameLoop"
+      ],
+      "status": "ready",
+      "summary": "renderer.setAnimationLoop baseplate with fixed-timestep accumulator update(dt) plus interpolated render, dt clamp, MENU/PLAYING/PAUSED/GAMEOVER state machine, resize plus visibilitychange plus DPR clamp, audio-unlock on first tap, dispose() teardown. Increments window.__threeFrameCount every rendered frame.",
+      "tags": [
+        "engine",
+        "loop",
+        "fixed-timestep",
+        "three",
+        "webgl2",
+        "miniapp"
+      ],
+      "contracts": {
+        "systemUpdate": "system.update(dt, ctx)",
+        "systemRender": "system.render(alpha, ctx)",
+        "systemLifecycle": [
+          "system.dispose()"
+        ],
+        "frameProbe": "window.__threeFrameCount increments once per rendered frame",
+        "states": [
+          "MENU",
+          "PLAYING",
+          "PAUSED",
+          "GAMEOVER"
+        ]
+      },
+      "goodFits": [
+        "runner",
+        "racer",
+        "flight",
+        "fps",
+        "tower-defense",
+        "platformer",
+        "marble",
+        "rhythm"
+      ]
+    },
+    {
+      "id": "core.three-scene-rig",
+      "name": "ThreeSceneRig",
+      "category": "core",
+      "path": "core/three-scene-rig.js",
+      "exports": [
+        "ThreeSceneRig"
+      ],
+      "status": "ready",
+      "summary": "Scene, perspective camera, and WebGL2 WebGLRenderer build with DPR clamp. Lighting recipe: one DirectionalLight sun plus one HemisphereLight fill. ACESFilmicToneMapping plus SRGBColorSpace output. renderer.info draw-call monitor hook. dispose() frees the renderer and traverses the scene freeing geometries, materials, and textures.",
+      "tags": [
+        "scene",
+        "camera",
+        "renderer",
+        "lighting",
+        "three",
+        "webgl2"
+      ],
+      "contracts": {
+        "build": "new ThreeSceneRig({ canvas, fov, dprMax }) -> { scene, camera, renderer }",
+        "lighting": "1 DirectionalLight sun + 1 HemisphereLight fill",
+        "toneMapping": "ACESFilmicToneMapping",
+        "colorSpace": "SRGBColorSpace",
+        "drawCallHook": "rig.drawCalls() reads renderer.info.render.calls"
+      },
+      "goodFits": [
+        "runner",
+        "racer",
+        "flight",
+        "fps",
+        "tower-defense",
+        "platformer",
+        "marble",
+        "rhythm",
+        "exploration"
+      ]
+    },
+    {
+      "id": "ui.three-hud-overlay",
+      "name": "ThreeHudOverlay",
+      "category": "ui",
+      "path": "ui/three-hud-overlay.js",
+      "exports": [
+        "ThreeHudOverlay"
+      ],
+      "status": "ready",
+      "summary": "Absolutely-positioned HTML/CSS overlay over the WebGL canvas. Score, message line, tap-to-start gate, pause button, and restart control. Pure DOM (no WebGL), re-skinnable per swatch. Provides the user-gesture audio-unlock entry point and the terminal-phase restart required by u-029.",
+      "tags": [
+        "hud",
+        "overlay",
+        "ui",
+        "score",
+        "restart",
+        "three"
+      ],
+      "contracts": {
+        "build": "new ThreeHudOverlay({ host, onStart, onRestart, onPause })",
+        "setScore": "hud.setScore(n)",
+        "setMessage": "hud.setMessage(text)",
+        "showStart": "hud.showStart() / hud.hideStart()",
+        "showGameOver": "hud.showGameOver({ score })"
+      },
+      "goodFits": [
+        "any-3d-game"
+      ]
+    },
+    {
+      "id": "effects.fog-atmosphere",
+      "name": "FogAtmosphere",
+      "category": "effects",
+      "path": "effects/fog-atmosphere.js",
+      "exports": [
+        "FogAtmosphere"
+      ],
+      "status": "ready",
+      "summary": "Exponential or linear scene fog tuned to a horizon color, plus a matching renderer clear color so the far plane dissolves into atmosphere. Cheap depth cue that also hides geometry pop-in on procedural tracks. dispose() detaches the fog and restores the prior clear color.",
+      "tags": [
+        "fog",
+        "atmosphere",
+        "depth",
+        "three",
+        "performance"
+      ],
+      "contracts": {
+        "apply": "new FogAtmosphere({ scene, renderer, color, density, mode })",
+        "modes": [
+          "exp2",
+          "linear"
+        ],
+        "dispose": "fog.dispose() restores scene.fog and renderer clear color"
+      },
+      "goodFits": [
+        "runner",
+        "racer",
+        "flight",
+        "exploration",
+        "tower-defense"
+      ]
+    },
+    {
+      "id": "effects.gradient-skybox",
+      "name": "GradientSkybox",
+      "category": "effects",
+      "path": "effects/gradient-skybox.js",
+      "exports": [
+        "GradientSkybox"
+      ],
+      "status": "ready",
+      "summary": "Large back-side sphere with a vertical gradient ShaderMaterial (top color to horizon color), rendered without depth write so it sits behind everything. Zero textures, zero network. dispose() frees the geometry and material.",
+      "tags": [
+        "skybox",
+        "gradient",
+        "shader",
+        "background",
+        "three"
+      ],
+      "contracts": {
+        "build": "new GradientSkybox({ scene, top, bottom, radius })",
+        "setColors": "sky.setColors(top, bottom)",
+        "dispose": "sky.dispose() removes the mesh and frees geometry/material"
+      },
+      "goodFits": [
+        "runner",
+        "racer",
+        "flight",
+        "exploration",
+        "marble"
+      ]
+    },
+    {
+      "id": "controls.virtual-joystick-3d",
+      "name": "VirtualJoystick3D",
+      "category": "controls",
+      "path": "controls/virtual-joystick-3d.js",
+      "exports": [
+        "VirtualJoystick3D"
+      ],
+      "status": "ready",
+      "summary": "Touch joystick that writes a normalized 2D move vector into the shared input state. Spawns under the thumb on touchstart, clamps to a radius, and releases to zero on touchend. Keyboard WASD and arrow keys feed the same move vector so genre logic never branches on device. Part of the unified {move, look, actionA, actionB} input contract.",
+      "tags": [
+        "input",
+        "joystick",
+        "touch",
+        "keyboard",
+        "three"
+      ],
+      "contracts": {
+        "build": "new VirtualJoystick3D({ host, input })",
+        "writes": "input.move = { x, y } in [-1, 1]",
+        "fallback": "WASD and arrow keys map to the same input.move",
+        "dispose": "joystick.dispose() removes listeners and DOM"
+      },
+      "goodFits": [
+        "runner",
+        "marble",
+        "exploration",
+        "platformer",
+        "fps"
+      ]
+    },
+    {
+      "id": "controls.one-button-action",
+      "name": "OneButtonAction",
+      "category": "controls",
+      "path": "controls/one-button-action.js",
+      "exports": [
+        "OneButtonAction"
+      ],
+      "status": "ready",
+      "summary": "Single primary-action input. Tap or click anywhere, Space, or an on-screen button all set input.actionA true for one frame (edge-triggered) and input.actionAHeld while held. Used for jump, fire, flap, place. Part of the unified input contract.",
+      "tags": [
+        "input",
+        "button",
+        "tap",
+        "keyboard",
+        "three"
+      ],
+      "contracts": {
+        "build": "new OneButtonAction({ host, input, label })",
+        "writes": "input.actionA (edge) and input.actionAHeld (held)",
+        "consume": "call input.consumeActionA() after handling the edge",
+        "dispose": "action.dispose() removes listeners and DOM"
+      },
+      "goodFits": [
+        "runner",
+        "flight",
+        "rhythm",
+        "tower-defense",
+        "platformer"
+      ]
+    },
+    {
+      "id": "resources.three-core",
+      "name": "three.js core (vendored)",
+      "category": "resources",
+      "path": "resources/three/three.module.min.js",
+      "exports": [
+        "THREE"
+      ],
+      "status": "external-bundle",
+      "externalBundle": true,
+      "summary": "Vendored three.js r160 core module. EXTERNAL BUNDLE MARKER ONLY: the binary is a separate large-file step and is NOT authored as Lego source. Referenced by the local importmap bare specifier 'three'. Copied into each installed artifact at resources/three/three.module.min.js. WebGL2 WebGLRenderer path only; never WebGPU.",
+      "tags": [
+        "three",
+        "vendored",
+        "webgl2",
+        "external-bundle",
+        "offline"
+      ],
+      "contracts": {
+        "importSpecifier": "import * as THREE from 'three'",
+        "importmap": "three -> ./resources/three/three.module.min.js",
+        "version": "r160",
+        "onDisk": "resources/three/three.module.min.js MUST exist in the installed bundle"
+      },
+      "goodFits": [
+        "any-3d-game"
+      ]
+    }
+  ],
+  "compositionRecipes": [
+    {
+      "id": "recipe.three-runner",
+      "name": "3D Endless Runner",
+      "promptName": "3d endless runner",
+      "runtime": "vanilla-es6-modules",
+      "importStyle": "local-importmap",
+      "keywords": [
+        "3d runner",
+        "endless runner",
+        "three.js runner",
+        "subway",
+        "temple run",
+        "lane runner",
+        "dodge obstacles",
+        "infinite runner",
+        "3d dodge",
+        "auto run"
+      ],
+      "starterComponents": [
+        "core.three-game-loop",
+        "core.three-scene-rig",
+        "ui.three-hud-overlay",
+        "controls.virtual-joystick-3d",
+        "controls.one-button-action",
+        "effects.fog-atmosphere",
+        "effects.gradient-skybox",
+        "resources.three-core"
+      ],
+      "requiredComponents": [
+        "core.three-game-loop",
+        "core.three-scene-rig",
+        "ui.three-hud-overlay",
+        "resources.three-core"
+      ],
+      "optionalComponents": [
+        "controls.virtual-joystick-3d",
+        "controls.one-button-action",
+        "effects.fog-atmosphere",
+        "effects.gradient-skybox"
+      ],
+      "assemblyNotes": [
+        "Camera chases the player from behind and slightly above. The player auto-runs forward at increasing speed; input.move.x picks the lane and input.actionA jumps.",
+        "Spawn obstacles as an InstancedMesh field ahead of the player and recycle instances behind the camera. Never allocate a new mesh per obstacle. Keep draw calls under 100.",
+        "Fog plus gradient skybox hide geometry pop-in as the track streams in. Tune fog density so the spawn line is invisible.",
+        "Increment window.__threeFrameCount in the render step. Emit the local importmap before the first module script. No https:// anywhere.",
+        "Marker shape: {recipe: 'recipe.three-runner', components: [...all used component ids...]}."
+      ]
+    },
+    {
+      "id": "recipe.three-marble",
+      "name": "3D Marble Roll (physics-light)",
+      "promptName": "3d marble roll",
+      "runtime": "vanilla-es6-modules",
+      "importStyle": "local-importmap",
+      "keywords": [
+        "3d marble",
+        "marble roll",
+        "ball roll",
+        "tilt maze",
+        "marble madness",
+        "roll the ball",
+        "3d ball",
+        "balance maze",
+        "marble run",
+        "physics ball"
+      ],
+      "starterComponents": [
+        "core.three-game-loop",
+        "core.three-scene-rig",
+        "ui.three-hud-overlay",
+        "controls.virtual-joystick-3d",
+        "effects.gradient-skybox",
+        "resources.three-core"
+      ],
+      "requiredComponents": [
+        "core.three-game-loop",
+        "core.three-scene-rig",
+        "ui.three-hud-overlay",
+        "controls.virtual-joystick-3d",
+        "resources.three-core"
+      ],
+      "optionalComponents": [
+        "effects.gradient-skybox",
+        "effects.fog-atmosphere"
+      ],
+      "assemblyNotes": [
+        "Physics-light by design. Hand-roll rolling-ball motion: input.move tilts the board (or applies a force), integrate ball velocity with a fixed-timestep update(dt), and resolve collisions against an axis-aligned wall grid. Do NOT pull a physics engine for the default build.",
+        "Follow or rise camera tracks the ball. Reach the goal tile to win; falling off the edge restarts.",
+        "Rapier (systems.rapier-physics-world) is an OPTIONAL upgrade only if the user explicitly asks for realistic physics with ramps and ragdoll-like rolling. The default stays hand-rolled and lighter.",
+        "Increment window.__threeFrameCount in the render step. Emit the local importmap before the first module script. No https:// anywhere.",
+        "Marker shape: {recipe: 'recipe.three-marble', components: [...all used component ids...]}."
+      ]
+    },
+    {
+      "id": "recipe.three-tower-defense",
+      "name": "3D Tower Defense",
+      "promptName": "3d tower defense",
+      "runtime": "vanilla-es6-modules",
+      "importStyle": "local-importmap",
+      "keywords": [
+        "3d tower defense",
+        "tower defense",
+        "defend the crystal",
+        "creep waves",
+        "place turrets",
+        "td game",
+        "wave defense",
+        "3d td",
+        "defend base",
+        "lane defense"
+      ],
+      "starterComponents": [
+        "core.three-game-loop",
+        "core.three-scene-rig",
+        "ui.three-hud-overlay",
+        "controls.one-button-action",
+        "effects.fog-atmosphere",
+        "resources.three-core"
+      ],
+      "requiredComponents": [
+        "core.three-game-loop",
+        "core.three-scene-rig",
+        "ui.three-hud-overlay",
+        "resources.three-core"
+      ],
+      "optionalComponents": [
+        "controls.one-button-action",
+        "effects.fog-atmosphere",
+        "effects.gradient-skybox"
+      ],
+      "assemblyNotes": [
+        "Orbit or fixed top-down-angled camera over a fixed map. Creeps path-follow a fixed spline from spawn to the crystal; the player taps grid cells to place turrets (input.actionA plus a raycast to pick the cell).",
+        "Render creeps and projectiles as InstancedMesh pools and recycle them. Hand-roll wave timing and turret targeting; no physics engine needed. Keep draw calls under 100.",
+        "Defend-the-crystal is the lowest-risk smoke test for the local-importmap path: no physics, no procedural streaming, a fixed scene.",
+        "Increment window.__threeFrameCount in the render step. Emit the local importmap before the first module script. No https:// anywhere.",
+        "Marker shape: {recipe: 'recipe.three-tower-defense', components: [...all used component ids...]}."
+      ]
+    }
+  ],
+  "sourceCatalogs": [],
+  "absorptionProcess": [
+    "1. Author the module as an ES module under the matching category dir (core/ controls/ effects/ ui/ systems/ entities/). Wrap the body in the // BEGIN and // END mChatAI Web Component: <id> markers.",
+    "2. Add a component entry here with id, name, category, path, exports, status, summary, tags, and an optional nested contracts dict.",
+    "3. dispose-on-teardown: free every geometry, material, texture, and render target. Pool particles and projectiles.",
+    "4. Verify in a REAL WKWebView (hasWebGLContext true, window.__threeFrameCount greater than zero, errorCount zero), not headless Chrome.",
+    "5. Run tests/check_component_usage_3d.mjs to confirm the local-importmap gate, claimed imports present, and vendored core on disk. Confirm catalogRecipeCount via the diagWebComponentMatch tunnel command after every _index.json edit (Python validating is not Swift happy)."
+  ],
+  "goldenAssemblies": []
+}
