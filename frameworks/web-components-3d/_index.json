@@ -1,6 +1,6 @@
 {
   "$schema_version": "1.0.0",
-  "last_updated": "2026-06-13",
+  "last_updated": "2026-06-15",
   "notes": "Catalog for reusable three.js WebGL2 3D mini-app Lego blocks. SIBLING to frameworks/web-components (2D). AIWizard should compose 3D games from these modules rather than emit a three.js monolith. WebGL2 only, no WebGPU, no CDN, no network. Offline-safe under file://. Every game emits a LOCAL relative importmap before the first module script: maps 'three' to ./resources/three/three.module.min.js and the prefix 'three/addons/' to ./resources/three/addons/. The render loop MUST increment window.__threeFrameCount. ASCII only everywhere. Recipe entries keep keywords/starterComponents/requiredComponents/optionalComponents as flat ASCII string arrays with no nested dicts.",
   "library": {
     "id": "framework.web-components-3d",
@@ -316,6 +316,50 @@
       "goodFits": [
         "any-3d-game"
       ]
+    },
+    {
+      "id": "core.lowpoly-canvas3d",
+      "name": "LowPolyCanvas3D",
+      "category": "core",
+      "path": "core/lowpoly-canvas3d.js",
+      "exports": [
+        "LowPolyScene",
+        "OrbitCamera",
+        "mesh",
+        "vec3",
+        "mat4",
+        "seededRng",
+        "shade"
+      ],
+      "status": "ready",
+      "summary": "Dependency-free low-poly 3D on a plain 2D canvas (no three.js, no WebGL). Tiny vec3/mat4 math, flat-shaded painter's-algorithm triangle renderer with two-sided lighting and depth sort, a spherical OrbitCamera (drag/touch/pinch/wheel/auto-spin), mesh builders (cone, box, stacked-ring surface), seeded RNG and shade tint. Trivially offline-safe and identical in WKWebView/Safari/Chrome. The lightweight 'let it cook' 3D track for orbit dioramas; write only the scene-specific faces.",
+      "tags": [
+        "low-poly",
+        "canvas2d",
+        "no-dependencies",
+        "offline",
+        "orbit",
+        "diorama",
+        "painters-algorithm",
+        "flat-shaded"
+      ],
+      "contracts": {
+        "scene": "new LowPolyScene(canvas, { fov, ambient, diffuse, lightDir, background }) -> .render(faces, camera)",
+        "camera": "new OrbitCamera(canvas, { r, az, el, autoSpin }) -> .eye(), .update()",
+        "face": "{ v: [[x,y,z],[x,y,z],[x,y,z]], c: [r,g,b] }  (0-255 colors)",
+        "mesh": "mesh.cone/box/ringSurface(faces, opts) push faces; bring your own geometry",
+        "offline": "no imports beyond this module; renders to CanvasRenderingContext2D only"
+      },
+      "goodFits": [
+        "low-poly island",
+        "low-poly planet",
+        "diorama",
+        "terrain flythrough",
+        "floating scene",
+        "stylized town",
+        "faceted sculpture",
+        "orbit showpiece"
+      ]
     }
   ],
   "compositionRecipes": [
@@ -456,6 +500,36 @@
         "Increment window.__threeFrameCount in the render step. Emit the local importmap before the first module script. No https:// anywhere.",
         "Marker shape: {recipe: 'recipe.three-tower-defense', components: [...all used component ids...]}."
       ]
+    },
+    {
+      "id": "recipe.lowpoly-orbit-diorama",
+      "name": "Low-Poly Orbit Diorama",
+      "promptName": "low-poly orbit diorama",
+      "runtime": "vanilla-es6-modules",
+      "importStyle": "local-importmap",
+      "keywords": [
+        "low poly",
+        "low-poly",
+        "lowpoly",
+        "diorama",
+        "floating island",
+        "faceted",
+        "stylized 3d scene",
+        "orbit scene",
+        "spin around",
+        "low poly planet",
+        "low poly terrain",
+        "papercraft 3d",
+        "flat shaded"
+      ],
+      "starterComponents": [
+        "core.lowpoly-canvas3d"
+      ],
+      "requiredComponents": [
+        "core.lowpoly-canvas3d"
+      ],
+      "optionalComponents": [],
+      "notes": "Dependency-free track: NO three.js, NO WebGL, NO vendored core needed. Import core.lowpoly-canvas3d and write only the scene-specific faces (use mesh.cone/box/ringSurface). Soft accelerator - suggested, never gated; the CLI may also hand-roll or use the three.js track for richer scenes."
     }
   ],
   "sourceCatalogs": [],
