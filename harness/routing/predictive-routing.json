@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "lastUpdated": "2026-06-15",
+  "_source_of_truth": true,
+  "_comment": "FrugalGPT v2 predictive routing tunables (RULE #1 - out of the binary). job_needs = per-artifactType output headroom + capability needs (folded into the context-window hard gate). viability = first-pick quality floors + per-tier difficulty multipliers + the empirical sample floor. Floors are compared against prior*difficultyMultiplier, so they MUST be reachable (e.g. coding.L3 0.50 with L3 mult 0.6 needs prior>=0.83). The Swift binary carries identical _fallback_only defaults; edit + git push + refreshMchataisourceCache ships with no rebuild. Keys prefixed _ are category fallbacks used when artifactType is unknown.",
+  "job_needs": {
+    "profiles": {
+      "miniApp":      { "output_headroom_tokens": 16000, "needs_tool_calling": true,  "needs_strong_coding": true },
+      "webSPA":       { "output_headroom_tokens": 16000, "needs_tool_calling": true,  "needs_strong_coding": true },
+      "macOSApp":     { "output_headroom_tokens": 32000, "needs_tool_calling": true,  "needs_strong_coding": true },
+      "fullStackApp": { "output_headroom_tokens": 32000, "needs_tool_calling": true,  "needs_strong_coding": true },
+      "unityGame":    { "output_headroom_tokens": 32000, "needs_tool_calling": true,  "needs_strong_coding": true },
+      "microservice": { "output_headroom_tokens": 16000, "needs_tool_calling": true,  "needs_strong_coding": true },
+      "skill":        { "output_headroom_tokens": 8000,  "needs_tool_calling": false, "needs_strong_coding": true },
+      "pipeline":     { "output_headroom_tokens": 4000,  "needs_tool_calling": false, "needs_strong_coding": false },
+      "agent":        { "output_headroom_tokens": 8000,  "needs_tool_calling": true,  "needs_strong_coding": false },
+      "document":     { "output_headroom_tokens": 4000,  "needs_tool_calling": false, "needs_strong_coding": false },
+      "recipe":       { "output_headroom_tokens": 2000,  "needs_tool_calling": false, "needs_strong_coding": false },
+      "_coding":      { "output_headroom_tokens": 16000, "needs_tool_calling": true,  "needs_strong_coding": true },
+      "_planning":    { "output_headroom_tokens": 6000,  "needs_tool_calling": false, "needs_strong_coding": false },
+      "_text":        { "output_headroom_tokens": 3000,  "needs_tool_calling": false, "needs_strong_coding": false },
+      "_simple":      { "output_headroom_tokens": 1500,  "needs_tool_calling": false, "needs_strong_coding": false }
+    },
+    "default": { "output_headroom_tokens": 4000, "needs_tool_calling": false, "needs_strong_coding": false },
+    "tier_headroom_multiplier": { "L1": 1.0, "L2": 1.5, "L3": 2.5 }
+  },
+  "viability": {
+    "quality_floors": {
+      "coding.L1": 0.30, "coding.L2": 0.40, "coding.L3": 0.50,
+      "planning.L1": 0.30, "planning.L2": 0.36, "planning.L3": 0.40,
+      "simple": 0.20, "research": 0.35, "analysis": 0.40, "creative": 0.30
+    },
+    "default_floor": 0.40,
+    "difficulty_multipliers": { "L1": 1.0, "L2": 0.8, "L3": 0.6 },
+    "min_empirical_samples": 3
+  }
+}
