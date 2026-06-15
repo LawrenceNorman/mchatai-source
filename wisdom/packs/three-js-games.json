@@ -1,0 +1,182 @@
+{
+  "packID": "three-js-games",
+  "version": 1,
+  "displayName": "three.js 3D Game Guidelines (web-components-3d)",
+  "description": "Quality and correctness rules for offline three.js WebGL2 3D games built from the web-components-3d Lego catalog. Covers the local-importmap-only loading contract (no CDN, no network, runs under file://), draw-call and DPR budgets, delta-time movement, dispose-on-teardown and object pooling, mobile light limits, hand-rolled physics versus rigid bodies, audio unlock on first user gesture, and WebGL2-not-WebGPU. These rules are for 3D games only and must not leak into productivity mini-apps.",
+  "categories": [
+    "three-js-games"
+  ],
+  "keywords": [
+    "three.js",
+    "threejs",
+    "three js",
+    "webgl",
+    "webgl2",
+    "3d game",
+    "3d scene",
+    "first person",
+    "fps 3d",
+    "low poly",
+    "voxel",
+    "racer",
+    "flight sim",
+    "tower defense 3d",
+    "marble",
+    "runner 3d",
+    "platformer 3d"
+  ],
+  "guidelines": [
+    {
+      "id": "tjs-001",
+      "rule": "The importmap MUST be LOCAL and relative only. Map the bare specifier 'three' to './resources/three/three.module.min.js' and the PREFIX 'three/addons/' to './resources/three/addons/'. NEVER reference any https:// URL, CDN, unpkg, jsdelivr, esm.sh, skypack, or es-module-shims. Any 'https://' inside the importmap or in an import statement is an instant failure.",
+      "why": "These games ship as static Hub bundles and run under file:// inside WKWebView, which is not a secure context and has no network guarantee. A CDN importmap renders a blank canvas offline. The local prefix mapping for 'three/addons/' is mandatory so addon-to-addon cross-imports (EffectComposer pulling Pass, RenderPass, shaders) resolve locally instead of hitting the network.",
+      "severity": "critical",
+      "appliesTo": "anygame",
+      "examples": [
+        "<script type=\"importmap\">{ \"imports\": { \"three\": \"./resources/three/three.module.min.js\", \"three/addons/\": \"./resources/three/addons/\" } }</script>",
+        "Game code uses canonical specifiers: import * as THREE from 'three'; import { OrbitControls } from 'three/addons/controls/OrbitControls.js';",
+        "WRONG: \"three\": \"https://unpkg.com/three@0.160.0/build/three.module.js\" - fails the local-importmap gate",
+        "WRONG: <script src=\"https://cdn.jsdelivr.net/npm/es-module-shims\"> - native importmaps are guaranteed on the target webviews, do not add a shim"
+      ]
+    },
+    {
+      "id": "tjs-002",
+      "rule": "The importmap block MUST appear in <head> BEFORE the first module <script>. Place it ahead of any import so the resolver sees the mappings when the first module loads.",
+      "why": "An importmap declared after a module script has already started resolving is ignored, and 'Failed to resolve module specifier three' kills the whole scene. Order is load-bearing, not cosmetic.",
+      "severity": "critical",
+      "appliesTo": "anygame",
+      "examples": [
+        "Head order: <meta charset> then <style> then <script type=\"importmap\"> then <script type=\"module\" src=\"./game.js\">",
+        "Never inject the importmap from JS after DOMContentLoaded - it is too late"
+      ]
+    },
+    {
+      "id": "tjs-003",
+      "rule": "Use the WebGL2 path only. Construct three.js WebGLRenderer (never WebGPURenderer). If TSL or node materials are used they MUST compile to the GLSL/WebGL backend. GPGPU float-texture sims must capability-check EXT_color_buffer_float and degrade gracefully when absent.",
+      "why": "file:// is not a secure context, so even Safari 26 silently drops WebGPU - WebGPURenderer produces a permanently blank canvas in the shipped bundle. WebGLRenderer is the only renderer that survives the offline file:// target. Float-texture GPGPU effects (flow field, boids, reaction-diffusion) crash without the float color-buffer extension on weaker mobile GPUs.",
+      "severity": "critical",
+      "appliesTo": "anygame",
+      "examples": [
+        "const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });",
+        "WRONG: new THREE.WebGPURenderer(...) - blank under file://",
+        "if (!renderer.capabilities.isWebGL2) { /* show a friendly message, do not crash */ }",
+        "const floatOK = renderer.getContext().getExtension('EXT_color_buffer_float'); if (!floatOK) useCPUFallback();"
+      ]
+    },
+    {
+      "id": "tjs-004",
+      "rule": "Keep the scene under 100 draw calls. Merge static geometry, use InstancedMesh for repeated objects (obstacles, asteroids, projectiles, creeps, particles), and share materials. Watch renderer.info.render.calls and treat it as a budget, not a number to discover after shipping.",
+      "why": "Each draw call is CPU-bound submission overhead; on mobile GPUs hundreds of individual meshes drop the game below 30fps even when the polygon count is tiny. Instancing draws thousands of identical objects in one call. The web-components-3d systems Lego (instanced-obstacle-field, instanced-asteroid-field, instanced-projectiles) exist specifically so genre code never spawns one Mesh per entity.",
+      "severity": "important",
+      "appliesTo": "anygame",
+      "examples": [
+        "const field = new THREE.InstancedMesh(geo, mat, 500); // one draw call for 500 obstacles",
+        "Reuse a single shared material across all instances; do not clone a material per object",
+        "Log renderer.info.render.calls in dev and assert it stays under 100",
+        "Merge static level geometry with BufferGeometryUtils.mergeGeometries at load time"
+      ]
+    },
+    {
+      "id": "tjs-005",
+      "rule": "Clamp devicePixelRatio. Call renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2)) and re-apply on resize. Never render at the raw DPR of a 3x Retina phone.",
+      "why": "A 3x DPR phone renders 9x the pixels of a 1x display; on a fragment-heavy 3D scene that is the difference between 60fps and a slideshow. Clamping to 2 keeps the image crisp while capping the pixel budget. This is the single highest-ROI mobile performance fix.",
+      "severity": "important",
+      "appliesTo": "anygame",
+      "examples": [
+        "renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));",
+        "On resize: renderer.setSize(w, h); renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));",
+        "WRONG: renderer.setPixelRatio(window.devicePixelRatio) with no clamp"
+      ]
+    },
+    {
+      "id": "tjs-006",
+      "rule": "All movement, physics, timers, and animation MUST be delta-time based. Use a fixed-timestep accumulator: accumulate real elapsed seconds, step update(dt) at a fixed dt (e.g. 1/60), clamp dt to avoid a spiral of death after a tab stall, and interpolate the render. Never advance state by a constant per-frame amount.",
+      "why": "Frame rate varies across devices (30, 60, 120Hz) and stalls when a tab backgrounds. Per-frame movement makes a 120Hz phone run the game twice as fast as a 60Hz one and teleports everything after a stall. Fixed-timestep with a clamped accumulator gives identical, deterministic motion on every device.",
+      "severity": "important",
+      "appliesTo": "anygame",
+      "examples": [
+        "position.x += speed * dt; // not position.x += speed",
+        "acc += Math.min(rawElapsed, 0.1); while (acc >= STEP) { update(STEP); acc -= STEP; }",
+        "Clamp the raw frame delta to ~0.1s so a backgrounded tab does not produce one giant catch-up step",
+        "core.three-game-loop already implements this accumulator - import it instead of hand-rolling rAF"
+      ]
+    },
+    {
+      "id": "tjs-007",
+      "rule": "The render loop MUST increment window.__threeFrameCount once per rendered frame. Initialize it to 0 and bump it inside the animation callback right after renderer.render(...).",
+      "why": "The macOS InstalledMiniAppRenderProbe reads window.__threeFrameCount to confirm the WebGL scene is actually rendering frames (frameCount greater than 0), not just sitting on a static first frame or a silently failed context. Omitting this counter makes a working game fail the render probe and get flagged unplayable.",
+      "severity": "important",
+      "appliesTo": "anygame",
+      "examples": [
+        "window.__threeFrameCount = 0; // at startup",
+        "function animate() { update(dt); renderer.render(scene, camera); window.__threeFrameCount++; }",
+        "renderer.setAnimationLoop(animate); // the loop that bumps the counter"
+      ]
+    },
+    {
+      "id": "tjs-008",
+      "rule": "Dispose every GPU resource on teardown. Geometries, materials, textures, render targets, and the renderer itself must be explicitly disposed when the game ends or the view is torn down. Walk the scene and call .dispose() on geometry, material(s), and any map/texture, then renderer.dispose().",
+      "why": "three.js does not garbage-collect GPU memory. Geometries, textures, and render targets live in WebGL until you dispose them; a game that rebuilds its scene on restart without disposing leaks VRAM until the context is lost and the canvas goes black. Mini-apps get torn down and relaunched repeatedly in the host, so the leak compounds fast.",
+      "severity": "important",
+      "appliesTo": "anygame",
+      "examples": [
+        "scene.traverse(o => { o.geometry?.dispose(); const m = o.material; (Array.isArray(m) ? m : [m]).forEach(mat => { mat?.map?.dispose(); mat?.dispose(); }); });",
+        "renderTarget.dispose(); composer?.dispose?.(); renderer.dispose();",
+        "Remove resize / visibilitychange / pointer listeners in the same dispose() path",
+        "core.three-game-loop exposes a dispose() - call it from the host teardown hook"
+      ]
+    },
+    {
+      "id": "tjs-009",
+      "rule": "Pool particles, projectiles, and short-lived objects. Pre-allocate a fixed pool (or a single InstancedMesh) and recycle entries instead of creating and destroying meshes/geometries every frame or every shot. Route all particles through effects.instanced-particle-pool.",
+      "why": "Allocating a Mesh, geometry, or material per projectile or per particle every frame triggers constant GC pauses and the dispose churn of tjs-008. A fixed pool keeps allocation flat: spawning a bullet just activates a free slot and resets its transform; despawning returns it to the pool. This is what keeps bullet-hell and particle bursts at a steady frame rate.",
+      "severity": "important",
+      "appliesTo": "anygame",
+      "examples": [
+        "const pool = []; for (let i=0;i<256;i++) pool.push(makeBullet()); // pre-allocated, hidden until used",
+        "spawn(): take a dead slot, set position/velocity, mark alive; despawn(): mark dead, hide, return to pool",
+        "Particles: one additive Points or InstancedMesh, update positions in a typed array, never one mesh per spark",
+        "Never new THREE.Mesh(...) inside the per-frame update loop"
+      ]
+    },
+    {
+      "id": "tjs-010",
+      "rule": "Cap active lights at 3 on mobile. Prefer a single DirectionalLight (sun) plus one HemisphereLight (sky/ground fill); bake or fake the rest. Limit shadow-casting to one light and use a blob/baked shadow for everything else. Do not add a PointLight per object.",
+      "why": "Each real-time light multiplies fragment-shader cost, and each shadow-casting light adds a full extra render pass. Four or more dynamic lights with shadows tank mobile GPUs. The scene-rig recipe (1 DirectionalLight + 1 HemisphereLight) plus blob shadows looks great and stays cheap. Per-object PointLights are the classic way an otherwise simple scene drops to single-digit fps.",
+      "severity": "important",
+      "appliesTo": "anygame",
+      "examples": [
+        "scene.add(new THREE.DirectionalLight(0xffffff, 2.0)); scene.add(new THREE.HemisphereLight(0xbfd4ff, 0x40402a, 0.6));",
+        "Only the DirectionalLight casts shadows; everything else uses effects.blob-shadow",
+        "WRONG: attaching a PointLight to each collectible or enemy",
+        "core.three-scene-rig already wires the 2-light recipe - reuse it"
+      ]
+    },
+    {
+      "id": "tjs-011",
+      "rule": "Hand-roll movement and collision unless the genre genuinely needs rigid-body dynamics. Use simple kinematics (capsule sweep, AABB/sphere overlap, raycast ground snap) for runners, racers, platformers, flight, tower defense, and rhythm games. Only pull systems.rapier-physics-world for genres whose fun IS emergent rigid-body physics (stacking, tumbling, ragdoll, knock-down).",
+      "why": "Rapier-compat adds ~1.9MB of embedded wasm to every bundle and a full physics step to every frame. For a lane runner or an on-rails racer that overhead buys nothing - a few lines of kinematic math are smaller, faster, and easier to tune. Reserve the one physics-engine Lego for games where you actually want bodies to collide, topple, and settle unpredictably.",
+      "severity": "important",
+      "appliesTo": "anygame",
+      "examples": [
+        "Runner/racer/flight/TD/rhythm: kinematic update + sphere or AABB overlap checks, no engine",
+        "Platformer ground snap: a single downward raycast, not a physics body",
+        "Stacking / tumbling / domino / ragdoll: import systems.rapier-physics-world (embedded-wasm, offline)",
+        "Do not add rapier to a bundle that never calls world.step()"
+      ]
+    },
+    {
+      "id": "tjs-012",
+      "rule": "Unlock audio on the first real user gesture. AudioContext (and three.js AudioListener / PositionalAudio) boots suspended; on the first tap/click/keydown call audioContext.resume() and play a 1-sample silent buffer, THEN start sound. Always ship a visible tap-to-start / Play control. If audio cannot start, keep the game fully playable and visually intact, just muted.",
+      "why": "iOS and WKWebView require a genuine user gesture to start audio; calling resume() at load does nothing and leaves the game permanently silent. The silent-buffer trick fully unlocks the context on iOS. Gating sound start behind a Play button is the reliable pattern. Audio must never block rendering - a muted game still renders, so degrade gracefully rather than stalling on a suspended context.",
+      "severity": "important",
+      "appliesTo": "anygame",
+      "examples": [
+        "playButton.addEventListener('pointerdown', () => { audioCtx.resume(); playSilentSample(audioCtx); startGame(); }, { once: true });",
+        "playSilentSample: const b = ctx.createBuffer(1,1,22050); const s = ctx.createBufferSource(); s.buffer=b; s.connect(ctx.destination); s.start(0);",
+        "three.js: const listener = new THREE.AudioListener(); camera.add(listener); resume the listener.context on first tap",
+        "If audioCtx.state stays 'suspended', continue rendering muted - never block the render loop on audio"
+      ]
+    }
+  ]
+}

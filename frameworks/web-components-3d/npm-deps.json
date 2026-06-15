@@ -1,0 +1,102 @@
+{
+  "$schema": "https://mchatai.com/schemas/npm-deps-v1.json",
+  "version": "1.0.0",
+  "lastUpdated": "2026-06-13",
+  "description": "npm analog of frameworks/_index/spm-deps.json. Maps the web-components-3d framework to the three.js core, addon families, and rapier3d-compat that must be VENDORED LOCALLY into resources/three/ and resources/rapier/. These are NOT installed from a registry at runtime and are NEVER loaded from a CDN. The exact versions below are the single source of truth for which build to vendor. Each game's local importmap maps the bare specifier 'three' and the prefix 'three/addons/' to the vendored copies; rapier3d-compat is the embedded-wasm (base64) build so it is offline-safe under file://.",
+  "vendoringRules": {
+    "noCDN": "Never reference unpkg, jsdelivr, esm.sh, or any https:// import. All bytes ship inside the artifact bundle.",
+    "rendererPath": "WebGL2 WebGLRenderer only. Do not vendor or reference the WebGPU build.",
+    "copyOnAssemble": "At install time the assembler copies the needed files into the artifact's own resources/three/ and resources/rapier/ so every Hub bundle is fully self-contained.",
+    "binaryStep": "The actual binary files (resources/three/*, resources/rapier/*) are a separate large-file step pending user confirmation and are NOT authored as Lego source."
+  },
+  "frameworks": {
+    "web-components-3d": {
+      "packages": [
+        {
+          "name": "three",
+          "version": "0.160.0",
+          "release": "r160",
+          "vendoredPath": "resources/three/three.module.min.js",
+          "importSpecifier": "three",
+          "renderer": "webgl2",
+          "vendored": true,
+          "cdn": false,
+          "note": "Core three.js r160. Vendored as a single ES module. The local importmap maps the bare specifier 'three' to this file."
+        },
+        {
+          "name": "three/addons/controls",
+          "version": "0.160.0",
+          "vendoredPath": "resources/three/addons/controls/",
+          "members": [
+            "OrbitControls.js",
+            "PointerLockControls.js"
+          ],
+          "importPrefix": "three/addons/controls/",
+          "vendored": true,
+          "cdn": false,
+          "note": "Camera/control addons. Vendored from the three r160 examples/jsm/controls tree."
+        },
+        {
+          "name": "three/addons/loaders",
+          "version": "0.160.0",
+          "vendoredPath": "resources/three/addons/loaders/",
+          "members": [
+            "GLTFLoader.js",
+            "RGBELoader.js"
+          ],
+          "importPrefix": "three/addons/loaders/",
+          "vendored": true,
+          "cdn": false,
+          "note": "Asset loaders. Vendored from three r160 examples/jsm/loaders. GLTF for low-poly models, RGBE for HDR environment fallback (optional)."
+        },
+        {
+          "name": "three/addons/postprocessing",
+          "version": "0.160.0",
+          "vendoredPath": "resources/three/addons/postprocessing/",
+          "members": [
+            "EffectComposer.js",
+            "Pass.js",
+            "RenderPass.js",
+            "ShaderPass.js",
+            "MaskPass.js",
+            "OutputPass.js",
+            "UnrealBloomPass.js"
+          ],
+          "importPrefix": "three/addons/postprocessing/",
+          "vendored": true,
+          "cdn": false,
+          "note": "Postprocessing family. Vendor the FULL transitive subtree as a unit. UnrealBloomPass also pulls the shaders below."
+        },
+        {
+          "name": "three/addons/shaders",
+          "version": "0.160.0",
+          "vendoredPath": "resources/three/addons/shaders/",
+          "members": [
+            "CopyShader.js",
+            "LuminosityHighPassShader.js"
+          ],
+          "importPrefix": "three/addons/shaders/",
+          "vendored": true,
+          "cdn": false,
+          "note": "Shader chunks required by the postprocessing passes (CopyShader for ShaderPass/OutputPass, LuminosityHighPassShader for UnrealBloomPass)."
+        },
+        {
+          "name": "@dimforge/rapier3d-compat",
+          "version": "0.13.1",
+          "vendoredPath": "resources/rapier/",
+          "build": "embedded-wasm",
+          "importSpecifier": "@dimforge/rapier3d-compat",
+          "vendored": true,
+          "cdn": false,
+          "approxSizeBytes": 1900000,
+          "note": "Rapier 3D physics, compat (embedded-wasm, base64 wasm in JS) build so it runs under file:// with no separate .wasm fetch. ONLY pulled by physics recipes via systems.rapier-physics-world; most 3D games hand-roll motion and do not include this."
+        }
+      ],
+      "minIOS": "18.0",
+      "minMacOS": "15.0",
+      "bundleSizeImpact": "0.7 to 1.0 MB per artifact (three core minified) plus ~1.9 MB if rapier is included",
+      "renderer": "webgl2-only"
+    }
+  },
+  "_seedingPlan": "Seeded with the three.js r160 core, four addon families (controls, loaders, postprocessing with full transitive subtree, shaders), and rapier3d-compat. Extend members as new Lego modules import additional addon files. Bump the version block when re-vendoring a newer three.js release; re-copy resources/three/* in the same pass."
+}

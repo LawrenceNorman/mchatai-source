@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "_doc": "Phase WX-G2 content-driven relevance gate for the AIWizard system prompt. Read by SystemPromptRelevanceStore.swift. The Swift assembler ONLY reads this map; all relevance policy is content here (retunable via git PR, zero rebuild). Conservative rule: when relevance is unknown, INCLUDE. This file is the authoritative SUPERSET of the embedded Swift fallback. ASCII only.",
+  "enabled": true,
+  "gameKeywords": [
+    "game", "play", "playable", "board", "deck", "cards", "chess",
+    "poker", "blackjack", "hearts", "spades", "bridge", "cribbage",
+    "rummy", "solitaire", "dominoes", "checker", "backgammon",
+    "arcade", "shoot", "platformer", "puzzle", "match-3", "match3",
+    "snake", "tetris", "asteroids", "invaders", "pong", "breakout",
+    "opponent", "trick", "round", "score", "leaderboard",
+    "level", "lives", "boss", "enemy", "weapon", "hp", "xp",
+    "quiz", "trivia", "wordle", "hangman"
+  ],
+  "_gameScopedAssetPackIDs_doc": "Asset packs that are game-piece libraries (boards, dice, cards, arcade sprites). Dropped from the prompt for NON-game goals so e.g. a multi-timer does not carry a backgammon board. Game goals keep all packs (no over-strip). IDs match AssetPack.packID in the bundled Resources/AssetPacks + mchatai-source/assets/packs.",
+  "gameScopedAssetPackIDs": [
+    "component.library",
+    "board-game",
+    "arcade-retro",
+    "casino.card-game"
+  ],
+  "_sectionGroups_doc": "Optional speculative section-groups the assembler can skip. default include|exclude when no genre rule matches; includeForGenres/excludeForGenres override by genre class (game|general). Conservative: omit a group to always include it.",
+  "sectionGroups": {
+    "codeEvidenceSearchBrief": {
+      "_doc": "External Code / Docs Evidence search brief (#16). Reference implementations from a web/code search; up to ~18KB and an async LLM-backed search. Most useful for novel/complex builds (games, integrations); low value-add for simple productivity tools and documents. Excluded for general goals; the search itself is skipped too (latency + cost win).",
+      "default": "include",
+      "includeForGenres": ["game"],
+      "excludeForGenres": ["general"]
+    }
+  }
+}
