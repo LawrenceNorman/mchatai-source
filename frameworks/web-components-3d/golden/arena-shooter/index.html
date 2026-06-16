@@ -15,7 +15,7 @@
 -->
 <script type="importmap">
 { "imports": {
-  "three": "../../resources/three/three.module.min.js"
+  "three": "./resources/three/three.module.min.js"
 } }
 </script>
 <style>
@@ -51,10 +51,1111 @@
 
 <script type="module">
 import * as THREE from 'three';
-import { FPSController } from '../../controls/fps-controller.js';
-import { buildDrone, buildRobot } from '../../models/lowpoly-characters-3d.js';
-import { buildCrate, buildTree, buildBarrel } from '../../models/lowpoly-props-3d.js';
-import { createInfoPanel } from '../../ui/info-panel.js';
+/* ===== INLINED CATALOG MODULES ===== */
+/* inlined: controls/fps-controller.js */
+
+//
+// Universal first-person / third-person controller that WORKS WITHOUT POINTER
+// LOCK — so it is playable inside the mChatAI+ WKWebView preview (which does NOT
+// grant pointer lock) AND on mobile AND on the published hub. Default look mode
+// is DRAG-TO-LOOK (hold + drag the view; touch-drag on phones); pointer lock is
+// an opt-in for desktop-hub builds that want it. Includes built-in on-screen
+// TOUCH CONTROLS (a movement joystick + action buttons) that auto-appear on
+// touch devices, so the same game is mobile-ready.
+//
+// WHY: pointer-lock FPS games render fine but are UNPLAYABLE in the preview
+// (you can't aim) and on mobile. Drag-look + touch fixes both. Movement: WASD on
+// desktop, the on-screen joystick on touch. Aim: drag the view. Shoot/jump: a
+// quick tap/click (no drag) fires the primary action, or use the action buttons
+// / Space, all routed through onAction(id).
+//
+// USAGE (three.js)
+//   import { FPSController } from './fps-controller.js';
+//   const fps = new FPSController(renderer.domElement, {
+//     position:[0,1.7,8], eyeHeight:1.7, speed:5.5, gravity:26, jumpSpeed:8,
+//     colliders: wallBoxes,                 // optional [{min,max}] -> wall-slide
+//     actions:[{id:'shoot',label:'FIRE'},{id:'jump',label:'JUMP'}],
+//     onAction:(id)=>{ if(id==='shoot') fire(); if(id==='jump') fps.jump(); },
+//   });
+//   function frame(dt){ fps.update(dt); fps.applyToCamera(camera); renderer.render(scene,camera); }
+//
+// CONTROLS: drag the view to look · WASD / on-screen stick to move · tap/click
+// (no drag) or the FIRE button or Space to act · Shift to sprint.
+class FPSController {
+  constructor(domElement, opts = {}) {
+    this.el = domElement;
+    this.lookMode = opts.lookMode || 'drag';        // 'drag' (default) | 'pointerlock'
+    this.speed = opts.speed ?? 5.5;
+    this.sprintMult = opts.sprintMult ?? 1.7;
+    this.gravity = opts.gravity ?? 26;
+    this.jumpSpeed = opts.jumpSpeed ?? 8;
+    this.eyeHeight = opts.eyeHeight ?? 1.7;
+    this.sensitivity = opts.sensitivity ?? 0.0026;   // mouse-drag look
+    this.touchLookSensitivity = opts.touchLookSensitivity ?? 0.005;
+    this.fly = opts.fly ?? false;
+    this.colliders = opts.colliders ?? null;
+    this.radius = opts.radius ?? 0.3;
+    this.groundY = opts.groundY ?? 0;
+    this.collide = opts.collide ?? null;
+    this.actions = opts.actions ?? [];               // [{id,label}]
+    this.onAction = opts.onAction ?? null;
+    this.touchControls = opts.touchControls ?? true; // on-screen stick + buttons (touch)
+    this.tapThreshold = opts.tapThreshold ?? 8;      // px: a drag shorter than this = a tap/shoot
+
+    const p = opts.position ?? [0, this.eyeHeight + this.groundY, 0];
+    this.position = [p[0], p[1], p[2]];
+    this.yaw = opts.yaw ?? 0;
+    this.pitch = opts.pitch ?? 0;
+    this.velY = 0; this.onGround = true;
+    this.keys = {};
+    this.move = [0, 0];     // joystick vector x,z in [-1,1]
+    this._listeners = [];
+    this._dragId = null; this._lastX = 0; this._lastY = 0; this._dragDist = 0;
+
+    this._installLook();
+    this._installKeys();
+    if (this._isTouch() && this.touchControls) this._installTouchUI();
+  }
+
+  _isTouch() { return ('ontouchstart' in window) || (navigator.maxTouchPoints > 0); }
+  _on(t, ev, fn, opt) { t.addEventListener(ev, fn, opt); this._listeners.push([t, ev, fn, opt]); }
+
+  jump() { if (!this.fly && this.onGround) { this.velY = this.jumpSpeed; this.onGround = false; } }
+
+  // ---- look: drag (default) or optional pointer-lock ----
+  _installLook() {
+    if (this.lookMode === 'pointerlock') {
+      this._on(this.el, 'click', () => { if (document.pointerLockElement !== this.el) this.el.requestPointerLock?.(); });
+      this._on(document, 'mousemove', (e) => {
+        if (document.pointerLockElement !== this.el) return;
+        this._applyLook(e.movementX, e.movementY, this.sensitivity);
+      });
+      return;
+    }
+    // DRAG-LOOK (works everywhere). A short press with no drag = a tap (primary action).
+    const start = (x, y, id) => { this._dragId = id; this._lastX = x; this._lastY = y; this._dragDist = 0; };
+    const moveTo = (x, y, sens) => {
+      if (this._dragId === null) return;
+      const dx = x - this._lastX, dy = y - this._lastY;
+      this._dragDist += Math.abs(dx) + Math.abs(dy);
+      this._applyLook(dx, dy, sens);
+      this._lastX = x; this._lastY = y;
+    };
+    const end = () => {
+      if (this._dragId !== null && this._dragDist < this.tapThreshold) this._emit(this.actions[0]?.id || 'shoot');
+      this._dragId = null;
+    };
+    this._on(this.el, 'mousedown', (e) => { e.preventDefault(); start(e.clientX, e.clientY, 'mouse'); });
+    this._on(window, 'mousemove', (e) => { if (this._dragId === 'mouse') moveTo(e.clientX, e.clientY, this.sensitivity); });
+    this._on(window, 'mouseup', () => { if (this._dragId === 'mouse') end(); });
+    this._on(this.el, 'contextmenu', (e) => e.preventDefault());
+    // touch look (on the canvas; the joystick/buttons stop-propagation so they don't rotate the view)
+    this._on(this.el, 'touchstart', (e) => { const t = e.changedTouches[0]; start(t.clientX, t.clientY, t.identifier); e.preventDefault(); }, { passive: false });
+    this._on(this.el, 'touchmove', (e) => {
+      for (const t of e.changedTouches) if (t.identifier === this._dragId) moveTo(t.clientX, t.clientY, this.touchLookSensitivity);
+      e.preventDefault();
+    }, { passive: false });
+    this._on(this.el, 'touchend', (e) => { for (const t of e.changedTouches) if (t.identifier === this._dragId) end(); }, { passive: false });
+  }
+
+  _applyLook(dx, dy, sens) {
+    this.yaw -= dx * sens;
+    this.pitch -= dy * sens;
+    const lim = Math.PI / 2 - 0.02;
+    if (this.pitch > lim) this.pitch = lim;
+    if (this.pitch < -lim) this.pitch = -lim;
+  }
+
+  _installKeys() {
+    this._on(window, 'keydown', (e) => {
+      const k = e.key.toLowerCase();
+      if (k === ' ' || k === 'w' || k === 'a' || k === 's' || k === 'd') e.preventDefault();
+      this.keys[k] = true;
+      if (k === ' ') { this.jump(); this._emit(this.actions[0]?.id || 'shoot'); }
+    });
+    this._on(window, 'keyup', (e) => { this.keys[e.key.toLowerCase()] = false; });
+  }
+
+  _emit(id) { if (id && this.onAction) this.onAction(id); }
+
+  // ---- on-screen touch controls: movement joystick (left) + action buttons (right) ----
+  _installTouchUI() {
+    if (!document.getElementById('mchatai-fps-touch-style')) {
+      const st = document.createElement('style');
+      st.id = 'mchatai-fps-touch-style';
+      st.textContent = `
+.fpsc-stick{position:fixed;left:18px;bottom:18px;width:120px;height:120px;border-radius:50%;
+  background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);z-index:60;touch-action:none}
+.fpsc-knob{position:absolute;left:35px;top:35px;width:50px;height:50px;border-radius:50%;
+  background:rgba(255,255,255,.32);transition:none}
+.fpsc-btns{position:fixed;right:18px;bottom:24px;display:flex;flex-direction:column;gap:12px;z-index:60}
+.fpsc-btn{width:74px;height:74px;border-radius:50%;background:rgba(255,255,255,.14);
+  border:1px solid rgba(255,255,255,.25);color:#fff;font:700 13px system-ui;touch-action:none;
+  display:flex;align-items:center;justify-content:center;-webkit-user-select:none;user-select:none}
+.fpsc-btn:active{background:rgba(255,255,255,.3)}`;
+      document.head.appendChild(st);
+    }
+    // joystick
+    const stick = document.createElement('div'); stick.className = 'fpsc-stick';
+    const knob = document.createElement('div'); knob.className = 'fpsc-knob'; stick.appendChild(knob);
+    let sid = null, cx = 0, cy = 0;
+    const setKnob = (dx, dy) => { knob.style.left = (35 + dx) + 'px'; knob.style.top = (35 + dy) + 'px'; };
+    this._on(stick, 'touchstart', (e) => { const r = stick.getBoundingClientRect(); cx = r.left + 60; cy = r.top + 60; sid = e.changedTouches[0].identifier; e.stopPropagation(); e.preventDefault(); }, { passive: false });
+    this._on(stick, 'touchmove', (e) => {
+      for (const t of e.changedTouches) if (t.identifier === sid) {
+        let dx = t.clientX - cx, dy = t.clientY - cy; const m = Math.hypot(dx, dy), max = 42;
+        if (m > max) { dx = dx / m * max; dy = dy / m * max; }
+        setKnob(dx, dy); this.move = [dx / max, dy / max];
+      }
+      e.stopPropagation(); e.preventDefault();
+    }, { passive: false });
+    const stickEnd = (e) => { for (const t of e.changedTouches) if (t.identifier === sid) { sid = null; this.move = [0, 0]; setKnob(0, 0); } e.stopPropagation(); };
+    this._on(stick, 'touchend', stickEnd, { passive: false });
+    document.body.appendChild(stick);
+
+    // action buttons (default a FIRE button if no actions given)
+    const btnWrap = document.createElement('div'); btnWrap.className = 'fpsc-btns';
+    const acts = this.actions.length ? this.actions : [{ id: 'shoot', label: 'FIRE' }];
+    for (const a of acts) {
+      const b = document.createElement('div'); b.className = 'fpsc-btn'; b.textContent = a.label || a.id;
+      this._on(b, 'touchstart', (e) => { this._emit(a.id); if (a.id === 'jump') this.jump(); e.stopPropagation(); e.preventDefault(); }, { passive: false });
+      btnWrap.appendChild(b);
+    }
+    document.body.appendChild(btnWrap);
+    this._touchEls = [stick, btnWrap];
+  }
+
+  // ---- per-frame ----
+  update(dt) {
+    const fx = -Math.sin(this.yaw), fz = -Math.cos(this.yaw);
+    const rx = Math.cos(this.yaw), rz = -Math.sin(this.yaw);
+    // keyboard
+    let mf = 0, mr = 0;
+    if (this.keys['w']) mf += 1; if (this.keys['s']) mf -= 1;
+    if (this.keys['d']) mr += 1; if (this.keys['a']) mr -= 1;
+    // joystick (x = strafe, y = forward; up on stick = forward)
+    mr += this.move[0]; mf += -this.move[1];
+    let mx = fx * mf + rx * mr, mz = fz * mf + rz * mr;
+    const ml = Math.hypot(mx, mz);
+    const spd = this.speed * (this.keys['shift'] ? this.sprintMult : 1);
+    const prev = [this.position[0], this.position[1], this.position[2]];
+    const next = [prev[0], prev[1], prev[2]];
+    if (ml > 0) { next[0] += (mx / ml) * spd * dt * Math.min(1, ml); next[2] += (mz / ml) * spd * dt * Math.min(1, ml); }
+
+    if (this.fly) {
+      if (this.keys[' ']) next[1] += spd * dt;
+      if (this.keys['control'] || this.keys['c']) next[1] -= spd * dt;
+    } else {
+      this.velY -= this.gravity * dt;
+      next[1] += this.velY * dt;
+      const floor = this.groundY + this.eyeHeight;
+      if (next[1] <= floor) { next[1] = floor; this.velY = 0; this.onGround = true; }
+    }
+
+    if (this.collide) {
+      const c = this.collide(next, prev);
+      if (Array.isArray(c) && c.length === 3) { next[0] = c[0]; next[1] = c[1]; next[2] = c[2]; }
+    } else if (this.colliders && this.colliders.length) {
+      this._resolveColliders(next, prev);
+    }
+    this.position = next;
+  }
+
+  _resolveColliders(next, prev) {
+    const r = this.radius, head = next[1], feet = next[1] - this.eyeHeight;
+    const hits = (x, z) => {
+      for (const b of this.colliders) {
+        if (x + r > b.min[0] && x - r < b.max[0] && head > b.min[1] && feet < b.max[1] &&
+            z + r > b.min[2] && z - r < b.max[2]) return true;
+      }
+      return false;
+    };
+    if (hits(next[0], prev[2])) next[0] = prev[0];
+    if (hits(next[0], next[2])) next[2] = prev[2];
+  }
+
+  forward() {
+    const cp = Math.cos(this.pitch);
+    return [-Math.sin(this.yaw) * cp, Math.sin(this.pitch), -Math.cos(this.yaw) * cp];
+  }
+
+  applyToCamera(camera) {
+    camera.position.set(this.position[0], this.position[1], this.position[2]);
+    if (camera.rotation) {
+      camera.rotation.order = 'YXZ';
+      camera.rotation.y = this.yaw; camera.rotation.x = this.pitch; camera.rotation.z = 0;
+    }
+  }
+
+  dispose() {
+    for (const [t, ev, fn, opt] of this._listeners) t.removeEventListener(ev, fn, opt);
+    this._listeners = [];
+    if (this._touchEls) for (const el of this._touchEls) el.remove();
+  }
+}
+
+
+
+/* inlined: models/lowpoly-characters-3d.js */
+
+//
+// Procedural low-poly three.js model builders (characters). Each builder is
+// buildX(THREE, opts) -> THREE.Group (THREE passed in; dependency-free + offline).
+// Ready-made models so games use real shapes instead of bare blocks.
+//
+
+// ===== shared helpers (assume hoisted alongside builders) =====
+
+/** Resolve opts.color (hex int OR [r,g,b] 0-1 OR 0-255) to a hex int; fall back to def. */
+function _ch_resolveColor(THREE, color, def) {
+  if (color == null) return def;
+  if (typeof color === 'number') return color;
+  if (Array.isArray(color) && color.length === 3) {
+    let [r, g, b] = color;
+    if (r > 1 || g > 1 || b > 1) { r /= 255; g /= 255; b /= 255; }
+    return new THREE.Color(r, g, b).getHex();
+  }
+  if (typeof color === 'string') { try { return new THREE.Color(color).getHex(); } catch (e) { return def; } }
+  return def;
+}
+
+/** Standard low-poly material: flatShading, matte, optional emissive glow. */
+function _ch_mat(THREE, hex, opts) {
+  opts = opts || {};
+  return new THREE.MeshStandardMaterial({
+    color: hex,
+    flatShading: true,
+    roughness: opts.roughness != null ? opts.roughness : 0.7,
+    metalness: opts.metalness != null ? opts.metalness : 0.1,
+    emissive: opts.emissive != null ? opts.emissive : 0x000000,
+    emissiveIntensity: opts.emissiveIntensity != null ? opts.emissiveIntensity : 1,
+    side: opts.side || THREE.FrontSide
+  });
+}
+
+/**
+ * buildRobot — blocky low-poly humanoid robot usable as a player character.
+ * Parts: head (+visor +antenna), torso (+chest light), two arms, two legs.
+ * opts: color (body hex/[r,g,b]), accent (limbs/trim), scale.
+ */
+function buildRobot(THREE, opts = {}) {
+  const g = new THREE.Group();
+  g.name = 'Robot';
+  const body = _ch_resolveColor(THREE, opts.color, 0x5b8fb9);
+  const accent = _ch_resolveColor(THREE, opts.accent, 0x2b3a4a);
+  const metal = 0x9aa6b2;
+  const bodyMat = _ch_mat(THREE, body, { metalness: 0.35, roughness: 0.5 });
+  const accentMat = _ch_mat(THREE, accent, { metalness: 0.4, roughness: 0.5 });
+  const metalMat = _ch_mat(THREE, metal, { metalness: 0.6, roughness: 0.4 });
+  const eyeMat = _ch_mat(THREE, 0x66ffcc, { emissive: 0x33ffbb, emissiveIntensity: 1.4, roughness: 0.3 });
+
+  // torso
+  const torso = new THREE.Mesh(new THREE.BoxGeometry(0.9, 1.0, 0.5), bodyMat);
+  torso.name = 'torso'; torso.position.y = 1.1; g.add(torso);
+  // chest light
+  const chest = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.06, 8), eyeMat);
+  chest.name = 'chestLight'; chest.rotation.x = Math.PI / 2;
+  chest.position.set(0, 1.25, 0.27); g.add(chest);
+  // pelvis
+  const pelvis = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.3, 0.45), accentMat);
+  pelvis.name = 'pelvis'; pelvis.position.y = 0.55; g.add(pelvis);
+
+  // head
+  const head = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.55, 0.55), bodyMat);
+  head.name = 'head'; head.position.y = 1.95; g.add(head);
+  // visor / eyes
+  const visor = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.16, 0.08), eyeMat);
+  visor.name = 'visor'; visor.position.set(0, 2.0, 0.29); g.add(visor);
+  // antenna
+  const antenna = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.35, 6), metalMat);
+  antenna.name = 'antenna'; antenna.position.set(0, 2.45, 0); g.add(antenna);
+  const antTip = new THREE.Mesh(new THREE.IcosahedronGeometry(0.07, 0), eyeMat);
+  antTip.name = 'antennaTip'; antTip.position.set(0, 2.65, 0); g.add(antTip);
+
+  // arms (shoulder, upper, hand)
+  function makeArm(dir, label) {
+    const arm = new THREE.Group(); arm.name = 'arm' + label;
+    const shoulder = new THREE.Mesh(new THREE.IcosahedronGeometry(0.2, 0), metalMat);
+    shoulder.name = 'shoulder'; arm.add(shoulder);
+    const upper = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.85, 0.24), accentMat);
+    upper.name = 'upperArm'; upper.position.y = -0.5; arm.add(upper);
+    const hand = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.26, 0.3), metalMat);
+    hand.name = 'hand'; hand.position.y = -1.0; arm.add(hand);
+    arm.position.set(0.65 * dir, 1.5, 0);
+    return arm;
+  }
+  g.add(makeArm(1, 'R'));
+  g.add(makeArm(-1, 'L'));
+
+  // legs (thigh, foot)
+  function makeLeg(dir, label) {
+    const leg = new THREE.Group(); leg.name = 'leg' + label;
+    const thigh = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.95, 0.32), bodyMat);
+    thigh.name = 'thigh'; thigh.position.y = -0.45; leg.add(thigh);
+    const foot = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.2, 0.5), accentMat);
+    foot.name = 'foot'; foot.position.set(0, -0.95, 0.08); leg.add(foot);
+    leg.position.set(0.22 * dir, 0.45, 0);
+    return leg;
+  }
+  g.add(makeLeg(1, 'R'));
+  g.add(makeLeg(-1, 'L'));
+
+  g.scale.setScalar(opts.scale != null ? opts.scale : 1);
+  return g;
+}
+
+/**
+ * buildDrone — hovering enemy: central core, a spinning rotor ring with blades,
+ * a single forward-facing glowing eye, and underslung sensor stalks.
+ * opts: color (core hex/[r,g,b]), eyeColor, scale. userData.rotor = ring group (spin it).
+ */
+function buildDrone(THREE, opts = {}) {
+  const g = new THREE.Group();
+  g.name = 'Drone';
+  const core = _ch_resolveColor(THREE, opts.color, 0x3a3f4b);
+  const eyeHex = _ch_resolveColor(THREE, opts.eyeColor, 0xff3b3b);
+  const coreMat = _ch_mat(THREE, core, { metalness: 0.5, roughness: 0.4 });
+  const trimMat = _ch_mat(THREE, 0x70757f, { metalness: 0.6, roughness: 0.35 });
+  const eyeMat = _ch_mat(THREE, eyeHex, { emissive: eyeHex, emissiveIntensity: 1.6, roughness: 0.25 });
+
+  // core body
+  const body = new THREE.Mesh(new THREE.IcosahedronGeometry(0.5, 0), coreMat);
+  body.name = 'core'; g.add(body);
+  // top cap
+  const cap = new THREE.Mesh(new THREE.ConeGeometry(0.4, 0.35, 6), coreMat);
+  cap.name = 'cap'; cap.position.y = 0.45; g.add(cap);
+
+  // glowing eye (forward = -Z)
+  const eye = new THREE.Mesh(new THREE.SphereGeometry(0.16, 10, 8), eyeMat);
+  eye.name = 'eye'; eye.position.set(0, 0.0, -0.45); g.add(eye);
+  const brow = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.1, 0.1), trimMat);
+  brow.name = 'brow'; brow.position.set(0, 0.18, -0.42); g.add(brow);
+
+  // rotor ring (spin via userData.rotor.rotation.y)
+  const rotor = new THREE.Group(); rotor.name = 'rotor';
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(0.7, 0.07, 6, 16), trimMat);
+  ring.name = 'ring'; ring.rotation.x = Math.PI / 2; rotor.add(ring);
+  const bladeMat = _ch_mat(THREE, 0xc8ccd2, { metalness: 0.5, roughness: 0.4 });
+  for (let i = 0; i < 4; i++) {
+    const blade = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.03, 0.12), bladeMat);
+    blade.name = 'blade' + i;
+    const a = (i / 4) * Math.PI * 2;
+    blade.position.set(Math.cos(a) * 0.7, 0, Math.sin(a) * 0.7);
+    blade.rotation.y = -a;
+    rotor.add(blade);
+  }
+  rotor.position.y = 0.05;
+  g.add(rotor);
+
+  // underslung sensor stalks
+  for (let i = 0; i < 3; i++) {
+    const a = (i / 3) * Math.PI * 2;
+    const stalk = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.3, 5), trimMat);
+    stalk.name = 'stalk' + i;
+    stalk.position.set(Math.cos(a) * 0.25, -0.45, Math.sin(a) * 0.25);
+    g.add(stalk);
+    const tip = new THREE.Mesh(new THREE.IcosahedronGeometry(0.06, 0), eyeMat);
+    tip.name = 'stalkTip' + i;
+    tip.position.set(Math.cos(a) * 0.25, -0.6, Math.sin(a) * 0.25);
+    g.add(tip);
+  }
+
+  g.userData.rotor = rotor;
+  g.scale.setScalar(opts.scale != null ? opts.scale : 1);
+  return g;
+}
+
+/**
+ * buildAlienShip — classic low-poly UFO: flat saucer disc, glass dome with pilot
+ * nub, and a ring of glowing under-lights.
+ * opts: color (hull hex/[r,g,b]), domeColor, lightColor, lights (count), scale.
+ */
+function buildAlienShip(THREE, opts = {}) {
+  const g = new THREE.Group();
+  g.name = 'AlienShip';
+  const hull = _ch_resolveColor(THREE, opts.color, 0x8a93a0);
+  const domeHex = _ch_resolveColor(THREE, opts.domeColor, 0x66ddff);
+  const lightHex = _ch_resolveColor(THREE, opts.lightColor, 0xffe066);
+  const hullMat = _ch_mat(THREE, hull, { metalness: 0.65, roughness: 0.3 });
+  const rimMat = _ch_mat(THREE, 0x4a5360, { metalness: 0.7, roughness: 0.3 });
+  const domeMat = new THREE.MeshStandardMaterial({
+    color: domeHex, flatShading: true, roughness: 0.1, metalness: 0.2,
+    transparent: true, opacity: 0.7, emissive: domeHex, emissiveIntensity: 0.3
+  });
+  const lightMat = _ch_mat(THREE, lightHex, { emissive: lightHex, emissiveIntensity: 1.5, roughness: 0.3 });
+
+  // saucer (two opposed shallow cones -> lens disc)
+  const top = new THREE.Mesh(new THREE.CylinderGeometry(1.4, 0.45, 0.4, 16), hullMat);
+  top.name = 'saucerTop'; top.position.y = 0.1; g.add(top);
+  const bottom = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 1.4, 0.4, 16), hullMat);
+  bottom.name = 'saucerBottom'; bottom.position.y = -0.3; g.add(bottom);
+  // rim band
+  const rim = new THREE.Mesh(new THREE.TorusGeometry(1.4, 0.1, 6, 20), rimMat);
+  rim.name = 'rim'; rim.rotation.x = Math.PI / 2; rim.position.y = -0.1; g.add(rim);
+
+  // dome
+  const dome = new THREE.Mesh(new THREE.SphereGeometry(0.6, 14, 10, 0, Math.PI * 2, 0, Math.PI / 2), domeMat);
+  dome.name = 'dome'; dome.position.y = 0.3; g.add(dome);
+  // pilot nub
+  const pilot = new THREE.Mesh(new THREE.IcosahedronGeometry(0.18, 0), _ch_mat(THREE, 0x6fdc6f, { roughness: 0.5 }));
+  pilot.name = 'pilot'; pilot.position.y = 0.45; g.add(pilot);
+
+  // under-lights ring
+  const n = opts.lights != null ? opts.lights : 8;
+  for (let i = 0; i < n; i++) {
+    const a = (i / n) * Math.PI * 2;
+    const light = new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 6), lightMat);
+    light.name = 'light' + i;
+    light.position.set(Math.cos(a) * 1.05, -0.35, Math.sin(a) * 1.05);
+    g.add(light);
+  }
+
+  g.scale.setScalar(opts.scale != null ? opts.scale : 1);
+  return g;
+}
+
+/**
+ * buildSlime — wobbly gelatinous blob enemy: a low-detail translucent dome body
+ * with two googly eyes. Animate squash via userData.body (scale.y).
+ * opts: color (body hex/[r,g,b]), scale.
+ */
+function buildSlime(THREE, opts = {}) {
+  const g = new THREE.Group();
+  g.name = 'Slime';
+  const bodyHex = _ch_resolveColor(THREE, opts.color, 0x5fd35f);
+  const bodyMat = new THREE.MeshStandardMaterial({
+    color: bodyHex, flatShading: true, roughness: 0.35, metalness: 0.0,
+    transparent: true, opacity: 0.85, emissive: bodyHex, emissiveIntensity: 0.15
+  });
+  const whiteMat = _ch_mat(THREE, 0xffffff, { roughness: 0.4 });
+  const pupilMat = _ch_mat(THREE, 0x111319, { roughness: 0.5 });
+
+  // blob body — squashed low-poly icosahedron
+  const body = new THREE.Mesh(new THREE.IcosahedronGeometry(0.7, 1), bodyMat);
+  body.name = 'body'; body.scale.set(1.0, 0.75, 1.0); body.position.y = 0.5; g.add(body);
+  // base puddle skirt
+  const skirt = new THREE.Mesh(new THREE.CylinderGeometry(0.78, 0.85, 0.18, 12), bodyMat);
+  skirt.name = 'skirt'; skirt.position.y = 0.12; g.add(skirt);
+
+  // eyes (forward = -Z)
+  function makeEye(dir) {
+    const eye = new THREE.Group(); eye.name = 'eye';
+    const white = new THREE.Mesh(new THREE.SphereGeometry(0.16, 10, 8), whiteMat);
+    white.name = 'white'; eye.add(white);
+    const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 6), pupilMat);
+    pupil.name = 'pupil'; pupil.position.z = -0.11; eye.add(pupil);
+    eye.position.set(0.22 * dir, 0.62, -0.5);
+    return eye;
+  }
+  g.add(makeEye(1));
+  g.add(makeEye(-1));
+
+  g.userData.body = body;
+  g.scale.setScalar(opts.scale != null ? opts.scale : 1);
+  return g;
+}
+
+/**
+ * buildBird — low-poly bird (cone body, triangle wings, flared tail) lifted &
+ * generalized from the Murmuration boids artifact. Forward = -Z (matches lookAt).
+ * Flap by rotating userData.wingR/.wingL about Z. opts: color (hex/[r,g,b]), scale.
+ */
+function buildBird(THREE, opts = {}) {
+  const g = new THREE.Group();
+  g.name = 'Bird';
+  const bodyHex = _ch_resolveColor(THREE, opts.color, 0x394b66);
+  const mat = new THREE.MeshStandardMaterial({
+    color: bodyHex, flatShading: true, roughness: 0.85, metalness: 0.05, side: THREE.DoubleSide
+  });
+  const beakMat = _ch_mat(THREE, _ch_resolveColor(THREE, opts.beakColor, 0xffa83b), { roughness: 0.6 });
+  const eyeMat = _ch_mat(THREE, 0x111319, { roughness: 0.5 });
+
+  // body — cone, nose toward -Z (forward)
+  const bodyGeo = new THREE.ConeGeometry(0.45, 2.1, 5);
+  bodyGeo.rotateX(-Math.PI / 2);
+  const body = new THREE.Mesh(bodyGeo, mat); body.name = 'body'; g.add(body);
+
+  // wings — flat triangles, pivoted at the shoulder so flapping looks right
+  function makeWing(dir) {
+    const t = 1.9 * dir;
+    const wg = new THREE.BufferGeometry();
+    wg.setAttribute('position', new THREE.Float32BufferAttribute(
+      [0, 0, -0.6, 0, 0, 0.8, t, 0.05, -0.05], 3));
+    wg.computeVertexNormals();
+    return wg;
+  }
+  const wingR = new THREE.Mesh(makeWing(1), mat); wingR.name = 'wingR'; g.add(wingR);
+  const wingL = new THREE.Mesh(makeWing(-1), mat); wingL.name = 'wingL'; g.add(wingL);
+
+  // tail — flared cone at the rear (+Z)
+  const tailGeo = new THREE.ConeGeometry(0.5, 0.9, 4);
+  tailGeo.rotateX(Math.PI / 2);
+  const tail = new THREE.Mesh(tailGeo, mat); tail.name = 'tail';
+  tail.position.z = 1.05; tail.scale.set(1, 0.4, 1); g.add(tail);
+
+  // beak — small cone at the nose (-Z)
+  const beakGeo = new THREE.ConeGeometry(0.12, 0.4, 4);
+  beakGeo.rotateX(-Math.PI / 2);
+  const beak = new THREE.Mesh(beakGeo, beakMat); beak.name = 'beak';
+  beak.position.z = -1.15; g.add(beak);
+
+  // eyes
+  for (const dir of [1, -1]) {
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.07, 6, 5), eyeMat);
+    eye.name = 'eye'; eye.position.set(0.16 * dir, 0.12, -0.7); g.add(eye);
+  }
+
+  g.userData.wingR = wingR;
+  g.userData.wingL = wingL;
+  g.scale.setScalar(opts.scale != null ? opts.scale : 1);
+  return g;
+}
+
+
+
+/* inlined: models/lowpoly-props-3d.js */
+
+//
+// Procedural low-poly three.js model builders (props). Each builder is
+// buildX(THREE, opts) -> THREE.Group (THREE passed in; dependency-free + offline).
+// Ready-made models so games use real shapes instead of bare blocks.
+//
+
+// ============================================================================
+// props-nature: procedural low-poly three.js model builders.
+//
+// Each builder is buildX(THREE, opts = {}) -> THREE.Group. THREE is passed in
+// (never imported) so the module is dependency-free and offline-safe. Models
+// use MeshStandardMaterial({ flatShading: true }) for a clean faceted look,
+// are composed from a few named primitive parts, centered near the origin,
+// and sit at a sensible default scale of ~1 unit. Every builder honors
+// opts.color (hex int OR [r,g,b] 0-255) and opts.scale (number).
+// ASCII only. Pure builders: no top-level execution, no DOM.
+// ============================================================================
+
+// ---------- shared helpers (closed over by the builders) ----------
+
+// Normalize a color opt into a hex int usable by THREE.Color.
+//   - undefined        -> fallback
+//   - hex int (0xRRGGBB) passes through
+//   - [r,g,b] 0-255    -> packed hex int
+function _pr_hex(color, fallback) {
+  if (color === undefined || color === null) return fallback;
+  if (Array.isArray(color)) {
+    var r = Math.max(0, Math.min(255, color[0] | 0));
+    var g = Math.max(0, Math.min(255, color[1] | 0));
+    var b = Math.max(0, Math.min(255, color[2] | 0));
+    return (r << 16) | (g << 8) | b;
+  }
+  return color;
+}
+
+// Tint a hex int by a multiplier k (e.g. 0.7 darker, 1.2 lighter), clamped.
+function _pr_tint(hex, k) {
+  var r = Math.max(0, Math.min(255, Math.round(((hex >> 16) & 255) * k)));
+  var g = Math.max(0, Math.min(255, Math.round(((hex >> 8) & 255) * k)));
+  var b = Math.max(0, Math.min(255, Math.round((hex & 255) * k)));
+  return (r << 16) | (g << 8) | b;
+}
+
+// Build a flat-shaded MeshStandardMaterial (the low-poly look for this catalog).
+function _pr_mat(THREE, hex, extra) {
+  var def = { color: hex, flatShading: true, roughness: 0.85, metalness: 0.0 };
+  if (extra) for (var k in extra) def[k] = extra[k];
+  return new THREE.MeshStandardMaterial(def);
+}
+
+// Make a named mesh from a geometry + material.
+function _pr_part(geo, mat, name) {
+  var m = new (mat.constructor === Function ? mat : Object).constructor; // unused guard
+  return m;
+}
+
+// Apply uniform scale from opts to a group, defaulting to 1.
+function _pr_applyScale(group, opts) {
+  var s = (opts && typeof opts.scale === 'number' && opts.scale > 0) ? opts.scale : 1;
+  group.scale.setScalar(s);
+  return group;
+}
+
+// ----------------------------------------------------------------------------
+
+/**
+ * buildTree(THREE, opts) -> Group. Low-poly conifer: a tapered cylinder trunk
+ * plus 2-3 stacked cone foliage tiers. opts: { color (foliage), trunkColor,
+ * tiers (2|3, default 3), scale }.
+ */
+function buildTree(THREE, opts) {
+  opts = opts || {};
+  var group = new THREE.Group();
+  group.name = 'tree';
+
+  var foliageHex = _pr_hex(opts.color, 0x3f8c4a);
+  var trunkHex = _pr_hex(opts.trunkColor, 0x6b4a2b);
+  var tiers = (opts.tiers === 2) ? 2 : 3;
+
+  // Trunk: slightly tapered cylinder.
+  var trunkH = 0.7;
+  var trunk = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.13, 0.18, trunkH, 6),
+    _pr_mat(THREE, trunkHex, { roughness: 0.95 })
+  );
+  trunk.name = 'trunk';
+  trunk.position.y = trunkH / 2;
+  group.add(trunk);
+
+  // Foliage: stacked cones, each smaller and higher than the last.
+  var baseY = trunkH - 0.05;
+  var tierH = 0.7;
+  var overlap = 0.42; // each tier overlaps the one below for a full silhouette
+  for (var i = 0; i < tiers; i++) {
+    var t = i / Math.max(1, tiers - 1);          // 0..1 bottom->top
+    var radius = 0.62 - 0.18 * i;
+    var cone = new THREE.Mesh(
+      new THREE.ConeGeometry(radius, tierH, 7),
+      _pr_mat(THREE, _pr_tint(foliageHex, 0.9 + 0.12 * i)) // top tiers slightly brighter
+    );
+    cone.name = 'foliage_' + i;
+    cone.position.y = baseY + i * (tierH - overlap) + tierH / 2;
+    group.add(cone);
+  }
+
+  return _pr_applyScale(group, opts);
+}
+
+/**
+ * buildRock(THREE, opts) -> Group. A single jittered icosahedron boulder.
+ * Per-vertex random displacement breaks the regular facets into an organic
+ * low-poly rock. opts: { color, scale, seed, jitter (0..1, default 0.22) }.
+ */
+function buildRock(THREE, opts) {
+  opts = opts || {};
+  var group = new THREE.Group();
+  group.name = 'rock';
+
+  var hex = _pr_hex(opts.color, 0x8b8c8f);
+  var jitter = (typeof opts.jitter === 'number') ? opts.jitter : 0.22;
+
+  var geo = new THREE.IcosahedronGeometry(0.55, 0);
+  // Deterministic per-vertex jitter (seeded LCG) so a rock looks identical each load.
+  var seed = (typeof opts.seed === 'number' ? opts.seed : 1337) >>> 0;
+  function rand() { seed = (seed * 1664525 + 1013904223) & 0x7fffffff; return seed / 0x7fffffff; }
+  var pos = geo.attributes.position;
+  for (var i = 0; i < pos.count; i++) {
+    var f = 1 + (rand() - 0.5) * jitter;
+    // squash slightly on Y so it reads as a grounded boulder, not a ball
+    pos.setXYZ(i, pos.getX(i) * f, pos.getY(i) * f * 0.78, pos.getZ(i) * f);
+  }
+  pos.needsUpdate = true;
+  geo.computeVertexNormals();
+
+  var rock = new THREE.Mesh(geo, _pr_mat(THREE, hex, { roughness: 1.0 }));
+  rock.name = 'boulder';
+  rock.position.y = 0.3; // rest on the ground plane
+  group.add(rock);
+
+  return _pr_applyScale(group, opts);
+}
+
+/**
+ * buildCrate(THREE, opts) -> Group. Wooden supply crate: a box body plus a
+ * darker edge frame (12 thin beams) for the classic banded-crate read.
+ * opts: { color (wood), frameColor, scale }.
+ */
+function buildCrate(THREE, opts) {
+  opts = opts || {};
+  var group = new THREE.Group();
+  group.name = 'crate';
+
+  var woodHex = _pr_hex(opts.color, 0xb5853f);
+  var frameHex = _pr_hex(opts.frameColor, _pr_tint(woodHex, 0.55));
+  var s = 0.8;             // body edge length
+  var t = 0.07;            // frame beam thickness
+  var half = s / 2;
+
+  var body = new THREE.Mesh(
+    new THREE.BoxGeometry(s, s, s),
+    _pr_mat(THREE, woodHex, { roughness: 0.9 })
+  );
+  body.name = 'body';
+  group.add(body);
+
+  // 12 edge beams of a cube. Each edge: pick which axis it runs along.
+  var frameMat = _pr_mat(THREE, frameHex, { roughness: 0.8 });
+  var longGeo = new THREE.BoxGeometry(s + 0.001, t, t); // runs along X (reused/rotated)
+  var ei = 0;
+  function beam(px, py, pz, axis) {
+    var m = new THREE.Mesh(longGeo, frameMat);
+    if (axis === 'y') m.rotation.z = Math.PI / 2;
+    else if (axis === 'z') m.rotation.y = Math.PI / 2;
+    m.position.set(px, py, pz);
+    m.name = 'frame_' + (ei++);
+    group.add(m);
+  }
+  // 4 edges along each of the 3 axes (at the +/- corners of the other two axes)
+  var corners = [[-half, -half], [-half, half], [half, -half], [half, half]];
+  for (var c = 0; c < 4; c++) {
+    var a = corners[c][0], b = corners[c][1];
+    beam(0, a, b, 'x'); // edges parallel to X
+    beam(a, 0, b, 'y'); // edges parallel to Y
+    beam(a, b, 0, 'z'); // edges parallel to Z
+  }
+
+  return _pr_applyScale(group, opts);
+}
+
+/**
+ * buildBarrel(THREE, opts) -> Group. Bulged wooden barrel (lathe-style profile)
+ * with two darker metal hoop bands near top and bottom. opts: { color (wood),
+ * bandColor, scale }.
+ */
+function buildBarrel(THREE, opts) {
+  opts = opts || {};
+  var group = new THREE.Group();
+  group.name = 'barrel';
+
+  var woodHex = _pr_hex(opts.color, 0x9c6b34);
+  var bandHex = _pr_hex(opts.bandColor, 0x4a4a4f);
+  var seg = 10;            // radial segments (low-poly)
+  var h = 0.9;
+
+  // Lathe profile: a slight outward bulge in the middle for the barrel belly.
+  var pts = [];
+  var profile = [
+    [0.30, 0.0],   // bottom edge
+    [0.36, 0.18],
+    [0.40, 0.45],  // belly (max radius)
+    [0.36, 0.72],
+    [0.30, 0.9],   // top edge
+  ];
+  for (var i = 0; i < profile.length; i++) {
+    pts.push(new THREE.Vector2(profile[i][0], profile[i][1]));
+  }
+  var body = new THREE.Mesh(
+    new THREE.LatheGeometry(pts, seg),
+    _pr_mat(THREE, woodHex, { roughness: 0.9 })
+  );
+  body.name = 'staves';
+  body.position.y = -h / 2; // center the barrel about the origin
+  group.add(body);
+
+  // Hoop bands: thin open-ended cylinders at two heights.
+  function band(yLocal, radius) {
+    var ring = new THREE.Mesh(
+      new THREE.CylinderGeometry(radius, radius, 0.08, seg, 1, true),
+      _pr_mat(THREE, bandHex, { roughness: 0.5, metalness: 0.4 })
+    );
+    ring.name = 'hoop';
+    ring.position.y = yLocal - h / 2;
+    group.add(ring);
+  }
+  band(0.22, 0.385);
+  band(0.68, 0.385);
+
+  return _pr_applyScale(group, opts);
+}
+
+/**
+ * buildCoin(THREE, opts) -> Group. Spinning-friendly gold coin: a thin faceted
+ * disc plus a raised rim torus, upright on the XY plane so a y-axis spin reads
+ * as the classic pickup flip. opts: { color (gold), rimColor, scale }.
+ */
+function buildCoin(THREE, opts) {
+  opts = opts || {};
+  var group = new THREE.Group();
+  group.name = 'coin';
+
+  var goldHex = _pr_hex(opts.color, 0xffcf3f);
+  var rimHex = _pr_hex(opts.rimColor, _pr_tint(goldHex, 0.8));
+  var radius = 0.5;
+  var thickness = 0.1;
+  var seg = 16; // enough to read as round, still low-poly
+
+  // Disc body: a short cylinder laid flat-faced toward +Z (upright coin).
+  var disc = new THREE.Mesh(
+    new THREE.CylinderGeometry(radius, radius, thickness, seg),
+    _pr_mat(THREE, goldHex, { roughness: 0.3, metalness: 0.7 })
+  );
+  disc.name = 'disc';
+  disc.rotation.x = Math.PI / 2; // stand it up so it faces the camera
+  group.add(disc);
+
+  // Raised rim for a coined-edge highlight.
+  var rim = new THREE.Mesh(
+    new THREE.TorusGeometry(radius, thickness * 0.45, 6, seg),
+    _pr_mat(THREE, rimHex, { roughness: 0.25, metalness: 0.85 })
+  );
+  rim.name = 'rim';
+  group.add(rim);
+
+  // Spin pivot lives at the group origin; caller animates group.rotation.y.
+  return _pr_applyScale(group, opts);
+}
+
+/**
+ * buildGem(THREE, opts) -> Group. Faceted emissive gemstone: a stretched
+ * octahedron crystal that glows, useful as a collectible / objective marker.
+ * opts: { color, scale, emissiveIntensity (default 0.6) }.
+ */
+function buildGem(THREE, opts) {
+  opts = opts || {};
+  var group = new THREE.Group();
+  group.name = 'gem';
+
+  var hex = _pr_hex(opts.color, 0x4fd6ff);
+  var emi = (typeof opts.emissiveIntensity === 'number') ? opts.emissiveIntensity : 0.6;
+
+  var geo = new THREE.OctahedronGeometry(0.5, 0);
+  // Stretch vertically into a cut-gem silhouette (taller than wide).
+  geo.scale(0.72, 1.25, 0.72);
+  geo.computeVertexNormals();
+
+  var gem = new THREE.Mesh(
+    geo,
+    _pr_mat(THREE, hex, {
+      roughness: 0.15,
+      metalness: 0.1,
+      emissive: hex,
+      emissiveIntensity: emi
+    })
+  );
+  gem.name = 'crystal';
+  gem.position.y = 0.55; // float just above the ground for a collectible feel
+  group.add(gem);
+
+  return _pr_applyScale(group, opts);
+}
+
+/**
+ * buildTurret(THREE, opts) -> Group. Tower-defense turret: a fixed base/pedestal
+ * plus a named "head" sub-group (dome + forward barrel) that the caller rotates
+ * to aim. Returns group; group.userData.head is the pivot to yaw toward a target.
+ * opts: { color (base), headColor, barrelColor, scale }.
+ */
+function buildTurret(THREE, opts) {
+  opts = opts || {};
+  var group = new THREE.Group();
+  group.name = 'turret';
+
+  var baseHex = _pr_hex(opts.color, 0x5a6470);
+  var headHex = _pr_hex(opts.headColor, 0x8a95a3);
+  var barrelHex = _pr_hex(opts.barrelColor, 0x3a4048);
+
+  // Base: a wide tapered pedestal.
+  var base = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.42, 0.55, 0.4, 8),
+    _pr_mat(THREE, baseHex, { roughness: 0.8, metalness: 0.2 })
+  );
+  base.name = 'base';
+  base.position.y = 0.2;
+  group.add(base);
+
+  // Rotating head pivot (yaw about Y). Caller sets head.rotation.y to aim.
+  var head = new THREE.Group();
+  head.name = 'head';
+  head.position.y = 0.5;
+  group.add(head);
+  group.userData.head = head;
+
+  // Head dome.
+  var dome = new THREE.Mesh(
+    new THREE.SphereGeometry(0.32, 8, 6, 0, Math.PI * 2, 0, Math.PI / 2),
+    _pr_mat(THREE, headHex, { roughness: 0.55, metalness: 0.3 })
+  );
+  dome.name = 'dome';
+  head.add(dome);
+
+  // Barrel pointing along +Z (the head's forward axis).
+  var barrel = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.09, 0.11, 0.6, 7),
+    _pr_mat(THREE, barrelHex, { roughness: 0.4, metalness: 0.6 })
+  );
+  barrel.name = 'barrel';
+  barrel.rotation.x = Math.PI / 2;   // lay it horizontal
+  barrel.position.set(0, 0.08, 0.36); // jut forward out of the dome
+  head.add(barrel);
+
+  return _pr_applyScale(group, opts);
+}
+
+/**
+ * buildPortal(THREE, opts) -> Group. Glowing ring gate: an emissive torus frame
+ * around a faint translucent inner disc, standing upright. The whole group is a
+ * convenient pivot for a slow spin. opts: { color (ring glow), scale,
+ * emissiveIntensity (default 0.9) }.
+ */
+function buildPortal(THREE, opts) {
+  opts = opts || {};
+  var group = new THREE.Group();
+  group.name = 'portal';
+
+  var hex = _pr_hex(opts.color, 0xa64bff);
+  var emi = (typeof opts.emissiveIntensity === 'number') ? opts.emissiveIntensity : 0.9;
+  var radius = 0.85;
+
+  // Outer glowing ring (faceted torus -> low-poly).
+  var ring = new THREE.Mesh(
+    new THREE.TorusGeometry(radius, 0.12, 8, 18),
+    _pr_mat(THREE, hex, {
+      roughness: 0.3,
+      metalness: 0.2,
+      emissive: hex,
+      emissiveIntensity: emi
+    })
+  );
+  ring.name = 'ring';
+  group.add(ring);
+
+  // Inner gate surface: a faint translucent disc that catches the ring's glow.
+  var inner = new THREE.Mesh(
+    new THREE.CircleGeometry(radius - 0.1, 18),
+    new THREE.MeshStandardMaterial({
+      color: hex,
+      emissive: hex,
+      emissiveIntensity: emi * 0.5,
+      transparent: true,
+      opacity: 0.35,
+      side: THREE.DoubleSide,
+      flatShading: true,
+      roughness: 0.5
+    })
+  );
+  inner.name = 'gate';
+  group.add(inner);
+
+  // Stand the portal upright on the ground (center of ring at radius height).
+  group.position.y = radius;
+  return _pr_applyScale(group, opts);
+}
+
+
+
+/* inlined: ui/info-panel.js */
+
+//
+// Collapsible instruction / info panel for 3D games + scenes. Starts as a normal
+// titled panel (controls, how-to-play, scene blurb) but has a minimize button
+// that shrinks it to a small round "i" icon in the same corner — so the panel
+// never dominates the view and the player can immerse in the scene. Click the
+// icon to expand again. Optional auto-collapse after a few seconds of play.
+// Dependency-free (vanilla DOM + CSS), works over a WebGL canvas or anything.
+//
+// WHY: generated instruction panels routinely cover a third of the screen
+// (real feedback on the Labyrinth-3D build). Use this for the how-to-play box;
+// keep the compact score/HUD as-is.
+//
+// USAGE
+//   import { createInfoPanel } from './info-panel.js';
+//   const info = createInfoPanel({
+//     title: 'Labyrinth 3D',
+//     html: 'Tilt the board to roll the marble into the <b>green goal</b>. Avoid the pits!' +
+//           '<div class="ip-keys">Tilt: WASD / arrows &middot; drag to orbit &middot; scroll to zoom</div>',
+//     corner: 'top-left',       // top-left | top-right | bottom-left | bottom-right
+//     accent: '#ffd24a',        // title + icon accent
+//     autoCollapseMs: 9000,     // optional: minimize itself after 9s (0/undefined = never)
+//   });
+//   // info.expand() / info.collapse() / info.toggle() / info.destroy()
+function createInfoPanel(opts = {}) {
+  const {
+    title = '',
+    html = '',
+    corner = 'top-left',
+    accent = '#ffd24a',
+    collapsed = false,
+    autoCollapseMs = 0,
+    icon = 'i',
+    width = 340,
+  } = opts;
+
+  if (!document.getElementById('mchatai-info-panel-style')) {
+    const st = document.createElement('style');
+    st.id = 'mchatai-info-panel-style';
+    st.textContent = `
+.ip-root{position:fixed;z-index:50;font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+  -webkit-user-select:none;user-select:none}
+.ip-root.tl{top:16px;left:16px}.ip-root.tr{top:16px;right:16px}
+.ip-root.bl{bottom:16px;left:16px}.ip-root.br{bottom:16px;right:16px}
+.ip-card{max-width:88vw;background:rgba(18,22,34,.82);color:#eef2ff;border:1px solid rgba(255,255,255,.10);
+  border-radius:14px;padding:14px 16px;box-shadow:0 10px 30px rgba(0,0,0,.45);backdrop-filter:blur(8px);
+  transform-origin:var(--ip-origin,top left);transition:opacity .18s ease,transform .18s ease}
+.ip-hide{opacity:0;transform:scale(.6);pointer-events:none}
+.ip-head{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.ip-title{font-weight:700;font-size:16px;color:var(--ip-accent,#ffd24a);flex:1;min-width:0;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ip-min{cursor:pointer;border:0;background:rgba(255,255,255,.10);color:#cdd6f4;width:26px;height:26px;
+  border-radius:8px;font-size:16px;line-height:1;display:flex;align-items:center;justify-content:center;flex:0 0 auto}
+.ip-min:hover{background:rgba(255,255,255,.18)}
+.ip-body{color:#cdd6f4}
+.ip-body .ip-keys,.ip-keys{margin-top:8px;font-size:12.5px;opacity:.85}
+.ip-pill{cursor:pointer;width:38px;height:38px;border-radius:50%;background:rgba(18,22,34,.82);
+  border:1px solid rgba(255,255,255,.14);color:var(--ip-accent,#ffd24a);font-weight:800;font-size:17px;
+  display:flex;align-items:center;justify-content:center;box-shadow:0 6px 18px rgba(0,0,0,.4);
+  backdrop-filter:blur(8px);transition:opacity .18s ease,transform .18s ease}
+.ip-pill:hover{transform:scale(1.08)}
+.ip-pill.ip-hide{opacity:0;transform:scale(.4);pointer-events:none}`;
+    document.head.appendChild(st);
+  }
+
+  const cmap = { 'top-left': 'tl', 'top-right': 'tr', 'bottom-left': 'bl', 'bottom-right': 'br' };
+  const cls = cmap[corner] || 'tl';
+  const origin = cls === 'tr' ? 'top right' : cls === 'bl' ? 'bottom left' : cls === 'br' ? 'bottom right' : 'top left';
+
+  const root = document.createElement('div');
+  root.className = 'ip-root ' + cls;
+
+  const card = document.createElement('div');
+  card.className = 'ip-card';
+  card.style.setProperty('--ip-origin', origin);
+  card.style.setProperty('--ip-accent', accent);
+  card.style.width = width + 'px';
+  card.innerHTML =
+    `<div class="ip-head"><div class="ip-title">${title}</div>` +
+    `<button class="ip-min" title="Minimize" aria-label="Minimize">&#8211;</button></div>` +
+    `<div class="ip-body">${html}</div>`;
+
+  const pill = document.createElement('button');
+  pill.className = 'ip-pill ip-hide';
+  pill.title = 'Show info';
+  pill.setAttribute('aria-label', 'Show info');
+  pill.textContent = icon;
+  pill.style.setProperty('--ip-accent', accent);
+
+  root.appendChild(card);
+  root.appendChild(pill);
+  (document.body || document.documentElement).appendChild(root);
+
+  let timer = null;
+  function expand() {
+    card.classList.remove('ip-hide');
+    pill.classList.add('ip-hide');
+  }
+  function collapse() {
+    card.classList.add('ip-hide');
+    pill.classList.remove('ip-hide');
+    if (timer) { clearTimeout(timer); timer = null; }
+  }
+  function toggle() { (card.classList.contains('ip-hide') ? expand : collapse)(); }
+
+  card.querySelector('.ip-min').addEventListener('click', collapse);
+  pill.addEventListener('click', expand);
+
+  if (collapsed) collapse();
+  else if (autoCollapseMs > 0) timer = setTimeout(collapse, autoCollapseMs);
+
+  return {
+    el: root,
+    expand, collapse, toggle,
+    destroy() { if (timer) clearTimeout(timer); root.remove(); },
+  };
+}
+
+
+
+/* ===== end inlined ===== */
+
+
+
+
 
 const canvas = document.getElementById('c');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias:true });
