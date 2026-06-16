@@ -57,6 +57,11 @@
       "id": "systems",
       "displayName": "Systems",
       "description": "Reusable engine systems: voxel world (DDA raycast + chunk mesh), endless scroller (segment recycling + pools), and kinematic physics (substep swept collision). Dependency-free; feed colliders to controls.fps-controller."
+    },
+    {
+      "id": "models",
+      "displayName": "Models",
+      "description": "Procedural low-poly 3D model builders: ships, enemies, characters, props, nature. buildX(THREE, opts) -> THREE.Group. Use these instead of bare blocks so games look like real 3D."
     }
   ],
   "components": [
@@ -539,6 +544,112 @@
         "controls legend",
         "scene blurb"
       ]
+    },
+    {
+      "id": "models.lowpoly-vehicles-3d",
+      "name": "LowPolyVehicles",
+      "category": "models",
+      "path": "models/lowpoly-vehicles-3d.js",
+      "exports": [
+        "buildSpaceship",
+        "buildPlane",
+        "buildKart",
+        "buildBoat"
+      ],
+      "status": "ready",
+      "summary": "Ready-made low-poly VEHICLE models (no bare blocks): buildSpaceship (sleek fighter + engine glow), buildPlane (prop plane, named 'propeller' part to spin), buildKart (go-kart with wheels), buildBoat (sailboat). Each buildX(THREE, opts:{color,scale}) -> THREE.Group; THREE passed in (offline-safe, no import).",
+      "tags": [
+        "models",
+        "vehicles",
+        "spaceship",
+        "plane",
+        "kart",
+        "boat",
+        "low-poly"
+      ],
+      "contracts": {
+        "build": "buildSpaceship(THREE,{color,scale}) -> THREE.Group; same for buildPlane/buildKart/buildBoat",
+        "material": "flat-shaded MeshStandardMaterial; color = hex int or [r,g,b]"
+      },
+      "goodFits": [
+        "space shooter",
+        "flyer",
+        "racer",
+        "sailing"
+      ]
+    },
+    {
+      "id": "models.lowpoly-characters-3d",
+      "name": "LowPolyCharacters",
+      "category": "models",
+      "path": "models/lowpoly-characters-3d.js",
+      "exports": [
+        "buildRobot",
+        "buildDrone",
+        "buildAlienShip",
+        "buildSlime",
+        "buildBird"
+      ],
+      "status": "ready",
+      "summary": "Ready-made low-poly CHARACTER + ENEMY models: buildRobot (humanoid player), buildDrone (hovering enemy with glowing eye), buildAlienShip (UFO saucer), buildSlime (blob enemy), buildBird. Real enemies/characters instead of cubes. buildX(THREE, opts:{color,scale}) -> THREE.Group.",
+      "tags": [
+        "models",
+        "enemy",
+        "character",
+        "robot",
+        "drone",
+        "alien",
+        "slime",
+        "low-poly"
+      ],
+      "contracts": {
+        "build": "buildDrone(THREE,{color,scale}) -> THREE.Group (use as an enemy); buildRobot as a player; etc."
+      },
+      "goodFits": [
+        "fps enemies",
+        "platformer character",
+        "wave shooter",
+        "collectathon"
+      ]
+    },
+    {
+      "id": "models.lowpoly-props-3d",
+      "name": "LowPolyProps",
+      "category": "models",
+      "path": "models/lowpoly-props-3d.js",
+      "exports": [
+        "buildTree",
+        "buildRock",
+        "buildCrate",
+        "buildBarrel",
+        "buildCoin",
+        "buildGem",
+        "buildTurret",
+        "buildPortal"
+      ],
+      "status": "ready",
+      "summary": "Ready-made low-poly PROP + NATURE models: buildTree, buildRock, buildCrate, buildBarrel, buildCoin (gold), buildGem (emissive), buildTurret (rotatable head for tower defense), buildPortal (glowing gate). Decorate scenes + spawn pickups/obstacles. buildX(THREE, opts:{color,scale}) -> THREE.Group.",
+      "tags": [
+        "models",
+        "props",
+        "nature",
+        "tree",
+        "crate",
+        "coin",
+        "gem",
+        "turret",
+        "low-poly"
+      ],
+      "contracts": {
+        "build": "buildTree(THREE,{color,scale}) -> THREE.Group; buildCoin/buildGem for pickups; buildTurret for tower defense; buildCrate/buildBarrel/buildRock for obstacles"
+      },
+      "goodFits": [
+        "dioramas",
+        "tower defense",
+        "collectathon",
+        "arena props",
+        "nature scenes"
+      ]
     }
   ],
   "compositionRecipes": [
@@ -583,7 +694,9 @@
         "controls.one-button-action",
         "effects.fog-atmosphere",
         "effects.gradient-skybox",
-        "ui.info-panel"
+        "ui.info-panel",
+        "models.lowpoly-characters-3d",
+        "models.lowpoly-props-3d"
       ],
       "assemblyNotes": [
         "Camera chases the player from behind and slightly above. The player auto-runs forward at increasing speed; input.move.x picks the lane and input.actionA jumps.",
@@ -720,7 +833,9 @@
         "core.lowpoly-canvas3d"
       ],
       "optionalComponents": [
-        "ui.info-panel"
+        "ui.info-panel",
+        "models.lowpoly-props-3d",
+        "models.lowpoly-vehicles-3d"
       ],
       "notes": "Dependency-free track: NO three.js, NO WebGL, NO vendored core needed. Import core.lowpoly-canvas3d and write only the scene-specific faces (use mesh.cone/box/ringSurface). Soft accelerator - suggested, never gated; the CLI may also hand-roll or use the three.js track for richer scenes. Use ui.info-panel for the instructions/how-to-play box (collapsible to a small 'i' icon so it doesn't dominate the view); keep score/HUD compact and separate."
     },
@@ -762,7 +877,9 @@
         "ui.three-hud-overlay",
         "effects.fog-atmosphere",
         "effects.screen-shake",
-        "ui.info-panel"
+        "ui.info-panel",
+        "models.lowpoly-characters-3d",
+        "models.lowpoly-props-3d"
       ],
       "notes": "controls.fps-controller gives pointer-lock + WASD + built-in wall collision (pass colliders). Build the level geometry + enemies; let the controller handle movement/look. Soft accelerator, never gated. Use ui.info-panel for the instructions/how-to-play box (collapsible to a small 'i' icon so it doesn't dominate the view); keep score/HUD compact and separate."
     },
@@ -799,7 +916,8 @@
       "optionalComponents": [
         "effects.fog-atmosphere",
         "ui.three-hud-overlay",
-        "ui.info-panel"
+        "ui.info-panel",
+        "models.lowpoly-characters-3d"
       ],
       "notes": "systems.voxel-chunk-3d: terrain + DDA raycast (place/destroy) + culled mesh data + colliders for the FPS controller. Wrap buildMeshData() output in THREE.BufferGeometry. Use ui.info-panel for the instructions/how-to-play box (collapsible to a small 'i' icon so it doesn't dominate the view); keep score/HUD compact and separate."
     },
@@ -835,7 +953,9 @@
         "core.three-game-loop",
         "ui.three-hud-overlay",
         "effects.screen-shake",
-        "ui.info-panel"
+        "ui.info-panel",
+        "models.lowpoly-vehicles-3d",
+        "models.lowpoly-props-3d"
       ],
       "notes": "systems.kinematic-body-3d: substep swept physics + sphere-vs-AABB slide + rollingQuaternion. Walls slide, don't stop dead. Build the track/board; step the body each frame. Use ui.info-panel for the instructions/how-to-play box (collapsible to a small 'i' icon so it doesn't dominate the view); keep score/HUD compact and separate."
     }

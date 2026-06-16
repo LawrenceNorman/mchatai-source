@@ -251,6 +251,11 @@
       "id": "tjs-mobile-friendly",
       "rule": "Make 3D games playable on BOTH desktop and mobile. The canvas must fill and resize to the viewport (handle resize + devicePixelRatio). Provide touch controls: drag-to-look, an on-screen movement joystick, and large on-screen action buttons (>= 64px). No pointer-lock, no hover-only interactions, no tiny click targets. Keyboard/mouse still work on desktop. controls.fps-controller and controls.virtual-joystick-3d already provide touch controls.",
       "why": "Most generated 3D games are desktop-only (WASD+pointer-lock) and unplayable on a phone or in the preview. A drag-look + on-screen-joystick scheme is playable everywhere with no code branches on device."
+    },
+    {
+      "id": "tjs-use-model-builders",
+      "rule": "For ships, enemies, characters, and props, PREFER the ready-made low-poly model builders (models.lowpoly-vehicles-3d, models.lowpoly-characters-3d, models.lowpoly-props-3d) over bare boxes/spheres or hand-built geometry. They are buildX(THREE, opts:{color,scale}) -> THREE.Group (THREE passed in). E.g. buildDrone/buildSlime/buildAlienShip for enemies, buildRobot for a player, buildSpaceship/buildKart for vehicles, buildTree/buildRock/buildCrate/buildCoin/buildGem/buildTurret for props. Tint via opts.color. This makes games look like real 3D instead of cubes.",
+      "why": "Generated 3D games default to plain boxes for enemies/props, which looks unfinished. Reusing the model builders gives recognizable, good-looking low-poly models for free."
     }
   ]
 }
