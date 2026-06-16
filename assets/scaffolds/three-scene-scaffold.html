@@ -149,22 +149,28 @@
     window.addEventListener('keyup', onKeyUp);
 
     // ----- HUD overlay (Play / pause / game-over + tap-to-start) ---------
+    // ThreeHudOverlay API: constructor takes { title, scoreLabel, showScore }.
+    // Panels are shown via showMenu({title, subtitle, buttons:[{label,onClick}]})
+    // and showGameOver({score, buttons}); hidePanel() clears it; setScore(n)
+    // updates the top-right counter. (There is no showPanel/setLeft — using them
+    // throws "hud.showPanel is not a function".)
     const hud = new ThreeHudOverlay({
       title: 'mChatAI 3D Mini-App',
-      subtitle: 'Tap Play to start. Sound enabled on first tap.',
-      buttonLabel: 'Play',
-      onButton: () => startOrResume()
+      scoreLabel: 'Score'
     });
 
     function refreshHud() {
       if (loop.state === ThreeGameState.PLAYING) {
         hud.hidePanel();
       } else if (loop.state === ThreeGameState.PAUSED) {
-        hud.showPanel('Paused', 'Tap Resume to continue.', 'Resume');
+        hud.showMenu({ title: 'Paused', subtitle: 'Tap Resume to continue.',
+          buttons: [{ label: 'Resume', onClick: () => startOrResume() }] });
       } else if (loop.state === ThreeGameState.GAMEOVER) {
-        hud.showPanel('Game Over', 'Score: ' + score, 'Play Again');
+        hud.showGameOver({ score: score,
+          buttons: [{ label: 'Play Again', onClick: () => startOrResume() }] });
       } else {
-        hud.showPanel('mChatAI 3D Mini-App', 'Tap Play to start.', 'Play');
+        hud.showMenu({ title: 'mChatAI 3D Mini-App', subtitle: 'Tap Play to start.',
+          buttons: [{ label: 'Play', onClick: () => startOrResume() }] });
       }
     }
 
@@ -201,7 +207,7 @@
           playfield.position.x - input.move.x * dt * 4, -8, 8
         );
         score += Math.floor(dt * 100);
-        hud.setLeft('Score ' + score);
+        hud.setScore(score);
       },
       // Per-display-frame render hook (interpolation factor in [0,1]).
       onRender: () => {

@@ -2,8 +2,7 @@
   "$schema": "https://mchatai.com/schemas/cli-invocation-v1.json",
   "version": "2.0.0",
   "last_updated": "2026-05-01",
-  "description": "Per-CLI-backend invocation policy + optimization config for mChatAIShell dev sessions. Each CLI has unique capabilities (MCP, sub-agents, model selection, context management) — this file is the single source of truth for how we configure them.",
-
+  "description": "Per-CLI-backend invocation policy + optimization config for mChatAIShell dev sessions. Each CLI has unique capabilities (MCP, sub-agents, model selection, context management) \u2014 this file is the single source of truth for how we configure them.",
   "defaults": {
     "startBody": {
       "maxTurns": 15,
@@ -18,7 +17,12 @@
     "maxPollAttempts": 240,
     "stalledWarnSeconds": 300
   },
-
+  "turnBudget": {
+    "_comment": "RULE #1 \u2014 CLI agentic turn caps out of the binary. build = the main CLI dev-session/run budget (was a hardcoded 25 at 4 AIHarness call sites); retry = the quick re-attempt after a failed run (was 3); followUp = quick iteration on an existing artifact (was 6). The binary carries identical _fallback_only defaults; edit + push + refreshMchataisourceCache ships with no rebuild.",
+    "build": 25,
+    "retry": 3,
+    "followUp": 6
+  },
   "concurrency": {
     "cap": 2,
     "onFullPolicy": "look-before-leap",
@@ -29,7 +33,6 @@
     },
     "description": "Shell bridge has a 2-session concurrency cap. 'look-before-leap' = show BackgroundCommandCenterView when pool is full; user decides to cancel stale, cancel all, or wait."
   },
-
   "capabilityProbe": {
     "probeOnLaunch": true,
     "periodicIntervalSeconds": 14400,
@@ -38,7 +41,6 @@
     "awaitOnFirstSend": true,
     "description": "Capability grid probe timing. probeOnLaunch: fire probeAll() in init. periodicIntervalSeconds: background re-probe interval (4 hours). staleThresholdSeconds: fire-and-forget background refresh in send() if older. neverProbedThresholdSeconds: AWAIT in send() if grid has never been populated (blocks until probe completes ~2s). awaitOnFirstSend: whether to block on probe in send() when grid is empty."
   },
-
   "assetGathering": {
     "workDirSubdirectory": ".mchatai-assets",
     "copyPackFiles": true,
@@ -46,7 +48,6 @@
     "agentInstructionsTemplate": "asset-gathering-instructions",
     "description": "Phase AQ.GATHER: copy matched asset pack JSON + starter code into workDir before CLI session. The CLI agent reads these files directly instead of parsing prompt-injected strings. agentInstructionsTemplate references a prompt template in mchatai-source/harness/prompts/."
   },
-
   "contextSanitization": {
     "gemini": {
       "stripLeadingBlockquotes": true,
@@ -54,7 +55,6 @@
       "description": "Workaround for Gemini CLI ImportProcessor parsing failures on blockquote-led context lines in injected GEMINI.md. Tune here via git (no shell/app rebuild required)."
     }
   },
-
   "modelCompatibility": {
     "codex": {
       "enabled": true,
@@ -67,7 +67,6 @@
       "description": "If Codex rejects a selected model for the current auth mode, retry once with this fallback. Tunable via git so model-compat incidents are content-only patches."
     }
   },
-
   "toolAccess": {
     "gemini": {
       "approvalMode": "yolo",
@@ -75,7 +74,6 @@
       "description": "Headless (-p) Gemini runs should set explicit approval mode so edit/shell tools are registered in non-interactive sessions. noBrowser=true avoids local OAuth callback timeouts in background sessions."
     }
   },
-
   "authPreflight": {
     "enabled": true,
     "requireAPIKeyForGemini": true,
@@ -85,7 +83,6 @@
     "runVersionProbe": false,
     "description": "Fail fast before session planning if required CLI binary or credential is missing. Keeps failures deterministic and avoids launching long-running sessions that cannot succeed."
   },
-
   "cliVersionPolicy": {
     "claude": {
       "minimum": "2.1.80",
@@ -106,10 +103,15 @@
       "autoUpgradeWhenBelowMinimum": true
     }
   },
-
   "streamJsonMapping": {
     "claude": {
-      "invocationFlags": ["--print", "--output-format", "stream-json", "--verbose", "--dangerously-skip-permissions"],
+      "invocationFlags": [
+        "--print",
+        "--output-format",
+        "stream-json",
+        "--verbose",
+        "--dangerously-skip-permissions"
+      ],
       "awaitingApproval": {
         "type": "tool_use",
         "requires": null,
@@ -138,7 +140,12 @@
       "notes": "Claude Code stream-json frames are line-delimited JSON objects with a top-level `type` field. `--verbose` is required when using --output-format stream-json (Claude Code refuses without it). Auto-approval writes y\\n on tool_use; complete fires on `result` event. Assistant text nests under message.content[].text (array of blocks)."
     },
     "codex": {
-      "invocationFlags": ["exec", "--json", "--skip-git-repo-check", "--dangerously-bypass-approvals-and-sandbox"],
+      "invocationFlags": [
+        "exec",
+        "--json",
+        "--skip-git-repo-check",
+        "--dangerously-bypass-approvals-and-sandbox"
+      ],
       "awaitingApproval": {
         "type": "item.completed",
         "requires": null,
@@ -164,10 +171,14 @@
         "requires": null,
         "textPath": null
       },
-      "notes": "Codex CLI uses subcommand `exec --json` for non-interactive JSONL output. Confirmed shape (probed 2026-04-21): thread.started → turn.started → item.completed (item.type=agent_message|file_change|...) → turn.completed. Auto-approval via --dangerously-bypass-approvals-and-sandbox flag (Codex's equivalent of Claude's --dangerously-skip-permissions). All payload-bearing events use type=item.completed, distinguished by item.type. The runner's awaitingApproval/toolUse/toolResult all share that same outer type — fine because Codex auto-approves with the bypass flag, the runner never needs to write y\\n for Codex."
+      "notes": "Codex CLI uses subcommand `exec --json` for non-interactive JSONL output. Confirmed shape (probed 2026-04-21): thread.started \u2192 turn.started \u2192 item.completed (item.type=agent_message|file_change|...) \u2192 turn.completed. Auto-approval via --dangerously-bypass-approvals-and-sandbox flag (Codex's equivalent of Claude's --dangerously-skip-permissions). All payload-bearing events use type=item.completed, distinguished by item.type. The runner's awaitingApproval/toolUse/toolResult all share that same outer type \u2014 fine because Codex auto-approves with the bypass flag, the runner never needs to write y\\n for Codex."
     },
     "gemini": {
-      "invocationFlags": ["--output-format", "stream-json", "--yolo"],
+      "invocationFlags": [
+        "--output-format",
+        "stream-json",
+        "--yolo"
+      ],
       "awaitingApproval": {
         "type": "tool_use",
         "requires": null,
@@ -195,10 +206,9 @@
         "requires": null,
         "textPath": null
       },
-      "notes": "Gemini CLI supports --output-format stream-json natively. Confirmed shape (probed 2026-04-21): init → message (role=user|assistant, content=string) → tool_use (tool_name, parameters) → tool_result (tool_id, status) → result (status=success). --yolo is the auto-approve flag (equivalent to Claude --dangerously-skip-permissions). assistantText extracts top-level `content` (Gemini stores text as a plain string, not nested blocks); requireField=role + requireValue=assistant scopes the extractor to assistant-only so user echo doesn't contaminate output. **WizardCLIRunner appends `goal` as the trailing positional argv** — Gemini accepts this via its `query` positional, so we DO NOT include `-p` in invocationFlags (`-p` consumes the IMMEDIATELY-following arg as its value, which collides with our trailing-positional convention and emits 'Not enough arguments following: p' + exit 1 with zero events). Probed 2026-04-22 after gemini-runner exit=1 canary failure."
+      "notes": "Gemini CLI supports --output-format stream-json natively. Confirmed shape (probed 2026-04-21): init \u2192 message (role=user|assistant, content=string) \u2192 tool_use (tool_name, parameters) \u2192 tool_result (tool_id, status) \u2192 result (status=success). --yolo is the auto-approve flag (equivalent to Claude --dangerously-skip-permissions). assistantText extracts top-level `content` (Gemini stores text as a plain string, not nested blocks); requireField=role + requireValue=assistant scopes the extractor to assistant-only so user echo doesn't contaminate output. **WizardCLIRunner appends `goal` as the trailing positional argv** \u2014 Gemini accepts this via its `query` positional, so we DO NOT include `-p` in invocationFlags (`-p` consumes the IMMEDIATELY-following arg as its value, which collides with our trailing-positional convention and emits 'Not enough arguments following: p' + exit 1 with zero events). Probed 2026-04-22 after gemini-runner exit=1 canary failure."
     }
   },
-
   "backends": {
     "claude": {
       "displayName": "Claude Code CLI",
@@ -214,8 +224,12 @@
         "model": "opus",
         "permissionMode": "bypassPermissions",
         "effortLevel": "max",
-        "contextFiles": ["CLAUDE.md"],
-        "mcpServers": ["codegraphcontext"],
+        "contextFiles": [
+          "CLAUDE.md"
+        ],
+        "mcpServers": [
+          "codegraphcontext"
+        ],
         "capabilities": {
           "subAgents": true,
           "webSearch": true,
@@ -226,11 +240,25 @@
           "addDir": true
         },
         "flags": {
-          "quality": ["--model", "opus"],
-          "speed": ["--model", "sonnet"],
-          "fullAuto": ["--dangerously-skip-permissions"],
-          "bigProject": ["--model", "opus"],
-          "research": ["--model", "opus"]
+          "quality": [
+            "--model",
+            "opus"
+          ],
+          "speed": [
+            "--model",
+            "sonnet"
+          ],
+          "fullAuto": [
+            "--dangerously-skip-permissions"
+          ],
+          "bigProject": [
+            "--model",
+            "opus"
+          ],
+          "research": [
+            "--model",
+            "opus"
+          ]
         },
         "notes": "Claude Code has the richest toolset: MCP servers, sub-agents via --agents, prompt caching (automatic for CLAUDE.md content), worktree isolation, /compact for context management. Use opus for quality-critical generation, sonnet for iterative fixes. --add-dir expands file access beyond cwd."
       }
@@ -250,7 +278,9 @@
         "model": "gpt-5.4",
         "reasoningEffort": "high",
         "approvalPolicy": "never",
-        "contextFiles": [".codex/rules/"],
+        "contextFiles": [
+          ".codex/rules/"
+        ],
         "capabilities": {
           "subAgents": false,
           "webSearch": true,
@@ -263,11 +293,28 @@
           "cloudExec": true
         },
         "flags": {
-          "quality": ["--model", "gpt-5.4", "--model-reasoning-effort", "high"],
-          "speed": ["--model", "o4-mini"],
-          "fullAuto": ["--full-auto"],
-          "bigProject": ["--model", "o3", "--model-reasoning-effort", "high"],
-          "research": ["--search"]
+          "quality": [
+            "--model",
+            "gpt-5.4",
+            "--model-reasoning-effort",
+            "high"
+          ],
+          "speed": [
+            "--model",
+            "o4-mini"
+          ],
+          "fullAuto": [
+            "--full-auto"
+          ],
+          "bigProject": [
+            "--model",
+            "o3",
+            "--model-reasoning-effort",
+            "high"
+          ],
+          "research": [
+            "--search"
+          ]
         },
         "notes": "Codex's --search flag enables native web_search tool (great for API research). gpt-5.4 is current flagship. --sandbox workspace-write is the safe default. codex exec for non-interactive, codex review for code review. Can act as MCP server itself (codex mcp-server)."
       }
@@ -290,15 +337,23 @@
           "maxStepsPerTurn": 7,
           "perStepTimeoutSec": 120,
           "stepInvocation": {
-            "argv": ["gemini", "-p", "{stepPrompt}", "--yolo"],
-            "stepPromptTemplate": "Execute step {n} of {total}: {description}\n\nOriginal goal: {goal}\n\nWorking directory already contains the project so far. Make the change cleanly and exit when this step is done — do not try to complete the whole goal in one shot."
+            "argv": [
+              "gemini",
+              "-p",
+              "{stepPrompt}",
+              "--yolo",
+              "--skip-trust"
+            ],
+            "stepPromptTemplate": "Execute step {n} of {total}: {description}\n\nOriginal goal: {goal}\n\nWorking directory already contains the project so far. Make the change cleanly and exit when this step is done \u2014 do not try to complete the whole goal in one shot."
           },
           "verifyAfterEachStep": false
         }
       },
       "optimization": {
         "model": "gemini-2.5-pro",
-        "contextFiles": ["GEMINI.md"],
+        "contextFiles": [
+          "GEMINI.md"
+        ],
         "capabilities": {
           "subAgents": false,
           "webSearch": true,
@@ -312,17 +367,30 @@
           "mcpServer": true
         },
         "flags": {
-          "quality": ["--model", "gemini-2.5-pro"],
-          "speed": ["--model", "gemini-2.5-flash"],
-          "fullAuto": ["--yolo"],
-          "bigProject": ["--model", "gemini-2.5-pro"],
-          "research": ["--model", "gemini-2.5-pro"]
+          "quality": [
+            "--model",
+            "gemini-2.5-pro"
+          ],
+          "speed": [
+            "--model",
+            "gemini-2.5-flash"
+          ],
+          "fullAuto": [
+            "--yolo"
+          ],
+          "bigProject": [
+            "--model",
+            "gemini-2.5-pro"
+          ],
+          "research": [
+            "--model",
+            "gemini-2.5-pro"
+          ]
         },
-        "notes": "Gemini 2.5 Pro has 1M token context — largest of all three. Best for whole-codebase analysis or massive refactors. --yolo for full auto. GEMINI.md is the project context file (equivalent to CLAUDE.md). --include-directories expands scope. Extensions and hooks provide pre/post-action automation."
+        "notes": "Gemini 2.5 Pro has 1M token context \u2014 largest of all three. Best for whole-codebase analysis or massive refactors. --yolo for full auto. GEMINI.md is the project context file (equivalent to CLAUDE.md). --include-directories expands scope. Extensions and hooks provide pre/post-action automation."
       }
     }
   },
-
   "taskProfiles": {
     "description": "Which backend + flags to use for different task types. The routing ladder picks the first GREEN backend; these profiles tell it which optimization flags to apply.",
     "codeGeneration": {
