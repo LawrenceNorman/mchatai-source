@@ -55,8 +55,8 @@
     },
     {
       "id": "systems",
-      "name": "Systems",
-      "summary": "Reusable engine systems (voxel world, endless scroller, kinematic physics)."
+      "displayName": "Systems",
+      "description": "Reusable engine systems: voxel world (DDA raycast + chunk mesh), endless scroller (segment recycling + pools), and kinematic physics (substep swept collision). Dependency-free; feed colliders to controls.fps-controller."
     }
   ],
   "components": [
@@ -507,6 +507,36 @@
         "mini-golf",
         "pinball"
       ]
+    },
+    {
+      "id": "ui.info-panel",
+      "name": "InfoPanel",
+      "category": "ui",
+      "path": "ui/info-panel.js",
+      "exports": [
+        "createInfoPanel"
+      ],
+      "status": "ready",
+      "summary": "Collapsible instruction/info panel: a titled how-to-play box with a MINIMIZE button that shrinks it to a small round 'i' icon in the same corner, so the panel never dominates the view (click the icon to expand). Optional auto-collapse after N seconds. Dependency-free DOM+CSS over the WebGL canvas. Use for the instructions; keep the compact score/HUD separate.",
+      "tags": [
+        "ui",
+        "instructions",
+        "overlay",
+        "collapsible",
+        "minimize",
+        "immersion",
+        "hud"
+      ],
+      "contracts": {
+        "build": "createInfoPanel({title, html, corner, accent, autoCollapseMs}) -> {expand,collapse,toggle,destroy}",
+        "behavior": "minimize -> small round 'i' pill in the same corner; click to re-expand"
+      },
+      "goodFits": [
+        "any game or scene with instructions",
+        "how-to-play box",
+        "controls legend",
+        "scene blurb"
+      ]
     }
   ],
   "compositionRecipes": [
@@ -537,7 +567,8 @@
         "controls.one-button-action",
         "effects.fog-atmosphere",
         "effects.gradient-skybox",
-        "resources.three-core"
+        "resources.three-core",
+        "ui.info-panel"
       ],
       "requiredComponents": [
         "core.three-game-loop",
@@ -549,7 +580,8 @@
         "controls.virtual-joystick-3d",
         "controls.one-button-action",
         "effects.fog-atmosphere",
-        "effects.gradient-skybox"
+        "effects.gradient-skybox",
+        "ui.info-panel"
       ],
       "assemblyNotes": [
         "Camera chases the player from behind and slightly above. The player auto-runs forward at increasing speed; input.move.x picks the lane and input.actionA jumps.",
@@ -557,7 +589,8 @@
         "Fog plus gradient skybox hide geometry pop-in as the track streams in. Tune fog density so the spawn line is invisible.",
         "Increment window.__threeFrameCount in the render step. Emit the local importmap before the first module script. No https:// anywhere.",
         "Marker shape: {recipe: 'recipe.three-runner', components: [...all used component ids...]}."
-      ]
+      ],
+      "notes": "Use ui.info-panel for the instructions/how-to-play box (collapsible to a small 'i' icon so it doesn't dominate the view); keep score/HUD compact and separate."
     },
     {
       "id": "recipe.three-marble",
@@ -584,7 +617,8 @@
         "ui.three-hud-overlay",
         "controls.virtual-joystick-3d",
         "effects.gradient-skybox",
-        "resources.three-core"
+        "resources.three-core",
+        "ui.info-panel"
       ],
       "requiredComponents": [
         "core.three-game-loop",
@@ -595,7 +629,8 @@
       ],
       "optionalComponents": [
         "effects.gradient-skybox",
-        "effects.fog-atmosphere"
+        "effects.fog-atmosphere",
+        "ui.info-panel"
       ],
       "assemblyNotes": [
         "Physics-light by design. Hand-roll rolling-ball motion: input.move tilts the board (or applies a force), integrate ball velocity with a fixed-timestep update(dt), and resolve collisions against an axis-aligned wall grid. Do NOT pull a physics engine for the default build.",
@@ -603,7 +638,8 @@
         "Rapier (systems.rapier-physics-world) is an OPTIONAL upgrade only if the user explicitly asks for realistic physics with ramps and ragdoll-like rolling. The default stays hand-rolled and lighter.",
         "Increment window.__threeFrameCount in the render step. Emit the local importmap before the first module script. No https:// anywhere.",
         "Marker shape: {recipe: 'recipe.three-marble', components: [...all used component ids...]}."
-      ]
+      ],
+      "notes": "Use ui.info-panel for the instructions/how-to-play box (collapsible to a small 'i' icon so it doesn't dominate the view); keep score/HUD compact and separate."
     },
     {
       "id": "recipe.three-tower-defense",
@@ -629,7 +665,8 @@
         "ui.three-hud-overlay",
         "controls.one-button-action",
         "effects.fog-atmosphere",
-        "resources.three-core"
+        "resources.three-core",
+        "ui.info-panel"
       ],
       "requiredComponents": [
         "core.three-game-loop",
@@ -640,7 +677,8 @@
       "optionalComponents": [
         "controls.one-button-action",
         "effects.fog-atmosphere",
-        "effects.gradient-skybox"
+        "effects.gradient-skybox",
+        "ui.info-panel"
       ],
       "assemblyNotes": [
         "Orbit or fixed top-down-angled camera over a fixed map. Creeps path-follow a fixed spline from spawn to the crystal; the player taps grid cells to place turrets (input.actionA plus a raycast to pick the cell).",
@@ -648,7 +686,8 @@
         "Defend-the-crystal is the lowest-risk smoke test for the local-importmap path: no physics, no procedural streaming, a fixed scene.",
         "Increment window.__threeFrameCount in the render step. Emit the local importmap before the first module script. No https:// anywhere.",
         "Marker shape: {recipe: 'recipe.three-tower-defense', components: [...all used component ids...]}."
-      ]
+      ],
+      "notes": "Use ui.info-panel for the instructions/how-to-play box (collapsible to a small 'i' icon so it doesn't dominate the view); keep score/HUD compact and separate."
     },
     {
       "id": "recipe.lowpoly-orbit-diorama",
@@ -672,13 +711,16 @@
         "flat shaded"
       ],
       "starterComponents": [
-        "core.lowpoly-canvas3d"
+        "core.lowpoly-canvas3d",
+        "ui.info-panel"
       ],
       "requiredComponents": [
         "core.lowpoly-canvas3d"
       ],
-      "optionalComponents": [],
-      "notes": "Dependency-free track: NO three.js, NO WebGL, NO vendored core needed. Import core.lowpoly-canvas3d and write only the scene-specific faces (use mesh.cone/box/ringSurface). Soft accelerator - suggested, never gated; the CLI may also hand-roll or use the three.js track for richer scenes."
+      "optionalComponents": [
+        "ui.info-panel"
+      ],
+      "notes": "Dependency-free track: NO three.js, NO WebGL, NO vendored core needed. Import core.lowpoly-canvas3d and write only the scene-specific faces (use mesh.cone/box/ringSurface). Soft accelerator - suggested, never gated; the CLI may also hand-roll or use the three.js track for richer scenes. Use ui.info-panel for the instructions/how-to-play box (collapsible to a small 'i' icon so it doesn't dominate the view); keep score/HUD compact and separate."
     },
     {
       "id": "recipe.fps-shooter",
@@ -705,7 +747,8 @@
         "core.three-game-loop",
         "ui.three-hud-overlay",
         "effects.fog-atmosphere",
-        "resources.three-core"
+        "resources.three-core",
+        "ui.info-panel"
       ],
       "requiredComponents": [
         "controls.fps-controller",
@@ -716,9 +759,10 @@
         "core.three-game-loop",
         "ui.three-hud-overlay",
         "effects.fog-atmosphere",
-        "effects.screen-shake"
+        "effects.screen-shake",
+        "ui.info-panel"
       ],
-      "notes": "controls.fps-controller gives pointer-lock + WASD + built-in wall collision (pass colliders). Build the level geometry + enemies; let the controller handle movement/look. Soft accelerator, never gated."
+      "notes": "controls.fps-controller gives pointer-lock + WASD + built-in wall collision (pass colliders). Build the level geometry + enemies; let the controller handle movement/look. Soft accelerator, never gated. Use ui.info-panel for the instructions/how-to-play box (collapsible to a small 'i' icon so it doesn't dominate the view); keep score/HUD compact and separate."
     },
     {
       "id": "recipe.voxel-sandbox",
@@ -741,7 +785,8 @@
         "systems.voxel-chunk-3d",
         "controls.fps-controller",
         "core.three-scene-rig",
-        "resources.three-core"
+        "resources.three-core",
+        "ui.info-panel"
       ],
       "requiredComponents": [
         "systems.voxel-chunk-3d",
@@ -751,9 +796,10 @@
       ],
       "optionalComponents": [
         "effects.fog-atmosphere",
-        "ui.three-hud-overlay"
+        "ui.three-hud-overlay",
+        "ui.info-panel"
       ],
-      "notes": "systems.voxel-chunk-3d: terrain + DDA raycast (place/destroy) + culled mesh data + colliders for the FPS controller. Wrap buildMeshData() output in THREE.BufferGeometry."
+      "notes": "systems.voxel-chunk-3d: terrain + DDA raycast (place/destroy) + culled mesh data + colliders for the FPS controller. Wrap buildMeshData() output in THREE.BufferGeometry. Use ui.info-panel for the instructions/how-to-play box (collapsible to a small 'i' icon so it doesn't dominate the view); keep score/HUD compact and separate."
     },
     {
       "id": "recipe.arcade-physics",
@@ -775,7 +821,8 @@
       "starterComponents": [
         "systems.kinematic-body-3d",
         "core.three-scene-rig",
-        "resources.three-core"
+        "resources.three-core",
+        "ui.info-panel"
       ],
       "requiredComponents": [
         "systems.kinematic-body-3d",
@@ -785,9 +832,10 @@
       "optionalComponents": [
         "core.three-game-loop",
         "ui.three-hud-overlay",
-        "effects.screen-shake"
+        "effects.screen-shake",
+        "ui.info-panel"
       ],
-      "notes": "systems.kinematic-body-3d: substep swept physics + sphere-vs-AABB slide + rollingQuaternion. Walls slide, don't stop dead. Build the track/board; step the body each frame."
+      "notes": "systems.kinematic-body-3d: substep swept physics + sphere-vs-AABB slide + rollingQuaternion. Walls slide, don't stop dead. Build the track/board; step the body each frame. Use ui.info-panel for the instructions/how-to-play box (collapsible to a small 'i' icon so it doesn't dominate the view); keep score/HUD compact and separate."
     }
   ],
   "sourceCatalogs": [],
