@@ -1,6 +1,6 @@
 {
   "$schema_version": "1.0.0",
-  "last_updated": "2026-06-15",
+  "last_updated": "2026-06-16",
   "notes": "Catalog for reusable three.js WebGL2 3D mini-app Lego blocks. SIBLING to frameworks/web-components (2D). AIWizard should compose 3D games from these modules rather than emit a three.js monolith. WebGL2 only, no WebGPU, no CDN, no network. Offline-safe under file://. Every game emits a LOCAL relative importmap before the first module script: maps 'three' to ./resources/three/three.module.min.js and the prefix 'three/addons/' to ./resources/three/addons/. The render loop MUST increment window.__threeFrameCount. ASCII only everywhere. Recipe entries keep keywords/starterComponents/requiredComponents/optionalComponents as flat ASCII string arrays with no nested dicts.",
   "library": {
     "id": "framework.web-components-3d",
@@ -52,6 +52,11 @@
       "id": "resources",
       "displayName": "Resources",
       "description": "Vendored three.js bundle and addon families. External-bundle markers; the actual binaries live in resources/three/ and are copied into each installed artifact."
+    },
+    {
+      "id": "systems",
+      "name": "Systems",
+      "summary": "Reusable engine systems (voxel world, endless scroller, kinematic physics)."
     }
   ],
   "components": [
@@ -360,6 +365,148 @@
         "faceted sculpture",
         "orbit showpiece"
       ]
+    },
+    {
+      "id": "controls.fps-controller",
+      "name": "FPSController",
+      "category": "controls",
+      "path": "controls/fps-controller.js",
+      "exports": [
+        "FPSController"
+      ],
+      "status": "ready",
+      "summary": "Drop-in first-person controller: pointer-lock mouse-look (yaw/pitch) + WASD + sprint/jump/gravity + BUILT-IN swept-AABB wall-sliding (pass colliders:[{min,max}] and it slides, never stops dead). Renderer-agnostic: applyToCamera(camera) for three.js, or raw yaw/pitch/position/forward() for a hand-rolled camera. Built-in click-to-play overlay. This is the piece the CLI kept failing to assemble for Doom/maze-FPS builds.",
+      "tags": [
+        "fps",
+        "pointer-lock",
+        "wasd",
+        "mouse-look",
+        "collision",
+        "first-person"
+      ],
+      "contracts": {
+        "build": "new FPSController(domElement,{position,eyeHeight,speed,gravity,jumpSpeed,colliders,collide,fly})",
+        "frame": "fps.update(dt); fps.applyToCamera(camera)",
+        "collision": "colliders:[{min:[x,y,z],max:[x,y,z]}] -> axis-separated swept-AABB slide",
+        "raw": "fps.yaw/fps.pitch/fps.position/fps.forward() for non-three renderers"
+      },
+      "goodFits": [
+        "doom",
+        "fps",
+        "maze-walker",
+        "dungeon-crawler",
+        "voxel",
+        "escape-room",
+        "parkour",
+        "wave-shooter"
+      ]
+    },
+    {
+      "id": "systems.voxel-chunk-3d",
+      "name": "VoxelWorld",
+      "category": "systems",
+      "path": "systems/voxel-chunk-3d.js",
+      "exports": [
+        "VoxelWorld",
+        "BLOCK",
+        "CUSTOM_BASE",
+        "defaultColorForBlock"
+      ],
+      "status": "ready",
+      "summary": "Dependency-free voxel engine (the Minecraft seed): get/setBlock, generateTerrain(seed) (sinusoid-sum noise -> grass/dirt/stone), raycastVoxel(origin,dir) via Amanatides-Woo DDA returning hit block + face normal for place/destroy, buildMeshData(colorForBlock) -> {positions,normals,colors,indices} with hidden-face culling (wrap in THREE.BufferGeometry), and aabbsNear(pos,radius) -> colliders to feed the FPS controller. Ported from the proven raw-WebGL voxel-sandbox build.",
+      "tags": [
+        "voxel",
+        "minecraft",
+        "dda",
+        "raycast",
+        "chunk-mesh",
+        "terrain",
+        "blocks"
+      ],
+      "contracts": {
+        "build": "new VoxelWorld({chunkSize,height,noise})",
+        "gen": "world.generateTerrain(seed)",
+        "ray": "world.raycastVoxel(origin,dir,maxDist) -> {block,normal,hit}",
+        "mesh": "world.buildMeshData(colorForBlock) -> {positions,normals,colors,indices}",
+        "collide": "world.aabbsNear(pos,radius) -> [{min,max}] for FPSController colliders"
+      },
+      "goodFits": [
+        "minecraft-clone",
+        "voxel-sandbox",
+        "block-builder",
+        "voxel-dungeon"
+      ]
+    },
+    {
+      "id": "systems.endless-scroller-3d",
+      "name": "EndlessTrack",
+      "category": "systems",
+      "path": "systems/endless-scroller-3d.js",
+      "exports": [
+        "EndlessTrack",
+        "createPool",
+        "laneCollide",
+        "laneCollideAll",
+        "clampDelta",
+        "makeDeltaClamp"
+      ],
+      "status": "ready",
+      "summary": "Segment-recycling + typed object pool + lane collision: the infrastructure behind endless runners (extracted from neon-runner, cross-validated by coral-reef drift). EndlessTrack.update(playerZ) wraps the furthest-behind segment to the front and respawns its contents; createPool(make,reset) is a free-stack object pool; laneCollide(player,items,{laneWidth,hitDist}) returns the first hit. Multiplies the neon-runner genre.",
+      "tags": [
+        "endless-runner",
+        "recycling",
+        "object-pool",
+        "lane",
+        "neon-runner",
+        "infinite"
+      ],
+      "contracts": {
+        "build": "new EndlessTrack({segmentLength,segmentCount,lanes,spawn,recycle})",
+        "frame": "track.update(playerZ)",
+        "pool": "createPool(make,reset) -> {acquire,release,forEach,live}",
+        "collide": "laneCollide(player,items,{laneWidth,hitDist}) -> item|null"
+      },
+      "goodFits": [
+        "endless-runner",
+        "tunnel-racer",
+        "infinite-flyer",
+        "dodge-em",
+        "infinite-drift"
+      ]
+    },
+    {
+      "id": "systems.kinematic-body-3d",
+      "name": "KinematicBody",
+      "category": "systems",
+      "path": "systems/kinematic-body-3d.js",
+      "exports": [
+        "stepKinematic",
+        "sphereVsAABB",
+        "sphereVsAABBs",
+        "rollingQuaternion"
+      ],
+      "status": "ready",
+      "summary": "Pure-math substep physics for control games: stepKinematic(body,dt,{gravity,substeps,maxSpeed}) advances with substepping to prevent tunneling; sphereVsAABB / sphereVsAABBs resolve push-out + slide (don't stop dead); rollingQuaternion(prev,pos,radius) for ball/marble roll. Extracted from labyrinth + marble-run.",
+      "tags": [
+        "physics",
+        "substep",
+        "swept-collision",
+        "sphere-aabb",
+        "rolling",
+        "marble"
+      ],
+      "contracts": {
+        "step": "stepKinematic({pos,vel,radius}, dt, {gravity,substeps,maxSpeed})",
+        "resolve": "sphereVsAABB(center,radius,box) -> {hit,normal,depth}",
+        "roll": "rollingQuaternion(prevPos,pos,radius) -> [x,y,z,w]"
+      },
+      "goodFits": [
+        "kart-racer",
+        "ball-maze",
+        "marble-run",
+        "mini-golf",
+        "pinball"
+      ]
     }
   ],
   "compositionRecipes": [
@@ -382,6 +529,7 @@
         "auto run"
       ],
       "starterComponents": [
+        "systems.endless-scroller-3d",
         "core.three-game-loop",
         "core.three-scene-rig",
         "ui.three-hud-overlay",
@@ -430,6 +578,7 @@
         "physics ball"
       ],
       "starterComponents": [
+        "systems.kinematic-body-3d",
         "core.three-game-loop",
         "core.three-scene-rig",
         "ui.three-hud-overlay",
@@ -530,6 +679,115 @@
       ],
       "optionalComponents": [],
       "notes": "Dependency-free track: NO three.js, NO WebGL, NO vendored core needed. Import core.lowpoly-canvas3d and write only the scene-specific faces (use mesh.cone/box/ringSurface). Soft accelerator - suggested, never gated; the CLI may also hand-roll or use the three.js track for richer scenes."
+    },
+    {
+      "id": "recipe.fps-shooter",
+      "name": "First-Person Shooter / Walker",
+      "promptName": "first-person 3d",
+      "runtime": "vanilla-es6-modules",
+      "importStyle": "local-importmap",
+      "keywords": [
+        "doom",
+        "fps",
+        "first person shooter",
+        "first-person",
+        "mouse look",
+        "pointer lock",
+        "dungeon crawler",
+        "maze shooter",
+        "walk around in 3d",
+        "wave survival",
+        "blaster arena"
+      ],
+      "starterComponents": [
+        "controls.fps-controller",
+        "core.three-scene-rig",
+        "core.three-game-loop",
+        "ui.three-hud-overlay",
+        "effects.fog-atmosphere",
+        "resources.three-core"
+      ],
+      "requiredComponents": [
+        "controls.fps-controller",
+        "core.three-scene-rig",
+        "resources.three-core"
+      ],
+      "optionalComponents": [
+        "core.three-game-loop",
+        "ui.three-hud-overlay",
+        "effects.fog-atmosphere",
+        "effects.screen-shake"
+      ],
+      "notes": "controls.fps-controller gives pointer-lock + WASD + built-in wall collision (pass colliders). Build the level geometry + enemies; let the controller handle movement/look. Soft accelerator, never gated."
+    },
+    {
+      "id": "recipe.voxel-sandbox",
+      "name": "Voxel / Minecraft Sandbox",
+      "promptName": "voxel minecraft 3d",
+      "runtime": "vanilla-es6-modules",
+      "importStyle": "local-importmap",
+      "keywords": [
+        "minecraft",
+        "voxel",
+        "block world",
+        "place blocks",
+        "mine blocks",
+        "build and destroy",
+        "blocky",
+        "sandbox world",
+        "voxel dungeon"
+      ],
+      "starterComponents": [
+        "systems.voxel-chunk-3d",
+        "controls.fps-controller",
+        "core.three-scene-rig",
+        "resources.three-core"
+      ],
+      "requiredComponents": [
+        "systems.voxel-chunk-3d",
+        "controls.fps-controller",
+        "core.three-scene-rig",
+        "resources.three-core"
+      ],
+      "optionalComponents": [
+        "effects.fog-atmosphere",
+        "ui.three-hud-overlay"
+      ],
+      "notes": "systems.voxel-chunk-3d: terrain + DDA raycast (place/destroy) + culled mesh data + colliders for the FPS controller. Wrap buildMeshData() output in THREE.BufferGeometry."
+    },
+    {
+      "id": "recipe.arcade-physics",
+      "name": "Arcade Physics (kart/marble/pinball)",
+      "promptName": "arcade physics 3d",
+      "runtime": "vanilla-es6-modules",
+      "importStyle": "local-importmap",
+      "keywords": [
+        "kart racer",
+        "go-kart",
+        "marble",
+        "roll the ball",
+        "ball maze",
+        "mini golf",
+        "pinball",
+        "physics game",
+        "drift"
+      ],
+      "starterComponents": [
+        "systems.kinematic-body-3d",
+        "core.three-scene-rig",
+        "resources.three-core"
+      ],
+      "requiredComponents": [
+        "systems.kinematic-body-3d",
+        "core.three-scene-rig",
+        "resources.three-core"
+      ],
+      "optionalComponents": [
+        "core.three-game-loop",
+        "ui.three-hud-overlay",
+        "effects.screen-shake"
+      ],
+      "notes": "systems.kinematic-body-3d: substep swept physics + sphere-vs-AABB slide + rollingQuaternion. Walls slide, don't stop dead. Build the track/board; step the body each frame."
     }
   ],
   "sourceCatalogs": [],
