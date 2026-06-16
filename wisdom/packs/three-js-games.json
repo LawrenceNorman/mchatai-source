@@ -241,6 +241,16 @@
       "id": "tjs-collapsible-panel",
       "rule": "The instructions / how-to-play / controls panel MUST be collapsible: give it a minimize button that shrinks it to a small round info ('i') icon in the same corner (click the icon to expand), and optionally auto-collapse after ~9 seconds. Prefer the reusable ui.info-panel component (createInfoPanel({title, html, corner, autoCollapseMs})). Keep the score/HUD compact and separate. The instructions panel must NOT permanently cover a large part of the scene.",
       "why": "Generated instruction boxes routinely cover a third of the screen and break immersion (real user feedback on Labyrinth-3D). A one-click minimize-to-icon keeps the how-to-play available without dominating the view."
+    },
+    {
+      "id": "tjs-no-pointerlock",
+      "rule": "NEVER use requestPointerLock / pointer-lock for camera or aim control. It does NOT work in the mChatAI+ in-app preview (WKWebView), so a pointer-lock first-person game is UNPLAYABLE there (you cannot look or aim) and also breaks on mobile. Use DRAG-TO-LOOK instead: hold-and-drag the view to rotate (mouse-drag on desktop, touch-drag on mobile); WASD or an on-screen joystick to move; a quick tap/click or an on-screen button or Space to shoot/act. Strongly prefer the controls.fps-controller component (default lookMode 'drag', built-in mobile joystick + action buttons + wall-slide collision) rather than hand-rolling controls.",
+      "why": "Pointer-lock is not granted in the preview WKWebView; many FPS builds render fine but are impossible to play. Drag-look + touch controls work in the preview, on the hub, and on phones."
+    },
+    {
+      "id": "tjs-mobile-friendly",
+      "rule": "Make 3D games playable on BOTH desktop and mobile. The canvas must fill and resize to the viewport (handle resize + devicePixelRatio). Provide touch controls: drag-to-look, an on-screen movement joystick, and large on-screen action buttons (>= 64px). No pointer-lock, no hover-only interactions, no tiny click targets. Keyboard/mouse still work on desktop. controls.fps-controller and controls.virtual-joystick-3d already provide touch controls.",
+      "why": "Most generated 3D games are desktop-only (WASD+pointer-lock) and unplayable on a phone or in the preview. A drag-look + on-screen-joystick scheme is playable everywhere with no code branches on device."
     }
   ]
 }

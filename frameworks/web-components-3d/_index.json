@@ -375,20 +375,22 @@
         "FPSController"
       ],
       "status": "ready",
-      "summary": "Drop-in first-person controller: pointer-lock mouse-look (yaw/pitch) + WASD + sprint/jump/gravity + BUILT-IN swept-AABB wall-sliding (pass colliders:[{min,max}] and it slides, never stops dead). Renderer-agnostic: applyToCamera(camera) for three.js, or raw yaw/pitch/position/forward() for a hand-rolled camera. Built-in click-to-play overlay. This is the piece the CLI kept failing to assemble for Doom/maze-FPS builds.",
+      "summary": "Universal first/third-person controller that WORKS WITHOUT POINTER LOCK (so it's playable in the mChatAI+ WKWebView preview AND on mobile AND the hub). Default DRAG-TO-LOOK (hold+drag; touch-drag on phones); pointer-lock is opt-in. Built-in on-screen TOUCH CONTROLS (movement joystick + action buttons, auto on touch devices). WASD + sprint + jump + gravity + swept-AABB wall-sliding (pass colliders). Quick tap/click or Space or a button fires onAction. applyToCamera(camera) for three.js.",
       "tags": [
         "fps",
-        "pointer-lock",
-        "wasd",
-        "mouse-look",
-        "collision",
-        "first-person"
+        "first-person",
+        "drag-look",
+        "mobile",
+        "touch",
+        "joystick",
+        "no-pointer-lock",
+        "collision"
       ],
       "contracts": {
-        "build": "new FPSController(domElement,{position,eyeHeight,speed,gravity,jumpSpeed,colliders,collide,fly})",
-        "frame": "fps.update(dt); fps.applyToCamera(camera)",
-        "collision": "colliders:[{min:[x,y,z],max:[x,y,z]}] -> axis-separated swept-AABB slide",
-        "raw": "fps.yaw/fps.pitch/fps.position/fps.forward() for non-three renderers"
+        "build": "new FPSController(domElement,{lookMode:'drag'|'pointerlock', position, eyeHeight, speed, gravity, jumpSpeed, colliders, actions:[{id,label}], onAction})",
+        "look": "DEFAULT drag-to-look (works in WKWebView+mobile); pointer-lock optional",
+        "touch": "auto on-screen joystick (move) + action buttons (shoot/jump) on touch devices",
+        "frame": "fps.update(dt); fps.applyToCamera(camera)"
       },
       "goodFits": [
         "doom",
