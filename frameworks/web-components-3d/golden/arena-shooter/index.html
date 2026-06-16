@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Drone Arena</title>
+<meta name="mchatai-artifact-kind" content="three-scene">
+<!--
+  GOLDEN ASSEMBLY — Drone Arena (first-person wave shooter)
+  A complete, PLAYABLE reference 3D game. Clone + reskin this; it demonstrates the
+  whole playable stack: drag-look + touch controls (NO pointer-lock, so it works in
+  the WKWebView preview AND on mobile AND the hub), real low-poly enemy models,
+  shooting via raycast, chasing enemy AI, waves, health, score, juice, collapsible
+  HUD. Everything is LOCAL/offline. Reuse the imported modules; do not rewrite them.
+-->
+<script type="importmap">
+{ "imports": {
+  "three": "../../resources/three/three.module.min.js"
+} }
+</script>
+<style>
+  :root{--accent:#46e0ff;--warm:#ff6a3d}
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:#0a0e18;overflow:hidden;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#eaf2ff;-webkit-user-select:none;user-select:none}
+  #c{width:100vw;height:100vh;display:block;touch-action:none}
+  .hud{position:fixed;z-index:20;pointer-events:none}
+  #top{top:14px;left:50%;transform:translateX(-50%);display:flex;gap:18px;align-items:center;
+    background:rgba(12,16,28,.7);border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:8px 16px;font-weight:700;backdrop-filter:blur(6px)}
+  #top .lab{font-weight:500;opacity:.7;font-size:12px;margin-right:4px}
+  #hp{width:120px;height:10px;border-radius:6px;background:rgba(255,255,255,.14);overflow:hidden}
+  #hpf{height:100%;width:100%;background:linear-gradient(90deg,#3ddc84,#ffd24a)}
+  #crosshair{top:50%;left:50%;transform:translate(-50%,-50%);width:22px;height:22px}
+  #crosshair:before,#crosshair:after{content:"";position:absolute;background:rgba(255,255,255,.8)}
+  #crosshair:before{left:10px;top:0;width:2px;height:22px}#crosshair:after{top:10px;left:0;height:2px;width:22px}
+  #over{inset:0;position:fixed;display:none;align-items:center;justify-content:center;z-index:40;background:rgba(8,10,18,.78);flex-direction:column;gap:14px}
+  #over h1{margin:0;font-size:34px}
+  .btn{pointer-events:auto;cursor:pointer;background:var(--accent);color:#04222b;border:0;border-radius:10px;padding:12px 22px;font-weight:800;font-size:16px}
+  #msg{position:fixed;top:64px;left:50%;transform:translateX(-50%);z-index:25;font-weight:800;font-size:22px;opacity:0;transition:opacity .25s;text-shadow:0 2px 8px #000}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="crosshair" class="hud"></div>
+<div id="top" class="hud">
+  <div><span class="lab">WAVE</span><span id="wave">1</span></div>
+  <div><span class="lab">SCORE</span><span id="score">0</span></div>
+  <div><span class="lab">HP</span><div id="hp"><div id="hpf"></div></div></div>
+</div>
+<div id="msg"></div>
+<div id="over"><h1 id="overTitle">Game Over</h1><div id="overSub" style="opacity:.8"></div><button class="btn" id="restart">Play again</button></div>
+
+<script type="module">
+import * as THREE from 'three';
+import { FPSController } from '../../controls/fps-controller.js';
+import { buildDrone, buildRobot } from '../../models/lowpoly-characters-3d.js';
+import { buildCrate, buildTree, buildBarrel } from '../../models/lowpoly-props-3d.js';
+import { createInfoPanel } from '../../ui/info-panel.js';
+
+const canvas = document.getElementById('c');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias:true });
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0a0e18);
+scene.fog = new THREE.Fog(0x0a0e18, 22, 60);
+const camera = new THREE.PerspectiveCamera(72, 1, 0.1, 200);
+function resize(){ const w=innerWidth,h=innerHeight; renderer.setSize(w,h); camera.aspect=w/h; camera.updateProjectionMatrix(); }
+addEventListener('resize', resize); resize();
+
+scene.add(new THREE.HemisphereLight(0x9fc4ff, 0x222a3a, 0.9));
+const sun = new THREE.DirectionalLight(0xffffff, 1.1); sun.position.set(8,16,6); scene.add(sun);
+
+// ---- arena: floor + 4 walls (walls become FPS colliders) ----
+const ARENA = 26, WALL_H = 4;
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(ARENA*2, ARENA*2),
+  new THREE.MeshStandardMaterial({ color:0x1b2333, roughness:.95 }));
+floor.rotation.x = -Math.PI/2; scene.add(floor);
+const grid = new THREE.GridHelper(ARENA*2, 26, 0x2a3550, 0x202a40); grid.position.y=.02; scene.add(grid);
+const colliders = [];
+function addWall(x,z,sx,sz){
+  const m = new THREE.Mesh(new THREE.BoxGeometry(sx,WALL_H,sz), new THREE.MeshStandardMaterial({color:0x2b3650,roughness:.8,flatShading:true}));
+  m.position.set(x,WALL_H/2,z); scene.add(m);
+  colliders.push({min:[x-sx/2,0,z-sz/2], max:[x+sx/2,WALL_H,z+sz/2]});
+}
+addWall(0,-ARENA,ARENA*2,1); addWall(0,ARENA,ARENA*2,1); addWall(-ARENA,0,1,ARENA*2); addWall(ARENA,0,1,ARENA*2);
+// scatter cover props (also colliders)
+const rng=(()=>{let s=7;return()=>{s=(s*1664525+1013904223)&0x7fffffff;return s/0x7fffffff;};})();
+for(let i=0;i<14;i++){
+  const x=(rng()-.5)*ARENA*1.6, z=(rng()-.5)*ARENA*1.6;
+  if(Math.hypot(x,z)<5) continue;
+  const pick=rng(); let g, r;
+  if(pick<.4){ g=buildCrate(THREE,{scale:1.1}); r=1.1; }
+  else if(pick<.7){ g=buildBarrel(THREE,{scale:1.0}); r=.7; }
+  else { g=buildTree(THREE,{scale:1.4}); r=.8; }
+  g.position.set(x,0,z); scene.add(g);
+  if(pick>=.4 && pick<.7 || pick<.4) colliders.push({min:[x-r,0,z-r],max:[x+r,2.2,z+r]});
+}
+
+// ---- player (drag-look fps controller, NO pointer lock; touch ready) ----
+const player = { hp:100, score:0, wave:1, dead:false };
+const fps = new FPSController(canvas, {
+  position:[0,1.7,ARENA-4], eyeHeight:1.7, speed:6.2, colliders, radius:0.4,
+  actions:[{id:'shoot',label:'FIRE'}],
+  onAction:(id)=>{ if(id==='shoot') shoot(); },
+});
+
+// ---- enemies (real drone models that chase + attack) ----
+const enemies = [];
+function spawnWave(n){
+  for(let i=0;i<n;i++){
+    const a=rng()*Math.PI*2, d=ARENA*0.7;
+    const g=buildDrone(THREE,{ color:[0xff*0.9|0, 0x40, 0x60], scale:1.0 });
+    g.position.set(Math.cos(a)*d, 1.4, Math.sin(a)*d);
+    scene.add(g);
+    enemies.push({ g, hp:30+player.wave*6, speed:2.2+player.wave*0.25, t:rng()*6, atk:0 });
+  }
+}
+spawnWave(4);
+
+// ---- shooting (raycast forward, hit nearest drone) ----
+const ray = new THREE.Raycaster();
+const muzzle = new THREE.PointLight(0x9fe9ff, 0, 8); scene.add(muzzle);
+let lastShot=0;
+function shoot(){
+  const now=performance.now();
+  if(player.dead || now-lastShot<140) return; lastShot=now;
+  muzzle.position.copy(camera.position); muzzle.intensity=3; setTimeout(()=>muzzle.intensity=0,60);
+  shake(0.4);
+  const dir=new THREE.Vector3(); camera.getWorldDirection(dir);
+  ray.set(camera.position, dir);
+  let best=null, bestD=200;
+  for(const e of enemies){
+    const hit=ray.ray.distanceToPoint(e.g.position);
+    const along=e.g.position.clone().sub(camera.position).dot(dir);
+    if(hit<1.1 && along>0 && along<bestD){ best=e; bestD=along; }
+  }
+  if(best){
+    best.hp-=18; flash(best.g);
+    burst(best.g.position, [0.7,0.95,1]);
+    if(best.hp<=0){ kill(best); }
+  }
+}
+function kill(e){
+  burst(e.g.position,[1,0.6,0.3],18); scene.remove(e.g);
+  enemies.splice(enemies.indexOf(e),1); player.score+=100; setHud();
+  if(enemies.length===0){ player.wave++; showMsg('Wave '+player.wave); setHud(); setTimeout(()=>spawnWave(3+player.wave),900); }
+}
+
+// ---- juice: particles + flash + screen shake ----
+const parts=[]; const pGeo=new THREE.SphereGeometry(0.08,5,4);
+function burst(pos,col,n=10){
+  for(let i=0;i<n;i++){
+    const m=new THREE.Mesh(pGeo, new THREE.MeshBasicMaterial({color:new THREE.Color(col[0],col[1],col[2])}));
+    m.position.copy(pos); scene.add(m);
+    parts.push({m, v:new THREE.Vector3((rng()-.5)*6,rng()*5,(rng()-.5)*6), life:.5});
+  }
+}
+function flash(g){ g.traverse(o=>{ if(o.material&&o.material.emissive){ o.material.emissive.setRGB(1,1,1); setTimeout(()=>o.material.emissive.setRGB(0,0,0),90);} }); }
+let shakeAmt=0; function shake(a){ shakeAmt=Math.min(1,shakeAmt+a); }
+
+// ---- HUD ----
+const elWave=document.getElementById('wave'), elScore=document.getElementById('score'), elHp=document.getElementById('hpf');
+function setHud(){ elWave.textContent=player.wave; elScore.textContent=player.score; elHp.style.width=Math.max(0,player.hp)+'%'; }
+const msgEl=document.getElementById('msg'); let msgT=0;
+function showMsg(t){ msgEl.textContent=t; msgEl.style.opacity=1; msgT=performance.now()+1100; }
+createInfoPanel({ title:'Drone Arena', accent:'#46e0ff', autoCollapseMs:9000,
+  html:'Survive the drone waves.<div class="ip-keys">Drag to look &middot; WASD / stick to move &middot; tap / click / Space / FIRE to shoot</div>' });
+
+// ---- game over / restart ----
+const over=document.getElementById('over');
+document.getElementById('restart').onclick=()=>location.reload();
+function gameOver(){ player.dead=true; document.getElementById('overSub').textContent='You reached wave '+player.wave+' with '+player.score+' points.'; over.style.display='flex'; }
+
+// ---- loop ----
+let prev=performance.now();
+function frame(now){
+  const dt=Math.min(.05,(now-prev)/1000); prev=now;
+  fps.update(dt); fps.applyToCamera(camera);
+  // screen shake offset
+  if(shakeAmt>0){ camera.position.x+=(rng()-.5)*shakeAmt*.3; camera.position.y+=(rng()-.5)*shakeAmt*.3; shakeAmt*=.86; if(shakeAmt<.02)shakeAmt=0; }
+  // enemies chase + attack
+  const pp=fps.position;
+  for(const e of enemies){
+    e.t+=dt; e.g.rotation.y+=dt*2;
+    const dx=pp[0]-e.g.position.x, dz=pp[2]-e.g.position.z, d=Math.hypot(dx,dz)||1;
+    if(d>1.8){ e.g.position.x+=dx/d*e.speed*dt; e.g.position.z+=dz/d*e.speed*dt; }
+    e.g.position.y=1.4+Math.sin(e.t*3)*.25;
+    e.atk-=dt;
+    if(d<2.4 && e.atk<=0 && !player.dead){ e.atk=1.1; player.hp-=8; shake(.5); setHud(); if(player.hp<=0) gameOver(); }
+  }
+  // particles
+  for(let i=parts.length-1;i>=0;i--){ const p=parts[i]; p.life-=dt; p.v.y-=9*dt; p.m.position.addScaledVector(p.v,dt); if(p.life<=0){ scene.remove(p.m); parts.splice(i,1);} }
+  if(msgT && now>msgT){ msgEl.style.opacity=0; msgT=0; }
+  renderer.render(scene,camera);
+  requestAnimationFrame(frame);
+}
+setHud();
+requestAnimationFrame(frame);
+
+// self-test hook for automated QA (harmless in normal play)
+window.__arena = { enemies, player, shoot, fps };
+</script>
+</body>
+</html>
