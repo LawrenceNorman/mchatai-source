@@ -20,6 +20,20 @@
       ]
     },
     {
+      "id": "u-3d-goals-use-real-threejs",
+      "rule": "When the goal asks for anything 3D - it literally says '3D' / 'three.js' / 'WebGL' / 'low-poly' / 'voxel' / 'first-person' / 'fly or orbit around', OR it describes an inherently spatial 3D scene (a solar system or planets, a galaxy of stars, a 3D diorama, terrain you move through, an aquarium or reef, a vehicle you drive in a world) - you MUST render it with REAL three.js in WebGL: a THREE.Scene + THREE.PerspectiveCamera + THREE.WebGLRenderer with actual 3D meshes and lights. NEVER substitute a flat 2D <canvas> with getContext('2d') and hand-drawn circles or sprites - that is a failure for a 3D goal even if it looks 'spacey'. Load three.js offline-safely via an importmap (the platform auto-vendors CDN three.js to local files at install, so a standard CDN importmap is correct and works offline): <script type=\"importmap\">{\"imports\":{\"three\":\"https://unpkg.com/three@0.160.0/build/three.module.js\",\"three/addons/\":\"https://unpkg.com/three@0.160.0/examples/jsm/\"}}</script> then `import * as THREE from 'three'` and `import { OrbitControls } from 'three/addons/controls/OrbitControls.js'`. Use OrbitControls for drag-to-orbit and scroll-to-zoom. Keep one full-window canvas, a render loop via requestAnimationFrame, and resize handling.",
+      "why": "Goals whose wording has a strong 2D convention (e.g. 'solar system', 'galaxy') were being built as flat 2D canvas drawings because nothing in the pipeline steered the model to three.js. The exact same path produced real 3D only when the wording (e.g. 'voxel', 'first-person runner') happened to imply 3D. A 3D request must deterministically produce WebGL 3D regardless of phrasing.",
+      "severity": "critical",
+      "appliesTo": [
+        "miniApp",
+        "webSPA"
+      ],
+      "examples": [
+        "GOOD (3D solar system): a THREE.Scene with a SphereGeometry sun (emissive material), planet meshes whose orbit angle advances each frame, a PointLight at the sun, OrbitControls for drag/zoom, a PerspectiveCamera.",
+        "BAD: const ctx = canvas.getContext('2d'); ctx.arc(...) to draw planets as 2D circles - this is NOT 3D and fails the goal."
+      ]
+    },
+    {
       "id": "u-camera-microphone-best-practices",
       "rule": "Camera and microphone work in TWO host environments via `window.mChatAI.camera.takePhoto({mirror?, quality?})` and `window.mChatAI.camera.takeVideo({maxSeconds?, mirror?, audio?})`. Inside **mChatAI+** (macOS or iOS) \u2192 native AVFoundation capture sheet. Published to the **hub** \u2192 a web polyfill is injected at serve time that runs `navigator.mediaDevices.getUserMedia` + an in-page overlay. Either path returns `{dataUrl, width, height}` (photo) or `{dataUrl, durationMs, width, height, mimeType}` (video). Rejects with 'USER_CANCELLED'/'PERMISSION_DENIED'/'NO_CAMERA'/'CAPTURE_FAILED'. Same code, three environments \u2014 DO NOT branch on `if (window.mChatAI?.camera?.takePhoto)` anymore; just call it. Best practices: (1) call ONLY after explicit user tap \u2014 never on page load; (2) await + catch, show an inline retry message on rejection (never leave a blank screen); (3) for live previews/effects (filters, AR), use `navigator.mediaDevices.getUserMedia` directly and release tracks (`stream.getTracks().forEach(t => t.stop())`) when done.",
       "why": "Earlier (Phase ROUTE+CAM 2026-06-01) media capture was disabled in mini-apps because the WebView lacked a permission delegate and crashed the host on prompt. Fixed 2026-06-04 (Phase ROUTE+CAM-ENABLE): WKUIDelegate now returns `.prompt`, the standard NSCameraUsageDescription / NSMicrophoneUsageDescription dialogs fire, and entitlements were added to both Debug + DirectDownload builds. Mini-apps can now do Stop Motion / photo booth / DreamSnap-style video / voice memos. The wisdom shifts from 'don't use camera' to 'use camera politely and clean up after yourself'.",
@@ -611,9 +625,10 @@
       ]
     }
   ],
-  "_last_updated": "2026-05-15T18:55:00Z",
-  "lastUpdated": "2026-05-20",
+  "_last_updated": "2026-06-16",
+  "lastUpdated": "2026-06-16",
   "_changeLog": [
+    "2026-06-16: Added u-3d-goals-use-real-threejs (critical) - 3D/scene goals must render with real three.js WebGL, never a 2D canvas; offline via auto-vendored CDN importmap.",
     {
       "date": "2026-05-19",
       "change": "Capped examples to <=2 per guideline (was up to 10). Defense-in-depth against Claude CLI Read tool 25k-token limit; primary fix is removing the Read instruction from harness/prompts/cli-project-context.md since wisdom-universal is already injected into CLAUDE.context.md. Removed 94 surplus examples."
