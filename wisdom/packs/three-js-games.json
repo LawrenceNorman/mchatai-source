@@ -177,6 +177,70 @@
         "three.js: const listener = new THREE.AudioListener(); camera.add(listener); resume the listener.context on first tap",
         "If audioCtx.state stays 'suspended', continue rendering muted - never block the render loop on audio"
       ]
+    },
+    {
+      "id": "tjs-013",
+      "rule": "If the goal is a GAME, ship a COMPLETE PLAYABLE core loop on first load, not just an ambient scene: the player takes an action, sees an immediate consequence, and can reach a win OR lose state by playing. A pretty scene with only idle motion and no interaction is a FAILURE for a game goal.",
+      "why": "3D builds routinely render a beautiful scene but forget the game (no reachable objective, no working enemies, no win/lose). The taste rubric and render-gate both PASS a blank-but-pretty canvas, so nothing else catches it. Playability is the actual product.",
+      "severity": "critical",
+      "appliesTo": "anygame",
+      "examples": [
+        "Shooter: enemies spawn + advance, firing spawns projectiles that hit + kill them, score climbs, health to 0 = Game Over",
+        "Runner: obstacles approach, a collision ends the run, distance/score climbs",
+        "WRONG: a starfield + a ship that only idles, no visible enemies, no way to win or lose"
+      ]
+    },
+    {
+      "id": "tjs-014",
+      "rule": "Every gameplay entity the player reacts to (enemies, targets, hazards, collectibles) MUST be VISIBLE in the camera view at start or spawn within ~2s, and MUST actually move/respond: enemies path toward or attack the player, projectiles travel and register hits, collectibles vanish + score on pickup. A static, off-screen, or inert entity is a failure.",
+      "why": "Players reported 'I can't see an enemy or evade' \u2014 entities were never spawned or placed outside the frame, so there was nothing to play against. If the player cannot SEE and INTERACT with the entities, the game is unplayable no matter how nice the scene.",
+      "severity": "critical",
+      "appliesTo": "anygame",
+      "examples": [
+        "FPS/dogfight: enemies enter the camera frustum, visibly approach/shoot; crosshair + on-hit feedback confirm hits",
+        "Collectathon: gems sit in view on the reachable path, vanish + score on contact",
+        "WRONG: enemies spawned behind the camera or never spawned"
+      ]
+    },
+    {
+      "id": "tjs-015",
+      "rule": "Every control you document (WASD, arrows, mouse-look, click-to-fire, space-to-jump, drag) MUST be wired to a handler that visibly changes the scene the SAME frame it is pressed: add the listeners, update an input state, apply it in the update loop. Mentally test each key \u2014 does pressing it produce an immediate on-screen response?",
+      "why": "A frequent failure is keys/buttons with NO attached handler (the evaluator's 'NO HANDLER ATTACHED' finding): the HUD shows controls but nothing happens. Unresponsive controls make the game unplayable even when it renders.",
+      "severity": "critical",
+      "appliesTo": "anygame",
+      "examples": [
+        "keydown/keyup set input flags; the fixed-step update reads them and moves the player; camera follows",
+        "click \u2192 pointer-lock; pointermove rotates the view (mouse-look)",
+        "WRONG: a 'Jump' button or 'W' key with no addEventListener / no state mutation"
+      ]
+    },
+    {
+      "id": "tjs-016",
+      "rule": "Wire score/health/collision/timer so the player can ACTUALLY reach the win state by playing well and the lose state by failing \u2014 both reachable \u2014 and show a clear overlay ('You Win!' / 'Game Over') with a working Restart. Avoid instant-fail, unreachable goals, or no end at all.",
+      "why": "A game with no win/lose, or an unreachable objective, has no stakes and no completion \u2014 it reads as a tech demo, not a game. The end states + restart are what make it feel finished and playable.",
+      "severity": "important",
+      "appliesTo": "anygame",
+      "examples": [
+        "health to 0 \u2192 Game Over overlay + Restart; reach the goal / survive the timer / clear all waves \u2192 You Win",
+        "WRONG: a score counter that never triggers any end state"
+      ]
+    },
+    {
+      "id": "tjs-017",
+      "rule": "Aim the camera so the player can SEE what they must react to: enemies approaching, the path/obstacles ahead, collectibles, the goal. First-person: keep threats entering the forward view. Third-person/chase: frame the player plus nearby threats with lookahead. Top-down/orbit: keep the whole play area legible.",
+      "why": "Even with working entities + controls, a camera pointed away from the action (or too close, or not following) hides the gameplay so the player can't react \u2014 indistinguishable from broken.",
+      "severity": "important",
+      "appliesTo": "anygame",
+      "examples": [
+        "chase camera trails the player with lookahead toward oncoming obstacles",
+        "FPS camera at eye height, enemies spawning ahead/around (not behind)",
+        "WRONG: a fixed camera on empty sky while the action happens off-screen"
+      ]
+    },
+    {
+      "id": "tjs-collapsible-panel",
+      "rule": "The instructions / how-to-play / controls panel MUST be collapsible: give it a minimize button that shrinks it to a small round info ('i') icon in the same corner (click the icon to expand), and optionally auto-collapse after ~9 seconds. Prefer the reusable ui.info-panel component (createInfoPanel({title, html, corner, autoCollapseMs})). Keep the score/HUD compact and separate. The instructions panel must NOT permanently cover a large part of the scene.",
+      "why": "Generated instruction boxes routinely cover a third of the screen and break immersion (real user feedback on Labyrinth-3D). A one-click minimize-to-icon keeps the how-to-play available without dominating the view."
     }
   ]
 }
