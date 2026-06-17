@@ -1,0 +1,52 @@
+{
+  "_meta": {
+    "purpose": "Map of LLM corpus gravity for single-file web mini-app generation: which renderer/implementation a concept-token pulls toward, how hard, and the cheapest intervention to get the INTENDED renderer. Answers 'is there a map / can we automate the keywords' — yes: the keywords are identifiable (ablation-proven) and the policy is automatable; only the quantitative strengths must be calibrated from real outcomes.",
+    "rule1": "CONTENT, not binary. The Swift skeleton must only READ this (a future deterministic pre-prompt classifier + diagGravity command). Never bake these strings into the binary. Strengths/policies are tunable via PR with zero rebuild.",
+    "fallback_only_note": "The binary should carry at most a tiny clamped _fallback_only default; this file is the source of truth, picked up by refreshMchataisourceCache.",
+    "seeded": "2026-06-17 from an empirical corpus-gravity study (24 concepts probed + 6 ablations). Strengths here are LLM-estimated priors (source=estimate); they MUST be re-weighted from real InstalledMiniAppRenderProbe webgl=true/false telemetry per matched keyword (source=telemetry) as builds accumulate.",
+    "load_bearing_finding": "Renderer is decided almost ENTIRELY by goal WORDING — the CLI context is byte-identical between a 2D-fail and a 3D-success build. So the fix is a pre-prompt REPHRASE (a keyword classifier), NOT a routing/model change.",
+    "policies": {
+      "no-action": "Gravity is already correct or already has a renderer token in the goal — do nothing.",
+      "one-token-nudge": "Goal is in the 3D basin but contested — inject a single token (dose) to hold it at WebGL.",
+      "defuse-rephrase": "Single true intent that gravity mis-defaults (a 'solar system' almost always means the 3D thing) — SILENTLY append the explicit-3D clause; no user fork.",
+      "offer-fork": "Genuinely bimodal: a real 2.5D artifact AND a real 3D artifact exist under the same name (doom/wolfenstein) — surface the one-tap fork to the user, defaulting toward the reliable 2.5D path."
+    },
+    "doses": {
+      "none": "no injection",
+      "one-token:<tok>": "ensure the goal contains <tok> (e.g. 'voxel', 'three.js', '3D')",
+      "explicit-3D-clause": "append ONE concise sentence: 'Build a REAL 3D scene with three.js (WebGL): Scene + PerspectiveCamera + WebGLRenderer + meshes + lights + PointerLock/OrbitControls; NOT a 2D canvas. Vendored importmap: three -> ./resources/three/three.module.min.js, three/addons/ -> ./resources/three/addons/ (NOT examples/jsm).' Keep it ONE sentence — a verbose <script>importmap</script> block correlated with maxTurns failures."
+    },
+    "classifier_contract": "Pre-prompt + deterministic: (1) if goal already contains an explicit renderer token (3D/webgl/three.js/voxel/particle/glTF) -> no-action. (2) else match longest keyword; if isTrap && strength>=0.7 && policy=defuse-rephrase -> apply dose silently; if policy=offer-fork -> surface fork. (3) 3D-basin contested -> one-token-nudge. (4) deep-2D -> no-action.",
+    "self_update_contract": "On each settle, attribute the render-probe outcome (webgl true/false) to the matched keyword, update webglTrueRate via a decaying counter, recompute strength = observed P(default renderer == intended). New tokens that repeatedly land the wrong renderer become LEARN candidates (mirror NudgeCandidateStore) for HITL review — never auto-merged.",
+    "fork_copy": "Classic 2.5D raycaster (faithful, lands reliably) or Real 3D WebGL room (heavier)?"
+  },
+  "keywords": [
+    { "keyword": "pong", "pullsToward": "2D canvas", "dimensionality": "2D", "strength": 0.98, "isTrap": false, "policy": "no-action", "dose": "none", "source": "estimate" },
+    { "keyword": "snake", "pullsToward": "2D canvas grid", "dimensionality": "2D", "strength": 0.97, "isTrap": false, "policy": "no-action", "dose": "none", "source": "estimate" },
+    { "keyword": "tetris", "pullsToward": "2D canvas matrix", "dimensionality": "2D", "strength": 0.97, "isTrap": false, "policy": "no-action", "dose": "none", "source": "estimate" },
+    { "keyword": "platformer", "pullsToward": "2D canvas side-scroller", "dimensionality": "2D", "strength": 0.97, "isTrap": false, "policy": "no-action", "dose": "none", "source": "estimate" },
+    { "keyword": "space invaders", "pullsToward": "2D canvas fixed-shooter", "dimensionality": "2D", "strength": 0.95, "isTrap": false, "policy": "no-action", "dose": "none", "source": "estimate" },
+    { "keyword": "2048", "pullsToward": "DOM/CSS grid", "dimensionality": "DOM", "strength": 0.95, "isTrap": false, "policy": "no-action", "dose": "none", "source": "estimate" },
+    { "keyword": "sudoku", "pullsToward": "DOM/CSS grid", "dimensionality": "DOM", "strength": 0.94, "isTrap": false, "policy": "no-action", "dose": "none", "source": "estimate" },
+    { "keyword": "chess", "pullsToward": "2D board (canvas/DOM)", "dimensionality": "2D", "strength": 0.92, "isTrap": false, "policy": "no-action", "dose": "none", "source": "estimate" },
+    { "keyword": "tower defense", "pullsToward": "2D canvas", "dimensionality": "2D", "strength": 0.90, "isTrap": false, "policy": "no-action", "dose": "none", "source": "estimate" },
+    { "keyword": "solitaire", "pullsToward": "2D card table (DOM/canvas)", "dimensionality": "2D", "strength": 0.88, "isTrap": false, "policy": "no-action", "dose": "none", "source": "estimate" },
+
+    { "keyword": "wolfenstein", "pullsToward": "2D-canvas DDA raycaster (2.5D)", "dimensionality": "2.5D", "strength": 0.92, "isTrap": true, "policy": "offer-fork", "dose": "explicit-3D-clause", "note": "strongest 2.5D pull; a faithful Wolf3D IS a canvas raycaster, so 2.5D is a legitimate chosen output", "source": "estimate" },
+    { "keyword": "doom", "pullsToward": "2D-canvas DDA raycaster (2.5D)", "dimensionality": "2.5D", "strength": 0.85, "isTrap": true, "policy": "offer-fork", "dose": "explicit-3D-clause", "note": "ablation: doom 0.90 named -> 0.65 neutral 'first-person shooter' -> 0.85 with explicit-3D; keywordShiftsImpl=true", "source": "estimate" },
+    { "keyword": "racing", "pullsToward": "2D/2.5D road-scaler (OutRun-style)", "dimensionality": "2.5D", "strength": 0.74, "isTrap": true, "policy": "offer-fork", "dose": "explicit-3D-clause", "note": "driving keyword is the RENDERER word, not 'racing'; soft fork", "source": "estimate" },
+    { "keyword": "quake", "pullsToward": "contested raycaster vs three.js", "dimensionality": "2.5D", "strength": 0.55, "isTrap": true, "policy": "offer-fork", "dose": "explicit-3D-clause", "note": "Quake was the first TRUE-3D engine so the fact pulls 3D, but single-file habit pulls 2.5D; most ambiguous", "source": "estimate" },
+    { "keyword": "audio visualizer", "pullsToward": "2D canvas bars/waveform", "dimensionality": "2D", "strength": 0.88, "isTrap": true, "policy": "offer-fork", "dose": "one-token:three.js", "note": "soft/bimodal — 2D bars is the default + correct, but a 3D-shader subculture exists", "source": "estimate" },
+
+    { "keyword": "solar system", "pullsToward": "2D canvas orrery / flat diagram", "dimensionality": "2D", "strength": 0.78, "isTrap": true, "policy": "defuse-rephrase", "dose": "explicit-3D-clause", "note": "single true intent (the 3D scene) — silent rephrase, NO fork", "source": "estimate" },
+    { "keyword": "flight simulator", "pullsToward": "2.5D pseudo-3D terrain", "dimensionality": "2.5D", "strength": 0.70, "isTrap": true, "policy": "defuse-rephrase", "dose": "explicit-3D-clause", "note": "driving keyword 'simulator'; silent rephrase to real-3D follow-camera", "source": "estimate" },
+    { "keyword": "molecule viewer", "pullsToward": "real-3D WebGL (ball-and-stick)", "dimensionality": "3D", "strength": 0.70, "isTrap": false, "policy": "defuse-rephrase", "dose": "one-token:three.js", "note": "scene-type, single intent; light nudge", "source": "estimate" },
+    { "keyword": "globe", "pullsToward": "real-3D WebGL sphere", "dimensionality": "3D", "strength": 0.62, "isTrap": false, "policy": "one-token-nudge", "dose": "one-token:three.js", "source": "estimate" },
+
+    { "keyword": "minecraft", "pullsToward": "real-3D WebGL voxel", "dimensionality": "3D", "strength": 0.82, "isTrap": false, "policy": "one-token-nudge", "dose": "one-token:voxel", "note": "ablation: 'voxel' token holds it ~0.95", "source": "estimate" },
+    { "keyword": "particle galaxy", "pullsToward": "three.js Points", "dimensionality": "3D", "strength": 0.80, "isTrap": false, "policy": "one-token-nudge", "dose": "one-token:three.js", "source": "estimate" },
+    { "keyword": "kart", "pullsToward": "real-3D WebGL kart", "dimensionality": "3D", "strength": 0.55, "isTrap": false, "policy": "one-token-nudge", "dose": "one-token:3D", "source": "estimate" },
+    { "keyword": "arena", "pullsToward": "real-3D WebGL FPS", "dimensionality": "3D", "strength": 0.70, "isTrap": false, "policy": "no-action", "dose": "none", "note": "neutral phrasing 'first-person 3D arena shooter' already lands real WebGL (proven by s2run-1781716863, real WebGL x4 layers)", "source": "telemetry+estimate" },
+    { "keyword": "3d product viewer", "pullsToward": "real-3D WebGL/glTF", "dimensionality": "3D", "strength": 0.92, "isTrap": false, "policy": "no-action", "dose": "none", "note": "goal already contains the renderer token '3D'", "source": "estimate" }
+  ]
+}
