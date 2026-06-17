@@ -335,6 +335,17 @@
         "only the sun casts: dirLight.castShadow = true; everything else uses a blob",
         "WRONG: enemyLight.castShadow = true on a PointLight attached to each enemy"
       ]
+    },
+    {
+      "id": "tjs-023",
+      "rule": "Import three.js with a STATIC top-level `import * as THREE from 'three';` (resolved by the `<script type=importmap>` you already emit). NEVER use a dynamic `const THREE = await import('three')`, and NEVER wrap it in a 'load from CDN' try/catch fallback. Dynamic import() of a bare importmap specifier does NOT resolve in the in-app WKWebView preview under file:// (the page shows 'Could not load three.js' even though the vendored copy is present), while static imports work. Addons likewise: `import { OrbitControls } from 'three/addons/controls/OrbitControls.js';`.",
+      "why": "Observed 2026-06-17: a real-three.js floating-island build rendered blank with 'Could not load three.js from the CDN' purely because it used `await import('three')`; the identical scene with a static `import * as THREE from 'three'` renders. The vendored three.module.min.js was present and valid \u2014 only the import STYLE differed. Every shipped working 3D scene uses the static form.",
+      "severity": "critical",
+      "appliesTo": "anygame",
+      "examples": [
+        "GOOD: <script type=importmap>{...}</script> then <script type=module> import * as THREE from 'three'; ...",
+        "BAD: let THREE; try { THREE = await import('three'); } catch { showError('Could not load three.js from the CDN'); }"
+      ]
     }
   ]
 }
