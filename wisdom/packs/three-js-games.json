@@ -1,6 +1,6 @@
 {
   "packID": "three-js-games",
-  "version": 1,
+  "version": 2,
   "displayName": "three.js 3D Game Guidelines (web-components-3d)",
   "description": "Quality and correctness rules for offline three.js WebGL2 3D games built from the web-components-3d Lego catalog. Covers the local-importmap-only loading contract (no CDN, no network, runs under file://), draw-call and DPR budgets, delta-time movement, dispose-on-teardown and object pooling, mobile light limits, hand-rolled physics versus rigid bodies, audio unlock on first user gesture, and WebGL2-not-WebGPU. These rules are for 3D games only and must not leak into productivity mini-apps.",
   "categories": [
@@ -272,9 +272,69 @@
     },
     {
       "id": "tjs-use-model-builders",
-      "rule": "For ships, enemies, characters, and props, PREFER the ready-made low-poly model builders (models.lowpoly-vehicles-3d, models.lowpoly-characters-3d, models.lowpoly-props-3d) over bare boxes/spheres or hand-built geometry. They are buildX(THREE, opts:{color,scale}) -> THREE.Group (THREE passed in). E.g. buildDrone/buildSlime/buildAlienShip for enemies, buildRobot for a player, buildSpaceship/buildKart for vehicles, buildTree/buildRock/buildCrate/buildCoin/buildGem/buildTurret for props. Tint via opts.color. This makes games look like real 3D instead of cubes.",
+      "rule": "For ships, enemies, characters, and props, PREFER the ready-made low-poly model builders (models.lowpoly-vehicles-3d, models.lowpoly-characters-3d, models.lowpoly-props-3d) over bare boxes/spheres or hand-built geometry. They are buildX(THREE, opts:{color,scale}) -> THREE.Group (THREE passed in). E.g. buildDrone/buildSlime/buildAlienShip for enemies, buildRobot for a player, buildSpaceship/buildKart for vehicles, buildTree/buildRock/buildCrate/buildCoin/buildGem/buildTurret for props. Tint via opts.color. This makes games look like real 3D instead of cubes. For ANIMATED enemies/creatures (the ones that must move), prefer models.procedural-creatures-3d (buildCreature + animateCreature) over the static lowpoly-characters builders -- see tjs-018. For ground, use systems.heightmap-terrain-3d (smooth) or systems.voxel-chunk-3d (blocky) rather than a flat plane.",
       "why": "Generated 3D games default to plain boxes for enemies/props, which looks unfinished. Reusing the model builders gives recognizable, good-looking low-poly models for free.",
       "severity": "important"
+    },
+    {
+      "id": "tjs-018",
+      "rule": "Animated characters and creatures MUST visibly animate every frame, not sit in a T-pose. Prefer models.procedural-creatures-3d (buildCreature + animateCreature(group,{clip,t})) for rigged creatures with ZERO asset files, or models.gltf-model-player-3d (AnimationMixer) for GLB assets. Drive the pose from the fixed-timestep clock so a walking enemy's legs move, an attack swings, and hit/death play. A static, un-animated character reads as broken.",
+      "why": "Generated 3D games place a model and never animate it, so enemies glide like statues and players report 'nothing is alive.' Procedural rigs (the World-of-ClaudeCraft pattern) animate by rotating nested pivot groups each frame with zero asset files, fully offline. This is the difference between a diorama and a game (tjs-013/tjs-014).",
+      "severity": "important",
+      "appliesTo": "anygame",
+      "examples": [
+        "const g = buildCreature(THREE,{family:'wolf'}); scene.add(g); // each frame: animateCreature(g,{clip:enemy.state, t:(enemy.animTime+=dt)})",
+        "cycle enemy.state through 'idle' -> 'walk' -> 'attack' as your AI decides; animateCreature reads it",
+        "WRONG: add a character model and never call any per-frame animation"
+      ]
+    },
+    {
+      "id": "tjs-019",
+      "rule": "Synthesize all sound effects procedurally with WebAudio -- do NOT ship audio files. Route SFX and positional audio through effects.audio-manager-3d (oscillator+gain+filter ADSR presets for shoot/hit/explosion/pickup/coin/levelup; THREE.PositionalAudio for spatialized sources). Attach it to the game loop so the existing first-tap unlock is reused. If audio cannot start, keep the game fully playable and visually intact, just muted.",
+      "why": "Audio files mean network fetches or large base64 blobs that bloat the offline bundle; a procedural WebAudio synth (the World-of-ClaudeCraft pattern) produces convincing SFX with zero bytes and zero network, and works under file://. One AudioManager owns the listener and pools sources. Never block the render loop on a suspended context (tjs-012).",
+      "severity": "important",
+      "appliesTo": "anygame",
+      "examples": [
+        "const audio = new AudioManager3D({camera}); audio.attachTo(loop); // unlock reused via loop.setAudioContext",
+        "on a hit: audio.play('hit', {position: enemy.position});",
+        "WRONG: <audio src='explosion.mp3'> or fetching a sound file -- breaks offline and bloats the bundle"
+      ]
+    },
+    {
+      "id": "tjs-020",
+      "rule": "Separate gameplay state from rendering: keep the simulation in a pure, DOM-free, deterministic module stepped at a fixed timestep -- sim.step(state, input, dt) -> state -- and a separate render(state) that reads it and updates three.js objects. The sim must not touch the DOM, the renderer, or wall-clock time directly. Drive both from core.three-game-loop's fixed-step update / interpolated render.",
+      "why": "Mixing gameplay math into the render callback makes motion frame-rate-dependent (tjs-006) and untestable. A pure dt-stepped sim is deterministic across 30/60/120Hz devices, can be unit-tested headless without a WebGL context, and makes the win/lose wiring (tjs-016) auditable. This is the testability core of the World-of-ClaudeCraft shared-sim pattern, applied to a single offline client (these bundles are offline single-file apps; no server is involved).",
+      "severity": "important",
+      "appliesTo": "anygame",
+      "examples": [
+        "function step(state, input, dt){ /* pure: positions, health, score, collisions */ return state; }",
+        "loop: onUpdate=(dt)=>{ state=step(state,input,dt); }; onRender=(a)=>{ syncMeshes(state); }",
+        "WRONG: mutating mesh.position and reading Date.now() inside the same rAF callback that also computes damage"
+      ]
+    },
+    {
+      "id": "tjs-021",
+      "rule": "Use the shared camera rig; do not hand-roll a bespoke camera per game. Instantiate controls.camera-rig-3d and pick a mode (chase / follow / orbit / rise / first-person); call rig.setTarget(player); rig.update(dt) each frame. Apply effects.screen-shake AFTER the rig sets the base transform so the shake composes instead of fighting the camera. For first-person games use FIRST_PERSON mode + controls.fps-controller.",
+      "why": "Hand-rolled cameras are the top cause of the 'camera pointed away from the action' failure (tjs-017) and of cameras that clip, jitter, or never follow. A shared rig with smoothed look-ahead keeps threats and the path in frame on every genre and converges the catalog on one verified camera shape.",
+      "severity": "important",
+      "appliesTo": "anygame",
+      "examples": [
+        "const rig = new CameraRig({camera, mode: CHASE, target: player, lookAhead: 4}); // each frame: rig.update(dt); shake.update(dt, camera);",
+        "top-down RPG: mode FOLLOW; flight: mode CHASE with high lookAhead; showpiece: mode ORBIT",
+        "WRONG: manually setting camera.position from scratch every frame with no damping or look-ahead"
+      ]
+    },
+    {
+      "id": "tjs-022",
+      "rule": "Ground every entity cheaply: keep exactly ONE shadow-casting light (the DirectionalLight sun) and give other entities a fake contact shadow via effects.blob-shadow (a soft dark disc under the entity, pooled with InstancedMesh for crowds). Do not enable castShadow on multiple lights or per-entity.",
+      "why": "Each shadow-casting light adds a full render pass and tanks mobile GPUs (tjs-010). A blob shadow costs one transparent disc and makes characters read as grounded rather than floating, keeping the scene inside the draw-call (tjs-004) and light (tjs-010) budgets.",
+      "severity": "important",
+      "appliesTo": "anygame",
+      "examples": [
+        "const shadows = new BlobShadowPool({scene, capacity: 64}); // per entity: const id=shadows.claim(); shadows.place(id, enemyMesh, groundY)",
+        "only the sun casts: dirLight.castShadow = true; everything else uses a blob",
+        "WRONG: enemyLight.castShadow = true on a PointLight attached to each enemy"
+      ]
     }
   ]
 }
