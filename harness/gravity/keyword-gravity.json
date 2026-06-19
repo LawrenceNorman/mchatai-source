@@ -14,9 +14,10 @@
     "doses": {
       "none": "no injection",
       "one-token:<tok>": "ensure the goal contains <tok> (e.g. 'voxel', 'three.js', '3D')",
-      "explicit-3D-clause": "append ONE concise sentence: 'Build a REAL 3D scene with three.js (WebGL): Scene + PerspectiveCamera + WebGLRenderer + meshes + lights + PointerLock/OrbitControls; NOT a 2D canvas. Vendored importmap: three -> ./resources/three/three.module.min.js, three/addons/ -> ./resources/three/addons/ (NOT examples/jsm).' Keep it ONE sentence — a verbose <script>importmap</script> block correlated with maxTurns failures."
+      "explicit-3D-clause": "append ONE concise sentence: 'Build this as a REAL 3D scene with three.js (WebGL): Scene + PerspectiveCamera + WebGLRenderer, lit meshes, and OrbitControls/PointerLock — NOT a 2D canvas.' Keep it ONE sentence — a verbose <script>importmap</script> block correlated with maxTurns failures, and the vendored-path/importmap detail is handled by the scaffold + offline B-catch, not the goal."
     },
     "classifier_contract": "Pre-prompt + deterministic: (1) if goal already contains an explicit renderer token (3D/webgl/three.js/voxel/particle/glTF) -> no-action. (2) else match longest keyword; if isTrap && strength>=0.7 && policy=defuse-rephrase -> apply dose silently; if policy=offer-fork -> surface fork. (3) 3D-basin contested -> one-token-nudge. (4) deep-2D -> no-action.",
+    "renderer_tokens": ["3d", "webgl", "three.js", "threejs", "voxel", "particle", "gltf", "glb", "raycaster", "2.5d", "2d canvas"],
     "self_update_contract": "On each settle, attribute the render-probe outcome (webgl true/false) to the matched keyword, update webglTrueRate via a decaying counter, recompute strength = observed P(default renderer == intended). New tokens that repeatedly land the wrong renderer become LEARN candidates (mirror NudgeCandidateStore) for HITL review — never auto-merged.",
     "fork_copy": "Classic 2.5D raycaster (faithful, lands reliably) or Real 3D WebGL room (heavier)?"
   },
