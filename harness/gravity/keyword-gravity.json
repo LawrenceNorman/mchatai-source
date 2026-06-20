@@ -18,6 +18,7 @@
     },
     "classifier_contract": "Pre-prompt + deterministic: (1) if goal already contains an explicit renderer token (3D/webgl/three.js/voxel/particle/glTF) -> no-action. (2) else match longest keyword; if isTrap && strength>=0.7 && policy=defuse-rephrase -> apply dose silently; if policy=offer-fork -> surface fork. (3) 3D-basin contested -> one-token-nudge. (4) deep-2D -> no-action.",
     "renderer_tokens": ["3d", "webgl", "three.js", "threejs", "voxel", "particle", "gltf", "glb", "raycaster", "2.5d", "2d canvas"],
+    "selfTune": { "alpha": 0.25, "minSamples": 5, "_comment": "EWMA smoothing for the per-keyword webglTrueRate (settle render-probe telemetry) + min settles before a wrong-renderer LEARN candidate fires. The Swift binary carries clamped _fallback_only defaults (alpha 0.25, minSamples 5); telemetry-driven, never auto-edits this file." },
     "self_update_contract": "On each settle, attribute the render-probe outcome (webgl true/false) to the matched keyword, update webglTrueRate via a decaying counter, recompute strength = observed P(default renderer == intended). New tokens that repeatedly land the wrong renderer become LEARN candidates (mirror NudgeCandidateStore) for HITL review — never auto-merged.",
     "fork_copy": "Classic 2.5D raycaster (faithful, lands reliably) or Real 3D WebGL room (heavier)?"
   },
