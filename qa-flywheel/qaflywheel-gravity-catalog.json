@@ -1,0 +1,106 @@
+{
+  "$schema_version": "1.1.0",
+  "catalog_version": "2026.06.20-corpus-gravity-ab",
+  "last_updated": "2026-06-20",
+  "_purpose": "Corpus-gravity A/B catalog. Run the SAME entries TWICE — once with gravity_classifier_enabled=false (baseline) and once =true (treatment) — then diff with scripts/gravity_ab_aggregate.py. Focused on the SILENT-intervention wells (defuse-rephrase + one-token-nudge) where gravity-on-vs-off is a clean UNATTENDED comparison. The offer-fork wells (doom/wolfenstein/quake/racing) PAUSE for a human fork tap, so they are measured via manual runs + the landing-ledger's gravityFork/webgl, NOT this unattended catalog. Per-entry extra fields (keyword/phrasing/expected_dimensionality/gravity_policy) are read by the aggregator; the wizard ignores them. Land = render-probe webgl matches expected_dimensionality (3D well → webgl true).",
+  "difficulty_definitions": {
+    "L2": "Moderate single-file mini-app, 1-3 turns, ~300-800 LOC",
+    "L3": "Complex single-file mini-app, 2-4 turns, ~800-1500 LOC"
+  },
+  "entries": [
+    {
+      "id": "grav-defuse-solar-system",
+      "goal": "Build a solar system you can explore — the sun and the planets orbiting it.",
+      "artifact_type": "miniApp", "category": "scene", "difficulty": "L2",
+      "dispatch": "runWizard", "max_turns": 4, "timeout_seconds": 900,
+      "keyword": "solar system", "phrasing": "named", "expected_dimensionality": "3D",
+      "gravity_policy": "defuse-rephrase",
+      "notes": "2D-diagram prior; gravity ON should silently append the explicit-3D clause → real WebGL."
+    },
+    {
+      "id": "grav-defuse-flight-sim",
+      "goal": "Build a flight simulator where you fly a plane over terrain.",
+      "artifact_type": "miniApp", "category": "scene", "difficulty": "L3",
+      "dispatch": "runWizard", "max_turns": 4, "timeout_seconds": 900,
+      "keyword": "flight simulator", "phrasing": "named", "expected_dimensionality": "3D",
+      "gravity_policy": "defuse-rephrase"
+    },
+    {
+      "id": "grav-defuse-molecule",
+      "goal": "Build a molecule viewer that shows a 3D ball-and-stick model you can rotate.",
+      "artifact_type": "miniApp", "category": "scene", "difficulty": "L2",
+      "dispatch": "runWizard", "max_turns": 4, "timeout_seconds": 900,
+      "keyword": "molecule viewer", "phrasing": "named", "expected_dimensionality": "3D",
+      "gravity_policy": "defuse-rephrase"
+    },
+    {
+      "id": "grav-nudge-minecraft",
+      "goal": "Build a Minecraft-style world you can walk around and place blocks in.",
+      "artifact_type": "miniApp", "category": "games", "difficulty": "L3",
+      "dispatch": "runWizard", "max_turns": 4, "timeout_seconds": 900,
+      "keyword": "minecraft", "phrasing": "named", "expected_dimensionality": "3D",
+      "gravity_policy": "one-token-nudge",
+      "notes": "gravity ON should inject the 'voxel' token → holds it at real WebGL."
+    },
+    {
+      "id": "grav-nudge-particle-galaxy",
+      "goal": "Build a particle galaxy — thousands of stars swirling in space.",
+      "artifact_type": "miniApp", "category": "scene", "difficulty": "L2",
+      "dispatch": "runWizard", "max_turns": 4, "timeout_seconds": 900,
+      "keyword": "particle galaxy", "phrasing": "named", "expected_dimensionality": "3D",
+      "gravity_policy": "one-token-nudge"
+    },
+    {
+      "id": "grav-nudge-globe",
+      "goal": "Build an interactive globe of the Earth you can spin and zoom.",
+      "artifact_type": "miniApp", "category": "scene", "difficulty": "L2",
+      "dispatch": "runWizard", "max_turns": 4, "timeout_seconds": 900,
+      "keyword": "globe", "phrasing": "named", "expected_dimensionality": "3D",
+      "gravity_policy": "one-token-nudge"
+    },
+    {
+      "id": "grav-nudge-kart",
+      "goal": "Build a kart racer where you drive a go-kart around a track.",
+      "artifact_type": "miniApp", "category": "games", "difficulty": "L3",
+      "dispatch": "runWizard", "max_turns": 4, "timeout_seconds": 900,
+      "keyword": "kart", "phrasing": "named", "expected_dimensionality": "3D",
+      "gravity_policy": "one-token-nudge"
+    },
+    {
+      "id": "grav-ctrl-arena-3dbasin",
+      "goal": "Build a first-person 3D arena shooter.",
+      "artifact_type": "miniApp", "category": "games", "difficulty": "L3",
+      "dispatch": "runWizard", "max_turns": 4, "timeout_seconds": 900,
+      "keyword": "arena", "phrasing": "neutral", "expected_dimensionality": "3D",
+      "gravity_policy": "no-action",
+      "notes": "CONTROL: 3D-basin well, neutral phrasing already lands WebGL. Gravity inert → on==off expected."
+    },
+    {
+      "id": "grav-ctrl-explicit-3d",
+      "goal": "Build a real 3D WebGL scene with three.js: a rotating lit cube with OrbitControls.",
+      "artifact_type": "miniApp", "category": "scene", "difficulty": "L2",
+      "dispatch": "runWizard", "max_turns": 4, "timeout_seconds": 900,
+      "keyword": "3d product viewer", "phrasing": "explicit-3D", "expected_dimensionality": "3D",
+      "gravity_policy": "no-action",
+      "notes": "CONTROL: goal already carries the renderer token → gravity no-action → on==off expected."
+    },
+    {
+      "id": "grav-ctrl-snake-2d",
+      "goal": "Build a snake game.",
+      "artifact_type": "miniApp", "category": "games", "difficulty": "L2",
+      "dispatch": "runWizard", "max_turns": 3, "timeout_seconds": 600,
+      "keyword": "snake", "phrasing": "named", "expected_dimensionality": "2D",
+      "gravity_policy": "no-action",
+      "notes": "NEGATIVE CONTROL: deep-2D well. Gravity must NOT push it to 3D (webgl should stay false)."
+    },
+    {
+      "id": "grav-ctrl-tetris-2d",
+      "goal": "Build a Tetris game.",
+      "artifact_type": "miniApp", "category": "games", "difficulty": "L2",
+      "dispatch": "runWizard", "max_turns": 3, "timeout_seconds": 600,
+      "keyword": "tetris", "phrasing": "named", "expected_dimensionality": "2D",
+      "gravity_policy": "no-action",
+      "notes": "NEGATIVE CONTROL: deep-2D well. Gravity inert; webgl false is correct."
+    }
+  ]
+}
