@@ -1,1739 +1,2355 @@
 {
-  "$schema_version": "1.0.0",
-  "last_updated": "2026-06-16",
-  "notes": "Catalog for reusable three.js WebGL2 3D mini-app Lego blocks. SIBLING to frameworks/web-components (2D). AIWizard should compose 3D games from these modules rather than emit a three.js monolith. WebGL2 only, no WebGPU, no CDN, no network. Offline-safe under file://. Every game emits a LOCAL relative importmap before the first module script: maps 'three' to ./resources/three/three.module.min.js and the prefix 'three/addons/' to ./resources/three/addons/. The render loop MUST increment window.__threeFrameCount. ASCII only everywhere. Recipe entries keep keywords/starterComponents/requiredComponents/optionalComponents as flat ASCII string arrays with no nested dicts.",
-  "library": {
-    "id": "framework.web-components-3d",
-    "name": "3D Web Mini-App Lego Blocks (three.js)",
-    "platform": "web",
-    "runtime": "vanilla-es6-modules",
-    "preferredDistribution": "bundled",
-    "alternateDistribution": "bundled",
-    "importStyle": "local-importmap",
-    "renderer": "webgl2",
-    "vendoredThreeVersion": "r160",
-    "probeSignals": [
-      "hasWebGLContext",
-      "window.__threeFrameCount",
-      "local-importmap-gate"
-    ],
-    "entryPoints": [
-      "core/three-game-loop.js",
-      "core/three-scene-rig.js",
-      "ui/three-hud-overlay.js",
-      "effects/fog-atmosphere.js",
-      "effects/gradient-skybox.js",
-      "controls/virtual-joystick-3d.js",
-      "controls/one-button-action.js"
-    ]
-  },
-  "categories": [
-    {
-      "id": "core",
-      "displayName": "Core Engines",
-      "description": "Game loop and scene rig. Every 3D game imports both. Fixed-timestep update(dt), interpolated render, WebGL2 renderer build, lighting recipe, dispose-on-teardown."
-    },
-    {
-      "id": "controls",
-      "displayName": "Controls",
-      "description": "Unified input layer. All sources (keyboard, pointer, touch) populate a single input state {move, look, actionA, actionB}; genre logic never branches on device."
-    },
-    {
-      "id": "effects",
-      "displayName": "Effects",
-      "description": "Reusable presentation wins: atmosphere fog, gradient skybox, pooled particles, screen shake. dispose-on-teardown and pooling enforced."
-    },
-    {
-      "id": "ui",
-      "displayName": "UI",
-      "description": "Absolutely-positioned HTML/CSS overlays drawn over the WebGL canvas. HUD, score, pause, restart, and reuse of 2D game-over-with-rank for sign-in CTA parity."
-    },
-    {
-      "id": "resources",
-      "displayName": "Resources",
-      "description": "Vendored three.js bundle and addon families. External-bundle markers; the actual binaries live in resources/three/ and are copied into each installed artifact."
-    },
-    {
-      "id": "systems",
-      "displayName": "Systems",
-      "description": "Reusable engine systems: voxel world (DDA raycast + chunk mesh), endless scroller (segment recycling + pools), and kinematic physics (substep swept collision). Dependency-free; feed colliders to controls.fps-controller."
-    },
-    {
-      "id": "models",
-      "displayName": "Models",
-      "description": "Procedural low-poly 3D model builders: ships, enemies, characters, props, nature. buildX(THREE, opts) -> THREE.Group. Use these instead of bare blocks so games look like real 3D."
-    }
+ "$schema_version": "1.0.0",
+ "last_updated": "2026-06-21",
+ "notes": "Catalog for reusable three.js WebGL2 3D mini-app Lego blocks. SIBLING to frameworks/web-components (2D). AIWizard should compose 3D games from these modules rather than emit a three.js monolith. WebGL2 only, no WebGPU, no CDN, no network. Offline-safe under file://. Every game emits a LOCAL relative importmap before the first module script: maps 'three' to ./resources/three/three.module.min.js and the prefix 'three/addons/' to ./resources/three/addons/. The render loop MUST increment window.__threeFrameCount. ASCII only everywhere. Recipe entries keep keywords/starterComponents/requiredComponents/optionalComponents as flat ASCII string arrays with no nested dicts.",
+ "library": {
+  "id": "framework.web-components-3d",
+  "name": "3D Web Mini-App Lego Blocks (three.js)",
+  "platform": "web",
+  "runtime": "vanilla-es6-modules",
+  "preferredDistribution": "bundled",
+  "alternateDistribution": "bundled",
+  "importStyle": "local-importmap",
+  "renderer": "webgl2",
+  "vendoredThreeVersion": "r160",
+  "probeSignals": [
+   "hasWebGLContext",
+   "window.__threeFrameCount",
+   "local-importmap-gate"
   ],
-  "components": [
-    {
-      "id": "core.three-game-loop",
-      "name": "ThreeGameLoop",
-      "category": "core",
-      "path": "core/three-game-loop.js",
-      "exports": [
-        "ThreeGameLoop"
-      ],
-      "status": "ready",
-      "summary": "renderer.setAnimationLoop baseplate with fixed-timestep accumulator update(dt) plus interpolated render, dt clamp, MENU/PLAYING/PAUSED/GAMEOVER state machine, resize plus visibilitychange plus DPR clamp, audio-unlock on first tap, dispose() teardown. Increments window.__threeFrameCount every rendered frame.",
-      "tags": [
-        "engine",
-        "loop",
-        "fixed-timestep",
-        "three",
-        "webgl2",
-        "miniapp"
-      ],
-      "contracts": {
-        "systemUpdate": "system.update(dt, ctx)",
-        "systemRender": "system.render(alpha, ctx)",
-        "systemLifecycle": [
-          "system.dispose()"
-        ],
-        "frameProbe": "window.__threeFrameCount increments once per rendered frame",
-        "states": [
-          "MENU",
-          "PLAYING",
-          "PAUSED",
-          "GAMEOVER"
-        ]
-      },
-      "goodFits": [
-        "runner",
-        "racer",
-        "flight",
-        "fps",
-        "tower-defense",
-        "platformer",
-        "marble",
-        "rhythm"
-      ]
-    },
-    {
-      "id": "core.three-scene-rig",
-      "name": "ThreeSceneRig",
-      "category": "core",
-      "path": "core/three-scene-rig.js",
-      "exports": [
-        "ThreeSceneRig"
-      ],
-      "status": "ready",
-      "summary": "Scene, perspective camera, and WebGL2 WebGLRenderer build with DPR clamp. Lighting recipe: one DirectionalLight sun plus one HemisphereLight fill. ACESFilmicToneMapping plus SRGBColorSpace output. renderer.info draw-call monitor hook. dispose() frees the renderer and traverses the scene freeing geometries, materials, and textures.",
-      "tags": [
-        "scene",
-        "camera",
-        "renderer",
-        "lighting",
-        "three",
-        "webgl2"
-      ],
-      "contracts": {
-        "build": "new ThreeSceneRig({ canvas, fov, dprMax }) -> { scene, camera, renderer }",
-        "lighting": "1 DirectionalLight sun + 1 HemisphereLight fill",
-        "toneMapping": "ACESFilmicToneMapping",
-        "colorSpace": "SRGBColorSpace",
-        "drawCallHook": "rig.drawCalls() reads renderer.info.render.calls"
-      },
-      "goodFits": [
-        "runner",
-        "racer",
-        "flight",
-        "fps",
-        "tower-defense",
-        "platformer",
-        "marble",
-        "rhythm",
-        "exploration"
-      ]
-    },
-    {
-      "id": "ui.three-hud-overlay",
-      "name": "ThreeHudOverlay",
-      "category": "ui",
-      "path": "ui/three-hud-overlay.js",
-      "exports": [
-        "ThreeHudOverlay"
-      ],
-      "status": "ready",
-      "summary": "Absolutely-positioned HTML/CSS overlay over the WebGL canvas. Score, message line, tap-to-start gate, pause button, and restart control. Pure DOM (no WebGL), re-skinnable per swatch. Provides the user-gesture audio-unlock entry point and the terminal-phase restart required by u-029.",
-      "tags": [
-        "hud",
-        "overlay",
-        "ui",
-        "score",
-        "restart",
-        "three"
-      ],
-      "contracts": {
-        "build": "new ThreeHudOverlay({ host, onStart, onRestart, onPause })",
-        "setScore": "hud.setScore(n)",
-        "setMessage": "hud.setMessage(text)",
-        "showStart": "hud.showStart() / hud.hideStart()",
-        "showGameOver": "hud.showGameOver({ score })"
-      },
-      "goodFits": [
-        "any-3d-game"
-      ]
-    },
-    {
-      "id": "effects.fog-atmosphere",
-      "name": "FogAtmosphere",
-      "category": "effects",
-      "path": "effects/fog-atmosphere.js",
-      "exports": [
-        "FogAtmosphere"
-      ],
-      "status": "ready",
-      "summary": "Exponential or linear scene fog tuned to a horizon color, plus a matching renderer clear color so the far plane dissolves into atmosphere. Cheap depth cue that also hides geometry pop-in on procedural tracks. dispose() detaches the fog and restores the prior clear color.",
-      "tags": [
-        "fog",
-        "atmosphere",
-        "depth",
-        "three",
-        "performance"
-      ],
-      "contracts": {
-        "apply": "new FogAtmosphere({ scene, renderer, color, density, mode })",
-        "modes": [
-          "exp2",
-          "linear"
-        ],
-        "dispose": "fog.dispose() restores scene.fog and renderer clear color"
-      },
-      "goodFits": [
-        "runner",
-        "racer",
-        "flight",
-        "exploration",
-        "tower-defense"
-      ]
-    },
-    {
-      "id": "effects.gradient-skybox",
-      "name": "GradientSkybox",
-      "category": "effects",
-      "path": "effects/gradient-skybox.js",
-      "exports": [
-        "GradientSkybox"
-      ],
-      "status": "ready",
-      "summary": "Large back-side sphere with a vertical gradient ShaderMaterial (top color to horizon color), rendered without depth write so it sits behind everything. Zero textures, zero network. dispose() frees the geometry and material.",
-      "tags": [
-        "skybox",
-        "gradient",
-        "shader",
-        "background",
-        "three"
-      ],
-      "contracts": {
-        "build": "new GradientSkybox({ scene, top, bottom, radius })",
-        "setColors": "sky.setColors(top, bottom)",
-        "dispose": "sky.dispose() removes the mesh and frees geometry/material"
-      },
-      "goodFits": [
-        "runner",
-        "racer",
-        "flight",
-        "exploration",
-        "marble"
-      ]
-    },
-    {
-      "id": "effects.instanced-particle-pool",
-      "name": "InstancedParticlePool",
-      "category": "effects",
-      "path": "effects/instanced-particle-pool.js",
-      "exports": [
-        "InstancedParticlePool"
-      ],
-      "status": "ready",
-      "summary": "A single additive-blended THREE.Points cloud that recycles a fixed pool of particles with ZERO per-frame allocation. Buffers are pre-allocated once; a free-list head pointer reuses dead slots and a round-robin overflow makes bursts degrade gracefully instead of dropping spawns. spawn(point, opts) emits one particle; spawnBurst(point, { count, speed, color, life }) emits a cluster for explosions/sparks/pickups/trails. update(dt) integrates motion with gravity and fade. The convergence target every particle effect should route through (tjs-009).",
-      "tags": [
-        "particles",
-        "pool",
-        "additive",
-        "explosion",
-        "sparks",
-        "trail",
-        "three",
-        "performance"
-      ],
-      "contracts": {
-        "build": "new InstancedParticlePool({ capacity, size, color, gravity, drag, blending, fadeOut })",
-        "mount": "scene.add(pool.object3d)",
-        "spawn": "pool.spawnBurst(point, { count, speed, color, life })",
-        "frame": "pool.update(dt)",
-        "dispose": "pool.dispose() frees geometry and material"
-      },
-      "goodFits": [
-        "shooter",
-        "explosions",
-        "pickups",
-        "impact-fx",
-        "trails",
-        "fireworks"
-      ]
-    },
-    {
-      "id": "effects.screen-shake",
-      "name": "ScreenShake",
-      "category": "effects",
-      "path": "effects/screen-shake.js",
-      "exports": [
-        "ScreenShake"
-      ],
-      "status": "ready",
-      "summary": "Trauma-based camera shake (the Vlambeer/Eiserloh model). Game code calls addTrauma(x) on impacts; the screen offset scales with trauma SQUARED so small trauma is subtle and big trauma is violent, and trauma decays linearly so the shake always settles. The offset is applied in view space AFTER the camera rig sets the base pose and fully reverted next frame, so it composes with chase/follow/orbit cameras instead of fighting them.",
-      "tags": [
-        "screen-shake",
-        "camera",
-        "juice",
-        "trauma",
-        "impact",
-        "three"
-      ],
-      "contracts": {
-        "build": "new ScreenShake({ maxOffset, maxRoll, maxPitchYaw, frequency, decay })",
-        "trauma": "shake.addTrauma(0.7) on a big hit",
-        "frame": "shake.update(dt, camera) AFTER the camera rig sets the base transform",
-        "reset": "shake.reset(camera) removes any residual offset"
-      },
-      "goodFits": [
-        "shooter",
-        "racer",
-        "marble",
-        "platformer",
-        "tower-defense"
-      ]
-    },
-    {
-      "id": "effects.blob-shadow",
-      "name": "BlobShadow",
-      "category": "effects",
-      "path": "effects/blob-shadow.js",
-      "exports": [
-        "BlobShadow",
-        "BlobShadowPool"
-      ],
-      "status": "ready",
-      "summary": "Cheap fake contact shadows so the scene can keep exactly ONE shadow-casting light (the sun) per tjs-010 while every entity still reads as grounded. A soft radial-gradient disc (canvas-generated, zero image files) lies flat under an entity. BlobShadow handles one important object (the player); BlobShadowPool backs many discs with a single InstancedMesh (one draw call) for crowds of enemies/props, claimed and released like a free-list.",
-      "tags": [
-        "shadow",
-        "contact-shadow",
-        "blob",
-        "grounding",
-        "instanced",
-        "three",
-        "performance"
-      ],
-      "contracts": {
-        "single": "const s = new BlobShadow({ scene, radius, opacity }); s.followGround(playerMesh, groundY)",
-        "pool": "const sh = new BlobShadowPool({ scene, capacity }); const id = sh.claim(); sh.place(id, enemy, groundY); sh.release(id)",
-        "jump": "s.setStrength(0..1) to fade/shrink the disc as an entity rises",
-        "dispose": "s.dispose() / sh.dispose() frees geometry, material, and the shared texture"
-      },
-      "goodFits": [
-        "shooter",
-        "rpg",
-        "survival",
-        "platformer",
-        "tower-defense",
-        "runner"
-      ]
-    },
-    {
-      "id": "effects.audio-manager-3d",
-      "name": "AudioManager3D",
-      "category": "effects",
-      "path": "effects/audio-manager-3d.js",
-      "exports": [
-        "AudioManager3D"
-      ],
-      "status": "ready",
-      "summary": "Procedural sound for 3D games with ZERO audio files (the World of ClaudeCraft pattern). Every SFX is synthesized at play time from oscillator + gain + filter graphs with ADSR envelopes -- no .mp3/.wav fetches to break offline under file://, no bytes. Owns one AudioContext and hands it to core.three-game-loop via attachTo(loop) so the loop's existing first-tap unlock resumes it; until then play() is a safe no-op and the game stays fully playable, just muted (tjs-012). Built-in presets: shoot/hit/explosion/pickup/coin/levelup/jump/footstep/ui/hurt/powerup. Pass a position to spatialize via THREE.PositionalAudio (camera + THREE required); otherwise plays in 2D.",
-      "tags": [
-        "audio",
-        "sfx",
-        "procedural",
-        "webaudio",
-        "synth",
-        "positional",
-        "no-audio-files",
-        "three"
-      ],
-      "contracts": {
-        "build": "new AudioManager3D({ camera, THREE, masterGain })",
-        "unlock": "audio.attachTo(loop) -- reuses core.three-game-loop first-tap unlock; never block the render loop on audio",
-        "play2d": "audio.play('shoot')",
-        "play3d": "audio.play('hit', { position: enemy.position })",
-        "mute": "audio.setMuted(true) / audio.toggleMuted() -- game stays playable while muted",
-        "custom": "audio.defineSfx(name, { duration, voices:[...] })",
-        "dispose": "audio.dispose() mutes (does not close a shared context)"
-      },
-      "goodFits": [
-        "shooter",
-        "rpg",
-        "survival",
-        "runner",
-        "racer",
-        "any-action-game"
-      ]
-    },
-    {
-      "id": "controls.virtual-joystick-3d",
-      "name": "VirtualJoystick3D",
-      "category": "controls",
-      "path": "controls/virtual-joystick-3d.js",
-      "exports": [
-        "VirtualJoystick3D"
-      ],
-      "status": "ready",
-      "summary": "Touch joystick that writes a normalized 2D move vector into the shared input state. Spawns under the thumb on touchstart, clamps to a radius, and releases to zero on touchend. Keyboard WASD and arrow keys feed the same move vector so genre logic never branches on device. Part of the unified {move, look, actionA, actionB} input contract.",
-      "tags": [
-        "input",
-        "joystick",
-        "touch",
-        "keyboard",
-        "three"
-      ],
-      "contracts": {
-        "build": "new VirtualJoystick3D({ host, input })",
-        "writes": "input.move = { x, y } in [-1, 1]",
-        "fallback": "WASD and arrow keys map to the same input.move",
-        "dispose": "joystick.dispose() removes listeners and DOM"
-      },
-      "goodFits": [
-        "runner",
-        "marble",
-        "exploration",
-        "platformer",
-        "fps"
-      ]
-    },
-    {
-      "id": "controls.one-button-action",
-      "name": "OneButtonAction",
-      "category": "controls",
-      "path": "controls/one-button-action.js",
-      "exports": [
-        "OneButtonAction"
-      ],
-      "status": "ready",
-      "summary": "Single primary-action input. Tap or click anywhere, Space, or an on-screen button all set input.actionA true for one frame (edge-triggered) and input.actionAHeld while held. Used for jump, fire, flap, place. Part of the unified input contract.",
-      "tags": [
-        "input",
-        "button",
-        "tap",
-        "keyboard",
-        "three"
-      ],
-      "contracts": {
-        "build": "new OneButtonAction({ host, input, label })",
-        "writes": "input.actionA (edge) and input.actionAHeld (held)",
-        "consume": "call input.consumeActionA() after handling the edge",
-        "dispose": "action.dispose() removes listeners and DOM"
-      },
-      "goodFits": [
-        "runner",
-        "flight",
-        "rhythm",
-        "tower-defense",
-        "platformer"
-      ]
-    },
-    {
-      "id": "resources.three-core",
-      "name": "three.js core (vendored)",
-      "category": "resources",
-      "path": "resources/three/three.module.min.js",
-      "exports": [
-        "THREE"
-      ],
-      "status": "external-bundle",
-      "externalBundle": true,
-      "summary": "Vendored three.js r160 core module. EXTERNAL BUNDLE MARKER ONLY: the binary is a separate large-file step and is NOT authored as Lego source. Referenced by the local importmap bare specifier 'three'. Copied into each installed artifact at resources/three/three.module.min.js. WebGL2 WebGLRenderer path only; never WebGPU.",
-      "tags": [
-        "three",
-        "vendored",
-        "webgl2",
-        "external-bundle",
-        "offline"
-      ],
-      "contracts": {
-        "importSpecifier": "import * as THREE from 'three'",
-        "importmap": "three -> ./resources/three/three.module.min.js",
-        "version": "r160",
-        "onDisk": "resources/three/three.module.min.js MUST exist in the installed bundle"
-      },
-      "goodFits": [
-        "any-3d-game"
-      ]
-    },
-    {
-      "id": "core.lowpoly-canvas3d",
-      "name": "LowPolyCanvas3D",
-      "category": "core",
-      "path": "core/lowpoly-canvas3d.js",
-      "exports": [
-        "LowPolyScene",
-        "OrbitCamera",
-        "mesh",
-        "vec3",
-        "mat4",
-        "seededRng",
-        "shade"
-      ],
-      "status": "ready",
-      "summary": "Dependency-free low-poly 3D on a plain 2D canvas (no three.js, no WebGL). Tiny vec3/mat4 math, flat-shaded painter's-algorithm triangle renderer with two-sided lighting and depth sort, a spherical OrbitCamera (drag/touch/pinch/wheel/auto-spin), mesh builders (cone, box, stacked-ring surface), seeded RNG and shade tint. Trivially offline-safe and identical in WKWebView/Safari/Chrome. The lightweight 'let it cook' 3D track for orbit dioramas; write only the scene-specific faces.",
-      "tags": [
-        "low-poly",
-        "canvas2d",
-        "no-dependencies",
-        "offline",
-        "orbit",
-        "diorama",
-        "painters-algorithm",
-        "flat-shaded"
-      ],
-      "contracts": {
-        "scene": "new LowPolyScene(canvas, { fov, ambient, diffuse, lightDir, background }) -> .render(faces, camera)",
-        "camera": "new OrbitCamera(canvas, { r, az, el, autoSpin }) -> .eye(), .update()",
-        "face": "{ v: [[x,y,z],[x,y,z],[x,y,z]], c: [r,g,b] }  (0-255 colors)",
-        "mesh": "mesh.cone/box/ringSurface(faces, opts) push faces; bring your own geometry",
-        "offline": "no imports beyond this module; renders to CanvasRenderingContext2D only"
-      },
-      "goodFits": [
-        "low-poly island",
-        "low-poly planet",
-        "diorama",
-        "terrain flythrough",
-        "floating scene",
-        "stylized town",
-        "faceted sculpture",
-        "orbit showpiece"
-      ]
-    },
-    {
-      "id": "controls.fps-controller",
-      "name": "FPSController",
-      "category": "controls",
-      "path": "controls/fps-controller.js",
-      "exports": [
-        "FPSController"
-      ],
-      "status": "ready",
-      "summary": "Universal first/third-person controller that WORKS WITHOUT POINTER LOCK (so it's playable in the mChatAI+ WKWebView preview AND on mobile AND the hub). Default DRAG-TO-LOOK (hold+drag; touch-drag on phones); pointer-lock is opt-in. Built-in on-screen TOUCH CONTROLS (movement joystick + action buttons, auto on touch devices). WASD + sprint + jump + gravity + swept-AABB wall-sliding (pass colliders). Quick tap/click or Space or a button fires onAction. applyToCamera(camera) for three.js.",
-      "tags": [
-        "fps",
-        "first-person",
-        "drag-look",
-        "mobile",
-        "touch",
-        "joystick",
-        "no-pointer-lock",
-        "collision"
-      ],
-      "contracts": {
-        "build": "new FPSController(domElement,{lookMode:'drag'|'pointerlock', position, eyeHeight, speed, gravity, jumpSpeed, colliders, actions:[{id,label}], onAction})",
-        "look": "DEFAULT drag-to-look (works in WKWebView+mobile); pointer-lock optional",
-        "touch": "auto on-screen joystick (move) + action buttons (shoot/jump) on touch devices",
-        "frame": "fps.update(dt); fps.applyToCamera(camera)"
-      },
-      "goodFits": [
-        "doom",
-        "fps",
-        "maze-walker",
-        "dungeon-crawler",
-        "voxel",
-        "escape-room",
-        "parkour",
-        "wave-shooter"
-      ]
-    },
-    {
-      "id": "controls.camera-rig-3d",
-      "name": "CameraRig",
-      "category": "controls",
-      "path": "controls/camera-rig-3d.js",
-      "exports": [
-        "CameraRig",
-        "CHASE",
-        "FOLLOW",
-        "ORBIT",
-        "RISE",
-        "FIRST_PERSON"
-      ],
-      "status": "ready",
-      "summary": "One camera controller with selectable modes so genre code never hand-rolls a bespoke camera (the top cause of the tjs-017 camera-pointed-away-from-the-action failure). CHASE trails behind + above with smoothed look-ahead toward velocity (runner/flight/racer); FOLLOW is an angled overhead lock (top-down RPG/strategy); ORBIT is spherical drag/wheel/pinch + optional auto-spin (showpiece/diorama); RISE climbs with the target (towers/jumpers); FIRST_PERSON is a pass-through no-op so controls.fps-controller owns the camera. setTarget(obj) + update(dt) each frame. Compose with effects.screen-shake by calling shake.update AFTER rig.update.",
-      "tags": [
-        "camera",
-        "chase",
-        "follow",
-        "orbit",
-        "third-person",
-        "look-ahead",
-        "smoothing",
-        "three"
-      ],
-      "contracts": {
-        "build": "new CameraRig({ camera, mode: CHASE, target, dom, distance, height, lookAhead, damping })",
-        "target": "rig.setTarget(player)",
-        "mode": "rig.setMode(FOLLOW)",
-        "frame": "rig.update(dt) each frame; for FPS games use FIRST_PERSON mode + controls.fps-controller",
-        "shakeOrder": "call effects.screen-shake update(dt, camera) AFTER rig.update(dt)",
-        "dispose": "rig.dispose() removes ORBIT input listeners"
-      },
-      "goodFits": [
-        "runner",
-        "racer",
-        "flight",
-        "rpg",
-        "survival",
-        "tower-defense",
-        "diorama",
-        "marble"
-      ]
-    },
-    {
-      "id": "systems.voxel-chunk-3d",
-      "name": "VoxelWorld",
-      "category": "systems",
-      "path": "systems/voxel-chunk-3d.js",
-      "exports": [
-        "VoxelWorld",
-        "BLOCK",
-        "CUSTOM_BASE",
-        "defaultColorForBlock"
-      ],
-      "status": "ready",
-      "summary": "Dependency-free voxel engine (the Minecraft seed): get/setBlock, generateTerrain(seed) (sinusoid-sum noise -> grass/dirt/stone), raycastVoxel(origin,dir) via Amanatides-Woo DDA returning hit block + face normal for place/destroy, buildMeshData(colorForBlock) -> {positions,normals,colors,indices} with hidden-face culling (wrap in THREE.BufferGeometry), and aabbsNear(pos,radius) -> colliders to feed the FPS controller. Ported from the proven raw-WebGL voxel-sandbox build.",
-      "tags": [
-        "voxel",
-        "minecraft",
-        "dda",
-        "raycast",
-        "chunk-mesh",
-        "terrain",
-        "blocks"
-      ],
-      "contracts": {
-        "build": "new VoxelWorld({chunkSize,height,noise})",
-        "gen": "world.generateTerrain(seed)",
-        "ray": "world.raycastVoxel(origin,dir,maxDist) -> {block,normal,hit}",
-        "mesh": "world.buildMeshData(colorForBlock) -> {positions,normals,colors,indices}",
-        "collide": "world.aabbsNear(pos,radius) -> [{min,max}] for FPSController colliders"
-      },
-      "goodFits": [
-        "minecraft-clone",
-        "voxel-sandbox",
-        "block-builder",
-        "voxel-dungeon"
-      ]
-    },
-    {
-      "id": "systems.heightmap-terrain-3d",
-      "name": "HeightmapTerrain",
-      "category": "systems",
-      "path": "systems/heightmap-terrain-3d.js",
-      "exports": [
-        "HeightmapTerrain",
-        "fbmNoise",
-        "sampleHeight"
-      ],
-      "status": "ready",
-      "summary": "Smooth procedural terrain (the continuous-landscape complement to the blocky systems.voxel-chunk-3d). Seeded fBm/value-noise height field -> buildMeshData() returns {positions,normals,colors,indices} typed arrays the caller wraps in ONE THREE.BufferGeometry = ONE draw call (tjs-004). Vertex-coloured by altitude+slope (grass/rock/snow) with no textures. heightAt(x,z) and normalAt(x,z) ground characters/vehicles on the real surface; slopeAt(x,z) gates standing/rolling. Optional waterLevel flattens lows. Dependency-free (returns numbers + typed arrays; caller owns THREE).",
-      "tags": [
-        "terrain",
-        "heightmap",
-        "fbm",
-        "noise",
-        "landscape",
-        "procedural",
-        "ground",
-        "mesh-data"
-      ],
-      "contracts": {
-        "build": "new HeightmapTerrain({ size, segments, amplitude, seed, frequency, octaves })",
-        "mesh": "terrain.buildMeshData() -> {positions,normals,colors,indices}; wrap in BufferGeometry (vertexColors:true, flatShading:true)",
-        "ground": "player.position.y = terrain.heightAt(x, z) + eyeHeight each frame",
-        "normal": "terrain.normalAt(x,z) -> [x,y,z]; terrain.slopeAt(x,z) -> radians",
-        "noise": "fbmNoise(x,z,seed,opts) standalone for clouds/scatter; pass opts.noise to override the field"
-      },
-      "goodFits": [
-        "survival",
-        "flight",
-        "rpg",
-        "racer",
-        "exploration",
-        "open-world"
-      ]
-    },
-    {
-      "id": "systems.endless-scroller-3d",
-      "name": "EndlessTrack",
-      "category": "systems",
-      "path": "systems/endless-scroller-3d.js",
-      "exports": [
-        "EndlessTrack",
-        "createPool",
-        "laneCollide",
-        "laneCollideAll",
-        "clampDelta",
-        "makeDeltaClamp"
-      ],
-      "status": "ready",
-      "summary": "Segment-recycling + typed object pool + lane collision: the infrastructure behind endless runners (extracted from neon-runner, cross-validated by coral-reef drift). EndlessTrack.update(playerZ) wraps the furthest-behind segment to the front and respawns its contents; createPool(make,reset) is a free-stack object pool; laneCollide(player,items,{laneWidth,hitDist}) returns the first hit. Multiplies the neon-runner genre.",
-      "tags": [
-        "endless-runner",
-        "recycling",
-        "object-pool",
-        "lane",
-        "neon-runner",
-        "infinite"
-      ],
-      "contracts": {
-        "build": "new EndlessTrack({segmentLength,segmentCount,lanes,spawn,recycle})",
-        "frame": "track.update(playerZ)",
-        "pool": "createPool(make,reset) -> {acquire,release,forEach,live}",
-        "collide": "laneCollide(player,items,{laneWidth,hitDist}) -> item|null"
-      },
-      "goodFits": [
-        "endless-runner",
-        "tunnel-racer",
-        "infinite-flyer",
-        "dodge-em",
-        "infinite-drift"
-      ]
-    },
-    {
-      "id": "systems.kinematic-body-3d",
-      "name": "KinematicBody",
-      "category": "systems",
-      "path": "systems/kinematic-body-3d.js",
-      "exports": [
-        "stepKinematic",
-        "sphereVsAABB",
-        "sphereVsAABBs",
-        "rollingQuaternion"
-      ],
-      "status": "ready",
-      "summary": "Pure-math substep physics for control games: stepKinematic(body,dt,{gravity,substeps,maxSpeed}) advances with substepping to prevent tunneling; sphereVsAABB / sphereVsAABBs resolve push-out + slide (don't stop dead); rollingQuaternion(prev,pos,radius) for ball/marble roll. Extracted from labyrinth + marble-run.",
-      "tags": [
-        "physics",
-        "substep",
-        "swept-collision",
-        "sphere-aabb",
-        "rolling",
-        "marble"
-      ],
-      "contracts": {
-        "step": "stepKinematic({pos,vel,radius}, dt, {gravity,substeps,maxSpeed})",
-        "resolve": "sphereVsAABB(center,radius,box) -> {hit,normal,depth}",
-        "roll": "rollingQuaternion(prevPos,pos,radius) -> [x,y,z,w]"
-      },
-      "goodFits": [
-        "kart-racer",
-        "ball-maze",
-        "marble-run",
-        "mini-golf",
-        "pinball"
-      ]
-    },
-    {
-      "id": "ui.info-panel",
-      "name": "InfoPanel",
-      "category": "ui",
-      "path": "ui/info-panel.js",
-      "exports": [
-        "createInfoPanel"
-      ],
-      "status": "ready",
-      "summary": "Collapsible instruction/info panel: a titled how-to-play box with a MINIMIZE button that shrinks it to a small round 'i' icon in the same corner, so the panel never dominates the view (click the icon to expand). Optional auto-collapse after N seconds. Dependency-free DOM+CSS over the WebGL canvas. Use for the instructions; keep the compact score/HUD separate.",
-      "tags": [
-        "ui",
-        "instructions",
-        "overlay",
-        "collapsible",
-        "minimize",
-        "immersion",
-        "hud"
-      ],
-      "contracts": {
-        "build": "createInfoPanel({title, html, corner, accent, autoCollapseMs}) -> {expand,collapse,toggle,destroy}",
-        "behavior": "minimize -> small round 'i' pill in the same corner; click to re-expand"
-      },
-      "goodFits": [
-        "any game or scene with instructions",
-        "how-to-play box",
-        "controls legend",
-        "scene blurb"
-      ]
-    },
-    {
-      "id": "models.lowpoly-vehicles-3d",
-      "name": "LowPolyVehicles",
-      "category": "models",
-      "path": "models/lowpoly-vehicles-3d.js",
-      "exports": [
-        "buildSpaceship",
-        "buildPlane",
-        "buildKart",
-        "buildBoat"
-      ],
-      "status": "ready",
-      "summary": "Ready-made low-poly VEHICLE models (no bare blocks): buildSpaceship (sleek fighter + engine glow), buildPlane (prop plane, named 'propeller' part to spin), buildKart (go-kart with wheels), buildBoat (sailboat). Each buildX(THREE, opts:{color,scale}) -> THREE.Group; THREE passed in (offline-safe, no import).",
-      "tags": [
-        "models",
-        "vehicles",
-        "spaceship",
-        "plane",
-        "kart",
-        "boat",
-        "low-poly"
-      ],
-      "contracts": {
-        "build": "buildSpaceship(THREE,{color,scale}) -> THREE.Group; same for buildPlane/buildKart/buildBoat",
-        "material": "flat-shaded MeshStandardMaterial; color = hex int or [r,g,b]"
-      },
-      "goodFits": [
-        "space shooter",
-        "flyer",
-        "racer",
-        "sailing"
-      ]
-    },
-    {
-      "id": "models.lowpoly-characters-3d",
-      "name": "LowPolyCharacters",
-      "category": "models",
-      "path": "models/lowpoly-characters-3d.js",
-      "exports": [
-        "buildRobot",
-        "buildDrone",
-        "buildAlienShip",
-        "buildSlime",
-        "buildBird"
-      ],
-      "status": "ready",
-      "summary": "Ready-made low-poly CHARACTER + ENEMY models: buildRobot (humanoid player), buildDrone (hovering enemy with glowing eye), buildAlienShip (UFO saucer), buildSlime (blob enemy), buildBird. Real enemies/characters instead of cubes. buildX(THREE, opts:{color,scale}) -> THREE.Group.",
-      "tags": [
-        "models",
-        "enemy",
-        "character",
-        "robot",
-        "drone",
-        "alien",
-        "slime",
-        "low-poly"
-      ],
-      "contracts": {
-        "build": "buildDrone(THREE,{color,scale}) -> THREE.Group (use as an enemy); buildRobot as a player; etc."
-      },
-      "goodFits": [
-        "fps enemies",
-        "platformer character",
-        "wave shooter",
-        "collectathon"
-      ]
-    },
-    {
-      "id": "models.lowpoly-props-3d",
-      "name": "LowPolyProps",
-      "category": "models",
-      "path": "models/lowpoly-props-3d.js",
-      "exports": [
-        "buildTree",
-        "buildRock",
-        "buildCrate",
-        "buildBarrel",
-        "buildCoin",
-        "buildGem",
-        "buildTurret",
-        "buildPortal"
-      ],
-      "status": "ready",
-      "summary": "Ready-made low-poly PROP + NATURE models: buildTree, buildRock, buildCrate, buildBarrel, buildCoin (gold), buildGem (emissive), buildTurret (rotatable head for tower defense), buildPortal (glowing gate). Decorate scenes + spawn pickups/obstacles. buildX(THREE, opts:{color,scale}) -> THREE.Group.",
-      "tags": [
-        "models",
-        "props",
-        "nature",
-        "tree",
-        "crate",
-        "coin",
-        "gem",
-        "turret",
-        "low-poly"
-      ],
-      "contracts": {
-        "build": "buildTree(THREE,{color,scale}) -> THREE.Group; buildCoin/buildGem for pickups; buildTurret for tower defense; buildCrate/buildBarrel/buildRock for obstacles"
-      },
-      "goodFits": [
-        "dioramas",
-        "tower defense",
-        "collectathon",
-        "arena props",
-        "nature scenes"
-      ]
-    },
-    {
-      "id": "models.procedural-creatures-3d",
-      "name": "ProceduralCreatures",
-      "category": "models",
-      "path": "models/procedural-creatures-3d.js",
-      "exports": [
-        "buildCreature",
-        "animateCreature",
-        "CREATURE_FAMILIES",
-        "makeCreatureRig"
-      ],
-      "status": "ready",
-      "summary": "RIGGED, ANIMATED low-poly creatures with ZERO asset files (the World of ClaudeCraft pattern). Unlike models.lowpoly-characters-3d (static shapes), each creature is built from NESTED PIVOT GROUPS and animated every frame by a tiny pose evaluator -- so enemies actually walk, attack, flinch, and die instead of sitting in a T-pose (the fix for tjs-013/tjs-014). Four archetypes reskinned into 15 families: biped (humanoid/skeleton/goblin/villager), quadruped (wolf/boar/dog/sheep), serpentine (spider/snake/dragon), floating (slime/wisp/eye/bird). Clips: idle/walk/attack/hit/death. No GLTF, no AnimationMixer, no loaders -- pure transform animation, offline-safe under file://.",
-      "tags": [
-        "models",
-        "creatures",
-        "enemy",
-        "animated",
-        "rigged",
-        "procedural",
-        "skeleton",
-        "wolf",
-        "dragon",
-        "spider",
-        "no-gltf",
-        "low-poly"
-      ],
-      "contracts": {
-        "build": "buildCreature(THREE, { family, color, scale, seed }) -> THREE.Group with userData.rig",
-        "animate": "animateCreature(group, { clip: 'idle'|'walk'|'attack'|'hit'|'death', t }) each frame (t = accumulated seconds; or pass { dt } to auto-advance)",
-        "families": "CREATURE_FAMILIES maps family -> archetype/colors; 15 families across 4 archetypes",
-        "rig": "makeCreatureRig(THREE, archetype, fam) -> { group, rig } for advanced callers"
-      },
-      "goodFits": [
-        "rpg",
-        "survival",
-        "fps enemies",
-        "dungeon crawler",
-        "wave shooter",
-        "adventure",
-        "tower defense creeps"
-      ]
-    },
-    {
-      "id": "models.gltf-model-player-3d",
-      "name": "GltfModelPlayer",
-      "category": "models",
-      "path": "models/gltf-model-player-3d.js",
-      "exports": [
-        "loadGltfModel",
-        "GltfAnimationPlayer",
-        "preloadGltf"
-      ],
-      "status": "ready",
-      "summary": "Thin wrapper over the vendored GLTFLoader + THREE.AnimationMixer: load a local .glb (or a base64-embedded GLB module from the built-in model library) and play its skeletal animations with one call -- loadGltfModel(THREE,{url|glbModule}) -> {scene,clips,mixer,play,crossFade,update,dispose}. This is the OPT-IN path for real GLB assets; models.procedural-creatures-3d (zero asset files) is the offline-first DEFAULT (tjs-018). Loads from a local URL or in-memory ArrayBuffer via GLTFLoader.parse, never the network. Disposes geometries/materials/textures on teardown (tjs-008).",
-      "tags": [
-        "models",
-        "gltf",
-        "glb",
-        "animation",
-        "mixer",
-        "skeletal",
-        "loader",
-        "three"
-      ],
-      "contracts": {
-        "load": "const m = await loadGltfModel(THREE, { url: './resources/models/knight.glb' })",
-        "embedded": "loadGltfModel(THREE, { glbModule: loadSkeletonWarrior }) for base64 library modules",
-        "play": "m.play('Run'); m.crossFade('Idle','Run',0.3)",
-        "frame": "m.update(dt) each frame",
-        "dispose": "m.dispose() frees the scene's GPU resources"
-      },
-      "goodFits": [
-        "rpg",
-        "dungeon crawler",
-        "adventure",
-        "showpiece",
-        "detailed-characters"
-      ]
-    },
-    {
-      "id": "systems.spawn-wave-3d",
-      "name": "SpawnWaveManager",
-      "category": "systems",
-      "path": "systems/spawn-wave-3d.js",
-      "exports": [
-        "SpawnWaveManager",
-        "makeWave"
-      ],
-      "status": "ready",
-      "summary": "Data-driven enemy/obstacle wave scheduler -- the backbone of horde, survival, and tower-defense loops. Declare waves as [{count,type,interval,delay}]; update(dt) fires onSpawn at the right times, tracks alive vs remaining, and fires onWaveClear/onAllClear so win/lose wiring is trivial (tjs-016). It schedules only -- you spawn the actual mesh (e.g. models.procedural-creatures-3d) in onSpawn and call notifyKilled() when one dies. Dependency-free.",
-      "tags": [
-        "waves",
-        "spawn",
-        "horde",
-        "survival",
-        "tower-defense",
-        "scheduler",
-        "enemies"
-      ],
-      "contracts": {
-        "build": "new SpawnWaveManager({ waves:[{count,type,interval,delay}], onSpawn, onWaveClear, onAllClear })",
-        "start": "mgr.start()",
-        "frame": "mgr.update(dt)",
-        "kill": "mgr.notifyKilled() when an enemy dies",
-        "helper": "makeWave(count, type, { interval, delay })"
-      },
-      "goodFits": [
-        "survival",
-        "wave shooter",
-        "tower defense",
-        "horde",
-        "arena"
-      ]
-    },
-    {
-      "id": "effects.postfx-bloom-3d",
-      "name": "BloomComposer",
-      "category": "effects",
-      "path": "effects/postfx-bloom-3d.js",
-      "exports": [
-        "BloomComposer"
-      ],
-      "status": "ready",
-      "summary": "One-call selective bloom over the vendored EffectComposer + RenderPass + UnrealBloomPass + OutputPass (all on disk). Wraps the composer (hand-wiring cross-imported postprocessing addons is a common file:// failure point): build, render(dt) instead of renderer.render, setSize(). WebGL2 capability check + graceful degrade to plain renderer.render if the composer can't build; frees render targets on dispose (tjs-008). Bloom adds passes -- keep DPR clamped (tjs-005).",
-      "tags": [
-        "bloom",
-        "postprocessing",
-        "glow",
-        "composer",
-        "neon",
-        "three"
-      ],
-      "contracts": {
-        "build": "new BloomComposer({ renderer, scene, camera, strength, radius, threshold })",
-        "render": "bloom.render(dt) in the loop INSTEAD of renderer.render(scene,camera)",
-        "resize": "bloom.setSize(w, h)",
-        "tune": "bloom.setStrength(v) / setThreshold(v) / setRadius(v)",
-        "dispose": "bloom.dispose() frees render targets"
-      },
-      "goodFits": [
-        "space",
-        "neon",
-        "marble",
-        "showpiece",
-        "arcade"
-      ]
-    },
-    {
-      "id": "controls.input-manager-3d",
-      "name": "InputManager3D",
-      "category": "controls",
-      "path": "controls/input-manager-3d.js",
-      "exports": [
-        "InputManager3D",
-        "createInputState"
-      ],
-      "status": "ready",
-      "summary": "The single OWNER of the unified input state { move:{x,y}, look:{x,y}, actionA, actionAHeld, actionB } that every control writes into. Wires keyboard (WASD/arrows + space/shift) and composes on-screen touch joystick + A/B buttons (touch devices) into ONE state object so genre logic never branches on device and never re-wires per game. consumeActionA()/consumeActionB() give one-shot edges; diagonal movement is normalized. Dependency-free (DOM only).",
-      "tags": [
-        "input",
-        "keyboard",
-        "touch",
-        "joystick",
-        "unified",
-        "controls"
-      ],
-      "contracts": {
-        "build": "new InputManager3D({ host, touch: true })",
-        "frame": "input.update(dt); read input.state.move / input.state.actionA",
-        "edge": "if (input.consumeActionA()) fire()  -- true exactly once per press",
-        "state": "createInputState() for a fresh shared state object",
-        "dispose": "input.dispose() removes listeners + on-screen controls"
-      },
-      "goodFits": [
-        "any-3d-game",
-        "runner",
-        "rpg",
-        "survival",
-        "shooter"
-      ]
-    },
-    {
-      "id": "controls.tilt-input",
-      "name": "TiltInput",
-      "category": "controls",
-      "path": "controls/tilt-input.js",
-      "exports": [
-        "TiltInput"
-      ],
-      "status": "ready",
-      "summary": "Device-orientation tilt that writes into the shared input.move for marble/balance/labyrinth games on phones. NEVER tilt-only: it always pairs with the keyboard/joystick fallback so the game is fully playable on desktop and in the WKWebView preview (tjs-mobile-friendly). iOS 13+ needs a tap-driven requestPermission(); degrades silently to the fallback if denied or absent. Dependency-free (DOM only); composes with controls.input-manager-3d via a shared state object.",
-      "tags": [
-        "tilt",
-        "device-orientation",
-        "gyroscope",
-        "mobile",
-        "marble",
-        "balance"
-      ],
-      "contracts": {
-        "build": "new TiltInput({ state: input.state })",
-        "permission": "from a tap on iOS: startButton.onclick = () => tilt.requestPermission()",
-        "frame": "tilt.update() each frame (blends tilt into shared move; keyboard still works)",
-        "dispose": "tilt.dispose()"
-      },
-      "goodFits": [
-        "marble",
-        "tilt maze",
-        "labyrinth",
-        "balance"
-      ]
-    },
-    {
-      "id": "systems.save-state-3d",
-      "name": "SaveState",
-      "category": "systems",
-      "path": "systems/save-state-3d.js",
-      "exports": [
-        "SaveState",
-        "saveState",
-        "loadState"
-      ],
-      "status": "ready",
-      "summary": "Tiny versioned localStorage wrapper for high scores, progress, and settings (localStorage works under file:// in WKWebView, so saves persist across restarts). Versioned with a migrate() hook so schema changes do not corrupt old saves, plus a safe in-memory fallback when storage is unavailable (private mode/quota/sandbox) -- the game never crashes on save. recordBest(field,value) returns true on a new high score. Dependency-free.",
-      "tags": [
-        "save",
-        "persistence",
-        "localstorage",
-        "high-score",
-        "progress",
-        "settings"
-      ],
-      "contracts": {
-        "build": "new SaveState({ key, version, defaults, migrate })",
-        "load": "const data = save.load()",
-        "best": "if (save.recordBest('best', score)) showNewBest()",
-        "field": "save.set('level', 3); save.get('best', 0)"
-      },
-      "goodFits": [
-        "any-3d-game",
-        "runner",
-        "survival",
-        "rpg",
-        "arcade"
-      ]
-    },
-    {
-      "id": "effects.particle-presets-3d",
-      "name": "ParticlePresets",
-      "category": "effects",
-      "path": "effects/particle-presets-3d.js",
-      "exports": [
-        "spawnExplosion",
-        "spawnTrail",
-        "spawnMuzzleFlash",
-        "spawnLevelUp",
-        "spawnPickupSparkle",
-        "spawnDust"
-      ],
-      "status": "ready",
-      "summary": "Named one-call FX presets over effects.instanced-particle-pool, so a game calls spawnExplosion(pool, point) instead of hand-tuning spawnBurst parameters. Each preset is a tuned spawnBurst on a SHARED pool (one draw call), adding zero per-frame cost beyond the pool. Presets: spawnExplosion, spawnTrail, spawnMuzzleFlash, spawnLevelUp, spawnPickupSparkle, spawnDust. Requires effects.instanced-particle-pool.",
-      "tags": [
-        "particles",
-        "presets",
-        "explosion",
-        "trail",
-        "muzzle-flash",
-        "sparkle",
-        "juice"
-      ],
-      "contracts": {
-        "use": "spawnExplosion(pool, enemy.position) on death; spawnPickupSparkle(pool, coin.position) on pickup",
-        "pool": "share ONE effects.instanced-particle-pool across all presets; call pool.update(dt) each frame",
-        "tune": "each preset takes optional { count, speed, color, life }"
-      },
-      "goodFits": [
-        "shooter",
-        "survival",
-        "rpg",
-        "runner",
-        "arcade"
-      ]
-    },
-    {
-      "id": "ui.minimap-3d",
-      "name": "Minimap3D",
-      "category": "ui",
-      "path": "ui/minimap-3d.js",
-      "exports": [
-        "Minimap3D"
-      ],
-      "status": "ready",
-      "summary": "A 2D-canvas minimap overlay drawn over the WebGL canvas (NO second WebGL context). Plots the player + tracked entities + terrain bounds from world {x,z} coordinates onto a small top-down disc, painted at runtime (no image assets, the WoCC procedural-UI ethos). Optionally rotates with player heading. setPlayer(x,z,heading) + addMarker(x,z,color) + draw() each frame. Dependency-free (2D canvas + DOM, like ui.three-hud-overlay); never touches three.js.",
-      "tags": [
-        "minimap",
-        "radar",
-        "overlay",
-        "navigation",
-        "ui",
-        "canvas"
-      ],
-      "contracts": {
-        "build": "new Minimap3D({ host, worldSize, radius, rotateWithPlayer })",
-        "frame": "map.clearMarkers(); map.setPlayer(px,pz,heading); enemies.forEach(e=>map.addMarker(e.x,e.z,'#e44')); map.draw()",
-        "dispose": "map.dispose()"
-      },
-      "goodFits": [
-        "rpg",
-        "survival",
-        "flight",
-        "exploration",
-        "open-world"
-      ]
-    }
-  ],
-  "compositionRecipes": [
-    {
-      "id": "recipe.three-runner",
-      "name": "3D Endless Runner",
-      "promptName": "3d endless runner",
-      "runtime": "vanilla-es6-modules",
-      "importStyle": "local-importmap",
-      "keywords": [
-        "3d runner",
-        "endless runner",
-        "three.js runner",
-        "subway",
-        "temple run",
-        "lane runner",
-        "dodge obstacles",
-        "infinite runner",
-        "3d dodge",
-        "auto run"
-      ],
-      "starterComponents": [
-        "systems.endless-scroller-3d",
-        "core.three-game-loop",
-        "core.three-scene-rig",
-        "ui.three-hud-overlay",
-        "controls.virtual-joystick-3d",
-        "controls.one-button-action",
-        "effects.fog-atmosphere",
-        "effects.gradient-skybox",
-        "resources.three-core",
-        "ui.info-panel"
-      ],
-      "requiredComponents": [
-        "core.three-game-loop",
-        "core.three-scene-rig",
-        "ui.three-hud-overlay",
-        "resources.three-core"
-      ],
-      "optionalComponents": [
-        "controls.virtual-joystick-3d",
-        "controls.one-button-action",
-        "effects.fog-atmosphere",
-        "effects.gradient-skybox",
-        "ui.info-panel",
-        "models.lowpoly-characters-3d",
-        "models.lowpoly-props-3d",
-        "controls.camera-rig-3d",
-        "effects.audio-manager-3d",
-        "effects.instanced-particle-pool",
-        "controls.input-manager-3d",
-        "systems.save-state-3d",
-        "effects.particle-presets-3d"
-      ],
-      "assemblyNotes": [
-        "Camera chases the player from behind and slightly above. The player auto-runs forward at increasing speed; input.move.x picks the lane and input.actionA jumps.",
-        "Spawn obstacles as an InstancedMesh field ahead of the player and recycle instances behind the camera. Never allocate a new mesh per obstacle. Keep draw calls under 100.",
-        "Fog plus gradient skybox hide geometry pop-in as the track streams in. Tune fog density so the spawn line is invisible.",
-        "Increment window.__threeFrameCount in the render step. Emit the local importmap before the first module script. No https:// anywhere.",
-        "Marker shape: {recipe: 'recipe.three-runner', components: [...all used component ids...]}."
-      ],
-      "notes": "Use ui.info-panel for the instructions/how-to-play box (collapsible to a small 'i' icon so it doesn't dominate the view); keep score/HUD compact and separate."
-    },
-    {
-      "id": "recipe.three-marble",
-      "name": "3D Marble Roll (physics-light)",
-      "promptName": "3d marble roll",
-      "runtime": "vanilla-es6-modules",
-      "importStyle": "local-importmap",
-      "keywords": [
-        "3d marble",
-        "marble roll",
-        "ball roll",
-        "tilt maze",
-        "marble madness",
-        "roll the ball",
-        "3d ball",
-        "balance maze",
-        "marble run",
-        "physics ball"
-      ],
-      "starterComponents": [
-        "systems.kinematic-body-3d",
-        "core.three-game-loop",
-        "core.three-scene-rig",
-        "ui.three-hud-overlay",
-        "controls.virtual-joystick-3d",
-        "effects.gradient-skybox",
-        "resources.three-core",
-        "ui.info-panel"
-      ],
-      "requiredComponents": [
-        "core.three-game-loop",
-        "core.three-scene-rig",
-        "ui.three-hud-overlay",
-        "controls.virtual-joystick-3d",
-        "resources.three-core"
-      ],
-      "optionalComponents": [
-        "effects.gradient-skybox",
-        "effects.fog-atmosphere",
-        "ui.info-panel",
-        "controls.tilt-input",
-        "controls.input-manager-3d",
-        "systems.save-state-3d"
-      ],
-      "assemblyNotes": [
-        "Physics-light by design. Hand-roll rolling-ball motion: input.move tilts the board (or applies a force), integrate ball velocity with a fixed-timestep update(dt), and resolve collisions against an axis-aligned wall grid. Do NOT pull a physics engine for the default build.",
-        "Follow or rise camera tracks the ball. Reach the goal tile to win; falling off the edge restarts.",
-        "Rapier (systems.rapier-physics-world) is an OPTIONAL upgrade only if the user explicitly asks for realistic physics with ramps and ragdoll-like rolling. The default stays hand-rolled and lighter.",
-        "Increment window.__threeFrameCount in the render step. Emit the local importmap before the first module script. No https:// anywhere.",
-        "Marker shape: {recipe: 'recipe.three-marble', components: [...all used component ids...]}."
-      ],
-      "notes": "Use ui.info-panel for the instructions/how-to-play box (collapsible to a small 'i' icon so it doesn't dominate the view); keep score/HUD compact and separate."
-    },
-    {
-      "id": "recipe.three-tower-defense",
-      "name": "3D Tower Defense",
-      "promptName": "3d tower defense",
-      "runtime": "vanilla-es6-modules",
-      "importStyle": "local-importmap",
-      "keywords": [
-        "3d tower defense",
-        "tower defense",
-        "defend the crystal",
-        "creep waves",
-        "place turrets",
-        "td game",
-        "wave defense",
-        "3d td",
-        "defend base",
-        "lane defense"
-      ],
-      "starterComponents": [
-        "core.three-game-loop",
-        "core.three-scene-rig",
-        "ui.three-hud-overlay",
-        "controls.one-button-action",
-        "effects.fog-atmosphere",
-        "resources.three-core",
-        "ui.info-panel"
-      ],
-      "requiredComponents": [
-        "core.three-game-loop",
-        "core.three-scene-rig",
-        "ui.three-hud-overlay",
-        "resources.three-core",
-        "systems.spawn-wave-3d"
-      ],
-      "optionalComponents": [
-        "controls.one-button-action",
-        "effects.fog-atmosphere",
-        "effects.gradient-skybox",
-        "ui.info-panel",
-        "models.procedural-creatures-3d",
-        "effects.instanced-particle-pool",
-        "effects.audio-manager-3d",
-        "effects.blob-shadow",
-        "controls.camera-rig-3d",
-        "effects.postfx-bloom-3d",
-        "controls.input-manager-3d",
-        "systems.save-state-3d",
-        "effects.particle-presets-3d"
-      ],
-      "assemblyNotes": [
-        "Orbit or fixed top-down-angled camera over a fixed map. Creeps path-follow a fixed spline from spawn to the crystal; the player taps grid cells to place turrets (input.actionA plus a raycast to pick the cell).",
-        "Render creeps and projectiles as InstancedMesh pools and recycle them. Hand-roll wave timing and turret targeting; no physics engine needed. Keep draw calls under 100.",
-        "Defend-the-crystal is the lowest-risk smoke test for the local-importmap path: no physics, no procedural streaming, a fixed scene.",
-        "Increment window.__threeFrameCount in the render step. Emit the local importmap before the first module script. No https:// anywhere.",
-        "Marker shape: {recipe: 'recipe.three-tower-defense', components: [...all used component ids...]}."
-      ],
-      "notes": "Use ui.info-panel for the instructions/how-to-play box (collapsible to a small 'i' icon so it doesn't dominate the view); keep score/HUD compact and separate."
-    },
-    {
-      "id": "recipe.lowpoly-orbit-diorama",
-      "name": "Low-Poly Orbit Diorama",
-      "promptName": "low-poly orbit diorama",
-      "runtime": "vanilla-es6-modules",
-      "importStyle": "local-importmap",
-      "keywords": [
-        "low poly",
-        "low-poly",
-        "lowpoly",
-        "diorama",
-        "floating island",
-        "faceted",
-        "stylized 3d scene",
-        "orbit scene",
-        "spin around",
-        "low poly planet",
-        "low poly terrain",
-        "papercraft 3d",
-        "flat shaded"
-      ],
-      "starterComponents": [
-        "core.lowpoly-canvas3d",
-        "ui.info-panel"
-      ],
-      "requiredComponents": [
-        "core.lowpoly-canvas3d"
-      ],
-      "optionalComponents": [
-        "ui.info-panel",
-        "models.lowpoly-props-3d",
-        "models.lowpoly-vehicles-3d",
-        "effects.postfx-bloom-3d"
-      ],
-      "notes": "Dependency-free track: NO three.js, NO WebGL, NO vendored core needed. Import core.lowpoly-canvas3d and write only the scene-specific faces (use mesh.cone/box/ringSurface). Soft accelerator - suggested, never gated; the CLI may also hand-roll or use the three.js track for richer scenes. Use ui.info-panel for the instructions/how-to-play box (collapsible to a small 'i' icon so it doesn't dominate the view); keep score/HUD compact and separate."
-    },
-    {
-      "id": "recipe.fps-shooter",
-      "name": "First-Person Shooter / Walker",
-      "promptName": "first-person 3d",
-      "runtime": "vanilla-es6-modules",
-      "importStyle": "local-importmap",
-      "keywords": [
-        "doom",
-        "fps",
-        "first person shooter",
-        "first-person",
-        "mouse look",
-        "pointer lock",
-        "dungeon crawler",
-        "maze shooter",
-        "walk around in 3d",
-        "wave survival",
-        "blaster arena"
-      ],
-      "starterComponents": [
-        "controls.fps-controller",
-        "core.three-scene-rig",
-        "core.three-game-loop",
-        "ui.three-hud-overlay",
-        "effects.fog-atmosphere",
-        "resources.three-core",
-        "ui.info-panel"
-      ],
-      "requiredComponents": [
-        "controls.fps-controller",
-        "core.three-scene-rig",
-        "resources.three-core"
-      ],
-      "optionalComponents": [
-        "core.three-game-loop",
-        "ui.three-hud-overlay",
-        "effects.fog-atmosphere",
-        "effects.screen-shake",
-        "ui.info-panel",
-        "models.lowpoly-characters-3d",
-        "models.lowpoly-props-3d",
-        "controls.camera-rig-3d",
-        "effects.instanced-particle-pool",
-        "effects.audio-manager-3d",
-        "effects.blob-shadow",
-        "models.procedural-creatures-3d",
-        "systems.spawn-wave-3d",
-        "models.gltf-model-player-3d",
-        "controls.input-manager-3d",
-        "effects.postfx-bloom-3d",
-        "systems.save-state-3d",
-        "effects.particle-presets-3d"
-      ],
-      "notes": "controls.fps-controller gives pointer-lock + WASD + built-in wall collision (pass colliders). Build the level geometry + enemies; let the controller handle movement/look. Soft accelerator, never gated. Use ui.info-panel for the instructions/how-to-play box (collapsible to a small 'i' icon so it doesn't dominate the view); keep score/HUD compact and separate."
-    },
-    {
-      "id": "recipe.voxel-sandbox",
-      "name": "Voxel / Minecraft Sandbox",
-      "promptName": "voxel minecraft 3d",
-      "runtime": "vanilla-es6-modules",
-      "importStyle": "local-importmap",
-      "keywords": [
-        "minecraft",
-        "voxel",
-        "block world",
-        "place blocks",
-        "mine blocks",
-        "build and destroy",
-        "blocky",
-        "sandbox world",
-        "voxel dungeon"
-      ],
-      "starterComponents": [
-        "systems.voxel-chunk-3d",
-        "controls.fps-controller",
-        "core.three-scene-rig",
-        "resources.three-core",
-        "ui.info-panel"
-      ],
-      "requiredComponents": [
-        "systems.voxel-chunk-3d",
-        "controls.fps-controller",
-        "core.three-scene-rig",
-        "resources.three-core"
-      ],
-      "optionalComponents": [
-        "effects.fog-atmosphere",
-        "ui.three-hud-overlay",
-        "ui.info-panel",
-        "models.lowpoly-characters-3d",
-        "systems.save-state-3d"
-      ],
-      "notes": "systems.voxel-chunk-3d: terrain + DDA raycast (place/destroy) + culled mesh data + colliders for the FPS controller. Wrap buildMeshData() output in THREE.BufferGeometry. Use ui.info-panel for the instructions/how-to-play box (collapsible to a small 'i' icon so it doesn't dominate the view); keep score/HUD compact and separate."
-    },
-    {
-      "id": "recipe.arcade-physics",
-      "name": "Arcade Physics (kart/marble/pinball)",
-      "promptName": "arcade physics 3d",
-      "runtime": "vanilla-es6-modules",
-      "importStyle": "local-importmap",
-      "keywords": [
-        "kart racer",
-        "go-kart",
-        "marble",
-        "roll the ball",
-        "ball maze",
-        "mini golf",
-        "pinball",
-        "physics game",
-        "drift"
-      ],
-      "starterComponents": [
-        "systems.kinematic-body-3d",
-        "core.three-scene-rig",
-        "resources.three-core",
-        "ui.info-panel"
-      ],
-      "requiredComponents": [
-        "systems.kinematic-body-3d",
-        "core.three-scene-rig",
-        "resources.three-core"
-      ],
-      "optionalComponents": [
-        "core.three-game-loop",
-        "ui.three-hud-overlay",
-        "effects.screen-shake",
-        "ui.info-panel",
-        "models.lowpoly-vehicles-3d",
-        "models.lowpoly-props-3d",
-        "controls.camera-rig-3d",
-        "effects.audio-manager-3d",
-        "controls.tilt-input",
-        "controls.input-manager-3d",
-        "systems.save-state-3d"
-      ],
-      "notes": "systems.kinematic-body-3d: substep swept physics + sphere-vs-AABB slide + rollingQuaternion. Walls slide, don't stop dead. Build the track/board; step the body each frame. Use ui.info-panel for the instructions/how-to-play box (collapsible to a small 'i' icon so it doesn't dominate the view); keep score/HUD compact and separate."
-    },
-    {
-      "id": "recipe.three-rpg",
-      "name": "3D Action RPG",
-      "promptName": "3d rpg",
-      "runtime": "vanilla-es6-modules",
-      "importStyle": "local-importmap",
-      "keywords": [
-        "3d rpg",
-        "action rpg",
-        "top-down rpg",
-        "zelda-like",
-        "dungeon rpg",
-        "hack and slash",
-        "adventure rpg",
-        "quest game",
-        "explore and fight"
-      ],
-      "starterComponents": [
-        "core.three-game-loop",
-        "core.three-scene-rig",
-        "ui.three-hud-overlay",
-        "resources.three-core",
-        "models.procedural-creatures-3d",
-        "controls.camera-rig-3d",
-        "systems.heightmap-terrain-3d",
-        "effects.audio-manager-3d",
-        "effects.blob-shadow",
-        "controls.virtual-joystick-3d",
-        "ui.info-panel"
-      ],
-      "requiredComponents": [
-        "core.three-game-loop",
-        "core.three-scene-rig",
-        "ui.three-hud-overlay",
-        "resources.three-core",
-        "models.procedural-creatures-3d",
-        "controls.camera-rig-3d"
-      ],
-      "optionalComponents": [
-        "systems.heightmap-terrain-3d",
-        "effects.audio-manager-3d",
-        "effects.blob-shadow",
-        "effects.instanced-particle-pool",
-        "effects.screen-shake",
-        "models.lowpoly-props-3d",
-        "controls.virtual-joystick-3d",
-        "ui.info-panel",
-        "models.gltf-model-player-3d",
-        "controls.input-manager-3d",
-        "systems.spawn-wave-3d",
-        "effects.postfx-bloom-3d",
-        "systems.save-state-3d",
-        "ui.minimap-3d",
-        "effects.particle-presets-3d"
-      ],
-      "notes": "Use controls.camera-rig-3d in FOLLOW (top-down) or CHASE mode; setTarget(player); rig.update(dt). Spawn enemies with models.procedural-creatures-3d (buildCreature) and ANIMATE them every frame via animateCreature(group,{clip:enemy.state,t}) so they walk/attack/die instead of T-posing (tjs-018). Ground entities on systems.heightmap-terrain-3d via heightAt(x,z). Route SFX through effects.audio-manager-3d (no audio files, tjs-019). Give each creature an effects.blob-shadow so it reads as grounded with one shadow light. Structure the game as a pure sim.step(dt,input) + render(state) (tjs-020). Soft accelerator, never gated."
-    },
-    {
-      "id": "recipe.three-survival",
-      "name": "3D Wave Survival",
-      "promptName": "3d survival",
-      "runtime": "vanilla-es6-modules",
-      "importStyle": "local-importmap",
-      "keywords": [
-        "3d survival",
-        "survive waves",
-        "horde survival",
-        "wave defense 3d",
-        "last stand",
-        "zombie survival",
-        "vampire survivors 3d",
-        "arena survival",
-        "kill the horde"
-      ],
-      "starterComponents": [
-        "core.three-game-loop",
-        "core.three-scene-rig",
-        "ui.three-hud-overlay",
-        "resources.three-core",
-        "models.procedural-creatures-3d",
-        "controls.camera-rig-3d",
-        "effects.instanced-particle-pool",
-        "effects.screen-shake",
-        "effects.audio-manager-3d",
-        "effects.blob-shadow",
-        "controls.virtual-joystick-3d",
-        "ui.info-panel"
-      ],
-      "requiredComponents": [
-        "core.three-game-loop",
-        "core.three-scene-rig",
-        "ui.three-hud-overlay",
-        "resources.three-core",
-        "models.procedural-creatures-3d",
-        "controls.camera-rig-3d",
-        "effects.instanced-particle-pool",
-        "systems.spawn-wave-3d"
-      ],
-      "optionalComponents": [
-        "systems.heightmap-terrain-3d",
-        "effects.audio-manager-3d",
-        "effects.blob-shadow",
-        "effects.screen-shake",
-        "controls.virtual-joystick-3d",
-        "ui.info-panel",
-        "effects.postfx-bloom-3d",
-        "controls.input-manager-3d",
-        "systems.save-state-3d",
-        "ui.minimap-3d",
-        "effects.particle-presets-3d"
-      ],
-      "notes": "Endless escalating waves of animated creatures (models.procedural-creatures-3d + animateCreature, tjs-018). Camera in CHASE or FOLLOW via controls.camera-rig-3d. Pool ALL projectiles/particles through effects.instanced-particle-pool (tjs-009) and pool enemy blob shadows via BlobShadowPool. addTrauma on hits to effects.screen-shake AFTER rig.update. Procedural SFX via effects.audio-manager-3d (tjs-019). Win = survive N waves; lose = health 0 with a clear overlay + Restart (tjs-016). Soft accelerator, never gated."
-    },
-    {
-      "id": "recipe.three-flight",
-      "name": "3D Flight / Dogfight",
-      "promptName": "3d flight",
-      "runtime": "vanilla-es6-modules",
-      "importStyle": "local-importmap",
-      "keywords": [
-        "3d flight",
-        "flight sim",
-        "fly a plane",
-        "dogfight",
-        "space flyer",
-        "flight combat",
-        "barnstormer",
-        "arcade flight",
-        "fly through rings"
-      ],
-      "starterComponents": [
-        "core.three-game-loop",
-        "core.three-scene-rig",
-        "ui.three-hud-overlay",
-        "resources.three-core",
-        "controls.camera-rig-3d",
-        "models.lowpoly-vehicles-3d",
-        "effects.fog-atmosphere",
-        "effects.gradient-skybox",
-        "systems.heightmap-terrain-3d",
-        "effects.audio-manager-3d",
-        "ui.info-panel"
-      ],
-      "requiredComponents": [
-        "core.three-game-loop",
-        "core.three-scene-rig",
-        "ui.three-hud-overlay",
-        "resources.three-core",
-        "controls.camera-rig-3d"
-      ],
-      "optionalComponents": [
-        "systems.heightmap-terrain-3d",
-        "models.lowpoly-vehicles-3d",
-        "effects.fog-atmosphere",
-        "effects.gradient-skybox",
-        "effects.instanced-particle-pool",
-        "effects.audio-manager-3d",
-        "controls.virtual-joystick-3d",
-        "ui.info-panel",
-        "controls.input-manager-3d",
-        "effects.postfx-bloom-3d",
-        "systems.save-state-3d",
-        "ui.minimap-3d"
-      ],
-      "notes": "Camera in CHASE mode with a high lookAhead so the path/horizon stays framed (controls.camera-rig-3d, tjs-017/021). Use models.lowpoly-vehicles-3d buildPlane/buildSpaceship (spin the named 'propeller' part). effects.gradient-skybox + effects.fog-atmosphere sell altitude and hide pop-in. Fly over systems.heightmap-terrain-3d; sample heightAt to crash on the ground. Procedural engine/SFX via effects.audio-manager-3d (tjs-019). Delta-time flight model (tjs-006). Soft accelerator, never gated."
-    }
-  ],
-  "sourceCatalogs": [],
-  "absorptionProcess": [
-    "1. Author the module as an ES module under the matching category dir (core/ controls/ effects/ ui/ systems/ entities/). Wrap the body in the // BEGIN and // END mChatAI Web Component: <id> markers.",
-    "2. Add a component entry here with id, name, category, path, exports, status, summary, tags, and an optional nested contracts dict.",
-    "3. dispose-on-teardown: free every geometry, material, texture, and render target. Pool particles and projectiles.",
-    "4. Verify in a REAL WKWebView (hasWebGLContext true, window.__threeFrameCount greater than zero, errorCount zero), not headless Chrome.",
-    "5. Run tests/check_component_usage_3d.mjs to confirm the local-importmap gate, claimed imports present, and vendored core on disk. Confirm catalogRecipeCount via the diagWebComponentMatch tunnel command after every _index.json edit (Python validating is not Swift happy)."
-  ],
-  "goldenAssemblies": [
-    {
-      "id": "assembly.arena-shooter",
-      "name": "Drone Arena (first-person wave shooter)",
-      "summary": "Complete, verified-playable first-person wave shooter. Clone + reskin it. Drag-look + WASD + on-screen touch controls (NO pointer-lock, so it works in the in-app preview AND on mobile AND the hub), real low-poly drone enemies, raycast shooting, chasing enemy AI, waves, health, score, juice, collapsible HUD. All offline.",
-      "recipeID": "recipe.fps-shooter",
-      "templateIDs": [],
-      "keywords": [
-        "arena shooter",
-        "wave shooter",
-        "first person shooter",
-        "fps",
-        "shoot enemies",
-        "drone shooter",
-        "blaster arena",
-        "survive waves",
-        "first-person shooter"
-      ],
-      "files": [
-        "golden/arena-shooter/index.html"
-      ],
-      "notes": [
-        "Drag-to-look (NEVER pointer-lock) + on-screen touch joystick/buttons.",
-        "Reuse the imported modules verbatim; reskin the theme, enemy types, and arena, not the controller/models/panel internals."
-      ]
-    }
+  "entryPoints": [
+   "core/three-game-loop.js",
+   "core/three-scene-rig.js",
+   "ui/three-hud-overlay.js",
+   "effects/fog-atmosphere.js",
+   "effects/gradient-skybox.js",
+   "controls/virtual-joystick-3d.js",
+   "controls/one-button-action.js"
   ]
+ },
+ "categories": [
+  {
+   "id": "core",
+   "displayName": "Core Engines",
+   "description": "Game loop and scene rig. Every 3D game imports both. Fixed-timestep update(dt), interpolated render, WebGL2 renderer build, lighting recipe, dispose-on-teardown."
+  },
+  {
+   "id": "controls",
+   "displayName": "Controls",
+   "description": "Unified input layer. All sources (keyboard, pointer, touch) populate a single input state {move, look, actionA, actionB}; genre logic never branches on device."
+  },
+  {
+   "id": "effects",
+   "displayName": "Effects",
+   "description": "Reusable presentation wins: atmosphere fog, gradient skybox, pooled particles, screen shake. dispose-on-teardown and pooling enforced."
+  },
+  {
+   "id": "ui",
+   "displayName": "UI",
+   "description": "Absolutely-positioned HTML/CSS overlays drawn over the WebGL canvas. HUD, score, pause, restart, and reuse of 2D game-over-with-rank for sign-in CTA parity."
+  },
+  {
+   "id": "resources",
+   "displayName": "Resources",
+   "description": "Vendored three.js bundle and addon families. External-bundle markers; the actual binaries live in resources/three/ and are copied into each installed artifact."
+  },
+  {
+   "id": "systems",
+   "displayName": "Systems",
+   "description": "Reusable engine systems: voxel world (DDA raycast + chunk mesh), endless scroller (segment recycling + pools), and kinematic physics (substep swept collision). Dependency-free; feed colliders to controls.fps-controller."
+  },
+  {
+   "id": "models",
+   "displayName": "Models",
+   "description": "Procedural low-poly 3D model builders: ships, enemies, characters, props, nature. buildX(THREE, opts) -> THREE.Group. Use these instead of bare blocks so games look like real 3D."
+  },
+  {
+   "id": "raycast",
+   "displayName": "Raycast (2.5D)",
+   "description": "Pure 2D-canvas Wolfenstein/Doom-style software raycasting -- ZERO three.js/WebGL, fully offline. DDA grid wall casting, z-buffer billboard sprites, ASCII+procedural grid maps, drag-look first-person mover (NEVER pointer lock), and grid enemy AI. The 2.5D alternative to the three.js FPS recipes."
+  }
+ ],
+ "components": [
+  {
+   "id": "core.three-game-loop",
+   "name": "ThreeGameLoop",
+   "category": "core",
+   "path": "core/three-game-loop.js",
+   "exports": [
+    "ThreeGameLoop"
+   ],
+   "status": "ready",
+   "summary": "renderer.setAnimationLoop baseplate with fixed-timestep accumulator update(dt) plus interpolated render, dt clamp, MENU/PLAYING/PAUSED/GAMEOVER state machine, resize plus visibilitychange plus DPR clamp, audio-unlock on first tap, dispose() teardown. Increments window.__threeFrameCount every rendered frame.",
+   "tags": [
+    "engine",
+    "loop",
+    "fixed-timestep",
+    "three",
+    "webgl2",
+    "miniapp"
+   ],
+   "contracts": {
+    "systemUpdate": "system.update(dt, ctx)",
+    "systemRender": "system.render(alpha, ctx)",
+    "systemLifecycle": [
+     "system.dispose()"
+    ],
+    "frameProbe": "window.__threeFrameCount increments once per rendered frame",
+    "states": [
+     "MENU",
+     "PLAYING",
+     "PAUSED",
+     "GAMEOVER"
+    ]
+   },
+   "goodFits": [
+    "runner",
+    "racer",
+    "flight",
+    "fps",
+    "tower-defense",
+    "platformer",
+    "marble",
+    "rhythm"
+   ]
+  },
+  {
+   "id": "core.three-scene-rig",
+   "name": "ThreeSceneRig",
+   "category": "core",
+   "path": "core/three-scene-rig.js",
+   "exports": [
+    "ThreeSceneRig"
+   ],
+   "status": "ready",
+   "summary": "Scene, perspective camera, and WebGL2 WebGLRenderer build with DPR clamp. Lighting recipe: one DirectionalLight sun plus one HemisphereLight fill. ACESFilmicToneMapping plus SRGBColorSpace output. renderer.info draw-call monitor hook. dispose() frees the renderer and traverses the scene freeing geometries, materials, and textures.",
+   "tags": [
+    "scene",
+    "camera",
+    "renderer",
+    "lighting",
+    "three",
+    "webgl2"
+   ],
+   "contracts": {
+    "build": "new ThreeSceneRig({ canvas, fov, dprMax }) -> { scene, camera, renderer }",
+    "lighting": "1 DirectionalLight sun + 1 HemisphereLight fill",
+    "toneMapping": "ACESFilmicToneMapping",
+    "colorSpace": "SRGBColorSpace",
+    "drawCallHook": "rig.drawCalls() reads renderer.info.render.calls"
+   },
+   "goodFits": [
+    "runner",
+    "racer",
+    "flight",
+    "fps",
+    "tower-defense",
+    "platformer",
+    "marble",
+    "rhythm",
+    "exploration"
+   ]
+  },
+  {
+   "id": "ui.three-hud-overlay",
+   "name": "ThreeHudOverlay",
+   "category": "ui",
+   "path": "ui/three-hud-overlay.js",
+   "exports": [
+    "ThreeHudOverlay"
+   ],
+   "status": "ready",
+   "summary": "Absolutely-positioned HTML/CSS overlay over the WebGL canvas. Score, message line, tap-to-start gate, pause button, and restart control. Pure DOM (no WebGL), re-skinnable per swatch. Provides the user-gesture audio-unlock entry point and the terminal-phase restart required by u-029.",
+   "tags": [
+    "hud",
+    "overlay",
+    "ui",
+    "score",
+    "restart",
+    "three"
+   ],
+   "contracts": {
+    "build": "new ThreeHudOverlay({ host, onStart, onRestart, onPause })",
+    "setScore": "hud.setScore(n)",
+    "setMessage": "hud.setMessage(text)",
+    "showStart": "hud.showStart() / hud.hideStart()",
+    "showGameOver": "hud.showGameOver({ score })"
+   },
+   "goodFits": [
+    "any-3d-game"
+   ]
+  },
+  {
+   "id": "effects.fog-atmosphere",
+   "name": "FogAtmosphere",
+   "category": "effects",
+   "path": "effects/fog-atmosphere.js",
+   "exports": [
+    "FogAtmosphere"
+   ],
+   "status": "ready",
+   "summary": "Exponential or linear scene fog tuned to a horizon color, plus a matching renderer clear color so the far plane dissolves into atmosphere. Cheap depth cue that also hides geometry pop-in on procedural tracks. dispose() detaches the fog and restores the prior clear color.",
+   "tags": [
+    "fog",
+    "atmosphere",
+    "depth",
+    "three",
+    "performance"
+   ],
+   "contracts": {
+    "apply": "new FogAtmosphere({ scene, renderer, color, density, mode })",
+    "modes": [
+     "exp2",
+     "linear"
+    ],
+    "dispose": "fog.dispose() restores scene.fog and renderer clear color"
+   },
+   "goodFits": [
+    "runner",
+    "racer",
+    "flight",
+    "exploration",
+    "tower-defense"
+   ]
+  },
+  {
+   "id": "effects.gradient-skybox",
+   "name": "GradientSkybox",
+   "category": "effects",
+   "path": "effects/gradient-skybox.js",
+   "exports": [
+    "GradientSkybox"
+   ],
+   "status": "ready",
+   "summary": "Large back-side sphere with a vertical gradient ShaderMaterial (top color to horizon color), rendered without depth write so it sits behind everything. Zero textures, zero network. dispose() frees the geometry and material.",
+   "tags": [
+    "skybox",
+    "gradient",
+    "shader",
+    "background",
+    "three"
+   ],
+   "contracts": {
+    "build": "new GradientSkybox({ scene, top, bottom, radius })",
+    "setColors": "sky.setColors(top, bottom)",
+    "dispose": "sky.dispose() removes the mesh and frees geometry/material"
+   },
+   "goodFits": [
+    "runner",
+    "racer",
+    "flight",
+    "exploration",
+    "marble"
+   ]
+  },
+  {
+   "id": "effects.instanced-particle-pool",
+   "name": "InstancedParticlePool",
+   "category": "effects",
+   "path": "effects/instanced-particle-pool.js",
+   "exports": [
+    "InstancedParticlePool"
+   ],
+   "status": "ready",
+   "summary": "A single additive-blended THREE.Points cloud that recycles a fixed pool of particles with ZERO per-frame allocation. Buffers are pre-allocated once; a free-list head pointer reuses dead slots and a round-robin overflow makes bursts degrade gracefully instead of dropping spawns. spawn(point, opts) emits one particle; spawnBurst(point, { count, speed, color, life }) emits a cluster for explosions/sparks/pickups/trails. update(dt) integrates motion with gravity and fade. The convergence target every particle effect should route through (tjs-009).",
+   "tags": [
+    "particles",
+    "pool",
+    "additive",
+    "explosion",
+    "sparks",
+    "trail",
+    "three",
+    "performance"
+   ],
+   "contracts": {
+    "build": "new InstancedParticlePool({ capacity, size, color, gravity, drag, blending, fadeOut })",
+    "mount": "scene.add(pool.object3d)",
+    "spawn": "pool.spawnBurst(point, { count, speed, color, life })",
+    "frame": "pool.update(dt)",
+    "dispose": "pool.dispose() frees geometry and material"
+   },
+   "goodFits": [
+    "shooter",
+    "explosions",
+    "pickups",
+    "impact-fx",
+    "trails",
+    "fireworks"
+   ]
+  },
+  {
+   "id": "effects.screen-shake",
+   "name": "ScreenShake",
+   "category": "effects",
+   "path": "effects/screen-shake.js",
+   "exports": [
+    "ScreenShake"
+   ],
+   "status": "ready",
+   "summary": "Trauma-based camera shake (the Vlambeer/Eiserloh model). Game code calls addTrauma(x) on impacts; the screen offset scales with trauma SQUARED so small trauma is subtle and big trauma is violent, and trauma decays linearly so the shake always settles. The offset is applied in view space AFTER the camera rig sets the base pose and fully reverted next frame, so it composes with chase/follow/orbit cameras instead of fighting them.",
+   "tags": [
+    "screen-shake",
+    "camera",
+    "juice",
+    "trauma",
+    "impact",
+    "three"
+   ],
+   "contracts": {
+    "build": "new ScreenShake({ maxOffset, maxRoll, maxPitchYaw, frequency, decay })",
+    "trauma": "shake.addTrauma(0.7) on a big hit",
+    "frame": "shake.update(dt, camera) AFTER the camera rig sets the base transform",
+    "reset": "shake.reset(camera) removes any residual offset"
+   },
+   "goodFits": [
+    "shooter",
+    "racer",
+    "marble",
+    "platformer",
+    "tower-defense"
+   ]
+  },
+  {
+   "id": "effects.blob-shadow",
+   "name": "BlobShadow",
+   "category": "effects",
+   "path": "effects/blob-shadow.js",
+   "exports": [
+    "BlobShadow",
+    "BlobShadowPool"
+   ],
+   "status": "ready",
+   "summary": "Cheap fake contact shadows so the scene can keep exactly ONE shadow-casting light (the sun) per tjs-010 while every entity still reads as grounded. A soft radial-gradient disc (canvas-generated, zero image files) lies flat under an entity. BlobShadow handles one important object (the player); BlobShadowPool backs many discs with a single InstancedMesh (one draw call) for crowds of enemies/props, claimed and released like a free-list.",
+   "tags": [
+    "shadow",
+    "contact-shadow",
+    "blob",
+    "grounding",
+    "instanced",
+    "three",
+    "performance"
+   ],
+   "contracts": {
+    "single": "const s = new BlobShadow({ scene, radius, opacity }); s.followGround(playerMesh, groundY)",
+    "pool": "const sh = new BlobShadowPool({ scene, capacity }); const id = sh.claim(); sh.place(id, enemy, groundY); sh.release(id)",
+    "jump": "s.setStrength(0..1) to fade/shrink the disc as an entity rises",
+    "dispose": "s.dispose() / sh.dispose() frees geometry, material, and the shared texture"
+   },
+   "goodFits": [
+    "shooter",
+    "rpg",
+    "survival",
+    "platformer",
+    "tower-defense",
+    "runner"
+   ]
+  },
+  {
+   "id": "effects.audio-manager-3d",
+   "name": "AudioManager3D",
+   "category": "effects",
+   "path": "effects/audio-manager-3d.js",
+   "exports": [
+    "AudioManager3D"
+   ],
+   "status": "ready",
+   "summary": "Procedural sound for 3D games with ZERO audio files (the World of ClaudeCraft pattern). Every SFX is synthesized at play time from oscillator + gain + filter graphs with ADSR envelopes -- no .mp3/.wav fetches to break offline under file://, no bytes. Owns one AudioContext and hands it to core.three-game-loop via attachTo(loop) so the loop's existing first-tap unlock resumes it; until then play() is a safe no-op and the game stays fully playable, just muted (tjs-012). Built-in presets: shoot/hit/explosion/pickup/coin/levelup/jump/footstep/ui/hurt/powerup. Pass a position to spatialize via THREE.PositionalAudio (camera + THREE required); otherwise plays in 2D.",
+   "tags": [
+    "audio",
+    "sfx",
+    "procedural",
+    "webaudio",
+    "synth",
+    "positional",
+    "no-audio-files",
+    "three"
+   ],
+   "contracts": {
+    "build": "new AudioManager3D({ camera, THREE, masterGain })",
+    "unlock": "audio.attachTo(loop) -- reuses core.three-game-loop first-tap unlock; never block the render loop on audio",
+    "play2d": "audio.play('shoot')",
+    "play3d": "audio.play('hit', { position: enemy.position })",
+    "mute": "audio.setMuted(true) / audio.toggleMuted() -- game stays playable while muted",
+    "custom": "audio.defineSfx(name, { duration, voices:[...] })",
+    "dispose": "audio.dispose() mutes (does not close a shared context)"
+   },
+   "goodFits": [
+    "shooter",
+    "rpg",
+    "survival",
+    "runner",
+    "racer",
+    "any-action-game"
+   ]
+  },
+  {
+   "id": "controls.virtual-joystick-3d",
+   "name": "VirtualJoystick3D",
+   "category": "controls",
+   "path": "controls/virtual-joystick-3d.js",
+   "exports": [
+    "VirtualJoystick3D"
+   ],
+   "status": "ready",
+   "summary": "Touch joystick that writes a normalized 2D move vector into the shared input state. Spawns under the thumb on touchstart, clamps to a radius, and releases to zero on touchend. Keyboard WASD and arrow keys feed the same move vector so genre logic never branches on device. Part of the unified {move, look, actionA, actionB} input contract.",
+   "tags": [
+    "input",
+    "joystick",
+    "touch",
+    "keyboard",
+    "three"
+   ],
+   "contracts": {
+    "build": "new VirtualJoystick3D({ host, input })",
+    "writes": "input.move = { x, y } in [-1, 1]",
+    "fallback": "WASD and arrow keys map to the same input.move",
+    "dispose": "joystick.dispose() removes listeners and DOM"
+   },
+   "goodFits": [
+    "runner",
+    "marble",
+    "exploration",
+    "platformer",
+    "fps"
+   ]
+  },
+  {
+   "id": "controls.one-button-action",
+   "name": "OneButtonAction",
+   "category": "controls",
+   "path": "controls/one-button-action.js",
+   "exports": [
+    "OneButtonAction"
+   ],
+   "status": "ready",
+   "summary": "Single primary-action input. Tap or click anywhere, Space, or an on-screen button all set input.actionA true for one frame (edge-triggered) and input.actionAHeld while held. Used for jump, fire, flap, place. Part of the unified input contract.",
+   "tags": [
+    "input",
+    "button",
+    "tap",
+    "keyboard",
+    "three"
+   ],
+   "contracts": {
+    "build": "new OneButtonAction({ host, input, label })",
+    "writes": "input.actionA (edge) and input.actionAHeld (held)",
+    "consume": "call input.consumeActionA() after handling the edge",
+    "dispose": "action.dispose() removes listeners and DOM"
+   },
+   "goodFits": [
+    "runner",
+    "flight",
+    "rhythm",
+    "tower-defense",
+    "platformer"
+   ]
+  },
+  {
+   "id": "resources.three-core",
+   "name": "three.js core (vendored)",
+   "category": "resources",
+   "path": "resources/three/three.module.min.js",
+   "exports": [
+    "THREE"
+   ],
+   "status": "external-bundle",
+   "externalBundle": true,
+   "summary": "Vendored three.js r160 core module. EXTERNAL BUNDLE MARKER ONLY: the binary is a separate large-file step and is NOT authored as Lego source. Referenced by the local importmap bare specifier 'three'. Copied into each installed artifact at resources/three/three.module.min.js. WebGL2 WebGLRenderer path only; never WebGPU.",
+   "tags": [
+    "three",
+    "vendored",
+    "webgl2",
+    "external-bundle",
+    "offline"
+   ],
+   "contracts": {
+    "importSpecifier": "import * as THREE from 'three'",
+    "importmap": "three -> ./resources/three/three.module.min.js",
+    "version": "r160",
+    "onDisk": "resources/three/three.module.min.js MUST exist in the installed bundle"
+   },
+   "goodFits": [
+    "any-3d-game"
+   ]
+  },
+  {
+   "id": "core.lowpoly-canvas3d",
+   "name": "LowPolyCanvas3D",
+   "category": "core",
+   "path": "core/lowpoly-canvas3d.js",
+   "exports": [
+    "LowPolyScene",
+    "OrbitCamera",
+    "mesh",
+    "vec3",
+    "mat4",
+    "seededRng",
+    "shade"
+   ],
+   "status": "ready",
+   "summary": "Dependency-free low-poly 3D on a plain 2D canvas (no three.js, no WebGL). Tiny vec3/mat4 math, flat-shaded painter's-algorithm triangle renderer with two-sided lighting and depth sort, a spherical OrbitCamera (drag/touch/pinch/wheel/auto-spin), mesh builders (cone, box, stacked-ring surface), seeded RNG and shade tint. Trivially offline-safe and identical in WKWebView/Safari/Chrome. The lightweight 'let it cook' 3D track for orbit dioramas; write only the scene-specific faces.",
+   "tags": [
+    "low-poly",
+    "canvas2d",
+    "no-dependencies",
+    "offline",
+    "orbit",
+    "diorama",
+    "painters-algorithm",
+    "flat-shaded"
+   ],
+   "contracts": {
+    "scene": "new LowPolyScene(canvas, { fov, ambient, diffuse, lightDir, background }) -> .render(faces, camera)",
+    "camera": "new OrbitCamera(canvas, { r, az, el, autoSpin }) -> .eye(), .update()",
+    "face": "{ v: [[x,y,z],[x,y,z],[x,y,z]], c: [r,g,b] }  (0-255 colors)",
+    "mesh": "mesh.cone/box/ringSurface(faces, opts) push faces; bring your own geometry",
+    "offline": "no imports beyond this module; renders to CanvasRenderingContext2D only"
+   },
+   "goodFits": [
+    "low-poly island",
+    "low-poly planet",
+    "diorama",
+    "terrain flythrough",
+    "floating scene",
+    "stylized town",
+    "faceted sculpture",
+    "orbit showpiece"
+   ]
+  },
+  {
+   "id": "controls.fps-controller",
+   "name": "FPSController",
+   "category": "controls",
+   "path": "controls/fps-controller.js",
+   "exports": [
+    "FPSController"
+   ],
+   "status": "ready",
+   "summary": "Universal first/third-person controller that WORKS WITHOUT POINTER LOCK (so it's playable in the mChatAI+ WKWebView preview AND on mobile AND the hub). Default DRAG-TO-LOOK (hold+drag; touch-drag on phones); pointer-lock is opt-in. Built-in on-screen TOUCH CONTROLS (movement joystick + action buttons, auto on touch devices). WASD + sprint + jump + gravity + swept-AABB wall-sliding (pass colliders). Quick tap/click or Space or a button fires onAction. applyToCamera(camera) for three.js.",
+   "tags": [
+    "fps",
+    "first-person",
+    "drag-look",
+    "mobile",
+    "touch",
+    "joystick",
+    "no-pointer-lock",
+    "collision"
+   ],
+   "contracts": {
+    "build": "new FPSController(domElement,{lookMode:'drag'|'pointerlock', position, eyeHeight, speed, gravity, jumpSpeed, colliders, actions:[{id,label}], onAction})",
+    "look": "DEFAULT drag-to-look (works in WKWebView+mobile); pointer-lock optional",
+    "touch": "auto on-screen joystick (move) + action buttons (shoot/jump) on touch devices",
+    "frame": "fps.update(dt); fps.applyToCamera(camera)"
+   },
+   "goodFits": [
+    "doom",
+    "fps",
+    "maze-walker",
+    "dungeon-crawler",
+    "voxel",
+    "escape-room",
+    "parkour",
+    "wave-shooter"
+   ]
+  },
+  {
+   "id": "controls.camera-rig-3d",
+   "name": "CameraRig",
+   "category": "controls",
+   "path": "controls/camera-rig-3d.js",
+   "exports": [
+    "CameraRig",
+    "CHASE",
+    "FOLLOW",
+    "ORBIT",
+    "RISE",
+    "FIRST_PERSON"
+   ],
+   "status": "ready",
+   "summary": "One camera controller with selectable modes so genre code never hand-rolls a bespoke camera (the top cause of the tjs-017 camera-pointed-away-from-the-action failure). CHASE trails behind + above with smoothed look-ahead toward velocity (runner/flight/racer); FOLLOW is an angled overhead lock (top-down RPG/strategy); ORBIT is spherical drag/wheel/pinch + optional auto-spin (showpiece/diorama); RISE climbs with the target (towers/jumpers); FIRST_PERSON is a pass-through no-op so controls.fps-controller owns the camera. setTarget(obj) + update(dt) each frame. Compose with effects.screen-shake by calling shake.update AFTER rig.update.",
+   "tags": [
+    "camera",
+    "chase",
+    "follow",
+    "orbit",
+    "third-person",
+    "look-ahead",
+    "smoothing",
+    "three"
+   ],
+   "contracts": {
+    "build": "new CameraRig({ camera, mode: CHASE, target, dom, distance, height, lookAhead, damping })",
+    "target": "rig.setTarget(player)",
+    "mode": "rig.setMode(FOLLOW)",
+    "frame": "rig.update(dt) each frame; for FPS games use FIRST_PERSON mode + controls.fps-controller",
+    "shakeOrder": "call effects.screen-shake update(dt, camera) AFTER rig.update(dt)",
+    "dispose": "rig.dispose() removes ORBIT input listeners"
+   },
+   "goodFits": [
+    "runner",
+    "racer",
+    "flight",
+    "rpg",
+    "survival",
+    "tower-defense",
+    "diorama",
+    "marble"
+   ]
+  },
+  {
+   "id": "systems.voxel-chunk-3d",
+   "name": "VoxelWorld",
+   "category": "systems",
+   "path": "systems/voxel-chunk-3d.js",
+   "exports": [
+    "VoxelWorld",
+    "BLOCK",
+    "CUSTOM_BASE",
+    "defaultColorForBlock"
+   ],
+   "status": "ready",
+   "summary": "Dependency-free voxel engine (the Minecraft seed): get/setBlock, generateTerrain(seed) (sinusoid-sum noise -> grass/dirt/stone), raycastVoxel(origin,dir) via Amanatides-Woo DDA returning hit block + face normal for place/destroy, buildMeshData(colorForBlock) -> {positions,normals,colors,indices} with hidden-face culling (wrap in THREE.BufferGeometry), and aabbsNear(pos,radius) -> colliders to feed the FPS controller. Ported from the proven raw-WebGL voxel-sandbox build.",
+   "tags": [
+    "voxel",
+    "minecraft",
+    "dda",
+    "raycast",
+    "chunk-mesh",
+    "terrain",
+    "blocks"
+   ],
+   "contracts": {
+    "build": "new VoxelWorld({chunkSize,height,noise})",
+    "gen": "world.generateTerrain(seed)",
+    "ray": "world.raycastVoxel(origin,dir,maxDist) -> {block,normal,hit}",
+    "mesh": "world.buildMeshData(colorForBlock) -> {positions,normals,colors,indices}",
+    "collide": "world.aabbsNear(pos,radius) -> [{min,max}] for FPSController colliders"
+   },
+   "goodFits": [
+    "minecraft-clone",
+    "voxel-sandbox",
+    "block-builder",
+    "voxel-dungeon"
+   ]
+  },
+  {
+   "id": "systems.heightmap-terrain-3d",
+   "name": "HeightmapTerrain",
+   "category": "systems",
+   "path": "systems/heightmap-terrain-3d.js",
+   "exports": [
+    "HeightmapTerrain",
+    "fbmNoise",
+    "sampleHeight"
+   ],
+   "status": "ready",
+   "summary": "Smooth procedural terrain (the continuous-landscape complement to the blocky systems.voxel-chunk-3d). Seeded fBm/value-noise height field -> buildMeshData() returns {positions,normals,colors,indices} typed arrays the caller wraps in ONE THREE.BufferGeometry = ONE draw call (tjs-004). Vertex-coloured by altitude+slope (grass/rock/snow) with no textures. heightAt(x,z) and normalAt(x,z) ground characters/vehicles on the real surface; slopeAt(x,z) gates standing/rolling. Optional waterLevel flattens lows. Dependency-free (returns numbers + typed arrays; caller owns THREE).",
+   "tags": [
+    "terrain",
+    "heightmap",
+    "fbm",
+    "noise",
+    "landscape",
+    "procedural",
+    "ground",
+    "mesh-data"
+   ],
+   "contracts": {
+    "build": "new HeightmapTerrain({ size, segments, amplitude, seed, frequency, octaves })",
+    "mesh": "terrain.buildMeshData() -> {positions,normals,colors,indices}; wrap in BufferGeometry (vertexColors:true, flatShading:true)",
+    "ground": "player.position.y = terrain.heightAt(x, z) + eyeHeight each frame",
+    "normal": "terrain.normalAt(x,z) -> [x,y,z]; terrain.slopeAt(x,z) -> radians",
+    "noise": "fbmNoise(x,z,seed,opts) standalone for clouds/scatter; pass opts.noise to override the field"
+   },
+   "goodFits": [
+    "survival",
+    "flight",
+    "rpg",
+    "racer",
+    "exploration",
+    "open-world"
+   ]
+  },
+  {
+   "id": "systems.endless-scroller-3d",
+   "name": "EndlessTrack",
+   "category": "systems",
+   "path": "systems/endless-scroller-3d.js",
+   "exports": [
+    "EndlessTrack",
+    "createPool",
+    "laneCollide",
+    "laneCollideAll",
+    "clampDelta",
+    "makeDeltaClamp"
+   ],
+   "status": "ready",
+   "summary": "Segment-recycling + typed object pool + lane collision: the infrastructure behind endless runners (extracted from neon-runner, cross-validated by coral-reef drift). EndlessTrack.update(playerZ) wraps the furthest-behind segment to the front and respawns its contents; createPool(make,reset) is a free-stack object pool; laneCollide(player,items,{laneWidth,hitDist}) returns the first hit. Multiplies the neon-runner genre.",
+   "tags": [
+    "endless-runner",
+    "recycling",
+    "object-pool",
+    "lane",
+    "neon-runner",
+    "infinite"
+   ],
+   "contracts": {
+    "build": "new EndlessTrack({segmentLength,segmentCount,lanes,spawn,recycle})",
+    "frame": "track.update(playerZ)",
+    "pool": "createPool(make,reset) -> {acquire,release,forEach,live}",
+    "collide": "laneCollide(player,items,{laneWidth,hitDist}) -> item|null"
+   },
+   "goodFits": [
+    "endless-runner",
+    "tunnel-racer",
+    "infinite-flyer",
+    "dodge-em",
+    "infinite-drift"
+   ]
+  },
+  {
+   "id": "systems.kinematic-body-3d",
+   "name": "KinematicBody",
+   "category": "systems",
+   "path": "systems/kinematic-body-3d.js",
+   "exports": [
+    "stepKinematic",
+    "sphereVsAABB",
+    "sphereVsAABBs",
+    "rollingQuaternion"
+   ],
+   "status": "ready",
+   "summary": "Pure-math substep physics for control games: stepKinematic(body,dt,{gravity,substeps,maxSpeed}) advances with substepping to prevent tunneling; sphereVsAABB / sphereVsAABBs resolve push-out + slide (don't stop dead); rollingQuaternion(prev,pos,radius) for ball/marble roll. Extracted from labyrinth + marble-run.",
+   "tags": [
+    "physics",
+    "substep",
+    "swept-collision",
+    "sphere-aabb",
+    "rolling",
+    "marble"
+   ],
+   "contracts": {
+    "step": "stepKinematic({pos,vel,radius}, dt, {gravity,substeps,maxSpeed})",
+    "resolve": "sphereVsAABB(center,radius,box) -> {hit,normal,depth}",
+    "roll": "rollingQuaternion(prevPos,pos,radius) -> [x,y,z,w]"
+   },
+   "goodFits": [
+    "kart-racer",
+    "ball-maze",
+    "marble-run",
+    "mini-golf",
+    "pinball"
+   ]
+  },
+  {
+   "id": "ui.info-panel",
+   "name": "InfoPanel",
+   "category": "ui",
+   "path": "ui/info-panel.js",
+   "exports": [
+    "createInfoPanel"
+   ],
+   "status": "ready",
+   "summary": "Collapsible instruction/info panel: a titled how-to-play box with a MINIMIZE button that shrinks it to a small round 'i' icon in the same corner, so the panel never dominates the view (click the icon to expand). Optional auto-collapse after N seconds. Dependency-free DOM+CSS over the WebGL canvas. Use for the instructions; keep the compact score/HUD separate.",
+   "tags": [
+    "ui",
+    "instructions",
+    "overlay",
+    "collapsible",
+    "minimize",
+    "immersion",
+    "hud"
+   ],
+   "contracts": {
+    "build": "createInfoPanel({title, html, corner, accent, autoCollapseMs}) -> {expand,collapse,toggle,destroy}",
+    "behavior": "minimize -> small round 'i' pill in the same corner; click to re-expand"
+   },
+   "goodFits": [
+    "any game or scene with instructions",
+    "how-to-play box",
+    "controls legend",
+    "scene blurb"
+   ]
+  },
+  {
+   "id": "models.lowpoly-vehicles-3d",
+   "name": "LowPolyVehicles",
+   "category": "models",
+   "path": "models/lowpoly-vehicles-3d.js",
+   "exports": [
+    "buildSpaceship",
+    "buildPlane",
+    "buildKart",
+    "buildBoat"
+   ],
+   "status": "ready",
+   "summary": "Ready-made low-poly VEHICLE models (no bare blocks): buildSpaceship (sleek fighter + engine glow), buildPlane (prop plane, named 'propeller' part to spin), buildKart (go-kart with wheels), buildBoat (sailboat). Each buildX(THREE, opts:{color,scale}) -> THREE.Group; THREE passed in (offline-safe, no import).",
+   "tags": [
+    "models",
+    "vehicles",
+    "spaceship",
+    "plane",
+    "kart",
+    "boat",
+    "low-poly"
+   ],
+   "contracts": {
+    "build": "buildSpaceship(THREE,{color,scale}) -> THREE.Group; same for buildPlane/buildKart/buildBoat",
+    "material": "flat-shaded MeshStandardMaterial; color = hex int or [r,g,b]"
+   },
+   "goodFits": [
+    "space shooter",
+    "flyer",
+    "racer",
+    "sailing"
+   ]
+  },
+  {
+   "id": "models.lowpoly-characters-3d",
+   "name": "LowPolyCharacters",
+   "category": "models",
+   "path": "models/lowpoly-characters-3d.js",
+   "exports": [
+    "buildRobot",
+    "buildDrone",
+    "buildAlienShip",
+    "buildSlime",
+    "buildBird"
+   ],
+   "status": "ready",
+   "summary": "Ready-made low-poly CHARACTER + ENEMY models: buildRobot (humanoid player), buildDrone (hovering enemy with glowing eye), buildAlienShip (UFO saucer), buildSlime (blob enemy), buildBird. Real enemies/characters instead of cubes. buildX(THREE, opts:{color,scale}) -> THREE.Group.",
+   "tags": [
+    "models",
+    "enemy",
+    "character",
+    "robot",
+    "drone",
+    "alien",
+    "slime",
+    "low-poly"
+   ],
+   "contracts": {
+    "build": "buildDrone(THREE,{color,scale}) -> THREE.Group (use as an enemy); buildRobot as a player; etc."
+   },
+   "goodFits": [
+    "fps enemies",
+    "platformer character",
+    "wave shooter",
+    "collectathon"
+   ]
+  },
+  {
+   "id": "models.lowpoly-props-3d",
+   "name": "LowPolyProps",
+   "category": "models",
+   "path": "models/lowpoly-props-3d.js",
+   "exports": [
+    "buildTree",
+    "buildRock",
+    "buildCrate",
+    "buildBarrel",
+    "buildCoin",
+    "buildGem",
+    "buildTurret",
+    "buildPortal"
+   ],
+   "status": "ready",
+   "summary": "Ready-made low-poly PROP + NATURE models: buildTree, buildRock, buildCrate, buildBarrel, buildCoin (gold), buildGem (emissive), buildTurret (rotatable head for tower defense), buildPortal (glowing gate). Decorate scenes + spawn pickups/obstacles. buildX(THREE, opts:{color,scale}) -> THREE.Group.",
+   "tags": [
+    "models",
+    "props",
+    "nature",
+    "tree",
+    "crate",
+    "coin",
+    "gem",
+    "turret",
+    "low-poly"
+   ],
+   "contracts": {
+    "build": "buildTree(THREE,{color,scale}) -> THREE.Group; buildCoin/buildGem for pickups; buildTurret for tower defense; buildCrate/buildBarrel/buildRock for obstacles"
+   },
+   "goodFits": [
+    "dioramas",
+    "tower defense",
+    "collectathon",
+    "arena props",
+    "nature scenes"
+   ]
+  },
+  {
+   "id": "models.procedural-creatures-3d",
+   "name": "ProceduralCreatures",
+   "category": "models",
+   "path": "models/procedural-creatures-3d.js",
+   "exports": [
+    "buildCreature",
+    "animateCreature",
+    "CREATURE_FAMILIES",
+    "makeCreatureRig"
+   ],
+   "status": "ready",
+   "summary": "RIGGED, ANIMATED low-poly creatures with ZERO asset files (the World of ClaudeCraft pattern). Unlike models.lowpoly-characters-3d (static shapes), each creature is built from NESTED PIVOT GROUPS and animated every frame by a tiny pose evaluator -- so enemies actually walk, attack, flinch, and die instead of sitting in a T-pose (the fix for tjs-013/tjs-014). Four archetypes reskinned into 15 families: biped (humanoid/skeleton/goblin/villager), quadruped (wolf/boar/dog/sheep), serpentine (spider/snake/dragon), floating (slime/wisp/eye/bird). Clips: idle/walk/attack/hit/death. No GLTF, no AnimationMixer, no loaders -- pure transform animation, offline-safe under file://.",
+   "tags": [
+    "models",
+    "creatures",
+    "enemy",
+    "animated",
+    "rigged",
+    "procedural",
+    "skeleton",
+    "wolf",
+    "dragon",
+    "spider",
+    "no-gltf",
+    "low-poly"
+   ],
+   "contracts": {
+    "build": "buildCreature(THREE, { family, color, scale, seed }) -> THREE.Group with userData.rig",
+    "animate": "animateCreature(group, { clip: 'idle'|'walk'|'attack'|'hit'|'death', t }) each frame (t = accumulated seconds; or pass { dt } to auto-advance)",
+    "families": "CREATURE_FAMILIES maps family -> archetype/colors; 15 families across 4 archetypes",
+    "rig": "makeCreatureRig(THREE, archetype, fam) -> { group, rig } for advanced callers"
+   },
+   "goodFits": [
+    "rpg",
+    "survival",
+    "fps enemies",
+    "dungeon crawler",
+    "wave shooter",
+    "adventure",
+    "tower defense creeps"
+   ]
+  },
+  {
+   "id": "models.gltf-model-player-3d",
+   "name": "GltfModelPlayer",
+   "category": "models",
+   "path": "models/gltf-model-player-3d.js",
+   "exports": [
+    "loadGltfModel",
+    "GltfAnimationPlayer",
+    "preloadGltf"
+   ],
+   "status": "ready",
+   "summary": "Thin wrapper over the vendored GLTFLoader + THREE.AnimationMixer: load a local .glb (or a base64-embedded GLB module from the built-in model library) and play its skeletal animations with one call -- loadGltfModel(THREE,{url|glbModule}) -> {scene,clips,mixer,play,crossFade,update,dispose}. This is the OPT-IN path for real GLB assets; models.procedural-creatures-3d (zero asset files) is the offline-first DEFAULT (tjs-018). Loads from a local URL or in-memory ArrayBuffer via GLTFLoader.parse, never the network. Disposes geometries/materials/textures on teardown (tjs-008).",
+   "tags": [
+    "models",
+    "gltf",
+    "glb",
+    "animation",
+    "mixer",
+    "skeletal",
+    "loader",
+    "three"
+   ],
+   "contracts": {
+    "load": "const m = await loadGltfModel(THREE, { url: './resources/models/knight.glb' })",
+    "embedded": "loadGltfModel(THREE, { glbModule: loadSkeletonWarrior }) for base64 library modules",
+    "play": "m.play('Run'); m.crossFade('Idle','Run',0.3)",
+    "frame": "m.update(dt) each frame",
+    "dispose": "m.dispose() frees the scene's GPU resources"
+   },
+   "goodFits": [
+    "rpg",
+    "dungeon crawler",
+    "adventure",
+    "showpiece",
+    "detailed-characters"
+   ]
+  },
+  {
+   "id": "systems.spawn-wave-3d",
+   "name": "SpawnWaveManager",
+   "category": "systems",
+   "path": "systems/spawn-wave-3d.js",
+   "exports": [
+    "SpawnWaveManager",
+    "makeWave"
+   ],
+   "status": "ready",
+   "summary": "Data-driven enemy/obstacle wave scheduler -- the backbone of horde, survival, and tower-defense loops. Declare waves as [{count,type,interval,delay}]; update(dt) fires onSpawn at the right times, tracks alive vs remaining, and fires onWaveClear/onAllClear so win/lose wiring is trivial (tjs-016). It schedules only -- you spawn the actual mesh (e.g. models.procedural-creatures-3d) in onSpawn and call notifyKilled() when one dies. Dependency-free.",
+   "tags": [
+    "waves",
+    "spawn",
+    "horde",
+    "survival",
+    "tower-defense",
+    "scheduler",
+    "enemies"
+   ],
+   "contracts": {
+    "build": "new SpawnWaveManager({ waves:[{count,type,interval,delay}], onSpawn, onWaveClear, onAllClear })",
+    "start": "mgr.start()",
+    "frame": "mgr.update(dt)",
+    "kill": "mgr.notifyKilled() when an enemy dies",
+    "helper": "makeWave(count, type, { interval, delay })"
+   },
+   "goodFits": [
+    "survival",
+    "wave shooter",
+    "tower defense",
+    "horde",
+    "arena"
+   ]
+  },
+  {
+   "id": "effects.postfx-bloom-3d",
+   "name": "BloomComposer",
+   "category": "effects",
+   "path": "effects/postfx-bloom-3d.js",
+   "exports": [
+    "BloomComposer"
+   ],
+   "status": "ready",
+   "summary": "One-call selective bloom over the vendored EffectComposer + RenderPass + UnrealBloomPass + OutputPass (all on disk). Wraps the composer (hand-wiring cross-imported postprocessing addons is a common file:// failure point): build, render(dt) instead of renderer.render, setSize(). WebGL2 capability check + graceful degrade to plain renderer.render if the composer can't build; frees render targets on dispose (tjs-008). Bloom adds passes -- keep DPR clamped (tjs-005).",
+   "tags": [
+    "bloom",
+    "postprocessing",
+    "glow",
+    "composer",
+    "neon",
+    "three"
+   ],
+   "contracts": {
+    "build": "new BloomComposer({ renderer, scene, camera, strength, radius, threshold })",
+    "render": "bloom.render(dt) in the loop INSTEAD of renderer.render(scene,camera)",
+    "resize": "bloom.setSize(w, h)",
+    "tune": "bloom.setStrength(v) / setThreshold(v) / setRadius(v)",
+    "dispose": "bloom.dispose() frees render targets"
+   },
+   "goodFits": [
+    "space",
+    "neon",
+    "marble",
+    "showpiece",
+    "arcade"
+   ]
+  },
+  {
+   "id": "controls.input-manager-3d",
+   "name": "InputManager3D",
+   "category": "controls",
+   "path": "controls/input-manager-3d.js",
+   "exports": [
+    "InputManager3D",
+    "createInputState"
+   ],
+   "status": "ready",
+   "summary": "The single OWNER of the unified input state { move:{x,y}, look:{x,y}, actionA, actionAHeld, actionB } that every control writes into. Wires keyboard (WASD/arrows + space/shift) and composes on-screen touch joystick + A/B buttons (touch devices) into ONE state object so genre logic never branches on device and never re-wires per game. consumeActionA()/consumeActionB() give one-shot edges; diagonal movement is normalized. Dependency-free (DOM only).",
+   "tags": [
+    "input",
+    "keyboard",
+    "touch",
+    "joystick",
+    "unified",
+    "controls"
+   ],
+   "contracts": {
+    "build": "new InputManager3D({ host, touch: true })",
+    "frame": "input.update(dt); read input.state.move / input.state.actionA",
+    "edge": "if (input.consumeActionA()) fire()  -- true exactly once per press",
+    "state": "createInputState() for a fresh shared state object",
+    "dispose": "input.dispose() removes listeners + on-screen controls"
+   },
+   "goodFits": [
+    "any-3d-game",
+    "runner",
+    "rpg",
+    "survival",
+    "shooter"
+   ]
+  },
+  {
+   "id": "controls.tilt-input",
+   "name": "TiltInput",
+   "category": "controls",
+   "path": "controls/tilt-input.js",
+   "exports": [
+    "TiltInput"
+   ],
+   "status": "ready",
+   "summary": "Device-orientation tilt that writes into the shared input.move for marble/balance/labyrinth games on phones. NEVER tilt-only: it always pairs with the keyboard/joystick fallback so the game is fully playable on desktop and in the WKWebView preview (tjs-mobile-friendly). iOS 13+ needs a tap-driven requestPermission(); degrades silently to the fallback if denied or absent. Dependency-free (DOM only); composes with controls.input-manager-3d via a shared state object.",
+   "tags": [
+    "tilt",
+    "device-orientation",
+    "gyroscope",
+    "mobile",
+    "marble",
+    "balance"
+   ],
+   "contracts": {
+    "build": "new TiltInput({ state: input.state })",
+    "permission": "from a tap on iOS: startButton.onclick = () => tilt.requestPermission()",
+    "frame": "tilt.update() each frame (blends tilt into shared move; keyboard still works)",
+    "dispose": "tilt.dispose()"
+   },
+   "goodFits": [
+    "marble",
+    "tilt maze",
+    "labyrinth",
+    "balance"
+   ]
+  },
+  {
+   "id": "systems.save-state-3d",
+   "name": "SaveState",
+   "category": "systems",
+   "path": "systems/save-state-3d.js",
+   "exports": [
+    "SaveState",
+    "saveState",
+    "loadState"
+   ],
+   "status": "ready",
+   "summary": "Tiny versioned localStorage wrapper for high scores, progress, and settings (localStorage works under file:// in WKWebView, so saves persist across restarts). Versioned with a migrate() hook so schema changes do not corrupt old saves, plus a safe in-memory fallback when storage is unavailable (private mode/quota/sandbox) -- the game never crashes on save. recordBest(field,value) returns true on a new high score. Dependency-free.",
+   "tags": [
+    "save",
+    "persistence",
+    "localstorage",
+    "high-score",
+    "progress",
+    "settings"
+   ],
+   "contracts": {
+    "build": "new SaveState({ key, version, defaults, migrate })",
+    "load": "const data = save.load()",
+    "best": "if (save.recordBest('best', score)) showNewBest()",
+    "field": "save.set('level', 3); save.get('best', 0)"
+   },
+   "goodFits": [
+    "any-3d-game",
+    "runner",
+    "survival",
+    "rpg",
+    "arcade"
+   ]
+  },
+  {
+   "id": "effects.particle-presets-3d",
+   "name": "ParticlePresets",
+   "category": "effects",
+   "path": "effects/particle-presets-3d.js",
+   "exports": [
+    "spawnExplosion",
+    "spawnTrail",
+    "spawnMuzzleFlash",
+    "spawnLevelUp",
+    "spawnPickupSparkle",
+    "spawnDust"
+   ],
+   "status": "ready",
+   "summary": "Named one-call FX presets over effects.instanced-particle-pool, so a game calls spawnExplosion(pool, point) instead of hand-tuning spawnBurst parameters. Each preset is a tuned spawnBurst on a SHARED pool (one draw call), adding zero per-frame cost beyond the pool. Presets: spawnExplosion, spawnTrail, spawnMuzzleFlash, spawnLevelUp, spawnPickupSparkle, spawnDust. Requires effects.instanced-particle-pool.",
+   "tags": [
+    "particles",
+    "presets",
+    "explosion",
+    "trail",
+    "muzzle-flash",
+    "sparkle",
+    "juice"
+   ],
+   "contracts": {
+    "use": "spawnExplosion(pool, enemy.position) on death; spawnPickupSparkle(pool, coin.position) on pickup",
+    "pool": "share ONE effects.instanced-particle-pool across all presets; call pool.update(dt) each frame",
+    "tune": "each preset takes optional { count, speed, color, life }"
+   },
+   "goodFits": [
+    "shooter",
+    "survival",
+    "rpg",
+    "runner",
+    "arcade"
+   ]
+  },
+  {
+   "id": "ui.minimap-3d",
+   "name": "Minimap3D",
+   "category": "ui",
+   "path": "ui/minimap-3d.js",
+   "exports": [
+    "Minimap3D"
+   ],
+   "status": "ready",
+   "summary": "A 2D-canvas minimap overlay drawn over the WebGL canvas (NO second WebGL context). Plots the player + tracked entities + terrain bounds from world {x,z} coordinates onto a small top-down disc, painted at runtime (no image assets, the WoCC procedural-UI ethos). Optionally rotates with player heading. setPlayer(x,z,heading) + addMarker(x,z,color) + draw() each frame. Dependency-free (2D canvas + DOM, like ui.three-hud-overlay); never touches three.js.",
+   "tags": [
+    "minimap",
+    "radar",
+    "overlay",
+    "navigation",
+    "ui",
+    "canvas"
+   ],
+   "contracts": {
+    "build": "new Minimap3D({ host, worldSize, radius, rotateWithPlayer })",
+    "frame": "map.clearMarkers(); map.setPlayer(px,pz,heading); enemies.forEach(e=>map.addMarker(e.x,e.z,'#e44')); map.draw()",
+    "dispose": "map.dispose()"
+   },
+   "goodFits": [
+    "rpg",
+    "survival",
+    "flight",
+    "exploration",
+    "open-world"
+   ]
+  },
+  {
+   "id": "raycast.dda-engine",
+   "name": "DDA Grid Raycaster Engine (2.5D wall casting)",
+   "category": "raycast",
+   "path": "raycast/dda-engine.js",
+   "exports": [
+    "cameraBasis",
+    "castColumn",
+    "renderWalls",
+    "renderBackground",
+    "isSolid",
+    "tileAt",
+    "shadeColor",
+    "DDARaycaster"
+   ],
+   "status": "ready",
+   "summary": "Pure 2D-canvas Wolfenstein/Doom DDA wall caster: camera basis, fisheye-corrected per-column DDA, textured OR procedural columns, zbuffer for sprites.",
+   "tags": [
+    "raycaster",
+    "2.5d",
+    "dda",
+    "wolfenstein",
+    "doom",
+    "canvas2d",
+    "software-renderer",
+    "no-webgl",
+    "offline",
+    "zbuffer",
+    "fps",
+    "fisheye",
+    "pure-2d"
+   ],
+   "contracts": {
+    "purity": "PURE renderer: never integrates motion; player {x,y,angle} is computed by the caller (delta-time) and passed in each frame. The engine paints into a caller-supplied CanvasRenderingContext2D.",
+    "zbuffer": "renderWalls() returns the SAME Float32Array it filled (one fisheye-corrected perp distance per screen column). raycast.sprite-billboards consumes exactly this instance for occlusion: draw a sprite stripe only where spriteDepth < zbuffer[column]. Pass the returned array into the sprite pass of the SAME frame. It is re-allocated on resize.",
+    "flavors": "Two pluggable column flavors via opts: (a) TEXTURED -- opts.texFor(tile) -> texture source, drawn via ctx.drawImage slice with canonical two-side texX mirror correction; (b) PROCEDURAL -- opts.shade(tile,perp,side,light) -> CSS color for a fillRect column, applying fog=1/(1+perp*perp*k), side-darkening, light. Built-in fallback shader runs if neither is provided.",
+    "camera": "cameraBasis(angle,fovScale=0.66) -> {dirX,dirY,planeX,planeY} where planeX=-dirY*fovScale, planeY=dirX*fovScale. FOV ~= 2*atan(fovScale).",
+    "distance": "castColumn returns the FISHEYE-CORRECTED perpendicular distance perp (side===0 ? sdx-ddx : sdy-ddy, floored at opts.minPerp), never the raw euclidean distance.",
+    "grid": "Grid is a 2D array or array-of-strings tile map passed in (digits and '.'/' ' map to int tiles; named chars pass through). isSolid(grid,x,y) default treats any non-zero/non-empty tile as solid; override via opts.isSolid for doors/transparent tiles. Out-of-bounds reads as solid so rays always terminate.",
+    "dpr": "devicePixelRatio is clamped <= 2 (DDARaycaster.maxDPR); the column count == backing-store width; the zbuffer is (re)allocated on resize -- re-fetch DDARaycaster.zbuffer after a resize.",
+    "input": "NEVER uses requestPointerLock. The optional DDARaycaster look helper is accumulated drag-look (pointerdown+pointermove, prefers movementX) that also works on touch; set onLook(dyaw). dispose() detaches all listeners.",
+    "deps": "ZERO imports: no three.js, no WebGL, no external deps. ASCII only. Offline-safe."
+   }
+  },
+  {
+   "id": "raycast.sprite-billboards",
+   "name": "Z-Buffer Billboard Sprite Renderer (depth-sorted, wall-occluded)",
+   "category": "raycast",
+   "path": "raycast/sprite-billboards.js",
+   "exports": [
+    "renderSprites",
+    "transformSprite",
+    "makeKindRenderer",
+    "makeImpostorCache",
+    "clearImpostorCache"
+   ],
+   "status": "ready",
+   "summary": "Z-buffer billboard sprite renderer for software raycasters: invDet camera transform, far-to-near sort, per-column wall occlusion, fog/hit/frames/hp-pip. Pure 2D-canvas, zero deps.",
+   "tags": [
+    "raycast",
+    "sprites",
+    "billboard",
+    "z-buffer",
+    "occlusion",
+    "2d-canvas",
+    "fps",
+    "miniapp",
+    "offline-safe",
+    "no-deps"
+   ],
+   "contracts": {
+    "camera": "{dirX,dirY,planeX,planeY} from raycast.dda-engine cameraBasis() -- MUST be the same basis used to cast walls this frame",
+    "zbuffer": "EXACT Float32Array returned by raycast.dda-engine renderWalls(); entry is the PERPENDICULAR wall distance per device-pixel column (length W); read-only; renderWalls() MUST run before renderSprites() each frame",
+    "occlusion": "per-column test: if (depth >= zbuffer[col]) continue; the wall wins (textured path strict per-column, callback path center-column z-test)",
+    "scale": "a depth-1 sprite with hScale=1 fills the screen height, sharing one scale with depth-1 wall stripes",
+    "sprite": "{x,y, img|draw, wScale, hScale, bob, tint, anchor:'floor'|'center', frame, hit:0..1, alpha:0..1, hp, maxHp, scaleY}",
+    "drawCallback": "draw(ctx, cx, cy, scale, sprite, info) where scale = sprite pixel height; info={depth,screenX,drawW,drawH,topY,time,dark}",
+    "deltaTime": "all motion (positions, bob phase, dying/hit timers, frame timers) is delta-time computed by the CALLER; this module is a pure renderer",
+    "pure2d": "PURE 2D-canvas, ZERO imports (no three.js/WebGL/external deps), offline-safe; owns no DOM/listeners/GPU state so no dispose() (clearImpostorCache() optional)",
+    "renderSpritesReturn": "number of sprites with at least one visible column drawn"
+   }
+  },
+  {
+   "id": "raycast.grid-map",
+   "name": "Grid Map (ASCII + procedural maze, symbol scan, BFS reachability)",
+   "category": "raycast",
+   "path": "raycast/grid-map.js",
+   "exports": [
+    "fromAscii",
+    "genMaze",
+    "isWall",
+    "solidAt",
+    "scanSymbols",
+    "bfsReachable",
+    "bfsNextStep",
+    "WALL",
+    "FLOOR",
+    "DEFAULT_SYMBOLS"
+   ],
+   "status": "ready",
+   "summary": "Pure-data level substrate for grid raycasters: ASCII build + symbol scan, recursive maze (backtracker/carve) with braid loops, BFS flood + pathfind.",
+   "tags": [
+    "raycaster",
+    "level",
+    "maze",
+    "ascii",
+    "bfs",
+    "pathfinding",
+    "procedural",
+    "dungeon",
+    "2d",
+    "offline-safe",
+    "zero-deps",
+    "graph"
+   ],
+   "contracts": {
+    "pure": "no DOM, canvas, three.js, WebGL, globals, timers, or GPU; nothing to dispose (owns no resources); deterministic given opts.rng",
+    "imports": "none (raycaster module is pure 2D-data, zero imports)",
+    "gridShape": "string[][] where grid[y][x] is a single-char cell token; walls default to '#' (WALL), floors '.' (FLOOR)",
+    "coords": "isWall/solidAt accept integer OR float coords (Math.floor internally); bfs* operate on integer cells and return integer cell coords",
+    "outOfBounds": "always solid (treated as wall) so casters/floods never escape the grid",
+    "fromAscii": "rows as newline-joined string or string[]; pads ragged rows and seals an outer wall border (opts.border=false to skip); scans typed NON-wall symbols to entities[{type,x,y}] and replaces those cells with FLOOR unless token is in opts.keep (e.g. 'D' to keep in-grid openable doors testable by solidAt)",
+    "symbolMap": "single-char token -> type string; type 'wall' (or opts.walls) is solid, 'floor' ignored, every other mapped token scanned to entities; unmapped tokens left as-is",
+    "genMaze": "returns (cellsW*2+1) x (cellsH*2+1) WALL/FLOOR grid; opts.style 'backtracker' (stack) or 'carve' (recursive 2-step); opts.braid (default 0.12) opens that fraction of interior walls for loops/vistas (0 => perfect maze); start cell (1,1); outer border re-sealed",
+    "solidAt": "door token (opts.door, default 'D') is solid unless its 'ix,iy' key is in the openDoors Set; out-of-bounds solid",
+    "bfsReachable": "4-connected flood from (sx,sy) over open cells; returns {cells:[{x,y,dist}], dist:{'x,y':n}}; pick max-dist cell as the exit / far placements; honors opts.walls/door/openDoors",
+    "bfsNextStep": "next neighbor cell on the shortest open path from->to, or null if unreachable; returns the source cell if already on target; opts.maxSteps caps BFS pops (default w*h)",
+    "allocation": "zero-allocation-per-call where practical (BFS reuses a flat Int32Array visited buffer sized to the grid)",
+    "asciiOnly": "0 non-ASCII bytes",
+    "deltaTime": "N/A (pure data/graph module; owns no motion). Callers do delta-time movement using these solidity tests"
+   }
+  },
+  {
+   "id": "raycast.player-controller",
+   "name": "Drag-Look Grid Camera Controller (keyboard turn + axis-separated AABB wall-slide)",
+   "category": "raycast",
+   "path": "raycast/player-controller.js",
+   "exports": [
+    "GridCameraController",
+    "createGridCameraController",
+    "default"
+   ],
+   "status": "ready",
+   "summary": "First-person mover for 2D-grid raycasters (the px/py/angle analog of fps-controller). DRAG-LOOK not pointer lock (accumulated pointerdown/move + touchmove, works in WKWebView/mobile - no PLSHIM). WASD/arrows move + Q/E or Left/Right keyboard turn. update(dt,grid,isSolidFn) is fully delta-time and does the SIGNATURE axis-separated swept-AABB radius-probe slide (test new X independently from new Y so the player slides along walls). Injected solidity test = map-agnostic. attach()/dispose(); optional mountTouchControls() d-pad.",
+   "tags": [
+    "raycaster",
+    "raycast",
+    "first-person",
+    "grid",
+    "drag-look",
+    "no-pointer-lock",
+    "mobile",
+    "touch",
+    "wall-slide",
+    "collision",
+    "delta-time",
+    "dungeon-crawler",
+    "doom-like",
+    "wkwebview"
+   ],
+   "contracts": {
+    "build": "new GridCameraController({px,py,angle}, {turnSpeed,moveSpeed,strafeSpeed,radius,lookSensitivity}) or createGridCameraController(state,config)",
+    "attach": "gc.attach(canvas) installs accumulated drag-look (pointerdown/pointermove/pointerup + touchmove) + keydown/keyup for WASD/arrows move and Q/E or Left/Right keyboard turn; NEVER requestPointerLock, NEVER gates on movementX/pointer-lock",
+    "look": "DRAG-LOOK only (accumulated pointer drag): angle += (clientX-lastX)*lookSensitivity. Works in WKWebView preview + mobile. No PLSHIM dependence.",
+    "frame": "gc.update(dt, grid, isSolidFn) -> mutates gc.state {px,py,angle}; turn=turnSpeed*dt, move/strafe in heading space at moveSpeed/strafeSpeed*dt",
+    "collision": "axis-separated swept-AABB radius probe: test new X (+/- radius at current y) INDEPENDENTLY from new Y (+/- radius at updated x); unblocked axis commits -> wall-slide. isSolidFn(tileX,tileY,grid)->bool receives INTEGER tile coords (wire to raycast.grid-map.solidAt or any callback). Omit it and the player moves with no walls.",
+    "state": "plain {px,py,angle} (tiles + radians) exposed as gc.state; input flags exposed as gc.input {f,b,sl,sr,tl,tr}",
+    "touch": "gc.mountTouchControls(container) creates optional hold-to-set-flag d-pad + turn buttons (forward/back, strafe L/R, turn L/R) matching crypt's pad; ASCII-only HTML-entity glyphs",
+    "dispose": "gc.dispose() removes every listener + mounted touch DOM",
+    "deps": "PURE 2D canvas - zero imports, no three.js/WebGL, no network, offline-safe",
+    "units": "px/py in tiles (1.0 = one cell); angle radians; speeds per-second"
+   }
+  },
+  {
+   "id": "raycast.grid-enemy-ai",
+   "name": "Grid Enemy AI (BFS stalker + LOS chaser + shamble wobble)",
+   "category": "raycast",
+   "path": "raycast/grid-enemy-ai.js",
+   "exports": [
+    "stepStalker",
+    "stepChaser",
+    "stepShamble",
+    "lineClear",
+    "enemyMove",
+    "bfsNextStep",
+    "makeIsSolid",
+    "attackCooldown",
+    "GridEnemyAI"
+   ],
+   "status": "ready",
+   "summary": "Grid-space enemy brains for raycaster and top-down dungeons: BFS stalker, LOS chaser (melee/ranged falloff), shamble wobble. Pure math, delta-time, no deps.",
+   "tags": [
+    "enemy-ai",
+    "pathfinding",
+    "bfs",
+    "line-of-sight",
+    "raycaster",
+    "dungeon",
+    "pursuit",
+    "delta-time",
+    "grid",
+    "dependency-free"
+   ],
+   "contracts": {
+    "stalker": "stepStalker(enemy, target, grid, dt, cfg) -> damageEvent|null  (re-paths every cfg.repathInterval~0.4s via bfsNextStep, walks one cell toward next)",
+    "chaser": "stepChaser(enemy, target, grid, dt, cfg) -> {kind:'melee'|'ranged'|'miss', amount, enemy}|null  (sampled LOS gate, close-range speedBump, melee cooldown OR cfg.ranged advance-and-fire with keepDistance + hit-probability falloff)",
+    "shamble": "stepShamble(enemy, target, grid, dt, cfg) -> damageEvent|null  (heading + perpendicular*sin(phase) lateral wobble)",
+    "lineClear": "lineClear(grid, x0,y0, x1,y1, isSolidFn, step?) -> bool  (sampled DDA-free raymarch; OOB solid)",
+    "enemyMove": "enemyMove(enemy, dx,dy, grid, radius, isSolidFn) -> {movedX, movedY}  (axis-separated grid slide)",
+    "bfsNextStep": "bfsNextStep(grid, sx,sy, tx,ty, isSolidFn, maxNodes?) -> [cx,cy]|null  (matches raycast.grid-map contract)",
+    "makeIsSolid": "makeIsSolid(grid, solidValues) -> (x,y)->bool  (Array/Set of blocking tile values, a predicate, or default '#'/'T'/'D'/truthy)",
+    "attackCooldown": "attackCooldown(enemy, target, dt, cfg, onHit?) -> {amount, kind:'melee', enemy}|null  (decrements enemy.atkCd, optional attacker knockback; NEVER mutates target health)",
+    "enemyShape": "plain {x, y, angle?, speed?, atkCd?, phase?} -- steppers create _path/_repathT/phase/atkCd lazily",
+    "grid": "grid[y][x] row-major; isSolidFn takes WORLD coords; all motion delta-time (units/sec, dt clamp 0..0.05)",
+    "lifecycle": "owns no GPU/DOM/listeners -> no dispose() needed",
+    "damage": "all damage emitted as return value / onHit callback; player health never hardcoded"
+   }
+  },
+  {
+   "id": "systems.lap-circuit-3d",
+   "name": "Closed-Lap Circuit System (Catmull-Rom track + progress + lap timing)",
+   "category": "systems",
+   "path": "systems/lap-circuit-3d.js",
+   "exports": [
+    "LapCircuit",
+    "createLapCircuit",
+    "catmullRom"
+   ],
+   "status": "ready",
+   "summary": "Closed finite lap circuit from a control-point ring: periodic Catmull-Rom centerline + tangents/normals/bank, windowed nearest, signed off-track offset, robust lap-wrap + current/last/best-lap timing, bounds. PURE math, no deps, drives 2D or extruded 3D road. Extracted from low-poly-kart-racer; distinct from the infinite endless-scroller.",
+   "tags": [
+    "racing",
+    "lap",
+    "circuit",
+    "catmull-rom",
+    "spline",
+    "track",
+    "kart",
+    "lap-timer",
+    "minimap",
+    "renderer-agnostic"
+   ],
+   "contracts": {
+    "build": "new LapCircuit(controlPoints, {samplesPerSegment,halfWidth,totalLaps,axes:'xz'|'xy',startIndex})",
+    "sample": "circuit.center / .tangent / .normal / .bank (parallel arrays, length = circuit.count)",
+    "nearest": "circuit.nearest(pos) -> {index, point} (O(window) windowed scan, never jumps)",
+    "progress": "circuit.progress(pos) -> {p, offset, sampleIndex} (signed perpendicular offset for on/off-track)",
+    "lap": "circuit.update(racer, dt) -> {lap, lapTime, lastLap, bestLap, raceTime, p, finished, finishRank}",
+    "offTrack": "circuit.offTrack(pos, margin?) -> {depth, pushA, pushB, side}|null",
+    "bounds": "circuit.bounds() -> {minx,maxx,minz,maxz} (or miny/maxy for axes:'xy')",
+    "reset": "circuit.resetRacer(racer) / circuit.resetRace() / circuit.attach(racer, atIndex?)",
+    "lookAhead": "circuit.lookAhead(pos, look?) -> {index, point, tangent, normal}"
+   }
+  },
+  {
+   "id": "controls.arcade-drive-3d",
+   "name": "Arcade Vehicle Drive with Drift-Charge Boost",
+   "category": "controls",
+   "path": "controls/arcade-drive-3d.js",
+   "exports": [
+    "drive",
+    "createVehicle",
+    "defaultDriveConfig",
+    "surfaceMaxSpeed",
+    "smoothSteer",
+    "updateDriftCharge",
+    "releaseBoost",
+    "addThrust"
+   ],
+   "status": "ready",
+   "summary": "Pure-math arcade drift drive: drive(state,input,dt,cfg,surface) decomposes velocity into forward/lateral grip (loosens while drifting so it slides), speed-scaled direction-aware steering, surface-aware speed caps, and a drift-charge -> release-boost impulse loop. smoothSteer input filter. Extracted from low-poly-kart-racer.",
+   "tags": [
+    "arcade",
+    "drift",
+    "kart",
+    "racing",
+    "vehicle",
+    "drift-boost",
+    "lateral-grip",
+    "hover",
+    "delta-time",
+    "no-deps"
+   ],
+   "contracts": {
+    "build": "createVehicle({x,z,yaw}) -> state; defaultDriveConfig(overrides) -> cfg (accel,brake,steer,drag,gripGrip,gripDrift,surfaceMax,driftChargeRate,boostImpulse,boostCapMult,...)",
+    "drive": "drive(state,{throttle,brake,steer,drift},dt,cfg,surface) mutates state{x,z,yaw,vx,vz,speed,forward,driftCharge,boost}; works in local frame, exp drag+lateral grip, speed/direction-aware steer, surface cap",
+    "drift": "hold drift+steer above driftMinSpeed accumulates state.driftCharge (updateDriftCharge); on release drive() calls releaseBoost -> forward impulse + boost.flash cap multiplier",
+    "surface": "surfaceMaxSpeed(cfg,surface) -> top-speed cap by named surface (road/grass/...); caller supplies surface each frame",
+    "input": "smoothSteer(prev,target,dt,cfg) -> low-passed steer; addThrust(state,force,dt) for boost pads / hover thrust",
+    "convention": "XZ ground (+Y up), yaw radians 0=+Z (forward=sin,cos); delta-time everywhere; host maps state.{x,z,yaw} onto any mesh; no DOM/GPU so no dispose() needed"
+   }
+  },
+  {
+   "id": "controls.lander-controller-3d",
+   "name": "Lunar / Descent Flight Controller (thrust-vector + fuel + landing verdict)",
+   "category": "controls",
+   "path": "controls/lander-controller-3d.js",
+   "exports": [
+    "landerUp",
+    "tiltAngle",
+    "makeLanderState",
+    "landingVerdict",
+    "updateLander"
+   ],
+   "status": "ready",
+   "summary": "Thrust-vector descent flight model + soft/upright/on-pad landing verdict. Thrust along lander orientation, finite fuel, gravity, tilt easing, injected terrain/pad callbacks. Multi-criteria gate (pad + |vy| + drift + tilt) yields a precise crash reason and a gentleness+fuel weighted score with per-pad multipliers. PURE scalar physics, no three.js/DOM, delta-time, 2D or 3D, offline-safe.",
+   "tags": [
+    "lander",
+    "flight",
+    "thrust-vector",
+    "fuel",
+    "physics",
+    "soft-landing",
+    "verdict",
+    "delta-time",
+    "no-deps",
+    "no-pointer-lock",
+    "2d-or-3d",
+    "three"
+   ],
+   "contracts": {
+    "up": "landerUp(pitch, roll) -> {ux,uy,uz} (uz=0/ignored in 2D); thrust is applied along this so a tilted lander accelerates sideways",
+    "build": "makeLanderState({pos,vel,pitch,roll,fuel}, cfg) -> plain state {pos:{x,y,z}, vel:{x,y,z}, pitch, roll, fuel}",
+    "frame": "updateLander(state, controls, dt, cfg, terrainH, padAt) -> verdict; mutates state; gravity + thrust-along-up + fuel burn + tilt easing/auto-level + integrate + soft wall bounce + ground-contact gate",
+    "controls": "{ thrust:bool, pitchInput:-1..1, rollInput:-1..1, tiltLeft?:bool, tiltRight?:bool, tiltForward?:bool, tiltBack?:bool } -- accumulated key/touch flags, NO pointer lock",
+    "callbacks": "terrainH(x[,z])->groundHeight and padAt(x[,z])->pad|null are INJECTED so it is decoupled from any terrain; a pad may carry {points, mult}",
+    "verdict": "{landed, crashed, reason, score, contact, pad, vy, vh, tilt}; reason is one of 'clean landing'|'missed pad'|'too fast'|'too much drift'|'too tilted'",
+    "gate": "clean landing requires pad != null AND |vy|<=SAFE_VY AND lateral<=SAFE_VH AND tilt<=SAFE_TILT",
+    "score": "(scoreBase + softness*scoreSoft + fuel*scoreFuel) * pad.mult + pad.points; softness=(1-|vy|/SAFE_VY)*(1-vh/SAFE_VH) clamped [0,1]",
+    "config": "ALL constants in cfg/opts: dim(2|3), G, THRUST, BURN, FUEL_MAX, MAXTILT, TILTRATE(/ROT alias), AUTOLVL, SAFE_VY/SAFE_VH/SAFE_TILT, FOOT, bounds{x,z}, wallBounce, scoreBase/scoreSoft/scoreFuel",
+    "deltaTime": "all motion is dt-based; clamp dt upstream (e.g. min 1/30)",
+    "dispose": "none needed -- owns no GPU/DOM/listeners (pure math)",
+    "deps": "ZERO imports; pure scalar physics; host maps state onto any mesh transform + HUD (three.js or Canvas 2D)"
+   }
+  },
+  {
+   "id": "controls.arcade-flight-3d",
+   "name": "Arcade Flight Controller (banking glider/plane energy model)",
+   "category": "controls",
+   "path": "controls/arcade-flight-3d.js",
+   "exports": [
+    "flightUpdate",
+    "FlightInput",
+    "readInput",
+    "chaseCamera",
+    "autopilot",
+    "reachedTarget",
+    "resetFlight",
+    "defaultFlightConfig",
+    "smooth",
+    "smoothA",
+    "norm",
+    "fwd",
+    "clamp",
+    "lerp"
+   ],
+   "status": "ready",
+   "summary": "Delta-time arcade banking flight model: roll-&gt;yaw coordinated turns + pitch&lt;-&gt;speed energy trade, drag/keyboard input (no pointer lock), optional chase cam.",
+   "tags": [
+    "flight",
+    "glider",
+    "plane",
+    "spaceship",
+    "dragon",
+    "banking",
+    "coordinated-turn",
+    "energy-model",
+    "locomotion",
+    "delta-time",
+    "drag-look",
+    "no-pointer-lock",
+    "pure-math",
+    "offline-safe",
+    "three-or-canvas",
+    "chase-camera",
+    "autopilot"
+   ],
+   "contracts": {
+    "state": "{ pos:[x,y,z], yaw, pitch, roll, speed } mutated in place; yaw in radians, atan2(x,z) convention (0 = +Z), +x is right",
+    "input": "{ bank:-1..1, climb:-1..1 }; bank>0 banks/turns right, climb>0 noses up",
+    "flightUpdate(state,input,dt,cfg)": "eases roll toward bank*maxRoll, yaw += roll*yawCoupling*dt (coordinated turn), eases+clamps pitch, speed += -sin(pitch)*diveAccel*dt then relaxes toward cruise (clamped min/maxSpeed), advances pos along fwd(yaw,pitch); soft floor/ceil; returns state",
+    "chaseCamera(state,dt,cfg)": "returns { camPos:[x,y,z], camLook:[x,y,z], roll }; persists smoothing state on state._cam, snaps on first call and after resetFlight; optional",
+    "autopilot(state,target,dt,cfg)": "target={pos:[x,y,z]}; returns clamped { bank, climb } steering toward target; pair with reachedTarget()",
+    "resetFlight(state,target,cfg)": "target={pos:[x,y,z], normal?:[x,y,z]}; spawns spawnBack units behind aligned to normal at cruise speed, level; clears state._cam",
+    "FlightInput": "DOM class; keyboard (arrows/WASD) + pointer DRAG (mouse+touch, NO requestPointerLock); read()-> {bank,climb}; call dispose() to remove listeners",
+    "config": "all tunables (maxRoll, rollEase, yawCoupling, maxPitch, pitchEase, pitchClamp, cruise, diveAccel, cruisePull, min/maxSpeed, floor/ceil, cam*, ap* gains, spawn*) are cfg fields; missing keys fall back to defaultFlightConfig()",
+    "deps": "none; pure ES module, ASCII only, zero imports, offline-safe; drops into three.js (feed pos + YXZ euler pitch/yaw/-roll) or raw 2D-canvas unchanged",
+    "timing": "all motion delta-time based (exp/dt smoothing), frame-rate independent"
+   }
+  },
+  {
+   "id": "systems.path-follower-3d",
+   "name": "Waypoint Path Follower (monotonic progress along an authored corridor)",
+   "category": "systems",
+   "path": "systems/path-follower-3d.js",
+   "exports": [
+    "PathFollower",
+    "makePathFollower"
+   ],
+   "status": "ready",
+   "summary": "Monotonic cursor progress along an authored waypoint corridor: pathPos(dist)->{x,z}, pathLen for leak/reach-base detection, progress(0..1) for furthest-along targeting, cellsCovered() grid raster. Stateless per entity (just a dist scalar). Renderer-agnostic {x,z}->Vector3, delta-time, dependency-free.",
+   "tags": [
+    "path",
+    "waypoints",
+    "tower-defense",
+    "lane-pusher",
+    "patrol",
+    "racing-rail",
+    "progress",
+    "polyline",
+    "corridor",
+    "creeps"
+   ],
+   "contracts": {
+    "build": "new PathFollower(waypoints, { cellOffset, gridBounds }) -- waypoints is [{x,z}|{x,y}|[x,z]], >=2 points",
+    "sample": "follower.pathPos(dist) -> { x, z } clamped per segment",
+    "advance": "entity.dist += speed * slowFactor * dt; const p = follower.pathPos(entity.dist) (caller owns dist; delta-time)",
+    "end": "entity.dist >= follower.pathLen (or follower.isAtEnd(dist)) means leak/reach-base",
+    "progress": "follower.progress(dist) -> 0..1 for furthest-along targeting (max == closest to base)",
+    "grid": "follower.cellsCovered() -> Set of \"c,r\" keys; follower.coversCell(c,r) for non-buildable/tinted tiles",
+    "factory": "makePathFollower(waypoints, opts)"
+   }
+  },
+  {
+   "id": "systems.turret-targeting-3d",
+   "name": "Turret Targeting and Fire Control (acquire/lead/fire/homing/splash/slow)",
+   "category": "systems",
+   "path": "systems/turret-targeting-3d.js",
+   "exports": [
+    "pickTarget",
+    "updateTurret",
+    "fire",
+    "updateProjectile",
+    "resolveImpact",
+    "applySlow",
+    "slowMultiplier",
+    "normalizeStats",
+    "Priority"
+   ],
+   "status": "ready",
+   "summary": "Renderer-agnostic auto-turret fire-control: acquire/prioritize (furthest-along/nearest/lowestHp), aim-slew, fire-rate gate, homing or hitscan, splash-falloff + slow via injected damage/slow callbacks. Pure delta-time math, no three.js/canvas/deps, any coord space. Pairs with systems.path-follower-3d.",
+   "tags": [
+    "turret",
+    "tower-defense",
+    "auto-aim",
+    "targeting",
+    "fire-control",
+    "homing",
+    "splash",
+    "slow",
+    "twin-stick",
+    "rts"
+   ],
+   "contracts": {
+    "build": "normalizeStats({ kind:'projectile'|'hitscan', dmg, range, rate, slewRate, projSpeed, splash, splashFalloff, slow, slowDur })",
+    "acquire": "pickTarget(turret, stats, targets, priorityFn?, hooks?) -> target|null",
+    "frame": "updateTurret(turret, stats, targets, dt, hooks) -> fireDescriptor|null (mutates turret.aim/turret.cool)",
+    "fire": "fire(turret, stats, target, hooks) -> hitscan beam descriptor (immediate dmg) OR homing projectile descriptor",
+    "projectile": "updateProjectile(proj, dt, {...hooks, targets}) -> 'flying'|'impact' (re-homes + on arrival resolveImpact)",
+    "impact": "resolveImpact(proj, targets, hooks) -> single hit OR radial splash with linear falloff + optional slow",
+    "slow": "applySlow(target, slowStrength, duration, hooks) stacks duration + stronger multiplier; slowMultiplier(target) for movement code",
+    "hooks": "{ damage(target,amt,ctx) REQUIRED to deal dmg, slow?, isDead?, now?, muzzle?, onFire?, priority? } -- all injected, not target-type-specific",
+    "coords": "turret/target {x,y,z}; turret.aim = atan2(dz,dx) heading; three.js mesh.rotation.y = -turret.aim; 2D sets z=0",
+    "priorityFn": "(turret,a,b)->number; Priority.furthestAlong (default, reads progress||dist) | nearest | lowestHp | first",
+    "deltaTime": "all motion/cooldown/slow are dt-based seconds; caller clamps dt; pure math, no GPU/DOM so no dispose() needed"
+   }
+  },
+  {
+   "id": "systems.boid-flock",
+   "name": "Boid Flocking System (schools/flocks/swarms)",
+   "category": "systems",
+   "path": "systems/boid-flock.js",
+   "exports": [
+    "updateFlock",
+    "BoidFlock",
+    "DEFAULT_BOID_OPTS"
+   ],
+   "status": "ready",
+   "summary": "Classic Reynolds boids for schools/flocks/swarms: cohesion + alignment + separation, plus reactive avoidPoints (player startle boost), obstacle steering, soft bounds, idle wander, and a speed clamp (raised while startled). Plain {x,y,vx,vy} agents with optional z/vz drive the SAME code in 2D or 3D. Pure math, delta-time, renderer-agnostic, dependency-free. Extracted from reef-explorer updateFish.",
+   "tags": [
+    "boids",
+    "flocking",
+    "swarm",
+    "school",
+    "flock",
+    "reynolds",
+    "ai",
+    "steering",
+    "2d-or-3d"
+   ],
+   "contracts": {
+    "update": "updateFlock(agents, dt, opts) -> mutates each {x,y,vx,vy[,z,vz]} in place, returns agents; 3D auto-detected per agent (z !== undefined)",
+    "class": "new BoidFlock(baseOpts).update(agents, dt, frameOpts) -- holds opts + a monotonic wander clock; frameOpts merged over base each frame",
+    "opts": "{ cohesion, alignment, separation, perception, separationRadius, avoidPoints:[{x,y,z?,radius}], avoidStrength, obstacles:[{x,y,z?,radius}], obstacleStrength, obstaclePadding, bounds:{minX,maxX,minY,maxY,minZ?,maxZ?}, boundsStrength, boundsMargin, wander, wanderFreq, minSpeed, maxSpeed, startleDuration, startleSpeedMult, maxForce, time?, spatialGrid? } merged over DEFAULT_BOID_OPTS",
+    "startle": "agent.startled = seconds remaining (>0) after an avoidPoint hit; maxSpeed *= startleSpeedMult while startled -- read agent.startled>0 to render a fear pose",
+    "spatialGrid": "optional { neighbors(agent) -> iterable<agent> } hook so cohesion/alignment/separation iterate only nearby agents instead of O(n^2); returned agents must belong to agents[]",
+    "dispose": "none -- pure math, owns no GPU/DOM/listeners"
+   }
+  },
+  {
+   "id": "effects.day-night-cycle",
+   "name": "Day/Night Cycle Director (time-of-day -> sky + light + phase)",
+   "category": "effects",
+   "path": "effects/day-night-cycle.js",
+   "exports": [
+    "DayNightCycle",
+    "defaultSkyKeyframes",
+    "mix3",
+    "clamp01",
+    "norm"
+   ],
+   "status": "ready",
+   "summary": "Time-of-day director: a 0..1 clock -> coordinated sun/moon dir, key+ambient light, keyframed multi-stop sky gradient, golden-hour warm shift, night star-fade, phase label + HH:MM. Renderer-agnostic, zero deps, delta-time.",
+   "tags": [
+    "day-night",
+    "time-of-day",
+    "lighting",
+    "sky",
+    "gradient",
+    "golden-hour",
+    "renderer-agnostic",
+    "pure-math",
+    "no-deps",
+    "delta-time"
+   ],
+   "contracts": {
+    "construct": "new DayNightCycle({ clock, rate, sky, tilt, horizon })",
+    "sample": "sample(t01) -> { sunDir, moonDir, lightDir, lightInt, lightCol, amb, ambCol, sky:{top,mid,bot}, night, isDay, dayStr, sunAlt, phaseLabel, hhmm, t } (PURE)",
+    "advance": "advance(dt) -> mutates clock by dt*rate (wraps 0..1, dt clamped <=0.05) then returns the sample bundle",
+    "scrub": "setClock(t01) jumps clock for slider scrubbing; setKeyframes(table) hot-swaps the SKY[] palette",
+    "colors": "[r,g,b] in 0..255; directions are unit [x,y,z]; scalars 0..1 except lightInt>=0 and hhmm string",
+    "deps": "none -- pure arithmetic, no three.js/WebGL/canvas/DOM/network; output consumable by three.js lights/fog OR a 2D-canvas painter",
+    "dispose": "not required (owns no GPU/DOM/listeners)",
+    "stars": "module returns the night fade factor only; the caller draws stars"
+   }
+  },
+  {
+   "id": "ui.offscreen-indicator-3d",
+   "name": "Off-Screen Objective Indicator (edge-clamped arrow + on-screen reticle)",
+   "category": "ui",
+   "path": "ui/offscreen-indicator-3d.js",
+   "exports": [
+    "OffscreenIndicator",
+    "createOffscreenIndicator"
+   ],
+   "status": "ready",
+   "summary": "2D-canvas off-screen objective indicator: pulsing reticle when the target is on-screen, edge-clamped directional arrow (with behind-camera flip) when off-screen. Direction is orientation-robust via injected project()'s camera-space right/up (cr,cu), falling back to a flipped screen-delta. Renderer-agnostic (three.js OR software renderer), dependency-free, dt-based pulse, owns its overlay canvas with dispose().",
+   "tags": [
+    "indicator",
+    "objective",
+    "waypoint",
+    "offscreen-arrow",
+    "edge-clamp",
+    "reticle",
+    "navigation",
+    "hud",
+    "overlay",
+    "ui",
+    "canvas"
+   ],
+   "contracts": {
+    "build": "new OffscreenIndicator({ host, near, ringRadius, margin }) | createOffscreenIndicator(opts) | new OffscreenIndicator({ ctx, width, height })",
+    "frame": "ind.update(worldPoint, project, { dt, label, distance }) -- reticle if on-screen else edge-clamped arrow",
+    "project": "project(worldPoint) -> { sx, sy, cz, cr?, cu?, onScreen? } (aliases x,y,z / rightDot,upDot accepted); cr/cu drive an orientation-robust arrow angle, behind-near-plane is auto-handled",
+    "dispose": "ind.dispose() -- removes the owned canvas + resize listener; no-op on a provided ctx; safe twice",
+    "deps": "ZERO imports, pure 2D canvas + DOM, never touches three.js/WebGL, dpr clamped <=2, all motion dt-based"
+   }
+  }
+ ],
+ "compositionRecipes": [
+  {
+   "id": "recipe.three-runner",
+   "name": "3D Endless Runner",
+   "promptName": "3d endless runner",
+   "runtime": "vanilla-es6-modules",
+   "importStyle": "local-importmap",
+   "keywords": [
+    "3d runner",
+    "endless runner",
+    "three.js runner",
+    "subway",
+    "temple run",
+    "lane runner",
+    "dodge obstacles",
+    "infinite runner",
+    "3d dodge",
+    "auto run"
+   ],
+   "starterComponents": [
+    "systems.endless-scroller-3d",
+    "core.three-game-loop",
+    "core.three-scene-rig",
+    "ui.three-hud-overlay",
+    "controls.virtual-joystick-3d",
+    "controls.one-button-action",
+    "effects.fog-atmosphere",
+    "effects.gradient-skybox",
+    "resources.three-core",
+    "ui.info-panel"
+   ],
+   "requiredComponents": [
+    "core.three-game-loop",
+    "core.three-scene-rig",
+    "ui.three-hud-overlay",
+    "resources.three-core"
+   ],
+   "optionalComponents": [
+    "controls.virtual-joystick-3d",
+    "controls.one-button-action",
+    "effects.fog-atmosphere",
+    "effects.gradient-skybox",
+    "ui.info-panel",
+    "models.lowpoly-characters-3d",
+    "models.lowpoly-props-3d",
+    "controls.camera-rig-3d",
+    "effects.audio-manager-3d",
+    "effects.instanced-particle-pool",
+    "controls.input-manager-3d",
+    "systems.save-state-3d",
+    "effects.particle-presets-3d"
+   ],
+   "assemblyNotes": [
+    "Camera chases the player from behind and slightly above. The player auto-runs forward at increasing speed; input.move.x picks the lane and input.actionA jumps.",
+    "Spawn obstacles as an InstancedMesh field ahead of the player and recycle instances behind the camera. Never allocate a new mesh per obstacle. Keep draw calls under 100.",
+    "Fog plus gradient skybox hide geometry pop-in as the track streams in. Tune fog density so the spawn line is invisible.",
+    "Increment window.__threeFrameCount in the render step. Emit the local importmap before the first module script. No https:// anywhere.",
+    "Marker shape: {recipe: 'recipe.three-runner', components: [...all used component ids...]}."
+   ],
+   "notes": "Use ui.info-panel for the instructions/how-to-play box (collapsible to a small 'i' icon so it doesn't dominate the view); keep score/HUD compact and separate."
+  },
+  {
+   "id": "recipe.three-marble",
+   "name": "3D Marble Roll (physics-light)",
+   "promptName": "3d marble roll",
+   "runtime": "vanilla-es6-modules",
+   "importStyle": "local-importmap",
+   "keywords": [
+    "3d marble",
+    "marble roll",
+    "ball roll",
+    "tilt maze",
+    "marble madness",
+    "roll the ball",
+    "3d ball",
+    "balance maze",
+    "marble run",
+    "physics ball"
+   ],
+   "starterComponents": [
+    "systems.kinematic-body-3d",
+    "core.three-game-loop",
+    "core.three-scene-rig",
+    "ui.three-hud-overlay",
+    "controls.virtual-joystick-3d",
+    "effects.gradient-skybox",
+    "resources.three-core",
+    "ui.info-panel"
+   ],
+   "requiredComponents": [
+    "core.three-game-loop",
+    "core.three-scene-rig",
+    "ui.three-hud-overlay",
+    "controls.virtual-joystick-3d",
+    "resources.three-core"
+   ],
+   "optionalComponents": [
+    "effects.gradient-skybox",
+    "effects.fog-atmosphere",
+    "ui.info-panel",
+    "controls.tilt-input",
+    "controls.input-manager-3d",
+    "systems.save-state-3d"
+   ],
+   "assemblyNotes": [
+    "Physics-light by design. Hand-roll rolling-ball motion: input.move tilts the board (or applies a force), integrate ball velocity with a fixed-timestep update(dt), and resolve collisions against an axis-aligned wall grid. Do NOT pull a physics engine for the default build.",
+    "Follow or rise camera tracks the ball. Reach the goal tile to win; falling off the edge restarts.",
+    "Rapier (systems.rapier-physics-world) is an OPTIONAL upgrade only if the user explicitly asks for realistic physics with ramps and ragdoll-like rolling. The default stays hand-rolled and lighter.",
+    "Increment window.__threeFrameCount in the render step. Emit the local importmap before the first module script. No https:// anywhere.",
+    "Marker shape: {recipe: 'recipe.three-marble', components: [...all used component ids...]}."
+   ],
+   "notes": "Use ui.info-panel for the instructions/how-to-play box (collapsible to a small 'i' icon so it doesn't dominate the view); keep score/HUD compact and separate."
+  },
+  {
+   "id": "recipe.three-tower-defense",
+   "name": "3D Tower Defense",
+   "promptName": "3d tower defense",
+   "runtime": "vanilla-es6-modules",
+   "importStyle": "local-importmap",
+   "keywords": [
+    "3d tower defense",
+    "tower defense",
+    "defend the crystal",
+    "creep waves",
+    "place turrets",
+    "td game",
+    "wave defense",
+    "3d td",
+    "defend base",
+    "lane defense"
+   ],
+   "starterComponents": [
+    "core.three-game-loop",
+    "core.three-scene-rig",
+    "ui.three-hud-overlay",
+    "controls.one-button-action",
+    "effects.fog-atmosphere",
+    "resources.three-core",
+    "ui.info-panel"
+   ],
+   "requiredComponents": [
+    "core.three-game-loop",
+    "core.three-scene-rig",
+    "ui.three-hud-overlay",
+    "resources.three-core",
+    "systems.spawn-wave-3d"
+   ],
+   "optionalComponents": [
+    "controls.one-button-action",
+    "effects.fog-atmosphere",
+    "effects.gradient-skybox",
+    "ui.info-panel",
+    "models.procedural-creatures-3d",
+    "effects.instanced-particle-pool",
+    "effects.audio-manager-3d",
+    "effects.blob-shadow",
+    "controls.camera-rig-3d",
+    "effects.postfx-bloom-3d",
+    "controls.input-manager-3d",
+    "systems.save-state-3d",
+    "effects.particle-presets-3d"
+   ],
+   "assemblyNotes": [
+    "Orbit or fixed top-down-angled camera over a fixed map. Creeps path-follow a fixed spline from spawn to the crystal; the player taps grid cells to place turrets (input.actionA plus a raycast to pick the cell).",
+    "Render creeps and projectiles as InstancedMesh pools and recycle them. Hand-roll wave timing and turret targeting; no physics engine needed. Keep draw calls under 100.",
+    "Defend-the-crystal is the lowest-risk smoke test for the local-importmap path: no physics, no procedural streaming, a fixed scene.",
+    "Increment window.__threeFrameCount in the render step. Emit the local importmap before the first module script. No https:// anywhere.",
+    "Marker shape: {recipe: 'recipe.three-tower-defense', components: [...all used component ids...]}."
+   ],
+   "notes": "Use ui.info-panel for the instructions/how-to-play box (collapsible to a small 'i' icon so it doesn't dominate the view); keep score/HUD compact and separate."
+  },
+  {
+   "id": "recipe.lowpoly-orbit-diorama",
+   "name": "Low-Poly Orbit Diorama",
+   "promptName": "low-poly orbit diorama",
+   "runtime": "vanilla-es6-modules",
+   "importStyle": "local-importmap",
+   "keywords": [
+    "low poly",
+    "low-poly",
+    "lowpoly",
+    "diorama",
+    "floating island",
+    "faceted",
+    "stylized 3d scene",
+    "orbit scene",
+    "spin around",
+    "low poly planet",
+    "low poly terrain",
+    "papercraft 3d",
+    "flat shaded"
+   ],
+   "starterComponents": [
+    "core.lowpoly-canvas3d",
+    "ui.info-panel"
+   ],
+   "requiredComponents": [
+    "core.lowpoly-canvas3d"
+   ],
+   "optionalComponents": [
+    "ui.info-panel",
+    "models.lowpoly-props-3d",
+    "models.lowpoly-vehicles-3d",
+    "effects.postfx-bloom-3d"
+   ],
+   "notes": "Dependency-free track: NO three.js, NO WebGL, NO vendored core needed. Import core.lowpoly-canvas3d and write only the scene-specific faces (use mesh.cone/box/ringSurface). Soft accelerator - suggested, never gated; the CLI may also hand-roll or use the three.js track for richer scenes. Use ui.info-panel for the instructions/how-to-play box (collapsible to a small 'i' icon so it doesn't dominate the view); keep score/HUD compact and separate."
+  },
+  {
+   "id": "recipe.fps-shooter",
+   "name": "First-Person Shooter / Walker",
+   "promptName": "first-person 3d",
+   "runtime": "vanilla-es6-modules",
+   "importStyle": "local-importmap",
+   "keywords": [
+    "doom",
+    "fps",
+    "first person shooter",
+    "first-person",
+    "mouse look",
+    "pointer lock",
+    "dungeon crawler",
+    "maze shooter",
+    "walk around in 3d",
+    "wave survival",
+    "blaster arena"
+   ],
+   "starterComponents": [
+    "controls.fps-controller",
+    "core.three-scene-rig",
+    "core.three-game-loop",
+    "ui.three-hud-overlay",
+    "effects.fog-atmosphere",
+    "resources.three-core",
+    "ui.info-panel"
+   ],
+   "requiredComponents": [
+    "controls.fps-controller",
+    "core.three-scene-rig",
+    "resources.three-core"
+   ],
+   "optionalComponents": [
+    "core.three-game-loop",
+    "ui.three-hud-overlay",
+    "effects.fog-atmosphere",
+    "effects.screen-shake",
+    "ui.info-panel",
+    "models.lowpoly-characters-3d",
+    "models.lowpoly-props-3d",
+    "controls.camera-rig-3d",
+    "effects.instanced-particle-pool",
+    "effects.audio-manager-3d",
+    "effects.blob-shadow",
+    "models.procedural-creatures-3d",
+    "systems.spawn-wave-3d",
+    "models.gltf-model-player-3d",
+    "controls.input-manager-3d",
+    "effects.postfx-bloom-3d",
+    "systems.save-state-3d",
+    "effects.particle-presets-3d"
+   ],
+   "notes": "controls.fps-controller gives pointer-lock + WASD + built-in wall collision (pass colliders). Build the level geometry + enemies; let the controller handle movement/look. Soft accelerator, never gated. Use ui.info-panel for the instructions/how-to-play box (collapsible to a small 'i' icon so it doesn't dominate the view); keep score/HUD compact and separate."
+  },
+  {
+   "id": "recipe.voxel-sandbox",
+   "name": "Voxel / Minecraft Sandbox",
+   "promptName": "voxel minecraft 3d",
+   "runtime": "vanilla-es6-modules",
+   "importStyle": "local-importmap",
+   "keywords": [
+    "minecraft",
+    "voxel",
+    "block world",
+    "place blocks",
+    "mine blocks",
+    "build and destroy",
+    "blocky",
+    "sandbox world",
+    "voxel dungeon"
+   ],
+   "starterComponents": [
+    "systems.voxel-chunk-3d",
+    "controls.fps-controller",
+    "core.three-scene-rig",
+    "resources.three-core",
+    "ui.info-panel"
+   ],
+   "requiredComponents": [
+    "systems.voxel-chunk-3d",
+    "controls.fps-controller",
+    "core.three-scene-rig",
+    "resources.three-core"
+   ],
+   "optionalComponents": [
+    "effects.fog-atmosphere",
+    "ui.three-hud-overlay",
+    "ui.info-panel",
+    "models.lowpoly-characters-3d",
+    "systems.save-state-3d"
+   ],
+   "notes": "systems.voxel-chunk-3d: terrain + DDA raycast (place/destroy) + culled mesh data + colliders for the FPS controller. Wrap buildMeshData() output in THREE.BufferGeometry. Use ui.info-panel for the instructions/how-to-play box (collapsible to a small 'i' icon so it doesn't dominate the view); keep score/HUD compact and separate."
+  },
+  {
+   "id": "recipe.arcade-physics",
+   "name": "Arcade Physics (kart/marble/pinball)",
+   "promptName": "arcade physics 3d",
+   "runtime": "vanilla-es6-modules",
+   "importStyle": "local-importmap",
+   "keywords": [
+    "kart racer",
+    "go-kart",
+    "marble",
+    "roll the ball",
+    "ball maze",
+    "mini golf",
+    "pinball",
+    "physics game",
+    "drift"
+   ],
+   "starterComponents": [
+    "systems.kinematic-body-3d",
+    "core.three-scene-rig",
+    "resources.three-core",
+    "ui.info-panel"
+   ],
+   "requiredComponents": [
+    "systems.kinematic-body-3d",
+    "core.three-scene-rig",
+    "resources.three-core"
+   ],
+   "optionalComponents": [
+    "core.three-game-loop",
+    "ui.three-hud-overlay",
+    "effects.screen-shake",
+    "ui.info-panel",
+    "models.lowpoly-vehicles-3d",
+    "models.lowpoly-props-3d",
+    "controls.camera-rig-3d",
+    "effects.audio-manager-3d",
+    "controls.tilt-input",
+    "controls.input-manager-3d",
+    "systems.save-state-3d"
+   ],
+   "notes": "systems.kinematic-body-3d: substep swept physics + sphere-vs-AABB slide + rollingQuaternion. Walls slide, don't stop dead. Build the track/board; step the body each frame. Use ui.info-panel for the instructions/how-to-play box (collapsible to a small 'i' icon so it doesn't dominate the view); keep score/HUD compact and separate."
+  },
+  {
+   "id": "recipe.three-rpg",
+   "name": "3D Action RPG",
+   "promptName": "3d rpg",
+   "runtime": "vanilla-es6-modules",
+   "importStyle": "local-importmap",
+   "keywords": [
+    "3d rpg",
+    "action rpg",
+    "top-down rpg",
+    "zelda-like",
+    "dungeon rpg",
+    "hack and slash",
+    "adventure rpg",
+    "quest game",
+    "explore and fight"
+   ],
+   "starterComponents": [
+    "core.three-game-loop",
+    "core.three-scene-rig",
+    "ui.three-hud-overlay",
+    "resources.three-core",
+    "models.procedural-creatures-3d",
+    "controls.camera-rig-3d",
+    "systems.heightmap-terrain-3d",
+    "effects.audio-manager-3d",
+    "effects.blob-shadow",
+    "controls.virtual-joystick-3d",
+    "ui.info-panel"
+   ],
+   "requiredComponents": [
+    "core.three-game-loop",
+    "core.three-scene-rig",
+    "ui.three-hud-overlay",
+    "resources.three-core",
+    "models.procedural-creatures-3d",
+    "controls.camera-rig-3d"
+   ],
+   "optionalComponents": [
+    "systems.heightmap-terrain-3d",
+    "effects.audio-manager-3d",
+    "effects.blob-shadow",
+    "effects.instanced-particle-pool",
+    "effects.screen-shake",
+    "models.lowpoly-props-3d",
+    "controls.virtual-joystick-3d",
+    "ui.info-panel",
+    "models.gltf-model-player-3d",
+    "controls.input-manager-3d",
+    "systems.spawn-wave-3d",
+    "effects.postfx-bloom-3d",
+    "systems.save-state-3d",
+    "ui.minimap-3d",
+    "effects.particle-presets-3d"
+   ],
+   "notes": "Use controls.camera-rig-3d in FOLLOW (top-down) or CHASE mode; setTarget(player); rig.update(dt). Spawn enemies with models.procedural-creatures-3d (buildCreature) and ANIMATE them every frame via animateCreature(group,{clip:enemy.state,t}) so they walk/attack/die instead of T-posing (tjs-018). Ground entities on systems.heightmap-terrain-3d via heightAt(x,z). Route SFX through effects.audio-manager-3d (no audio files, tjs-019). Give each creature an effects.blob-shadow so it reads as grounded with one shadow light. Structure the game as a pure sim.step(dt,input) + render(state) (tjs-020). Soft accelerator, never gated."
+  },
+  {
+   "id": "recipe.three-survival",
+   "name": "3D Wave Survival",
+   "promptName": "3d survival",
+   "runtime": "vanilla-es6-modules",
+   "importStyle": "local-importmap",
+   "keywords": [
+    "3d survival",
+    "survive waves",
+    "horde survival",
+    "wave defense 3d",
+    "last stand",
+    "zombie survival",
+    "vampire survivors 3d",
+    "arena survival",
+    "kill the horde"
+   ],
+   "starterComponents": [
+    "core.three-game-loop",
+    "core.three-scene-rig",
+    "ui.three-hud-overlay",
+    "resources.three-core",
+    "models.procedural-creatures-3d",
+    "controls.camera-rig-3d",
+    "effects.instanced-particle-pool",
+    "effects.screen-shake",
+    "effects.audio-manager-3d",
+    "effects.blob-shadow",
+    "controls.virtual-joystick-3d",
+    "ui.info-panel"
+   ],
+   "requiredComponents": [
+    "core.three-game-loop",
+    "core.three-scene-rig",
+    "ui.three-hud-overlay",
+    "resources.three-core",
+    "models.procedural-creatures-3d",
+    "controls.camera-rig-3d",
+    "effects.instanced-particle-pool",
+    "systems.spawn-wave-3d"
+   ],
+   "optionalComponents": [
+    "systems.heightmap-terrain-3d",
+    "effects.audio-manager-3d",
+    "effects.blob-shadow",
+    "effects.screen-shake",
+    "controls.virtual-joystick-3d",
+    "ui.info-panel",
+    "effects.postfx-bloom-3d",
+    "controls.input-manager-3d",
+    "systems.save-state-3d",
+    "ui.minimap-3d",
+    "effects.particle-presets-3d"
+   ],
+   "notes": "Endless escalating waves of animated creatures (models.procedural-creatures-3d + animateCreature, tjs-018). Camera in CHASE or FOLLOW via controls.camera-rig-3d. Pool ALL projectiles/particles through effects.instanced-particle-pool (tjs-009) and pool enemy blob shadows via BlobShadowPool. addTrauma on hits to effects.screen-shake AFTER rig.update. Procedural SFX via effects.audio-manager-3d (tjs-019). Win = survive N waves; lose = health 0 with a clear overlay + Restart (tjs-016). Soft accelerator, never gated."
+  },
+  {
+   "id": "recipe.three-flight",
+   "name": "3D Flight / Dogfight",
+   "promptName": "3d flight",
+   "runtime": "vanilla-es6-modules",
+   "importStyle": "local-importmap",
+   "keywords": [
+    "3d flight",
+    "flight sim",
+    "fly a plane",
+    "dogfight",
+    "space flyer",
+    "flight combat",
+    "barnstormer",
+    "arcade flight",
+    "fly through rings"
+   ],
+   "starterComponents": [
+    "core.three-game-loop",
+    "core.three-scene-rig",
+    "ui.three-hud-overlay",
+    "resources.three-core",
+    "controls.camera-rig-3d",
+    "models.lowpoly-vehicles-3d",
+    "effects.fog-atmosphere",
+    "effects.gradient-skybox",
+    "systems.heightmap-terrain-3d",
+    "effects.audio-manager-3d",
+    "ui.info-panel"
+   ],
+   "requiredComponents": [
+    "core.three-game-loop",
+    "core.three-scene-rig",
+    "ui.three-hud-overlay",
+    "resources.three-core",
+    "controls.camera-rig-3d"
+   ],
+   "optionalComponents": [
+    "systems.heightmap-terrain-3d",
+    "models.lowpoly-vehicles-3d",
+    "effects.fog-atmosphere",
+    "effects.gradient-skybox",
+    "effects.instanced-particle-pool",
+    "effects.audio-manager-3d",
+    "controls.virtual-joystick-3d",
+    "ui.info-panel",
+    "controls.input-manager-3d",
+    "effects.postfx-bloom-3d",
+    "systems.save-state-3d",
+    "ui.minimap-3d"
+   ],
+   "notes": "Camera in CHASE mode with a high lookAhead so the path/horizon stays framed (controls.camera-rig-3d, tjs-017/021). Use models.lowpoly-vehicles-3d buildPlane/buildSpaceship (spin the named 'propeller' part). effects.gradient-skybox + effects.fog-atmosphere sell altitude and hide pop-in. Fly over systems.heightmap-terrain-3d; sample heightAt to crash on the ground. Procedural engine/SFX via effects.audio-manager-3d (tjs-019). Delta-time flight model (tjs-006). Soft accelerator, never gated."
+  },
+  {
+   "id": "recipe.raycast-fps",
+   "name": "Raycast FPS (2.5D Doom/Wolfenstein)",
+   "promptName": "raycaster fps",
+   "runtime": "vanilla-es6-modules",
+   "importStyle": "local-importmap",
+   "keywords": [
+    "raycaster",
+    "raycast",
+    "wolfenstein",
+    "wolfenstein 3d",
+    "doom",
+    "doom-style",
+    "2.5d shooter",
+    "first person maze",
+    "dungeon crawler fps",
+    "corridor shooter",
+    "retro fps",
+    "grid shooter"
+   ],
+   "starterComponents": [
+    "raycast.dda-engine",
+    "raycast.sprite-billboards",
+    "raycast.grid-map",
+    "raycast.player-controller"
+   ],
+   "requiredComponents": [
+    "raycast.dda-engine",
+    "raycast.grid-map",
+    "raycast.player-controller"
+   ],
+   "optionalComponents": [
+    "raycast.sprite-billboards",
+    "raycast.grid-enemy-ai",
+    "ui.minimap-3d",
+    "ui.info-panel",
+    "ui.offscreen-indicator-3d",
+    "effects.audio-manager-3d",
+    "systems.save-state-3d"
+   ],
+   "assemblyNotes": "Pure 2D-canvas, NO three.js. dda-engine.renderWalls() returns the per-column Float32Array z-buffer that sprite-billboards.renderSprites() consumes for occlusion. player-controller uses drag-look (NEVER requestPointerLock). grid-map builds the level (ASCII or procedural maze, BFS-reachable). grid-enemy-ai drives stalkers/chasers in grid space.",
+   "notes": "Harvested 2026-06-21 from six landed raycaster games."
+  }
+ ],
+ "sourceCatalogs": [],
+ "absorptionProcess": [
+  "1. Author the module as an ES module under the matching category dir (core/ controls/ effects/ ui/ systems/ entities/). Wrap the body in the // BEGIN and // END mChatAI Web Component: <id> markers.",
+  "2. Add a component entry here with id, name, category, path, exports, status, summary, tags, and an optional nested contracts dict.",
+  "3. dispose-on-teardown: free every geometry, material, texture, and render target. Pool particles and projectiles.",
+  "4. Verify in a REAL WKWebView (hasWebGLContext true, window.__threeFrameCount greater than zero, errorCount zero), not headless Chrome.",
+  "5. Run tests/check_component_usage_3d.mjs to confirm the local-importmap gate, claimed imports present, and vendored core on disk. Confirm catalogRecipeCount via the diagWebComponentMatch tunnel command after every _index.json edit (Python validating is not Swift happy)."
+ ],
+ "goldenAssemblies": [
+  {
+   "id": "assembly.arena-shooter",
+   "name": "Drone Arena (first-person wave shooter)",
+   "summary": "Complete, verified-playable first-person wave shooter. Clone + reskin it. Drag-look + WASD + on-screen touch controls (NO pointer-lock, so it works in the in-app preview AND on mobile AND the hub), real low-poly drone enemies, raycast shooting, chasing enemy AI, waves, health, score, juice, collapsible HUD. All offline.",
+   "recipeID": "recipe.fps-shooter",
+   "templateIDs": [],
+   "keywords": [
+    "arena shooter",
+    "wave shooter",
+    "first person shooter",
+    "fps",
+    "shoot enemies",
+    "drone shooter",
+    "blaster arena",
+    "survive waves",
+    "first-person shooter"
+   ],
+   "files": [
+    "golden/arena-shooter/index.html"
+   ],
+   "notes": [
+    "Drag-to-look (NEVER pointer-lock) + on-screen touch joystick/buttons.",
+    "Reuse the imported modules verbatim; reskin the theme, enemy types, and arena, not the controller/models/panel internals."
+   ]
+  }
+ ]
 }
