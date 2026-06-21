@@ -1,6 +1,6 @@
 {
   "packID": "three-js-games",
-  "version": 2,
+  "version": 3,
   "displayName": "three.js 3D Game Guidelines (web-components-3d)",
   "description": "Quality and correctness rules for offline three.js WebGL2 3D games built from the web-components-3d Lego catalog. Covers the local-importmap-only loading contract (no CDN, no network, runs under file://), draw-call and DPR budgets, delta-time movement, dispose-on-teardown and object pooling, mobile light limits, hand-rolled physics versus rigid bodies, audio unlock on first user gesture, and WebGL2-not-WebGPU. These rules are for 3D games only and must not leak into productivity mini-apps.",
   "categories": [
@@ -345,6 +345,29 @@
       "examples": [
         "GOOD: <script type=importmap>{...}</script> then <script type=module> import * as THREE from 'three'; ...",
         "BAD: let THREE; try { THREE = await import('three'); } catch { showError('Could not load three.js from the CDN'); }"
+      ]
+    },
+    {
+      "id": "tjs-024",
+      "rule": "First-person / pointer-look 3D MUST use the Pointer Lock API for DESKTOP free-look: on a user click call `renderer.domElement.requestPointerLock()`, and read `e.movementX`/`e.movementY` in a `mousemove` handler that runs ONLY while `document.pointerLockElement` is set. Do NOT use drag-look (mousedown→mousemove→mouseup) as the desktop control. Clamp PITCH to ±(Math.PI/2 - 0.02); NEVER clamp YAW (free 360° turning). Keep touch drag-look as the MOBILE fallback only.",
+      "why": "Observed 2026-06-20 (Catacombs doom-style build): a real-3D FPS shipped with only a drag-style mousemove handler and no requestPointerLock, so on desktop the user reported 'I can't seem to fully turn all the way around.' Yaw was correctly unclamped, but drag-look is bounded by the window edge — Pointer Lock is the only way to give unbounded desktop mouse-look.",
+      "severity": "high",
+      "appliesTo": "anygame",
+      "examples": [
+        "GOOD: canvas.addEventListener('click', () => canvas.requestPointerLock()); document.addEventListener('mousemove', e => { if (document.pointerLockElement !== canvas) return; yaw -= e.movementX * sens; pitch -= e.movementY * sens; });",
+        "GOOD: pitch = Math.max(-1.55, Math.min(1.55, pitch)); // clamp pitch only, leave yaw free for 360 turning",
+        "BAD: desktop look implemented as mousedown+mousemove drag — the cursor hits the screen edge and turning stops"
+      ]
+    },
+    {
+      "id": "tjs-025",
+      "rule": "An explorable / first-person 3D scene must be PLAYABLE-bright: include an AmbientLight or HemisphereLight at intensity >= ~0.6 so the player can see walls, floor, and enemies. Atmospheric 'dark' themes (catacombs, dungeon, bunker, night) STILL need this baseline — a ~0.3 hemisphere plus a couple of local torch PointLights leaves the scene too dark to navigate. Avoid near-black floor/wall materials; give surfaces a mid-tone color so the fill light reads.",
+      "why": "Observed 2026-06-20 (Catacombs): HemisphereLight intensity 0.32 + 2 torch PointLights -> user reported 'quite dark and hard to see.' Mood is fine, but the player must be able to navigate; brighter ambient + non-black materials keeps it atmospheric AND playable.",
+      "severity": "medium",
+      "appliesTo": "anygame",
+      "examples": [
+        "GOOD: scene.add(new THREE.HemisphereLight(0xb0c4de, 0x202028, 0.7)); plus a directional/torch for shape",
+        "BAD: HemisphereLight(..., 0.3) as the ONLY fill - corridors render near-black"
       ]
     }
   ]
