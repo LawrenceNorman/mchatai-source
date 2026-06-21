@@ -1,0 +1,185 @@
+{
+  "packID": "matter-js",
+  "version": 1,
+  "displayName": "matter.js 2D Physics Game and Toy Guidelines",
+  "description": "Quality and correctness rules for offline single-file matter.js 2D rigid-body physics mini-apps (plinko, toppling towers, marble runs, dominoes, ragdolls, catapults, bouncy-ball pits, gravity sandboxes). Covers the classic UMD script-tag load contract (no ESM under file://), building bodies with the Composite/Bodies/Constraint helpers, the fixed-timestep Runner, rendering to a viewport-sized canvas, capping the body count, mouse and touch dragging via MouseConstraint, and shipping a complete interactive experience. For matter.js physics mini-apps only; do not leak into three.js 3D games or productivity apps.",
+  "categories": [
+    "matter-js"
+  ],
+  "keywords": [
+    "matter.js",
+    "matterjs",
+    "matter js",
+    "matter",
+    "physics",
+    "2d physics",
+    "rigid body",
+    "rigidbody",
+    "plinko",
+    "pachinko",
+    "toppling",
+    "tower",
+    "marble run",
+    "marble",
+    "domino",
+    "dominoes",
+    "ragdoll",
+    "catapult",
+    "slingshot",
+    "bouncy ball",
+    "ball pit",
+    "gravity sandbox",
+    "sandbox",
+    "constraint",
+    "collision",
+    "demolition",
+    "stacking",
+    "tumbling",
+    "physics toy",
+    "physics game"
+  ],
+  "guidelines": [
+    {
+      "id": "matter-001",
+      "rule": "Load matter.js with a classic UMD <script src> tag that exposes the global Matter. NEVER use an ESM 'import Matter from \"matter-js\"' / <script type=module>. ESM modules silently fail to load under file:// in the WKWebView preview, leaving a blank, dead canvas.",
+      "why": "These mini-apps ship as static single-file bundles and run under file:// inside WKWebView, which is not a secure context. A bare module import or an importmap referencing matter-js does not resolve there and Matter is never defined. The UMD build attaches Matter to window, which works offline under file://.",
+      "severity": "critical",
+      "appliesTo": "anymatter",
+      "examples": [
+        "GOOD: <script src=\"https://cdn.jsdelivr.net/npm/matter-js@0.19.0/build/matter.min.js\"></script> then const { Engine, Render, ... } = Matter;",
+        "WRONG: import Matter from 'matter-js'; - ESM does not resolve under file:// in the preview",
+        "WRONG: <script type=\"module\"> import { Engine } from 'matter-js'; </script> - blank canvas"
+      ]
+    },
+    {
+      "id": "matter-002",
+      "rule": "Pin a specific matter.js version in the CDN URL (for example matter-js@0.19.0). The platform vendors the referenced version offline; an unversioned URL still works but a pinned one is reproducible and guarantees the vendored copy matches the API you coded against.",
+      "why": "The offline vendoring step fetches the exact version named in the script src. Pinning keeps the shipped bundle deterministic and avoids a 'latest' URL drifting against the module aliases (Engine, Render, Runner, Bodies, Composite) you destructure.",
+      "severity": "important",
+      "appliesTo": "anymatter",
+      "examples": [
+        "GOOD: <script src=\"https://cdn.jsdelivr.net/npm/matter-js@0.19.0/build/matter.min.js\"></script>",
+        "AVOID: <script src=\"https://cdn.jsdelivr.net/npm/matter-js/build/matter.min.js\"></script> - unversioned"
+      ]
+    },
+    {
+      "id": "matter-003",
+      "rule": "Build bodies and the world with the official module helpers, not by hand: Matter.Bodies (rectangle, circle, polygon, trapezoid), Matter.Composite (add/remove, allBodies), Matter.Composites (stack, pyramid, newtonsCradle), Matter.Constraint / Matter.Composites.chain for joints, and Matter.Body for impulses. Destructure them once from Matter at the top.",
+      "why": "The helpers produce correctly-formed bodies with proper vertices, inertia, and collision data; hand-built body objects break the solver. Matter.Composites.stack/pyramid build towers and brick walls in one call, and Constraint/chain build slingshots, marble-run linkages, and ragdoll joints correctly.",
+      "severity": "important",
+      "appliesTo": "anymatter",
+      "examples": [
+        "const { Engine, Render, Runner, Bodies, Composite, Constraint, Mouse, MouseConstraint } = Matter;",
+        "tower: const stack = Composites.stack(x, y, cols, rows, 0, 0, (px,py) => Bodies.rectangle(px,py,40,40));",
+        "ragdoll: link parts with Constraint between body anchor points"
+      ]
+    },
+    {
+      "id": "matter-004",
+      "rule": "Step the engine with the official Matter.Runner (fixed timestep), do NOT call Engine.update on a raw requestAnimationFrame with a variable delta. Create a Runner with Runner.create() and Runner.run(runner, engine); it advances the engine at a stable fixed step regardless of frame rate.",
+      "why": "matter's solver is tuned for a roughly fixed 16.6ms step; feeding it a wildly variable rAF delta makes bodies tunnel through walls, jitter, or explode. The Runner provides the stable timestep the solver expects, giving identical, deterministic physics across 30/60/120fps devices and after tab stalls.",
+      "severity": "important",
+      "appliesTo": "anymatter",
+      "examples": [
+        "const runner = Runner.create(); Runner.run(runner, engine);",
+        "WRONG: function loop(){ Engine.update(engine, performance.now()-last); requestAnimationFrame(loop); } with raw deltas",
+        "stop with Runner.stop(runner) on teardown"
+      ]
+    },
+    {
+      "id": "matter-005",
+      "rule": "Render to a canvas sized to the viewport and keep it responsive. If using Matter.Render, set render.options.width/height to the window size and pixelRatio to Math.min(devicePixelRatio,2); on resize update the canvas size, render bounds, and the boundary walls. Many polished toys instead use Matter as the physics engine only and draw the bodies on their own canvas/Pixi/p5 layer.",
+      "why": "A fixed-size physics canvas leaves dead margins and the boundary walls end up off-screen after a resize, so bodies fall out of view. Sizing the renderer and walls to the viewport (and clamping pixelRatio to 2) keeps the scene full-bleed and performant. Using Matter for physics + a custom draw layer gives full control over the look.",
+      "severity": "important",
+      "appliesTo": "anymatter",
+      "examples": [
+        "Render.create({ element, engine, options:{ width:innerWidth, height:innerHeight, pixelRatio:Math.min(devicePixelRatio,2), wireframes:false, background:'transparent' } });",
+        "on resize: set render.canvas width/height + render.options + reposition the floor/wall bodies",
+        "CSS: html,body{margin:0;overflow:hidden} canvas{display:block}"
+      ]
+    },
+    {
+      "id": "matter-006",
+      "rule": "Cap the total body count and remove bodies that fall out of bounds. Keep the live body count bounded (a few hundred is plenty for most toys), and when a body falls below the floor or off-screen, Composite.remove it (or recycle it) instead of letting dead bodies accumulate. Lower the cap on mobile.",
+      "why": "The constraint solver cost grows with body count and contacts; thousands of bodies drop even desktops below 30fps and crush mobile. Bouncy-pit, plinko, and domino toys leak bodies that pile up off-screen unless culled. A bounded, culled population keeps the physics smooth.",
+      "severity": "important",
+      "appliesTo": "anymatter",
+      "examples": [
+        "const MAX_BODIES = (innerWidth < 700) ? 120 : 300;",
+        "Events.on(engine, 'afterUpdate', () => Composite.allBodies(engine.world).forEach(b => { if (b.position.y > cullY) Composite.remove(engine.world, b); }));",
+        "WRONG: spawning balls forever with no cap and no cull"
+      ]
+    },
+    {
+      "id": "matter-007",
+      "rule": "Enclose the play area with static boundary walls so nothing escapes: add static (isStatic:true) floor, ceiling, and side-wall rectangles sized to the viewport, and reposition/resize them on window resize. Use a thick floor so fast bodies do not tunnel through it.",
+      "why": "Without boundary walls every ball, block, and marble falls forever out of view and the toy looks empty within seconds. Static walls sized to the viewport keep the action on screen. A thin floor lets a fast body tunnel through in one step, so make the floor thick (or set a higher solver constraintIterations).",
+      "severity": "important",
+      "appliesTo": "anymatter",
+      "examples": [
+        "const floor = Bodies.rectangle(w/2, h-20, w, 80, { isStatic:true });",
+        "left/right/ceiling walls as static rectangles; reposition all four on resize",
+        "WRONG: only a floor, so bodies roll off the sides forever"
+      ]
+    },
+    {
+      "id": "matter-008",
+      "rule": "Wire dragging with Matter.MouseConstraint so users can grab and fling bodies on BOTH mouse and touch. Create Mouse.create(render.canvas) and a MouseConstraint, add it to the world, and set mouse.pixelRatio to match the renderer. Apply the recommended touch fix so touch-drag works and does not scroll the page.",
+      "why": "MouseConstraint gives natural grab-and-throw interaction (the core of ragdoll, catapult, marble-run, and sandbox toys) and it already supports touch. Without the standard touch-event handling, touch-drag either does nothing or scrolls the page instead of grabbing a body. The pixelRatio must match the renderer or the grab point is offset.",
+      "severity": "important",
+      "appliesTo": "anymatter",
+      "examples": [
+        "const mouse = Mouse.create(render.canvas); const mc = MouseConstraint.create(engine, { mouse, constraint:{ stiffness:0.2 } }); Composite.add(world, mc);",
+        "mouse.pixelRatio = render.options.pixelRatio; remove the default mousewheel listeners if they hijack scroll",
+        "CSS: canvas{touch-action:none} so touch-drag grabs a body instead of scrolling"
+      ]
+    },
+    {
+      "id": "matter-009",
+      "rule": "Tune materials for satisfying physics: set restitution (bounciness), friction, and density on bodies so the toy feels right - bouncy balls want high restitution (~0.8), dominoes/towers want low restitution and enough friction to stack, marbles want moderate friction. Adjust engine.gravity if a slower/floatier feel is wanted.",
+      "why": "Default material values feel dead (no bounce) or chaotic. A bouncy-pit with restitution 0 is just a sad pile; dominoes with high restitution never stay stacked. Tuning restitution/friction/density per toy is what makes the physics feel intentional and fun, which is the whole point of a physics toy.",
+      "severity": "recommended",
+      "appliesTo": "anymatter",
+      "examples": [
+        "bouncy ball: Bodies.circle(x,y,r,{ restitution:0.85, friction:0.02 });",
+        "domino: Bodies.rectangle(x,y,12,60,{ restitution:0.05, friction:0.6 });",
+        "floaty toy: engine.gravity.y = 0.5;"
+      ]
+    },
+    {
+      "id": "matter-010",
+      "rule": "Use collision events for scoring and feedback. Listen with Matter.Events.on(engine, 'collisionStart', ...) to detect a ball landing in a plinko slot, a block being knocked off, a domino tipping, etc., and update score/UI and trigger effects there. Identify bodies via a label or custom property you set at creation.",
+      "why": "Plinko slots, catapult demolition scoring, and domino counters all need to know when specific bodies touch. collisionStart with labelled bodies is the correct, reliable hook; polling positions every frame is fragile. This is what turns a physics sandbox into a scored, completable game.",
+      "severity": "recommended",
+      "appliesTo": "anymatter",
+      "examples": [
+        "Events.on(engine, 'collisionStart', ev => ev.pairs.forEach(p => { if (isSlot(p.bodyA)||isSlot(p.bodyB)) addScore(); }));",
+        "tag bodies: Bodies.circle(x,y,r,{ label:'puck' });",
+        "use the score to drive a win state and a Reset/Drop button"
+      ]
+    },
+    {
+      "id": "matter-011",
+      "rule": "Clean up on teardown: Runner.stop(runner), Render.stop(render) (if used), Engine.clear(engine), World/Composite.clear, remove the canvas and the resize/pointer listeners. Do this when the mini-app restarts or the view is torn down.",
+      "why": "Mini-apps are torn down and relaunched repeatedly in the host. A leftover running Runner, leftover event listeners, or an uncleared engine leaks CPU and bodies across restarts and can run two simulations at once. Explicit cleanup keeps restarts clean.",
+      "severity": "recommended",
+      "appliesTo": "anymatter",
+      "examples": [
+        "function teardown(){ Runner.stop(runner); Render.stop(render); Engine.clear(engine); window.removeEventListener('resize', onResize); }",
+        "a Reset button should clear and rebuild the world rather than stacking a second one"
+      ]
+    },
+    {
+      "id": "matter-012",
+      "rule": "Ship a complete, interactive experience on the first load - the scene is already populated (pegs, tower, dominoes, balls) and the core action works immediately (a Drop/Go/Launch control plus tap-to-act). For GAME goals (plinko, catapult, tower-topple), wire a visible score and a reachable win/lose or clear state with a working Reset, not just an idle pile of bodies.",
+      "why": "The render gate and taste rubric can pass a loaded-but-inert canvas. The product is a working physics toy or game. A plinko board with no way to drop, or a catapult with no targets/score, reads as broken even though it 'loaded'. The satisfying action plus a score and reset is what makes it feel finished.",
+      "severity": "critical",
+      "appliesTo": "anymatter",
+      "examples": [
+        "plinko: peg field + slots present; a Drop button and tap-to-drop-here; score climbs on landing",
+        "catapult: slingshot loaded, castle and targets standing; drag-aim-release; score + retry",
+        "WRONG: a physics canvas with bodies but no way to interact or no scoring/end state"
+      ]
+    }
+  ]
+}

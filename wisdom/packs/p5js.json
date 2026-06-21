@@ -1,0 +1,185 @@
+{
+  "packID": "p5js",
+  "version": 1,
+  "displayName": "p5.js Generative Art and Toy Guidelines",
+  "description": "Quality and correctness rules for offline single-file p5.js generative-art and creative-coding mini-apps (flow fields, Perlin terrain, fractal trees, particle ecosystems, reaction-diffusion, kaleidoscopes, generative posters, starfields, fractal explorers, paint toys). Covers the classic UMD script-tag load contract (no ESM under file://), instance-vs-global mode consistency, full-viewport responsive canvases, the p5 helper APIs (noise, random, color), delta-time motion, devicePixelRatio clamping, and shipping a complete interactive experience on first load. For p5.js creative-coding mini-apps only; do not leak into three.js games or productivity apps.",
+  "categories": [
+    "p5js"
+  ],
+  "keywords": [
+    "p5.js",
+    "p5js",
+    "p5 js",
+    "p5",
+    "processing",
+    "generative art",
+    "generative",
+    "creative coding",
+    "flow field",
+    "flowfield",
+    "perlin",
+    "perlin noise",
+    "noise field",
+    "fractal tree",
+    "recursive tree",
+    "particle ecosystem",
+    "boids",
+    "flocking",
+    "reaction diffusion",
+    "kaleidoscope",
+    "mandala",
+    "generative poster",
+    "starfield",
+    "warp",
+    "mandelbrot",
+    "fractal explorer",
+    "spirograph",
+    "paint toy",
+    "aurora",
+    "sketch",
+    "canvas art"
+  ],
+  "guidelines": [
+    {
+      "id": "p5-001",
+      "rule": "Load p5.js with a classic UMD <script src> tag that exposes the global p5 (and the global p5 functions in global mode). NEVER use an ESM 'import' / 'import * from' / <script type=module> to load p5. ESM modules silently fail to load under file:// in the WKWebView preview, leaving a blank page with no error the user can see.",
+      "why": "These mini-apps ship as static single-file bundles and run under file:// inside WKWebView, which is not a secure context. A bare module import or an importmap referencing p5 does not resolve there and the sketch never starts. The UMD build attaches p5 (and setup/draw in global mode) to window, which works offline under file://.",
+      "severity": "critical",
+      "appliesTo": "anysketch",
+      "examples": [
+        "GOOD: <script src=\"https://cdn.jsdelivr.net/npm/p5@1.9.4/lib/p5.min.js\"></script> then a normal <script> with setup()/draw()",
+        "WRONG: import p5 from 'p5'; - ESM does not resolve under file:// in the preview",
+        "WRONG: <script type=\"module\"> import 'p5'; </script> - blank canvas offline"
+      ]
+    },
+    {
+      "id": "p5-002",
+      "rule": "Pin a specific p5 version in the CDN URL (for example p5@1.9.4) rather than an unversioned or 'latest' URL. The platform vendors the referenced version offline; an unversioned URL still works but a pinned one is reproducible and guarantees the vendored copy matches the API you coded against.",
+      "why": "The offline vendoring step fetches the exact version named in the script src. An unpinned 'latest' URL can drift and break against API changes between minor releases; pinning keeps the shipped bundle deterministic.",
+      "severity": "important",
+      "appliesTo": "anysketch",
+      "examples": [
+        "GOOD: <script src=\"https://cdn.jsdelivr.net/npm/p5@1.9.4/lib/p5.min.js\"></script>",
+        "AVOID: <script src=\"https://cdn.jsdelivr.net/npm/p5/lib/p5.min.js\"></script> - unversioned"
+      ]
+    },
+    {
+      "id": "p5-003",
+      "rule": "Choose ONE p5 mode and use it consistently. Either global mode (define top-level setup(), draw(), and use bare p5 globals like createCanvas, noise, random) OR instance mode (new p5(sketch) with everything namespaced through the sketch argument, e.g. p.noise, p.random). Do NOT mix the two: calling a bare global inside an instance-mode sketch is undefined.",
+      "why": "Mixing modes is a top cause of 'noise is not defined' / 'createCanvas is not defined' runtime errors that blank the canvas. Instance mode is safer when the page has other scripts; global mode is simpler for a standalone sketch. Pick one and stay consistent throughout the file.",
+      "severity": "important",
+      "appliesTo": "anysketch",
+      "examples": [
+        "Global: function setup(){ createCanvas(windowWidth, windowHeight); } function draw(){ background(0); }",
+        "Instance: const sketch = (p) => { p.setup = () => p.createCanvas(p.windowWidth, p.windowHeight); p.draw = () => p.background(0); }; new p5(sketch);",
+        "WRONG: inside an instance sketch calling the bare global noise(x) instead of p.noise(x)"
+      ]
+    },
+    {
+      "id": "p5-004",
+      "rule": "Size the canvas to the full viewport and handle resize. Call createCanvas(windowWidth, windowHeight) in setup, and implement windowResized(){ resizeCanvas(windowWidth, windowHeight); } so the sketch always fills the window and reflows. Set the body/html margin to 0 and overflow hidden so there are no scrollbars or gaps.",
+      "why": "A fixed-size canvas leaves dead margins and looks unfinished, and the preview/hub renders at many sizes. windowResized keeps the art edge-to-edge and correct after rotation or window changes. Without margin:0 the canvas inherits the default body margin and shows a scrollbar.",
+      "severity": "important",
+      "appliesTo": "anysketch",
+      "examples": [
+        "function setup(){ createCanvas(windowWidth, windowHeight); }",
+        "function windowResized(){ resizeCanvas(windowWidth, windowHeight); }",
+        "CSS: html,body{margin:0;padding:0;overflow:hidden;background:#000}"
+      ]
+    },
+    {
+      "id": "p5-005",
+      "rule": "Use the p5 helper APIs instead of hand-rolling math. Use noise() for smooth Perlin fields, random()/randomGaussian() for randomness, color()/lerpColor() and colorMode(HSB) for palettes, map()/constrain()/lerp() for ranges, and createVector()/p5.Vector for particle motion. Reach for these before writing your own.",
+      "why": "p5 provides tuned, well-behaved helpers; reimplementing Perlin noise or vector math by hand is error-prone and usually worse. colorMode(HSB) makes smooth hue cycling trivial for beautiful palettes. p5.Vector gives clean particle physics (add, mult, limit) for flow fields and flocking.",
+      "severity": "recommended",
+      "appliesTo": "anysketch",
+      "examples": [
+        "colorMode(HSB, 360, 100, 100, 1); stroke((hue % 360), 80, 90, 0.6);",
+        "const angle = noise(x*0.005, y*0.005, t*0.2) * TWO_PI * 2; // flow field direction",
+        "const v = createVector(cos(angle), sin(angle)).mult(speed);"
+      ]
+    },
+    {
+      "id": "p5-006",
+      "rule": "Make all motion frame-rate independent. Use deltaTime (milliseconds since last frame) to scale movement, or drive time from a clock like millis()/1000, rather than advancing by a constant amount each draw() call. Clamp very large deltas (after a tab stall) so nothing teleports.",
+      "why": "p5 targets 60fps but runs at 30, 60, or 120fps across devices and stalls when backgrounded. Per-frame constant motion makes a 120Hz phone run the toy twice as fast as a 60Hz one. Scaling by deltaTime gives identical motion everywhere.",
+      "severity": "important",
+      "appliesTo": "anysketch",
+      "examples": [
+        "const dt = Math.min(deltaTime/1000, 0.1); pos.add(vel.copy().mult(dt));",
+        "const t = millis() * 0.001; // seconds, for noise/animation phase",
+        "WRONG: pos.x += speed; // runs faster on high-refresh displays"
+      ]
+    },
+    {
+      "id": "p5-007",
+      "rule": "Clamp the canvas pixel density. Call pixelDensity(Math.min(window.devicePixelRatio || 1, 2)) (or pixelDensity(1) for very fragment-heavy sketches like reaction-diffusion or per-pixel fractals) so a 3x Retina phone does not render 9x the pixels.",
+      "why": "p5 defaults pixelDensity to the device ratio; on a 3x phone that triples the work in each axis and drops a heavy generative sketch to a slideshow. Clamping to 2 keeps it crisp while capping cost. Per-pixel loaders (pixels[] / loadPixels) should usually run at density 1.",
+      "severity": "important",
+      "appliesTo": "anysketch",
+      "examples": [
+        "function setup(){ pixelDensity(Math.min(window.devicePixelRatio||1, 2)); createCanvas(windowWidth, windowHeight); }",
+        "Reaction-diffusion / Mandelbrot / per-pixel: pixelDensity(1);"
+      ]
+    },
+    {
+      "id": "p5-008",
+      "rule": "Ship a complete, beautiful, interactive experience on the very first frame - never a blank or single-static-frame canvas. The toy must already be alive and respond to pointer input immediately. Seed particles/state in setup so there is motion before any input, and wire interaction so the first gesture has a visible effect.",
+      "why": "The render gate and taste rubric can pass a blank-but-loaded canvas. The actual product is a living, responsive toy. A flow field with no particles, or a painter that needs a click before anything appears, reads as broken even though it 'loaded'.",
+      "severity": "critical",
+      "appliesTo": "anysketch",
+      "examples": [
+        "setup(): create the initial particle array so the field is already flowing before any input",
+        "interaction has an immediate visible effect on the first pointer move/press",
+        "WRONG: an empty black canvas that only does something after a click"
+      ]
+    },
+    {
+      "id": "p5-009",
+      "rule": "Support BOTH mouse and touch. Use p5's unified pointer values (mouseX/mouseY update for touch too) and the touch callbacks (touchStarted, touchMoved, touchEnded) where you need them, and return false from touch handlers to stop the page from scrolling/zooming. Set CSS touch-action:none on the canvas. Never rely on hover-only interaction.",
+      "why": "Most of these toys are tried on phones. Mouse-only handlers leave a phone user with a pretty but dead toy. Returning false from touchMoved/touchStarted (and touch-action:none) stops the browser from hijacking the gesture for scroll/zoom so dragging paints/steers instead of panning the page.",
+      "severity": "important",
+      "appliesTo": "anysketch",
+      "examples": [
+        "function touchMoved(){ paintAt(mouseX, mouseY); return false; } // false prevents scroll",
+        "CSS: canvas{touch-action:none;display:block}",
+        "Use mouseX/mouseY (set for touch) rather than reading a desktop-only event"
+      ]
+    },
+    {
+      "id": "p5-010",
+      "rule": "For trail and glow effects, paint a low-alpha background rectangle each frame (e.g. background(bg, 0.05)) or use blendMode(ADD) for additive glow, instead of clearing fully or never clearing. Reset blendMode(BLEND) when drawing opaque UI. This is how flow fields, starfields, and paint toys get their luminous trails cheaply.",
+      "why": "A full clear each frame kills trails; never clearing fills the canvas to mush. A translucent background fade leaves elegant decaying trails at near-zero cost, and blendMode(ADD) makes overlapping particles glow. Forgetting to restore BLEND mode makes later UI render wrong.",
+      "severity": "recommended",
+      "appliesTo": "anysketch",
+      "examples": [
+        "draw(): background(10, 12, 28, 12); // low alpha = soft trails (RGBA mode)",
+        "blendMode(ADD); drawParticles(); blendMode(BLEND); drawUI();"
+      ]
+    },
+    {
+      "id": "p5-011",
+      "rule": "Keep the particle/entity budget bounded and scale it to the canvas area, not a giant fixed constant. Cap counts (e.g. a few thousand particles), reuse particle objects in a fixed array rather than allocating new ones every frame, and avoid per-frame array growth that triggers GC stalls.",
+      "why": "Generative toys love to spawn unbounded particles until the frame rate collapses, especially on mobile. A fixed reused pool keeps allocation flat and the frame rate steady. Sizing the count to width*height keeps density consistent across screen sizes.",
+      "severity": "important",
+      "appliesTo": "anysketch",
+      "examples": [
+        "const COUNT = Math.min(3000, Math.floor(width*height/500));",
+        "reuse: when a particle dies, reset it in place instead of splicing and pushing a new one",
+        "WRONG: particles.push(new Particle()) every frame with no cap"
+      ]
+    },
+    {
+      "id": "p5-012",
+      "rule": "Provide simple, discoverable controls when the toy benefits from them (a clear button, a palette/segment slider, a save button using saveCanvas), styled to match the art and positioned in a corner so they do not cover the canvas. Keep the canvas the star; controls are minimal and optional.",
+      "why": "A bit of control (clear, segment count, save the artwork) makes a generative toy feel finished and replayable without cluttering the piece. saveCanvas lets users keep what they make. Overlaying big UI on the art ruins the look, so keep it compact and to the edges.",
+      "severity": "recommended",
+      "appliesTo": "anysketch",
+      "examples": [
+        "a small 'Clear' and 'Save' button fixed to a corner over the canvas",
+        "saveCanvas('artwork', 'png') on a Save press",
+        "a slider bound to the kaleidoscope segment count or the noise scale"
+      ]
+    }
+  ]
+}

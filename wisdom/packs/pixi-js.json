@@ -1,0 +1,183 @@
+{
+  "packID": "pixi-js",
+  "version": 1,
+  "displayName": "pixi.js (v7) 2D WebGL Game and Toy Guidelines",
+  "description": "Quality and correctness rules for offline single-file pixi.js (v7) WebGL 2D mini-apps (bullet-hell shooters, fluid blobs, shader-filter kaleidoscopes, GPU particle fountains, neon breakout, sprite stress arenas, aquariums, cursor-trail toys). Covers the classic UMD script-tag load contract (no ESM under file://), pinning v7 (v8 changed the API), devicePixelRatio clamping, ParticleContainer and sprite pooling for thousands of sprites, the ticker for delta-time motion, destroying textures on teardown, full-viewport responsive stages, and shipping a complete interactive experience. For pixi.js 2D mini-apps only; do not leak into three.js 3D games or productivity apps.",
+  "categories": [
+    "pixi-js"
+  ],
+  "keywords": [
+    "pixi.js",
+    "pixijs",
+    "pixi js",
+    "pixi",
+    "2d webgl",
+    "sprite",
+    "sprites",
+    "bullet hell",
+    "bullet-hell",
+    "shmup",
+    "shoot em up",
+    "particle",
+    "particles",
+    "particle fountain",
+    "metaball",
+    "blob",
+    "fluid",
+    "breakout",
+    "arkanoid",
+    "kaleidoscope filter",
+    "shader filter",
+    "displacement filter",
+    "aquarium",
+    "fish tank",
+    "cursor trail",
+    "sprite arena",
+    "2d game",
+    "arcade"
+  ],
+  "guidelines": [
+    {
+      "id": "pixi-001",
+      "rule": "Load pixi.js with a classic UMD <script src> tag that exposes the global PIXI. NEVER use an ESM 'import * as PIXI from \"pixi.js\"' / <script type=module>. ESM modules silently fail to load under file:// in the WKWebView preview, leaving a blank stage.",
+      "why": "These mini-apps ship as static single-file bundles and run under file:// inside WKWebView, which is not a secure context. A bare module import or an importmap referencing pixi.js does not resolve there and PIXI is never defined. The UMD build attaches PIXI to window, which works offline under file://.",
+      "severity": "critical",
+      "appliesTo": "anypixi",
+      "examples": [
+        "GOOD: <script src=\"https://cdn.jsdelivr.net/npm/pixi.js@7.4.2/dist/pixi.min.js\"></script> then new PIXI.Application(...)",
+        "WRONG: import * as PIXI from 'pixi.js'; - ESM does not resolve under file:// in the preview",
+        "WRONG: <script type=\"module\"> import { Application } from 'pixi.js'; </script> - blank stage"
+      ]
+    },
+    {
+      "id": "pixi-002",
+      "rule": "Pin pixi.js v7 specifically (for example pixi.js@7.4.2). v8 changed the API substantially (async Application.init(), renamed members, ParticleContainer moved). Code against v7's synchronous 'new PIXI.Application({...})' API and pin a v7 URL so the vendored copy matches.",
+      "why": "pixi v8 is a breaking redesign: Application setup became async (await app.init), several classes and options were renamed/removed. Code written for v7 silently breaks on v8 and vice versa. Pinning a v7 version keeps the bundle deterministic and the synchronous constructor working.",
+      "severity": "critical",
+      "appliesTo": "anypixi",
+      "examples": [
+        "GOOD: <script src=\"https://cdn.jsdelivr.net/npm/pixi.js@7.4.2/dist/pixi.min.js\"></script>",
+        "GOOD (v7 API): const app = new PIXI.Application({ resizeTo: window, antialias: true, background: 0x05060f });",
+        "WRONG: pinning pixi.js@8 then using the synchronous v7 constructor"
+      ]
+    },
+    {
+      "id": "pixi-003",
+      "rule": "Clamp the renderer resolution. Pass resolution: Math.min(window.devicePixelRatio || 1, 2) and autoDensity: true to the Application, and re-apply on resize. Never render at the raw resolution of a 3x Retina phone.",
+      "why": "A 3x DPR phone renders 9x the pixels; on a sprite/particle-heavy WebGL scene that is the difference between 60fps and a slideshow. Clamping resolution to 2 with autoDensity keeps the image crisp while capping the pixel budget. This is the single highest-ROI mobile performance fix.",
+      "severity": "important",
+      "appliesTo": "anypixi",
+      "examples": [
+        "new PIXI.Application({ resolution: Math.min(window.devicePixelRatio||1, 2), autoDensity: true, resizeTo: window });",
+        "WRONG: resolution: window.devicePixelRatio with no clamp"
+      ]
+    },
+    {
+      "id": "pixi-004",
+      "rule": "For thousands of sprites (bullet-hell, particle fountains, sprite arenas), use a PIXI.ParticleContainer and a SHARED texture, and POOL the sprites: pre-allocate a fixed array of sprites and recycle them (hide/show, reposition) instead of creating and destroying sprites every frame or every shot. Keep all instances on one base texture.",
+      "why": "ParticleContainer batches huge numbers of same-texture sprites into very few draw calls; a normal Container of thousands of distinct sprites is slow. Allocating a Sprite per bullet/particle every frame triggers GC churn and the destroy cost of pixi-007. A fixed pool keeps allocation flat: spawning takes a dead slot, despawning hides it.",
+      "severity": "important",
+      "appliesTo": "anypixi",
+      "examples": [
+        "const pc = new PIXI.ParticleContainer(20000, { position: true, scale: true, alpha: true });",
+        "pool: pre-make sprites from one texture; spawn() = take a hidden one and reposition; despawn() = sprite.visible=false",
+        "WRONG: new PIXI.Sprite(tex) inside the per-frame loop for every bullet"
+      ]
+    },
+    {
+      "id": "pixi-005",
+      "rule": "Drive all motion from the ticker with delta time. Use app.ticker.add((delta) => ...) and scale movement by delta (or by ticker.deltaMS/1000 for seconds), so motion is identical at 30/60/120fps. Clamp very large deltas after a stall. Do NOT advance by a constant amount per tick.",
+      "why": "pixi's ticker runs at the display refresh, which varies by device and stalls when backgrounded. Per-tick constant motion makes a 120Hz phone run the game twice as fast as a 60Hz one. Scaling by the ticker delta gives deterministic motion everywhere; clamping the delta avoids a teleport after a tab stall.",
+      "severity": "important",
+      "appliesTo": "anypixi",
+      "examples": [
+        "app.ticker.add((delta) => { const dt = Math.min(delta, 3); update(dt); });",
+        "or: const dt = Math.min(app.ticker.deltaMS/1000, 0.1); pos.x += vx*dt;",
+        "WRONG: sprite.x += speed; // runs faster on high-refresh displays"
+      ]
+    },
+    {
+      "id": "pixi-006",
+      "rule": "Generate sprite textures procedurally with PIXI.Graphics + app.renderer.generateTexture (or render a Graphics directly) - do NOT fetch or embed image asset files. Draw a glow circle, a ship, a brick, a fish as Graphics once, bake it to a texture, then reuse that texture across all sprites.",
+      "why": "Image files mean network fetches (dead under file://) or large base64 blobs that bloat the bundle. A Graphics-drawn shape baked to a texture once gives crisp, reusable sprites with zero bytes and zero network, fully offline. Generating one texture and sharing it also enables ParticleContainer batching (pixi-004).",
+      "severity": "important",
+      "appliesTo": "anypixi",
+      "examples": [
+        "const g = new PIXI.Graphics().beginFill(0x00e5ff).drawCircle(0,0,8).endFill(); const tex = app.renderer.generateTexture(g);",
+        "reuse tex for every particle/bullet sprite",
+        "WRONG: PIXI.Sprite.from('ship.png') or loading an image URL - breaks offline"
+      ]
+    },
+    {
+      "id": "pixi-007",
+      "rule": "Destroy GPU resources on teardown. Call app.destroy(true, { children: true, texture: true, baseTexture: true }) (or destroy your generated textures explicitly) when the mini-app ends or the view tears down, and remove the resize/pointer listeners. Generated textures and render targets are not garbage-collected on their own.",
+      "why": "pixi keeps generated textures, render targets, and filters in WebGL memory until destroyed; a toy that rebuilds its stage on restart without destroying leaks VRAM until the context is lost and the canvas goes black. Mini-apps get torn down and relaunched repeatedly in the host, so the leak compounds fast.",
+      "severity": "important",
+      "appliesTo": "anypixi",
+      "examples": [
+        "function teardown(){ window.removeEventListener('resize', onResize); app.destroy(true, { children:true, texture:true, baseTexture:true }); }",
+        "explicitly: generatedTexture.destroy(true); filter.destroy?.();"
+      ]
+    },
+    {
+      "id": "pixi-008",
+      "rule": "Make the stage fill and resize to the viewport. Pass resizeTo: window (or resize the renderer on the resize/orientationchange events) and reposition the gameplay layout (paddle bounds, fountain origin, fish bounds) to the new size. Set the canvas display:block and the body margin to 0 so there are no gaps.",
+      "why": "A fixed-size stage leaves dead margins and looks unfinished, and the preview/hub render at many sizes. resizeTo:window keeps the canvas edge-to-edge; recomputing layout bounds on resize keeps gameplay correct after rotation. Without margin:0 / display:block the canvas inherits the default body margin.",
+      "severity": "important",
+      "appliesTo": "anypixi",
+      "examples": [
+        "new PIXI.Application({ resizeTo: window, ... }); window.addEventListener('resize', repositionLayout);",
+        "CSS: html,body{margin:0;overflow:hidden} canvas{display:block}",
+        "on resize, recompute paddle/wall/fountain positions from app.screen.width/height"
+      ]
+    },
+    {
+      "id": "pixi-009",
+      "rule": "Use pixi's filters for shader-style effects rather than hand-writing GLSL: DisplacementFilter for warp/fluid, ColorMatrixFilter for color shifts, BlurFilter for glow, AlphaFilter, etc. Apply them to a container's filters array, and dispose them on teardown. For neon glow, blend additively (sprite.blendMode = PIXI.BLEND_MODES.ADD).",
+      "why": "Pixi's built-in filters give kaleidoscope, displacement, and color effects with no custom shader code and they survive offline file://. Additive blend mode is how particle fountains and cursor trails get their luminous look. Filters hold GPU resources, so include them in the teardown disposal.",
+      "severity": "recommended",
+      "appliesTo": "anypixi",
+      "examples": [
+        "container.filters = [ new PIXI.DisplacementFilter(displacementSprite), new PIXI.ColorMatrixFilter() ];",
+        "glow: sprite.blendMode = PIXI.BLEND_MODES.ADD;",
+        "dispose filters in teardown along with their displacement textures"
+      ]
+    },
+    {
+      "id": "pixi-010",
+      "rule": "Support BOTH pointer and touch via pixi's unified pointer events and/or DOM pointer events. Use 'pointermove'/'pointerdown'/'pointerup' (which cover mouse and touch) on app.stage with stage.eventMode='static' and stage.hitArea = app.screen, or listen on the canvas. Set CSS touch-action:none on the canvas. Never rely on hover-only interaction.",
+      "why": "These toys are tried on phones; mouse-only handlers leave a pretty but dead app. pixi's pointer events are unified across mouse and touch. touch-action:none stops the browser from hijacking drags for scroll/zoom so dragging controls the paddle/blob/fountain instead of panning the page.",
+      "severity": "important",
+      "appliesTo": "anypixi",
+      "examples": [
+        "app.stage.eventMode = 'static'; app.stage.hitArea = app.screen; app.stage.on('pointermove', e => aimAt(e.global));",
+        "CSS: canvas{touch-action:none;display:block}",
+        "WRONG: a mousemove-only paddle that does nothing on a phone"
+      ]
+    },
+    {
+      "id": "pixi-011",
+      "rule": "Cap the active entity budget and scale it down on mobile/small screens. Bound the number of live bullets/particles/sprites, lower the cap when the screen is small or the device pixel ratio is high, and reuse from the pool (pixi-004). Watch that you do not spawn unbounded entities until the frame rate collapses.",
+      "why": "Bullet-hell and particle toys love to spawn unbounded entities until mobile chokes. A bounded, pooled budget keeps the frame rate steady; scaling the cap to screen size keeps a phone smooth while a desktop can show more. This works together with the resolution clamp (pixi-003).",
+      "severity": "important",
+      "appliesTo": "anypixi",
+      "examples": [
+        "const MAX_PARTICLES = (window.innerWidth < 700) ? 4000 : 12000;",
+        "if (liveCount >= MAX_PARTICLES) reuseOldest(); else spawnFromPool();",
+        "WRONG: emitting particles every frame with no upper bound"
+      ]
+    },
+    {
+      "id": "pixi-012",
+      "rule": "Ship a complete, beautiful, interactive experience on the first frame - never a blank or single-static stage. Seed the scene (fish swimming, particles flowing, bricks laid out, enemies spawning) so it is alive before any input, and wire interaction so the first gesture has an immediate visible effect. For GAME goals, ship a real playable loop with score and a reachable win/lose state, not just an ambient scene.",
+      "why": "The render gate and taste rubric can pass a blank-but-loaded stage. The product is a living, responsive toy or a real game. A fountain with no particles, a breakout with no ball, or an aquarium with no fish reads as broken even though it 'loaded'. A game with no win/lose is a tech demo, not a game.",
+      "severity": "critical",
+      "appliesTo": "anypixi",
+      "examples": [
+        "aquarium: fish already swimming and bubbles rising on load",
+        "breakout: ball, paddle, and full brick wall present; lives/score HUD; win on clear, lose on no balls",
+        "WRONG: an empty stage that needs a click before anything appears"
+      ]
+    }
+  ]
+}

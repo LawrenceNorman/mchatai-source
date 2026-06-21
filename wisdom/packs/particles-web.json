@@ -1,0 +1,179 @@
+{
+  "packID": "particles-web",
+  "version": 1,
+  "displayName": "Particles and Motion Guidelines (tsParticles + canvas-confetti + GSAP)",
+  "description": "Quality and correctness rules for offline single-file particle and motion mini-apps built with tsParticles (v2), canvas-confetti, and GSAP (mouse-reactive starfields, network constellations, snow, bubbles, celebration toys, fireworks, animated hero showpieces, SVG morphs, FLIP shuffles, staggered reveals). Covers the classic UMD script-tag load contract (no ESM under file://), pinning versions, using the libraries' preset/helper APIs, full-viewport responsive canvases, devicePixelRatio clamping, delta/responsive GSAP timelines, respecting prefers-reduced-motion, and shipping a complete interactive experience on first load. For tsParticles/confetti/GSAP mini-apps only; do not leak into games requiring a full engine or productivity apps.",
+  "categories": [
+    "particles-web"
+  ],
+  "keywords": [
+    "tsparticles",
+    "ts particles",
+    "particles.js",
+    "particlesjs",
+    "particles",
+    "particle background",
+    "starfield",
+    "stars",
+    "network constellation",
+    "constellation",
+    "snow",
+    "snowfall",
+    "bubbles",
+    "canvas-confetti",
+    "canvas confetti",
+    "confetti",
+    "celebration",
+    "fireworks",
+    "party",
+    "gsap",
+    "greensock",
+    "timeline",
+    "tween",
+    "animation",
+    "motion",
+    "svg morph",
+    "morph",
+    "flip",
+    "staggered reveal",
+    "stagger",
+    "scroll animation",
+    "hero animation",
+    "showpiece"
+  ],
+  "guidelines": [
+    {
+      "id": "pw-001",
+      "rule": "Load tsParticles, canvas-confetti, and GSAP with classic UMD <script src> tags that expose the globals tsParticles (and the loadFull/loadSlim bundle that registers presets), confetti, and gsap. NEVER use ESM 'import { tsParticles } ...' / 'import gsap from \"gsap\"' / <script type=module>. ESM modules silently fail to load under file:// in the WKWebView preview, leaving a blank page.",
+      "why": "These mini-apps ship as static single-file bundles and run under file:// inside WKWebView, which is not a secure context. A bare module import or an importmap referencing these libs does not resolve there and the global is never defined. The UMD builds attach the globals to window, which works offline under file://.",
+      "severity": "critical",
+      "appliesTo": "anyparticles",
+      "examples": [
+        "GOOD: <script src=\"https://cdn.jsdelivr.net/npm/@tsparticles/all@3.x...\"></script> exposing window.tsParticles (or v2 tsparticles bundle exposing loadFull)",
+        "GOOD: <script src=\"https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js\"></script> exposing window.confetti",
+        "GOOD: <script src=\"https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js\"></script> exposing window.gsap",
+        "WRONG: import gsap from 'gsap'; - ESM does not resolve under file:// in the preview"
+      ]
+    },
+    {
+      "id": "pw-002",
+      "rule": "Pin specific versions in the CDN URLs (for example tsParticles v2 bundle, canvas-confetti@1.9.3, gsap@3.12.5). The platform vendors the referenced version offline; an unversioned URL still works but a pinned one is reproducible and guarantees the vendored copy matches the API and preset registration you coded against.",
+      "why": "The offline vendoring step fetches the exact version named in the script src. tsParticles in particular has version-specific bundle/preset registration; pinning keeps the bundle deterministic and avoids 'latest' silently changing which presets/loaders exist.",
+      "severity": "important",
+      "appliesTo": "anyparticles",
+      "examples": [
+        "GOOD: canvas-confetti@1.9.3, gsap@3.12.5 pinned",
+        "GOOD: a pinned tsParticles bundle that exposes the loader you call (loadFull/loadSlim)",
+        "AVOID: an unversioned 'latest' URL for any of them"
+      ]
+    },
+    {
+      "id": "pw-003",
+      "rule": "Prefer the libraries' high-level preset/helper APIs over hand-rolling. tsParticles: configure via tsParticles.load({ id, options:{...} }) (after the bundle's loader has registered the engine) using its declarative options (particles, interactivity, presets like stars/links/snow). canvas-confetti: a single confetti({...}) call (plus confetti.create for a custom canvas). GSAP: gsap.to/from/timeline. Do not reimplement a particle engine by hand.",
+      "why": "These libraries exist so you describe the effect declaratively and they handle the rendering, pooling, and interactivity efficiently. Hand-rolling a particle system loses the built-in interactivity (hover-grab, click-push), preset polish, and performance. confetti() is intentionally a one-liner; reaching for raw canvas loops is the wrong tool.",
+      "severity": "important",
+      "appliesTo": "anyparticles",
+      "examples": [
+        "tsParticles: await tsParticles.load({ id:'tsp', options:{ particles:{ number:{value:120}, links:{enable:true} }, interactivity:{ events:{ onHover:{enable:true, mode:'grab'} } } } });",
+        "confetti: confetti({ particleCount: 120, spread: 70, origin:{ y:0.6 } });",
+        "GSAP: gsap.timeline().from('.logo', {scale:0, ease:'back.out'}).from('.title span', {y:30, opacity:0, stagger:0.05});"
+      ]
+    },
+    {
+      "id": "pw-004",
+      "rule": "Make the particle canvas/stage fill and resize to the viewport. tsParticles with fullScreen.enable:true (or a container sized 100vw/100vh) auto-fits; otherwise resize its canvas on window resize. canvas-confetti uses the full window by default, or size your custom confetti canvas to the viewport with resize:true. Set body margin 0 and overflow hidden so there are no gaps or scrollbars.",
+      "why": "A fixed-size particle field leaves dead margins and looks unfinished, and the preview/hub render at many sizes. fullScreen / 100vw-100vh and resize handling keep the effect edge-to-edge and correct after rotation. Without margin:0 the canvas inherits the default body margin and shows a scrollbar.",
+      "severity": "important",
+      "appliesTo": "anyparticles",
+      "examples": [
+        "tsParticles options: fullScreen: { enable: true, zIndex: 0 }",
+        "custom confetti canvas: const myConfetti = confetti.create(canvas, { resize: true, useWorker: true });",
+        "CSS: html,body{margin:0;overflow:hidden} the particles container fills 100vw/100vh"
+      ]
+    },
+    {
+      "id": "pw-005",
+      "rule": "Wire interactivity for BOTH mouse and touch and never rely on hover-only. tsParticles interactivity covers hover (mode grab/bubble/repulse) AND click (mode push/bubble) - enable click so touch users get an effect too. For confetti/GSAP toys, use pointer events (pointerdown) so a tap fires the effect. Set CSS touch-action:none on an interactive canvas so dragging does not scroll the page.",
+      "why": "These toys are tried on phones, where there is no hover. A hover-only constellation is dead on touch; enabling click/tap modes gives a phone user the burst/push effect. pointerdown covers mouse and touch for confetti-on-tap. touch-action:none stops a drag from scrolling instead of interacting.",
+      "severity": "important",
+      "appliesTo": "anyparticles",
+      "examples": [
+        "tsParticles: interactivity.events.onClick.enable = true; onClick.mode = 'push' (or a custom bloom)",
+        "confetti toy: document.addEventListener('pointerdown', e => confetti({ origin: { x: e.clientX/innerWidth, y: e.clientY/innerHeight } }));",
+        "CSS on the interactive layer: touch-action:none"
+      ]
+    },
+    {
+      "id": "pw-006",
+      "rule": "Clamp devicePixelRatio to <=2 and keep the particle/confetti count bounded, lower on mobile. tsParticles: set a sensible particles.number.value and reduce it for small screens; the engine clamps retina by default but verify it is not rendering at raw 3x. confetti: keep particleCount per burst reasonable (dozens to a couple hundred) and use useWorker:true for heavy shows. Cap GSAP animated element counts too.",
+      "why": "A 3x DPR canvas plus thousands of particles tanks mobile. Clamping DPR to 2 and bounding the count keeps it at 60fps. Firing huge confetti bursts repeatedly without a worker drops the main thread; useWorker offloads it. Scaling counts to screen size keeps phones smooth while desktops show more.",
+      "severity": "important",
+      "appliesTo": "anyparticles",
+      "examples": [
+        "tsParticles: particles.number.value = (innerWidth < 700) ? 60 : 140; detectRetina:true is the default but verify",
+        "confetti: confetti.create(canvas, { resize:true, useWorker:true }) for repeated/finale shows",
+        "GSAP staggered grid: cap the tile count on small screens"
+      ]
+    },
+    {
+      "id": "pw-007",
+      "rule": "Respect prefers-reduced-motion. Check window.matchMedia('(prefers-reduced-motion: reduce)') and, when set, reduce or pause continuous looping animation: shorten/disable GSAP repeat loops, calm the particle motion, and avoid relentless full-screen flashing. Keep the experience present and pretty but gentler. Still allow user-triggered bursts (a confetti tap) since those are intentional.",
+      "why": "Continuous, fast, full-screen motion can cause discomfort or nausea for some users, and the platform values accessibility. Honoring prefers-reduced-motion (calming idle loops while keeping intentional, user-initiated effects) makes the toy considerate without making it boring.",
+      "severity": "recommended",
+      "appliesTo": "anyparticles",
+      "examples": [
+        "const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches; if (reduce) tl.repeat(0).timeScale(0.5);",
+        "if (reduce) lower tsParticles move.speed and disable any flashing background loop",
+        "still fire confetti on an explicit tap even when reduce is set"
+      ]
+    },
+    {
+      "id": "pw-008",
+      "rule": "Build GSAP animation with timelines and make them delta/responsive: use gsap.timeline() to orchestrate sequences, set durations in seconds (GSAP is time-based, not frame-based, so it is already frame-rate independent), use ease functions for polish, and provide a replay control that restarts the timeline. Use relative/percent values or gsap.matchMedia so the animation adapts to screen size.",
+      "why": "A timeline orchestrates a hero/showpiece sequence cleanly and is restartable; ad-hoc setTimeout chains are fragile. GSAP tweens by wall-clock time so they look identical at any refresh rate. Using responsive values / gsap.matchMedia keeps the motion sensible on a phone vs a wide screen instead of flying off-canvas.",
+      "severity": "recommended",
+      "appliesTo": "anyparticles",
+      "examples": [
+        "const tl = gsap.timeline(); tl.from('.shape', {scale:0, stagger:0.04, ease:'back.out(1.7)'}).to('.line', {drawSVG:'100%'});",
+        "replay button: replayBtn.onclick = () => tl.restart();",
+        "gsap.matchMedia().add('(max-width: 700px)', () => { /* smaller offsets on mobile */ });"
+      ]
+    },
+    {
+      "id": "pw-009",
+      "rule": "For FLIP / shuffle / morph effects, prefer GSAP's measure-then-animate approach (record positions, change the DOM, animate from the old positions) or the gsap.timeline with x/y offsets, and for SVG shape morphing animate between paths with equal point counts (or use a morph plugin if vendored). Toggle visibility/transform, do not relayout-thrash each frame.",
+      "why": "FLIP card shuffles and grid rearranges look great when you animate from the previous layout to the new one; recomputing layout every frame thrashes the page and stutters. SVG morphs only interpolate cleanly between paths with compatible point structure, otherwise the shape jumps. These are the patterns that keep the showpieces smooth.",
+      "severity": "recommended",
+      "appliesTo": "anyparticles",
+      "examples": [
+        "FLIP: record getBoundingClientRect, reorder DOM, gsap.from(cards, { x: dx, y: dy, duration:0.5 })",
+        "SVG morph: tween 'd' between two paths authored with the same command structure",
+        "avoid: setting layout-affecting styles inside the per-frame tick"
+      ]
+    },
+    {
+      "id": "pw-010",
+      "rule": "Use the right tool for celebratory bursts: canvas-confetti for confetti/fireworks/celebration (it is purpose-built and a single call), tsParticles for ambient/interactive fields (stars, links, snow, bubbles), GSAP for orchestrated UI/SVG motion showpieces. For an automatic fireworks display, schedule repeated confetti() calls from varied origins with shapes/colors; for a celebration toy, map buttons to different confetti presets.",
+      "why": "Matching the library to the effect gives the best result with the least code: confetti() already does physics-y bursts beautifully, tsParticles already does interactive ambient fields, GSAP already sequences DOM/SVG. Forcing one to do another's job (e.g. hand-building confetti in tsParticles) is more code and worse looking.",
+      "severity": "recommended",
+      "appliesTo": "anyparticles",
+      "examples": [
+        "fireworks: setInterval(() => confetti({ particleCount:60, startVelocity:35, spread:360, origin:{ x:Math.random(), y:Math.random()*0.5 } }), 600);",
+        "ambient: tsParticles.load with a stars/links/snow preset",
+        "hero: gsap.timeline orchestrating logo + headline + accent lines"
+      ]
+    },
+    {
+      "id": "pw-011",
+      "rule": "Ship a complete, beautiful, interactive experience on the first load - never a blank canvas or a showpiece that needs a click to start. tsParticles fields should already be drifting; an ambient scene is alive immediately; a celebration toy shows its buttons (and a friendly default burst is fine); a GSAP hero plays its intro on load with a replay control. The first interaction must have an immediate visible effect.",
+      "why": "The render gate and taste rubric can pass a blank-but-loaded canvas. The product is a living, responsive effect. A starfield with no stars, a confetti toy that does nothing until you find the button, or a hero that sits frozen reads as broken even though it 'loaded'. Make it alive and responsive from frame one.",
+      "severity": "critical",
+      "appliesTo": "anyparticles",
+      "examples": [
+        "tsParticles field already drifting on load; hover/tap reacts immediately",
+        "celebration toy: clearly labelled buttons; tapping anywhere also pops confetti",
+        "GSAP hero: timeline auto-plays the intro once on load; a Replay button re-runs it"
+      ]
+    }
+  ]
+}

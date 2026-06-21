@@ -1,0 +1,190 @@
+{
+  "packID": "dataviz",
+  "version": 1,
+  "displayName": "Data Visualization Guidelines (d3 v7 + Chart.js)",
+  "description": "Quality and correctness rules for offline single-file data-visualization mini-apps built with d3 (v7) and Chart.js (bar-chart races, zoomable sunbursts, chord diagrams, force graphs, brushed scatter plots, radial trees, live dashboards). Covers the classic UMD script-tag load contract (no ESM under file://), pinning versions, keeping all data INLINE (offline, no fetch), responsive SVG/canvas sizing with redraw on resize, Chart.js responsive:true + maintainAspectRatio:false, smooth transitions, accessible color/typography, and shipping a populated, interactive chart on first load. For d3/Chart.js dataviz mini-apps only; do not leak into games or productivity apps.",
+  "categories": [
+    "dataviz"
+  ],
+  "keywords": [
+    "d3",
+    "d3.js",
+    "d3js",
+    "d3 v7",
+    "chart.js",
+    "chartjs",
+    "chart js",
+    "chart",
+    "charts",
+    "data viz",
+    "dataviz",
+    "data visualization",
+    "visualization",
+    "bar chart race",
+    "bar-chart race",
+    "sunburst",
+    "chord diagram",
+    "chord",
+    "force graph",
+    "force directed",
+    "force-directed",
+    "network graph",
+    "scatter plot",
+    "scatterplot",
+    "brush",
+    "radial tree",
+    "treemap",
+    "hierarchy",
+    "dashboard",
+    "line chart",
+    "doughnut",
+    "radar chart",
+    "infographic"
+  ],
+  "guidelines": [
+    {
+      "id": "dv-001",
+      "rule": "Load d3 and Chart.js with classic UMD <script src> tags that expose the globals d3 and Chart. NEVER use an ESM 'import * as d3 from \"d3\"' / 'import Chart from \"chart.js\"' / <script type=module>. ESM modules silently fail to load under file:// in the WKWebView preview, leaving an empty page.",
+      "why": "These mini-apps ship as static single-file bundles and run under file:// inside WKWebView, which is not a secure context. A bare module import or an importmap referencing d3/chart.js does not resolve there and the global is never defined. The UMD builds attach d3 / Chart to window, which works offline under file://.",
+      "severity": "critical",
+      "appliesTo": "anychart",
+      "examples": [
+        "GOOD: <script src=\"https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js\"></script> then a normal <script> using d3.select(...)",
+        "GOOD: <script src=\"https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.js\"></script> then new Chart(ctx, ...)",
+        "WRONG: import * as d3 from 'd3'; - ESM does not resolve under file:// in the preview"
+      ]
+    },
+    {
+      "id": "dv-002",
+      "rule": "Pin specific versions in the CDN URLs (for example d3@7.9.0, chart.js@4.4.3). Code against d3 v7's flat namespace (d3.scaleLinear, d3.hierarchy, d3.forceSimulation) and Chart.js v4. The platform vendors the referenced version offline; pinning keeps the vendored copy matching the API you coded against.",
+      "why": "d3 v7 uses a single flat d3 namespace and module-as-microlibrary structure; older snippets using d3.scale.linear (v3) break. Chart.js v4 differs from v2/v3 (scales config, tree-shakeable in ESM but global in UMD). Pinning keeps the bundle deterministic and the API stable.",
+      "severity": "important",
+      "appliesTo": "anychart",
+      "examples": [
+        "GOOD: d3@7.9.0 and chart.js@4.4.3 pinned",
+        "GOOD (v7): const x = d3.scaleLinear().domain([0,100]).range([0,w]);",
+        "WRONG (v3): d3.scale.linear() - removed in v4+"
+      ]
+    },
+    {
+      "id": "dv-003",
+      "rule": "Keep ALL data INLINE in the file - a JS array/object literal embedded in the script. NEVER fetch data from a URL, d3.json/d3.csv a remote file, or load a remote dataset. The mini-app runs offline under file:// with no network, so any fetch fails and the chart stays empty.",
+      "why": "These bundles are offline single files. d3.json('https://...') or fetch() returns nothing under file:// (and even a relative file fails CORS in WKWebView), so a chart depending on a fetch renders blank. Embedding a curated sample dataset as a literal guarantees the visualization always has data.",
+      "severity": "critical",
+      "appliesTo": "anychart",
+      "examples": [
+        "GOOD: const data = [ {name:'Alpha', value:42}, {name:'Beta', value:31}, ... ]; // inline literal",
+        "GOOD: a hierarchical literal for the sunburst/tree; an inline matrix for the chord diagram",
+        "WRONG: d3.json('data.json').then(draw) or fetch('https://api...').then(...) - empty offline"
+      ]
+    },
+    {
+      "id": "dv-004",
+      "rule": "Size the SVG/canvas responsively to its container and REDRAW on resize. Read the container's width/height (clientWidth/clientHeight), set the SVG viewBox or width/height from it, and on window resize (and orientationchange) recompute scales and redraw. Use a debounced resize handler. Set body margin 0 so the chart fills the space.",
+      "why": "A hard-coded 960x500 SVG looks tiny on a phone and clipped on a wide screen, and the preview/hub render at many sizes. Reading the container size and redrawing keeps the chart full and legible everywhere and correct after rotation. viewBox plus preserveAspectRatio gives crisp scalable SVG.",
+      "severity": "important",
+      "appliesTo": "anychart",
+      "examples": [
+        "const w = container.clientWidth, h = container.clientHeight; svg.attr('viewBox', `0 0 ${w} ${h}`);",
+        "window.addEventListener('resize', debounce(() => { recomputeScales(); redraw(); }, 150));",
+        "WRONG: svg.attr('width', 960).attr('height', 500) fixed with no resize handling"
+      ]
+    },
+    {
+      "id": "dv-005",
+      "rule": "For Chart.js, configure responsive:true and maintainAspectRatio:false, and give each canvas a sized parent container (the parent controls the dimensions). This lets a chart fill its dashboard card and resize with the layout. Do NOT set fixed width/height attributes on the canvas itself.",
+      "why": "Chart.js with maintainAspectRatio:true (the default) forces a fixed aspect and ignores the parent height, producing a squished or overflowing chart in a grid. responsive:true + maintainAspectRatio:false + a sized wrapper is the standard way to make a Chart.js chart fill its card and reflow with the dashboard.",
+      "severity": "important",
+      "appliesTo": "anychart",
+      "examples": [
+        "new Chart(ctx, { type:'line', data, options:{ responsive:true, maintainAspectRatio:false } });",
+        "HTML: <div class=\"card\" style=\"position:relative;height:240px\"><canvas></canvas></div>",
+        "WRONG: <canvas width=\"600\" height=\"300\"> with maintainAspectRatio defaulting true"
+      ]
+    },
+    {
+      "id": "dv-006",
+      "rule": "Use smooth transitions and animation for state changes. In d3 use selection.transition().duration(...) with d3.easeCubic and the general update pattern (join/enter/update/exit) so bars reorder, arcs tween, and points move smoothly. In Chart.js keep the built-in animations and use chart.update() for live data. Animate the bar-chart-race overtakes and the sunburst zoom with arcTween.",
+      "why": "The wow factor of these toys is the motion: bars racing and overtaking, sunburst arcs tweening on zoom, force nodes settling. Hard cut-overs look broken; tweened transitions look polished. The d3 enter/update/exit join is the correct way to animate data changes without orphaned elements.",
+      "severity": "recommended",
+      "appliesTo": "anychart",
+      "examples": [
+        "bars.transition().duration(700).ease(d3.easeCubicInOut).attr('y', d => y(d.name));",
+        "sunburst zoom: arcs.transition().duration(750).attrTween('d', arcTween);",
+        "Chart.js live: chart.data.datasets[0].data.push(v); chart.update();"
+      ]
+    },
+    {
+      "id": "dv-007",
+      "rule": "Make the visualization interactive and tactile: hover/tap to highlight + show a tooltip, click to zoom/expand (sunburst, tree), drag nodes (force graph) or brush a region (scatter). Wire BOTH mouse and touch (pointer events) and keep hit targets reasonable. The visualization should respond to the very first interaction.",
+      "why": "A static chart is an image; the product is an interactive explorer. Tooltips on hover/tap, click-to-zoom, draggable force nodes, and brushable scatters are what make these toys engaging and worth opening. Pointer events cover touch so a phone user can explore too.",
+      "severity": "important",
+      "appliesTo": "anychart",
+      "examples": [
+        "arc.on('pointerenter', highlight).on('pointerleave', reset).on('click', zoomTo);",
+        "force nodes: node.call(d3.drag().on('start',...).on('drag',...).on('end',...));",
+        "scatter: svg.call(d3.brush().on('brush end', brushed));"
+      ]
+    },
+    {
+      "id": "dv-008",
+      "rule": "Choose readable, attractive color and typography. Use d3 scale-chromatic schemes (d3.schemeTableau10, d3.interpolateViridis/Warm, d3.schemeSet2) or a curated palette, ensure text contrasts with its background, size fonts so labels are legible on a phone, and add a title and a legend/axis labels so the chart is self-explanatory. Truncate or rotate long labels.",
+      "why": "Default black-on-white with tiny labels looks unfinished; a tuned categorical/sequential scheme plus clear titles and legends makes the chart beautiful and understandable. Legible fonts and contrast matter especially on mobile. d3-scale-chromatic ships well-designed schemes for free.",
+      "severity": "recommended",
+      "appliesTo": "anychart",
+      "examples": [
+        "const color = d3.scaleOrdinal(d3.schemeTableau10);",
+        "sequential by depth: d3.interpolateWarm(t)",
+        "add an <h1>/<text> title, axis labels, and a legend; rotate long x labels -45deg"
+      ]
+    },
+    {
+      "id": "dv-009",
+      "rule": "Use the correct d3 layout/generator for each chart and follow its data shape: d3.hierarchy + d3.partition for sunburst, d3.tree/d3.cluster for trees, d3.chord + d3.ribbon for chord diagrams, d3.forceSimulation (forceLink/forceManyBody/forceCenter) for force graphs, d3.arc/d3.pie, d3.line/d3.area, d3.brush. Feed them the shape they expect (root.descendants(), a matrix, {nodes,links}).",
+      "why": "These layouts do the hard geometry; hand-rolling arc/ribbon/force math is error-prone and usually wrong. The common failure is feeding a layout the wrong data shape (a flat array to d3.hierarchy, or links referencing node objects vs ids) so it throws or renders nothing. Match the generator to its documented input.",
+      "severity": "important",
+      "appliesTo": "anychart",
+      "examples": [
+        "sunburst: const root = d3.hierarchy(data).sum(d => d.value); d3.partition().size([2*Math.PI, radius])(root);",
+        "force: d3.forceSimulation(nodes).force('link', d3.forceLink(links).id(d => d.id)).force('charge', d3.forceManyBody());",
+        "chord: const chords = d3.chord().padAngle(0.04)(matrix); d3.ribbon().radius(r);"
+      ]
+    },
+    {
+      "id": "dv-010",
+      "rule": "On every redraw, clear or update via the join pattern - do NOT append duplicate SVG groups on each resize/update. Either remove the old content (svg.selectAll('*').remove() before a full redraw) or use a stable data join (selection.data(...).join(...)). For Chart.js, update the existing chart instance or destroy() it before creating a new one.",
+      "why": "A frequent bug is appending a fresh <g>/axis/chart on every resize so duplicates stack up, the SVG balloons, and tooltips fire multiple times. Clearing first or using join keeps one clean rendering. Creating a second Chart on the same canvas without destroying the first throws 'Canvas is already in use'.",
+      "severity": "important",
+      "appliesTo": "anychart",
+      "examples": [
+        "full redraw: svg.selectAll('*').remove(); then rebuild",
+        "join: g.selectAll('rect').data(data, d => d.id).join('rect') ...",
+        "Chart.js resize: chart.resize() (built-in) - do not new Chart() again on the same canvas"
+      ]
+    },
+    {
+      "id": "dv-011",
+      "rule": "Ship a populated, interactive chart on the FIRST load - never an empty axes-only frame or a chart that needs a button press to get data. Render the inline data immediately, run the entry animation/transition once on load, and have controls (play/pause, speed, zoom-out) enhance rather than gate the initial render.",
+      "why": "The render gate can pass an empty-but-loaded SVG. The product is a chart actually showing data. An empty force graph, a sunburst with no arcs, or a bar race paused at frame zero with nothing visible reads as broken. Render the data first; let controls refine it.",
+      "severity": "critical",
+      "appliesTo": "anychart",
+      "examples": [
+        "on load: draw all marks from the inline data, then run the intro transition",
+        "bar race autostarts (or shows the first frame populated) with a pause button",
+        "WRONG: blank axes until the user clicks 'Load'"
+      ]
+    },
+    {
+      "id": "dv-012",
+      "rule": "Clamp devicePixelRatio for canvas-based renders to <=2 and keep redraws efficient. For Chart.js set devicePixelRatio to Math.min(window.devicePixelRatio,2) (or rely on its responsive handling), debounce resize redraws, and avoid recomputing a force simulation from scratch on every frame. Keep live-dashboard update intervals reasonable (a few per second, not per frame).",
+      "why": "A 3x DPR canvas plus a busy live dashboard tanks mobile; clamping to 2 caps the pixel cost. Un-debounced resize redraws and per-frame full recomputes cause jank. A live dashboard updating a few times a second looks lively without burning the battery.",
+      "severity": "recommended",
+      "appliesTo": "anychart",
+      "examples": [
+        "new Chart(ctx, { options:{ devicePixelRatio: Math.min(window.devicePixelRatio||1, 2) } });",
+        "live feed: setInterval(() => { pushPoint(); chart.update('none'); }, 1000);",
+        "debounce the resize redraw rather than redrawing on every resize event"
+      ]
+    }
+  ]
+}
