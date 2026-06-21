@@ -1,19 +1,315 @@
 {
   "version": "2026.06.21",
   "_purpose": "Single source of truth for the mini-app TYPE filter pills (the 'topic' axis, orthogonal to contentCategory) shown on the Community Hub on web + iOS. Read by web (HubPage.js / communityData.js), iOS (TaxonomyStore -> DiscoverView), and the publish + backfill derivers. RULE #1: no pill labels/taxonomy are hardcoded in any binary -- they come from here (zero-rebuild). ASCII-only. Each published mini-app gets a stored topics:[pillId] array (stamped at publish time for new items; batch-derived for existing items). Filtering is: selectedTopic == '' || item.topics includes selectedTopic. The deriver assigns a pill when ANY of its lane/category/contentCategory matches the item's stamped lanes/categories, OR a fingerprint substring is present in the bundle index.html, OR an alias keyword appears in the item name/description/tags.",
-  "lanes": ["3d", "raycast", "2.5d", "p5", "tone", "pixi", "matter", "d3", "chart", "gsap", "tsparticles", "confetti"],
-  "categories": ["games", "art", "music", "dataviz", "scene", "toy"],
+  "lanes": [
+    "3d",
+    "raycast",
+    "2.5d",
+    "p5",
+    "tone",
+    "pixi",
+    "matter",
+    "d3",
+    "chart",
+    "gsap",
+    "tsparticles",
+    "confetti"
+  ],
+  "categories": [
+    "games",
+    "art",
+    "music",
+    "dataviz",
+    "scene",
+    "toy"
+  ],
   "pills": [
-    { "id": "games",     "label": "Games",            "icon": "gamecontroller",       "lane": ["pixi", "kontra"],            "category": ["games"], "contentCategory": ["game"], "fingerprints": [],                                              "aliases": ["arcade", "shooter", "platformer", "puzzle game", "clone", "breakout", "tower defense", "snake", "tetris"] },
-    { "id": "3d",        "label": "3D",               "icon": "cube",                 "lane": ["3d"],                       "category": [],        "contentCategory": [],       "fingerprints": ["resources/three/", "three.module", "web-components-3d", "WebGLRenderer"], "aliases": ["three.js", "webgl", "voxel", "first person", "fps", "3d "] },
-    { "id": "raycast",   "label": "Raycast / 2.5D",   "icon": "square.stack.3d.up",   "lane": ["raycast", "2.5d"],          "category": [],        "contentCategory": [],       "fingerprints": ["raycast/dda-engine", "castColumn", "sprite-billboards"], "aliases": ["doom", "wolfenstein", "raycaster", "raycast", "2.5d", "dungeon crawler"] },
-    { "id": "music",     "label": "Music & Audio",    "icon": "music.note",           "lane": ["tone"],                     "category": ["music"], "contentCategory": [],       "fingerprints": ["libs/Tone.js", "libs/tone"],                  "aliases": ["synth", "sequencer", "beat machine", "drum", "arpeggiator", "theremin", "audio reactive", "music"] },
-    { "id": "art",       "label": "Generative Art",   "icon": "paintbrush.pointed",   "lane": ["p5"],                       "category": ["art"],   "contentCategory": [],       "fingerprints": ["libs/p5.min.js", "libs/p5.sound"],            "aliases": ["generative", "flow field", "perlin", "fractal", "kaleidoscope", "recursive tree", "spirograph", "creative coding"] },
-    { "id": "particles", "label": "Particles & FX",   "icon": "sparkles",             "lane": ["tsparticles", "confetti"],  "category": [],        "contentCategory": [],       "fingerprints": ["libs/tsparticles", "libs/confetti"],          "aliases": ["particles", "confetti", "fireworks", "starfield", "constellation"] },
-    { "id": "dataviz",   "label": "Data Viz",         "icon": "chart.bar",            "lane": ["d3", "chart"],              "category": ["dataviz"],"contentCategory": [],      "fingerprints": ["libs/d3.min.js", "libs/chart.umd", "libs/chart.min"], "aliases": ["chart", "dashboard", "graph", "visualization", "sunburst", "bar race", "scatter"] },
-    { "id": "physics",   "label": "Physics",          "icon": "gearshape.2",          "lane": ["matter"],                   "category": [],        "contentCategory": [],       "fingerprints": ["libs/matter.min.js"],                         "aliases": ["physics", "plinko", "ragdoll", "dominoes", "marble run", "catapult"] },
-    { "id": "scene",     "label": "Scenes",           "icon": "globe.americas",       "lane": [],                           "category": ["scene"], "contentCategory": [],       "fingerprints": [],                                             "aliases": ["solar system", "galaxy", "diorama", "aquarium", "reef", "forest", "fly-through", "flythrough"] },
-    { "id": "animation", "label": "Animation",        "icon": "film",                 "lane": ["gsap"],                     "category": [],        "contentCategory": [],       "fingerprints": ["libs/gsap.min.js"],                           "aliases": ["animation", "motion", "timeline", "svg morph", "scroll story"] },
-    { "id": "toys",      "label": "Toys",             "icon": "puzzlepiece",          "lane": [],                           "category": ["toy"],   "contentCategory": [],       "fingerprints": [],                                             "aliases": ["toy", "sandbox", "fidget", "interactive backdrop"] }
+    {
+      "id": "games",
+      "label": "Games",
+      "icon": "gamecontroller",
+      "lane": [
+        "pixi",
+        "kontra"
+      ],
+      "category": [
+        "games"
+      ],
+      "contentCategory": [
+        "game"
+      ],
+      "fingerprints": [],
+      "aliases": [
+        "arcade",
+        "shooter",
+        "platformer",
+        "puzzle game",
+        "clone",
+        "breakout",
+        "tower defense",
+        "snake",
+        "tetris",
+        "blaster",
+        "invaders",
+        "defender",
+        "runner",
+        "dodge",
+        "brick breaker",
+        "pong",
+        "flappy",
+        "jumper",
+        "maze game",
+        "survival",
+        "asteroids",
+        "pac-man",
+        "space "
+      ]
+    },
+    {
+      "id": "3d",
+      "label": "3D",
+      "icon": "cube",
+      "lane": [
+        "3d"
+      ],
+      "category": [],
+      "contentCategory": [],
+      "fingerprints": [
+        "resources/three/",
+        "three.module",
+        "web-components-3d",
+        "WebGLRenderer"
+      ],
+      "aliases": [
+        "three.js",
+        "webgl",
+        "voxel",
+        "first person",
+        "fps",
+        "3d",
+        "3-d",
+        "low-poly",
+        "low poly",
+        "minecraft"
+      ]
+    },
+    {
+      "id": "raycast",
+      "label": "Raycast / 2.5D",
+      "icon": "square.stack.3d.up",
+      "lane": [
+        "raycast",
+        "2.5d"
+      ],
+      "category": [],
+      "contentCategory": [],
+      "fingerprints": [
+        "raycast/dda-engine",
+        "castColumn",
+        "sprite-billboards"
+      ],
+      "aliases": [
+        "doom",
+        "wolfenstein",
+        "raycaster",
+        "raycast",
+        "2.5d",
+        "dungeon crawler",
+        "catacomb",
+        "bunker"
+      ]
+    },
+    {
+      "id": "music",
+      "label": "Music & Audio",
+      "icon": "music.note",
+      "lane": [
+        "tone"
+      ],
+      "category": [
+        "music"
+      ],
+      "contentCategory": [],
+      "fingerprints": [
+        "libs/Tone.js",
+        "libs/tone"
+      ],
+      "aliases": [
+        "synth",
+        "sequencer",
+        "beat machine",
+        "drum",
+        "arpeggiator",
+        "theremin",
+        "audio reactive",
+        "music",
+        "piano",
+        "melody"
+      ]
+    },
+    {
+      "id": "art",
+      "label": "Generative Art",
+      "icon": "paintbrush.pointed",
+      "lane": [
+        "p5"
+      ],
+      "category": [
+        "art"
+      ],
+      "contentCategory": [],
+      "fingerprints": [
+        "libs/p5.min.js",
+        "libs/p5.sound"
+      ],
+      "aliases": [
+        "generative",
+        "flow field",
+        "perlin",
+        "fractal",
+        "kaleidoscope",
+        "recursive tree",
+        "spirograph",
+        "creative coding",
+        "mandelbrot",
+        "paint"
+      ]
+    },
+    {
+      "id": "particles",
+      "label": "Particles & FX",
+      "icon": "sparkles",
+      "lane": [
+        "tsparticles",
+        "confetti"
+      ],
+      "category": [],
+      "contentCategory": [],
+      "fingerprints": [
+        "libs/tsparticles",
+        "libs/confetti"
+      ],
+      "aliases": [
+        "particles",
+        "confetti",
+        "fireworks",
+        "starfield",
+        "constellation",
+        "snow"
+      ]
+    },
+    {
+      "id": "dataviz",
+      "label": "Data Viz",
+      "icon": "chart.bar",
+      "lane": [
+        "d3",
+        "chart"
+      ],
+      "category": [
+        "dataviz"
+      ],
+      "contentCategory": [],
+      "fingerprints": [
+        "libs/d3.min.js",
+        "libs/chart.umd",
+        "libs/chart.min"
+      ],
+      "aliases": [
+        "chart",
+        "dashboard",
+        "graph",
+        "visualization",
+        "sunburst",
+        "bar race",
+        "scatter",
+        "data viz"
+      ]
+    },
+    {
+      "id": "physics",
+      "label": "Physics",
+      "icon": "gearshape.2",
+      "lane": [
+        "matter"
+      ],
+      "category": [],
+      "contentCategory": [],
+      "fingerprints": [
+        "libs/matter.min.js"
+      ],
+      "aliases": [
+        "physics",
+        "plinko",
+        "ragdoll",
+        "dominoes",
+        "marble run",
+        "catapult",
+        "sandbox physics"
+      ]
+    },
+    {
+      "id": "scene",
+      "label": "Scenes",
+      "icon": "globe.americas",
+      "lane": [],
+      "category": [
+        "scene"
+      ],
+      "contentCategory": [],
+      "fingerprints": [],
+      "aliases": [
+        "solar system",
+        "galaxy",
+        "diorama",
+        "aquarium",
+        "reef",
+        "forest",
+        "fly-through",
+        "flythrough",
+        "planet",
+        "nebula",
+        "ocean",
+        "starscape",
+        "space scene"
+      ]
+    },
+    {
+      "id": "animation",
+      "label": "Animation",
+      "icon": "film",
+      "lane": [
+        "gsap"
+      ],
+      "category": [],
+      "contentCategory": [],
+      "fingerprints": [
+        "libs/gsap.min.js"
+      ],
+      "aliases": [
+        "animation",
+        "motion",
+        "timeline",
+        "svg morph",
+        "scroll story"
+      ]
+    },
+    {
+      "id": "toys",
+      "label": "Toys",
+      "icon": "puzzlepiece",
+      "lane": [],
+      "category": [
+        "toy"
+      ],
+      "contentCategory": [],
+      "fingerprints": [],
+      "aliases": [
+        "toy",
+        "sandbox",
+        "fidget",
+        "interactive backdrop"
+      ]
+    }
   ]
 }
