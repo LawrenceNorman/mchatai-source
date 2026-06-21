@@ -1,0 +1,185 @@
+{
+  "packID": "tone-js",
+  "version": 1,
+  "displayName": "Tone.js Music and Audio Toy Guidelines",
+  "description": "Quality and correctness rules for offline single-file Tone.js music and audio mini-apps (synth keyboards, step sequencers, FFT visualizers, generative ambient, drum pads, arpeggiators, theremins). Covers the classic UMD script-tag load contract (no ESM under file://), the mandatory tap-to-start audio unlock (AudioContext boots suspended), Tone.start() inside the first user gesture, never autoplaying, using the Transport for timing, the analyser for audio-reactive visuals, full-viewport responsive layout, and big touch-friendly controls. For Tone.js audio mini-apps only; do not leak into silent visual toys or productivity apps.",
+  "categories": [
+    "tone-js"
+  ],
+  "keywords": [
+    "tone.js",
+    "tonejs",
+    "tone js",
+    "tone",
+    "synth",
+    "synthesizer",
+    "keyboard",
+    "step sequencer",
+    "sequencer",
+    "beat machine",
+    "drum machine",
+    "drum pads",
+    "drum pad",
+    "arpeggiator",
+    "arpeggio",
+    "theremin",
+    "fft",
+    "analyser",
+    "analyzer",
+    "audio reactive",
+    "music visualizer",
+    "audio visualizer",
+    "generative music",
+    "generative ambient",
+    "ambient",
+    "web audio",
+    "webaudio",
+    "music toy",
+    "make music"
+  ],
+  "guidelines": [
+    {
+      "id": "tone-001",
+      "rule": "Load Tone.js with a classic UMD <script src> tag that exposes the global Tone. NEVER use an ESM 'import * as Tone from \"tone\"' / <script type=module>. ESM modules silently fail to load under file:// in the WKWebView preview, leaving a dead, silent app.",
+      "why": "These mini-apps ship as static single-file bundles and run under file:// inside WKWebView, which is not a secure context. A bare module import or an importmap referencing tone does not resolve there and Tone is never defined. The UMD build attaches Tone to window, which works offline under file://.",
+      "severity": "critical",
+      "appliesTo": "anytone",
+      "examples": [
+        "GOOD: <script src=\"https://cdn.jsdelivr.net/npm/tone@14.8.49/build/Tone.js\"></script> then a normal <script> using Tone.Synth etc.",
+        "WRONG: import * as Tone from 'tone'; - ESM does not resolve under file:// in the preview",
+        "WRONG: <script type=\"module\"> import { Synth } from 'tone'; </script> - silent, no sound"
+      ]
+    },
+    {
+      "id": "tone-002",
+      "rule": "Pin a specific Tone.js version in the CDN URL (for example tone@14.8.49). The platform vendors the referenced version offline; an unversioned URL still works but a pinned one is reproducible and guarantees the vendored copy matches the API you coded against.",
+      "why": "The offline vendoring step fetches the exact version named in the script src. Tone has had real API differences across major versions; pinning keeps the shipped bundle deterministic and avoids 'latest' silently breaking the synth graph.",
+      "severity": "important",
+      "appliesTo": "anytone",
+      "examples": [
+        "GOOD: <script src=\"https://cdn.jsdelivr.net/npm/tone@14.8.49/build/Tone.js\"></script>",
+        "AVOID: <script src=\"https://cdn.jsdelivr.net/npm/tone/build/Tone.js\"></script> - unversioned"
+      ]
+    },
+    {
+      "id": "tone-003",
+      "rule": "The AudioContext boots SUSPENDED. You MUST call await Tone.start() (which resumes the context) inside the handler of the FIRST real user gesture - a click/tap/keydown - before any sound. NEVER autoplay or call Tone.start() at page load; it does nothing and leaves the app permanently silent.",
+      "why": "iOS and WKWebView require a genuine user gesture to start audio. Calling Tone.start() or playing a note at load is rejected by the autoplay policy, and the synth stays muted forever with no error. Gating the very first sound behind a real gesture is the only reliable pattern.",
+      "severity": "critical",
+      "appliesTo": "anytone",
+      "examples": [
+        "startBtn.addEventListener('pointerdown', async () => { await Tone.start(); hideOverlay(); beginApp(); }, { once: true });",
+        "Tone.getContext().resume() is also valid inside the first gesture",
+        "WRONG: calling Tone.start() or transport.start() at the top level on load"
+      ]
+    },
+    {
+      "id": "tone-004",
+      "rule": "Ship a visible, large 'Tap to start' overlay/affordance as the entry point. Cover the screen with a friendly start panel; only after the user taps it (which runs Tone.start()) does the instrument/visualizer appear and audio become possible. Make the overlay tappable, not just clickable.",
+      "why": "Users do not know the audio is gated behind a gesture; without an obvious tap-to-start they think the app is broken. A full-screen overlay both satisfies the autoplay-unlock requirement and tells the user what to do. It must respond to touch, since most users try these on phones.",
+      "severity": "critical",
+      "appliesTo": "anytone",
+      "examples": [
+        "an overlay div with big text 'Tap to start' that runs await Tone.start() on pointerdown, then fades out",
+        "use pointerdown (works for mouse and touch) rather than a click-only handler",
+        "WRONG: an instrument that is visible immediately but produces no sound because audio was never unlocked"
+      ]
+    },
+    {
+      "id": "tone-005",
+      "rule": "Use the Tone Transport and scheduling for anything rhythmic - sequencers, arpeggiators, beat machines, generative loops. Use Tone.Loop / Tone.Sequence / Tone.Part scheduled on Tone.Transport, set Tone.Transport.bpm, and start/stop the Transport. Do NOT drive musical timing from setInterval or requestAnimationFrame; they drift and stutter.",
+      "why": "Tone's Transport schedules events on the precise audio clock, so beats stay tight and in time. setInterval is subject to JS event-loop jitter and tab throttling, producing audible swing/drops. Tone.Sequence/Tone.Loop give sample-accurate timing for free.",
+      "severity": "important",
+      "appliesTo": "anytone",
+      "examples": [
+        "const seq = new Tone.Sequence((time, note) => synth.triggerAttackRelease(note, '8n', time), notes, '8n'); Tone.Transport.start();",
+        "Tone.Transport.bpm.value = 120; seq.start(0);",
+        "WRONG: setInterval(() => synth.triggerAttackRelease(...), 250) for the beat"
+      ]
+    },
+    {
+      "id": "tone-006",
+      "rule": "Build the audio graph once and reuse it: create your synth(s), effects (Reverb, FeedbackDelay, Filter), and any analyser at startup, connect them once, and dispose them on teardown. Do NOT create a new Synth/effect per note or per frame. For polyphony use Tone.PolySynth.",
+      "why": "Allocating a synth or effect node per note leaks audio nodes, climbs CPU, and eventually crackles or silences the output. A persistent graph with triggerAttackRelease per note is the correct, stable pattern. PolySynth handles voice allocation for chords/keyboards so notes do not cut each other off.",
+      "severity": "important",
+      "appliesTo": "anytone",
+      "examples": [
+        "const synth = new Tone.PolySynth(Tone.Synth).connect(new Tone.Reverb(2).toDestination());",
+        "play a note: synth.triggerAttackRelease('C4', '8n');",
+        "WRONG: new Tone.Synth().toDestination().triggerAttackRelease(...) on every keypress"
+      ]
+    },
+    {
+      "id": "tone-007",
+      "rule": "For audio-reactive visuals, tap the audio with a Tone.Analyser (or Tone.FFT / Tone.Waveform) connected into the signal chain, and read it inside requestAnimationFrame to drive the visuals. Use rAF only for DRAWING; keep musical timing on the Transport (tone-005). Clamp devicePixelRatio to 2 on the visualizer canvas.",
+      "why": "An FFT/waveform analyser gives the frequency/amplitude data that makes a visualizer dance with the music. Driving visuals from rAF (not the audio clock) is correct because rendering is display-bound, while sound stays on the Transport. A 3x DPR canvas plus a busy visualizer tanks mobile, so clamp to 2.",
+      "severity": "important",
+      "appliesTo": "anytone",
+      "examples": [
+        "const fft = new Tone.FFT(64); synth.connect(fft); // and synth.toDestination()",
+        "function draw(){ const vals = fft.getValue(); drawBars(vals); requestAnimationFrame(draw); }",
+        "canvas DPR: ctx.scale(dpr,dpr) with dpr = Math.min(window.devicePixelRatio||1, 2)"
+      ]
+    },
+    {
+      "id": "tone-008",
+      "rule": "Make the instrument playable on BOTH touch and the computer keyboard where it makes sense. Use pointerdown/pointerup (or touchstart/touchend) on keys/pads so taps trigger notes, map computer keys for desktop, and call preventDefault on touch handlers so the page does not scroll/zoom while playing. Never rely on hover.",
+      "why": "Music toys are highly satisfying on a phone but only if the pads/keys respond to touch. Pointer events cover both mouse and touch; preventDefault stops a fast drum-roll from scrolling the page. A keyboard mapping makes desktop play expressive. Hover triggers are dead on touch.",
+      "severity": "important",
+      "appliesTo": "anytone",
+      "examples": [
+        "key.addEventListener('pointerdown', e => { e.preventDefault(); synth.triggerAttack(note); });",
+        "document.addEventListener('keydown', e => { if (map[e.key]) synth.triggerAttack(map[e.key]); });",
+        "CSS on the pad area: touch-action:none"
+      ]
+    },
+    {
+      "id": "tone-009",
+      "rule": "Lay out the instrument to fill and resize to the viewport with LARGE touch targets. Keys/pads/buttons should be at least 44x44 px (bigger for drum pads), the layout should adapt to portrait and landscape, and a resize/orientationchange handler should reflow it. Keep readable labels.",
+      "why": "Tiny keys are unplayable on a phone and look unfinished on a wide screen. A responsive, big-target layout makes the instrument feel native everywhere. A grid that reflows for portrait vs landscape keeps a 16-step sequencer or keyboard usable in either orientation.",
+      "severity": "important",
+      "appliesTo": "anytone",
+      "examples": [
+        "use CSS flex/grid with min-height:44px keys; the keyboard width fills the container",
+        "window.addEventListener('resize', layout); window.addEventListener('orientationchange', layout);",
+        "drum pads: a 4x4 grid that scales to fill, each pad large and finger-friendly"
+      ]
+    },
+    {
+      "id": "tone-010",
+      "rule": "Keep the app fully usable and visually intact even if audio cannot start. If Tone.start() is blocked or the context stays suspended, the UI must still render and the visuals must still run muted - never block rendering or freeze on a suspended context. Show the tap-to-start prompt again rather than hanging.",
+      "why": "Audio can fail to unlock in some embed contexts. A music toy that blanks or hangs when the context is suspended reads as completely broken; one that shows its instrument and animations (just silent, with a re-prompt) degrades gracefully and still demos.",
+      "severity": "important",
+      "appliesTo": "anytone",
+      "examples": [
+        "if (Tone.getContext().state !== 'running') showStartOverlayAgain();",
+        "visualizer/rAF keeps running regardless of audio state",
+        "WRONG: while(context.state==='suspended'){} or a UI that never appears until audio starts"
+      ]
+    },
+    {
+      "id": "tone-011",
+      "rule": "Set sensible levels and avoid harsh output. Lower the master/destination volume a little (e.g. Tone.getDestination().volume.value = -8 dB or per-voice gain), use envelopes (attack/release) so notes do not click, and keep effect feedback (delay/reverb) from runaway buildup. Provide a mute/volume control.",
+      "why": "Default full-volume synths plus heavy reverb/delay can be jarringly loud and can clip or feed back. A modest master level, proper ADSR envelopes, and bounded effect feedback make the toy pleasant rather than harsh. A mute control is basic courtesy for an audio app.",
+      "severity": "recommended",
+      "appliesTo": "anytone",
+      "examples": [
+        "Tone.getDestination().volume.value = -8;",
+        "synth envelope: { attack: 0.01, decay: 0.2, sustain: 0.3, release: 0.8 }",
+        "a mute button that toggles Tone.getDestination().mute"
+      ]
+    },
+    {
+      "id": "tone-012",
+      "rule": "Synthesize sound with Tone's oscillators/synths/noise and built-in effects - do NOT fetch or embed audio sample files. Use Tone.Synth, Tone.FMSynth, Tone.MembraneSynth (kicks), Tone.NoiseSynth (snares/hats), Tone.MetalSynth, etc. If you need a sampler, keep it tiny and inline; prefer pure synthesis for offline size.",
+      "why": "Audio files mean network fetches (dead under file://) or large base64 blobs that bloat the bundle. Tone's synth voices produce convincing drums and instruments with zero bytes and zero network, fully offline. MembraneSynth/NoiseSynth/MetalSynth cover a whole drum kit procedurally.",
+      "severity": "important",
+      "appliesTo": "anytone",
+      "examples": [
+        "kick: new Tone.MembraneSynth(); snare: new Tone.NoiseSynth({noise:{type:'white'}}); hat: new Tone.MetalSynth();",
+        "lead: new Tone.PolySynth(Tone.Synth) through a Tone.Reverb",
+        "WRONG: new Tone.Player('kick.mp3') or fetching a wav - breaks offline and bloats the bundle"
+      ]
+    }
+  ]
+}

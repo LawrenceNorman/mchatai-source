@@ -1,0 +1,211 @@
+{
+  "packID": "mobile-web",
+  "version": 1,
+  "displayName": "Mobile Web Mini-App Guidelines",
+  "description": "Cross-cutting rules to make ANY web mini-app (game, toy, scene, art, dataviz, music) work and feel great on phones and tablets, not just desktop. Covers the responsive viewport meta tag and safe-area insets, pointer/touch input instead of mouse-only and no hover dependence, touch-action to stop scroll/zoom hijacking gameplay, on-screen touch controls for anything that uses keyboard on desktop, large hit targets and readable type, portrait+landscape layout with resize/orientationchange handling, devicePixelRatio and entity-budget clamping for performance, never using pointer lock (use drag-look), tap-to-start audio unlock, and verifying the experience is fully playable with touch alone. These apply broadly to web mini-apps; load them alongside the per-library packs.",
+  "categories": [
+    "mobile-web"
+  ],
+  "keywords": [
+    "web game",
+    "web app",
+    "mini-app",
+    "mini app",
+    "miniapp",
+    "html game",
+    "canvas game",
+    "browser game",
+    "game",
+    "toy",
+    "interactive",
+    "mobile",
+    "phone",
+    "tablet",
+    "touch",
+    "touchscreen",
+    "responsive",
+    "p5",
+    "pixi",
+    "tone",
+    "matter",
+    "three.js",
+    "d3",
+    "chart",
+    "tsparticles",
+    "gsap",
+    "confetti",
+    "arcade",
+    "platformer",
+    "shooter",
+    "puzzle"
+  ],
+  "guidelines": [
+    {
+      "id": "mob-001",
+      "rule": "Include the responsive viewport meta tag in <head>: <meta name=\"viewport\" content=\"width=device-width, initial-scale=1, viewport-fit=cover\">. Without it the page renders at a fake desktop width and the user has to pinch-zoom, breaking touch coordinates and layout. viewport-fit=cover lets the content extend under the notch so safe-area insets work.",
+      "why": "A web view with no viewport meta assumes a ~980px desktop width and scales the page down, so everything is tiny, taps land in the wrong place, and the game is unplayable on a phone. width=device-width maps CSS pixels to the device and initial-scale=1 disables the auto-zoom. This is the single most important mobile fix.",
+      "severity": "critical",
+      "appliesTo": "anymobile",
+      "examples": [
+        "GOOD: <meta name=\"viewport\" content=\"width=device-width, initial-scale=1, viewport-fit=cover\">",
+        "WRONG: no viewport meta - the page renders at desktop width and is tiny/mis-tapped on a phone"
+      ]
+    },
+    {
+      "id": "mob-002",
+      "rule": "Handle input with Pointer Events (pointerdown/pointermove/pointerup) which unify mouse, touch, and pen, OR wire BOTH touch (touchstart/touchmove/touchend) AND mouse handlers. NEVER ship mouse-only handlers. NEVER depend on hover (mouseover/:hover) for essential interaction - there is no hover on touch.",
+      "why": "Mouse-only handlers leave a phone user with a pretty but dead app. Pointer events cover all input types with one code path. Hover-gated controls (a menu that only opens on mouseover, a tooltip that only shows on hover) are completely unreachable on a touchscreen, so anything important behind hover is invisible to mobile users.",
+      "severity": "critical",
+      "appliesTo": "anymobile",
+      "examples": [
+        "GOOD: el.addEventListener('pointerdown', onPress); el.addEventListener('pointermove', onMove);",
+        "GOOD: wire both 'touchstart' and 'mousedown' to the same handler",
+        "WRONG: only 'mousemove' to aim, or a control that only appears on :hover"
+      ]
+    },
+    {
+      "id": "mob-003",
+      "rule": "Set CSS touch-action:none on the game/interactive canvas (and call preventDefault in your touch/pointer handlers where needed) so swiping to play does not scroll, pull-to-refresh, or pinch-zoom the page. Apply it to the playfield, not necessarily the whole document, so any scrollable UI still scrolls.",
+      "why": "By default the browser claims touch gestures for scroll and zoom, so dragging to steer/aim/paint instead scrolls the page or zooms, making the game unplayable. touch-action:none on the canvas hands those gestures to the game. preventDefault on touchmove also stops iOS rubber-band scrolling during play.",
+      "severity": "critical",
+      "appliesTo": "anymobile",
+      "examples": [
+        "CSS: canvas{touch-action:none;display:block}",
+        "in a touchmove handler that controls the game: e.preventDefault();",
+        "WRONG: dragging on the canvas scrolls the page instead of moving the player"
+      ]
+    },
+    {
+      "id": "mob-004",
+      "rule": "Provide on-screen touch controls for anything that uses WASD/arrow keys, the mouse, or a keyboard on desktop. Detect touch (e.g. matchMedia('(pointer: coarse)') or the first touch event) and show a virtual joystick/d-pad for movement, large tap zones or buttons for actions (jump/fire/interact), and on-screen buttons for any keyboard shortcut. Keyboard/mouse still work on desktop.",
+      "why": "A phone has no WASD and no mouse; a desktop-only control scheme is simply unplayable on touch. An on-screen joystick plus action buttons (shown when touch is detected) makes the same game playable everywhere with no separate build. This is the difference between a mobile user enjoying the game and immediately closing it.",
+      "severity": "critical",
+      "appliesTo": "anymobile",
+      "examples": [
+        "show a virtual joystick + Jump/Fire buttons when matchMedia('(pointer: coarse)').matches or on first touchstart",
+        "tap zones: left/right halves of the screen to move, tap to act",
+        "WRONG: 'Use WASD to move' with no touch alternative"
+      ]
+    },
+    {
+      "id": "mob-005",
+      "rule": "NEVER call element.requestPointerLock(), and never gate gameplay or starting the game on it. Pointer Lock is not granted in the in-app WKWebView preview and does not exist on mobile, so a pointer-lock control scheme is completely unplayable there. For look/aim use DRAG-LOOK: accumulate movementX/movementY deltas while dragging (yaw -= dx*sens; pitch -= dy*sens), so turning is unbounded and works with touch.",
+      "why": "requestPointerLock silently fails in the preview and on phones; a 'click to play' that calls it leaves the game stuck on the menu, and an FPS using it can never aim. Delta-accumulating drag-look (mouse-drag on desktop, touch-drag on mobile) works everywhere and is not bounded by the screen edge. Pointer lock is a dead end on these targets.",
+      "severity": "critical",
+      "appliesTo": "anymobile",
+      "examples": [
+        "drag-look: on pointermove while dragging, yaw -= e.movementX*sens; pitch = clamp(pitch - e.movementY*sens, -1.55, 1.55);",
+        "start the game unconditionally on tap - do NOT await/gate on requestPointerLock",
+        "WRONG: canvas.requestPointerLock() for aim or to begin play"
+      ]
+    },
+    {
+      "id": "mob-006",
+      "rule": "Audio must start on the first user tap, never on load. Mobile browsers block autoplay, so unlock the AudioContext (resume it / call the library's start, e.g. Tone.start()) inside the first pointerdown/touch, and show a clear tap-to-start overlay. Keep everything else (visuals/gameplay) running even if audio stays blocked.",
+      "why": "iOS and mobile Safari/WKWebView require a genuine gesture to start audio; calling play/resume at load does nothing and the app is permanently silent. A visible tap-to-start overlay both satisfies the unlock requirement and tells the user what to do. Never block rendering on a suspended audio context - degrade to muted.",
+      "severity": "critical",
+      "appliesTo": "anymobile",
+      "examples": [
+        "overlay.addEventListener('pointerdown', async () => { await unlockAudio(); hideOverlay(); start(); }, { once:true });",
+        "if audio cannot start, keep the game fully playable and visually intact, just muted",
+        "WRONG: starting music on window load - blocked and silent on mobile"
+      ]
+    },
+    {
+      "id": "mob-007",
+      "rule": "Make all interactive targets at least 44x44 CSS px (Apple's minimum), with adequate spacing, and use readable font sizes (body text >= 16px to avoid iOS auto-zoom on inputs). No tiny drag handles, no 10px buttons, no dense rows of small taps. Bigger is better for primary game controls.",
+      "why": "Fingers are far less precise than a cursor; targets under ~44px are routinely mis-tapped and frustrating on a phone. 44x44 with spacing makes controls reliably tappable. Font sizes under 16px on form inputs trigger iOS to zoom the page on focus, which jolts the layout. Generous targets make the app feel native, not ported.",
+      "severity": "important",
+      "appliesTo": "anymobile",
+      "examples": [
+        "primary buttons/pads: min-width:44px; min-height:44px (drum pads/joystick larger, ~64px+)",
+        "body/control text >= 16px; inputs >= 16px to avoid focus-zoom",
+        "WRONG: a 12px close button or a 20px paddle drag handle"
+      ]
+    },
+    {
+      "id": "mob-008",
+      "rule": "Lay out for BOTH portrait and landscape and reflow on change. Use responsive CSS (flex/grid, vw/vh, %), test the layout in both orientations, and handle window 'resize' AND 'orientationchange' to recompute canvas size, control positions, and gameplay bounds. Do not assume a landscape (or portrait) aspect ratio. Re-clamp devicePixelRatio on resize too.",
+      "why": "Phones are used in both orientations and the preview/hub render at many aspect ratios. A layout that only works landscape leaves controls off-screen in portrait. Recomputing on resize/orientationchange keeps the canvas full and the controls reachable after a rotation; forgetting orientationchange leaves a stale, clipped layout.",
+      "severity": "important",
+      "appliesTo": "anymobile",
+      "examples": [
+        "window.addEventListener('resize', layout); window.addEventListener('orientationchange', () => setTimeout(layout, 100));",
+        "use vw/vh/% and flex/grid so the UI reflows for portrait vs landscape",
+        "on resize recompute canvas size, DPR clamp, and gameplay boundary positions"
+      ]
+    },
+    {
+      "id": "mob-009",
+      "rule": "Clamp devicePixelRatio to <=2 and keep a lower entity/particle/body budget on mobile. Detect small screens / coarse pointers and reduce particle counts, sprite counts, physics bodies, light counts, and effect intensity, and cap the render resolution at 2x DPR. Keep the experience smooth rather than maxing detail.",
+      "why": "A 3x Retina phone renders 9x the pixels of a 1x display; on a busy scene that is the difference between 60fps and a slideshow. Clamping DPR to 2 and trimming the entity budget on mobile is the highest-ROI performance fix. A smooth, slightly simpler scene beats a gorgeous one stuttering at 10fps.",
+      "severity": "important",
+      "appliesTo": "anymobile",
+      "examples": [
+        "const dpr = Math.min(window.devicePixelRatio || 1, 2);",
+        "const PARTICLES = (innerWidth < 700 || matchMedia('(pointer: coarse)').matches) ? 60 : 160;",
+        "lower physics body / sprite caps on mobile"
+      ]
+    },
+    {
+      "id": "mob-010",
+      "rule": "Account for safe-area insets (notch, rounded corners, home indicator) using env(safe-area-inset-*). With viewport-fit=cover, pad fixed UI (HUD, controls, buttons) by env(safe-area-inset-top/right/bottom/left) so nothing important sits under the notch or the home bar where it can be clipped or hard to tap.",
+      "why": "On notched phones, full-bleed content extends under the notch and the home indicator; a score, button, or joystick placed flush to the edge can be partly hidden or blocked by the system gesture area. Padding fixed UI by the safe-area insets keeps everything visible and tappable on every phone shape.",
+      "severity": "important",
+      "appliesTo": "anymobile",
+      "examples": [
+        "CSS: .hud{ padding-top: env(safe-area-inset-top); padding-left: env(safe-area-inset-left); }",
+        "place on-screen controls inset by env(safe-area-inset-bottom) so they clear the home bar",
+        "requires viewport-fit=cover in the viewport meta to take effect"
+      ]
+    },
+    {
+      "id": "mob-011",
+      "rule": "Keep it at 60fps: drive animation with requestAnimationFrame (not setInterval for visuals), make all movement delta-time based so it is identical at 30/60/120Hz, and avoid layout thrash (do not read+write layout-affecting DOM properties in a tight loop; batch DOM reads then writes; prefer transform/opacity over top/left/width).",
+      "why": "setInterval drifts and stutters and keeps running when backgrounded; rAF syncs to the display and pauses when hidden. Per-frame constant motion runs a 120Hz phone twice as fast as a 60Hz one. Reading layout (offsetWidth) after writing styles forces synchronous reflow every frame, which is the classic mobile jank source. transform/opacity animate on the compositor.",
+      "severity": "important",
+      "appliesTo": "anymobile",
+      "examples": [
+        "loop with requestAnimationFrame; scale movement by dt = min(elapsedSeconds, 0.1)",
+        "animate with CSS transform/opacity, not top/left/width, to avoid reflow",
+        "WRONG: setInterval(render, 16) plus reading el.offsetTop inside the loop"
+      ]
+    },
+    {
+      "id": "mob-012",
+      "rule": "The experience MUST be fully usable with TOUCH ALONE - no keyboard, no mouse, no hover required to reach any feature or complete the core loop. Mentally (or actually) walk through it as a phone user: can you start it, control it, trigger every essential action, and reach a win/finish, using only taps and drags? If any step needs a key or hover, add a touch path.",
+      "why": "The acceptance bar for a mobile mini-app is touch-only playability. Many builds render fine on a phone but hide a critical action behind a key press or a hover, so a phone user gets stuck. Explicitly verifying the whole loop with touch catches the gaps that 'it looks fine on mobile' misses.",
+      "severity": "critical",
+      "appliesTo": "anymobile",
+      "examples": [
+        "every documented control has an on-screen touch equivalent",
+        "start, play, pause/restart, and any menu are all reachable by tap",
+        "WRONG: a game that needs Space to jump or Enter to restart with no on-screen button"
+      ]
+    },
+    {
+      "id": "mob-013",
+      "rule": "Prevent accidental mobile annoyances: disable text selection and the iOS tap-highlight/callout on game controls (user-select:none; -webkit-tap-highlight-color:transparent; -webkit-touch-callout:none), avoid double-tap-to-zoom interfering (handled by touch-action), and stop the page from rubber-band scrolling behind the game (overflow:hidden on body / overscroll-behavior:none).",
+      "why": "On a phone, fast tapping/dragging on controls otherwise selects text, flashes a grey highlight, pops a context menu on long-press, or rubber-band-scrolls the page behind the game - all of which feel broken. Suppressing these on the playfield makes the controls feel like a real app instead of a web page.",
+      "severity": "recommended",
+      "appliesTo": "anymobile",
+      "examples": [
+        "CSS on controls/canvas: user-select:none; -webkit-user-select:none; -webkit-tap-highlight-color:transparent; -webkit-touch-callout:none;",
+        "CSS: html,body{overflow:hidden;overscroll-behavior:none}",
+        "long-press on a button should not pop the iOS callout menu"
+      ]
+    },
+    {
+      "id": "mob-014",
+      "rule": "Keep essential UI inside the visible viewport on small screens - HUD, score, primary controls, and any start/restart button must be on-screen and reachable in both orientations, not pushed off the edge by a desktop-sized layout. Use a compact, collapsible info/instructions panel rather than one that covers a third of a small screen.",
+      "why": "A layout designed for a wide desktop pushes the score off the top or the controls off the bottom on a narrow phone, and a big always-on instructions box swallows a small screen. Keeping core UI within the viewport and making the how-to-play collapsible keeps the game readable and playable on the smallest screens.",
+      "severity": "recommended",
+      "appliesTo": "anymobile",
+      "examples": [
+        "HUD anchored with safe-area padding, sized in vw/vh so it fits a phone",
+        "instructions in a collapsible panel / info icon, not a permanent large overlay",
+        "WRONG: a controls bar positioned at a fixed desktop width that runs off a phone screen"
+      ]
+    }
+  ]
+}
