@@ -1,6 +1,6 @@
 {
-  "version": "2026.06.21",
-  "_purpose": "Single source of truth for the mini-app TYPE filter pills (the 'topic' axis, orthogonal to contentCategory) shown on the Community Hub on web + iOS. Read by web (HubPage.js / communityData.js), iOS (TaxonomyStore -> DiscoverView), and the publish + backfill derivers. RULE #1: no pill labels/taxonomy are hardcoded in any binary -- they come from here (zero-rebuild). ASCII-only. Each published mini-app gets a stored topics:[pillId] array (stamped at publish time for new items; batch-derived for existing items). Filtering is: selectedTopic == '' || item.topics includes selectedTopic. The deriver assigns a pill when ANY of its lane/category/contentCategory matches the item's stamped lanes/categories, OR a fingerprint substring is present in the bundle index.html, OR an alias keyword appears in the item name/description/tags.",
+  "version": "2026.06.22",
+  "_purpose": "Single source of truth for the mini-app TYPE filter pills (the 'topic' axis, orthogonal to contentCategory) shown on the Community Hub on web + iOS. Read by web (HubPage.js / communityData.js), iOS (TaxonomyStore -> DiscoverView), and the publish + backfill derivers. RULE #1: no pill labels/taxonomy are hardcoded in any binary -- they come from here (zero-rebuild). ASCII-only. Each published mini-app gets a stored topics:[pillId] array (stamped at publish time for new items; batch-derived for existing items). Filtering uses effective topics: stored topics plus current read-time alias matches, with stale stored tags pruned by clients; selectedTopic == '' || effectiveTopics includes selectedTopic. The deriver assigns a pill when ANY of its lane/category/contentCategory matches the item's stamped lanes/categories, OR a fingerprint substring is present in the bundle index.html, OR an alias keyword appears in the item name/description/tags.",
   "lanes": [
     "3d",
     "raycast",
@@ -96,6 +96,27 @@
       ]
     },
     {
+      "id": "roguelike",
+      "label": "Roguelike / ASCII",
+      "icon": "textformat",
+      "lane": [],
+      "category": [],
+      "contentCategory": [],
+      "fingerprints": [],
+      "aliases": [
+        "rogue dungeon",
+        "roguelike",
+        "rogue-like",
+        "ascii",
+        "terminal game",
+        "text adventure",
+        "turn-based dungeon",
+        "grid dungeon",
+        "nethack",
+        "moria"
+      ]
+    },
+    {
       "id": "3d",
       "label": "3D",
       "icon": "cube",
@@ -144,7 +165,6 @@
         "raycaster",
         "raycast",
         "2.5d",
-        "dungeon crawler",
         "catacomb",
         "bunker"
       ]
