@@ -1,0 +1,85 @@
+{
+  "$schema_version": "1.1.0",
+  "catalog_version": "2026.06.22-top7-per-lib",
+  "last_updated": "2026-06-22",
+  "_purpose": "ONE flagship game per library (p5/tone/pixi/matter/dataviz/globe/three) -- a small, evaluable set to assess how each lib is doing before running the full 62. Each is a replayable game where the lib feature is the mechanic.",
+  "entries": [
+    {
+      "id": "p5g-flowfield-orb-runner",
+      "lane": "p5.js",
+      "goal": "Build 'Flux Runner', a p5.js arcade game where a living Perlin-noise FLOW-FIELD current IS the mechanic, not a backdrop. Load real p5.js via <script src> CDN tag (auto-vendored offline). A grid of flow vectors (visualized as faint drifting streamlines) continuously pushes your little glowing ship; you thrust against or ride the current with arrow keys / WASD / on-screen D-pad + a thrust button to steer through the flow and scoop up energy orbs scattered on the field before your FUEL bar drains. Each orb refills a little fuel and adds score; chaining orbs without hitting a wall builds a COMBO multiplier (x2, x3, x4...) shown with a juicy pop and rising chime. The catch: the flow field's noise seed RESHIFTS at the start of every level so the current you mastered is now fighting you a new way - levels get faster-drifting and more turbulent (higher noise scale + flow strength), with fewer orbs and tighter fuel. WIN a level by collecting all orbs before fuel hits zero; LOSE when fuel empties (ship sputters, screen-shake, particle burst). Score + high-score saved to localStorage with a 'NEW BEST!' flash. Tight 'play again' restart button. Vibe: deep-indigo background, cyan/magenta neon streamlines, particle trail behind the ship, subtle screen-shake on orb pickup and crash. Mobile-friendly with touch D-pad + thrust button; complete and playable on first load.",
+      "artifact_type": "miniApp",
+      "category": "games",
+      "difficulty": "L3",
+      "dispatch": "runWizard",
+      "max_turns": 7,
+      "timeout_seconds": 1200
+    },
+    {
+      "id": "tone-beat-runner-survival",
+      "lane": "tone",
+      "goal": "Build 'PULSE RUNNER', a beat-match survival rhythm game using the REAL Tone.js library loaded via a normal <script src> CDN tag (Tone.Player/Tone.Transport/Tone.Synth + Tone.Loop scheduling). The CORE MECHANIC is Tone.js's sample-accurate Transport: a steady techno groove (kick on Tone.MembraneSynth, hat on Tone.MetalSynth, bass arpeggio on Tone.MonoSynth) drives glowing beat-orbs that slide down 3-4 lanes locked to the bar grid - you TAP/click the lane button exactly as the orb crosses the hit-line. Tap timing is judged against Tone.Transport.seconds (PERFECT/GOOD/MISS with millisecond windows), each hit fires a Tone.Synth blip and particle burst, and the combo multiplier (x2/x4/x8) climbs with consecutive PERFECTs. You have 3 HEALTH hearts; every MISS or wrong-lane tap costs a heart and stutters the music. ESCALATION: every 16 bars the Transport BPM ramps up (90200) and a 4th lane unlocks, so the orbs come faster - survive as long as you can. SCORE = (hit value x combo), shown live with a juicy bouncing counter; HIGH SCORE persisted to localStorage with a 'NEW RECORD!' screen-shake flash. Tap-to-start to unlock the AudioContext (Tone.start()), clear WIN-by-distance milestone banners every 32 bars, LOSE state when hearts hit 0 with a 'PLAY AGAIN' button that instantly restarts the Transport. Mobile-friendly: big on-screen lane buttons spanning the bottom, touch + keyboard (A/S/D/F) controls. Neon synthwave palette: deep indigo bg, hot-magenta and cyan orbs, gold combo flames. Every button does something; complete and playable on first load.",
+      "artifact_type": "miniApp",
+      "category": "games",
+      "difficulty": "L3",
+      "dispatch": "runWizard",
+      "max_turns": 7,
+      "timeout_seconds": 1200
+    },
+    {
+      "id": "pixi-swarm-shepherd-survival",
+      "lane": "pixi.js",
+      "goal": "Build 'Swarm Shepherd' with pixi.js v7 (load via <script src=\"https://cdnjs.cloudflare.com/ajax/libs/pixi.js/7.4.2/pixi.min.js\"></script>). A reverse-tower-defense survival where YOU are a tiny glowing orb and 8,000-10,000 enemy sprites flow toward you as a living swarm rendered in a single PIXI.ParticleContainer (the engine's signature GPU-batched many-sprite capability IS the mechanic: every dot is a real entity with flocking/seek behavior, not a backdrop). OBJECTIVE: survive escalating waves by herding the swarm - your 'shepherd pulse' (tap/click or space) emits a repulsion shockwave that scatters nearby sprites and your trail leaves a slowing pheromone. SCORE = seconds survived x swarm density killed in your pulse rings; combo multiplier for chaining pulses before the ring fades. Every 30s a 'queen' mega-sprite spawns spewing children, raising the live sprite count toward 10k to stress the batcher visibly. Pick ONE upgrade between waves (bigger pulse, faster recharge, lingering pheromone, pierce). High-score to localStorage; clean WIN at wave 10, LOSE on contact. Controls: drag/WASD to move, tap/space to pulse, on-screen pulse + move buttons on mobile. Juicy: additive-blend particle bursts, screen-shake on big pulses, rising synth drone as density climbs. Vibe: bioluminescent deep-sea cyan/magenta on near-black.",
+      "artifact_type": "miniApp",
+      "category": "games",
+      "difficulty": "L3",
+      "dispatch": "runWizard",
+      "max_turns": 7,
+      "timeout_seconds": 1200
+    },
+    {
+      "id": "matter-golf-windmill-links",
+      "lane": "matter.js",
+      "goal": "Build 'Windmill Links', a side-view physics MINI-GOLF game using the REAL matter.js library loaded via a normal <script src=\"https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js\"></script> CDN tag (auto-vendored offline). The matter.js rigid-body collision + restitution engine IS the core mechanic: the ball is a real matter.js Body that rolls, bounces off bumpers, and respects gravity, and a SPINNING WINDMILL blade and a SWINGING pendulum gate are live Matter.Composite constraints that knock the ball off-line if your timing is wrong -- so reading the physics is the whole puzzle. Controls: drag back from the ball to set aim+power (a dotted trajectory arc previews the shot), release to launch; works with mouse and touch (touchstart/touchmove/touchend). 9 short HAND-CRAFTED HOLES of escalating difficulty (ramps, sand traps that add friction/air-drag, a moving windmill on hole 5, a swinging gate on hole 7, a teleport pipe on hole 9), each with a PAR; the goal is to sink the ball in the cup with as few strokes as possible. SCORE is total strokes vs par (under-par is good); show per-hole strokes, running total-vs-par, and a 'best round' LOW SCORE saved to localStorage. WIN = sink all 9 holes (celebration confetti burst of matter bodies + 'Course Complete, you shot -3!'); a stroke-cap of 8 per hole forces a give-up/next. Tight 'Next Hole' and 'Restart Course' loop. Juicy feedback: a putt 'tok' WebAudio click, a satisfying cup-drop 'plonk', particle burst on sink, gentle screen-shake on bumper hits, and a power-meter that pulses. On-screen Aim/Power hint and a Restart button always visible. Vibe: cozy mini-golf greens, warm sunset palette (moss green felt, cream sand, terracotta bumpers), chunky friendly UI.",
+      "artifact_type": "miniApp",
+      "category": "games",
+      "difficulty": "L3",
+      "dispatch": "runWizard",
+      "max_turns": 7,
+      "timeout_seconds": 1200
+    },
+    {
+      "id": "vizgame-candle-daytrader",
+      "lane": "d3",
+      "goal": "Build 'CANDLE RUSH: Day Trader' -- a score-attack trading GAME using D3 v7 (load real d3 via <script src=\"https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js\">, auto-vendored offline). The CORE MECHANIC is D3's signature data-binding + scales + path/rect rendering: D3 draws a live OHLC CANDLESTICK chart (green/red bodies, wicks, an x time-scale and y price-scale that auto-rescale as new candles stream in every ~700ms) from an inline procedurally-generated random-walk price series with momentum + occasional volatility spikes. OBJECTIVE: start with $10,000 cash; tap BUY to go long, tap SELL to close and bank profit/loss; the SCORE is your final net worth after 60 simulated candles. The game DEMONSTRATES D3 through play -- you literally read the candlesticks D3 renders to time your trades; a D3-drawn moving-average line and a glowing position-entry marker (D3 line + circle) help you read the trend. ESCALATING difficulty: each of 3 levels (Calm / Choppy / Crash) cranks volatility and adds news-shock candles that gap. Clear WIN (beat your prior best net worth) and LOSE (margin call: net worth drops below $2,000 -> game over). High-score (best net worth) saved to localStorage with a 'NEW RECORD' banner. JUICY feedback: profit pops a green floating '+$' label with a D3 transition + cash-register chime (WebAudio), losses flash red screen-shake, candle close ticks click. Tight 'TRADE AGAIN' restart loop, combo multiplier for consecutive winning trades. Mobile-first: big BUY/SELL/CLOSE on-screen buttons, touch-friendly, responsive SVG that fits any screen. Vibe: neon trading-floor on near-black (#0a0e14), mint-green/coral candles, gold P&L numbers, monospace ticker font.",
+      "artifact_type": "miniApp",
+      "category": "games",
+      "difficulty": "L3",
+      "dispatch": "runWizard",
+      "max_turns": 7,
+      "timeout_seconds": 1200
+    },
+    {
+      "id": "globegame-where-in-the-world",
+      "lane": "globe.gl",
+      "goal": "Build 'WHERE IN THE WORLD?' - a fast, replayable country-spotting score-attack game using globe.gl loaded via a normal <script src> CDN tag (vendored offline) and the vendored window.WORLD_COUNTRIES GeoJSON for polygons. CORE MECHANIC = the globe IS the question: each round the auto-rotating globe smoothly flies/eases (use Globe.pointOfView with a transition) to center on a randomly chosen country whose polygon flashes and pulses a hot highlight (polygonsData with a bright capColor + raised altitude on the target, dim slate-grey for the rest, atmosphere glow on, NO external earth texture - solid ocean-blue globeMaterial + colored country polygons). Below the globe show 4 big tappable name buttons (1 correct + 3 plausible decoys from nearby/same-continent countries). Tap the right name before a per-round shrinking timer ring empties. OBJECTIVE: highest score. SCORING: base points + a speed bonus that scales with time left, multiplied by a STREAK multiplier (x1x2x3... growing every 3 correct in a row, reset on a miss or timeout); high-score saved to localStorage with a 'NEW BEST!' banner. PROGRESSION: timer gets tighter every 5 rounds (escalating difficulty) and decoys get drawn from the same region so they're trickier; 3 lives (hearts) - wrong answer or timeout loses one, LOSE state at 0 lives shows final score + best, WIN-ish 'survived round N' framing. JUICY FEEDBACK: correct = green flash on the polygon + particle burst + rising chime-ish blip (WebAudio beep), confident screen-shake on wrong, the globe spins fast during the 'play again' loop. CONTROLS: touch + on-screen buttons, mobile-friendly portrait layout, drag-to-spin the globe to inspect. Tight restart loop with a big PLAY AGAIN button. Vibe: dark space backdrop, neon-mint correct / coral wrong, clean rounded HUD.",
+      "artifact_type": "miniApp",
+      "category": "games",
+      "difficulty": "L2",
+      "dispatch": "runWizard",
+      "max_turns": 6,
+      "timeout_seconds": 1100
+    },
+    {
+      "id": "three3d-slingshot-marble-golf",
+      "lane": "three.js",
+      "goal": "Build a REPLAYABLE 3D puzzle/skill game with the REAL three.js library (load via a normal <script src> CDN tag, e.g. https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js -- auto-vendored offline; do NOT hand-roll WebGL). GAME: 'Cosmic Putt' -- a gravity-slingshot space-golf game where three.js renders a real 3D arena of floating mini-planets (SphereGeometry with their own gravity fields) and a glowing goal hole; you slingshot a marble (drag-aim a 3D trajectory arrow, pull-back sets power) and it curves through the level, BENT by each planet's gravity well, to sink into the goal in as few shots as possible. The 3D scene IS the puzzle: you orbit the camera (touch-drag to rotate around the level) to read the gravity layout in three dimensions before each shot. SCORING: a PAR per level (e.g. par 2-4) and strokes counted golf-style; total score = strokes vs par across a set of short hand-crafted LEVELS, with a hole-in-one bonus and a star rating; best (lowest) total saved to localStorage as 'BEST SCORE'. PROGRESSION: 9 short escalating levels adding more planets, moving planets, asteroid hazards, and repulsor wells; WIN by sinking the marble, LOSE-a-stroke if it flies off into deep space (resets the shot). CONTROLS: drag to aim + set power (touch + mouse), drag-rotate to orbit the camera, on-screen SHOOT and RESET-SHOT and NEXT-LEVEL buttons; tight 'PLAY AGAIN' from the final scorecard. JUICY FEEDBACK: a dotted predicted-arc preview that bends with gravity, a particle comet trail on the marble, a sparkle + chime + confetti burst on sink, gentle thunk on a planet bounce. Bright lighting, cheerful candy-planet palette on a deep-but-luminous starfield. Complete + playable on first load.",
+      "artifact_type": "miniApp",
+      "category": "games",
+      "difficulty": "L3",
+      "dispatch": "runWizard",
+      "max_turns": 7,
+      "timeout_seconds": 1300
+    }
+  ]
+}
