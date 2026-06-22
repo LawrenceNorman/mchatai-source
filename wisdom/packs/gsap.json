@@ -1,0 +1,172 @@
+{
+  "packID": "gsap",
+  "version": 1,
+  "displayName": "GSAP 3.x Animation and Motion Guidelines",
+  "description": "Quality and correctness rules for offline single-file GSAP (GreenSock) 3.x motion mini-apps (cinematic hero showpieces, SVG morph loops, staggered grid reveals, FLIP-style card shuffles, parallax drifts, looping ambient motion pieces). Covers the classic UMD script-tag load contract (no ESM under file://), the gsap.to/from/fromTo/timeline core API, sequencing with a timeline, transformOrigin for rotation/scale pivots, leaning on GSAP's own RAF/ticker instead of fighting it, honoring prefers-reduced-motion, animating GPU-friendly transforms and opacity (not layout properties), staying on the vendored core only (ScrollTrigger and the other plugins are NOT vendored), shipping a complete looping or interactive motion piece on first load, responsive resize handling, and cleaning up tweens. For GSAP 3.x motion mini-apps only; do not leak into three.js 3D games or productivity apps.",
+  "categories": [
+    "gsap"
+  ],
+  "keywords": [
+    "gsap",
+    "greensock",
+    "animation",
+    "motion",
+    "timeline",
+    "tween",
+    "svg morph",
+    "stagger",
+    "parallax",
+    "ease",
+    "easing",
+    "flip",
+    "reveal",
+    "hero animation",
+    "looping motion",
+    "transform animation"
+  ],
+  "guidelines": [
+    {
+      "id": "gsap-001",
+      "rule": "Load GSAP with a classic UMD <script src> tag that exposes the global gsap. NEVER use an ESM 'import { gsap } from \"gsap\"' / 'import gsap from \"gsap\"' / <script type=module>. ESM modules silently fail to load under file:// in the WKWebView preview, leaving a static page with nothing ever animating.",
+      "why": "These mini-apps ship as static single-file bundles and run under file:// inside WKWebView, which is not a secure context. A bare module import or an importmap referencing gsap does not resolve there and gsap is never defined, so no tween ever runs. The UMD build attaches gsap to window, which works offline under file://.",
+      "severity": "critical",
+      "appliesTo": "anygsap",
+      "examples": [
+        "GOOD: <script src=\"https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js\"></script> then gsap.to('.box', { x: 200 })",
+        "WRONG: import { gsap } from 'gsap'; - ESM does not resolve under file:// in the preview",
+        "WRONG: <script type=\"module\"> import gsap from 'gsap'; </script> - nothing animates offline"
+      ]
+    },
+    {
+      "id": "gsap-002",
+      "rule": "Pin a specific GSAP 3.x version in the CDN URL (for example gsap@3.12.5) rather than an unversioned or 'latest' URL. The platform vendors the referenced version offline; pinning guarantees the vendored copy matches the GSAP 3 API you coded against and keeps the bundle reproducible.",
+      "why": "The offline vendoring step fetches the exact version named in the script src. An unpinned 'latest' URL can drift across releases; pinning a 3.x version keeps the shipped bundle deterministic and the gsap.to/timeline API you used stable.",
+      "severity": "important",
+      "appliesTo": "anygsap",
+      "examples": [
+        "GOOD: <script src=\"https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js\"></script>",
+        "AVOID: <script src=\"https://cdn.jsdelivr.net/npm/gsap/dist/gsap.min.js\"></script> - unversioned"
+      ]
+    },
+    {
+      "id": "gsap-003",
+      "rule": "Use ONLY the GSAP core (the gsap global). Do NOT use ScrollTrigger, Draggable, MorphSVGPlugin, MotionPathPlugin, Flip, SplitText, or any other plugin: they are NOT vendored offline, so gsap.registerPlugin(ScrollTrigger) and ScrollTrigger.create(...) will throw 'ScrollTrigger is not defined' and break the page. Build scroll, drag, morph, and FLIP effects by hand on top of the core gsap.to/timeline API.",
+      "why": "Only the GSAP core is vendored; the plugins live in separate files that are not fetched offline. Referencing a missing plugin global is a hard ReferenceError that blanks the experience. A surprising amount (scroll-linked reveals via your own scroll handler, morphs by tweening SVG path 'd' or shape attributes, FLIP via measuring then tweening transforms) is achievable with core tweens alone.",
+      "severity": "critical",
+      "appliesTo": "anygsap",
+      "examples": [
+        "WRONG: gsap.registerPlugin(ScrollTrigger); ScrollTrigger.create({...}); - ScrollTrigger not vendored, throws",
+        "WRONG: gsap.registerPlugin(Draggable); Draggable.create('.card'); - plugin not vendored",
+        "GOOD: do FLIP manually - read getBoundingClientRect() before and after a layout change, then gsap.from(el, { x: dx, y: dy })"
+      ]
+    },
+    {
+      "id": "gsap-004",
+      "rule": "Use the right core tween for the job: gsap.to(target, vars) animates to the given values from the current state, gsap.from(target, vars) animates from the given values to the current state (great for reveals), and gsap.fromTo(target, fromVars, toVars) sets both ends explicitly (use it whenever the start state is ambiguous or must be deterministic on replay). Pass an ease (e.g. ease:'power2.out') and a duration on every tween.",
+      "why": "Picking the wrong direction is a common cause of elements that flash to their final state or never appear. gsap.from is the idiomatic reveal; gsap.fromTo removes ambiguity so a replay button always starts from the same place. A named ease and explicit duration are what make motion feel intentional rather than linear and robotic.",
+      "severity": "important",
+      "appliesTo": "anygsap",
+      "examples": [
+        "Reveal: gsap.from('.headline', { y: 40, opacity: 0, duration: 0.8, ease: 'power3.out' });",
+        "Deterministic replay: gsap.fromTo('.logo', { scale: 0, rotation: -90 }, { scale: 1, rotation: 0, duration: 1, ease: 'back.out(1.7)' });",
+        "Move: gsap.to('.shape', { x: 200, ease: 'sine.inOut', duration: 1.2 });"
+      ]
+    },
+    {
+      "id": "gsap-005",
+      "rule": "Sequence multi-step animations with a single gsap.timeline(), not a pile of nested setTimeout-delayed tweens. Add tweens with tl.to(...)/tl.from(...) and use the position parameter ('+=0.2', '-=0.3', '<', or a label) to overlap and offset steps. Keep a reference to the timeline so you can replay() or restart() it from a button.",
+      "why": "A timeline gives you one coordinated, scrubbable, replayable sequence with precise relative timing; chained setTimeouts drift, desync, and cannot be replayed or reversed cleanly. The position parameter is how cinematic sequences get their overlapping, choreographed feel. Holding the timeline reference is what makes a Replay button trivial (tl.restart()).",
+      "severity": "important",
+      "appliesTo": "anygsap",
+      "examples": [
+        "const tl = gsap.timeline(); tl.from('.logo', { scale: 0, duration: 0.6 }).from('.word', { y: 20, opacity: 0, stagger: 0.08 }, '-=0.2').to('.line', { scaleX: 1, duration: 0.5 }, '<');",
+        "Replay button: replayBtn.addEventListener('click', () => tl.restart());",
+        "WRONG: setTimeout(() => gsap.to(...), 600); setTimeout(() => gsap.to(...), 1200); - drifts, not replayable"
+      ]
+    },
+    {
+      "id": "gsap-006",
+      "rule": "Animate only GPU-composited properties: transforms (x, y, rotation, scale, skew via GSAP's transform shorthands) and opacity. Do NOT animate layout-triggering properties like left/top/width/height/margin/padding, and avoid animating box-shadow or background-position in hot loops. Use x/y instead of left/top, and scale instead of width/height.",
+      "why": "Transforms and opacity are composited on the GPU and animate at 60fps without reflow; animating left/top/width/height forces layout and paint every frame and stutters badly, especially on phones and with many elements. GSAP's x/y/scale/rotation shorthands map straight to the CSS transform, so prefer them over geometric CSS properties.",
+      "severity": "important",
+      "appliesTo": "anygsap",
+      "examples": [
+        "GOOD: gsap.to('.card', { x: 120, y: -40, rotation: 8, scale: 1.1, opacity: 1 });",
+        "WRONG: gsap.to('.card', { left: '120px', top: '-40px', width: '300px' }); - forces layout/paint every frame",
+        "Reveal cheaply with opacity + y transform, never with height: 0 -> auto"
+      ]
+    },
+    {
+      "id": "gsap-007",
+      "rule": "Set transformOrigin whenever you rotate or scale so the pivot is intentional (the default is the element's center, which is wrong for spinning a hand around a clock face, growing a bar from its base, or swinging a pendulum). Set it in the tween vars (transformOrigin:'50% 100%') or with gsap.set(el, { transformOrigin: 'left center' }) before animating. For SVG, transformOrigin works on SVG elements too via GSAP.",
+      "why": "Scale and rotation pivot around transformOrigin; leaving it at center makes a growing bar expand from its middle and a clock hand orbit its own center instead of the hub. Setting an explicit origin (bottom-center for growth, the hub coordinate for a hand) is the difference between correct and visibly broken rotation/scale motion.",
+      "severity": "important",
+      "appliesTo": "anygsap",
+      "examples": [
+        "Grow from base: gsap.from('.bar', { scaleY: 0, transformOrigin: '50% 100%', ease: 'power2.out' });",
+        "Spin a clock hand around the hub: gsap.set('.hand', { transformOrigin: '50% 90%' }); gsap.to('.hand', { rotation: 360, repeat: -1, duration: 6, ease: 'none' });",
+        "Pendulum swing: transformOrigin: 'top center'"
+      ]
+    },
+    {
+      "id": "gsap-008",
+      "rule": "Let GSAP drive the frame loop; do not run a competing requestAnimationFrame loop that mutates the same properties GSAP is tweening. For continuous looping motion use repeat:-1 (with yoyo:true for ping-pong); for custom per-frame logic hook gsap.ticker.add(fn) so your code runs on GSAP's single synchronized RAF. Use gsap.ticker.lagSmoothing() defaults rather than hand-rolling delta-time.",
+      "why": "GSAP already runs one optimized requestAnimationFrame loop with built-in lag smoothing. A second RAF loop writing the same transforms fights GSAP's tweens, causing jitter and snapping. repeat:-1/yoyo gives smooth endless loops for free, and gsap.ticker.add lets bespoke per-frame work share GSAP's clock so everything stays in sync without you managing deltaTime.",
+      "severity": "important",
+      "appliesTo": "anygsap",
+      "examples": [
+        "Endless ping-pong: gsap.to('.blob', { y: 30, repeat: -1, yoyo: true, duration: 2, ease: 'sine.inOut' });",
+        "Custom per-frame on GSAP's clock: gsap.ticker.add((time, deltaTime) => { drawTrail(time); });",
+        "WRONG: a separate requestAnimationFrame loop calling el.style.transform while gsap.to also animates transform - they fight"
+      ]
+    },
+    {
+      "id": "gsap-009",
+      "rule": "Respect prefers-reduced-motion. Read window.matchMedia('(prefers-reduced-motion: reduce)').matches and, when true, either skip the animation entirely and jump to the final state (gsap.set(targets, finalVars)) or use gsap.globalTimeline.timeScale or very short, gentle durations. Always show the finished, readable content for reduced-motion users.",
+      "why": "Large parallax, spin, and stagger motion can trigger vestibular discomfort, and honoring the OS reduce-motion setting is both an accessibility requirement and an App Store expectation. The key is that reduced-motion users still see the complete final composition (headline visible, shapes in place) rather than a frozen pre-animation blank state.",
+      "severity": "important",
+      "appliesTo": "anygsap",
+      "examples": [
+        "const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;",
+        "if (reduce) { gsap.set('.headline, .logo, .line', { opacity: 1, x: 0, y: 0, scale: 1 }); } else { buildTimeline().play(); }",
+        "Reduced path still shows the complete, readable scene - never leave content stuck at opacity:0"
+      ]
+    },
+    {
+      "id": "gsap-010",
+      "rule": "Ship a complete, alive motion piece on the very first load - never a static frame that only animates after a click. The intro timeline should auto-play on load (or the ambient loop should already be running), and any interaction (replay, tap-to-morph, hover) should add to an already-living scene. Seed the looping/idle motion immediately so there is movement before any input.",
+      "why": "The render gate and taste rubric can pass a loaded-but-frozen page. The actual product is a living motion piece. A hero that needs a Replay click before anything moves, or a morph loop that only starts on tap, reads as broken even though it 'loaded'. Auto-play the entrance and keep an idle/loop animation running so the piece is mesmerizing on arrival.",
+      "severity": "critical",
+      "appliesTo": "anygsap",
+      "examples": [
+        "window.addEventListener('load', () => buildIntroTimeline().play());",
+        "Start the ambient loop (parallax drift, morph) immediately so motion is visible before any input",
+        "WRONG: nothing animates until the user presses Replay"
+      ]
+    },
+    {
+      "id": "gsap-011",
+      "rule": "Make the layout responsive and reflow on resize. Use a full-viewport responsive layout (vw/vh, flex/grid, percentage SVG viewBox) so the piece fills the window, and on window 'resize' either recompute pixel-based tween targets or rely on transforms/percent units that scale automatically. Set body/html margin:0 and overflow:hidden so there are no scrollbars or gaps.",
+      "why": "The preview and hub render at many sizes and orientations. A piece pinned to fixed pixel coordinates ends up off-center or clipped on a different screen. Driving motion with transforms and percentage/SVG-viewBox geometry, plus a resize handler that recomputes any hardcoded distances, keeps the animation centered and edge-to-edge everywhere. margin:0 / overflow:hidden removes the default body margin and scrollbar.",
+      "severity": "important",
+      "appliesTo": "anygsap",
+      "examples": [
+        "CSS: html,body{margin:0;padding:0;overflow:hidden;height:100%;background:#0b1020}",
+        "Use an SVG with viewBox so it scales with the container instead of fixed px coordinates",
+        "window.addEventListener('resize', () => recomputeTargetsAndRestart());"
+      ]
+    },
+    {
+      "id": "gsap-012",
+      "rule": "Clean up tweens to avoid leaks and conflicts. Before re-running or rebuilding an animation, kill the old one (tl.kill() for a timeline, gsap.killTweensOf(target) for loose tweens) so you do not stack duplicate infinite loops on the same element. On teardown remove gsap.ticker.add callbacks with gsap.ticker.remove, and reuse a single named timeline rather than creating a fresh repeat:-1 timeline on every interaction.",
+      "why": "Re-running an effect without killing the previous one leaves multiple repeat:-1 timelines driving the same property, which fight each other and steadily eat CPU until the piece stutters. killTweensOf/tl.kill and removing ticker callbacks keep exactly one animation per element. Reusing one timeline (restart it) instead of spawning new infinite ones is the safe pattern for interactive replays.",
+      "severity": "recommended",
+      "appliesTo": "anygsap",
+      "examples": [
+        "Before rebuild: tl.kill(); tl = buildTimeline();",
+        "gsap.killTweensOf('.blob'); // before starting a new loop on the same target",
+        "WRONG: each click does gsap.to('.blob', { repeat:-1, ... }) again, stacking N infinite loops"
+      ]
+    }
+  ]
+}

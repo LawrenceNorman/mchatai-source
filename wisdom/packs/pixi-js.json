@@ -1,6 +1,6 @@
 {
   "packID": "pixi-js",
-  "version": 1,
+  "version": 2,
   "displayName": "pixi.js (v7) 2D WebGL Game and Toy Guidelines",
   "description": "Quality and correctness rules for offline single-file pixi.js (v7) WebGL 2D mini-apps (bullet-hell shooters, fluid blobs, shader-filter kaleidoscopes, GPU particle fountains, neon breakout, sprite stress arenas, aquariums, cursor-trail toys). Covers the classic UMD script-tag load contract (no ESM under file://), pinning v7 (v8 changed the API), devicePixelRatio clamping, ParticleContainer and sprite pooling for thousands of sprites, the ticker for delta-time motion, destroying textures on teardown, full-viewport responsive stages, and shipping a complete interactive experience. For pixi.js 2D mini-apps only; do not leak into three.js 3D games or productivity apps.",
   "categories": [
@@ -177,6 +177,79 @@
         "aquarium: fish already swimming and bubbles rising on load",
         "breakout: ball, paddle, and full brick wall present; lives/score HUD; win on clear, lose on no balls",
         "WRONG: an empty stage that needs a click before anything appears"
+      ]
+    },
+    {
+      "id": "pixi-013",
+      "rule": "Use the SYNCHRONOUS v7 Application constructor and NEVER the v8 async init. Write `const app = new PIXI.Application({ ...options }); document.getElementById('stage').appendChild(app.view);` and start drawing immediately. Do NOT write `const app = new PIXI.Application(); await app.init({...});` or `PIXI.Application.init(...)` - that is the v8 API and against the pinned v7 build it leaves app.view/app.renderer undefined and the stage never renders. There is no await, no .init(), and no top-level async in a v7 setup.",
+      "why": "The particle-heavy fountain, sprite-swarm, and fluid-blobs builds all hit autoFixGaveUp, and the load-order/init-model drift between v6/v7 (sync constructor) and v8 (async init) is a prime silent failure: with v8-style `await app.init()` against the vendored v7 bundle, the options are never applied, app.view is undefined, appendChild throws or appends nothing, and nothing renders with no obvious error for the autofixer to converge on. Pinning v7 (pixi-002) only helps if the code also uses the v7 sync constructor.",
+      "severity": "critical",
+      "appliesTo": "anypixi",
+      "examples": [
+        "GOOD (v7): const app = new PIXI.Application({ resizeTo: window, antialias: true, background: 0x05060f }); document.body.appendChild(app.view);",
+        "WRONG (v8): const app = new PIXI.Application(); await app.init({ resizeTo: window }); - undefined view on the v7 bundle, blank stage",
+        "WRONG: wrapping setup in `(async () => { await app.init() ... })()` for a v7 target"
+      ]
+    },
+    {
+      "id": "pixi-014",
+      "rule": "Render every particle/sprite with app.stage and the app.ticker loop. After constructing the Application, build your scene under app.stage (`app.stage.addChild(particleContainer)`) and drive ALL motion from `app.ticker.add((delta) => { ... })`. Do NOT hand-roll a requestAnimationFrame loop that calls app.render() yourself, and do NOT add display objects to a detached container that is never added to app.stage. A ParticleContainer that is created but never added to app.stage renders nothing - a classic blank-fountain failure.",
+      "why": "The particle fountain/swarm autofix loops failed partly because sprites were created and updated but the container was never parented to app.stage, or motion ran in a separate rAF that fought pixi's own render. pixi already renders app.stage on its internal ticker; a parallel rAF + manual app.render() double-renders or never renders. The fix is one ownership model: scene under app.stage, motion in app.ticker.",
+      "severity": "critical",
+      "appliesTo": "anypixi",
+      "examples": [
+        "const pc = new PIXI.ParticleContainer(40000, { position:true, scale:true, alpha:true, tint:true }); app.stage.addChild(pc);",
+        "app.ticker.add((delta) => { for (const p of pool) { if (p.sprite.visible) { p.update(delta); } } });",
+        "WRONG: const pc = new PIXI.ParticleContainer(...); /* never app.stage.addChild(pc) */ - renders nothing",
+        "WRONG: function loop(){ updateParticles(); app.render(); requestAnimationFrame(loop); } - fights the built-in ticker"
+      ]
+    },
+    {
+      "id": "pixi-015",
+      "rule": "Declare the ParticleContainer property flags with the EXACT v7 boolean signature for what you animate. Construct it as `new PIXI.ParticleContainer(maxSize, { scale: true, position: true, rotation: false, uvs: false, tint: true, alpha: true })`, and turn ON every property you mutate in the ticker. If you animate a sprite's tint or alpha but the flag is false, the change silently never reaches the GPU and particles look frozen or invisible. Set rotation:true only if you actually spin sprites; set uvs:true only for animated/atlas frames.",
+      "why": "The 3 high-complexity particle apps (fountain, sprite-swarm, fluid-blobs) all hit autoFixGaveUp, and a top cause is ParticleContainer's per-property upload flags: in v7, properties you mutate but did not enable are not re-uploaded each frame, so animating tint/alpha with tint:false/alpha:false produces a static or invisible swarm with no error. Naming the exact six-key signature and tying each flag to what is animated removes the guesswork the autofixer kept failing on.",
+      "severity": "critical",
+      "appliesTo": "anypixi",
+      "examples": [
+        "fountain (sparks fade + shift color): new PIXI.ParticleContainer(50000, { scale:true, position:true, rotation:false, uvs:false, tint:true, alpha:true })",
+        "swarm (move + scale only): new PIXI.ParticleContainer(20000, { scale:true, position:true, rotation:false, uvs:false, tint:false, alpha:false })",
+        "WRONG: animating sprite.alpha and sprite.tint while ParticleContainer was made with { position:true } only - those mutations never render"
+      ]
+    },
+    {
+      "id": "pixi-016",
+      "rule": "Build every particle texture procedurally with PIXI.Graphics + app.renderer.generateTexture (or a small offscreen canvas baked via PIXI.Texture.from(canvas)) - NEVER fetch a CDN/URL image or PIXI.Sprite.from('something.png'). Bake ONE shared base texture for the whole swarm before the ticker starts, and reuse it for every pooled sprite so ParticleContainer can batch them into a few draw calls.",
+      "why": "Image-asset loads are dead under file:// (network) and also break ParticleContainer batching when sprites end up on different base textures. The working breakout/aquarium builds bake canvas/Graphics textures and reuse them; the failed particle apps risk per-sprite textures or remote assets. One Graphics-baked shared texture is offline-safe, zero-byte, and batch-friendly - directly preventing the blank/slow fountain failures.",
+      "severity": "critical",
+      "appliesTo": "anypixi",
+      "examples": [
+        "const g = new PIXI.Graphics().beginFill(0xffffff).drawCircle(0,0,16).endFill(); const sparkTex = app.renderer.generateTexture(g); g.destroy();",
+        "pool: for (let i=0;i<MAX;i++){ const s = new PIXI.Sprite(sparkTex); s.visible=false; s.tint=0xffcc66; pc.addChild(s); pool.push(s); }",
+        "WRONG: PIXI.Sprite.from('https://.../spark.png') or new texture per particle - breaks offline AND defeats ParticleContainer batching"
+      ]
+    },
+    {
+      "id": "pixi-017",
+      "rule": "Pool particle sprites once before the ticker and only TOGGLE/REPOSITION them - never create or destroy sprites per frame or per emission. Pre-build MAX sprites (all visible=false) and add them to the ParticleContainer up front; spawning grabs a hidden sprite and sets visible=true + position/tint/alpha; despawning sets visible=false back into the pool. Do NOT call pc.removeChild()/sprite.destroy() in the emission loop, and do NOT new PIXI.Sprite() on each spark.",
+      "why": "The fountain/swarm/blob autofix failures are exactly the symptom of create/destroy churn: allocating and destroying thousands of sprites per second triggers GC stalls and the GPU-resource destroy cost of pixi-007, dropping to a slideshow or stalling the autofixer mid-build. A fixed pool keeps allocation flat and the frame rate steady, and pairs with the property flags (pixi-015) and shared texture (pixi-016).",
+      "severity": "critical",
+      "appliesTo": "anypixi",
+      "examples": [
+        "spawn(): const s = pool[deadIndex++]; s.visible = true; s.x = ox; s.y = oy; s.alpha = 1; s.tint = 0xffd27f;",
+        "despawn(): s.visible = false; s.alpha = 0; // return to pool, do not destroy",
+        "WRONG: for each spark: const s = new PIXI.Sprite(tex); pc.addChild(s); ... later pc.removeChild(s); s.destroy(); - GC churn, autofix never converges"
+      ]
+    },
+    {
+      "id": "pixi-018",
+      "rule": "Handle resize by calling app.renderer.resize(width, height) (or rely on resizeTo: window) and then recompute layout-dependent constants and destroy+regenerate any size-dependent procedural textures. On resize: app.renderer.resize(window.innerWidth, window.innerHeight); re-derive emitter origin/bounds/wall positions from app.screen.width/height; if a texture was generated at the old size, call oldTexture.destroy(true) BEFORE assigning the newly generated one so VRAM does not leak.",
+      "why": "A fixed-size stage and stale size-dependent textures are why high-DPR/odd-size renders looked clipped or misaligned in the failing builds. app.renderer.resize is the correct v7 resize call; recomputing bounds from app.screen keeps gameplay/emitters correct after rotation; and destroying the old generated texture before regenerating (pixi-007) prevents the long-lived-canvas texture leak the failure notes flagged for resize handlers.",
+      "severity": "important",
+      "appliesTo": "anypixi",
+      "examples": [
+        "window.addEventListener('resize', () => { app.renderer.resize(innerWidth, innerHeight); emitter.x = app.screen.width/2; repositionWalls(); });",
+        "regenerating a sized texture: const old = bgTex; bgTex = app.renderer.generateTexture(drawBg(app.screen.width, app.screen.height)); old.destroy(true);",
+        "WRONG: leaving the renderer at its initial fixed size, or generateTexture on resize without destroying the previous one"
       ]
     }
   ]

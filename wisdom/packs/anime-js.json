@@ -1,0 +1,18 @@
+{
+  "packID": "anime-js",
+  "version": 1,
+  "displayName": "anime.js Motion",
+  "description": "How to build smooth motion pieces with anime.js v3 that run offline in the mChatAI+ preview and on the hub. Loaded as a single UMD script exposing the global anime. ASCII only.",
+  "categories": ["scene", "toy"],
+  "keywords": ["anime.js", "animejs", "anime", "motion", "animation", "stagger", "timeline", "morph", "reveal", "kinetic typography"],
+  "guidelines": [
+    { "id": "anime-001", "rule": "Load anime.js v3 with a classic UMD <script src> that exposes the global anime (e.g. https://cdn.jsdelivr.net/npm/animejs@3.2.2/lib/anime.min.js) -- NEVER an ESM 'import', and pin v3 (v4 is ESM-first with a different API). The platform vendors it offline automatically." },
+    { "id": "anime-002", "rule": "Core call: anime({ targets: <selector or els>, translateX/translateY/rotate/scale/opacity: <value or [from,to]>, duration, delay, easing: 'easeOutElastic(1, .6)', direction, loop }). Animate TRANSFORMS and opacity (GPU-cheap), not layout properties like top/left/width which thrash." },
+    { "id": "anime-003", "rule": "Use anime.stagger() for lists/grids: delay: anime.stagger(80) or anime.stagger(80, { grid: [cols, rows], from: 'center' }). Staggered reveals are anime.js's signature look -- build the elements, then stagger them in." },
+    { "id": "anime-004", "rule": "Sequence with a timeline: const tl = anime.timeline({ easing: 'easeOutExpo', duration: 750 }); tl.add({...}).add({...}, '-=400') (the offset string overlaps the previous step). Prefer one timeline over many setTimeout chains." },
+    { "id": "anime-005", "rule": "For SVG: animate stroke-dashoffset for a draw-on effect (set stroke-dasharray to the path length first), and use anime path morphing via the d attribute only between compatible paths. Keep SVG inline in the HTML (no external assets)." },
+    { "id": "anime-006", "rule": "For ambient/looping pieces use loop: true + direction: 'alternate'; drive everything from anime's internal RAF (do not also run your own conflicting loop on the same props). Respect prefers-reduced-motion: if set, jump to the end state instead of animating." },
+    { "id": "anime-007", "rule": "Make it responsive: size to the viewport, recompute any pixel-based targets on resize, and ensure the piece looks intentional in both portrait and landscape. On touch, wire taps/drags to (re)trigger or scrub the animation." },
+    { "id": "anime-008", "rule": "Ship a COMPLETE, visibly-animating piece on first load (a hero reveal, kinetic type, a looping logo, an interactive burst) -- never a static page that only animates on some action the user might not find. Use colors from the active swatch." }
+  ]
+}

@@ -1,0 +1,68 @@
+{
+  "packID": "confetti",
+  "version": 1,
+  "displayName": "canvas-confetti Celebration Guidelines",
+  "description": "Quality and correctness rules for offline single-file canvas-confetti mini-apps (celebration toys, fireworks finales, win effects, party bursts, button-triggered confetti). Covers the classic UMD script-tag load contract (no ESM under file://) exposing the global confetti, the single confetti() call and its options (particleCount, spread, origin, colors, startVelocity, gravity), confetti.create for a dedicated resizing canvas, firing on a real user gesture or event, realistic staggered bursts instead of one flat blob, respecting prefers-reduced-motion, treating confetti as a celebration LAYER over a real interactive trigger, and cleanup. For canvas-confetti celebration mini-apps only; do not leak into full game engines or productivity apps.",
+  "categories": [
+    "confetti"
+  ],
+  "keywords": [
+    "confetti",
+    "canvas-confetti",
+    "canvas confetti",
+    "celebration",
+    "celebrate",
+    "fireworks",
+    "firework",
+    "party",
+    "burst",
+    "win effect",
+    "victory",
+    "streamers",
+    "cannon",
+    "sparkle",
+    "festive"
+  ],
+  "guidelines": [
+    {
+      "id": "confetti-001",
+      "rule": "Load canvas-confetti with a classic UMD <script src> tag that exposes the global confetti on window. NEVER use ESM ('import confetti from \"canvas-confetti\"' / <script type=module> / an importmap). ESM modules silently fail to resolve under file:// in the WKWebView preview, leaving window.confetti undefined and the page dead with no visible error. Use: <script src=\"https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js\"></script> and pin the version (1.9.3) so the offline vendoring step fetches a deterministic copy. After the script, confetti is a callable global: confetti({ particleCount: 100 })."
+    },
+    {
+      "id": "confetti-002",
+      "rule": "The whole API is the single confetti(options) call returning a Promise. Tune it with the documented options: particleCount (50-200 per burst), spread (degrees, 45 = tight cone, 90-180 = wide), origin ({ x: 0-1, y: 0-1 } in normalized screen coords, e.g. { y: 0.6 } so pieces start above the bottom edge), startVelocity (px, ~45 default, higher = launches further), gravity (~1 default, lower = floatier), ticks (lifetime), scalar (piece size), and colors (array of hex strings). Example: confetti({ particleCount: 120, spread: 70, startVelocity: 55, origin: { x: 0.5, y: 0.7 } }). Do not invent options that are not in the library."
+    },
+    {
+      "id": "confetti-003",
+      "rule": "Drive colors from the app's swatch / palette, not random rainbow noise. Pass colors as an array of hex strings that match the page's CSS custom properties (read with getComputedStyle(document.documentElement).getPropertyValue('--accent') or hardcode the same hex used in CSS), e.g. confetti({ colors: ['#ff5a8a', '#ffd23f', '#3fd0ff'] }). A coherent 3-5 color set tied to the backdrop reads as designed; a default random palette clashes with the scene."
+    },
+    {
+      "id": "confetti-004",
+      "rule": "For a celebration confined to a specific element or layered over your own scene, create a dedicated full-window canvas and a bound instance with confetti.create: const myCanvas = document.createElement('canvas'); document.body.appendChild(myCanvas); then const fire = confetti.create(myCanvas, { resize: true, useWorker: true }); and call fire({ ... }) instead of the global. resize:true keeps the canvas matched to its size on window resize (so bursts stay correctly placed and crisp on retina), and useWorker:true offloads rendering. Style the canvas with position:fixed; inset:0; pointer-events:none; z-index over the backdrop but under interactive UI so it never blocks clicks. When you do not need a dedicated canvas, the bare global confetti() draws on an auto-managed full-screen canvas - do not also hand-create a <canvas> for the global to fight with."
+    },
+    {
+      "id": "confetti-005",
+      "rule": "Only fire confetti in response to a real user gesture or app event - a button press, a game win, a correct answer, a milestone reached - never on a bare setInterval the instant the page loads with no reason. Wire it explicitly: button.addEventListener('click', () => fire(...)) or call it from the win handler (if (won) celebrate()). An audio context is not needed, but the gesture requirement is about meaning, not browser policy: confetti is a reward, so give the user something to earn it."
+    },
+    {
+      "id": "confetti-006",
+      "rule": "Confetti is a celebration LAYER, not the whole app. Build a real interactive trigger underneath it - a quiz that pops confetti on a right answer, a counter that celebrates at a goal, a 'Celebrate!' button with several distinct styles (single burst, side cannons, fireworks volley, gentle rain), a click-anywhere mode that pops from the pointer at origin:{ x: e.clientX/window.innerWidth, y: e.clientY/window.innerHeight }. Shipping nothing but an auto-looping confetti spray with no reason to fire reads as a screensaver, not a product."
+    },
+    {
+      "id": "confetti-007",
+      "rule": "Make bursts look realistic with multiple staggered, varied calls instead of one fat blob. A natural celebration fires several confetti() calls with different angles, spreads, velocities, and origins over a short window. Side cannons: confetti({ particleCount: 50, angle: 60, spread: 55, origin: { x: 0 } }) and a mirror at angle: 120, origin: { x: 1 }. A sustained shower: an interval that calls confetti({ particleCount: 8, spread: 100, startVelocity: 25, origin: { x: Math.random(), y: -0.1 } }) every ~150ms and clearInterval after ~2-3s. Vary particleCount, startVelocity, and scalar slightly per call so it does not look mechanical."
+    },
+    {
+      "id": "confetti-008",
+      "rule": "Respect prefers-reduced-motion. Check const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches; and when true, either skip the confetti entirely or fire a single small, low-velocity, short-lived burst (small particleCount, low startVelocity, low ticks) so motion-sensitive users still get acknowledgement without a violent shower. Never run continuous looping bursts when reduced motion is requested."
+    },
+    {
+      "id": "confetti-009",
+      "rule": "Clean up so confetti never accumulates or leaks. Always clearInterval / cancelAnimationFrame on any repeating volley loop when it ends or the user navigates away (and on a visibilitychange to hidden). Call confetti.reset() (or fire.reset() on a confetti.create instance) to immediately stop and clear all in-flight particles when starting a fresh celebration or tearing down. If you appended a canvas via confetti.create, remove it when done. Bound rapid re-triggers (e.g. ignore clicks while a celebration is mid-flight, or reset before re-firing) so spamming the button does not stack hundreds of overlapping intervals and tank the frame rate."
+    },
+    {
+      "id": "confetti-010",
+      "rule": "Build a complete, attractive scene on first load - never a blank page that only does something after a click. Render a festive gradient backdrop, a clear call-to-action (the celebrate button, the quiz, the counter), and ideally a small idle hint, so the toy looks alive and inviting before any input. The first interaction must produce an immediate, visible, satisfying burst. The render gate can pass a loaded-but-empty page; the actual product is a joyful, replayable celebration that obviously responds."
+    }
+  ]
+}

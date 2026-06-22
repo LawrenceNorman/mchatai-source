@@ -1,6 +1,6 @@
 {
   "packID": "matter-js",
-  "version": 1,
+  "version": 2,
   "displayName": "matter.js 2D Physics Game and Toy Guidelines",
   "description": "Quality and correctness rules for offline single-file matter.js 2D rigid-body physics mini-apps (plinko, toppling towers, marble runs, dominoes, ragdolls, catapults, bouncy-ball pits, gravity sandboxes). Covers the classic UMD script-tag load contract (no ESM under file://), building bodies with the Composite/Bodies/Constraint helpers, the fixed-timestep Runner, rendering to a viewport-sized canvas, capping the body count, mouse and touch dragging via MouseConstraint, and shipping a complete interactive experience. For matter.js physics mini-apps only; do not leak into three.js 3D games or productivity apps.",
   "categories": [
@@ -180,6 +180,50 @@
         "catapult: slingshot loaded, castle and targets standing; drag-aim-release; score + retry",
         "WRONG: a physics canvas with bodies but no way to interact or no scoring/end state"
       ]
+    },
+    {
+      "id": "matter-013",
+      "rule": "Wire the engine in exactly this order and never skip a piece: (1) const engine = Engine.create(); (2) const render = Render.create({ element: document.body, engine, options: { width: innerWidth, height: innerHeight, pixelRatio: Math.min(devicePixelRatio||1, 2), wireframes: false, background: '#0b0e1a' } }); Render.run(render); (3) const runner = Runner.create(); Runner.run(runner, engine);. The three Run/Render/Runner calls together (Render.run draws, Runner.run steps physics) are what make bodies appear AND move. A common dead-canvas bug is calling Engine.create() and adding bodies but forgetting Render.run(render) or Runner.run(runner, engine), so nothing draws or nothing moves."
+    },
+    {
+      "id": "matter-014",
+      "rule": "ALWAYS set wireframes:false in Render.create options. The matter.js default is wireframes:true, which renders only thin green outlines on a transparent black canvas and looks broken/unfinished. With wireframes:false the renderer uses each body's render.fillStyle/strokeStyle so you get solid colored shapes. Set a real background color too (e.g. background:'#0b0e1a'); leaving it default looks like a blank failed render."
+    },
+    {
+      "id": "matter-015",
+      "rule": "Add bodies to the world with Composite.add(engine.world, [bodyA, bodyB, ...]) and remove with Composite.remove(engine.world, body). Do NOT use the deprecated World.add / World.addBody / World.remove APIs - they are removed/renamed in matter.js 0.19.x and either throw 'World.add is not a function' or silently no-op so nothing ever enters the world and the canvas stays empty. Read bodies back with Composite.allBodies(engine.world)."
+    },
+    {
+      "id": "matter-016",
+      "rule": "Size and keep the render canvas matched to the viewport on init AND on resize. On init set render.canvas.width = innerWidth; render.canvas.height = innerHeight; render.options.width = innerWidth; render.options.height = innerHeight;. In a window 'resize' listener, update all four of those plus Render.lookAt(render, { min:{x:0,y:0}, max:{x:innerWidth,y:innerHeight} }) (or reset render.bounds) and reposition the boundary walls. A fixed 800x600 canvas leaves dead margins and pushes the walls off-screen so bodies escape; CSS must include html,body{margin:0;overflow:hidden} canvas{display:block}."
+    },
+    {
+      "id": "matter-017",
+      "rule": "Build every body with the Matter.Bodies factory helpers, never as hand-written plain objects. Use Bodies.rectangle(x, y, w, h, opts), Bodies.circle(x, y, r, opts), Bodies.polygon(x, y, sides, r, opts), Bodies.trapezoid(...). For stacks/walls/pyramids use Composites.stack(x, y, cols, rows, gapX, gapY, (px,py)=>Bodies.rectangle(px,py,40,40)). Hand-built objects like { position:{x,y}, vertices:[...] } lack proper inertia, bounds, and collision geometry, so the solver silently fails and bodies phase through each other or never collide."
+    },
+    {
+      "id": "matter-018",
+      "rule": "Enclose the scene with four STATIC boundary walls so nothing falls forever, and make the floor thick to stop fast bodies tunneling. const w=innerWidth, h=innerHeight; const floor = Bodies.rectangle(w/2, h+40, w, 120, { isStatic:true }); const ceil = Bodies.rectangle(w/2, -40, w, 80, { isStatic:true }); const left = Bodies.rectangle(-40, h/2, 80, h*3, { isStatic:true }); const right = Bodies.rectangle(w+40, h/2, 80, h*3, { isStatic:true }); Composite.add(engine.world, [floor, ceil, left, right]);. Reposition all four on every resize. A floor only a few px thick lets a fast body skip through it in one step - use 80-120px or raise engine.positionIterations/velocityIterations."
+    },
+    {
+      "id": "matter-019",
+      "rule": "Cap the live body count and cull bodies that leave the play area so the solver never grinds to a halt. const MAX_BODIES = (innerWidth < 700) ? 120 : 300;. Before spawning, check Composite.allBodies(engine.world).length < MAX_BODIES. On Events.on(engine, 'afterUpdate', ...) iterate Composite.allBodies and Composite.remove(engine.world, b) any non-static body whose position.y > innerHeight + 200 (fell out) or that is far off-screen. Spawning balls forever with no cap and no cull is the #1 cause of frame-rate collapse in plinko/bouncy-pit toys."
+    },
+    {
+      "id": "matter-020",
+      "rule": "Run physics on the fixed-timestep Runner, not a raw rAF with variable delta. const runner = Runner.create(); Runner.run(runner, engine); advances the engine at a stable ~16.6ms step. Do NOT write function loop(){ Engine.update(engine, performance.now()-last); requestAnimationFrame(loop); } with a measured variable delta - that destabilizes the solver and makes bodies tunnel through walls and jitter. If you must call Engine.update manually, pass a FIXED delta of 1000/60 (about 16.667), never the real elapsed time. Stop with Runner.stop(runner) on teardown."
+    },
+    {
+      "id": "matter-021",
+      "rule": "Wire drag-and-fling with Matter.Mouse + Matter.MouseConstraint for both mouse and touch. const mouse = Mouse.create(render.canvas); const mc = MouseConstraint.create(engine, { mouse, constraint: { stiffness: 0.2, render: { visible: false } } }); Composite.add(engine.world, mc); render.mouse = mouse;. Then set mouse.pixelRatio = render.options.pixelRatio (otherwise the grab point is offset from the click on Retina). Add CSS canvas{touch-action:none} so touch-drag grabs a body instead of scrolling/zooming the page; without it touch-drag either does nothing or pans the page and the ragdoll/catapult is unplayable on phones."
+    },
+    {
+      "id": "matter-022",
+      "rule": "Pre-spawn an interactive scene on first load and drive scoring from collision events, not position polling. In setup spawn the initial bodies (pegs + a few pucks for plinko, a built tower for topple, dominoes for a cascade) and show a score starting at 0 plus a clear DROP/LAUNCH/GO control (also bind the space bar) and a RESET button that calls Composite.clear(engine.world, false) (keep statics) or rebuilds the world. Detect scoring with Events.on(engine, 'collisionStart', ev => ev.pairs.forEach(p => { /* match p.bodyA.label / p.bodyB.label */ }));, tagging bodies via the label option at creation (Bodies.circle(x,y,r,{ label:'puck' })). A loaded-but-inert canvas with no way to act reads as broken even though it rendered."
+    },
+    {
+      "id": "matter-023",
+      "rule": "Give bodies real material values so the physics feels intentional, and set per-body fill colors via the render option. Pass restitution (bounciness), friction, and density: bouncy balls Bodies.circle(x,y,r,{ restitution:0.85, friction:0.02, render:{ fillStyle:'#ff3ea5' } }); dominoes/stacked blocks Bodies.rectangle(x,y,12,60,{ restitution:0.05, friction:0.6, render:{ fillStyle:'#ffd23f' } }). Without restitution everything lands dead with no bounce; without per-body render.fillStyle (and with wireframes:false) bodies render in a default flat color and the scene looks monochrome. For a floaty feel lower engine.gravity.y (e.g. 0.5)."
     }
   ]
 }

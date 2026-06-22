@@ -1,0 +1,200 @@
+{
+  "packID": "chart-js",
+  "version": 1,
+  "displayName": "Chart.js 4.x Data Visualization and Dashboard Guidelines",
+  "description": "Quality and correctness rules for offline single-file Chart.js 4.x data-visualization and dashboard mini-apps (live metrics dashboards, bar charts, line charts, streaming charts, pie and doughnut charts, radar charts, scatter and bubble plots, area charts, mixed charts). Covers the UMD chart.umd.js script-tag load contract (no ESM under file://), the responsive:true + maintainAspectRatio:false + sized wrapper-div sizing contract that prevents the number-one Chart.js failure (a 0-height or infinite-grow canvas), destroying the prior Chart instance before re-creating it on update, inlining/generating data offline with no fetch, animation/tooltip/legend config, picking the chart type to the goal, devicePixelRatio handling, accessible swatch-derived colors, and shipping a complete interactive chart on first load. For Chart.js data-viz mini-apps only; do not leak into three.js games, p5.js art toys, or productivity apps that do not chart data.",
+  "categories": [
+    "chart-js"
+  ],
+  "keywords": [
+    "chart.js",
+    "chartjs",
+    "chart js",
+    "chart",
+    "charts",
+    "charting",
+    "dashboard",
+    "metrics dashboard",
+    "data dashboard",
+    "live dashboard",
+    "bar chart",
+    "bar graph",
+    "line chart",
+    "line graph",
+    "streaming chart",
+    "realtime chart",
+    "real-time chart",
+    "pie chart",
+    "pie",
+    "doughnut",
+    "donut chart",
+    "radar chart",
+    "radar",
+    "polar area",
+    "scatter plot",
+    "scatter chart",
+    "bubble chart",
+    "area chart",
+    "stacked bar",
+    "mixed chart",
+    "data viz",
+    "dataviz",
+    "data visualization",
+    "graph data",
+    "plot data",
+    "kpi",
+    "analytics"
+  ],
+  "guidelines": [
+    {
+      "id": "chartjs-001",
+      "rule": "Load Chart.js with a classic UMD <script src> tag that exposes the global Chart constructor. Use the chart.umd.js build (for example chart.js@4.4.3/dist/chart.umd.min.js). NEVER use an ESM 'import { Chart } from chart.js' / <script type=module> / importmap to load it. The ESM build silently fails to resolve under file:// in the WKWebView preview, leaving a blank page with no visible error.",
+      "why": "These mini-apps ship as static single-file bundles and run under file:// inside WKWebView, which is not a secure context. A bare module import or an importmap referencing chart.js does not resolve there and the chart never renders. The UMD build attaches the global Chart to window, which works offline under file://. The dist/chart.js (non-min) and dist/chart.umd.js both expose the global; the ESM dist/chart.mjs does not.",
+      "severity": "critical",
+      "appliesTo": "anychart",
+      "examples": [
+        "GOOD: <script src=\"https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js\"></script> then a normal <script> with new Chart(ctx, config)",
+        "WRONG: import { Chart, registerables } from 'chart.js'; - ESM does not resolve under file:// in the preview",
+        "WRONG: <script type=\"module\"> import Chart from 'chart.js'; </script> - blank page offline"
+      ]
+    },
+    {
+      "id": "chartjs-002",
+      "rule": "Pin a specific Chart.js 4.x version in the CDN URL (for example chart.js@4.4.3) rather than an unversioned or 'latest' URL. The platform vendors the exact referenced version offline, so a pinned URL guarantees the shipped bundle matches the v4 API you coded against (v4 differs from v2/v3: scales are objects keyed by id, not arrays; options.scales.x not options.scales.xAxes).",
+      "why": "The offline vendoring step fetches the exact version named in the script src. An unpinned 'latest' URL can drift across major versions and break the v4-specific config shape; pinning keeps the shipped bundle deterministic and the API stable. Coding v2-era xAxes/yAxes arrays against a v4 build silently produces a broken or empty chart.",
+      "severity": "important",
+      "appliesTo": "anychart",
+      "examples": [
+        "GOOD: <script src=\"https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js\"></script>",
+        "AVOID: <script src=\"https://cdn.jsdelivr.net/npm/chart.js/dist/chart.umd.min.js\"></script> - unversioned",
+        "v4 scales: options.scales: { x: {...}, y: {...} }  NOT v2 options.scales.xAxes: [...]"
+      ]
+    },
+    {
+      "id": "chartjs-003",
+      "rule": "Wrap every <canvas> in a parent div that has an explicit, bounded size (for example a card with height:320px or a CSS grid cell of a fixed height), then set options.responsive:true and options.maintainAspectRatio:false on the chart. Do NOT set width/height attributes on the <canvas> itself when responsive is on - let Chart.js size the canvas to its parent.",
+      "why": "This is the number-one Chart.js failure mode. With maintainAspectRatio:false the canvas grows to fill its parent's height; if the parent has no bounded height (the default for a block div whose only child is an absolutely-sized canvas), the canvas reports height 0 (nothing renders) or enters an infinite resize-grow loop that pushes the page taller every frame. A wrapper with an explicit height plus responsive:true + maintainAspectRatio:false gives a stable, resizing chart that fills its card.",
+      "severity": "critical",
+      "appliesTo": "anychart",
+      "examples": [
+        "GOOD HTML: <div class=\"chart-card\" style=\"position:relative;height:320px\"><canvas id=\"c1\"></canvas></div>",
+        "GOOD options: { responsive:true, maintainAspectRatio:false }",
+        "WRONG: <canvas id=\"c1\"></canvas> with no sized parent and maintainAspectRatio:false - 0-height or infinite grow",
+        "WRONG: setting <canvas width=\"600\" height=\"400\"> attributes while responsive:true is on"
+      ]
+    },
+    {
+      "id": "chartjs-004",
+      "rule": "Before creating a new chart on the same canvas, destroy the previous Chart instance: keep a reference (let chart = new Chart(...)) and call chart.destroy() before assigning a fresh new Chart(ctx, ...). For live/streaming updates, do NOT recreate the chart each tick - mutate chart.data and call chart.update() instead. Recreate only when the chart TYPE or structure changes.",
+      "why": "Calling new Chart() on a canvas that already has a chart throws 'Canvas is already in use. Chart with ID ... must be destroyed before the canvas can be reused', which aborts the script and leaves a frozen or blank canvas. This is the second most common Chart.js failure. For streaming data, recreating the whole chart every tick is wasteful and kills the animation; pushing to chart.data.datasets[i].data and calling chart.update() animates the transition cheaply.",
+      "severity": "critical",
+      "appliesTo": "anychart",
+      "examples": [
+        "GOOD: if (chart) chart.destroy(); chart = new Chart(ctx, config);",
+        "GOOD live update: chart.data.labels.push(t); chart.data.datasets[0].data.push(v); chart.update();",
+        "WRONG: new Chart(ctx, ...) again on the same canvas without destroy() - throws Canvas is already in use",
+        "WRONG: chart.destroy(); new Chart(...) every animation frame for a streaming feed - drop the animation and stutters"
+      ]
+    },
+    {
+      "id": "chartjs-005",
+      "rule": "Generate or inline ALL chart data directly in the script - never fetch() from a network URL or an API. For demo/dashboard mini-apps, hardcode a representative dataset array or generate plausible numbers with a seeded/Math.random walk in JS. For 'live' or 'streaming' charts, simulate the feed with setInterval that appends a new synthesized data point and shifts off the oldest.",
+      "why": "These bundles run fully offline under file://; any fetch() to a remote API fails (no network, CORS, not a secure context) and the chart stays empty. Inlining or generating data guarantees the chart is populated on first paint everywhere. A simulated feed (setInterval pushing a random-walk point) gives a convincing live dashboard with zero network dependency.",
+      "severity": "critical",
+      "appliesTo": "anychart",
+      "examples": [
+        "GOOD inline: const data = [12, 19, 7, 15, 22, 18, 25];",
+        "GOOD simulated feed: setInterval(() => { val += (Math.random()-0.5)*6; chart.data.labels.push(label()); chart.data.datasets[0].data.push(val); if (chart.data.labels.length>30){chart.data.labels.shift(); chart.data.datasets[0].data.shift();} chart.update('none'); }, 1000);",
+        "WRONG: fetch('https://api.example.com/metrics').then(r=>r.json()) - fails offline, empty chart"
+      ]
+    },
+    {
+      "id": "chartjs-006",
+      "rule": "Match the chart type to the goal's data shape: line/area for trends over time, bar for category comparisons, stacked bar for part-to-whole over categories, doughnut/pie for a single composition (few slices), radar for multi-axis profiles, scatter/bubble for correlations between two numeric variables. Use type 'line' with fill:true for an area chart, and a mixed chart (per-dataset type) only when two series genuinely need different encodings.",
+      "why": "Picking the wrong mark is the difference between a chart that reads instantly and one that looks like filler. A pie with 12 near-equal slices is unreadable; a bar or sorted bar is right. A line chart needs an ordered x (time/sequence); using it for unordered categories misleads. Choosing the encoding that fits the data makes the dashboard feel designed, not generated.",
+      "severity": "important",
+      "appliesTo": "anychart",
+      "examples": [
+        "Trend over time: { type: 'line', data: {...}, options: {...} }",
+        "Area: dataset { fill: true, tension: 0.35 } on a line chart",
+        "Composition (<=6 slices): { type: 'doughnut', ... }",
+        "Two encodings: datasets: [ { type:'bar', ... }, { type:'line', yAxisID:'y1', ... } ]"
+      ]
+    },
+    {
+      "id": "chartjs-007",
+      "rule": "Configure tasteful animation, tooltips, and legend in options. Keep the entry animation short (options.animation: { duration: 700, easing: 'easeOutQuart' }) and for high-frequency live updates pass chart.update('none') to skip per-tick animation. Enable interaction tooltips (options.plugins.tooltip, with interaction: { mode:'index', intersect:false } for multi-series line charts) and configure the legend (options.plugins.legend: { position:'top', labels:{ usePointStyle:true } }).",
+      "why": "Default Chart.js looks plain; a short eased entry animation plus crisp index-mode tooltips and a styled legend make it feel polished and interactive. mode:'index', intersect:false lets a hover anywhere on a line chart surface every series value at that x - the expected dashboard behavior. Passing 'none' to update() on a 1Hz feed avoids a constant re-animation jitter while still moving the line.",
+      "severity": "important",
+      "appliesTo": "anychart",
+      "examples": [
+        "options.animation: { duration: 700, easing: 'easeOutQuart' }",
+        "options.interaction: { mode: 'index', intersect: false }",
+        "options.plugins: { legend: { position:'top', labels:{ usePointStyle:true } }, tooltip: { padding:10 } }",
+        "Live tick: chart.update('none'); // skip animation so the stream stays smooth"
+      ]
+    },
+    {
+      "id": "chartjs-008",
+      "rule": "Set explicit, accessible colors per dataset drawn from the app swatch / a curated palette, with sufficient contrast against the background - do not rely on Chart.js auto-colors. Use a CSS :root { --mchat-* } palette and read it (getComputedStyle) or hardcode hex colors, set borderColor and backgroundColor per dataset (use a translucent fill like rgba(...,0.18) for area/bar), and theme scale gridlines and ticks to match (options.scales.x.grid.color, ticks.color) so a dark dashboard does not show default black axes.",
+      "why": "Chart.js v4 ships no default per-dataset colors (datasets render transparent/black unless you set them), and the default axis/grid/tick colors are dark - invisible on a dark dashboard. A curated palette with proper contrast makes every series distinguishable and accessible (avoid red/green-only encodings), and theming the grid/ticks to the background is what makes a 'sleek dark dashboard' actually look dark instead of having stark black axes.",
+      "severity": "important",
+      "appliesTo": "anychart",
+      "examples": [
+        "dataset: { borderColor: '#5ad1ff', backgroundColor: 'rgba(90,209,255,0.18)', borderWidth: 2 }",
+        "Dark theme axes: options.scales.x = { grid:{ color:'rgba(255,255,255,0.08)' }, ticks:{ color:'#9fb3c8' } }",
+        "Read swatch: const accent = getComputedStyle(document.documentElement).getPropertyValue('--mchat-accent').trim();",
+        "WRONG: leaving datasets with no backgroundColor/borderColor on a v4 chart - invisible series"
+      ]
+    },
+    {
+      "id": "chartjs-009",
+      "rule": "Let Chart.js handle high-DPI rendering automatically - do NOT manually multiply canvas width/height by devicePixelRatio. Chart.js reads window.devicePixelRatio and renders crisp on Retina by default. If a heavy live dashboard with many charts stutters on a 3x display, cap it with options.devicePixelRatio (for example Math.min(window.devicePixelRatio || 1, 2)) rather than disabling it.",
+      "why": "Chart.js already does DPR-correct rendering when responsive:true and the canvas has no manual width/height attributes; hand-scaling the canvas double-applies the ratio and produces a blurry or mis-sized chart. The only DPR knob you should touch is options.devicePixelRatio to CAP cost on a many-chart dashboard, keeping text crisp while halving fill work on a 3x phone.",
+      "severity": "recommended",
+      "appliesTo": "anychart",
+      "examples": [
+        "Default (correct): rely on Chart.js DPR handling; no manual canvas.width = w * dpr",
+        "Cap for a heavy multi-chart dashboard: options.devicePixelRatio = Math.min(window.devicePixelRatio || 1, 2)",
+        "WRONG: canvas.width = rect.width * window.devicePixelRatio; with responsive:true on - double-scaled, blurry"
+      ]
+    },
+    {
+      "id": "chartjs-010",
+      "rule": "Ship a complete, populated, interactive chart on the very first paint - never an empty axes box or a single static frame waiting for input. Create the chart with real inline data in the same script run as load, start any simulated live feed immediately, and wire interaction (hover tooltips, legend click to toggle series, a pause/resume button for live feeds) so the dashboard is alive before the user touches anything.",
+      "why": "The render gate and taste rubric can pass an empty axes frame that 'loaded'. The product is a living dashboard. A chart with labeled axes but no bars, or a 'live' chart that only starts after a click, reads as broken. Populating it on first paint and starting the feed immediately makes it read as finished and real.",
+      "severity": "critical",
+      "appliesTo": "anychart",
+      "examples": [
+        "On load: build the chart with the inline dataset, then start the setInterval feed right away",
+        "Interaction: legend click toggles a series (Chart.js default), a Pause/Resume button stops/starts the feed",
+        "WRONG: an empty grid that only fills in after a button press"
+      ]
+    },
+    {
+      "id": "chartjs-011",
+      "rule": "Make the chart layout itself responsive and resize-safe. Place chart cards in a CSS grid or flex layout that reflows (grid-template-columns with auto-fit/minmax) and give each card a bounded height; Chart.js auto-resizes each canvas to its card via the responsive observer. Set html,body { margin:0; height:100% } and avoid putting a chart canvas inside a flex parent without an explicit min-height (flex items default min-height:auto can collapse the canvas to 0).",
+      "why": "The preview and hub render at many widths; a fixed pixel grid leaves dead space or overflows. auto-fit/minmax reflows the cards from one column on a phone to a grid on desktop, and Chart.js resizes each canvas automatically. The flex min-height:auto gotcha is a common silent collapse: a canvas in a flex column with no min-height shrinks to nothing and the chart vanishes.",
+      "severity": "important",
+      "appliesTo": "anychart",
+      "examples": [
+        "CSS: .grid { display:grid; gap:16px; grid-template-columns: repeat(auto-fit, minmax(280px,1fr)); }",
+        "Each card: position:relative; height:320px; (bounded height for the canvas)",
+        "Flex fix: a chart card inside a flex parent needs min-height:0 or an explicit height, not min-height:auto",
+        "CSS: html,body { margin:0; height:100%; background:#0d1320; }"
+      ]
+    },
+    {
+      "id": "chartjs-012",
+      "rule": "For multi-axis or multi-series charts, configure scales correctly in the v4 shape: scales are an object keyed by axis id (scales: { x:{}, y:{} }), a second y-axis uses a new id with position:'right' and grid.drawOnChartArea:false, and each dataset that uses it sets yAxisID to that id. Begin value axes at a sensible baseline (y.beginAtZero:true for bars/counts) and label axes via scales.x.title / scales.y.title { display:true, text }.",
+      "why": "Chart.js v4 dropped the v2 xAxes/yAxes arrays; using the old shape silently yields default unconfigured axes. A bar chart that does not beginAtZero exaggerates differences and misleads. A dual-axis chart needs the second axis id plus yAxisID on its dataset and drawOnChartArea:false so the two gridlines do not overlap into mush. Titled axes make the chart self-explanatory.",
+      "severity": "recommended",
+      "appliesTo": "anychart",
+      "examples": [
+        "Bars: options.scales.y = { beginAtZero: true, title: { display:true, text:'Count' } }",
+        "Second axis: scales.y1 = { position:'right', grid:{ drawOnChartArea:false } } and dataset { yAxisID:'y1' }",
+        "WRONG (v2 shape): options.scales.yAxes = [{ ticks:{ beginAtZero:true } }] - ignored in v4"
+      ]
+    }
+  ]
+}
