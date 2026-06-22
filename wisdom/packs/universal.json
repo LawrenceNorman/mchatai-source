@@ -1,6 +1,6 @@
 {
   "packID": "universal",
-  "version": 23,
+  "version": 24,
   "displayName": "Universal Guidelines",
   "description": "Rules that apply to ALL generated apps regardless of category.",
   "categories": [
@@ -622,6 +622,20 @@
       "examples": [
         "BAD: `<audio src=\"data:audio/wav;base64,UklGRi...(50KB)...\">` \u2014 output token exhaustion",
         "GOOD: const ctx = new AudioContext(); const osc = ctx.createOscillator(); osc.frequency.value = 880; osc.connect(ctx.destination); osc.start(); setTimeout(() => osc.stop(), 200);  // 200-byte beep"
+      ]
+    },
+    {
+      "id": "u-offline-means-use-vendored-libs-not-reinvent",
+      "rule": "'Offline' / 'no network' / 'no CDN' does NOT mean avoid libraries. The mChatAI platform AUTOMATICALLY vendors known web libraries to a local offline copy when you load them via a NORMAL CDN <script src> tag. Chart.js, p5.js (+p5.sound), Tone.js, pixi.js, matter.js, d3, GSAP, anime.js, tsParticles, canvas-confetti, globe.gl, and three.js are all auto-rewritten to a bundled local file at install + publish time. So loading any of these via a standard <script src='https://cdn.../the-lib.min.js'></script> IS fully offline-safe and works on the hub. ALWAYS use the REAL library; NEVER hand-roll, reimplement, stub, or write a 'lightweight compatible mini-engine' to satisfy an offline/no-CDN requirement -- that throws away the library's real capabilities and defeats the platform's offline vendoring. If the goal says 'offline' or 'no external scripts', STILL load the real library the normal way; the platform makes it offline for you.",
+      "why": "When a goal stresses 'offline / no network / no CDN', the planner and generator otherwise reimplement the library from scratch (observed: a Chart.js dashboard shipped a custom canvas charting engine instead of real Chart.js), bypassing the vendored lib + its wisdom pack and producing weaker results. The WEBLIB B-catch (bundleVendoredWebLibsIfRequested) + publish inliner already guarantee offline, so reinvention is pure waste.",
+      "severity": "critical",
+      "appliesTo": [
+        "miniApp",
+        "webSPA"
+      ],
+      "examples": [
+        "BAD: goal says 'must run offline' -> generator writes `class MiniChart {...}` mimicking the Chart.js API to avoid a CDN.",
+        "GOOD: `<script src='https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js'></script>` then `new Chart(canvas, {...})` -- the platform vendors chart.umd.min.js to ./libs/ automatically, so it runs offline with the real library."
       ]
     }
   ],
