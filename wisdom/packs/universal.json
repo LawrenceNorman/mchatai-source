@@ -1,6 +1,6 @@
 {
   "packID": "universal",
-  "version": 25,
+  "version": 26,
   "displayName": "Universal Guidelines",
   "description": "Rules that apply to ALL generated apps regardless of category.",
   "categories": [
@@ -636,6 +636,20 @@
       "examples": [
         "BAD: goal says 'must run offline' -> generator writes `class MiniChart {...}` mimicking the Chart.js API to avoid a CDN.",
         "GOOD: `<script src='https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js'></script>` then `new Chart(canvas, {...})` -- the platform vendors chart.umd.min.js to ./libs/ automatically, so it runs offline with the real library."
+      ]
+    },
+    {
+      "id": "u-no-dead-buttons",
+      "rule": "Every button, CTA, link, and tappable control MUST do something VISIBLE when clicked/tapped -- a real state change, navigation, or action. NEVER ship a control that looks interactive but does nothing (a 'dead' decorative button is a let-down). If a control has no real backing action yet, still give it a tasteful response: clear press feedback + a short purposeful animation PLUS an inline 'Coming soon' affordance/toast, or have it (re)trigger the relevant animation/scene. Wire EVERY documented control to a handler that visibly changes the screen. A 'Replay' that restarts the animation is good; a 'Start Creating' CTA that only pulses one icon and otherwise does nothing is NOT.",
+      "why": "Lawrence 2026-06-22: a GSAP hero's 'Start Creating' button only pulsed one logo icon and did nothing else -- it reads as broken. Decorative-but-dead buttons undercut an otherwise-polished build.",
+      "severity": "high",
+      "appliesTo": [
+        "miniApp",
+        "webSPA"
+      ],
+      "examples": [
+        "BAD: <button>Start Creating</button> whose click handler only animates a logo emblem and changes no state.",
+        "GOOD: the CTA opens a panel / advances a step / starts the core experience -- or, if truly not-yet-built, plays a short animation and shows an inline 'Coming soon' message."
       ]
     }
   ],
