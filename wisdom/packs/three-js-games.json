@@ -1,6 +1,6 @@
 {
   "packID": "three-js-games",
-  "version": 4,
+  "version": 5,
   "displayName": "three.js 3D Game Guidelines (web-components-3d)",
   "description": "Quality and correctness rules for offline three.js WebGL2 3D games built from the web-components-3d Lego catalog. Covers the local-importmap-only loading contract (no CDN, no network, runs under file://), draw-call and DPR budgets, delta-time movement, dispose-on-teardown and object pooling, mobile light limits, hand-rolled physics versus rigid bodies, audio unlock on first user gesture, and WebGL2-not-WebGPU. These rules are for 3D games only and must not leak into productivity mini-apps.",
   "categories": [
@@ -208,7 +208,7 @@
     {
       "id": "tjs-014",
       "rule": "Every gameplay entity the player reacts to (enemies, targets, hazards, collectibles) MUST be VISIBLE in the camera view at start or spawn within ~2s, and MUST actually move/respond: enemies path toward or attack the player, projectiles travel and register hits, collectibles vanish + score on pickup. A static, off-screen, or inert entity is a failure.",
-      "why": "Players reported 'I can't see an enemy or evade' — entities were never spawned or placed outside the frame, so there was nothing to play against. If the player cannot SEE and INTERACT with the entities, the game is unplayable no matter how nice the scene.",
+      "why": "Players reported 'I can't see an enemy or evade' \u2014 entities were never spawned or placed outside the frame, so there was nothing to play against. If the player cannot SEE and INTERACT with the entities, the game is unplayable no matter how nice the scene.",
       "severity": "critical",
       "appliesTo": "anygame",
       "examples": [
@@ -219,31 +219,31 @@
     },
     {
       "id": "tjs-015",
-      "rule": "Every control you document (WASD, arrows, mouse-look, click-to-fire, space-to-jump, drag) MUST be wired to a handler that visibly changes the scene the SAME frame it is pressed: add the listeners, update an input state, apply it in the update loop. Mentally test each key — does pressing it produce an immediate on-screen response?",
+      "rule": "Every control you document (WASD, arrows, mouse-look, click-to-fire, space-to-jump, drag) MUST be wired to a handler that visibly changes the scene the SAME frame it is pressed: add the listeners, update an input state, apply it in the update loop. Mentally test each key \u2014 does pressing it produce an immediate on-screen response?",
       "why": "A frequent failure is keys/buttons with NO attached handler (the evaluator's 'NO HANDLER ATTACHED' finding): the HUD shows controls but nothing happens. Unresponsive controls make the game unplayable even when it renders.",
       "severity": "critical",
       "appliesTo": "anygame",
       "examples": [
         "keydown/keyup set input flags; the fixed-step update reads them and moves the player; camera follows",
-        "click → pointer-lock; pointermove rotates the view (mouse-look)",
+        "click \u2192 pointer-lock; pointermove rotates the view (mouse-look)",
         "WRONG: a 'Jump' button or 'W' key with no addEventListener / no state mutation"
       ]
     },
     {
       "id": "tjs-016",
-      "rule": "Wire score/health/collision/timer so the player can ACTUALLY reach the win state by playing well and the lose state by failing — both reachable — and show a clear overlay ('You Win!' / 'Game Over') with a working Restart. Avoid instant-fail, unreachable goals, or no end at all.",
-      "why": "A game with no win/lose, or an unreachable objective, has no stakes and no completion — it reads as a tech demo, not a game. The end states + restart are what make it feel finished and playable.",
+      "rule": "Wire score/health/collision/timer so the player can ACTUALLY reach the win state by playing well and the lose state by failing \u2014 both reachable \u2014 and show a clear overlay ('You Win!' / 'Game Over') with a working Restart. Avoid instant-fail, unreachable goals, or no end at all.",
+      "why": "A game with no win/lose, or an unreachable objective, has no stakes and no completion \u2014 it reads as a tech demo, not a game. The end states + restart are what make it feel finished and playable.",
       "severity": "important",
       "appliesTo": "anygame",
       "examples": [
-        "health to 0 → Game Over overlay + Restart; reach the goal / survive the timer / clear all waves → You Win",
+        "health to 0 \u2192 Game Over overlay + Restart; reach the goal / survive the timer / clear all waves \u2192 You Win",
         "WRONG: a score counter that never triggers any end state"
       ]
     },
     {
       "id": "tjs-017",
       "rule": "Aim the camera so the player can SEE what they must react to: enemies approaching, the path/obstacles ahead, collectibles, the goal. First-person: keep threats entering the forward view. Third-person/chase: frame the player plus nearby threats with lookahead. Top-down/orbit: keep the whole play area legible.",
-      "why": "Even with working entities + controls, a camera pointed away from the action (or too close, or not following) hides the gameplay so the player can't react — indistinguishable from broken.",
+      "why": "Even with working entities + controls, a camera pointed away from the action (or too close, or not following) hides the gameplay so the player can't react \u2014 indistinguishable from broken.",
       "severity": "important",
       "appliesTo": "anygame",
       "examples": [
@@ -339,7 +339,7 @@
     {
       "id": "tjs-023",
       "rule": "Import three.js with a STATIC top-level `import * as THREE from 'three';` (resolved by the `<script type=importmap>` you already emit). NEVER use a dynamic `const THREE = await import('three')`, and NEVER wrap it in a 'load from CDN' try/catch fallback. Dynamic import() of a bare importmap specifier does NOT resolve in the in-app WKWebView preview under file:// (the page shows 'Could not load three.js' even though the vendored copy is present), while static imports work. Addons likewise: `import { OrbitControls } from 'three/addons/controls/OrbitControls.js';`.",
-      "why": "Observed 2026-06-17: a real-three.js floating-island build rendered blank with 'Could not load three.js from the CDN' purely because it used `await import('three')`; the identical scene with a static `import * as THREE from 'three'` renders. The vendored three.module.min.js was present and valid — only the import STYLE differed. Every shipped working 3D scene uses the static form.",
+      "why": "Observed 2026-06-17: a real-three.js floating-island build rendered blank with 'Could not load three.js from the CDN' purely because it used `await import('three')`; the identical scene with a static `import * as THREE from 'three'` renders. The vendored three.module.min.js was present and valid \u2014 only the import STYLE differed. Every shipped working 3D scene uses the static form.",
       "severity": "critical",
       "appliesTo": "anygame",
       "examples": [
@@ -349,20 +349,20 @@
     },
     {
       "id": "tjs-024",
-      "rule": "First-person / pointer-look 3D: NEVER use `requestPointerLock` and NEVER gate the game start on it — Pointer Lock is dead in the in-app WKWebView preview (and on mobile), so a 'Click to play' that calls requestPointerLock() silently fails and the game never starts. (1) START: a 'Click to play' / canvas click MUST immediately start the game (hide the overlay, begin the loop) unconditionally — never inside or awaiting a pointer-lock request. (2) LOOK: use DELTA-accumulating DRAG-look — on pointerdown set dragging=true; on pointermove while dragging, `yaw -= e.movementX * sens; pitch -= e.movementY * sens` (use movementX/Y deltas, NOT absolute cursor position) so turning is UNBOUNDED (the cursor hitting the window edge must not stop rotation); on pointerup stop. Clamp PITCH to ±(Math.PI/2 - 0.02); NEVER clamp YAW. Provide touch drag + on-screen joystick on mobile. Prefer the vendored `./web-components-3d/controls/` fps-controller, which already does unbounded drag-look + wall-slide.",
-      "why": "Two real failures, 2026-06-20: (a) VoxelCraft 'Click to play' did nothing — its menu click called requestPointerLock(), which is rejected in the WKWebView preview, so the game stayed on the menu. (b) Catacombs 'I can't fully turn around' — drag-look was bounded by the window edge. Pointer Lock is NOT the fix (it's dead here, per AIHarness's own scaffold directive); delta-accumulating drag-look that doesn't gate the start is. Contradicts the earlier wrong version of this rule.",
+      "rule": "First-person / pointer-look 3D: NEVER use `requestPointerLock` and NEVER gate the game start on it \u2014 Pointer Lock is dead in the in-app WKWebView preview (and on mobile), so a 'Click to play' that calls requestPointerLock() silently fails and the game never starts. (1) START: a 'Click to play' / canvas click MUST immediately start the game (hide the overlay, begin the loop) unconditionally \u2014 never inside or awaiting a pointer-lock request. (2) LOOK: use DELTA-accumulating DRAG-look \u2014 on pointerdown set dragging=true; on pointermove while dragging, `yaw -= e.movementX * sens; pitch -= e.movementY * sens` (use movementX/Y deltas, NOT absolute cursor position) so turning is UNBOUNDED (the cursor hitting the window edge must not stop rotation); on pointerup stop. Clamp PITCH to \u00b1(Math.PI/2 - 0.02); NEVER clamp YAW. Provide touch drag + on-screen joystick on mobile. Prefer the vendored `./web-components-3d/controls/` fps-controller, which already does unbounded drag-look + wall-slide.",
+      "why": "Two real failures, 2026-06-20: (a) VoxelCraft 'Click to play' did nothing \u2014 its menu click called requestPointerLock(), which is rejected in the WKWebView preview, so the game stayed on the menu. (b) Catacombs 'I can't fully turn around' \u2014 drag-look was bounded by the window edge. Pointer Lock is NOT the fix (it's dead here, per AIHarness's own scaffold directive); delta-accumulating drag-look that doesn't gate the start is. Contradicts the earlier wrong version of this rule.",
       "severity": "critical",
       "appliesTo": "anygame",
       "examples": [
         "GOOD: menu.addEventListener('click', () => { menu.hidden = true; started = true; }); // start is UNCONDITIONAL, no requestPointerLock",
         "GOOD: cv.addEventListener('pointerdown', e=>{drag=true}); cv.addEventListener('pointermove', e=>{ if(!drag) return; yaw -= e.movementX*sens; pitch = clamp(pitch - e.movementY*sens, -1.55, 1.55); }); cv.addEventListener('pointerup', ()=>{drag=false});",
-        "BAD: menu.addEventListener('click', () => canvas.requestPointerLock()); // dead in WKWebView → click-to-play never starts",
-        "BAD: look tied to absolute cursor X/Y — turning stops at the screen edge"
+        "BAD: menu.addEventListener('click', () => canvas.requestPointerLock()); // dead in WKWebView \u2192 click-to-play never starts",
+        "BAD: look tied to absolute cursor X/Y \u2014 turning stops at the screen edge"
       ]
     },
     {
       "id": "tjs-025",
-      "rule": "An explorable / first-person 3D scene must be PLAYABLE-bright: include an AmbientLight or HemisphereLight at intensity >= ~0.6 so the player can see walls, floor, and enemies. Atmospheric 'dark' themes (catacombs, dungeon, bunker, night) STILL need this baseline — a ~0.3 hemisphere plus a couple of local torch PointLights leaves the scene too dark to navigate. Avoid near-black floor/wall materials; give surfaces a mid-tone color so the fill light reads.",
+      "rule": "An explorable / first-person 3D scene must be PLAYABLE-bright: include an AmbientLight or HemisphereLight at intensity >= ~0.6 so the player can see walls, floor, and enemies. Atmospheric 'dark' themes (catacombs, dungeon, bunker, night) STILL need this baseline \u2014 a ~0.3 hemisphere plus a couple of local torch PointLights leaves the scene too dark to navigate. Avoid near-black floor/wall materials; give surfaces a mid-tone color so the fill light reads.",
       "why": "Observed 2026-06-20 (Catacombs): HemisphereLight intensity 0.32 + 2 torch PointLights -> user reported 'quite dark and hard to see.' Mood is fine, but the player must be able to navigate; brighter ambient + non-black materials keeps it atmospheric AND playable.",
       "severity": "medium",
       "appliesTo": "anygame",
@@ -370,6 +370,14 @@
         "GOOD: scene.add(new THREE.HemisphereLight(0xb0c4de, 0x202028, 0.7)); plus a directional/torch for shape",
         "BAD: HemisphereLight(..., 0.3) as the ONLY fill - corridors render near-black"
       ]
+    },
+    {
+      "id": "tjs-026",
+      "rule": "First-person WEAPON VIEWMODEL must stay SMALL and out of the way. It should occupy at most the lower ~1/4 to 1/3 of the screen, anchored toward the BOTTOM and slightly to one side (e.g. lower-right) -- NEVER centered and filling the view. In three.js, parent the weapon to the camera and place it low/forward/to-the-side (roughly position (0.25, -0.35, -0.6) with a small scale) plus a subtle idle/walk bob; keep the upper-center of the screen CLEAR so approaching enemies, the crosshair, and the corridor ahead stay fully visible. A giant weapon mesh that covers most of the viewport is the single most common thing that ruins these FPS builds -- size it like a real game's viewmodel (a sliver at the bottom), not a hero prop."
+    },
+    {
+      "id": "tjs-027",
+      "rule": "Make 3D / FPS / driving games genuinely playable on MOBILE with touch. Detect a coarse pointer (matchMedia('(pointer: coarse)')) and show on-screen controls: a LEFT virtual joystick for movement (prefer controls.virtual-joystick-3d + controls.input-manager-3d), RIGHT-side drag-to-look (accumulated movementX/Y, never requestPointerLock), and a FIRE/action button (>=44px, bottom-right). The SAME delta-time movement code drives desktop keys and touch. Clamp devicePixelRatio<=2 and lower the entity/particle/draw-call budget on coarse-pointer devices for 60fps. Lay the canvas + HUD out for portrait AND landscape and handle resize/orientationchange. The game must be completable with touch alone -- no keyboard, mouse, or hover required."
     }
   ]
 }

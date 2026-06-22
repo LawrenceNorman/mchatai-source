@@ -1,23 +1,88 @@
 {
   "packID": "raycast-games",
-  "version": 1,
+  "version": 2,
   "displayName": "Raycaster (2.5D) Games",
   "description": "How to build Wolfenstein/Doom-style 2.5D software raycasters that render correctly and play well in the mChatAI+ in-app preview (WKWebView) and on mobile. Pure 2D-canvas, zero three.js/WebGL, fully offline. Distilled from six landed raycaster games and the harvested web-components-3d/raycast Lego (dda-engine, sprite-billboards, grid-map, player-controller, grid-enemy-ai).",
-  "categories": ["games"],
-  "keywords": ["raycaster", "raycast", "wolfenstein", "wolfenstein 3d", "doom", "doom-style", "doom clone", "2.5d", "2.5d shooter", "first person maze", "first-person dungeon", "dungeon crawler", "corridor shooter", "retro fps", "grid shooter", "labyrinth fps", "catacomb", "bunker", "temple maze"],
+  "categories": [
+    "games"
+  ],
+  "keywords": [
+    "raycaster",
+    "raycast",
+    "wolfenstein",
+    "wolfenstein 3d",
+    "doom",
+    "doom-style",
+    "doom clone",
+    "2.5d",
+    "2.5d shooter",
+    "first person maze",
+    "first-person dungeon",
+    "dungeon crawler",
+    "corridor shooter",
+    "retro fps",
+    "grid shooter",
+    "labyrinth fps",
+    "catacomb",
+    "bunker",
+    "temple maze"
+  ],
   "guidelines": [
-    { "id": "ray-001", "rule": "A raycaster is PURE 2D-canvas: get a CanvasRenderingContext2D and software-render columns. Do NOT use three.js or WebGL for a raycaster - it is the wrong tool and adds a heavy dependency. If the web-components-3d/raycast Lego is available, build on raycast.dda-engine + raycast.sprite-billboards + raycast.grid-map + raycast.player-controller instead of hand-rolling the math." },
-    { "id": "ray-002", "rule": "NEVER use requestPointerLock and NEVER gate the game start on it - Pointer Lock is dead in the WKWebView preview and on mobile. For look control use accumulated DRAG-LOOK (pointerdown -> pointermove -> pointerup, plus touchmove), and ALSO support keyboard turn (left/right arrows or Q/E). The game must START unconditionally on first load, not behind a 'click to play' pointer-lock gate." },
-    { "id": "ray-003", "rule": "Use grid DDA traversal for wall casting: per screen column, compute the ray direction from the camera basis (dirX/dirY + planeX/planeY where the plane is perpendicular to dir and its length sets the FOV), then march cell-by-cell with deltaDist/sideDist/stepX/stepY until you hit a solid tile. This is exact and fast - do not sample along the ray in tiny fixed increments." },
-    { "id": "ray-004", "rule": "ALWAYS use the FISHEYE-CORRECTED perpendicular distance for the wall slice height, never the raw euclidean ray length. lineHeight = screenH / perpDist. Using euclidean distance bows straight walls into a fisheye curve - the single most common raycaster bug." },
-    { "id": "ray-005", "rule": "Write a per-column depth (z-)buffer while drawing walls (one float per screen column = the wall perpDist), and render BILLBOARD SPRITES against it: transform each sprite into camera space with the inverse-determinant trick, depth-sort far-to-near (painter's order), and for each sprite column draw ONLY where spriteDepth < zbuffer[column]. Without the z-buffer test, enemies and items draw on top of walls they are behind." },
-    { "id": "ray-006", "rule": "Keep the level readable: torch/flashlight atmosphere is fine but apply distance fog as a brightness falloff (darker with depth) PLUS a small ambient floor so corridors are never pitch black. Side-darken one wall axis (N/S vs E/W) for cheap shape definition. The player must always be able to see the next few cells." },
-    { "id": "ray-007", "rule": "Walls can be TEXTURED (drawImage a 1px-wide vertical slice from a tile texture using the fractional wallX hit coordinate, with the canonical two-side texX mirror correction) OR PROCEDURAL (fillRect the column with a shaded color + a drawn mortar/brick line). Both are valid; procedural is lighter and never needs image assets - prefer it for offline reliability unless a specific texture look is requested." },
-    { "id": "ray-008", "rule": "Generate or author the map as a grid where the OUTER ring is solid wall and the interior is guaranteed REACHABLE. For procedural mazes use a recursive backtracker / carve and then verify the exit + all pickups are BFS-reachable from the spawn; never drop the player or required items inside a sealed cell." },
-    { "id": "ray-009", "rule": "Collide the player against walls as a circle-vs-grid check with axis separation (resolve X and Y independently and keep a small radius buffer) so the player slides along walls instead of sticking or tunneling through corners. All movement is delta-time based (units per second), not per-frame constants." },
-    { "id": "ray-010", "rule": "Drive enemies in GRID space: a BFS flow-field or per-step BFS toward the player for stalkers, a line-of-sight check (step the grid between enemy and player; blocked by walls) for chasers that only wake/fire when they can see you, and simple state (idle/chase/attack). Cap active enemies and recompute paths on a throttle, not every frame." },
-    { "id": "ray-011", "rule": "Clamp devicePixelRatio to min(window.devicePixelRatio, 2) and (re)allocate the column count + z-buffer on resize. Optionally render the 3D view at a reduced internal column resolution (e.g. 1 ray per 1-2 px) and upscale for performance on phones; keep a steady 60fps with requestAnimationFrame + delta-time." },
-    { "id": "ray-012", "rule": "Make it fully playable with TOUCH ALONE for mobile: on-screen move (a thumb zone or virtual joystick on the left) + drag-look (right side) + a fire/use button, all at least 44x44 px. Show a minimap (raycast uses a simple 2D top-down overlay) and a clear HUD (health/ammo/objective). Synthesize SFX with WebAudio (no audio files) and unlock the AudioContext on the first tap." },
-    { "id": "ray-013", "rule": "Ship a COMPLETE playable loop on first load: a reachable goal (find the exit / collect the keys / clear the enemies), reachable win AND lose states, and visible enemies/objectives within the opening view or a few steps away. An off-screen objective indicator (an edge-clamped arrow toward the exit) helps players navigate the maze." }
+    {
+      "id": "ray-001",
+      "rule": "A raycaster is PURE 2D-canvas: get a CanvasRenderingContext2D and software-render columns. Do NOT use three.js or WebGL for a raycaster - it is the wrong tool and adds a heavy dependency. If the web-components-3d/raycast Lego is available, build on raycast.dda-engine + raycast.sprite-billboards + raycast.grid-map + raycast.player-controller instead of hand-rolling the math."
+    },
+    {
+      "id": "ray-002",
+      "rule": "NEVER use requestPointerLock and NEVER gate the game start on it - Pointer Lock is dead in the WKWebView preview and on mobile. For look control use accumulated DRAG-LOOK (pointerdown -> pointermove -> pointerup, plus touchmove), and ALSO support keyboard turn (left/right arrows or Q/E). The game must START unconditionally on first load, not behind a 'click to play' pointer-lock gate."
+    },
+    {
+      "id": "ray-003",
+      "rule": "Use grid DDA traversal for wall casting: per screen column, compute the ray direction from the camera basis (dirX/dirY + planeX/planeY where the plane is perpendicular to dir and its length sets the FOV), then march cell-by-cell with deltaDist/sideDist/stepX/stepY until you hit a solid tile. This is exact and fast - do not sample along the ray in tiny fixed increments."
+    },
+    {
+      "id": "ray-004",
+      "rule": "ALWAYS use the FISHEYE-CORRECTED perpendicular distance for the wall slice height, never the raw euclidean ray length. lineHeight = screenH / perpDist. Using euclidean distance bows straight walls into a fisheye curve - the single most common raycaster bug."
+    },
+    {
+      "id": "ray-005",
+      "rule": "Write a per-column depth (z-)buffer while drawing walls (one float per screen column = the wall perpDist), and render BILLBOARD SPRITES against it: transform each sprite into camera space with the inverse-determinant trick, depth-sort far-to-near (painter's order), and for each sprite column draw ONLY where spriteDepth < zbuffer[column]. Without the z-buffer test, enemies and items draw on top of walls they are behind."
+    },
+    {
+      "id": "ray-006",
+      "rule": "Keep the level readable: torch/flashlight atmosphere is fine but apply distance fog as a brightness falloff (darker with depth) PLUS a small ambient floor so corridors are never pitch black. Side-darken one wall axis (N/S vs E/W) for cheap shape definition. The player must always be able to see the next few cells."
+    },
+    {
+      "id": "ray-007",
+      "rule": "Walls can be TEXTURED (drawImage a 1px-wide vertical slice from a tile texture using the fractional wallX hit coordinate, with the canonical two-side texX mirror correction) OR PROCEDURAL (fillRect the column with a shaded color + a drawn mortar/brick line). Both are valid; procedural is lighter and never needs image assets - prefer it for offline reliability unless a specific texture look is requested."
+    },
+    {
+      "id": "ray-008",
+      "rule": "Generate or author the map as a grid where the OUTER ring is solid wall and the interior is guaranteed REACHABLE. For procedural mazes use a recursive backtracker / carve and then verify the exit + all pickups are BFS-reachable from the spawn; never drop the player or required items inside a sealed cell."
+    },
+    {
+      "id": "ray-009",
+      "rule": "Collide the player against walls as a circle-vs-grid check with axis separation (resolve X and Y independently and keep a small radius buffer) so the player slides along walls instead of sticking or tunneling through corners. All movement is delta-time based (units per second), not per-frame constants."
+    },
+    {
+      "id": "ray-010",
+      "rule": "Drive enemies in GRID space: a BFS flow-field or per-step BFS toward the player for stalkers, a line-of-sight check (step the grid between enemy and player; blocked by walls) for chasers that only wake/fire when they can see you, and simple state (idle/chase/attack). Cap active enemies and recompute paths on a throttle, not every frame."
+    },
+    {
+      "id": "ray-011",
+      "rule": "Clamp devicePixelRatio to min(window.devicePixelRatio, 2) and (re)allocate the column count + z-buffer on resize. Optionally render the 3D view at a reduced internal column resolution (e.g. 1 ray per 1-2 px) and upscale for performance on phones; keep a steady 60fps with requestAnimationFrame + delta-time."
+    },
+    {
+      "id": "ray-012",
+      "rule": "Make it fully playable with TOUCH ALONE for mobile: on-screen move (a thumb zone or virtual joystick on the left) + drag-look (right side) + a fire/use button, all at least 44x44 px. Show a minimap (raycast uses a simple 2D top-down overlay) and a clear HUD (health/ammo/objective). Synthesize SFX with WebAudio (no audio files) and unlock the AudioContext on the first tap."
+    },
+    {
+      "id": "ray-013",
+      "rule": "Ship a COMPLETE playable loop on first load: a reachable goal (find the exit / collect the keys / clear the enemies), reachable win AND lose states, and visible enemies/objectives within the opening view or a few steps away. An off-screen objective indicator (an edge-clamped arrow toward the exit) helps players navigate the maze."
+    },
+    {
+      "id": "ray-014",
+      "rule": "The first-person WEAPON sprite must be modest and BOTTOM-anchored: draw it at roughly 25-35% of canvas height, centered horizontally along the bottom edge (a small idle/fire bob is fine), so it never covers the corridor ahead, the enemies, or the center reticle. A weapon sprite that fills most of the screen ruins the game. On touch devices show on-screen controls (left move pad / drag-look / fire button, >=44px) so the raycaster is fully playable on mobile."
+    }
   ]
 }
