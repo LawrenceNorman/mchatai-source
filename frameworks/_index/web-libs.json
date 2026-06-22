@@ -2,15 +2,138 @@
   "version": "1",
   "_purpose": "Generic offline-vendoring map for non-three web libraries. The AIWizard's WEBLIB B-catch (bundleVendoredWebLibsIfRequested) reads this: when a generated artifact references one of these libs via a CDN <script src>, it copies the vendored UMD build (vendorPath, relative to the mchatai-source root) next to the artifact as ./libs/<localFile> and rewrites the src so it renders offline under file://. Adding a new lib is a data-only PR: drop the UMD build under frameworks/web-libs/<id>/ and add an entry here. ASCII-only. cdnPatterns are lowercased-substring matches scoped to <script src> URLs; keep them file-specific so libs do not cross-match (e.g. p5 core matches 'p5.min.js' but NOT 'p5.sound.min.js').",
   "libs": [
-    { "id": "p5",          "global": "p5",          "localFile": "p5.min.js",                "vendorPath": "frameworks/web-libs/p5/p5.min.js",                          "cdnPatterns": ["p5.min.js"] },
-    { "id": "p5-sound",    "global": "p5.sound",    "localFile": "p5.sound.min.js",          "vendorPath": "frameworks/web-libs/p5/p5.sound.min.js",                    "cdnPatterns": ["p5.sound.min.js"] },
-    { "id": "tone",        "global": "Tone",        "localFile": "Tone.js",                  "vendorPath": "frameworks/web-libs/tone/Tone.js",                          "cdnPatterns": ["tone.js", "tone.min.js", "tone@"] },
-    { "id": "pixi",        "global": "PIXI",        "localFile": "pixi.min.js",              "vendorPath": "frameworks/web-libs/pixi/pixi.min.js",                      "cdnPatterns": ["pixi.min.js", "pixi.js@"] },
-    { "id": "matter",      "global": "Matter",      "localFile": "matter.min.js",            "vendorPath": "frameworks/web-libs/matter/matter.min.js",                  "cdnPatterns": ["matter.min.js", "matter-js@"] },
-    { "id": "gsap",        "global": "gsap",        "localFile": "gsap.min.js",              "vendorPath": "frameworks/web-libs/gsap/gsap.min.js",                      "cdnPatterns": ["gsap.min.js", "gsap@"] },
-    { "id": "d3",          "global": "d3",          "localFile": "d3.min.js",                "vendorPath": "frameworks/web-libs/d3/d3.min.js",                          "cdnPatterns": ["d3.min.js", "d3@"] },
-    { "id": "chart",       "global": "Chart",       "localFile": "chart.umd.min.js",         "vendorPath": "frameworks/web-libs/chart/chart.umd.min.js",                "cdnPatterns": ["chart.umd.min.js", "chart.umd.js", "chart.js@"] },
-    { "id": "tsparticles", "global": "tsParticles", "localFile": "tsparticles.bundle.min.js","vendorPath": "frameworks/web-libs/tsparticles/tsparticles.bundle.min.js", "cdnPatterns": ["tsparticles.bundle", "tsparticles.min.js", "tsparticles@"] },
-    { "id": "confetti",    "global": "confetti",    "localFile": "confetti.browser.min.js",  "vendorPath": "frameworks/web-libs/confetti/confetti.browser.min.js",      "cdnPatterns": ["confetti.browser", "confetti.min.js", "canvas-confetti@"] }
+    {
+      "id": "p5",
+      "global": "p5",
+      "localFile": "p5.min.js",
+      "vendorPath": "frameworks/web-libs/p5/p5.min.js",
+      "cdnPatterns": [
+        "p5.min.js"
+      ]
+    },
+    {
+      "id": "p5-sound",
+      "global": "p5.sound",
+      "localFile": "p5.sound.min.js",
+      "vendorPath": "frameworks/web-libs/p5/p5.sound.min.js",
+      "cdnPatterns": [
+        "p5.sound.min.js"
+      ]
+    },
+    {
+      "id": "tone",
+      "global": "Tone",
+      "localFile": "Tone.js",
+      "vendorPath": "frameworks/web-libs/tone/Tone.js",
+      "cdnPatterns": [
+        "tone.js",
+        "tone.min.js",
+        "tone@"
+      ]
+    },
+    {
+      "id": "pixi",
+      "global": "PIXI",
+      "localFile": "pixi.min.js",
+      "vendorPath": "frameworks/web-libs/pixi/pixi.min.js",
+      "cdnPatterns": [
+        "pixi.min.js",
+        "pixi.js@"
+      ]
+    },
+    {
+      "id": "matter",
+      "global": "Matter",
+      "localFile": "matter.min.js",
+      "vendorPath": "frameworks/web-libs/matter/matter.min.js",
+      "cdnPatterns": [
+        "matter.min.js",
+        "matter-js@"
+      ]
+    },
+    {
+      "id": "gsap",
+      "global": "gsap",
+      "localFile": "gsap.min.js",
+      "vendorPath": "frameworks/web-libs/gsap/gsap.min.js",
+      "cdnPatterns": [
+        "gsap.min.js",
+        "gsap@"
+      ]
+    },
+    {
+      "id": "d3",
+      "global": "d3",
+      "localFile": "d3.min.js",
+      "vendorPath": "frameworks/web-libs/d3/d3.min.js",
+      "cdnPatterns": [
+        "d3.min.js",
+        "d3@"
+      ]
+    },
+    {
+      "id": "chart",
+      "global": "Chart",
+      "localFile": "chart.umd.min.js",
+      "vendorPath": "frameworks/web-libs/chart/chart.umd.min.js",
+      "cdnPatterns": [
+        "chart.umd.min.js",
+        "chart.umd.js",
+        "chart.js@"
+      ]
+    },
+    {
+      "id": "tsparticles",
+      "global": "tsParticles",
+      "localFile": "tsparticles.bundle.min.js",
+      "vendorPath": "frameworks/web-libs/tsparticles/tsparticles.bundle.min.js",
+      "cdnPatterns": [
+        "tsparticles.bundle",
+        "tsparticles.min.js",
+        "tsparticles@"
+      ]
+    },
+    {
+      "id": "confetti",
+      "global": "confetti",
+      "localFile": "confetti.browser.min.js",
+      "vendorPath": "frameworks/web-libs/confetti/confetti.browser.min.js",
+      "cdnPatterns": [
+        "confetti.browser",
+        "confetti.min.js",
+        "canvas-confetti@"
+      ]
+    },
+    {
+      "id": "anime",
+      "global": "anime",
+      "localFile": "anime.min.js",
+      "vendorPath": "frameworks/web-libs/anime/anime.min.js",
+      "cdnPatterns": [
+        "anime.min.js",
+        "animejs@",
+        "/anime/lib/anime"
+      ]
+    },
+    {
+      "id": "globe-gl",
+      "global": "Globe",
+      "localFile": "globe.gl.min.js",
+      "vendorPath": "frameworks/web-libs/globe/globe.gl.min.js",
+      "cdnPatterns": [
+        "globe.gl.min.js",
+        "globe.gl@",
+        "/globe.gl/dist"
+      ]
+    },
+    {
+      "id": "world-countries",
+      "global": "WORLD_COUNTRIES",
+      "localFile": "world-countries.js",
+      "vendorPath": "frameworks/web-libs/globe/world-countries.js",
+      "cdnPatterns": [
+        "world-countries.js"
+      ]
+    }
   ]
 }

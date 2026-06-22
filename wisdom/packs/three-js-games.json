@@ -1,6 +1,6 @@
 {
   "packID": "three-js-games",
-  "version": 5,
+  "version": 6,
   "displayName": "three.js 3D Game Guidelines (web-components-3d)",
   "description": "Quality and correctness rules for offline three.js WebGL2 3D games built from the web-components-3d Lego catalog. Covers the local-importmap-only loading contract (no CDN, no network, runs under file://), draw-call and DPR budgets, delta-time movement, dispose-on-teardown and object pooling, mobile light limits, hand-rolled physics versus rigid bodies, audio unlock on first user gesture, and WebGL2-not-WebGPU. These rules are for 3D games only and must not leak into productivity mini-apps.",
   "categories": [
@@ -38,7 +38,24 @@
     "diorama",
     "blaster",
     "third person shooter",
-    "arena shooter"
+    "arena shooter",
+    "open world",
+    "open-world",
+    "explorable",
+    "exploration",
+    "sandbox",
+    "driving",
+    "driving game",
+    "car",
+    "vehicle",
+    "kart",
+    "gta",
+    "island explorer",
+    "free roam",
+    "free-roam",
+    "walking sim",
+    "hover",
+    "courier"
   ],
   "guidelines": [
     {
@@ -378,6 +395,102 @@
     {
       "id": "tjs-027",
       "rule": "Make 3D / FPS / driving games genuinely playable on MOBILE with touch. Detect a coarse pointer (matchMedia('(pointer: coarse)')) and show on-screen controls: a LEFT virtual joystick for movement (prefer controls.virtual-joystick-3d + controls.input-manager-3d), RIGHT-side drag-to-look (accumulated movementX/Y, never requestPointerLock), and a FIRE/action button (>=44px, bottom-right). The SAME delta-time movement code drives desktop keys and touch. Clamp devicePixelRatio<=2 and lower the entity/particle/draw-call budget on coarse-pointer devices for 60fps. Lay the canvas + HUD out for portrait AND landscape and handle resize/orientationchange. The game must be completable with touch alone -- no keyboard, mouse, or hover required."
+    },
+    {
+      "id": "tjs-028",
+      "rule": "NEVER spawn the player (or vehicle) in empty air. Before the loop starts, build a SOLID ground/terrain mesh that covers the ENTIRE walkable/drivable area, then place the player ON it: raycast straight down from high above the spawn XZ with a THREE.Raycaster (direction (0,-1,0)) against the ground/collidable meshes, take the first hit, and set player.position.y = hit.point.y + playerHalfHeight. If the genre has no flat plane (procedural island, voxel world, height-map), write a getGroundY(x,z) sampler that returns the surface height and seed spawn from it; do NOT hardcode y=0. Every frame, snap or gravity-settle the player onto the ground so they cannot drift off the edge into the void. A 'free-fall into a blue void' or a player floating over geometry is a spawn-with-no-ground bug, not a feature.",
+      "why": "Real failures (Island Explorer, Floating Island, Sundive): the player spawned at y=0 / a fixed height with only procedural geometry in negative-Y or a cone-shaped island below, so walking past the island radius left the player over empty gradient sky with nothing underneath -- a free-fall into blue void. The fix is to validate ground at spawn (raycast down or sample a height function) and keep snapping to it, never trusting a hardcoded y.",
+      "severity": "critical",
+      "appliesTo": "anygame",
+      "examples": [
+        "const ray = new THREE.Raycaster(new THREE.Vector3(x, 1000, z), new THREE.Vector3(0,-1,0)); const hit = ray.intersectObjects(groundMeshes, true)[0]; player.position.set(x, (hit ? hit.point.y : 0) + PLAYER_HALF_H, z);",
+        "Procedural island: function getGroundY(x,z){ /* sample island rings / height field */ return surfaceY; } spawn at (0, getGroundY(0,2.6)+PLAYER_HALF_H, 2.6);",
+        "Every frame: player.position.y = getGroundY(player.position.x, player.position.z) + PLAYER_HALF_H; (or apply gravity + ground-clamp)",
+        "WRONG: player.position.set(0, 0, 2.6) with island geometry only in negative Y -- walk off the rim and free-fall into the blue void",
+        "Build the ground BEFORE the camera/loop: a flat terrain via systems.heightmap-terrain-3d, voxel floor via systems.voxel-chunk-3d, or at minimum a large THREE.Mesh(PlaneGeometry) collidable that spans the play area"
+      ]
+    },
+    {
+      "id": "tjs-029",
+      "rule": "Render ENOUGH world around the player that MOTION IS PERCEIVABLE. (1) Texture the ground: give it a repeating grid/checker/noise texture or per-tile color variation -- never a single flat untextured color, or movement looks frozen. (2) Place LANDMARKS near spawn: trees, rocks, buildings, posts, hills within ~10-40 units in several directions so the player sees things slide past as they move; do NOT rely on far-only or sky-only objects. (3) Add a HORIZON/skybox plus distance fog: set scene.fog (THREE.Fog or FogExp2) and the camera far plane so the world fades into a horizon instead of an infinite empty gradient, and verify geometry actually exists out to the fog distance. (4) Give the player a visible ground-contact shadow (effects.blob-shadow) and optional motion dust/trail so vertical position and speed read clearly. A scene that is just a sky gradient + one cone has no motion reference and feels like free-fall even when grounded.",
+      "why": "Real failure (Floating Island): pure procedural wireframe with an icy-blue gradient that extended to the horizon regardless of geometry below, minimal landmarks, no ground texture, no shadow -- the player could move in any direction with zero anchoring feedback and could not tell their vertical position. Ground texture + near landmarks + a real horizon/fog + a contact shadow give the parallax and reference that make motion legible.",
+      "severity": "important",
+      "appliesTo": "anygame",
+      "examples": [
+        "const t = makeGridTexture(); t.wrapS=t.wrapT=THREE.RepeatWrapping; t.repeat.set(64,64); groundMat.map=t; // ground slides visibly underfoot",
+        "scene.fog = new THREE.FogExp2(0x9fc4e8, 0.012); camera.far = 600; camera.updateProjectionMatrix(); // world fades to a horizon, not infinite void",
+        "Scatter ~30 buildX(THREE) trees/rocks/crates within 40 units of spawn so something passes by as the player walks",
+        "effects.blob-shadow under the player so ground contact and height read at a glance",
+        "WRONG: a single cone island in an unbounded gradient sky with no ground texture and no nearby props -- moving looks like nothing is happening"
+      ]
+    },
+    {
+      "id": "tjs-030",
+      "rule": "COLLISION is mandatory in explorable / open-world / driving scenes -- boundary clamping is NOT collision. Every solid object (walls, trees, buildings, rocks, fences, terrain slopes) MUST have a collider, and you MUST sweep the player AND vehicles against those colliders so you cannot walk or drive THROUGH solid geometry. Use a capsule (player) or AABB/box (vehicle) and test the proposed next position before committing it: if the swept body overlaps a collider, slide along the surface (project the motion onto the wall tangent) instead of clamping to a box or stopping dead. Prefer the collision Lego (controls.fps-controller's built-in wall-slide, systems.kinematic-body-3d) rather than hand-rolling; reserve systems.rapier-physics-world for genres whose fun is rigid-body dynamics (tjs-011). Do NOT ship a world where structures are pure visual faces the player phases through.",
+      "why": "Real failures (Sundive, Floating Island): both used only simple clamp-to-rectangle bounds with no geometry checks, so buildings, trees, and walls were pure visual faces the player walked straight through, and there was no ray/sweep validating the player stayed on the surface. An explorable world with no collision feels broken and lets the player escape the playable area. Capsule/AABB sweep + wall-slide is the minimum bar.",
+      "severity": "critical",
+      "appliesTo": "anygame",
+      "examples": [
+        "Player: import controls.fps-controller (capsule + wall-slide) OR systems.kinematic-body-3d; feed it the collider list so movement sweeps and slides, never tunnels",
+        "Hand-rolled sweep: const next = pos.clone().add(move); if (!collides(next, PLAYER_RADIUS)) pos.copy(next); else pos.copy(slideAlongWall(pos, move, hitNormal));",
+        "Vehicle: AABB or oriented box swept against building/wall AABBs each step; on overlap, kill the into-wall velocity component and keep the tangent",
+        "Give each building/tree/rock a collider (Box3 / sphere / mesh) registered in a collidables array the sweep iterates",
+        "WRONG: clamp player.x/z to [-84,84] with no per-object checks -- the player drives through every building"
+      ]
+    },
+    {
+      "id": "tjs-031",
+      "rule": "The look / camera controller MUST persist across state changes -- it must keep working when the player enters or exits a vehicle, opens a menu, respawns, or changes mode. Drive the camera from a user-controlled yaw/pitch offset that survives mode switches; do NOT hard-lock the camera to a vehicle's heading and silently drop look input on entering drive mode. On every mode change, RE-BIND (or keep bound) the pointer/touch drag-look and joystick-look handlers so look is never dead. In drive mode, keep an independent free-look offset (left stick / WASD steers; right stick / mouse-drag still rotates the camera around the car) so the player can look around while driving. Use the shared controls.camera-rig-3d (tjs-021) and apply the persistent look offset on top of the rig's base transform.",
+      "why": "Real failure (Sundive Hover Courier): drag-look only updated yaw/pitch when mode==='foot'; in drive mode the camera was hard-locked to car.heading with NO pointer handling, so entering the vehicle made look input completely dead. The fix is a look offset that persists across modes and handlers that stay bound (or are re-bound) on every state switch, with free-look decoupled from steering in vehicles.",
+      "severity": "important",
+      "appliesTo": "anygame",
+      "examples": [
+        "Keep cam.yawOffset / cam.pitchOffset as user state; foot AND drive both apply: cam.yaw = (mode==='drive' ? car.heading : player.yaw) + cam.yawOffset;",
+        "toggleVehicle(): do NOT remove the drag-look listeners; both modes read the same lookDelta(dx,dy) -> cam.yawOffset -= dx*sens; cam.pitchOffset = clamp(cam.pitchOffset - dy*sens, -1.3, 1.3);",
+        "Drive mode: left stick / arrows steer the car, right-stick / mouse-drag rotates cam.yawOffset around the car independently",
+        "WRONG: if (mode==='foot') { yaw -= dx } else { cam.yaw = car.heading } -- look is dead the instant you enter the vehicle"
+      ]
+    },
+    {
+      "id": "tjs-032",
+      "rule": "On MOBILE, an open-world / explorable / driving game MUST show BOTH on-screen sticks at once -- a LEFT movement joystick AND a RIGHT-side drag-to-look zone (or right look-stick) -- plus the action buttons (enter/exit vehicle, jump, fire, brake) sized >=64px. Do NOT ship only the left move stick: a right-look control that is styled display:none, only enabled in foot mode, or never created leaves mobile players unable to turn the camera. Detect a coarse pointer (matchMedia('(pointer: coarse)')) and reveal both sticks for foot AND drive modes; track a SEPARATE pointer id per stick so move + look work simultaneously with two thumbs. The right stick/zone updates the camera yaw/pitch offset (tjs-031), independent of steering. Reinforces tjs-027.",
+      "why": "Real failure (Sundive): #bR (the right look stick) was styled display:none and never shown, and drag-look was foot-mode-only and disabled in vehicles, so mobile players got a left MOVE stick only and could not look around at all despite the instructions saying 'drag to look.' Both sticks must be present and dual-touch capable in every mode.",
+      "severity": "critical",
+      "appliesTo": "anygame",
+      "examples": [
+        "if (matchMedia('(pointer: coarse)').matches) { moveStick.hidden=false; lookStick.hidden=false; } // BOTH, in foot AND drive",
+        "Per-stick pointer id: on pointerdown over the left zone capture id->'move', over the right zone id->'look'; pointermove routes by id so two thumbs work at once",
+        "Right look stick / drag zone updates cam.yawOffset/pitchOffset (never requestPointerLock); buttons (enter/exit, jump, fire) are >=64px in the corners",
+        "WRONG: #bR { display:none } or only enabling the right stick when mode==='foot' -- mobile players cannot turn"
+      ]
+    },
+    {
+      "id": "tjs-033",
+      "rule": "Give the player immediate, continuous MOTION FEEDBACK so they always know they are moving and how fast. Show a live readout that updates every frame -- a speed/MPH/units-per-second HUD for driving, a compass/heading or minimap for exploration -- and reinforce it visually: ground detail (texture, grid lines, scattered props from tjs-029) visibly streaming past, plus optional speed-scaled effects (subtle FOV widening, motion dust, screen-edge speed lines, engine pitch rising with speed). The feedback must scale with actual velocity, not be a static label. If the speed readout never changes or no ground detail passes by, the player cannot tell movement from a frozen frame.",
+      "why": "Closes the loop on tjs-028/tjs-029: even with a real ground and nearby props, players need an explicit signal that input is producing motion. A speed HUD plus passing ground detail (and engine pitch / dust for vehicles) makes movement obviously responsive; without it, slow or smooth movement over a sparse world reads as stuck.",
+      "severity": "important",
+      "appliesTo": "anygame",
+      "examples": [
+        "Driving HUD: speedEl.textContent = Math.round(car.speed * 3.6) + ' km/h'; updated in the render callback every frame",
+        "Exploration: a small compass or minimap dot that rotates/translates with the player so heading and position are legible",
+        "Speed-scaled feel: camera.fov = baseFov + Math.min(car.speed*0.4, 12); camera.updateProjectionMatrix(); plus engine osc pitch = base + speed*k",
+        "Ground texture + scattered props (tjs-029) visibly stream past at velocity so motion is self-evident",
+        "WRONG: a fixed 'Speed: 0' label and an untextured ground -- the player cannot tell if they are moving"
+      ]
+    },
+    {
+      "id": "tjs-034",
+      "rule": "DRIVING / VEHICLE games specifically: build the drivable surface as a real road/terrain mesh with colliders (tjs-028, tjs-030) and keep the car ON it -- raycast down from the car each step to sit it on the road and orient to the slope; do not let it sink, float, or drive off into void. Steering and throttle MUST be delta-time based (tjs-006): accumulate speed from throttle with drag/friction, turn the heading by steerInput * turnRate * speedFactor * dt (slower turning at low speed), and apply velocity along the heading. Sweep the car's box against world colliders and walls (tjs-030) so it cannot pass through buildings. Keep a chase camera (controls.camera-rig-3d, CHASE mode) trailing the car with look-ahead, AND preserve free-look (tjs-031) so the player can glance around while driving. Provide a speed HUD (tjs-033) and, on mobile, both sticks (tjs-032: left stick steers/accelerates, right stick looks).",
+      "why": "Driving builds combine every open-world failure at once -- the car spawns in air, phases through buildings, the camera locks to heading and kills look, and there is no speed feedback. This rule binds the ground-validation, collision, persistent-look, mobile dual-stick, and motion-feedback rules into one driving-specific contract so a generated driving game is grounded, solid, controllable, and legibly fast.",
+      "severity": "important",
+      "appliesTo": "anygame",
+      "examples": [
+        "Each step: down-raycast from car.position to the road mesh -> set car.y = hit.point.y + rideHeight and tilt to hit.face.normal (slope orientation)",
+        "car.speed += (throttle*accel - car.speed*drag) * dt; car.heading += steer * turnRate * Math.min(1, car.speed/turnSpeedRef) * dt; car.position.addScaledVector(headingVec, car.speed*dt);",
+        "Sweep the car AABB/oriented-box against building+wall colliders (tjs-030); on hit, cancel the into-wall component and keep sliding",
+        "const rig = new CameraRig({camera, mode: CHASE, target: car, lookAhead: 6}); apply cam.yawOffset/pitchOffset on top for free-look while driving",
+        "WRONG: car at fixed y that floats over hills, clamped to a rectangle, camera welded to car.heading, no speed readout"
+      ]
     }
   ]
 }
