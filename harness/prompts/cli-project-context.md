@@ -98,6 +98,8 @@ If your Goal does NOT match the native-macOS signals above, continue to the HTML
 
 ## Read Order (FOLLOW THIS)
 
+**⏱️ WRITE-FIRST MANDATE — over-research is the #1 cause of failed builds.** Your turn budget is finite. Your FIRST substantive action must be to WRITE a complete, runnable `index.html` skeleton (real HTML + the core loop actually stubbed and running, not a plan or task list). THEN iterate to polish. Do NOT spend turns reading example games, grepping the manifest/fence schema, `cat`-ing other artifacts, or extracting design tokens BEFORE that first Write — the output/fence format is fully specified above, and for a NOVEL or off-catalog goal (no genre match in the section below) there is nothing to copy, so skip straight to building. A run that exhausts its turns mid-research ships NOTHING (a total loss); a rough-but-complete file you then refine always wins. Budget research to at most the first 1–2 turns, then write.
+
 **Before writing ANY UI code**, read these in order:
 
 1. **Quality rules** — ALREADY in your context above. Look for `## Wizard Wisdom — Quality Guidelines` (Universal, Visual Quality, and any framework-specific sections rendered there). **Do NOT Read the source `.json` files** — they may exceed the Read tool's 25k-token limit and the rendered text is the same content. If you need to look up a specific rule by id (e.g. `u-031`), search the rendered guidelines section in this context.
