@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Orbit Sling</title>
+<style>
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:#03050d;color:#e8ecff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;overflow:hidden;height:100%}
+  #wrap{position:fixed;inset:0;display:flex;align-items:center;justify-content:center}
+  canvas{display:block;background:#03050d;box-shadow:0 0 80px rgba(80,140,255,0.15) inset;touch-action:none;cursor:crosshair}
+  #hud{position:absolute;top:10px;left:10px;right:10px;display:flex;justify-content:space-between;gap:8px;pointer-events:none;font-size:14px;flex-wrap:wrap}
+  .panel{background:rgba(8,14,32,0.88);border:1px solid #2a3a70;border-radius:8px;padding:7px 14px;color:#e8ecff;font-weight:600;letter-spacing:.3px}
+  .panel b{color:#ffe066}
+  #tip{position:absolute;bottom:14px;left:50%;transform:translateX(-50%);background:rgba(8,14,32,0.88);border:1px solid #2a3a70;padding:8px 18px;border-radius:8px;font-size:13px;color:#c0cef0;text-align:center;max-width:90%}
+  #msg{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:#0b1330;border:2px solid #4a6fff;padding:24px 36px;border-radius:14px;text-align:center;font-size:17px;box-shadow:0 0 50px rgba(80,140,255,0.6);max-width:90%}
+  #msg h2{margin:0 0 10px;font-size:22px;color:#ffe066}
+  #msg button{margin-top:16px;background:linear-gradient(180deg,#5e82ff,#4a6fff);color:#fff;border:none;padding:11px 26px;font-size:15px;border-radius:8px;cursor:pointer;font-weight:700;letter-spacing:.5px}
+  #msg button:hover{background:linear-gradient(180deg,#7090ff,#5e82ff)}
+  #msg button:active{transform:translateY(1px)}
+  #msg.hidden{display:none}
+  #resetBtn{position:absolute;top:50px;right:10px;background:rgba(8,14,32,0.88);border:1px solid #2a3a70;color:#e8ecff;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600}
+  #resetBtn:hover{background:rgba(40,60,120,0.9)}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <canvas id="c"></canvas>
+  <div id="hud">
+    <div class="panel">Level <b id="lvl">1</b> / <span id="lvlMax">6</span></div>
+    <div class="panel">★ <b id="stars">0</b> / <span id="starsMax">0</span></div>
+    <div class="panel">Attempts: <b id="att">0</b></div>
+  </div>
+  <button id="resetBtn">↻ Retry</button>
+  <div id="tip">Drag from the ship, aim opposite to your launch direction, release to fling. Use gravity to curve your path.</div>
+  <div id="msg" class="hidden">
+    <h2 id="msgTitle"></h2>
+    <div id="msgText"></div>
+    <button id="msgBtn">Next</button>
+  </div>
+</div>
+<script>
+(function(){
+  const canvas=document.getElementById('c');
+  const ctx=canvas.getContext('2d');
+  let W,H;
+  function resize(){
+    W=canvas.width=Math.min(window.innerWidth,1200);
+    H=canvas.height=Math.min(window.innerHeight,760);
+  }
+  resize();
+  window.addEventListener('resize',resize);
+
+  const G=1600;
+  const DT=1/60;
+
+  // Background starfield
+  const bgStars=[];
+  for(let i=0;i<220;i++){
+    bgStars.push({x:Math.random(),y:Math.random(),r:Math.random()*1.5+0.3,tw:Math.random()*Math.PI*2,sp:Math.random()*0.04+0.01});
+  }
+  const nebulae=[
+    {x:0.25,y:0.3,r:280,c:'80,60,180'},
+    {x:0.75,y:0.7,r:320,c:'180,80,140'},
+    {x:0.5,y:0.5,r:400,c:'40,80,180'}
+  ];
+
+  // LEVELS — coords assume 1100x720 base, scaled at render
+  const BW=1100, BH=720;
+  const LEVELS=[
+    { // 1: intro — straight shot, one planet curves you
+      ship:{x:120,y:360},
+      goal:{x:980,y:360,r:28},
+      planets:[{x:550,y:360,r:48,mass:9000,type:'rocky'}],
+      stars:[{x:550,y:235},{x:550,y:485}]
+    },
+    { // 2: two-body weave
+      ship:{x:110,y:600},
+      goal:{x:1000,y:110,r:28},
+      planets:[
+        {x:380,y:420,r:46,mass:9500,type:'gas'},
+        {x:720,y:280,r:42,mass:8200,type:'ice'}
+      ],
+      stars:[{x:280,y:300},{x:560,y:200},{x:830,y:480}]
+    },
+    { // 3: gravity gauntlet
+      ship:{x:120,y:360},
+      goal:{x:980,y:360,r:28},
+      planets:[
+        {x:360,y:230,r:36,mass:7000,type:'rocky'},
+        {x:550,y:470,r:58,mass:13000,type:'gas'},
+        {x:780,y:230,r:36,mass:7000,type:'ice'}
+      ],
+      stars:[{x:360,y:400},{x:780,y:400},{x:550,y:160},{x:200,y:560},{x:900,y:560}]
+    },
+    { // 4: diagonal trek
+      ship:{x:90,y:90},
+      goal:{x:1020,y:640,r:28},
+      planets:[
+        {x:260,y:340,r:34,mass:6500,type:'ice'},
+        {x:550,y:360,r:62,mass:14000,type:'gas'},
+        {x:840,y:380,r:36,mass:7000,type:'rocky'}
+      ],
+      stars:[{x:400,y:180},{x:700,y:540},{x:550,y:140},{x:550,y:600},{x:170,y:560}]
+    },
+    { // 5: five-planet maze
+      ship:{x:100,y:360},
+      goal:{x:1010,y:360,r:26},
+      planets:[
+        {x:300,y:200,r:28,mass:5200,type:'ice'},
+        {x:300,y:520,r:28,mass:5200,type:'ice'},
+        {x:550,y:360,r:50,mass:10000,type:'gas'},
+        {x:800,y:200,r:28,mass:5200,type:'rocky'},
+        {x:800,y:520,r:28,mass:5200,type:'rocky'}
+      ],
+      stars:[{x:300,y:360},{x:800,y:360},{x:550,y:170},{x:550,y:560},{x:1010,y:140},{x:1010,y:580}]
+    },
+    { // 6: binary giants — slingshot finale
+      ship:{x:80,y:360},
+      goal:{x:1030,y:360,r:26},
+      planets:[
+        {x:380,y:280,r:48,mass:11000,type:'gas'},
+        {x:380,y:460,r:48,mass:11000,type:'ice'},
+        {x:760,y:280,r:48,mass:11000,type:'ice'},
+        {x:760,y:460,r:48,mass:11000,type:'rocky'}
+      ],
+      stars:[{x:570,y:160},{x:570,y:570},{x:570,y:370},{x:200,y:200},{x:200,y:540},{x:950,y:200},{x:950,y:540}]
+    }
+  ];
+
+  let level=0;
+  let attempts=0;
+  let state='aim'; // aim | flying | win | lose
+  let ship={x:0,y:0,vx:0,vy:0};
+  let trail=[];
+  let dragging=false;
+  let dragEnd=null;
+  let stars=[];
+  let collected=0;
+  let starTotal=0;
+  let particles=[];
+  let totalCollected=0;
+  let levelCleared=false;
+
+  function S(v,axis){ return axis==='x'?v*(W/BW):v*(H/BH); }
+
+  function loadLevel(i){
+    const L=LEVELS[i];
+    ship.x=L.ship.x; ship.y=L.ship.y; ship.vx=0; ship.vy=0;
+    trail=[];
+    stars=L.stars.map(s=>({x:s.x,y:s.y,collected:false,pulse:Math.random()*Math.PI*2}));
+    starTotal=stars.length;
+    collected=0;
+    attempts=0;
+    state='aim';
+    levelCleared=false;
+    particles=[];
+    updateHud();
+  }
+
+  function updateHud(){
+    document.getElementById('lvl').textContent=level+1;
+    document.getElementById('lvlMax').textContent=LEVELS.length;
+    document.getElementById('stars').textContent=collected;
+    document.getElementById('starsMax').textContent=starTotal;
+    document.getElementById('att').textContent=attempts;
+  }
+
+  function showMsg(title,text,btn,cb){
+    document.getElementById('msgTitle').innerHTML=title;
+    document.getElementById('msgText').innerHTML=text;
+    const b=document.getElementById('msgBtn');
+    b.textContent=btn;
+    document.getElementById('msg').classList.remove('hidden');
+    b.onclick=()=>{document.getElementById('msg').classList.add('hidden'); cb();};
+  }
+
+  // Input
+  function getPos(e){
+    const r=canvas.getBoundingClientRect();
+    const t=(e.touches&&e.touches[0])||e;
+    const px=(t.clientX-r.left)*(canvas.width/r.width);
+    const py=(t.clientY-r.top)*(canvas.height/r.height);
+    return {x:px/(W/BW), y:py/(H/BH)};
+  }
+  function startDrag(e){
+    if(state!=='aim') return;
+    const p=getPos(e);
+    const d=Math.hypot(p.x-ship.x,p.y-ship.y);
+    if(d<70){ dragging=true; dragEnd=p; }
+  }
+  function moveDrag(e){ if(!dragging) return; dragEnd=getPos(e); }
+  function endDrag(){
+    if(!dragging) return;
+    dragging=false;
+    if(!dragEnd) return;
+    const dx=ship.x-dragEnd.x;
+    const dy=ship.y-dragEnd.y;
+    const mag=Math.hypot(dx,dy);
+    if(mag<10) return;
+    const power=Math.min(mag,200)*2.4;
+    ship.vx=(dx/mag)*power;
+    ship.vy=(dy/mag)*power;
+    state='flying';
+    attempts++;
+    updateHud();
+    trail=[];
+    dragEnd=null;
+  }
+  canvas.addEventListener('mousedown',startDrag);
+  canvas.addEventListener('mousemove',moveDrag);
+  window.addEventListener('mouseup',endDrag);
+  canvas.addEventListener('touchstart',e=>{e.preventDefault();startDrag(e);},{passive:false});
+  canvas.addEventListener('touchmove',e=>{e.preventDefault();moveDrag(e);},{passive:false});
+  canvas.addEventListener('touchend',e=>{e.preventDefault();endDrag();},{passive:false});
+
+  document.getElementById('resetBtn').addEventListener('click',()=>loadLevel(level));
+
+  // Physics
+  function gravityAt(x,y,planets){
+    let ax=0,ay=0;
+    for(const p of planets){
+      const dx=p.x-x, dy=p.y-y;
+      const d2=dx*dx+dy*dy;
+      const d=Math.sqrt(d2);
+      if(d<p.r) return null;
+      const f=G*p.mass/(d2*d+1);
+      ax+=dx*f; ay+=dy*f;
+    }
+    return {ax,ay};
+  }
+
+  function predict(){
+    if(!dragging||!dragEnd) return [];
+    const dx=ship.x-dragEnd.x, dy=ship.y-dragEnd.y;
+    const mag=Math.hypot(dx,dy);
+    if(mag<10) return [];
+    const power=Math.min(mag,200)*2.4;
+    let px=ship.x, py=ship.y;
+    let pvx=(dx/mag)*power, pvy=(dy/mag)*power;
+    const pts=[{x:px,y:py}];
+    const L=LEVELS[level];
+    for(let i=0;i<160;i++){
+      const g=gravityAt(px,py,L.planets);
+      if(!g) break;
+      pvx+=g.ax*DT; pvy+=g.ay*DT;
+      px+=pvx*DT; py+=pvy*DT;
+      if(px<0||px>BW||py<0||py>BH) break;
+      if(i%2===0) pts.push({x:px,y:py});
+    }
+    return pts;
+  }
+
+  function step(){
+    if(state!=='flying') return;
+    const L=LEVELS[level];
+    for(let s=0;s<4;s++){
+      const g=gravityAt(ship.x,ship.y,L.planets);
+      if(!g){
+        state='lose';
+        spawnBurst(ship.x,ship.y,255,119,51,36);
+        setTimeout(retry,900);
+        return;
+      }
+      ship.vx+=g.ax*(DT/4);
+      ship.vy+=g.ay*(DT/4);
+      ship.x+=ship.vx*(DT/4);
+      ship.y+=ship.vy*(DT/4);
+    }
+    trail.push({x:ship.x,y:ship.y});
+    if(trail.length>240) trail.shift();
+
+    for(const s of stars){
+      if(!s.collected && Math.hypot(s.x-ship.x,s.y-ship.y)<22){
+        s.collected=true;
+        collected++;
+        totalCollected++;
+        spawnBurst(s.x,s.y,255,224,102,22);
+        updateHud();
+      }
+    }
+    if(Math.hypot(L.goal.x-ship.x,L.goal.y-ship.y)<L.goal.r){
+      state='win';
+      levelCleared=true;
+      spawnBurst(L.goal.x,L.goal.y,120,255,180,40);
+      setTimeout(winLevel,700);
+      return;
+    }
+    if(ship.x<-60||ship.x>BW+60||ship.y<-60||ship.y>BH+60){
+      state='lose';
+      setTimeout(retry,500);
+    }
+  }
+
+  function spawnBurst(x,y,r,g,b,n){
+    for(let i=0;i<n;i++){
+      const a=Math.random()*Math.PI*2;
+      const sp=Math.random()*220+60;
+      particles.push({x,y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,life:1,r,g,b,sz:Math.random()*2+2});
+    }
+  }
+
+  function retry(){
+    const L=LEVELS[level];
+    ship.x=L.ship.x; ship.y=L.ship.y; ship.vx=0; ship.vy=0;
+    trail=[];
+    // keep collected stars within level
+    state='aim';
+  }
+
+  function winLevel(){
+    if(level>=LEVELS.length-1){
+      showMsg('🎉 Galaxy Conquered!',`You completed all ${LEVELS.length} systems!<br>Final stars on this run: <b style="color:#ffe066">${totalCollected}</b><br>Last attempts: ${attempts}`,'Play Again',()=>{ level=0; totalCollected=0; loadLevel(0); });
+    } else {
+      const perfect = collected===starTotal ? '<br>⭐ Perfect run!' : '';
+      showMsg(`Level ${level+1} Clear!`,`Stars: <b style="color:#ffe066">${collected}/${starTotal}</b> · Attempts: ${attempts}${perfect}`,'Next System →',()=>{ level++; loadLevel(level); });
+    }
+  }
+
+  // Drawing helpers (in base coords; we scale via setTransform)
+  function drawPlanet(p,t){
+    // outer gravity haze
+    for(let i=3;i>=1;i--){
+      ctx.beginPath();
+      ctx.arc(p.x,p.y,p.r*(1+i*0.55),0,Math.PI*2);
+      const c = p.type==='rocky'?'217,122,74':p.type==='gas'?'240,200,120':'150,200,255';
+      ctx.fillStyle=`rgba(${c},${0.05/i})`;
+      ctx.fill();
+    }
+    const grad=ctx.createRadialGradient(p.x-p.r*0.35,p.y-p.r*0.35,p.r*0.1,p.x,p.y,p.r);
+    if(p.type==='rocky'){ grad.addColorStop(0,'#e89060'); grad.addColorStop(0.55,'#a04826'); grad.addColorStop(1,'#3a1408'); }
+    else if(p.type==='gas'){ grad.addColorStop(0,'#ffd890'); grad.addColorStop(0.5,'#c88848'); grad.addColorStop(1,'#4a200a'); }
+    else { grad.addColorStop(0,'#d8f0ff'); grad.addColorStop(0.55,'#6090c8'); grad.addColorStop(1,'#1a2a60'); }
+    ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+    ctx.fillStyle=grad; ctx.fill();
+
+    ctx.save();
+    ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2); ctx.clip();
+    if(p.type==='gas'){
+      for(let i=-3;i<=3;i++){
+        ctx.beginPath();
+        ctx.ellipse(p.x,p.y+i*p.r*0.28,p.r,p.r*0.09,0,0,Math.PI*2);
+        ctx.fillStyle=`rgba(60,28,8,${0.18+Math.abs(i)*0.04})`;
+        ctx.fill();
+      }
+      // storm spot
+      ctx.beginPath();
+      ctx.ellipse(p.x+p.r*0.25,p.y+p.r*0.15,p.r*0.18,p.r*0.1,0,0,Math.PI*2);
+      ctx.fillStyle='rgba(180,60,30,0.5)'; ctx.fill();
+    } else if(p.type==='rocky'){
+      const seed=Math.floor(p.x+p.y);
+      for(let i=0;i<6;i++){
+        const a=(seed*0.37+i*1.13)%(Math.PI*2);
+        const dd=p.r*(0.35+((seed*i*7)%100)/200);
+        const cx=p.x+Math.cos(a)*dd;
+        const cy=p.y+Math.sin(a)*dd;
+        const cr=p.r*(0.08+((seed*i*3)%70)/500);
+        ctx.beginPath(); ctx.arc(cx,cy,cr,0,Math.PI*2);
+        ctx.fillStyle='rgba(30,12,4,0.55)'; ctx.fill();
+        ctx.beginPath(); ctx.arc(cx-cr*0.25,cy-cr*0.25,cr*0.6,0,Math.PI*2);
+        ctx.fillStyle='rgba(255,180,120,0.18)'; ctx.fill();
+      }
+    } else {
+      ctx.strokeStyle='rgba(255,255,255,0.35)'; ctx.lineWidth=1.2;
+      for(let i=0;i<5;i++){
+        const a=(p.x*0.013+p.y*0.011+i*1.7)%(Math.PI*2);
+        ctx.beginPath();
+        ctx.moveTo(p.x+Math.cos(a)*p.r*0.15,p.y+Math.sin(a)*p.r*0.15);
+        ctx.lineTo(p.x+Math.cos(a)*p.r*0.95,p.y+Math.sin(a)*p.r*0.95);
+        ctx.stroke();
+      }
+      ctx.beginPath(); ctx.arc(p.x,p.y-p.r*0.6,p.r*0.5,0,Math.PI*2);
+      ctx.fillStyle='rgba(255,255,255,0.25)'; ctx.fill();
+    }
+    ctx.restore();
+
+    // rim shine
+    const hi=ctx.createRadialGradient(p.x-p.r*0.4,p.y-p.r*0.4,0,p.x-p.r*0.4,p.y-p.r*0.4,p.r*0.6);
+    hi.addColorStop(0,'rgba(255,255,255,0.35)'); hi.addColorStop(1,'rgba(255,255,255,0)');
+    ctx.fillStyle=hi;
+    ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2); ctx.fill();
+    // outline
+    ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+    ctx.strokeStyle='rgba(0,0,0,0.4)'; ctx.lineWidth=1; ctx.stroke();
+  }
+
+  function drawShip(x,y,vx,vy){
+    let ang;
+    if(Math.hypot(vx,vy)<1){
+      // when idle aim toward dragEnd opposite, else right
+      if(dragging && dragEnd){
+        ang=Math.atan2(y-dragEnd.y, x-dragEnd.x);
+      } else ang=0;
+    } else ang=Math.atan2(vy,vx);
+    ctx.save();
+    ctx.translate(x,y);
+    ctx.rotate(ang);
+    if(state==='flying'){
+      const flick=0.7+Math.random()*0.3;
+      const tg=ctx.createRadialGradient(-12,0,0,-12,0,18*flick);
+      tg.addColorStop(0,'rgba(180,220,255,0.95)');
+      tg.addColorStop(0.5,'rgba(120,160,255,0.6)');
+      tg.addColorStop(1,'rgba(120,160,255,0)');
+      ctx.fillStyle=tg;
+      ctx.beginPath(); ctx.arc(-12,0,18*flick,0,Math.PI*2); ctx.fill();
+    }
+    // hull
+    ctx.fillStyle='#eef2ff';
+    ctx.strokeStyle='#3a5fcc';
+    ctx.lineWidth=1.5;
+    ctx.beginPath();
+    ctx.moveTo(15,0);
+    ctx.lineTo(-9,-8);
+    ctx.lineTo(-5,0);
+    ctx.lineTo(-9,8);
+    ctx.closePath();
+    ctx.fill(); ctx.stroke();
+    // wings
+    ctx.fillStyle='#9bb0ff';
+    ctx.beginPath();
+    ctx.moveTo(-2,-4); ctx.lineTo(-9,-9); ctx.lineTo(-10,-4); ctx.closePath();
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(-2,4); ctx.lineTo(-9,9); ctx.lineTo(-10,4); ctx.closePath();
+    ctx.fill();
+    // cockpit
+    const cg=ctx.createRadialGradient(4,-1,0,4,0,4);
+    cg.addColorStop(0,'#a0d0ff'); cg.addColorStop(1,'#1a4090');
+    ctx.fillStyle=cg;
+    ctx.beginPath(); ctx.arc(4,0,3.2,0,Math.PI*2); ctx.fill();
+    ctx.restore();
+  }
+
+  function drawGoal(g,t){
+    const pulse=0.7+0.3*Math.sin(t*0.005);
+    const grad=ctx.createRadialGradient(g.x,g.y,0,g.x,g.y,g.r*2.4);
+    grad.addColorStop(0,`rgba(120,255,180,${0.55*pulse})`);
+    grad.addColorStop(0.5,`rgba(80,200,140,${0.18*pulse})`);
+    grad.addColorStop(1,'rgba(80,255,160,0)');
+    ctx.fillStyle=grad;
+    ctx.beginPath(); ctx.arc(g.x,g.y,g.r*2.4,0,Math.PI*2); ctx.fill();
+    for(let i=0;i<3;i++){
+      const r=g.r*(0.55+i*0.22)+Math.sin(t*0.003+i*1.3)*5;
+      ctx.beginPath();
+      ctx.arc(g.x,g.y,r,0,Math.PI*2);
+      ctx.strokeStyle=`rgba(140,255,200,${0.85-i*0.22})`;
+      ctx.lineWidth=2.2;
+      ctx.stroke();
+    }
+    // swirling sparks
+    for(let i=0;i<6;i++){
+      const a=t*0.002+i*Math.PI/3;
+      const rr=g.r*0.5;
+      const sx=g.x+Math.cos(a)*rr;
+      const sy=g.y+Math.sin(a)*rr;
+      ctx.beginPath(); ctx.arc(sx,sy,2,0,Math.PI*2);
+      ctx.fillStyle='rgba(220,255,230,0.9)'; ctx.fill();
+    }
+    ctx.beginPath(); ctx.arc(g.x,g.y,7,0,Math.PI*2);
+    ctx.fillStyle='#d0ffe0'; ctx.fill();
+  }
+
+  function drawStar(s,t){
+    if(s.collected) return;
+    s.pulse+=0.06;
+    const p=1+Math.sin(s.pulse)*0.18;
+    ctx.save();
+    ctx.translate(s.x,s.y);
+    // glow
+    const grad=ctx.createRadialGradient(0,0,0,0,0,24);
+    grad.addColorStop(0,'rgba(255,224,102,0.55)');
+    grad.addColorStop(1,'rgba(255,224,102,0)');
+    ctx.fillStyle=grad;
+    ctx.beginPath(); ctx.arc(0,0,24,0,Math.PI*2); ctx.fill();
+    ctx.rotate(s.pulse*0.12);
+    ctx.fillStyle='#ffe066';
+    ctx.strokeStyle='#fff5b0';
+    ctx.lineWidth=1.5;
+    ctx.beginPath();
+    for(let i=0;i<10;i++){
+      const r=(i%2===0)?13*p:5.5*p;
+      const a=(i/10)*Math.PI*2-Math.PI/2;
+      const x=Math.cos(a)*r, y=Math.sin(a)*r;
+      if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+    }
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawTrail(){
+    if(trail.length<2) return;
+    for(let i=1;i<trail.length;i++){
+      const a=i/trail.length;
+      ctx.beginPath();
+      ctx.moveTo(trail[i-1].x,trail[i-1].y);
+      ctx.lineTo(trail[i].x,trail[i].y);
+      ctx.strokeStyle=`rgba(140,210,255,${a*0.8})`;
+      ctx.lineWidth=a*3+0.5;
+      ctx.stroke();
+    }
+  }
+
+  function drawPrediction(){
+    const pts=predict();
+    if(pts.length<2) return;
+    ctx.setLineDash([5,5]);
+    for(let i=1;i<pts.length;i++){
+      ctx.beginPath();
+      ctx.moveTo(pts[i-1].x,pts[i-1].y);
+      ctx.lineTo(pts[i].x,pts[i].y);
+      ctx.strokeStyle=`rgba(255,255,255,${0.7-i/pts.length*0.55})`;
+      ctx.lineWidth=2;
+      ctx.stroke();
+    }
+    ctx.setLineDash([]);
+    if(dragEnd){
+      const dx=ship.x-dragEnd.x, dy=ship.y-dragEnd.y;
+      const mag=Math.min(Math.hypot(dx,dy),200);
+      const ang=Math.atan2(dy,dx);
+      const ex=ship.x+Math.cos(ang)*mag;
+      const ey=ship.y+Math.sin(ang)*mag;
+      // power bar
+      const power=mag/200;
+      const col=`hsl(${120-power*120},90%,55%)`;
+      ctx.beginPath();
+      ctx.moveTo(ship.x,ship.y); ctx.lineTo(ex,ey);
+      ctx.strokeStyle=col; ctx.lineWidth=4; ctx.stroke();
+      const ah=12;
+      ctx.beginPath();
+      ctx.moveTo(ex,ey);
+      ctx.lineTo(ex-Math.cos(ang-0.4)*ah, ey-Math.sin(ang-0.4)*ah);
+      ctx.lineTo(ex-Math.cos(ang+0.4)*ah, ey-Math.sin(ang+0.4)*ah);
+      ctx.closePath();
+      ctx.fillStyle=col; ctx.fill();
+      // anchor at the drag point
+      ctx.beginPath(); ctx.arc(dragEnd.x,dragEnd.y,5,0,Math.PI*2);
+      ctx.fillStyle='rgba(255,255,255,0.6)'; ctx.fill();
+    }
+  }
+
+  function drawBackground(t){
+    ctx.fillStyle='#03050d';
+    ctx.fillRect(0,0,BW,BH);
+    for(const n of nebulae){
+      const g=ctx.createRadialGradient(n.x*BW,n.y*BH,20,n.x*BW,n.y*BH,n.r);
+      g.addColorStop(0,`rgba(${n.c},0.18)`);
+      g.addColorStop(1,`rgba(${n.c},0)`);
+      ctx.fillStyle=g;
+      ctx.fillRect(0,0,BW,BH);
+    }
+    for(const s of bgStars){
+      s.tw+=s.sp;
+      const a=0.4+0.6*Math.abs(Math.sin(s.tw));
+      ctx.beginPath();
+      ctx.arc(s.x*BW,s.y*BH,s.r,0,Math.PI*2);
+      ctx.fillStyle=`rgba(255,255,255,${a})`;
+      ctx.fill();
+    }
+  }
+
+  function frame(now){
+    // scale to canvas size
+    ctx.setTransform(W/BW,0,0,H/BH,0,0);
+    drawBackground(now);
+    const L=LEVELS[level];
+    for(const p of L.planets) drawPlanet(p,now);
+    drawGoal(L.goal,now);
+    for(const s of stars) drawStar(s,now);
+    drawTrail();
+    if(state!=='lose') drawShip(ship.x,ship.y,ship.vx,ship.vy);
+    if(state==='aim' && dragging) drawPrediction();
+    // idle pulse ring on ship
+    if(state==='aim' && !dragging){
+      const r=18+Math.sin(now*0.005)*4;
+      ctx.beginPath();
+      ctx.arc(ship.x,ship.y,r,0,Math.PI*2);
+      ctx.strokeStyle='rgba(140,210,255,0.55)';
+      ctx.lineWidth=1.5;
+      ctx.stroke();
+    }
+    // particles
+    for(let i=particles.length-1;i>=0;i--){
+      const p=particles[i];
+      p.x+=p.vx*DT; p.y+=p.vy*DT;
+      p.vx*=0.95; p.vy*=0.95;
+      p.life-=0.022;
+      if(p.life<=0){ particles.splice(i,1); continue; }
+      ctx.beginPath();
+      ctx.arc(p.x,p.y,(p.sz||3)*p.life,0,Math.PI*2);
+      ctx.fillStyle=`rgba(${p.r},${p.g},${p.b},${p.life})`;
+      ctx.fill();
+    }
+    step();
+    requestAnimationFrame(frame);
+  }
+
+  loadLevel(0);
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

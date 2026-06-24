@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Neon DnB Machine</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+<style>
+  :root{
+    --bg:#06050d;
+    --kick:#ff2d95;
+    --snare:#19e3ff;
+    --hat:#c6ff2e;
+    --bass:#9d5cff;
+    --text:#ece9ff;
+    --muted:#7c79a6;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;margin:0;}
+  body{
+    background:radial-gradient(120% 90% at 50% -10%, #1a1340 0%, #0b0820 45%, var(--bg) 100%);
+    color:var(--text);
+    font-family:"Segoe UI",system-ui,-apple-system,Roboto,sans-serif;
+    display:flex;flex-direction:column;
+    height:100dvh;overflow:hidden;
+    padding:clamp(8px,2.2vw,22px);
+    padding-top:max(clamp(8px,2.2vw,22px),env(safe-area-inset-top));
+    gap:clamp(8px,1.6vh,16px);
+    touch-action:manipulation;
+    user-select:none;-webkit-user-select:none;
+  }
+
+  header{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;}
+  .title{
+    font-weight:800;letter-spacing:.18em;text-transform:uppercase;
+    font-size:clamp(15px,3.4vw,27px);line-height:1;
+  }
+  .title b{color:var(--kick);text-shadow:0 0 14px var(--kick),0 0 30px var(--kick);}
+  .title i{font-style:normal;color:var(--snare);text-shadow:0 0 14px var(--snare);}
+  .tag{font-size:clamp(9px,1.6vw,12px);color:var(--muted);letter-spacing:.14em;text-transform:uppercase;}
+
+  .controls{
+    display:flex;align-items:center;gap:clamp(6px,1.4vw,14px);flex-wrap:wrap;
+    background:rgba(255,255,255,.03);
+    border:1px solid rgba(255,255,255,.07);
+    border-radius:14px;
+    padding:clamp(7px,1.4vw,12px) clamp(9px,1.8vw,16px);
+  }
+  .btn{
+    font:inherit;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+    color:var(--text);
+    background:rgba(255,255,255,.04);
+    border:1px solid rgba(255,255,255,.16);
+    border-radius:11px;
+    padding:clamp(9px,1.5vw,12px) clamp(12px,2.2vw,20px);
+    font-size:clamp(11px,1.7vw,14px);
+    cursor:pointer;transition:transform .07s ease,box-shadow .15s,background .15s,border-color .15s;
+  }
+  .btn:hover{border-color:rgba(255,255,255,.4);}
+  .btn:active{transform:translateY(1px) scale(.98);}
+  .btn.play{
+    color:#04130b;background:linear-gradient(180deg,#34ffb0,#12d98c);
+    border-color:transparent;box-shadow:0 0 16px rgba(40,255,170,.5);min-width:108px;
+  }
+  .btn.play.on{
+    color:#1a0410;background:linear-gradient(180deg,#ff5fae,#ff2d95);
+    box-shadow:0 0 16px rgba(255,45,149,.55);
+  }
+
+  .tempo{display:flex;align-items:center;gap:clamp(6px,1.2vw,12px);margin-left:auto;}
+  .tempo>label{font-size:clamp(9px,1.5vw,12px);letter-spacing:.16em;color:var(--muted);text-transform:uppercase;}
+  .tempo .read{display:flex;align-items:baseline;gap:3px;min-width:64px;justify-content:flex-end;}
+  .tempo .read span{font-weight:800;font-size:clamp(16px,3vw,24px);color:var(--snare);text-shadow:0 0 12px var(--snare);font-variant-numeric:tabular-nums;}
+  .tempo .read small{font-size:10px;color:var(--muted);letter-spacing:.1em;}
+
+  input[type=range]{
+    -webkit-appearance:none;appearance:none;
+    width:clamp(90px,22vw,200px);height:6px;border-radius:6px;
+    background:linear-gradient(90deg,var(--snare),var(--bass));
+    box-shadow:0 0 10px rgba(120,120,255,.35);outline:none;cursor:pointer;
+  }
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none;appearance:none;width:20px;height:20px;border-radius:50%;
+    background:#fff;border:3px solid var(--snare);box-shadow:0 0 12px var(--snare);cursor:pointer;
+  }
+  input[type=range]::-moz-range-thumb{
+    width:20px;height:20px;border-radius:50%;background:#fff;border:3px solid var(--snare);
+    box-shadow:0 0 12px var(--snare);cursor:pointer;
+  }
+
+  #seq{flex:1 1 auto;display:flex;flex-direction:column;gap:clamp(4px,1vh,10px);min-height:0;}
+  .ruler,.row{
+    display:grid;
+    grid-template-columns:clamp(48px,12vw,90px) repeat(16,minmax(0,1fr));
+    gap:clamp(3px,.7vw,7px);
+  }
+  .ruler{flex:0 0 auto;}
+  .row{flex:1 1 0;min-height:0;}
+
+  .label{
+    display:flex;align-items:center;gap:6px;
+    font-weight:700;letter-spacing:.1em;text-transform:uppercase;
+    font-size:clamp(9px,1.5vw,13px);color:var(--text);padding-left:2px;overflow:hidden;
+  }
+  .row .label .dot{
+    width:9px;height:9px;border-radius:50%;flex:0 0 auto;
+    background:var(--accent);box-shadow:0 0 9px var(--accent),0 0 16px var(--accent);
+  }
+  .corner{opacity:0;}
+
+  .tick{
+    display:flex;align-items:center;justify-content:center;
+    font-size:clamp(8px,1.3vw,12px);font-weight:600;color:var(--muted);
+    font-variant-numeric:tabular-nums;border-radius:6px;transition:color .08s,background .08s,box-shadow .08s;
+  }
+  .tick.b1{color:#b8b4e6;}
+  .tick.cur{color:#fff;background:rgba(255,255,255,.1);box-shadow:0 0 12px rgba(255,255,255,.25);}
+
+  .cell{
+    position:relative;border-radius:clamp(4px,1vw,10px);
+    background:rgba(255,255,255,.028);
+    border:1px solid rgba(255,255,255,.06);
+    cursor:pointer;min-height:0;
+    transition:background .08s,box-shadow .12s,transform .06s,border-color .1s;
+  }
+  .cell.b1{border-left:2px solid rgba(255,255,255,.16);}
+  .cell:hover{border-color:rgba(255,255,255,.22);background:rgba(255,255,255,.06);}
+
+  .cell.on{
+    background:var(--accent);border-color:var(--accent);
+    box-shadow:0 0 10px var(--accent),0 0 22px color-mix(in srgb,var(--accent) 45%,transparent),inset 0 0 8px rgba(255,255,255,.35);
+  }
+
+  .cell.cur{background:rgba(255,255,255,.08);}
+  .cell.cur::after{
+    content:"";position:absolute;inset:0;border-radius:inherit;
+    box-shadow:inset 0 0 0 2px rgba(255,255,255,.4);
+    animation:flash .18s ease-out;
+  }
+  .cell.on.cur{
+    transform:scale(1.07);filter:brightness(1.45) saturate(1.2);
+    box-shadow:0 0 18px var(--accent),0 0 40px var(--accent),inset 0 0 12px rgba(255,255,255,.6);
+    z-index:2;
+  }
+  @keyframes flash{from{opacity:1;}to{opacity:.25;}}
+
+  /* overlay */
+  #overlay{
+    position:fixed;inset:0;z-index:50;
+    background:radial-gradient(circle at 50% 40%, rgba(30,18,70,.85), rgba(5,4,12,.96));
+    backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+    display:flex;align-items:center;justify-content:center;text-align:center;
+    cursor:pointer;transition:opacity .4s ease;
+  }
+  #overlay.hidden{opacity:0;pointer-events:none;}
+  .ov-inner{padding:24px;}
+  .ov-title{font-weight:800;letter-spacing:.2em;text-transform:uppercase;font-size:clamp(26px,8vw,58px);}
+  .ov-title b{color:var(--kick);text-shadow:0 0 22px var(--kick),0 0 50px var(--kick);}
+  .ov-title i{font-style:normal;color:var(--snare);text-shadow:0 0 22px var(--snare),0 0 50px var(--snare);}
+  .ov-sub{color:var(--muted);letter-spacing:.16em;text-transform:uppercase;font-size:clamp(10px,2.4vw,15px);margin-top:8px;}
+  .ov-btn{
+    margin-top:clamp(20px,5vh,42px);
+    font:inherit;font-weight:800;letter-spacing:.12em;text-transform:uppercase;
+    font-size:clamp(15px,3.6vw,22px);color:#04130b;
+    background:linear-gradient(180deg,#34ffb0,#12d98c);
+    border:none;border-radius:16px;padding:clamp(14px,3vw,20px) clamp(26px,7vw,48px);
+    cursor:pointer;box-shadow:0 0 26px rgba(40,255,170,.55);
+    animation:breathe 1.8s ease-in-out infinite;
+  }
+  .ov-hint{margin-top:16px;color:var(--muted);font-size:clamp(9px,2vw,12px);letter-spacing:.12em;text-transform:uppercase;}
+  @keyframes breathe{0%,100%{transform:scale(1);box-shadow:0 0 26px rgba(40,255,170,.5);}50%{transform:scale(1.05);box-shadow:0 0 44px rgba(40,255,170,.85);}}
+
+  @media (max-width:560px){
+    .tag{display:none;}
+    .tempo{margin-left:0;width:100%;justify-content:space-between;}
+    input[type=range]{flex:1;}
+  }
+</style>
+</head>
+<body>
+  <header>
+    <div class="title"><b>NEON</b> <i>DNB</i> MACHINE</div>
+    <div class="tag">16-step · kick / snare / hat / bass</div>
+  </header>
+
+  <div class="controls">
+    <button id="play" class="btn play">&#9654; PLAY</button>
+    <button id="clear" class="btn">Clear</button>
+    <button id="rand" class="btn">Random</button>
+    <div class="tempo">
+      <label>Tempo</label>
+      <input id="tempo" type="range" min="80" max="200" step="1" value="174">
+      <div class="read"><span id="bpmval">174</span><small>BPM</small></div>
+    </div>
+  </div>
+
+  <div id="seq"></div>
+
+  <div id="overlay">
+    <div class="ov-inner">
+      <div class="ov-title"><b>NEON</b> <i>DNB</i></div>
+      <div class="ov-sub">drum &amp; bass beat machine</div>
+      <button class="ov-btn">&#9654; Tap to start</button>
+      <div class="ov-hint">tap anywhere — unlocks audio</div>
+    </div>
+  </div>
+
+<script>
+(function(){
+  "use strict";
+
+  var ROWS = [
+    { name:"Kick",  key:"kick",  color:"var(--kick)"  },
+    { name:"Snare", key:"snare", color:"var(--snare)" },
+    { name:"Hat",   key:"hat",   color:"var(--hat)"   },
+    { name:"Bass",  key:"bass",  color:"var(--bass)"  }
+  ];
+  var STEPS = 16;
+  var BASS_NOTE = "A1";
+
+  // pattern[key] = array of 16 booleans
+  var pattern = {};
+  ROWS.forEach(function(r){
+    pattern[r.key] = new Array(STEPS).fill(false);
+  });
+
+  // classic two-step DnB default
+  [0,10].forEach(function(i){ pattern.kick[i]  = true; });
+  [4,12].forEach(function(i){ pattern.snare[i] = true; });
+  [0,2,4,6,8,10,12,14].forEach(function(i){ pattern.hat[i] = true; });
+  [0,7,10,14].forEach(function(i){ pattern.bass[i] = true; });
+
+  // ---------- build the grid ----------
+  var seq = document.getElementById("seq");
+  var cellEls = [];   // [row][step]
+  var rulerEls = [];  // [step]
+
+  var ruler = document.createElement("div");
+  ruler.className = "ruler";
+  var corner = document.createElement("div");
+  corner.className = "label corner";
+  corner.textContent = "STEP";
+  ruler.appendChild(corner);
+  for (var s = 0; s < STEPS; s++){
+    var t = document.createElement("div");
+    t.className = "tick" + (s % 4 === 0 ? " b1" : "");
+    t.textContent = s + 1;
+    rulerEls[s] = t;
+    ruler.appendChild(t);
+  }
+  seq.appendChild(ruler);
+
+  ROWS.forEach(function(row, r){
+    var rowEl = document.createElement("div");
+    rowEl.className = "row";
+    rowEl.style.setProperty("--accent", row.color);
+
+    var lab = document.createElement("div");
+    lab.className = "label";
+    var dot = document.createElement("span");
+    dot.className = "dot";
+    lab.appendChild(dot);
+    lab.appendChild(document.createTextNode(row.name));
+    rowEl.appendChild(lab);
+
+    cellEls[r] = [];
+    for (var st = 0; st < STEPS; st++){
+      var c = document.createElement("div");
+      c.className = "cell" + (st % 4 === 0 ? " b1" : "");
+      c.dataset.r = r;
+      c.dataset.s = st;
+      if (pattern[row.key][st]) c.classList.add("on");
+      cellEls[r][st] = c;
+      rowEl.appendChild(c);
+    }
+    seq.appendChild(rowEl);
+  });
+
+  // ---------- click / drag painting ----------
+  var painting = false;
+  var paintVal = false;
+
+  function isOn(cell){ return cell.classList.contains("on"); }
+
+  function setCell(r, st, val){
+    var key = ROWS[r].key;
+    if (pattern[key][st] === val) return;
+    pattern[key][st] = val;
+    cellEls[r][st].classList.toggle("on", val);
+    if (val && audioReady && !playing){
+      fire(key, Tone.now() + 0.02);
+    }
+  }
+
+  function paintFromCell(cell){
+    setCell(+cell.dataset.r, +cell.dataset.s, paintVal);
+  }
+
+  seq.addEventListener("pointerdown", function(e){
+    var cell = e.target.closest(".cell");
+    if (!cell) return;
+    e.preventDefault();
+    painting = true;
+    paintVal = !isOn(cell);
+    paintFromCell(cell);
+  });
+  seq.addEventListener("pointermove", function(e){
+    if (!painting) return;
+    var el = document.elementFromPoint(e.clientX, e.clientY);
+    var cell = el && el.closest ? el.closest(".cell") : null;
+    if (cell && seq.contains(cell)) paintFromCell(cell);
+  });
+  function endPaint(){ painting = false; }
+  window.addEventListener("pointerup", endPaint);
+  window.addEventListener("pointercancel", endPaint);
+
+  // ---------- playhead rendering ----------
+  var prevCol = -1;
+  function renderPlayhead(s){
+    if (prevCol >= 0){
+      for (var r = 0; r < ROWS.length; r++) cellEls[r][prevCol].classList.remove("cur");
+      rulerEls[prevCol].classList.remove("cur");
+    }
+    for (var r2 = 0; r2 < ROWS.length; r2++) cellEls[r2][s].classList.add("cur");
+    rulerEls[s].classList.add("cur");
+    prevCol = s;
+  }
+  function clearPlayhead(){
+    if (prevCol >= 0){
+      for (var r = 0; r < ROWS.length; r++) cellEls[r][prevCol].classList.remove("cur");
+      rulerEls[prevCol].classList.remove("cur");
+    }
+    prevCol = -1;
+  }
+
+  // ---------- audio ----------
+  var audioReady = false;
+  var playing = false;
+  var stepIndex = 0;
+  var tempo = 174;
+  var kick, snareNoise, snareBody, hatNoise, bass, loop;
+
+  function buildAudio(){
+    var limiter = new Tone.Limiter(-1).toDestination();
+    var comp = new Tone.Compressor({ threshold:-20, ratio:3, attack:0.005, release:0.12 }).connect(limiter);
+    var master = new Tone.Gain(0.9).connect(comp);
+    var reverb = new Tone.Reverb({ decay:1.6, wet:0.16 }).connect(master);
+
+    // KICK — punchy membrane
+    kick = new Tone.MembraneSynth({
+      pitchDecay:0.028, octaves:8, oscillator:{ type:"sine" },
+      envelope:{ attack:0.001, decay:0.34, sustain:0, release:0.4 }
+    }).connect(master);
+    kick.volume.value = 2;
+
+    // SNARE — noise crack + tonal body
+    snareNoise = new Tone.NoiseSynth({
+      noise:{ type:"white" },
+      envelope:{ attack:0.001, decay:0.16, sustain:0, release:0.02 }
+    });
+    var snareHP = new Tone.Filter(1500, "highpass");
+    snareNoise.connect(snareHP);
+    snareHP.connect(master);
+    snareHP.connect(reverb);
+    snareNoise.volume.value = -7;
+
+    snareBody = new Tone.Synth({
+      oscillator:{ type:"triangle" },
+      envelope:{ attack:0.001, decay:0.12, sustain:0, release:0.02 }
+    }).connect(master);
+    snareBody.volume.value = -13;
+
+    // HAT — filtered noise tick
+    hatNoise = new Tone.NoiseSynth({
+      noise:{ type:"white" },
+      envelope:{ attack:0.001, decay:0.045, sustain:0, release:0.01 }
+    });
+    var hatHP = new Tone.Filter(8500, "highpass");
+    hatNoise.connect(hatHP);
+    hatHP.connect(master);
+    hatNoise.volume.value = -11;
+
+    // BASS — saw sub with filter envelope
+    bass = new Tone.MonoSynth({
+      oscillator:{ type:"sawtooth" },
+      envelope:{ attack:0.012, decay:0.2, sustain:0.5, release:0.25 },
+      filter:{ Q:3, type:"lowpass", rolloff:-24 },
+      filterEnvelope:{ attack:0.02, decay:0.18, sustain:0.4, release:0.3, baseFrequency:60, octaves:2.6 }
+    }).connect(master);
+    bass.volume.value = -3;
+
+    loop = new Tone.Loop(function(time){
+      var s = stepIndex;
+      if (pattern.kick[s])  fire("kick", time);
+      if (pattern.snare[s]) fire("snare", time);
+      if (pattern.hat[s])   fire("hat", time);
+      if (pattern.bass[s])  fire("bass", time);
+      Tone.Draw.schedule(function(){ renderPlayhead(s); }, time);
+      stepIndex = (s + 1) % STEPS;
+    }, "16n");
+    loop.start(0);
+
+    Tone.Transport.bpm.value = tempo;
+    audioReady = true;
+  }
+
+  function fire(key, time){
+    if (key === "kick"){
+      kick.triggerAttackRelease("C1", "8n", time);
+    } else if (key === "snare"){
+      snareNoise.triggerAttackRelease("16n", time);
+      snareBody.triggerAttackRelease("G3", "16n", time);
+    } else if (key === "hat"){
+      hatNoise.triggerAttackRelease("32n", time);
+    } else if (key === "bass"){
+      bass.triggerAttackRelease(BASS_NOTE, "16n", time);
+    }
+  }
+
+  // ---------- transport controls ----------
+  var playBtn = document.getElementById("play");
+  function updatePlayBtn(){
+    playBtn.innerHTML = playing ? "&#9632; STOP" : "&#9654; PLAY";
+    playBtn.classList.toggle("on", playing);
+  }
+  function startPlayback(){
+    if (!audioReady) return;
+    stepIndex = 0;
+    Tone.Transport.bpm.value = tempo;
+    Tone.Transport.start();
+    playing = true;
+    updatePlayBtn();
+  }
+  function stopPlayback(){
+    Tone.Transport.stop();
+    playing = false;
+    stepIndex = 0;
+    clearPlayhead();
+    updatePlayBtn();
+  }
+  playBtn.addEventListener("click", function(){
+    if (!audioReady) return;
+    if (playing) stopPlayback(); else startPlayback();
+  });
+
+  document.getElementById("clear").addEventListener("click", function(){
+    ROWS.forEach(function(row, r){
+      for (var st = 0; st < STEPS; st++){
+        pattern[row.key][st] = false;
+        cellEls[r][st].classList.remove("on");
+      }
+    });
+  });
+
+  document.getElementById("rand").addEventListener("click", function(){
+    var density = { kick:0.18, snare:0.14, hat:0.55, bass:0.28 };
+    ROWS.forEach(function(row, r){
+      for (var st = 0; st < STEPS; st++){
+        var on = pseudoRandom() < density[row.key];
+        pattern[row.key][st] = on;
+        cellEls[r][st].classList.toggle("on", on);
+      }
+    });
+  });
+
+  // simple LCG so we avoid Math.random patterns; seed shifts each call
+  var _seed = 1337;
+  function pseudoRandom(){
+    _seed = (_seed * 1103515245 + 12345) & 0x7fffffff;
+    return _seed / 0x7fffffff;
+  }
+
+  var tempoInput = document.getElementById("tempo");
+  var bpmval = document.getElementById("bpmval");
+  tempoInput.addEventListener("input", function(){
+    tempo = parseInt(tempoInput.value, 10);
+    bpmval.textContent = tempo;
+    if (audioReady) Tone.Transport.bpm.value = tempo;
+  });
+
+  // ---------- unlock overlay ----------
+  var overlay = document.getElementById("overlay");
+  var unlocked = false;
+  function unlock(){
+    if (unlocked) return;
+    if (typeof Tone === "undefined"){
+      overlay.querySelector(".ov-sub").textContent = "Audio engine failed to load — check connection";
+      return;
+    }
+    unlocked = true;
+    Tone.start().then(function(){
+      buildAudio();
+      overlay.classList.add("hidden");
+      startPlayback();
+    }).catch(function(){
+      unlocked = false;
+    });
+  }
+  overlay.addEventListener("click", unlock);
+  overlay.addEventListener("touchend", function(e){ e.preventDefault(); unlock(); }, { passive:false });
+})();
+</script>
+</body>
+</html>
