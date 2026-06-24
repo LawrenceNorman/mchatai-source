@@ -1,6 +1,6 @@
 {
   "packID": "responsive-frontend",
-  "version": 1,
+  "version": 2,
   "displayName": "Responsive (Both) Frontend Guidelines",
   "description": "Quality rules for mini-apps and webSPAs that must look great on BOTH mobile (375×812) AND desktop (1280×800) without two separate codebases. Apply when the user selects target-device='Both (responsive)'. Focus on mobile-first CSS that progressively enhances at desktop breakpoints, fluid typography, hybrid touch+mouse input, and test-at-both-widths discipline. Sibling pack to mobile-frontend (mobile-only) and frontend-skill (generic). Pack selection is additive: Both → responsive-frontend + frontend-skill.",
   "categories": [
@@ -140,6 +140,18 @@
         "Mobile screenshot must show: no horizontal scroll, all CTAs reachable, text legible at default zoom, no controls under safe-area-inset",
         "Desktop screenshot must show: layout uses the wider canvas (not just centered phone-width content), hover/focus affordances visible where present, no awkward dead zones",
         "Both must share visual identity (same colors, same brand mark, same typographic hierarchy) — responsive ≠ two different-looking apps"
+      ]
+    },
+    {
+      "id": "res-011",
+      "rule": "A CSS GRID used for the MAIN page layout MUST have a definite width — set `width: 100%` on the grid container. A grid with a fractional column (e.g. `grid-template-columns: minmax(0,1fr) 260px`) COLLAPSES when its container width is indefinite (a block / flex-column child that shrink-wraps to content): the `1fr` resolves to ~0 and that column becomes a sliver. This is invisible on mobile (the <600px reflow makes it single-column, filling the viewport) and breaks ONLY on desktop — the classic 'works on phone, broken on desktop' bug.",
+      "why": "Real bug (2026-06-24, Texas Hold'em hub game): `.layout{display:grid;grid-template-columns:minmax(0,1fr) 260px;margin:0 auto}` sat inside a flex-column `.app` and never received a definite width, so at 1400px the 1fr column resolved to 52px and the game board rendered as a 24px-wide vertical bar next to a fine-looking 260px sidebar. Adding `width:100%` to the grid container fixed it (board 24px → 792px). A bare grid in a flex column does NOT auto-stretch to a usable width for `1fr` purposes — make the width explicit.",
+      "severity": "critical",
+      "appliesTo": ["miniApp", "fullStackApp"],
+      "examples": [
+        "GOOD: .layout { width: 100%; display: grid; grid-template-columns: minmax(0,1fr) 260px; gap: 12px; }",
+        "BAD: .layout { display: grid; grid-template-columns: minmax(0,1fr) 260px; margin: 0 auto; } /* no width → 1fr collapses to content-min on desktop */",
+        "Diagnostic: at desktop width, if the main column is a thin sliver while a fixed-px sidebar looks correct, inspect the computed grid-template-columns — a 1fr that resolved to a tiny px value means the grid container width is indefinite. Fix with width:100% (or a definite max-width + width:100%)."
       ]
     }
   ]
