@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Times Tables Drill</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; overflow: hidden; }
+  body {
+    font-family: 'Trebuchet MS', 'Comic Sans MS', system-ui, sans-serif;
+    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #ec4899 100%);
+    color: #fff;
+    user-select: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+  }
+  #app {
+    width: 100%;
+    max-width: 520px;
+    height: 100%;
+    max-height: 820px;
+    background: rgba(255,255,255,0.08);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-radius: 24px;
+    border: 2px solid rgba(255,255,255,0.18);
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+  }
+  .screen { display: none; flex-direction: column; flex: 1; padding: 22px; overflow: hidden; }
+  .screen.active { display: flex; }
+
+  /* HOME */
+  .title {
+    font-size: 34px;
+    font-weight: 900;
+    text-align: center;
+    margin-top: 6px;
+    text-shadow: 0 3px 0 rgba(0,0,0,0.25);
+    letter-spacing: 1px;
+  }
+  .subtitle {
+    text-align: center;
+    font-size: 15px;
+    opacity: 0.9;
+    margin-bottom: 14px;
+  }
+  .streak-card {
+    background: linear-gradient(135deg, #f59e0b, #ef4444);
+    border-radius: 18px;
+    padding: 18px;
+    margin: 8px 0 16px;
+    text-align: center;
+    border: 3px solid rgba(255,255,255,0.3);
+    box-shadow: 0 6px 0 rgba(0,0,0,0.15);
+  }
+  .streak-flame { font-size: 44px; line-height: 1; }
+  .streak-num { font-size: 38px; font-weight: 900; margin-top: 2px; }
+  .streak-label { font-size: 13px; text-transform: uppercase; letter-spacing: 2px; opacity: 0.95; }
+
+  .weak-card {
+    background: rgba(255,255,255,0.15);
+    border-radius: 16px;
+    padding: 14px;
+    text-align: center;
+    margin-bottom: 14px;
+    border: 2px solid rgba(255,255,255,0.2);
+  }
+  .weak-label { font-size: 12px; opacity: 0.85; text-transform: uppercase; letter-spacing: 1.5px; }
+  .weak-table { font-size: 30px; font-weight: 900; margin-top: 4px; color: #fde047; text-shadow: 0 2px 0 rgba(0,0,0,0.3); }
+  .weak-desc { font-size: 13px; opacity: 0.85; margin-top: 2px; }
+
+  .stats-mini {
+    display: grid;
+    grid-template-columns: repeat(11, 1fr);
+    gap: 4px;
+    margin-bottom: 14px;
+  }
+  .stat-pill {
+    background: rgba(0,0,0,0.25);
+    border-radius: 6px;
+    padding: 6px 2px;
+    text-align: center;
+    font-size: 10px;
+    font-weight: 700;
+    border: 1px solid rgba(255,255,255,0.1);
+  }
+  .stat-pill .n { font-size: 13px; display: block; }
+  .stat-pill .acc { font-size: 9px; opacity: 0.8; }
+  .stat-pill.good { background: rgba(34, 197, 94, 0.35); border-color: rgba(34, 197, 94, 0.5); }
+  .stat-pill.mid { background: rgba(234, 179, 8, 0.35); border-color: rgba(234, 179, 8, 0.5); }
+  .stat-pill.weak { background: rgba(239, 68, 68, 0.4); border-color: rgba(239, 68, 68, 0.6); }
+  .stat-pill.target { box-shadow: 0 0 0 2px #fde047; }
+
+  .btn {
+    border: none;
+    border-radius: 16px;
+    padding: 16px;
+    font-size: 20px;
+    font-weight: 900;
+    font-family: inherit;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    transition: transform 0.08s, box-shadow 0.08s;
+  }
+  .btn:active { transform: translateY(2px); }
+  .btn-primary {
+    background: linear-gradient(180deg, #22c55e, #16a34a);
+    color: #fff;
+    box-shadow: 0 5px 0 #15803d;
+  }
+  .btn-primary:active { box-shadow: 0 3px 0 #15803d; }
+  .btn-secondary {
+    background: linear-gradient(180deg, #3b82f6, #2563eb);
+    color: #fff;
+    box-shadow: 0 5px 0 #1d4ed8;
+  }
+  .btn-secondary:active { box-shadow: 0 3px 0 #1d4ed8; }
+  .btn-ghost {
+    background: rgba(255,255,255,0.15);
+    color: #fff;
+    box-shadow: 0 4px 0 rgba(0,0,0,0.2);
+    border: 2px solid rgba(255,255,255,0.2);
+  }
+
+  .mode-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .mode-btn {
+    flex: 1;
+    padding: 10px;
+    border-radius: 12px;
+    background: rgba(255,255,255,0.15);
+    border: 2px solid rgba(255,255,255,0.25);
+    color: #fff;
+    font-family: inherit;
+    font-weight: 700;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  .mode-btn.active {
+    background: #fde047;
+    color: #422006;
+    border-color: #fef3c7;
+  }
+  .home-btns { display: flex; flex-direction: column; gap: 10px; margin-top: auto; }
+
+  /* DRILL */
+  .hud {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+  .hud-box {
+    background: rgba(0,0,0,0.3);
+    border-radius: 12px;
+    padding: 8px 14px;
+    text-align: center;
+    flex: 1;
+    border: 2px solid rgba(255,255,255,0.15);
+  }
+  .hud-label { font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px; opacity: 0.8; }
+  .hud-value { font-size: 24px; font-weight: 900; }
+  .timer-bar {
+    height: 10px;
+    background: rgba(0,0,0,0.3);
+    border-radius: 10px;
+    overflow: hidden;
+    margin-bottom: 14px;
+    border: 1px solid rgba(255,255,255,0.15);
+  }
+  .timer-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #22c55e, #fbbf24, #ef4444);
+    transition: width 0.2s linear;
+    border-radius: 10px;
+  }
+  .question-card {
+    flex: 1;
+    background: rgba(255,255,255,0.95);
+    border-radius: 22px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    margin-bottom: 14px;
+    color: #1e293b;
+    box-shadow: 0 8px 0 rgba(0,0,0,0.2);
+    position: relative;
+    overflow: hidden;
+    min-height: 130px;
+  }
+  .question {
+    font-size: 56px;
+    font-weight: 900;
+    text-align: center;
+    color: #1e1b4b;
+  }
+  .answer-display {
+    font-size: 56px;
+    font-weight: 900;
+    min-height: 70px;
+    color: #6366f1;
+    margin-top: 4px;
+  }
+  .answer-display.empty::after { content: '_'; opacity: 0.3; }
+  .feedback {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 80px;
+    pointer-events: none;
+    opacity: 0;
+  }
+  .feedback.show { animation: pop 0.5s ease-out; }
+  @keyframes pop {
+    0% { transform: scale(0.3); opacity: 0; }
+    40% { transform: scale(1.3); opacity: 1; }
+    100% { transform: scale(1); opacity: 0; }
+  }
+
+  .keypad {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+  .key {
+    background: linear-gradient(180deg, #ffffff, #e2e8f0);
+    color: #1e293b;
+    border: none;
+    border-radius: 14px;
+    padding: 14px;
+    font-size: 26px;
+    font-weight: 900;
+    font-family: inherit;
+    cursor: pointer;
+    box-shadow: 0 4px 0 #94a3b8;
+    transition: transform 0.05s, box-shadow 0.05s;
+  }
+  .key:active { transform: translateY(2px); box-shadow: 0 2px 0 #94a3b8; }
+  .key-action { background: linear-gradient(180deg, #fbbf24, #f59e0b); color: #422006; box-shadow: 0 4px 0 #b45309; }
+  .key-action:active { box-shadow: 0 2px 0 #b45309; }
+  .key-enter { background: linear-gradient(180deg, #22c55e, #16a34a); color: #fff; box-shadow: 0 4px 0 #15803d; }
+  .key-enter:active { box-shadow: 0 2px 0 #15803d; }
+
+  /* RESULTS */
+  .result-title { font-size: 34px; font-weight: 900; text-align: center; margin: 10px 0; text-shadow: 0 2px 0 rgba(0,0,0,0.2); }
+  .result-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+  .result-stat {
+    background: rgba(255,255,255,0.15);
+    border-radius: 14px;
+    padding: 12px;
+    text-align: center;
+    border: 2px solid rgba(255,255,255,0.2);
+  }
+  .result-stat .v { font-size: 32px; font-weight: 900; line-height: 1; }
+  .result-stat .l { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; opacity: 0.85; margin-top: 4px; }
+  .badge {
+    background: linear-gradient(135deg, #f59e0b, #ef4444);
+    padding: 10px 14px;
+    border-radius: 14px;
+    text-align: center;
+    margin-bottom: 12px;
+    font-weight: 800;
+    border: 2px solid rgba(255,255,255,0.3);
+  }
+  .session-log {
+    flex: 1;
+    background: rgba(0,0,0,0.2);
+    border-radius: 12px;
+    padding: 10px;
+    overflow-y: auto;
+    margin-bottom: 12px;
+    border: 1px solid rgba(255,255,255,0.1);
+    -webkit-overflow-scrolling: touch;
+  }
+  .session-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 4px 8px;
+    font-size: 14px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+  }
+  .session-row:last-child { border-bottom: none; }
+  .session-row.wrong { color: #fecaca; }
+  .session-row.right { color: #bbf7d0; }
+
+  .toast {
+    position: absolute;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%) translateY(-100px);
+    background: #1e1b4b;
+    color: #fff;
+    padding: 12px 20px;
+    border-radius: 12px;
+    font-weight: 700;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+    border: 2px solid #fde047;
+    transition: transform 0.3s ease-out;
+    z-index: 100;
+    pointer-events: none;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+
+  @media (max-height: 700px) {
+    .title { font-size: 26px; }
+    .streak-card { padding: 12px; margin: 4px 0 10px; }
+    .streak-flame { font-size: 32px; }
+    .streak-num { font-size: 28px; }
+    .question { font-size: 44px; }
+    .answer-display { font-size: 44px; min-height: 56px; }
+    .key { padding: 10px; font-size: 22px; }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="toast" class="toast"></div>
+
+  <!-- HOME -->
+  <div class="screen active" id="home">
+    <div class="title">✖️ Times Tables ✖️</div>
+    <div class="subtitle">Beat the clock. Build your streak.</div>
+
+    <div class="streak-card">
+      <div class="streak-flame">🔥</div>
+      <div class="streak-num" id="streakNum">0</div>
+      <div class="streak-label">Day Streak</div>
+    </div>
+
+    <div class="weak-card">
+      <div class="weak-label">Today's Focus</div>
+      <div class="weak-table" id="weakTable">× 7</div>
+      <div class="weak-desc" id="weakDesc">Let's master this one!</div>
+    </div>
+
+    <div class="stats-mini" id="statsMini"></div>
+
+    <div class="mode-row">
+      <button class="mode-btn active" data-mode="weak">🎯 Weakest</button>
+      <button class="mode-btn" data-mode="mixed">🎲 Mixed</button>
+    </div>
+
+    <div class="home-btns">
+      <button class="btn btn-primary" id="startBtn">▶ Start Drill (60s)</button>
+      <button class="btn btn-ghost" id="resetBtn" style="font-size:13px;padding:8px;">Reset All Stats</button>
+    </div>
+  </div>
+
+  <!-- DRILL -->
+  <div class="screen" id="drill">
+    <div class="hud">
+      <div class="hud-box">
+        <div class="hud-label">Time</div>
+        <div class="hud-value" id="timeLeft">60</div>
+      </div>
+      <div class="hud-box">
+        <div class="hud-label">Score</div>
+        <div class="hud-value" id="score">0</div>
+      </div>
+      <div class="hud-box">
+        <div class="hud-label">Streak</div>
+        <div class="hud-value" id="comboCount">0</div>
+      </div>
+    </div>
+    <div class="timer-bar"><div class="timer-fill" id="timerFill" style="width:100%"></div></div>
+
+    <div class="question-card">
+      <div class="question" id="question">7 × 8</div>
+      <div class="answer-display empty" id="answer"></div>
+      <div class="feedback" id="feedback"></div>
+    </div>
+
+    <div class="keypad">
+      <button class="key" data-k="1">1</button>
+      <button class="key" data-k="2">2</button>
+      <button class="key" data-k="3">3</button>
+      <button class="key" data-k="4">4</button>
+      <button class="key" data-k="5">5</button>
+      <button class="key" data-k="6">6</button>
+      <button class="key" data-k="7">7</button>
+      <button class="key" data-k="8">8</button>
+      <button class="key" data-k="9">9</button>
+      <button class="key key-action" data-k="del">⌫</button>
+      <button class="key" data-k="0">0</button>
+      <button class="key key-enter" data-k="enter">✓</button>
+    </div>
+  </div>
+
+  <!-- RESULTS -->
+  <div class="screen" id="results">
+    <div class="result-title" id="resultTitle">Time's Up!</div>
+    <div class="badge" id="resultBadge">🎉 New Best Score!</div>
+
+    <div class="result-stats">
+      <div class="result-stat"><div class="v" id="rScore">0</div><div class="l">Score</div></div>
+      <div class="result-stat"><div class="v" id="rCorrect">0</div><div class="l">Correct</div></div>
+      <div class="result-stat"><div class="v" id="rAccuracy">0%</div><div class="l">Accuracy</div></div>
+      <div class="result-stat"><div class="v" id="rBest">0</div><div class="l">Best Score</div></div>
+    </div>
+
+    <div class="session-log" id="sessionLog"></div>
+
+    <div class="home-btns">
+      <button class="btn btn-primary" id="againBtn">▶ Play Again</button>
+      <button class="btn btn-secondary" id="homeBtn">🏠 Home</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  'use strict';
+
+  const STORAGE_KEY = 'ttdrill_v1';
+  const TABLES = [2,3,4,5,6,7,8,9,10,11,12];
+  const DRILL_SECONDS = 60;
+
+  const defaultState = () => ({
+    streak: 0,
+    lastPlayed: null,
+    bestScore: 0,
+    stats: TABLES.reduce((acc, t) => { acc[t] = { correct: 0, total: 0, totalMs: 0 }; return acc; }, {}),
+    mode: 'weak'
+  });
+
+  let state = loadState();
+  let drill = null;
+
+  function loadState() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return defaultState();
+      const parsed = JSON.parse(raw);
+      const d = defaultState();
+      return Object.assign(d, parsed, { stats: Object.assign(d.stats, parsed.stats || {}) });
+    } catch(e) { return defaultState(); }
+  }
+  function saveState() {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch(e) {}
+  }
+
+  function todayKey() {
+    const d = new Date();
+    return d.getFullYear() + '-' + (d.getMonth()+1) + '-' + d.getDate();
+  }
+  function yesterdayKey() {
+    const d = new Date();
+    d.setDate(d.getDate() - 1);
+    return d.getFullYear() + '-' + (d.getMonth()+1) + '-' + d.getDate();
+  }
+
+  function updateStreakOnPlay() {
+    const today = todayKey();
+    if (state.lastPlayed === today) return; // already counted today
+    if (state.lastPlayed === yesterdayKey()) {
+      state.streak += 1;
+    } else {
+      state.streak = 1;
+    }
+    state.lastPlayed = today;
+  }
+
+  function checkStreakValidity() {
+    // If they didn't play yesterday or today, streak breaks
+    if (state.lastPlayed && state.lastPlayed !== todayKey() && state.lastPlayed !== yesterdayKey()) {
+      state.streak = 0;
+      saveState();
+    }
+  }
+
+  function tableScore(t) {
+    const s = state.stats[t];
+    if (!s || s.total < 3) return -1; // untested = highest priority
+    const acc = s.correct / s.total;
+    const avgMs = s.totalMs / s.total;
+    // Lower score = weaker. Accuracy weighted heavily; speed secondary.
+    return acc * 100 - Math.min(avgMs / 100, 30);
+  }
+
+  function pickWeakestTable() {
+    let weakest = TABLES[0];
+    let weakestScore = Infinity;
+    TABLES.forEach(t => {
+      const sc = tableScore(t);
+      if (sc < weakestScore) { weakestScore = sc; weakest = t; }
+    });
+    return weakest;
+  }
+
+  function pickQuestion(mode) {
+    let table;
+    if (mode === 'weak') {
+      // 70% weakest, 20% second-weakest, 10% random
+      const sorted = TABLES.slice().sort((a,b) => tableScore(a) - tableScore(b));
+      const r = Math.random();
+      if (r < 0.7) table = sorted[0];
+      else if (r < 0.9) table = sorted[1];
+      else table = TABLES[Math.floor(Math.random() * TABLES.length)];
+    } else {
+      table = TABLES[Math.floor(Math.random() * TABLES.length)];
+    }
+    const other = 2 + Math.floor(Math.random() * 11); // 2..12
+    // Randomize order so kid doesn't always see table number first
+    const a = Math.random() < 0.5 ? table : other;
+    const b = a === table ? other : table;
+    return { a, b, table, answer: a * b };
+  }
+
+  // ----- UI -----
+  const $ = (id) => document.getElementById(id);
+  const screens = { home: $('home'), drill: $('drill'), results: $('results') };
+
+  function show(name) {
+    Object.keys(screens).forEach(k => screens[k].classList.toggle('active', k === name));
+  }
+
+  function toast(msg) {
+    const t = $('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 1800);
+  }
+
+  function renderHome() {
+    checkStreakValidity();
+    $('streakNum').textContent = state.streak;
+    const weak = pickWeakestTable();
+    $('weakTable').textContent = '× ' + weak;
+    const s = state.stats[weak];
+    if (!s || s.total < 3) {
+      $('weakDesc').textContent = "Let's see how you do!";
+    } else {
+      const pct = Math.round((s.correct / s.total) * 100);
+      $('weakDesc').textContent = pct + '% so far — let\'s level up!';
+    }
+
+    // Mini stats grid
+    const grid = $('statsMini');
+    grid.innerHTML = '';
+    TABLES.forEach(t => {
+      const stt = state.stats[t];
+      const pill = document.createElement('div');
+      pill.className = 'stat-pill';
+      let acc = '—';
+      if (stt && stt.total > 0) {
+        const p = Math.round((stt.correct / stt.total) * 100);
+        acc = p + '%';
+        if (p >= 85) pill.classList.add('good');
+        else if (p >= 65) pill.classList.add('mid');
+        else pill.classList.add('weak');
+      }
+      if (t === weak) pill.classList.add('target');
+      pill.innerHTML = '<span class="n">' + t + '</span><span class="acc">' + acc + '</span>';
+      grid.appendChild(pill);
+    });
+
+    // Mode buttons
+    document.querySelectorAll('.mode-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.mode === state.mode);
+    });
+  }
+
+  // ----- Drill -----
+  function startDrill() {
+    drill = {
+      score: 0,
+      correct: 0,
+      total: 0,
+      combo: 0,
+      answer: '',
+      current: null,
+      questionStart: 0,
+      timeLeft: DRILL_SECONDS,
+      endAt: Date.now() + DRILL_SECONDS * 1000,
+      sessionLog: []
+    };
+    show('drill');
+    nextQuestion();
+    drill.tickHandle = setInterval(tick, 100);
+  }
+
+  function tick() {
+    const remainMs = Math.max(0, drill.endAt - Date.now());
+    const remainSec = Math.ceil(remainMs / 1000);
+    drill.timeLeft = remainSec;
+    $('timeLeft').textContent = remainSec;
+    $('timerFill').style.width = (remainMs / (DRILL_SECONDS * 1000) * 100) + '%';
+    if (remainMs <= 0) finishDrill();
+  }
+
+  function nextQuestion() {
+    drill.current = pickQuestion(state.mode);
+    drill.answer = '';
+    drill.questionStart = Date.now();
+    $('question').textContent = drill.current.a + ' × ' + drill.current.b;
+    updateAnswerDisplay();
+  }
+
+  function updateAnswerDisplay() {
+    const el = $('answer');
+    el.textContent = drill.answer;
+    el.classList.toggle('empty', drill.answer === '');
+  }
+
+  function showFeedback(symbol, color) {
+    const f = $('feedback');
+    f.textContent = symbol;
+    f.style.color = color;
+    f.classList.remove('show');
+    void f.offsetWidth;
+    f.classList.add('show');
+  }
+
+  function submitAnswer() {
+    if (!drill || drill.answer === '') return;
+    const guess = parseInt(drill.answer, 10);
+    const elapsed = Date.now() - drill.questionStart;
+    const q = drill.current;
+    const correct = guess === q.answer;
+
+    // Update stats for the focus table
+    const t = q.table;
+    state.stats[t].total += 1;
+    state.stats[t].totalMs += elapsed;
+    if (correct) state.stats[t].correct += 1;
+
+    drill.total += 1;
+    if (correct) {
+      drill.correct += 1;
+      drill.combo += 1;
+      const points = 10 + Math.min(drill.combo - 1, 10) * 2 + (elapsed < 2000 ? 5 : 0);
+      drill.score += points;
+      showFeedback('✓', '#22c55e');
+      drill.sessionLog.push({ q: q.a + '×' + q.b, a: q.answer, your: guess, correct: true });
+    } else {
+      drill.combo = 0;
+      showFeedback('✗', '#ef4444');
+      drill.sessionLog.push({ q: q.a + '×' + q.b, a: q.answer, your: guess, correct: false });
+    }
+
+    $('score').textContent = drill.score;
+    $('comboCount').textContent = drill.combo;
+
+    saveState();
+    setTimeout(() => { if (drill && drill.timeLeft > 0) nextQuestion(); }, 220);
+  }
+
+  function handleKey(k) {
+    if (!drill || drill.timeLeft <= 0) return;
+    if (k === 'enter') { submitAnswer(); return; }
+    if (k === 'del') { drill.answer = drill.answer.slice(0, -1); updateAnswerDisplay(); return; }
+    if (/^[0-9]$/.test(k)) {
+      if (drill.answer.length >= 3) return;
+      drill.answer += k;
+      updateAnswerDisplay();
+      // Auto-submit if answer length matches expected
+      const expectedLen = String(drill.current.answer).length;
+      if (drill.answer.length === expectedLen && parseInt(drill.answer,10) === drill.current.answer) {
+        submitAnswer();
+      }
+    }
+  }
+
+  function finishDrill() {
+    if (!drill) return;
+    clearInterval(drill.tickHandle);
+    const finalScore = drill.score;
+    const correctCt = drill.correct;
+    const totalCt = drill.total;
+    const accuracy = totalCt ? Math.round(correctCt / totalCt * 100) : 0;
+
+    let isBest = false;
+    if (finalScore > state.bestScore) { state.bestScore = finalScore; isBest = true; }
+    if (totalCt > 0) updateStreakOnPlay();
+    saveState();
+
+    $('rScore').textContent = finalScore;
+    $('rCorrect').textContent = correctCt + '/' + totalCt;
+    $('rAccuracy').textContent = accuracy + '%';
+    $('rBest').textContent = state.bestScore;
+
+    let title = 'Time\'s Up!';
+    if (accuracy === 100 && totalCt >= 10) title = '🏆 Perfect Run!';
+    else if (accuracy >= 90) title = '⭐ Awesome!';
+    else if (accuracy >= 70) title = '👍 Nice Work!';
+    else if (totalCt > 0) title = 'Keep Practising!';
+    $('resultTitle').textContent = title;
+
+    const badge = $('resultBadge');
+    if (isBest && totalCt > 0) {
+      badge.textContent = '🎉 New Best Score!';
+      badge.style.display = 'block';
+    } else if (state.streak > 1) {
+      badge.textContent = '🔥 ' + state.streak + '-day streak!';
+      badge.style.display = 'block';
+    } else {
+      badge.style.display = 'none';
+    }
+
+    const log = $('sessionLog');
+    log.innerHTML = '';
+    if (drill.sessionLog.length === 0) {
+      log.innerHTML = '<div class="session-row">No answers — try again!</div>';
+    } else {
+      drill.sessionLog.slice().reverse().forEach(r => {
+        const row = document.createElement('div');
+        row.className = 'session-row ' + (r.correct ? 'right' : 'wrong');
+        const left = r.q + ' = ' + r.a;
+        const right = r.correct ? '✓ ' + r.your : '✗ you: ' + r.your;
+        row.innerHTML = '<span>' + left + '</span><span>' + right + '</span>';
+        log.appendChild(row);
+      });
+    }
+
+    drill = null;
+    show('results');
+  }
+
+  // ----- Wire up -----
+  document.querySelectorAll('.key').forEach(btn => {
+    btn.addEventListener('click', () => handleKey(btn.dataset.k));
+  });
+  document.addEventListener('keydown', (e) => {
+    if (screens.drill.classList.contains('active')) {
+      if (e.key >= '0' && e.key <= '9') { handleKey(e.key); e.preventDefault(); }
+      else if (e.key === 'Enter') { handleKey('enter'); e.preventDefault(); }
+      else if (e.key === 'Backspace') { handleKey('del'); e.preventDefault(); }
+    }
+  });
+
+  document.querySelectorAll('.mode-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      state.mode = btn.dataset.mode;
+      saveState();
+      renderHome();
+    });
+  });
+
+  $('startBtn').addEventListener('click', startDrill);
+  $('againBtn').addEventListener('click', startDrill);
+  $('homeBtn').addEventListener('click', () => { renderHome(); show('home'); });
+  $('resetBtn').addEventListener('click', () => {
+    if (confirm('Reset all stats and streak?')) {
+      state = defaultState();
+      saveState();
+      renderHome();
+      toast('Stats reset!');
+    }
+  });
+
+  // Init
+  renderHome();
+})();
+</script>
+</body>
+</html>

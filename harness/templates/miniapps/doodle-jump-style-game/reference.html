@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Doodle Jump</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+html, body { width:100%; height:100%; overflow:hidden; background:#87CEEB; font-family:'Comic Sans MS','Chalkboard SE',sans-serif; }
+#gameCanvas { display:block; margin:0 auto; background: linear-gradient(180deg, #87CEEB 0%, #b5e6ff 40%, #d4f0ff 100%); }
+#ui { position:absolute; top:10px; left:50%; transform:translateX(-50%); display:flex; gap:20px; align-items:center; z-index:10; }
+#score { font-size:24px; font-weight:bold; color:#2d5016; text-shadow:1px 1px 0 #fff; }
+#highScore { font-size:14px; color:#4a7a25; text-shadow:1px 1px 0 #fff; }
+#overlay { position:absolute; top:0; left:0; width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:20; background:rgba(0,0,0,0.5); }
+#overlay.hidden { display:none; }
+.overlay-box { background:#fff; border-radius:16px; padding:30px 40px; text-align:center; box-shadow:0 8px 32px rgba(0,0,0,0.3); max-width:320px; }
+.overlay-box h1 { font-size:28px; color:#4CAF50; margin-bottom:8px; }
+.overlay-box h2 { font-size:22px; color:#e53935; margin-bottom:4px; }
+.overlay-box p { font-size:16px; color:#333; margin:6px 0; }
+.overlay-box .final { font-size:20px; font-weight:bold; color:#2d5016; }
+.btn { display:inline-block; margin-top:16px; padding:14px 36px; font-size:18px; font-weight:bold; color:#fff; background:#4CAF50; border:none; border-radius:10px; cursor:pointer; min-width:44px; min-height:44px; }
+.btn:hover { background:#388E3C; }
+.btn:active { transform:scale(0.95); }
+#mobileControls { display:none; position:absolute; bottom:20px; left:0; width:100%; z-index:15; justify-content:space-between; padding:0 20px; }
+.mBtn { width:70px; height:70px; border-radius:50%; background:rgba(0,0,0,0.2); border:2px solid rgba(255,255,255,0.4); color:#fff; font-size:28px; display:flex; align-items:center; justify-content:center; cursor:pointer; -webkit-user-select:none; user-select:none; }
+@media (pointer:coarse) { #mobileControls { display:flex; } }
+</style>
+</head>
+<body>
+<div id="ui">
+  <span id="score">Score: 0</span>
+  <span id="highScore">Best: 0</span>
+</div>
+<canvas id="gameCanvas"></canvas>
+<div id="overlay">
+  <div class="overlay-box" id="startBox">
+    <h1>Doodle Jump</h1>
+    <p>Bounce upward on platforms!<br>Use ← → arrow keys to move<br>Watch out for obstacles!</p>
+    <button class="btn" id="startBtn">Play!</button>
+  </div>
+</div>
+<div id="mobileControls">
+  <div class="mBtn" id="leftBtn">←</div>
+  <div class="mBtn" id="rightBtn">→</div>
+</div>
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const scoreEl = document.getElementById('score');
+const highScoreEl = document.getElementById('highScore');
+const overlay = document.getElementById('overlay');
+const startBox = document.getElementById('startBox');
+
+let W, H;
+function resize() {
+  W = Math.min(window.innerWidth, 420);
+  H = window.innerHeight;
+  canvas.width = W;
+  canvas.height = H;
+  canvas.style.width = W + 'px';
+  canvas.style.height = H + 'px';
+}
+resize();
+window.addEventListener('resize', resize);
+
+let highScore = parseInt(localStorage.getItem('dj_high2')) || 0;
+highScoreEl.textContent = 'Best: ' + highScore;
+
+const PLAT_W = 68, PLAT_H = 14;
+const PLAYER_W = 36, PLAYER_H = 40;
+const GRAVITY = 0.35;
+const JUMP_VEL = -10.5;
+const SPRING_VEL = -16;
+const MOVE_SPEED = 5;
+
+let platforms, player, camera, score, gameOver, started, keys, animId;
+let obstacles, particles, lastObstacleScore;
+
+function initGame() {
+  keys = { left: false, right: false };
+  score = 0;
+  camera = 0;
+  gameOver = false;
+  platforms = [];
+  obstacles = [];
+  particles = [];
+  lastObstacleScore = 0;
+  for (let i = 0; i < 20; i++) {
+    platforms.push(makePlatform(H - i * (H / 10), true));
+  }
+  platforms[0] = { x: W / 2 - PLAT_W / 2, y: H - 60, w: PLAT_W, h: PLAT_H, type: 'normal' };
+  player = {
+    x: W / 2 - PLAYER_W / 2,
+    y: H - 100,
+    w: PLAYER_W,
+    h: PLAYER_H,
+    vy: JUMP_VEL,
+    vx: 0,
+    dir: 1,
+    invincible: 0
+  };
+  scoreEl.textContent = 'Score: 0';
+}
+
+function difficulty() {
+  if (score < 200) return 0;
+  if (score < 500) return 1;
+  if (score < 1000) return 2;
+  if (score < 2000) return 3;
+  if (score < 4000) return 4;
+  return 5;
+}
+
+function makePlatform(y, initial) {
+  let type = 'normal';
+  const d = difficulty();
+  const r = Math.random();
+  if (!initial) {
+    if (d >= 1 && r < 0.12) type = 'moving';
+    else if (d >= 2 && r < 0.20) type = 'breaking';
+    else if (d >= 1 && r < 0.08) type = 'spring';
+  }
+  let p = { x: Math.random() * (W - PLAT_W), y: y, w: PLAT_W, h: PLAT_H, type: type };
+  if (type === 'moving') p.speed = (Math.random() < 0.5 ? 1 : -1) * (1.5 + Math.random() * (1 + d * 0.3));
+  if (type === 'breaking') { p.broken = false; p.breakTimer = 0; }
+  if (type === 'spring') p.sprung = false;
+  return p;
+}
+
+function spawnObstacle(y) {
+  const d = difficulty();
+  const types = [];
+  if (d >= 1) types.push('bird');
+  if (d >= 2) types.push('bird', 'bat');
+  if (d >= 3) types.push('monster', 'bird', 'bat');
+  if (d >= 4) types.push('ufo', 'monster', 'bird');
+  if (d >= 5) types.push('ufo', 'blackhole');
+  if (types.length === 0) return null;
+  const type = types[Math.floor(Math.random() * types.length)];
+  const fromLeft = Math.random() < 0.5;
+  const ob = { type, y: y - Math.random() * 200, alive: true, timer: 0 };
+  if (type === 'bird') {
+    ob.x = fromLeft ? -40 : W + 40;
+    ob.vx = fromLeft ? (1.5 + d * 0.4) : -(1.5 + d * 0.4);
+    ob.vy = Math.sin(Math.random() * 3) * 0.3;
+    ob.w = 36; ob.h = 24;
+    ob.wingPhase = Math.random() * Math.PI * 2;
+  } else if (type === 'bat') {
+    ob.x = fromLeft ? -40 : W + 40;
+    ob.vx = fromLeft ? (2 + d * 0.3) : -(2 + d * 0.3);
+    ob.vy = 0;
+    ob.w = 30; ob.h = 22;
+    ob.wingPhase = Math.random() * Math.PI * 2;
+  } else if (type === 'monster') {
+    ob.x = Math.random() * (W - 40);
+    ob.vx = (Math.random() < 0.5 ? 1 : -1) * (0.5 + d * 0.2);
+    ob.vy = 0;
+    ob.w = 40; ob.h = 40;
+    ob.bounceBase = ob.y;
+  } else if (type === 'ufo') {
+    ob.x = fromLeft ? -50 : W + 50;
+    ob.vx = fromLeft ? (2.5 + d * 0.3) : -(2.5 + d * 0.3);
+    ob.vy = 0;
+    ob.w = 44; ob.h = 24;
+    ob.beamTimer = 0;
+  } else if (type === 'blackhole') {
+    ob.x = 40 + Math.random() * (W - 80);
+    ob.vx = 0; ob.vy = 0;
+    ob.w = 50; ob.h = 50;
+    ob.radius = 25;
+    ob.pullStrength = 0.15 + d * 0.05;
+    ob.rotation = 0;
+  }
+  return ob;
+}
+
+function addParticles(x, y, color, count) {
+  for (let i = 0; i < count; i++) {
+    particles.push({
+      x, y,
+      vx: (Math.random() - 0.5) * 6,
+      vy: (Math.random() - 0.5) * 6,
+      life: 30 + Math.random() * 20,
+      color,
+      size: 2 + Math.random() * 3
+    });
+  }
+}
+
+function drawPlayer(x, y) {
+  const cx = x + PLAYER_W / 2;
+  const cy = y + PLAYER_H / 2;
+  if (player.invincible > 0 && Math.floor(player.invincible / 3) % 2 === 0) {
+    ctx.globalAlpha = 0.4;
+  }
+  ctx.fillStyle = '#4CAF50';
+  ctx.beginPath();
+  ctx.ellipse(cx, cy + 4, 14, 16, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = '#2d7d32';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+  ctx.fillStyle = '#a5d6a7';
+  ctx.beginPath();
+  ctx.ellipse(cx, cy + 8, 8, 8, 0, 0, Math.PI * 2);
+  ctx.fill();
+  const eyeOff = player.dir > 0 ? 3 : -3;
+  ctx.fillStyle = '#fff';
+  ctx.beginPath();
+  ctx.ellipse(cx - 5 + eyeOff, cy - 6, 5, 6, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(cx + 5 + eyeOff, cy - 6, 5, 6, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#222';
+  ctx.beginPath();
+  ctx.arc(cx - 4 + eyeOff * 1.2, cy - 6, 2.2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(cx + 6 + eyeOff * 1.2, cy - 6, 2.2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#66BB6A';
+  ctx.beginPath();
+  ctx.ellipse(cx + eyeOff * 1.5, cy, 4, 3, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#4CAF50';
+  ctx.beginPath();
+  ctx.ellipse(cx - 8, cy + 18, 6, 4, -0.2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(cx + 8, cy + 18, 6, 4, 0.2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.globalAlpha = 1;
+}
+
+function drawPlatform(p, camY) {
+  const py = p.y - camY;
+  if (p.type === 'breaking' && p.broken) {
+    ctx.globalAlpha = Math.max(0, 1 - p.breakTimer / 20);
+    ctx.fillStyle = '#b71c1c';
+    for (let i = 0; i < 4; i++) {
+      ctx.fillRect(p.x + i * 18 + (Math.random()-0.5)*p.breakTimer, py + p.breakTimer * 2 + (Math.random()-0.5)*p.breakTimer, 12, 6);
+    }
+    ctx.globalAlpha = 1;
+    return;
+  }
+  const r = 5;
+  ctx.beginPath();
+  ctx.moveTo(p.x + r, py);
+  ctx.lineTo(p.x + p.w - r, py);
+  ctx.quadraticCurveTo(p.x + p.w, py, p.x + p.w, py + r);
+  ctx.lineTo(p.x + p.w, py + p.h - r);
+  ctx.quadraticCurveTo(p.x + p.w, py + p.h, p.x + p.w - r, py + p.h);
+  ctx.lineTo(p.x + r, py + p.h);
+  ctx.quadraticCurveTo(p.x, py + p.h, p.x, py + p.h - r);
+  ctx.lineTo(p.x, py + r);
+  ctx.quadraticCurveTo(p.x, py, p.x + r, py);
+  ctx.closePath();
+  if (p.type === 'normal') {
+    ctx.fillStyle = '#8BC34A';
+    ctx.fill();
+    ctx.strokeStyle = '#558B2F';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    ctx.fillStyle = '#558B2F';
+    for (let i = 0; i < 5; i++) {
+      const gx = p.x + 8 + i * 13;
+      ctx.beginPath();
+      ctx.moveTo(gx, py);
+      ctx.lineTo(gx + 3, py - 5);
+      ctx.lineTo(gx + 6, py);
+      ctx.fill();
+    }
+  } else if (p.type === 'moving') {
+    ctx.fillStyle = '#42A5F5';
+    ctx.fill();
+    ctx.strokeStyle = '#1565C0';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    ctx.fillStyle = '#fff';
+    ctx.font = '10px sans-serif';
+    ctx.fillText('⟷', p.x + p.w/2 - 6, py + 11);
+  } else if (p.type === 'breaking') {
+    ctx.fillStyle = '#EF5350';
+    ctx.fill();
+    ctx.strokeStyle = '#C62828';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    ctx.strokeStyle = '#B71C1C';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(p.x + 15, py + 2);
+    ctx.lineTo(p.x + 25, py + 8);
+    ctx.lineTo(p.x + 35, py + 3);
+    ctx.moveTo(p.x + 40, py + 10);
+    ctx.lineTo(p.x + 50, py + 5);
+    ctx.stroke();
+  } else if (p.type === 'spring') {
+    ctx.fillStyle = '#8BC34A';
+    ctx.fill();
+    ctx.strokeStyle = '#558B2F';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    // Draw spring coil on top
+    const sx = p.x + p.w / 2;
+    const springH = p.sprung ? 4 : 12;
+    ctx.strokeStyle = '#FF9800';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    for (let i = 0; i < 4; i++) {
+      const yy = py - springH + i * (springH / 4);
+      ctx.moveTo(sx - 6, yy);
+      ctx.lineTo(sx + 6, yy + springH / 8);
+      ctx.moveTo(sx + 6, yy + springH / 8);
+      ctx.lineTo(sx - 6, yy + springH / 4);
+    }
+    ctx.stroke();
+    // Spring top pad
+    ctx.fillStyle = '#FF9800';
+    ctx.fillRect(sx - 8, py - springH - 4, 16, 5);
+  }
+}
+
+function drawBird(ob, camY) {
+  const x = ob.x, y = ob.y - camY;
+  ob.wingPhase += 0.15;
+  const wingY = Math.sin(ob.wingPhase) * 6;
+  const dir = ob.vx > 0 ? 1 : -1;
+  // Body
+  ctx.fillStyle = '#5D4037';
+  ctx.beginPath();
+  ctx.ellipse(x + 18, y + 12, 14, 8, 0, 0, Math.PI * 2);
+  ctx.fill();
+  // Wing
+  ctx.fillStyle = '#795548';
+  ctx.beginPath();
+  ctx.moveTo(x + 18, y + 8);
+  ctx.quadraticCurveTo(x + 18 - dir * 5, y + wingY - 4, x + 4, y + wingY);
+  ctx.quadraticCurveTo(x + 12, y + 10, x + 18, y + 8);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(x + 18, y + 8);
+  ctx.quadraticCurveTo(x + 18 + dir * 5, y + wingY - 4, x + 32, y + wingY);
+  ctx.quadraticCurveTo(x + 24, y + 10, x + 18, y + 8);
+  ctx.fill();
+  // Head
+  ctx.fillStyle = '#4E342E';
+  ctx.beginPath();
+  ctx.arc(x + 18 + dir * 12, y + 8, 6, 0, Math.PI * 2);
+  ctx.fill();
+  // Eye
+  ctx.fillStyle = '#fff';
+  ctx.beginPath();
+  ctx.arc(x + 18 + dir * 14, y + 6, 2.5, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#000';
+  ctx.beginPath();
+  ctx.arc(x + 18 + dir * 15, y + 6, 1.2, 0, Math.PI * 2);
+  ctx.fill();
+  // Beak
+  ctx.fillStyle = '#FF9800';
+  ctx.beginPath();
+  ctx.moveTo(x + 18 + dir * 18, y + 8);
+  ctx.lineTo(x + 18 + dir * 24, y + 9);
+  ctx.lineTo(x + 18 + dir * 18, y + 11);
+  ctx.fill();
+}
+
+function drawBat(ob, camY) {
+  const x = ob.x, y = ob.y - camY;
+  ob.wingPhase += 0.2;
+  const wingY = Math.sin(ob.wingPhase) * 8;
+  const dir = ob.vx > 0 ? 1 : -1;
+  // Body
+  ctx.fillStyle = '#37474F';
+  ctx.beginPath();
+  ctx.ellipse(x + 15, y + 11, 8, 7, 0, 0, Math.PI * 2);
+  ctx.fill();
+  // Wings (bat-like, angular)
+  ctx.fillStyle = '#455A64';
+  ctx.beginPath();
+  ctx.moveTo(x + 15, y + 8);
+  ctx.lineTo(x - 2, y + wingY - 2);
+  ctx.lineTo(x + 2, y + wingY + 4);
+  ctx.lineTo(x + 8, y + 10);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(x + 15, y + 8);
+  ctx.lineTo(x + 32, y + wingY - 2);
+  ctx.lineTo(x + 28, y + wingY + 4);
+  ctx.lineTo(x + 22, y + 10);
+  ctx.fill();
+  // Eyes (red, glowing)
+  ctx.fillStyle = '#f44336';
+  ctx.beginPath();
+  ctx.arc(x + 12, y + 8, 2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(x + 18, y + 8, 2, 0, Math.PI * 2);
+  ctx.fill();
+  // Ears
+  ctx.fillStyle = '#37474F';
+  ctx.beginPath();
+  ctx.moveTo(x + 10, y + 4);
+  ctx.lineTo(x + 8, y - 3);
+  ctx.lineTo(x + 14, y + 4);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(x + 16, y + 4);
+  ctx.lineTo(x + 22, y - 3);
+  ctx.lineTo(x + 20, y + 4);
+  ctx.fill();
+}
+
+function drawMonster(ob, camY) {
+  const x = ob.x, y = ob.y - camY;
+  ob.timer++;
+  const bounce = Math.sin(ob.timer * 0.05) * 4;
+  // Body
+  ctx.fillStyle = '#9C27B0';
+  ctx.beginPath();
+  ctx.ellipse(x + 20, y + 22 + bounce, 18, 16, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = '#6A1B9A';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  // Spots
+  ctx.fillStyle = '#CE93D8';
+  ctx.beginPath();
+  ctx.arc(x + 12, y + 18 + bounce, 4, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(x + 26, y + 26 + bounce, 3, 0, Math.PI * 2);
+  ctx.fill();
+  // Eyes (big, angry)
+  ctx.fillStyle = '#fff';
+  ctx.beginPath();
+  ctx.ellipse(x + 13, y + 14 + bounce, 6, 7, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(x + 27, y + 14 + bounce, 6, 7, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#c62828';
+  ctx.beginPath();
+  ctx.arc(x + 14, y + 15 + bounce, 3, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(x + 28, y + 15 + bounce, 3, 0, Math.PI * 2);
+  ctx.fill();
+  // Angry eyebrows
+  ctx.strokeStyle = '#4A148C';
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  ctx.moveTo(x + 7, y + 8 + bounce);
+  ctx.lineTo(x + 17, y + 10 + bounce);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(x + 33, y + 8 + bounce);
+  ctx.lineTo(x + 23, y + 10 + bounce);
+  ctx.stroke();
+  // Teeth
+  ctx.fillStyle = '#fff';
+  for (let i = 0; i < 4; i++) {
+    ctx.beginPath();
+    ctx.moveTo(x + 10 + i * 7, y + 30 + bounce);
+    ctx.lineTo(x + 13 + i * 7, y + 35 + bounce);
+    ctx.lineTo(x + 16 + i * 7, y + 30 + bounce);
+    ctx.fill();
+  }
+}
+
+function drawUFO(ob, camY) {
+  const x = ob.x, y = ob.y - camY;
+  ob.beamTimer++;
+  // Beam (pulsing)
+  if (ob.beamTimer % 60 < 30) {
+    ctx.fillStyle = 'rgba(76, 175, 80, 0.15)';
+    ctx.beginPath();
+    ctx.moveTo(x + 12, y + 20);
+    ctx.lineTo(x - 10, y + 80);
+    ctx.lineTo(x + 54, y + 80);
+    ctx.lineTo(x + 32, y + 20);
+    ctx.fill();
+  }
+  // Saucer bottom
+  ctx.fillStyle = '#78909C';
+  ctx.beginPath();
+  ctx.ellipse(x + 22, y + 16, 22, 7, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = '#546E7A';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+  // Dome
+  ctx.fillStyle = 'rgba(100, 200, 255, 0.7)';
+  ctx.beginPath();
+  ctx.ellipse(x + 22, y + 10, 12, 10, 0, Math.PI, 0);
+  ctx.fill();
+  ctx.strokeStyle = '#4FC3F7';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+  // Lights
+  const colors = ['#f44336', '#FFEB3B', '#4CAF50', '#2196F3'];
+  for (let i = 0; i < 4; i++) {
+    const a = (ob.beamTimer * 0.08 + i * Math.PI / 2);
+    ctx.fillStyle = colors[i];
+    ctx.beginPath();
+    ctx.arc(x + 22 + Math.cos(a) * 16, y + 16 + Math.sin(a) * 4, 2.5, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+function drawBlackhole(ob, camY) {
+  const x = ob.x, y = ob.y - camY;
+  ob.rotation += 0.03;
+  // Swirl rings
+  for (let i = 3; i >= 0; i--) {
+    const r = ob.radius - i * 4;
+    ctx.strokeStyle = `rgba(${100 + i * 40}, ${20 + i * 20}, ${150 + i * 25}, ${0.4 + i * 0.15})`;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(x, y, r, ob.rotation + i * 0.5, ob.rotation + i * 0.5 + Math.PI * 1.5);
+    ctx.stroke();
+  }
+  // Dark center
+  const grd = ctx.createRadialGradient(x, y, 0, x, y, 12);
+  grd.addColorStop(0, '#000');
+  grd.addColorStop(0.7, '#1a0033');
+  grd.addColorStop(1, 'rgba(26,0,51,0)');
+  ctx.fillStyle = grd;
+  ctx.beginPath();
+  ctx.arc(x, y, 14, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function drawObstacle(ob, camY) {
+  if (!ob.alive) return;
+  if (ob.type === 'bird') drawBird(ob, camY);
+  else if (ob.type === 'bat') drawBat(ob, camY);
+  else if (ob.type === 'monster') drawMonster(ob, camY);
+  else if (ob.type === 'ufo') drawUFO(ob, camY);
+  else if (ob.type === 'blackhole') drawBlackhole(ob, camY);
+}
+
+function drawBackground(camY) {
+  // Dynamic sky color based on height
+  const heightFactor = Math.min(1, score / 5000);
+  const r1 = Math.floor(74 - heightFactor * 50);
+  const g1 = Math.floor(144 - heightFactor * 80);
+  const b1 = Math.floor(217 + heightFactor * 30);
+  const grad = ctx.createLinearGradient(0, 0, 0, H);
+  grad.addColorStop(0, `rgb(${r1},${g1},${b1})`);
+  grad.addColorStop(0.5, '#87CEEB');
+  grad.addColorStop(1, '#b5e6ff');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W, H);
+  // Stars appear at high altitude
+  if (score > 2000) {
+    const starAlpha = Math.min(0.8, (score - 2000) / 3000);
+    ctx.fillStyle = `rgba(255,255,255,${starAlpha})`;
+    for (let i = 0; i < 30; i++) {
+      const sx = (i * 137 + 23) % W;
+      const sy = ((i * 211 + 47) - camY * 0.05) % H;
+      const size = 1 + (i % 3);
+      ctx.beginPath();
+      ctx.arc(sx, sy, size, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+  // Clouds
+  ctx.fillStyle = 'rgba(255,255,255,0.6)';
+  for (let i = 0; i < 6; i++) {
+    const cx = ((i * 97 + 30) % W);
+    const baseY = ((i * 200 + 50) - camY * 0.2) % (H + 100);
+    ctx.beginPath();
+    ctx.ellipse(cx, baseY, 30, 12, 0, 0, Math.PI * 2);
+    ctx.ellipse(cx + 20, baseY - 5, 20, 10, 0, 0, Math.PI * 2);
+    ctx.ellipse(cx - 15, baseY + 2, 18, 9, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+function rectOverlap(ax, ay, aw, ah, bx, by, bw, bh) {
+  return ax < bx + bw && ax + aw > bx && ay < by + bh && ay + ah > by;
+}
+
+function update() {
+  if (gameOver) return;
+
+  if (keys.left) { player.vx = -MOVE_SPEED; player.dir = -1; }
+  else if (keys.right) { player.vx = MOVE_SPEED; player.dir = 1; }
+  else { player.vx *= 0.85; }
+
+  player.vy += GRAVITY;
+  player.x += player.vx;
+  player.y += player.vy;
+
+  if (player.invincible > 0) player.invincible--;
+
+  // Wrap horizontal
+  if (player.x + player.w < 0) player.x = W;
+  if (player.x > W) player.x = -player.w;
+
+  // Black hole pull
+  for (let ob of obstacles) {
+    if (ob.type === 'blackhole' && ob.alive) {
+      const dx = ob.x - (player.x + player.w / 2);
+      const dy = ob.y - (player.y + player.h / 2);
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist < 120 && dist > 5) {
+        player.x += (dx / dist) * ob.pullStrength * (120 - dist) / 120 * 2;
+        player.y += (dy / dist) * ob.pullStrength * (120 - dist) / 120 * 2;
+      }
+    }
+  }
+
+  // Platform collision (only when falling)
+  if (player.vy > 0) {
+    for (let p of platforms) {
+      if (p.type === 'breaking' && p.broken) continue;
+      const py = p.y;
+      if (player.x + player.w > p.x + 4 && player.x < p.x + p.w - 4 &&
+          player.y + player.h >= py && player.y + player.h <= py + p.h + player.vy + 2) {
+        if (p.type === 'breaking') {
+          p.broken = true;
+          p.breakTimer = 0;
+          addParticles(p.x + p.w / 2, p.y, '#EF5350', 8);
+        } else if (p.type === 'spring') {
+          player.vy = SPRING_VEL;
+          player.y = py - player.h;
+          p.sprung = true;
+          setTimeout(() => { p.sprung = false; }, 300);
+          addParticles(p.x + p.w / 2, p.y, '#FF9800', 6);
+        } else {
+          player.vy = JUMP_VEL;
+          player.y = py - player.h;
+        }
+      }
+    }
+  }
+
+  // Update moving platforms
+  for (let p of platforms) {
+    if (p.type === 'moving') {
+      p.x += p.speed;
+      if (p.x <= 0 || p.x + p.w >= W) p.speed *= -1;
+    }
+    if (p.type === 'breaking' && p.broken) p.breakTimer++;
+  }
+
+  // Camera
+  const scrollLine = H * 0.35;
+  if (player.y - camera < scrollLine) {
+    camera = player.y - scrollLine;
+  }
+
+  // Score
+  const currentHeight = Math.floor(-camera / 10);
+  if (currentHeight > score) {
+    score = currentHeight;
+    scoreEl.textContent = 'Score: ' + score;
+  }
+
+  // Spawn obstacles based on score milestones
+  const spawnInterval = Math.max(80, 250 - difficulty() * 30);
+  if (score - lastObstacleScore > spawnInterval && difficulty() >= 1) {
+    const ob = spawnObstacle(camera);
+    if (ob) obstacles.push(ob);
+    lastObstacleScore = score;
+  }
+
+  // Update obstacles
+  for (let ob of obstacles) {
+    if (!ob.alive) continue;
+    ob.x += ob.vx;
+    ob.y += ob.vy;
+    if (ob.type === 'monster') {
+      ob.y = ob.bounceBase + Math.sin(ob.timer * 0.05) * 15;
+      ob.x += ob.vx;
+      if (ob.x <= 0 || ob.x + ob.w >= W) ob.vx *= -1;
+    }
+    // Collision with player
+    if (player.invincible <= 0) {
+      let hit = false;
+      if (ob.type === 'blackhole') {
+        const dx = ob.x - (player.x + player.w / 2);
+        const dy = ob.y - (player.y + player.h / 2);
+        hit = Math.sqrt(dx * dx + dy * dy) < 18;
+      } else {
+        hit = rectOverlap(player.x + 4, player.y + 4, player.w - 8, player.h - 8, ob.x, ob.y, ob.w, ob.h);
+      }
+      if (hit) {
+        // Stomping from above kills the obstacle (except blackhole/ufo)
+        if (player.vy > 0 && ob.type !== 'blackhole' && ob.type !== 'ufo' &&
+            player.y + player.h < ob.y + ob.h * 0.5) {
+          ob.alive = false;
+          player.vy = JUMP_VEL;
+          addParticles(ob.x + (ob.w || 20) / 2, ob.y, '#FF5722', 12);
+          score += 50;
+          scoreEl.textContent = 'Score: ' + score;
+        } else {
+          // Hit! Game over
+          gameOver = true;
+          addParticles(player.x + player.w / 2, player.y + player.h / 2, '#f44336', 20);
+          if (score > highScore) {
+            highScore = score;
+            localStorage.setItem('dj_high2', highScore);
+            highScoreEl.textContent = 'Best: ' + highScore;
+          }
+          showGameOver();
+          return;
+        }
+      }
+    }
+  }
+
+  // Remove off-screen obstacles
+  obstacles = obstacles.filter(ob => {
+    if (!ob.alive) return false;
+    const sy = ob.y - camera;
+    if (sy > H + 100 || sy < -200) return false;
+    if ((ob.type === 'bird' || ob.type === 'bat' || ob.type === 'ufo') && (ob.x < -100 || ob.x > W + 100)) return false;
+    return true;
+  });
+
+  // Update particles
+  for (let p of particles) {
+    p.x += p.vx;
+    p.y += p.vy;
+    p.vy += 0.1;
+    p.life--;
+  }
+  particles = particles.filter(p => p.life > 0);
+
+  // Generate new platforms above
+  const topEdge = camera - 100;
+  let highest = Math.min(...platforms.map(p => p.y));
+  while (highest > topEdge) {
+    const baseGap = 45 + Math.random() * 45;
+    const extraGap = difficulty() * 5;
+    highest -= (baseGap + extraGap);
+    platforms.push(makePlatform(highest, false));
+  }
+
+  platforms = platforms.filter(p => p.y - camera < H + 50);
+
+  // Fell off bottom
+  if (player.y - camera > H + 50) {
+    gameOver = true;
+    if (score > highScore) {
+      highScore = score;
+      localStorage.setItem('dj_high2', highScore);
+      highScoreEl.textContent = 'Best: ' + highScore;
+    }
+    showGameOver();
+  }
+}
+
+function draw() {
+  drawBackground(camera);
+  for (let p of platforms) drawPlatform(p, camera);
+  for (let ob of obstacles) drawObstacle(ob, camera);
+  drawPlayer(player.x, player.y - camera);
+  // Particles
+  for (let p of particles) {
+    ctx.globalAlpha = p.life / 40;
+    ctx.fillStyle = p.color;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y - camera, p.size, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+  // Difficulty indicator
+  const d = difficulty();
+  if (d > 0) {
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.font = '11px sans-serif';
+    ctx.fillText('Zone ' + (d + 1), 10, H - 10);
+  }
+}
+
+function loop() {
+  update();
+  draw();
+  if (!gameOver) animId = requestAnimationFrame(loop);
+}
+
+function showGameOver() {
+  overlay.classList.remove('hidden');
+  const d = difficulty();
+  const zoneNames = ['Meadow', 'Forest', 'Mountain', 'Storm', 'Space', 'Void'];
+  startBox.innerHTML = '<h2>Game Over!</h2>' +
+    '<p class="final">Score: ' + score + '</p>' +
+    '<p>Reached: ' + (zoneNames[d] || 'Beyond') + ' Zone</p>' +
+    (score >= highScore ? '<p style="color:#FFD700;">★ New Best! ★</p>' : '<p>Best: ' + highScore + '</p>') +
+    '<button class="btn" id="restartBtn">Play Again</button>';
+  document.getElementById('restartBtn').addEventListener('click', startGame);
+}
+
+function startGame() {
+  overlay.classList.add('hidden');
+  initGame();
+  if (animId) cancelAnimationFrame(animId);
+  loop();
+}
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'ArrowLeft' || e.key === 'a') { keys.left = true; e.preventDefault(); }
+  if (e.key === 'ArrowRight' || e.key === 'd') { keys.right = true; e.preventDefault(); }
+  if (e.key === ' ' && gameOver) { startGame(); e.preventDefault(); }
+});
+document.addEventListener('keyup', (e) => {
+  if (e.key === 'ArrowLeft' || e.key === 'a') keys.left = false;
+  if (e.key === 'ArrowRight' || e.key === 'd') keys.right = false;
+});
+
+const leftBtn = document.getElementById('leftBtn');
+const rightBtn = document.getElementById('rightBtn');
+function addMobile(btn, key) {
+  btn.addEventListener('touchstart', (e) => { e.preventDefault(); keys[key] = true; });
+  btn.addEventListener('touchend', (e) => { e.preventDefault(); keys[key] = false; });
+  btn.addEventListener('mousedown', () => keys[key] = true);
+  btn.addEventListener('mouseup', () => keys[key] = false);
+}
+addMobile(leftBtn, 'left');
+addMobile(rightBtn, 'right');
+
+document.getElementById('startBtn').addEventListener('click', startGame);
+initGame();
+</script>
+</body>
+</html>

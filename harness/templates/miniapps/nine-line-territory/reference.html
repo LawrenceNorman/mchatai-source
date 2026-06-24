@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Nine-Line Territory</title>
+<style>
+:root {
+  --board-bg: #d4a373;
+  --board-line: #3d2817;
+  --bg: #1a1410;
+  --panel: #2a201a;
+  --text: #f5e9d8;
+  --accent: #e8a87c;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Georgia', serif;
+  background: linear-gradient(135deg, #1a1410, #2a1f15);
+  color: var(--text);
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.app {
+  display: flex;
+  gap: 24px;
+  max-width: 980px;
+  width: 100%;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.board-wrap {
+  background: var(--panel);
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+}
+h1 {
+  font-size: 22px;
+  text-align: center;
+  margin-bottom: 12px;
+  color: var(--accent);
+  letter-spacing: 3px;
+}
+svg.board {
+  display: block;
+  background: var(--board-bg);
+  border-radius: 8px;
+  box-shadow: inset 0 0 30px rgba(0,0,0,0.3);
+  cursor: crosshair;
+  max-width: 100%;
+  height: auto;
+}
+.panel {
+  background: var(--panel);
+  border-radius: 16px;
+  padding: 20px;
+  width: 260px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+}
+.score-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  background: rgba(0,0,0,0.3);
+  border-radius: 10px;
+  border-left: 4px solid transparent;
+  transition: 0.2s;
+}
+.score-row.active {
+  border-left-color: var(--accent);
+  background: rgba(232, 168, 124, 0.18);
+}
+.stone-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.stone-icon.black {
+  background: radial-gradient(circle at 30% 30%, #666, #000);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.6);
+}
+.stone-icon.white {
+  background: radial-gradient(circle at 30% 30%, #fff, #b8b8b8);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.4);
+}
+.score-info { flex: 1; }
+.score-name { font-size: 13px; color: var(--accent); font-weight: bold; letter-spacing: 1px; }
+.score-stats { font-size: 11px; opacity: 0.8; margin-top: 2px; }
+.score-total { font-size: 22px; font-weight: bold; }
+.btn {
+  background: var(--accent);
+  color: #1a1410;
+  border: none;
+  padding: 12px 16px;
+  font-size: 15px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: bold;
+  font-family: inherit;
+  transition: 0.2s;
+}
+.btn:hover:not(:disabled) { background: #f0b88a; transform: translateY(-1px); }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.btn.secondary { background: transparent; color: var(--accent); border: 2px solid var(--accent); }
+.status {
+  text-align: center;
+  padding: 12px;
+  background: rgba(0,0,0,0.4);
+  border-radius: 10px;
+  font-size: 14px;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.toast {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #0d0907;
+  color: #ffffff;
+  padding: 12px 22px;
+  border-radius: 8px;
+  border: 2px solid var(--accent);
+  font-weight: bold;
+  font-size: 14px;
+  z-index: 100;
+  opacity: 0;
+  transition: opacity 0.25s;
+  pointer-events: none;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.5);
+}
+.toast.show { opacity: 1; }
+.legend {
+  font-size: 11px;
+  opacity: 0.7;
+  text-align: center;
+  line-height: 1.6;
+}
+.gameover {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.88);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+}
+.gameover.show { display: flex; }
+.gameover-card {
+  background: var(--panel);
+  padding: 32px;
+  border-radius: 16px;
+  text-align: center;
+  border: 2px solid var(--accent);
+  max-width: 380px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+}
+.gameover-card h2 { color: var(--accent); margin-bottom: 16px; font-size: 28px; letter-spacing: 2px; }
+.gameover-card p { margin-bottom: 8px; font-size: 15px; }
+.gameover-card .winner { font-size: 20px; color: #fff; margin: 18px 0; font-weight: bold; padding: 12px; background: rgba(232, 168, 124, 0.18); border-radius: 8px; }
+@media (max-width: 720px) {
+  .app { flex-direction: column; align-items: center; }
+  .panel { width: 100%; max-width: 480px; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="board-wrap">
+    <h1>NINE-LINE TERRITORY</h1>
+    <svg class="board" id="board" viewBox="0 0 480 480" width="480" height="480"></svg>
+  </div>
+  <div class="panel">
+    <div class="score-row" id="row-black">
+      <div class="stone-icon black"></div>
+      <div class="score-info">
+        <div class="score-name">YOU (BLACK)</div>
+        <div class="score-stats">Caps: <span id="cap-black">0</span> &middot; Terr: <span id="ter-black">0</span></div>
+      </div>
+      <div class="score-total" id="total-black">0</div>
+    </div>
+    <div class="score-row" id="row-white">
+      <div class="stone-icon white"></div>
+      <div class="score-info">
+        <div class="score-name">CPU (WHITE)</div>
+        <div class="score-stats">Caps: <span id="cap-white">0</span> &middot; Terr: <span id="ter-white">0</span> &middot; Komi 6.5</div>
+      </div>
+      <div class="score-total" id="total-white">6.5</div>
+    </div>
+    <div class="status" id="status">Your turn &mdash; place a black stone</div>
+    <button class="btn" id="pass-btn">Pass Turn</button>
+    <button class="btn secondary" id="reset-btn">New Game</button>
+    <div class="legend">
+      Click a point to place a stone.<br>
+      Surround groups to capture.<br>
+      Two passes end the game.<br>
+      Red square = ko (forbidden retake).
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+<div class="gameover" id="gameover">
+  <div class="gameover-card">
+    <h2>GAME OVER</h2>
+    <p>Final Score</p>
+    <p>Black (You): <strong id="final-black">0</strong></p>
+    <p>White (CPU): <strong id="final-white">0</strong></p>
+    <div class="winner" id="winner-text">Tie!</div>
+    <button class="btn" id="replay-btn">Play Again</button>
+  </div>
+</div>
+
+<script>
+const SIZE = 9;
+const BLACK = 1;
+const WHITE = 2;
+const EMPTY = 0;
+const KOMI = 6.5;
+const CELL = 48;
+const PAD = 24;
+
+let board = [];
+let currentPlayer = BLACK;
+let captures = { 1: 0, 2: 0 };
+let lastBoard = null;
+let koPoint = null;
+let passes = 0;
+let gameOver = false;
+let hoverPoint = null;
+let cpuThinking = false;
+
+function initBoard() {
+  board = Array.from({ length: SIZE }, () => Array(SIZE).fill(EMPTY));
+  currentPlayer = BLACK;
+  captures = { 1: 0, 2: 0 };
+  lastBoard = null;
+  koPoint = null;
+  passes = 0;
+  gameOver = false;
+  cpuThinking = false;
+}
+
+function boardCopy(b) { return b.map(r => r.slice()); }
+
+function boardEqual(a, b) {
+  if (!a || !b) return false;
+  for (let r = 0; r < SIZE; r++)
+    for (let c = 0; c < SIZE; c++)
+      if (a[r][c] !== b[r][c]) return false;
+  return true;
+}
+
+function neighbors(r, c) {
+  const out = [];
+  if (r > 0) out.push([r-1, c]);
+  if (r < SIZE-1) out.push([r+1, c]);
+  if (c > 0) out.push([r, c-1]);
+  if (c < SIZE-1) out.push([r, c+1]);
+  return out;
+}
+
+function findGroup(b, r, c) {
+  const color = b[r][c];
+  if (color === EMPTY) return { stones: [], liberties: new Set() };
+  const stones = [];
+  const liberties = new Set();
+  const seen = new Set();
+  const stack = [[r, c]];
+  seen.add(r * SIZE + c);
+  while (stack.length) {
+    const [cr, cc] = stack.pop();
+    stones.push([cr, cc]);
+    for (const [nr, nc] of neighbors(cr, cc)) {
+      const key = nr * SIZE + nc;
+      if (b[nr][nc] === EMPTY) {
+        liberties.add(key);
+      } else if (b[nr][nc] === color && !seen.has(key)) {
+        seen.add(key);
+        stack.push([nr, nc]);
+      }
+    }
+  }
+  return { stones, liberties };
+}
+
+function opponent(p) { return p === BLACK ? WHITE : BLACK; }
+
+function tryMove(b, r, c, player, currentKo) {
+  if (b[r][c] !== EMPTY) return { legal: false, reason: 'Point occupied' };
+  if (currentKo && currentKo[0] === r && currentKo[1] === c) {
+    return { legal: false, reason: 'Ko: cannot retake immediately' };
+  }
+  const nb = boardCopy(b);
+  nb[r][c] = player;
+  let captured = 0;
+  const capturedStones = [];
+  for (const [nr, nc] of neighbors(r, c)) {
+    if (nb[nr][nc] === opponent(player)) {
+      const group = findGroup(nb, nr, nc);
+      if (group.liberties.size === 0) {
+        for (const [sr, sc] of group.stones) {
+          nb[sr][sc] = EMPTY;
+          captured++;
+          capturedStones.push([sr, sc]);
+        }
+      }
+    }
+  }
+  const myGroup = findGroup(nb, r, c);
+  if (myGroup.liberties.size === 0) {
+    return { legal: false, reason: 'Suicide move' };
+  }
+  if (lastBoard && boardEqual(nb, lastBoard)) {
+    return { legal: false, reason: 'Ko: would repeat position' };
+  }
+  let newKo = null;
+  if (captured === 1 && myGroup.stones.length === 1 && myGroup.liberties.size === 1) {
+    newKo = capturedStones[0];
+  }
+  return { legal: true, captured, newBoard: nb, newKo };
+}
+
+function makeMove(r, c) {
+  if (gameOver || cpuThinking) return false;
+  const result = tryMove(board, r, c, currentPlayer, koPoint);
+  if (!result.legal) {
+    showToast(result.reason);
+    return false;
+  }
+  lastBoard = boardCopy(board);
+  board = result.newBoard;
+  captures[currentPlayer] += result.captured;
+  if (result.captured > 0) {
+    showToast('Captured ' + result.captured + ' stone' + (result.captured > 1 ? 's' : '') + '!');
+  }
+  koPoint = result.newKo;
+  passes = 0;
+  currentPlayer = opponent(currentPlayer);
+  render();
+  updatePanel();
+  if (currentPlayer === WHITE) {
+    cpuThinking = true;
+    setTimeout(cpuMove, 650);
+  }
+  return true;
+}
+
+function passTurn() {
+  if (gameOver) return;
+  passes++;
+  lastBoard = boardCopy(board);
+  koPoint = null;
+  showToast(currentPlayer === BLACK ? 'You passed' : 'CPU passed');
+  currentPlayer = opponent(currentPlayer);
+  if (passes >= 2) {
+    endGame();
+    return;
+  }
+  updatePanel();
+  if (currentPlayer === WHITE && !gameOver) {
+    cpuThinking = true;
+    setTimeout(cpuMove, 650);
+  }
+}
+
+function countStones(b) {
+  let n = 0;
+  for (let r = 0; r < SIZE; r++)
+    for (let c = 0; c < SIZE; c++)
+      if (b[r][c] !== EMPTY) n++;
+  return n;
+}
+
+function cpuMove() {
+  if (gameOver || currentPlayer !== WHITE) { cpuThinking = false; return; }
+  const moves = [];
+  const stonesOnBoard = countStones(board);
+  for (let r = 0; r < SIZE; r++) {
+    for (let c = 0; c < SIZE; c++) {
+      const res = tryMove(board, r, c, WHITE, koPoint);
+      if (!res.legal) continue;
+      let score = 1;
+      score += res.captured * 50;
+      const nb = res.newBoard;
+      for (const [nr, nc] of neighbors(r, c)) {
+        if (nb[nr][nc] === BLACK) {
+          const g = findGroup(nb, nr, nc);
+          if (g.liberties.size === 1) score += 12;
+          else if (g.liberties.size === 2) score += 4;
+        }
+      }
+      for (const [nr, nc] of neighbors(r, c)) {
+        if (board[nr][nc] === WHITE) {
+          const g = findGroup(board, nr, nc);
+          if (g.liberties.size === 1) score += 18;
+          else if (g.liberties.size === 2) score += 2;
+        }
+      }
+      if (stonesOnBoard < 14) {
+        if (r === 0 || r === SIZE-1 || c === 0 || c === SIZE-1) score -= 4;
+        if ((r === 2 || r === 4 || r === 6) && (c === 2 || c === 4 || c === 6)) score += 5;
+      }
+      let ownNbrs = 0, totalNbrs = 0;
+      for (const [nr, nc] of neighbors(r, c)) {
+        totalNbrs++;
+        if (board[nr][nc] === WHITE) ownNbrs++;
+      }
+      if (ownNbrs === totalNbrs && totalNbrs >= 3) score -= 25;
+      score += Math.random() * 2;
+      moves.push({ r, c, score, res });
+    }
+  }
+  if (moves.length === 0) {
+    cpuThinking = false;
+    passTurn();
+    return;
+  }
+  moves.sort((a, b) => b.score - a.score);
+  const best = moves[0];
+  if (best.score < 2 && stonesOnBoard > 45) {
+    cpuThinking = false;
+    passTurn();
+    return;
+  }
+  lastBoard = boardCopy(board);
+  board = best.res.newBoard;
+  captures[WHITE] += best.res.captured;
+  koPoint = best.res.newKo;
+  passes = 0;
+  currentPlayer = BLACK;
+  cpuThinking = false;
+  if (best.res.captured > 0) showToast('CPU captured ' + best.res.captured + ' stone' + (best.res.captured > 1 ? 's' : '') + '!');
+  render();
+  updatePanel();
+}
+
+function calcTerritory() {
+  const t = { 1: 0, 2: 0 };
+  const seen = Array.from({ length: SIZE }, () => Array(SIZE).fill(false));
+  for (let r = 0; r < SIZE; r++) {
+    for (let c = 0; c < SIZE; c++) {
+      if (board[r][c] !== EMPTY || seen[r][c]) continue;
+      const stack = [[r, c]];
+      const region = [];
+      const borders = new Set();
+      seen[r][c] = true;
+      while (stack.length) {
+        const [cr, cc] = stack.pop();
+        region.push([cr, cc]);
+        for (const [nr, nc] of neighbors(cr, cc)) {
+          if (board[nr][nc] === EMPTY) {
+            if (!seen[nr][nc]) { seen[nr][nc] = true; stack.push([nr, nc]); }
+          } else {
+            borders.add(board[nr][nc]);
+          }
+        }
+      }
+      if (borders.size === 1) {
+        const owner = [...borders][0];
+        t[owner] += region.length;
+      }
+    }
+  }
+  return t;
+}
+
+function endGame() {
+  gameOver = true;
+  const t = calcTerritory();
+  const blackScore = t[BLACK] + captures[BLACK];
+  const whiteScore = t[WHITE] + captures[WHITE] + KOMI;
+  document.getElementById('final-black').textContent = blackScore.toFixed(1);
+  document.getElementById('final-white').textContent = whiteScore.toFixed(1);
+  let winner;
+  if (blackScore > whiteScore) winner = 'BLACK WINS by ' + (blackScore - whiteScore).toFixed(1) + '!';
+  else if (whiteScore > blackScore) winner = 'WHITE WINS by ' + (whiteScore - blackScore).toFixed(1);
+  else winner = 'TIE GAME';
+  document.getElementById('winner-text').textContent = winner;
+  document.getElementById('gameover').classList.add('show');
+  updatePanel();
+}
+
+function resetGame() {
+  initBoard();
+  document.getElementById('gameover').classList.remove('show');
+  render();
+  updatePanel();
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(() => t.classList.remove('show'), 1800);
+}
+
+function updatePanel() {
+  const t = calcTerritory();
+  document.getElementById('cap-black').textContent = captures[BLACK];
+  document.getElementById('cap-white').textContent = captures[WHITE];
+  document.getElementById('ter-black').textContent = t[BLACK];
+  document.getElementById('ter-white').textContent = t[WHITE];
+  document.getElementById('total-black').textContent = String(t[BLACK] + captures[BLACK]);
+  document.getElementById('total-white').textContent = (t[WHITE] + captures[WHITE] + KOMI).toFixed(1);
+  document.getElementById('row-black').classList.toggle('active', currentPlayer === BLACK && !gameOver);
+  document.getElementById('row-white').classList.toggle('active', currentPlayer === WHITE && !gameOver);
+  let status;
+  if (gameOver) status = 'Game over';
+  else if (currentPlayer === BLACK) status = 'Your turn \u2014 place a black stone';
+  else status = 'CPU thinking\u2026';
+  document.getElementById('status').textContent = status;
+  document.getElementById('pass-btn').disabled = gameOver || currentPlayer !== BLACK || cpuThinking;
+}
+
+function pointFromXY(x, y) {
+  const c = Math.round((x - PAD) / CELL);
+  const r = Math.round((y - PAD) / CELL);
+  if (r < 0 || r >= SIZE || c < 0 || c >= SIZE) return null;
+  const cx = PAD + c * CELL;
+  const cy = PAD + r * CELL;
+  const dx = x - cx, dy = y - cy;
+  if (dx*dx + dy*dy > 22*22) return null;
+  return [r, c];
+}
+
+function render() {
+  const svg = document.getElementById('board');
+  let html = '';
+  html += '<defs>' +
+    '<radialGradient id="blackStone" cx="35%" cy="30%">' +
+      '<stop offset="0%" stop-color="#666"/>' +
+      '<stop offset="55%" stop-color="#222"/>' +
+      '<stop offset="100%" stop-color="#000"/>' +
+    '</radialGradient>' +
+    '<radialGradient id="whiteStone" cx="35%" cy="30%">' +
+      '<stop offset="0%" stop-color="#ffffff"/>' +
+      '<stop offset="60%" stop-color="#e0e0e0"/>' +
+      '<stop offset="100%" stop-color="#a8a8a8"/>' +
+    '</radialGradient>' +
+    '<radialGradient id="ghostBlack" cx="35%" cy="30%">' +
+      '<stop offset="0%" stop-color="#555" stop-opacity="0.5"/>' +
+      '<stop offset="100%" stop-color="#000" stop-opacity="0.5"/>' +
+    '</radialGradient>' +
+    '<filter id="woodGrain" x="0" y="0" width="100%" height="100%">' +
+      '<feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="2" seed="5"/>' +
+      '<feColorMatrix values="0 0 0 0 0.55  0 0 0 0 0.38  0 0 0 0 0.22  0 0 0 0.18 0"/>' +
+      '<feComposite in2="SourceGraphic" operator="in"/>' +
+    '</filter>' +
+  '</defs>';
+  html += '<rect x="0" y="0" width="480" height="480" fill="transparent" filter="url(#woodGrain)"/>';
+  for (let i = 0; i < SIZE; i++) {
+    const p = PAD + i * CELL;
+    html += '<line x1="' + PAD + '" y1="' + p + '" x2="' + (PAD + (SIZE-1)*CELL) + '" y2="' + p + '" stroke="#3d2817" stroke-width="1.5"/>';
+    html += '<line x1="' + p + '" y1="' + PAD + '" x2="' + p + '" y2="' + (PAD + (SIZE-1)*CELL) + '" stroke="#3d2817" stroke-width="1.5"/>';
+  }
+  const stars = [[2,2],[2,6],[6,2],[6,6],[4,4]];
+  for (const sp of stars) {
+    html += '<circle cx="' + (PAD + sp[1]*CELL) + '" cy="' + (PAD + sp[0]*CELL) + '" r="3.5" fill="#3d2817"/>';
+  }
+  for (let r = 0; r < SIZE; r++) {
+    for (let c = 0; c < SIZE; c++) {
+      if (board[r][c] === EMPTY) continue;
+      const cx = PAD + c * CELL;
+      const cy = PAD + r * CELL;
+      const fill = board[r][c] === BLACK ? 'url(#blackStone)' : 'url(#whiteStone)';
+      html += '<ellipse cx="' + (cx+1) + '" cy="' + (cy+3) + '" rx="20" ry="6" fill="rgba(0,0,0,0.25)"/>';
+      html += '<circle cx="' + cx + '" cy="' + cy + '" r="20" fill="' + fill + '" stroke="#0a0a0a" stroke-width="0.6"/>';
+    }
+  }
+  if (koPoint) {
+    const kx = PAD + koPoint[1]*CELL;
+    const ky = PAD + koPoint[0]*CELL;
+    html += '<rect x="' + (kx-7) + '" y="' + (ky-7) + '" width="14" height="14" fill="none" stroke="#c0392b" stroke-width="2.5"/>';
+  }
+  if (hoverPoint && currentPlayer === BLACK && !gameOver && !cpuThinking) {
+    const [hr, hc] = hoverPoint;
+    if (board[hr][hc] === EMPTY && !(koPoint && koPoint[0]===hr && koPoint[1]===hc)) {
+      html += '<circle cx="' + (PAD + hc*CELL) + '" cy="' + (PAD + hr*CELL) + '" r="18" fill="url(#ghostBlack)"/>';
+    }
+  }
+  svg.innerHTML = html;
+}
+
+const svg = document.getElementById('board');
+function getSvgPoint(e) {
+  const rect = svg.getBoundingClientRect();
+  const x = (e.clientX - rect.left) / rect.width * 480;
+  const y = (e.clientY - rect.top) / rect.height * 480;
+  return pointFromXY(x, y);
+}
+svg.addEventListener('click', (e) => {
+  if (gameOver || currentPlayer !== BLACK || cpuThinking) return;
+  const pt = getSvgPoint(e);
+  if (pt) makeMove(pt[0], pt[1]);
+});
+svg.addEventListener('mousemove', (e) => {
+  if (gameOver || currentPlayer !== BLACK || cpuThinking) {
+    if (hoverPoint) { hoverPoint = null; render(); }
+    return;
+  }
+  const pt = getSvgPoint(e);
+  if (!pt) {
+    if (hoverPoint) { hoverPoint = null; render(); }
+    return;
+  }
+  if (hoverPoint && pt[0] === hoverPoint[0] && pt[1] === hoverPoint[1]) return;
+  hoverPoint = pt;
+  render();
+});
+svg.addEventListener('mouseleave', () => { hoverPoint = null; render(); });
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'p' || e.key === 'P') {
+    if (!gameOver && currentPlayer === BLACK && !cpuThinking) passTurn();
+  } else if (e.key === 'n' || e.key === 'N') {
+    resetGame();
+  }
+});
+
+document.getElementById('pass-btn').addEventListener('click', passTurn);
+document.getElementById('reset-btn').addEventListener('click', resetGame);
+document.getElementById('replay-btn').addEventListener('click', resetGame);
+
+initBoard();
+render();
+updatePanel();
+</script>
+</body>
+</html>
