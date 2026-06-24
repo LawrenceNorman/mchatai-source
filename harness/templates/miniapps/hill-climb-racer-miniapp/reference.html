@@ -1,0 +1,1442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no">
+<title>Stunt Hill Racer</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{width:100%;height:100%;overflow:hidden;background:#0F172A;font-family:'Segoe UI',system-ui,sans-serif;color:#F1F5F9;touch-action:none;user-select:none;-webkit-user-select:none;}
+canvas{display:block;width:100%;height:100%;}
+#component-header{position:absolute;top:0;left:0;right:0;z-index:20;pointer-events:none;}
+#hud{position:absolute;top:62px;left:8px;right:8px;display:flex;justify-content:space-between;align-items:flex-start;pointer-events:none;z-index:10;}
+.hud-item{background:rgba(15,23,42,0.9);border:2px solid #10B981;padding:6px 10px;font-size:12px;font-weight:bold;line-height:1.6;border-radius:4px;}
+#fuel-bar-wrap{width:100px;height:12px;background:#1e293b;border:2px solid #FB923C;margin-top:4px;border-radius:2px;}
+#fuel-bar{height:100%;background:#10B981;transition:width 0.2s;border-radius:1px;}
+#controls{position:absolute;bottom:16px;left:16px;right:16px;display:flex;justify-content:space-between;z-index:10;}
+.ctrl-btn{width:80px;height:80px;border:3px solid;font-size:13px;font-weight:bold;color:#F1F5F9;cursor:pointer;display:flex;align-items:center;justify-content:center;background:rgba(15,23,42,0.85);border-radius:12px;-webkit-tap-highlight-color:transparent;}
+#btn-brake{border-color:#FB923C;}
+#btn-gas{border-color:#10B981;}
+#overlay{position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(15,23,42,0.95);display:flex;align-items:center;justify-content:center;z-index:30;}
+#overlay-inner{text-align:center;max-width:420px;padding:24px;width:90%;}
+#overlay h2{font-size:22px;margin-bottom:12px;color:#10B981;}
+#overlay h3{font-size:16px;margin-bottom:8px;color:#FB923C;}
+#overlay p{font-size:13px;margin-bottom:6px;color:#94a3b8;line-height:1.5;}
+#overlay .desc{color:#e2e8f0;font-size:14px;margin:12px 0;}
+.menu-btn{padding:12px 28px;background:#10B981;color:#0F172A;border:none;font-size:14px;font-weight:bold;cursor:pointer;border-radius:6px;margin:6px;}
+.menu-btn:hover{background:#34d399;}
+.menu-btn.secondary{background:#334155;color:#F1F5F9;}
+.menu-btn.secondary:hover{background:#475569;}
+#level-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin:16px 0;}
+.lvl-btn{padding:10px 6px;background:#1e293b;border:2px solid #334155;color:#94a3b8;font-size:12px;font-weight:bold;cursor:pointer;border-radius:6px;text-align:center;transition:background 0.15s;}
+.lvl-btn.unlocked{border-color:#10B981;color:#F1F5F9;}
+.lvl-btn.unlocked:hover{background:#334155;}
+.lvl-btn.completed{border-color:#fbbf24;color:#fbbf24;}
+.lvl-btn .stars{font-size:9px;display:block;margin-top:2px;}
+.lvl-btn .trk-name{font-size:7px;display:block;margin-top:2px;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.lvl-btn .diff-badge{font-size:7px;display:block;margin-top:1px;font-weight:bold;}
+.lvl-btn .best-time{font-size:7px;display:block;margin-top:1px;color:#10B981;}
+#track-detail{margin-top:12px;padding:10px;background:#1e293b;border:1px solid #334155;border-radius:6px;min-height:50px;display:none;}
+#track-detail h3{font-size:14px;margin-bottom:4px;color:#F1F5F9;}
+#track-detail .td-desc{font-size:11px;color:#94a3b8;margin-bottom:6px;}
+#track-detail .td-stats{font-size:11px;color:#64748b;}
+#track-detail .td-stats span{color:#10B981;}
+#crash-fx{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:32px;font-weight:bold;color:#dc2626;text-shadow:0 0 20px rgba(220,38,38,0.8);display:none;z-index:15;pointer-events:none;}
+</style>
+</head>
+<body><script type="application/json" id="mchatai-web-components-used">
+{"recipe":"recipe.platformer","components":["core.game-manager","core.physics2d","entities.camera-follow","entities.grid-board","entities.entity","entities.platformer-player","ui.mini-header","ui.scoreboard","ui.virtual-joystick","resources.swatches"],"mode":"module-imports"}
+</script>
+<div id="component-header"></div>
+<script type="module">
+import { GameManager } from "./web-components/core/GameManager.js";
+import { Physics2D, getAABB, getCircle, integrateMotion, intersectsAABB, intersectsCircle, findAABBCollisions, findCircleCollisions } from "./web-components/core/Physics2D.js";
+import { CameraFollow } from "./web-components/entities/CameraFollow.js";
+import { GridBoard } from "./web-components/entities/GridBoard.js";
+import { Entity } from "./web-components/entities/Entity.js";
+import { PlatformerPlayer } from "./web-components/entities/PlatformerPlayer.js";
+import { MiniHeader } from "./web-components/ui/MiniHeader.js";
+import { ScoreBoard } from "./web-components/ui/ScoreBoard.js";
+import { VirtualJoystick } from "./web-components/ui/VirtualJoystick.js";
+import { WEB_COMPONENT_SWATCHES, ASTEROIDS_SWATCHES, getSwatchByID, applySwatchVariables, buildSwatchDefaultsCSS, getCurrentSwatchPalette } from "./web-components/resources/Swatches.js";
+
+window.__mchatPlatformerComponents = {
+  GameManager, Physics2D, getAABB, getCircle, integrateMotion, intersectsAABB, intersectsCircle,
+  findAABBCollisions, findCircleCollisions, CameraFollow, GridBoard, Entity, PlatformerPlayer,
+  MiniHeader, ScoreBoard, VirtualJoystick, WEB_COMPONENT_SWATCHES, ASTEROIDS_SWATCHES,
+  getSwatchByID, applySwatchVariables, buildSwatchDefaultsCSS, getCurrentSwatchPalette
+};
+
+try {
+  const swatch = getSwatchByID("sunset-arcade") || WEB_COMPONENT_SWATCHES?.[0];
+  if (swatch) applySwatchVariables(document.documentElement, swatch, { prefix: "--mchat" });
+  MiniHeader.mount(document.getElementById("component-header"), {
+    title: "Stunt Hill Racer",
+    subtitle: "Ten stunt tracks with jumps, chasms, loops, elevators, fuel, coins, and real crashes"
+  });
+} catch (err) {
+  console.warn("mChatAI component glue skipped", err);
+}
+</script>
+<canvas id="c"></canvas>
+<div id="hud">
+  <div class="hud-item"><div id="level-name">LEVEL 1</div><div id="dist">0 m</div></div>
+  <div class="hud-item"><div id="coins">COINS: 0</div><div>FUEL<div id="fuel-bar-wrap"><div id="fuel-bar" style="width:100%"></div></div></div></div>
+</div>
+<div id="controls">
+  <button class="ctrl-btn" id="btn-brake">BRAKE</button>
+  <button class="ctrl-btn" id="btn-gas">GAS</button>
+</div>
+<div id="crash-fx">CRASH!</div>
+<div id="overlay"><div id="overlay-inner"></div></div>
+<script>
+(function(){
+const canvas=document.getElementById('c');
+const ctx=canvas.getContext('2d');
+const distEl=document.getElementById('dist');
+const coinsEl=document.getElementById('coins');
+const levelNameEl=document.getElementById('level-name');
+const fuelBar=document.getElementById('fuel-bar');
+const overlay=document.getElementById('overlay');
+const overlayInner=document.getElementById('overlay-inner');
+const crashFx=document.getElementById('crash-fx');
+const hudEl=document.getElementById('hud');
+const controlsEl=document.getElementById('controls');
+
+let W,H;
+function resize(){W=canvas.width=window.innerWidth;H=canvas.height=window.innerHeight;}
+window.addEventListener('resize',resize);
+resize();
+
+// ===== SAVE DATA =====
+let saveData={unlocked:1,completed:{},stars:{},bestTimes:{}};
+try{let s=localStorage.getItem('stunt_save3');if(s)saveData=JSON.parse(s);if(!saveData.bestTimes)saveData.bestTimes={};}catch(e){}
+function saveProg(){localStorage.setItem('stunt_save3',JSON.stringify(saveData));}
+
+// ===== PATH-BASED TRACK SYSTEM =====
+// Track is a polyline: [{x,y,dist,nx,ny,solid,kill,finish,elevator,...}]
+// dist = cumulative arc-length from start
+// nx,ny = surface normal (points away from surface, i.e. "up" for flat ground)
+
+let path=[];       // The track polyline
+let collectibles=[];
+let elevatorDefs=[]; // {startIdx,endIdx,height,speed,phase,basePoints:[{x,y}]}
+let camera={x:0,y:0};
+let trackTotalDist=0;
+
+function dist2D(x1,y1,x2,y2){return Math.sqrt((x2-x1)**2+(y2-y1)**2);}
+
+function buildPathMetrics(){
+  // Compute cumulative distances and normals
+  if(path.length===0)return;
+  path[0].dist=0;
+  for(let i=1;i<path.length;i++){
+    let dx=path[i].x-path[i-1].x;
+    let dy=path[i].y-path[i-1].y;
+    path[i].dist=path[i-1].dist+Math.sqrt(dx*dx+dy*dy);
+  }
+  // Normals (perpendicular to segment, pointing "left" of travel direction = up for left-to-right)
+  for(let i=0;i<path.length;i++){
+    let prev=path[Math.max(0,i-1)];
+    let next=path[Math.min(path.length-1,i+1)];
+    let dx=next.x-prev.x;
+    let dy=next.y-prev.y;
+    let len=Math.sqrt(dx*dx+dy*dy)||1;
+    // Canvas y grows downward, so the surface normal above a left-to-right flat road is (0,-1).
+    path[i].nx=dy/len;
+    path[i].ny=-dx/len;
+    // Tangent
+    path[i].tx=dx/len;
+    path[i].ty=dy/len;
+  }
+  trackTotalDist=path[path.length-1].dist;
+}
+
+// Find closest path point index to a world position
+function closestPathIdx(wx,wy){
+  let bestD=Infinity,bestI=0;
+  for(let i=0;i<path.length;i++){
+    let dx=path[i].x-wx,dy=path[i].y-wy;
+    let d=dx*dx+dy*dy;
+    if(d<bestD){bestD=d;bestI=i;}
+  }
+  return bestI;
+}
+
+// Get interpolated path position at a given arc-length distance
+function pathAt(d){
+  if(d<=0)return{x:path[0].x,y:path[0].y,nx:path[0].nx,ny:path[0].ny,tx:path[0].tx,ty:path[0].ty,solid:path[0].solid,kill:path[0].kill,finish:path[0].finish,idx:0};
+  if(d>=trackTotalDist){
+    let p=path[path.length-1];
+    return{x:p.x,y:p.y,nx:p.nx,ny:p.ny,tx:p.tx,ty:p.ty,solid:p.solid,kill:p.kill,finish:p.finish,idx:path.length-1};
+  }
+  // Binary search for segment
+  let lo=0,hi=path.length-1;
+  while(lo<hi-1){
+    let mid=(lo+hi)>>1;
+    if(path[mid].dist<=d)lo=mid;
+    else hi=mid;
+  }
+  let p0=path[lo],p1=path[hi];
+  let segLen=p1.dist-p0.dist;
+  let t=segLen>0?(d-p0.dist)/segLen:0;
+  return{
+    x:p0.x+(p1.x-p0.x)*t,
+    y:p0.y+(p1.y-p0.y)*t,
+    nx:p0.nx+(p1.nx-p0.nx)*t,
+    ny:p0.ny+(p1.ny-p0.ny)*t,
+    tx:p0.tx+(p1.tx-p0.tx)*t,
+    ty:p0.ty+(p1.ty-p0.ty)*t,
+    solid:p0.solid,
+    kill:p0.kill||false,
+    finish:p0.finish||false,
+    loop:p0.loop||p1.loop||false,
+    elevator:p0.elevator||p1.elevator||false,
+    idx:lo
+  };
+}
+
+// Get curvature at a path distance (inverse radius)
+function pathCurvature(d){
+  let p0=pathAt(d-5);
+  let p1=pathAt(d+5);
+  // Change in tangent angle over arc length
+  let a0=Math.atan2(p0.ty,p0.tx);
+  let a1=Math.atan2(p1.ty,p1.tx);
+  let da=a1-a0;
+  while(da>Math.PI)da-=Math.PI*2;
+  while(da<-Math.PI)da+=Math.PI*2;
+  return da/10; // curvature = dAngle/ds
+}
+
+// ===== TRACK BUILDER =====
+function makeTrack(segs){
+  let pts=[];
+  let x=0,y=0;
+  function addPt(px,py,props){
+    pts.push(Object.assign({x:px,y:py,solid:true,kill:false,finish:false},props||{}));
+  }
+  // Start pad
+  for(let i=0;i<8;i++){addPt(x,y);x+=50;}
+
+  for(let seg of segs){
+    switch(seg.type){
+      case 'flat':{
+        let len=seg.length||200;
+        for(let i=0;i<len;i+=50){addPt(x,y);x+=50;}
+        break;
+      }
+      case 'hill_up':{
+        let h=seg.height||100,len=seg.length||200;
+        let steps=Math.max(2,Math.floor(len/30));
+        for(let i=0;i<=steps;i++){
+          let t=i/steps;
+          // Smooth cosine curve
+          let cy=y-h*(0.5-0.5*Math.cos(Math.PI*t));
+          let cx=x+t*len;
+          addPt(cx,cy);
+        }
+        x+=len;y-=h;
+        break;
+      }
+      case 'hill_down':{
+        let h=seg.height||100,len=seg.length||200;
+        let steps=Math.max(2,Math.floor(len/30));
+        for(let i=0;i<=steps;i++){
+          let t=i/steps;
+          let cy=y+h*(0.5-0.5*Math.cos(Math.PI*t));
+          let cx=x+t*len;
+          addPt(cx,cy);
+        }
+        x+=len;y+=h;
+        break;
+      }
+      case 'ramp':{
+        let h=seg.height||120,len=seg.length||150;
+        let steps=Math.max(2,Math.floor(len/25));
+        for(let i=0;i<=steps;i++){
+          let t=i/steps;
+          addPt(x+t*len,y-h*t);
+        }
+        x+=len;y-=h;
+        // No flat lip: the ramp must end at its angled top so the car launches
+        // UP-and-forward (a flat lip flattens the launch and same-height gaps
+        // become impossible to clear).
+        break;
+      }
+      case 'chasm':{
+        let gap=seg.gap||300,depth=seg.depth||500;
+        // Edge
+        addPt(x,y);
+        // Left wall down
+        addPt(x+10,y+depth,{solid:false,kill:true});
+        // Bottom
+        addPt(x+gap-10,y+depth,{solid:false,kill:true});
+        // Right wall up - landing side
+        let landY=y+(seg.landOffset||0);
+        addPt(x+gap,landY);
+        x+=gap;y=landY;
+        break;
+      }
+      case 'loop':{
+        let r=seg.radius||100;
+        // Loop: circle centered at (x+r, y-r)
+        // Entry from bottom-right, go CCW: bottom → right → top → left → bottom
+        let cx=x,cy=y-r;
+        let steps=36;
+        for(let i=0;i<=steps;i++){
+          let a=Math.PI*0.5-i*(Math.PI*2/steps);
+          let lx=cx+Math.cos(a)*r;
+          let ly=cy+Math.sin(a)*r;
+          addPt(lx,ly,{loop:true});
+        }
+        // x stays the same after a full loop (car exits where it entered)
+        // But we need forward progress, so offset the loop center forward
+        // Actually, rethink: place loop so entry is at current x and exit advances
+        // Let me redo: entry at bottom, circle goes up-right-top-left-down
+        // Center at (x+r, y-r), entry at angle PI/2 (bottom of circle = (cx, cy+r) = (x+r, y))
+        // Wait, that puts entry at x+r not x. Let me fix.
+        // Remove the points we just added
+        let removeCount=steps+1;
+        pts.splice(pts.length-removeCount,removeCount);
+        // Place center so bottom of circle is at current (x, y)
+        cx=x;cy=y-r;
+        // But then entry point is at (x, y) and exit point is also at (x, y)
+        // We need the car to traverse the loop and come out the other side
+        // Solution: entry on the right side going up, exit on the right side going down
+        // Actually for a game loop: car enters from left at bottom, goes up the right side,
+        // over the top, down the left side, exits right at bottom
+        // So circle center at (x + something, y - r)
+        // Entry: left side of circle bottom = angle ~PI*0.7 from right
+        // Simpler: make the loop a full circle centered above the track
+        // Entry tangent should match current track direction (rightward)
+        // At bottom of circle, tangent is rightward. So place center at (x, y-r)
+        // Entry at (x, y) = bottom of circle, angle = PI/2
+        // Full circle returns to (x, y). But we need x to advance.
+        // Solution: offset exit by adding a small flat section after
+        cx=x;cy=y-r;
+        for(let i=0;i<=steps;i++){
+          let a=Math.PI*0.5-i*(Math.PI*2/steps);
+          addPt(cx+Math.cos(a)*r, cy+Math.sin(a)*r, {loop:true});
+        }
+        // After loop, add small connector moving right
+        x+=20;addPt(x,y);
+        break;
+      }
+      case 'elevator':{
+        let h=seg.height||150;
+        let speed=seg.speed||1;
+        // Mark elevator start index
+        let startIdx=pts.length;
+        // Platform points (will be animated)
+        for(let i=0;i<4;i++){addPt(x,y,{elevator:true});x+=40;}
+        let endIdx=pts.length-1;
+        elevatorDefs.push({
+          startIdx:startIdx,
+          endIdx:endIdx,
+          height:h,
+          speed:speed,
+          phase:0,
+          baseY:y
+        });
+        // After elevator, add connecting ramp up to the elevated position
+        // The elevator lifts the car, then there's a platform at the top
+        y-=h;
+        addPt(x,y);x+=40;addPt(x,y);
+        break;
+      }
+      case 'bumps':{
+        let count=seg.count||5,h=seg.height||40;
+        for(let i=0;i<count;i++){
+          let steps2=6;
+          for(let j=0;j<=steps2;j++){
+            let t=j/steps2;
+            addPt(x+t*60, y-Math.sin(t*Math.PI)*h);
+          }
+          x+=60;
+        }
+        break;
+      }
+      case 'drop':{
+        let h=seg.height||150;
+        addPt(x,y);
+        addPt(x+15,y);
+        addPt(x+25,y+h);
+        x+=25;y+=h;
+        addPt(x+15,y);
+        break;
+      }
+      case 'wave':{
+        let amp=seg.amplitude||60,len=seg.length||400;
+        let steps2=Math.floor(len/20);
+        for(let i=0;i<=steps2;i++){
+          let t=i/steps2;
+          addPt(x+t*len, y+Math.sin(t*Math.PI*4)*amp);
+        }
+        x+=len;y=y+Math.sin(Math.PI*4)*amp;
+        // snap y to last point
+        y=pts[pts.length-1].y;
+        break;
+      }
+    }
+  }
+  // Finish pad
+  for(let i=0;i<6;i++){addPt(x,y);x+=50;}
+  // Mark finish zone — cover the whole pad (incl. the last point) so a car that
+  // overshoots and clamps to the track end still registers the finish.
+  let fIdx=pts.length-6;
+  for(let i=Math.max(0,fIdx);i<pts.length;i++){
+    pts[i].finish=true;
+  }
+  return pts;
+}
+
+// ===== 10 TRACKS =====
+const TRACKS=[
+  {name:"Green Hills",desc:"Easy slopes to learn the basics",
+   segs:[
+    {type:'flat',length:200},
+    {type:'hill_up',height:60,length:200},
+    {type:'hill_down',height:60,length:200},
+    {type:'flat',length:150},
+    {type:'hill_up',height:40,length:150},
+    {type:'hill_down',height:80,length:250},
+    {type:'flat',length:200},
+    {type:'hill_up',height:50,length:150},
+    {type:'flat',length:100},
+    {type:'hill_down',height:50,length:150},
+    {type:'flat',length:200},
+  ]},
+  {name:"First Flight",desc:"Small ramps and your first jump!",
+   segs:[
+    {type:'flat',length:200},
+    {type:'ramp',height:50,length:120},
+    {type:'hill_down',height:70,length:150},
+    {type:'flat',length:200},
+    {type:'ramp',height:70,length:150},
+    {type:'hill_down',height:90,length:200},
+    {type:'flat',length:150},
+    {type:'bumps',count:3,height:25},
+    {type:'flat',length:200},
+  ]},
+  {name:"Mind The Gap",desc:"Jump across small chasms - don't fall!",
+   segs:[
+    {type:'flat',length:250},
+    {type:'ramp',height:80,length:150},
+    {type:'chasm',gap:180,depth:500},
+    {type:'flat',length:250},
+    {type:'ramp',height:90,length:150},
+    {type:'chasm',gap:220,depth:500},
+    {type:'flat',length:200},
+    {type:'hill_down',height:60,length:150},
+    {type:'flat',length:200},
+  ]},
+  {name:"Going Up",desc:"Use brakes on elevators - timing matters!",
+   segs:[
+    {type:'flat',length:200},
+    {type:'ramp',height:50,length:100},
+    {type:'hill_down',height:70,length:120},
+    {type:'flat',length:150},
+    {type:'elevator',height:120,speed:1.0},
+    {type:'flat',length:200},
+    {type:'ramp',height:60,length:100},
+    {type:'chasm',gap:160,depth:500},
+    {type:'flat',length:150},
+    {type:'elevator',height:100,speed:0.8},
+    {type:'flat',length:200},
+  ]},
+  {name:"Loop Rookie",desc:"Your first loop-to-loop! Build speed!",
+   segs:[
+    {type:'flat',length:200},
+    {type:'hill_down',height:120,length:250},
+    {type:'flat',length:100},
+    {type:'loop',radius:90},
+    {type:'flat',length:250},
+    {type:'ramp',height:60,length:100},
+    {type:'chasm',gap:160,depth:500},
+    {type:'flat',length:150},
+    {type:'bumps',count:3,height:25},
+    {type:'flat',length:200},
+  ]},
+  {name:"Big Air",desc:"Massive jumps over deadly chasms",
+   segs:[
+    {type:'flat',length:200},
+    {type:'hill_down',height:120,length:200},
+    {type:'ramp',height:120,length:200},
+    {type:'chasm',gap:320,depth:600},
+    {type:'flat',length:200},
+    {type:'ramp',height:100,length:150},
+    {type:'chasm',gap:280,depth:600,landOffset:40},
+    {type:'flat',length:150},
+    {type:'ramp',height:80,length:120},
+    {type:'chasm',gap:220,depth:500},
+    {type:'flat',length:200},
+  ]},
+  {name:"Loop Master",desc:"Multiple loops and drops - hold on!",
+   segs:[
+    {type:'flat',length:200},
+    {type:'hill_down',height:160,length:250},
+    {type:'loop',radius:90},
+    {type:'flat',length:150},
+    {type:'hill_down',height:100,length:150},
+    {type:'loop',radius:80},
+    {type:'flat',length:150},
+    {type:'ramp',height:100,length:150},
+    {type:'chasm',gap:250,depth:600},
+    {type:'drop',height:100},
+    {type:'flat',length:200},
+  ]},
+  {name:"Sky Platform",desc:"Chain elevators with precision braking",
+   segs:[
+    {type:'flat',length:200},
+    {type:'elevator',height:140,speed:1.2},
+    {type:'flat',length:150},
+    {type:'ramp',height:80,length:120},
+    {type:'chasm',gap:200,depth:600},
+    {type:'elevator',height:120,speed:1.0},
+    {type:'flat',length:100},
+    {type:'elevator',height:150,speed:1.5},
+    {type:'flat',length:150},
+    {type:'hill_down',height:180,length:200},
+    {type:'loop',radius:95},
+    {type:'flat',length:200},
+  ]},
+  {name:"The Gauntlet",desc:"Everything at once - survive!",
+   segs:[
+    {type:'flat',length:150},
+    {type:'ramp',height:100,length:150},
+    {type:'chasm',gap:250,depth:600},
+    {type:'hill_down',height:130,length:150},
+    {type:'loop',radius:85},
+    {type:'flat',length:100},
+    {type:'elevator',height:130,speed:1.3},
+    {type:'ramp',height:90,length:120},
+    {type:'chasm',gap:280,depth:600},
+    {type:'bumps',count:4,height:30},
+    {type:'drop',height:110},
+    {type:'loop',radius:80},
+    {type:'flat',length:200},
+  ]},
+  {name:"IMPOSSIBLE",desc:"Only legends complete this track",
+   segs:[
+    {type:'flat',length:150},
+    {type:'ramp',height:140,length:200},
+    {type:'chasm',gap:380,depth:700},
+    {type:'hill_down',height:170,length:150},
+    {type:'loop',radius:100},
+    {type:'ramp',height:80,length:100},
+    {type:'chasm',gap:200,depth:600},
+    {type:'elevator',height:180,speed:1.8},
+    {type:'ramp',height:110,length:140},
+    {type:'chasm',gap:330,depth:700},
+    {type:'loop',radius:90},
+    {type:'flat',length:80},
+    {type:'loop',radius:75},
+    {type:'drop',height:180},
+    {type:'ramp',height:100,length:120},
+    {type:'chasm',gap:280,depth:600,landOffset:60},
+    {type:'flat',length:200},
+  ]},
+];
+
+// ===== GAME STATE =====
+let car={pathDist:0,speed:0,wx:0,wy:0,vx:0,vy:0,angle:0,angVel:0,
+         airborne:false,fuel:100,coins:0,dist:0,crashed:false,finished:false};
+let gasPressed=false,brakePressed=false;
+let gameState='menu';
+let currentTrack=0;
+let crashTimer=0;
+let finishTimer=0;
+let particles=[];
+let trackLength=0;
+let startTime=0;
+
+// ===== CONTROLS =====
+const btnGas=document.getElementById('btn-gas');
+const btnBrake=document.getElementById('btn-brake');
+function pDown(e){e.preventDefault();}
+btnGas.addEventListener('touchstart',e=>{pDown(e);gasPressed=true;});
+btnGas.addEventListener('touchend',()=>{gasPressed=false;});
+btnGas.addEventListener('touchcancel',()=>{gasPressed=false;});
+btnGas.addEventListener('mousedown',()=>{gasPressed=true;});
+btnGas.addEventListener('mouseup',()=>{gasPressed=false;});
+btnGas.addEventListener('mouseleave',()=>{gasPressed=false;});
+btnBrake.addEventListener('touchstart',e=>{pDown(e);brakePressed=true;});
+btnBrake.addEventListener('touchend',()=>{brakePressed=false;});
+btnBrake.addEventListener('touchcancel',()=>{brakePressed=false;});
+btnBrake.addEventListener('mousedown',()=>{brakePressed=true;});
+btnBrake.addEventListener('mouseup',()=>{brakePressed=false;});
+btnBrake.addEventListener('mouseleave',()=>{brakePressed=false;});
+document.addEventListener('keydown',e=>{
+  if(e.key==='ArrowRight'||e.key==='d'){gasPressed=true;e.preventDefault();}
+  if(e.key==='ArrowLeft'||e.key==='a'){brakePressed=true;e.preventDefault();}
+  if(e.key==='ArrowUp'||e.key==='ArrowDown')e.preventDefault();
+});
+document.addEventListener('keyup',e=>{
+  if(e.key==='ArrowRight'||e.key==='d')gasPressed=false;
+  if(e.key==='ArrowLeft'||e.key==='a')brakePressed=false;
+});
+
+// ===== PARTICLES =====
+function spawnParticles(x,y,colors,count){
+  for(let i=0;i<count;i++){
+    particles.push({x,y,vx:(Math.random()-0.5)*8,vy:-(Math.random()*6+2),
+      life:60+Math.random()*40,maxLife:100,
+      color:colors[Math.floor(Math.random()*colors.length)],
+      size:3+Math.random()*4});
+  }
+}
+
+// ===== BUILD TRACK =====
+function buildTrack(idx){
+  elevatorDefs=[];
+  path=makeTrack(TRACKS[idx].segs);
+  buildPathMetrics();
+  collectibles=[];
+  // Spawn collectibles on solid non-special sections
+  for(let i=5;i<path.length-5;i+=3){
+    let p=path[i];
+    if(!p.solid||p.kill||p.finish||p.elevator||p.loop)continue;
+    if(Math.random()<0.12){
+      collectibles.push({x:p.x+p.nx*30,y:p.y+p.ny*30,type:'coin',collected:false});
+    }
+    if(Math.random()<0.04){
+      collectibles.push({x:p.x+p.nx*30,y:p.y+p.ny*30,type:'fuel',collected:false});
+    }
+  }
+  trackLength=trackTotalDist;
+}
+
+function startLevel(idx){
+  currentTrack=idx;
+  buildTrack(idx);
+  let start=pathAt(200); // Start a bit in
+  car={pathDist:200,speed:0,wx:start.x,wy:start.y,vx:0,vy:0,
+       angle:Math.atan2(start.ty,start.tx),angVel:0,airTime:0,
+       airborne:false,fuel:100,coins:0,dist:0,crashed:false,finished:false};
+  // Place car slightly above path
+  car.wx=start.x+start.nx*20;
+  car.wy=start.y+start.ny*20;
+  camera={x:car.wx-W*0.35,y:car.wy-H*0.5};
+  gasPressed=false;brakePressed=false;
+  particles=[];crashTimer=0;finishTimer=0;
+  gameState='playing';
+  startTime=Date.now();
+  levelNameEl.textContent=TRACKS[idx].name;
+  overlay.style.display='none';
+  hudEl.style.display='flex';
+  controlsEl.style.display='flex';
+  crashFx.style.display='none';
+}
+
+// ===== PHYSICS =====
+const GRAVITY=0.45;       // gravity used for on-track slope physics
+const AIR_GRAVITY=0.40;   // slightly floatier in the air so ramp jumps clear gaps
+const ENGINE_FORCE=0.40;
+const BRAKE_MULT=0.90;
+const FRICTION=0.985;
+const CAR_OFFSET=20; // Distance from path surface to car center
+const MAX_LAND_ANGLE=1.0; // Max angle diff for safe landing (radians)
+const CRASH_IMPACT=17;
+
+function update(){
+  if(gameState!=='playing')return;
+
+  // Update elevators
+  for(let ed of elevatorDefs){
+    ed.phase+=0.025*ed.speed;
+    let lift=(Math.sin(ed.phase)+1)/2*ed.height;
+    for(let i=ed.startIdx;i<=ed.endIdx&&i<path.length;i++){
+      if(path[i].elevator){
+        path[i].y=ed.baseY-lift;
+      }
+    }
+  }
+  // Rebuild metrics if elevators moved (only elevator sections changed)
+  if(elevatorDefs.length>0)buildPathMetrics();
+
+  if(!car.airborne){
+    // ===== ON-PATH PHYSICS =====
+    let p=pathAt(car.pathDist);
+
+    // Engine force along path
+    if(gasPressed&&car.fuel>0){
+      car.speed+=ENGINE_FORCE;
+      car.fuel-=0.06;
+    }
+    if(brakePressed){
+      car.speed*=BRAKE_MULT;
+      if(Math.abs(car.speed)<0.3)car.speed=0;
+    }
+    // Gravity component along path tangent (ty positive = downhill = speed up)
+    car.speed+=GRAVITY*p.ty;
+    // Friction
+    car.speed*=FRICTION;
+    // Prevent going backward
+    if(car.speed<-1)car.speed=-1;
+    // Move along path
+    car.pathDist+=car.speed;
+    // Clamp to path bounds
+    if(car.pathDist<0){car.pathDist=0;car.speed=0;}
+    if(car.pathDist>trackTotalDist){car.pathDist=trackTotalDist;car.speed=0;}
+
+    // Get new position
+    p=pathAt(car.pathDist);
+    car.wx=p.x+p.nx*CAR_OFFSET;
+    car.wy=p.y+p.ny*CAR_OFFSET;
+    car.angle=Math.atan2(p.ty,p.tx);
+
+    // Kill zone (rarely fires now that we launch at the edge, but catches a car
+    // that peels off the top of a loop and slides into a pit).
+    if(p.kill){
+      triggerCrash();return;
+    }
+
+    // Elevator decks reward slowing down; hitting them too fast breaks the chassis.
+    if(p.elevator&&Math.abs(car.speed)>5.5){
+      triggerCrash();return;
+    }
+
+    // Loops need commitment. If speed bleeds off mid-loop, the car peels away and falls.
+    if(p.loop&&car.speed<3.2){
+      car.airborne=true;car.airTime=0;
+      car.launchDist=car.pathDist;
+      car.vx=p.tx*Math.max(car.speed,1.5);
+      car.vy=p.ty*Math.max(car.speed,1.5);
+      car.angVel=0.035;
+    }
+
+    // Finish check — fire on contact at ANY speed. The car crosses the line at
+    // full throttle; gating on a slow speed meant it blew straight through.
+    if(p.finish){
+      triggerFinish();return;
+    }
+
+    // Fuel out
+    if(car.fuel<=0&&Math.abs(car.speed)<0.5){
+      triggerCrash();return;
+    }
+
+    // ===== TAKE-OFF =====
+    // The car must FLY off ledges, not track down the cliff face into the pit.
+    // The bug: building the launch vector from the edge point's own tangent gave
+    // a mostly-downward vector (that point's tangent is averaged with the vertical
+    // wall below it), so the car dived over the lip instead of leaping. Fix: build
+    // the launch from the direction the car is actually travelling, sampled a bit
+    // BEHIND the lip where the surface is still clean (flat or ramp slope).
+    if(!car.airborne){
+      // Build the launch from the direction the car is actually travelling, sampled
+      // a bit BEHIND the lip where the surface is still clean (flat or ramp slope).
+      let bp=pathAt(Math.max(0,car.pathDist-22));
+      let hdx=p.x-bp.x, hdy=p.y-bp.y;
+      let hlen=Math.hypot(hdx,hdy)||1;
+      let rideTx=hdx/hlen, rideTy=hdy/hlen;
+      // The surface a short step AHEAD — where the track is about to go.
+      let fp=pathAt(Math.min(trackTotalDist,car.pathDist+18));
+
+      // Does the track fall away (chasm / non-solid / kill) just ahead?
+      let gapAhead=false;
+      for(let k=p.idx+1;k<=p.idx+2&&k<path.length;k++){
+        if(path[k].kill||!path[k].solid){gapAhead=true;break;}
+      }
+
+      let takeOff=false,edgeJump=false;
+      if(gapAhead){
+        // Real edge: ALWAYS leave the ground here so we sail over the gap instead of
+        // curling down the (still nominally "solid") near-vertical wall segment.
+        takeOff=true;edgeJump=true;
+      } else if(!p.loop){
+        let aBack=Math.atan2(rideTy,rideTx);
+        let aFwd=Math.atan2(fp.ty,fp.tx);
+        let dA=aFwd-aBack;
+        while(dA>Math.PI)dA-=Math.PI*2;
+        while(dA<-Math.PI)dA+=Math.PI*2;
+        // Cliff / drop lip: the ground ahead plunges steeply (ty→1 is straight down)
+        // while we arrive shallow → fly off it instead of tracking the face down.
+        if(fp.ty>0.7 && rideTy<0.55 && car.speed>2.5){takeOff=true;edgeJump=true;}
+        // Gentle crest: spin off it when we're fast enough that gravity can't bend
+        // our path tightly enough to follow the curve (v²·κ > g).
+        let curv=Math.max(0,dA)/18;
+        if(car.speed*car.speed*curv>GRAVITY*0.7 && car.speed>2.5)takeOff=true;
+      }
+
+      if(takeOff){
+        car.airborne=true;car.airTime=0;
+        car.launchDist=car.pathDist;
+        car.vx=rideTx*car.speed;
+        car.vy=rideTy*car.speed;
+        // A small upward kick off flat/downhill edges so a cliff launch reads as a
+        // jump (and clears the lip) rather than a slide. Ramps already point up.
+        if(edgeJump&&rideTy>-0.2)car.vy-=1.4;
+        car.angle=Math.atan2(rideTy,rideTx);
+        car.angVel=0;
+      }
+    }
+
+  } else {
+    // ===== AIRBORNE PHYSICS — true ballistic projectile =====
+    car.airTime=(car.airTime||0)+1;
+    car.vy+=AIR_GRAVITY;
+    // In-air rotation control (lean to set up the landing).
+    if(gasPressed&&car.fuel>0){
+      car.angVel-=0.005;
+      car.fuel-=0.02;
+    }
+    if(brakePressed){
+      car.angVel+=0.005;
+    }
+    car.angle+=car.angVel;
+    car.angVel*=0.95;
+    car.vx*=0.999;
+
+    car.wx+=car.vx;
+    car.wy+=car.vy;
+
+    // Check landing against the closest solid surface point.
+    let ci=closestPathIdx(car.wx,car.wy);
+    if(ci>=0&&ci<path.length){
+      let pp=path[ci];
+      let dx=car.wx-pp.x;
+      let dy=car.wy-pp.y;
+      let normalDist=dx*pp.nx+dy*pp.ny;          // + = above surface
+      let tangentDist=Math.abs(dx*pp.tx+dy*pp.ty);
+      let impactNormal=-(car.vx*pp.nx+car.vy*pp.ny); // closing speed into surface
+      let aheadOfLaunch=pp.dist>(car.launchDist||0)+45;
+
+      // Re-attach ONLY when we DROP onto an up-facing floor that lies AHEAD of where
+      // we launched. This is the anti-"cliff grab" rule:
+      //  - pp.ny<-0.3  → the surface faces up (a floor), so vertical cliff faces and
+      //                  the lip we just left (normals point sideways) are never landings.
+      //  - aheadOfLaunch → can't re-grab the ground right at/behind the take-off point.
+      //  - airTime>4 grace + impactNormal>0.25 → we're genuinely descending, not grazing.
+      if(car.airTime>4 && impactNormal>0.25 &&
+         pp.ny<-0.3 && aheadOfLaunch &&
+         normalDist<CAR_OFFSET+8 && normalDist>-30 &&
+         tangentDist<80 && pp.solid && !pp.kill){
+        let surfAngle=Math.atan2(pp.ty,pp.tx);
+        let angleDiff=car.angle-surfAngle;
+        while(angleDiff>Math.PI)angleDiff-=Math.PI*2;
+        while(angleDiff<-Math.PI)angleDiff+=Math.PI*2;
+
+        if(Math.abs(angleDiff)>MAX_LAND_ANGLE){
+          triggerCrash();return; // landed on its roof / nose
+        }
+        if(impactNormal>CRASH_IMPACT){
+          triggerCrash();return; // slammed in too hard
+        }
+
+        // Safe landing — snap back onto the track, keep forward momentum.
+        car.airborne=false;
+        car.pathDist=pp.dist;
+        car.speed=car.vx*pp.tx+car.vy*pp.ty;
+        car.angVel=0;
+      }
+    }
+
+    // Fell into the void
+    if(car.wy>2000){
+      triggerCrash();return;
+    }
+  }
+
+  // Fuel clamp
+  if(car.fuel<0)car.fuel=0;
+
+  // Distance tracking
+  car.dist=Math.max(car.dist,car.pathDist/10);
+
+  // Collectibles
+  for(let c of collectibles){
+    if(c.collected)continue;
+    let dx=car.wx-c.x,dy=car.wy-c.y;
+    if(dx*dx+dy*dy<40*40){
+      c.collected=true;
+      if(c.type==='fuel')car.fuel=Math.min(100,car.fuel+20);
+      if(c.type==='coin')car.coins++;
+    }
+  }
+
+  // Particles update
+  for(let i=particles.length-1;i>=0;i--){
+    let p=particles[i];
+    p.x+=p.vx;p.y+=p.vy;p.vy+=0.15;p.life--;
+    if(p.life<=0)particles.splice(i,1);
+  }
+
+  // HUD
+  distEl.textContent=Math.floor(car.dist)+' m / '+Math.floor(trackTotalDist/10)+' m';
+  coinsEl.textContent='COINS: '+car.coins;
+  fuelBar.style.width=car.fuel+'%';
+  fuelBar.style.background=car.fuel<25?'#FB923C':'#10B981';
+}
+
+function triggerCrash(){
+  if(gameState!=='playing')return;
+  gameState='crashed';
+  car.crashed=true;
+  crashTimer=0;
+  // Fire + sparks
+  spawnParticles(car.wx,car.wy,['#dc2626','#fb923c','#fbbf24','#f87171'],20);
+  // Metal debris
+  spawnParticles(car.wx,car.wy,['#64748b','#94a3b8','#475569'],8);
+  // Glass shards
+  spawnParticles(car.wx,car.wy-10,['#7dd3fc','#bae6fd'],5);
+  crashFx.style.display='block';
+  setTimeout(()=>{crashFx.style.display='none';},1200);
+  setTimeout(showCrashScreen,1500);
+}
+
+function triggerFinish(){
+  if(gameState!=='playing')return;
+  gameState='finished';
+  car.finished=true;
+  finishTimer=0;
+  spawnParticles(car.wx,car.wy,['#10B981','#fbbf24','#3b82f6','#a855f7'],30);
+  let elapsed=((Date.now()-startTime)/1000).toFixed(1);
+  let stars=1;
+  if(car.fuel>30)stars=2;
+  if(car.fuel>50&&car.coins>=3)stars=3;
+  let prev=saveData.stars[currentTrack]||0;
+  if(stars>prev)saveData.stars[currentTrack]=stars;
+  saveData.completed[currentTrack]=true;
+  let timeNum=parseFloat(elapsed);
+  let prevBest=saveData.bestTimes[currentTrack];
+  if(!prevBest||timeNum<prevBest)saveData.bestTimes[currentTrack]=timeNum;
+  if(currentTrack+1>=saveData.unlocked)saveData.unlocked=Math.min(TRACKS.length,currentTrack+2);
+  saveProg();
+  setTimeout(()=>showFinishScreen(elapsed,stars),1500);
+}
+
+// ===== DRAWING =====
+function drawCar(cx,cy,angle){
+  ctx.save();
+  ctx.translate(cx,cy);
+  ctx.rotate(angle);
+  if(car.crashed)ctx.globalAlpha=0.5;
+
+  // Body
+  ctx.fillStyle='#dc2626';
+  ctx.beginPath();
+  ctx.moveTo(-24,-14);ctx.lineTo(24,-14);ctx.lineTo(28,-4);ctx.lineTo(28,4);
+  ctx.lineTo(-28,4);ctx.lineTo(-28,-4);ctx.closePath();ctx.fill();
+  // Roof
+  ctx.fillStyle='#991b1b';
+  ctx.beginPath();
+  ctx.moveTo(-4,-14);ctx.lineTo(14,-14);ctx.lineTo(17,-24);ctx.lineTo(-1,-24);
+  ctx.closePath();ctx.fill();
+  // Windshield
+  ctx.fillStyle='#7dd3fc';
+  ctx.beginPath();
+  ctx.moveTo(14,-14);ctx.lineTo(17,-24);ctx.lineTo(14,-24);ctx.lineTo(11,-14);
+  ctx.closePath();ctx.fill();
+  // Bumpers
+  ctx.fillStyle='#fbbf24';
+  ctx.fillRect(24,-9,5,8);
+  ctx.fillRect(-29,-9,4,8);
+  // Exhaust
+  ctx.fillStyle='#64748b';
+  ctx.fillRect(-32,-2,6,3);
+  // Wheels
+  ctx.fillStyle='#1e293b';
+  ctx.beginPath();ctx.arc(-17,7,8,0,Math.PI*2);ctx.fill();
+  ctx.beginPath();ctx.arc(17,7,8,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#94a3b8';
+  ctx.beginPath();ctx.arc(-17,7,3.5,0,Math.PI*2);ctx.fill();
+  ctx.beginPath();ctx.arc(17,7,3.5,0,Math.PI*2);ctx.fill();
+  // Spokes
+  let wr=car.airborne?car.angle*3:car.pathDist*0.08;
+  ctx.strokeStyle='#64748b';ctx.lineWidth=1.5;
+  for(let w of[-17,17]){
+    for(let s=0;s<3;s++){
+      let a=wr+s*Math.PI*2/3;
+      ctx.beginPath();ctx.moveTo(w,7);
+      ctx.lineTo(w+Math.cos(a)*6,7+Math.sin(a)*6);ctx.stroke();
+    }
+  }
+  ctx.globalAlpha=1;
+  ctx.restore();
+}
+
+function draw(){
+  ctx.clearRect(0,0,W,H);
+
+  // Camera
+  let targetCX=car.wx-W*0.35;
+  let targetCY=car.wy-H*0.45;
+  camera.x+=(targetCX-camera.x)*0.08;
+  camera.y+=(targetCY-camera.y)*0.06;
+
+  ctx.save();
+  ctx.translate(-camera.x,-camera.y);
+
+  // Sky gradient
+  let skyGrad=ctx.createLinearGradient(0,camera.y,0,camera.y+H);
+  skyGrad.addColorStop(0,'#0c0a1a');
+  skyGrad.addColorStop(0.5,'#1a1035');
+  skyGrad.addColorStop(1,'#1e3a5f');
+  ctx.fillStyle=skyGrad;
+  ctx.fillRect(camera.x,camera.y,W,H);
+
+  // Stars
+  ctx.fillStyle='#e2e8f0';
+  for(let i=0;i<50;i++){
+    let sx=(i*173+50)%900+camera.x*0.1;
+    let sy=(i*89+20)%350+camera.y*0.15;
+    ctx.globalAlpha=0.3+((i*17)%60)/100;
+    ctx.fillRect(sx,sy,0.5+((i*31)%3),0.5+((i*31)%3));
+  }
+  ctx.globalAlpha=1;
+
+  // Background mountains
+  ctx.fillStyle='#1e293b';
+  ctx.beginPath();
+  ctx.moveTo(camera.x,camera.y+H);
+  for(let x=camera.x-100;x<camera.x+W+100;x+=50){
+    ctx.lineTo(x,camera.y+H*0.45+Math.sin(x*0.001)*60+Math.sin(x*0.003)*30+60);
+  }
+  ctx.lineTo(camera.x+W+100,camera.y+H);
+  ctx.closePath();ctx.fill();
+
+  // === DRAW TRACK ===
+  // Collect visible segments, splitting at chasms
+  let segments=[];  // arrays of consecutive solid points
+  let currentSeg=[];
+
+  for(let i=0;i<path.length;i++){
+    let p=path[i];
+    if(p.x<camera.x-400||p.x>camera.x+W+400){
+      if(currentSeg.length>0){segments.push(currentSeg);currentSeg=[];}
+      continue;
+    }
+    if(p.solid&&!p.kill){
+      currentSeg.push(p);
+    } else {
+      if(currentSeg.length>0){segments.push(currentSeg);currentSeg=[];}
+    }
+  }
+  if(currentSeg.length>0)segments.push(currentSeg);
+
+  // Fill terrain under each segment
+  for(let seg of segments){
+    if(seg.length<2)continue;
+    ctx.fillStyle='#334155';
+    ctx.beginPath();
+    ctx.moveTo(seg[0].x,seg[0].y);
+    for(let i=1;i<seg.length;i++)ctx.lineTo(seg[i].x,seg[i].y);
+    // Close downward
+    let maxY=camera.y+H+200;
+    ctx.lineTo(seg[seg.length-1].x,maxY);
+    ctx.lineTo(seg[0].x,maxY);
+    ctx.closePath();ctx.fill();
+  }
+
+  // Draw surface lines with grass tufts
+  for(let seg of segments){
+    if(seg.length<2)continue;
+    let isLoop=seg[0].loop;
+    // Surface line
+    ctx.strokeStyle=isLoop?'#8b5cf6':'#10B981';
+    ctx.lineWidth=3;
+    ctx.beginPath();
+    ctx.moveTo(seg[0].x,seg[0].y);
+    for(let i=1;i<seg.length;i++){
+      if(seg[i].loop&&!seg[i-1].loop){
+        ctx.stroke();ctx.strokeStyle='#8b5cf6';ctx.beginPath();ctx.moveTo(seg[i-1].x,seg[i-1].y);
+      }
+      if(!seg[i].loop&&seg[i-1].loop){
+        ctx.stroke();ctx.strokeStyle='#10B981';ctx.beginPath();ctx.moveTo(seg[i-1].x,seg[i-1].y);
+      }
+      ctx.lineTo(seg[i].x,seg[i].y);
+    }
+    ctx.stroke();
+    // Grass tufts on non-loop terrain
+    if(!isLoop){
+      ctx.strokeStyle='#22c55e';ctx.lineWidth=1.5;
+      for(let i=0;i<seg.length;i+=2){
+        let p=seg[i];
+        if(p.loop||p.elevator)continue;
+        let nx=p.nx||0,ny=p.ny||0;
+        for(let g=0;g<3;g++){
+          let ox=(g-1)*5;
+          let gx=p.x+ox;
+          let gy=p.y;
+          ctx.beginPath();ctx.moveTo(gx,gy);
+          ctx.lineTo(gx+nx*6+(g-1)*2,gy+ny*6-3);ctx.stroke();
+        }
+      }
+    }
+  }
+
+  // Loop glow effect
+  for(let seg of segments){
+    let loopPts=seg.filter(p=>p.loop);
+    if(loopPts.length<5)continue;
+    // Animated glow ring
+    let glowAlpha=0.15+0.1*Math.sin(Date.now()*0.003);
+    ctx.strokeStyle='rgba(139,92,246,'+glowAlpha+')';
+    ctx.lineWidth=12;
+    ctx.beginPath();ctx.moveTo(loopPts[0].x,loopPts[0].y);
+    for(let i=1;i<loopPts.length;i++)ctx.lineTo(loopPts[i].x,loopPts[i].y);
+    ctx.stroke();
+    // Speed arrow at loop entry
+    let ep=loopPts[0];
+    ctx.fillStyle='#c4b5fd';ctx.font='bold 12px sans-serif';
+    ctx.fillText('\u25B6',ep.x-20,ep.y-10);
+  }
+
+  // Draw chasm danger indicators
+  let chasmEdges=[];
+  for(let i=1;i<path.length;i++){
+    let p=path[i];
+    if(p.kill&&p.x>camera.x-300&&p.x<camera.x+W+300){
+      let prev=path[i-1];
+      // Mark chasm edges for hazard stripes
+      if(prev&&prev.solid&&!prev.kill&&chasmEdges.indexOf(i-1)===-1)chasmEdges.push(i-1);
+      // Abyss fog
+      let fogGrad=ctx.createLinearGradient(p.x,p.y-300,p.x,p.y);
+      fogGrad.addColorStop(0,'rgba(220,38,38,0)');
+      fogGrad.addColorStop(1,'rgba(220,38,38,0.12)');
+      ctx.fillStyle=fogGrad;
+      ctx.fillRect(p.x-25,p.y-300,50,300);
+    }
+  }
+  // Hazard stripes and warning signs at chasm edges
+  for(let ei of chasmEdges){
+    let ep=path[ei];
+    if(ep.x<camera.x-200||ep.x>camera.x+W+200)continue;
+    // Chevron stripes
+    ctx.save();
+    ctx.translate(ep.x,ep.y);
+    for(let s=0;s<4;s++){
+      let sy=-5-s*10;
+      ctx.fillStyle=s%2===0?'#fbbf24':'#dc2626';
+      ctx.fillRect(-5,sy,10,8);
+    }
+    ctx.restore();
+    // Triangle warning sign
+    ctx.fillStyle='#fbbf24';
+    ctx.beginPath();
+    ctx.moveTo(ep.x,ep.y-55);ctx.lineTo(ep.x-10,ep.y-40);ctx.lineTo(ep.x+10,ep.y-40);
+    ctx.closePath();ctx.fill();
+    ctx.fillStyle='#0F172A';ctx.font='bold 10px sans-serif';
+    ctx.fillText('!',ep.x-3,ep.y-43);
+  }
+  // Also mark landing side of chasms
+  for(let i=1;i<path.length-1;i++){
+    let p=path[i];
+    let prev=path[i-1];
+    if(p.solid&&!p.kill&&prev&&prev.kill){
+      if(p.x<camera.x-200||p.x>camera.x+W+200)continue;
+      // Landing zone marker
+      ctx.strokeStyle='#10B981';ctx.lineWidth=2;
+      ctx.setLineDash([3,3]);
+      ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(p.x,p.y-30);ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle='#10B981';ctx.font='bold 9px sans-serif';
+      ctx.fillText('\u25BC',p.x-5,p.y-32);
+    }
+  }
+
+  // Draw elevator platforms (enhanced)
+  for(let ed of elevatorDefs){
+    let startP=path[ed.startIdx];
+    let endP=path[ed.endIdx];
+    if(!startP||startP.x<camera.x-300||startP.x>camera.x+W+300)continue;
+    let platW=endP.x-startP.x+10;
+    let platX=startP.x-5;
+    let platY=startP.y;
+    // Shaft rails (two tracks)
+    ctx.strokeStyle='#475569';ctx.lineWidth=2;
+    ctx.setLineDash([6,4]);
+    ctx.beginPath();ctx.moveTo(platX+10,ed.baseY);ctx.lineTo(platX+10,ed.baseY-ed.height);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(platX+platW-10,ed.baseY);ctx.lineTo(platX+platW-10,ed.baseY-ed.height);ctx.stroke();
+    ctx.setLineDash([]);
+    // Platform shadow
+    ctx.fillStyle='rgba(0,0,0,0.3)';
+    ctx.fillRect(platX+3,platY+2,platW,6);
+    // Platform body - metallic look
+    let platGrad=ctx.createLinearGradient(0,platY-6,0,platY+4);
+    platGrad.addColorStop(0,'#fbbf24');platGrad.addColorStop(0.5,'#f59e0b');platGrad.addColorStop(1,'#b45309');
+    ctx.fillStyle=platGrad;
+    ctx.fillRect(platX,platY-4,platW,8);
+    // Safety bumpers
+    ctx.fillStyle='#dc2626';
+    ctx.fillRect(platX,platY-8,6,4);
+    ctx.fillRect(platX+platW-6,platY-8,6,4);
+    // Hazard stripes on platform
+    ctx.fillStyle='rgba(0,0,0,0.15)';
+    for(let sx=platX+8;sx<platX+platW-8;sx+=12){
+      ctx.fillRect(sx,platY-3,6,6);
+    }
+    // Arrow indicators at top and bottom
+    ctx.fillStyle='#fbbf24';ctx.font='bold 11px sans-serif';
+    let arrowX=(startP.x+endP.x)/2;
+    ctx.fillText('\u25B2',arrowX-5,ed.baseY-ed.height-5);
+    ctx.fillText('\u25BC',arrowX-5,ed.baseY+14);
+    // "BRAKE" hint near elevator
+    ctx.fillStyle='rgba(251,191,36,0.6)';ctx.font='bold 8px sans-serif';
+    ctx.fillText('BRAKE',arrowX-14,ed.baseY-ed.height-16);
+  }
+
+  // Draw finish flags
+  for(let p of path){
+    if(!p.finish)continue;
+    if(p.x<camera.x-200||p.x>camera.x+W+200)continue;
+    ctx.strokeStyle='#f1f5f9';ctx.lineWidth=3;
+    ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(p.x,p.y-80);ctx.stroke();
+    let fw=40,fh=25,fx=p.x,fy=p.y-80;
+    for(let r=0;r<5;r++){
+      for(let c=0;c<8;c++){
+        ctx.fillStyle=(r+c)%2===0?'#f1f5f9':'#1e293b';
+        ctx.fillRect(fx+c*(fw/8),fy+r*(fh/5),fw/8+0.5,fh/5+0.5);
+      }
+    }
+    break; // only draw one flag
+  }
+
+  // Collectibles
+  for(let c of collectibles){
+    if(c.collected)continue;
+    if(c.x<camera.x-100||c.x>camera.x+W+100)continue;
+    if(c.type==='fuel'){
+      ctx.fillStyle='#FB923C';
+      ctx.fillRect(c.x-8,c.y-10,16,18);
+      ctx.fillStyle='#0F172A';
+      ctx.fillRect(c.x-3,c.y-14,6,5);
+      ctx.fillStyle='#F1F5F9';
+      ctx.font='bold 9px sans-serif';
+      ctx.fillText('F',c.x-4,c.y+4);
+    } else {
+      ctx.fillStyle='#fbbf24';
+      ctx.beginPath();ctx.arc(c.x,c.y,9,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='#92400e';
+      ctx.beginPath();ctx.arc(c.x,c.y,5,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='#fbbf24';ctx.font='bold 8px sans-serif';
+      ctx.fillText('$',c.x-3,c.y+3);
+    }
+  }
+
+  // Particles (mixed shapes)
+  for(let p of particles){
+    ctx.globalAlpha=p.life/p.maxLife;
+    ctx.fillStyle=p.color;
+    ctx.save();
+    ctx.translate(p.x,p.y);
+    ctx.rotate(p.life*0.1);
+    // Alternate between squares and triangles
+    if(p.size>5){
+      ctx.beginPath();
+      ctx.moveTo(0,-p.size/2);
+      ctx.lineTo(p.size/2,p.size/2);
+      ctx.lineTo(-p.size/2,p.size/2);
+      ctx.closePath();ctx.fill();
+    } else {
+      ctx.fillRect(-p.size/2,-p.size/2,p.size,p.size);
+    }
+    ctx.restore();
+  }
+  ctx.globalAlpha=1;
+
+  // Car
+  if(gameState==='playing'||gameState==='crashed'||gameState==='finished'){
+    drawCar(car.wx,car.wy,car.angle);
+  }
+
+  // Crash effects: smoke + fire + screen shake
+  if(gameState==='crashed'){
+    crashTimer++;
+    // Screen shake
+    if(crashTimer<20){
+      let shake=(20-crashTimer)*0.5;
+      ctx.translate((Math.random()-0.5)*shake,(Math.random()-0.5)*shake);
+    }
+    // Fire glow
+    if(crashTimer<40){
+      let fr=30+crashTimer*0.5;
+      let fireGrad=ctx.createRadialGradient(car.wx,car.wy,0,car.wx,car.wy,fr);
+      fireGrad.addColorStop(0,'rgba(251,146,60,'+Math.max(0,0.5-crashTimer*0.012)+')');
+      fireGrad.addColorStop(0.6,'rgba(220,38,38,'+Math.max(0,0.3-crashTimer*0.007)+')');
+      fireGrad.addColorStop(1,'rgba(220,38,38,0)');
+      ctx.fillStyle=fireGrad;
+      ctx.fillRect(car.wx-fr,car.wy-fr,fr*2,fr*2);
+    }
+    // Smoke puffs (rising, expanding)
+    ctx.globalAlpha=Math.max(0,1-crashTimer/70);
+    ctx.fillStyle='#64748b';
+    for(let i=0;i<4;i++){
+      let sx=car.wx+(Math.random()-0.5)*30;
+      let sy=car.wy-10-Math.random()*20-crashTimer*0.8;
+      let sr=6+crashTimer*0.3+Math.random()*8;
+      ctx.beginPath();ctx.arc(sx,sy,sr,0,Math.PI*2);ctx.fill();
+    }
+    // Dark smoke
+    ctx.fillStyle='#1e293b';
+    for(let i=0;i<2;i++){
+      let sx=car.wx+(Math.random()-0.5)*20;
+      let sy=car.wy-20-crashTimer*1.2-Math.random()*15;
+      let sr=4+crashTimer*0.2;
+      ctx.beginPath();ctx.arc(sx,sy,sr,0,Math.PI*2);ctx.fill();
+    }
+    ctx.globalAlpha=1;
+  }
+
+  ctx.restore();
+
+  // Speed indicator
+  if(gameState==='playing'){
+    let spd=Math.abs(car.airborne?Math.sqrt(car.vx*car.vx+car.vy*car.vy):car.speed);
+    ctx.fillStyle='rgba(15,23,42,0.8)';
+    ctx.fillRect(W/2-40,8,80,22);
+    ctx.strokeStyle='#10B981';ctx.lineWidth=1;
+    ctx.strokeRect(W/2-40,8,80,22);
+    ctx.fillStyle='#F1F5F9';ctx.font='bold 11px sans-serif';ctx.textAlign='center';
+    ctx.fillText(Math.floor(spd*3)+' km/h',W/2,24);
+    ctx.textAlign='left';
+  }
+
+  // Airborne indicator
+  if(gameState==='playing'&&car.airborne){
+    ctx.fillStyle='#fbbf24';ctx.font='bold 14px sans-serif';ctx.textAlign='center';
+    ctx.fillText('AIRBORNE!',W/2,50);
+    ctx.textAlign='left';
+  }
+}
+
+// ===== MENUS =====
+const DIFF_LABELS=['Easy','Easy','Medium','Medium','Medium','Hard','Hard','Hard','Expert','Extreme'];
+const DIFF_COLORS=['#10B981','#10B981','#fbbf24','#fbbf24','#fbbf24','#fb923c','#fb923c','#fb923c','#dc2626','#dc2626'];
+
+function showMenu(){
+  gameState='menu';
+  hudEl.style.display='none';
+  controlsEl.style.display='none';
+  overlay.style.display='flex';
+  let html='<h2>\uD83C\uDFC1 STUNT HILL RACER</h2>';
+  html+='<p style="color:#e2e8f0;margin-bottom:12px">Jump chasms, survive loops, reach the finish!</p>';
+  html+='<div id="level-grid">';
+  for(let i=0;i<TRACKS.length;i++){
+    let unlocked=i<saveData.unlocked;
+    let completed=saveData.completed[i];
+    let stars=saveData.stars[i]||0;
+    let bt=saveData.bestTimes[i];
+    let cls=completed?'lvl-btn completed':unlocked?'lvl-btn unlocked':'lvl-btn';
+    let starStr='';
+    if(completed){for(let s=0;s<3;s++)starStr+=s<stars?'\u2605':'\u2606';}
+    html+='<div class="'+cls+'" data-lvl="'+i+'" '+(unlocked?'':'style="opacity:0.4;cursor:default"')+'>';
+    html+=(i+1);
+    html+='<span class="trk-name">'+(unlocked?TRACKS[i].name:'\uD83D\uDD12')+'</span>';
+    html+='<span class="diff-badge" style="color:'+DIFF_COLORS[i]+'">'+DIFF_LABELS[i]+'</span>';
+    if(starStr)html+='<span class="stars">'+starStr+'</span>';
+    if(bt!=null)html+='<span class="best-time">'+bt.toFixed(1)+'s</span>';
+    html+='</div>';
+  }
+  html+='</div>';
+  html+='<div id="track-detail"></div>';
+  html+='<p style="font-size:11px;color:#64748b;margin-top:8px">Arrow keys or touch buttons | Gas=go, Brake=slow | Land flat or crash!</p>';
+  overlayInner.innerHTML=html;
+
+  let detailEl=document.getElementById('track-detail');
+  function showDetail(i){
+    let t=TRACKS[i];
+    let unlocked=i<saveData.unlocked;
+    if(!unlocked){detailEl.style.display='none';return;}
+    detailEl.style.display='block';
+    let dh='<h3 style="color:'+DIFF_COLORS[i]+'">'+t.name+'</h3>';
+    dh+='<div class="td-desc">'+t.desc+'</div>';
+    dh+='<div class="td-stats">';
+    dh+='Difficulty: <span style="color:'+DIFF_COLORS[i]+'">'+DIFF_LABELS[i]+'</span>';
+    let bt=saveData.bestTimes[i];
+    if(bt!=null)dh+=' &middot; Best: <span>'+bt.toFixed(1)+'s</span>';
+    let st=saveData.stars[i]||0;
+    if(st>0)dh+=' &middot; Stars: <span>'+st+'/3</span>';
+    dh+='</div>';
+    dh+='<button class="menu-btn" style="margin-top:8px;padding:8px 20px;font-size:12px" onclick="window._play('+i+')">'+(saveData.completed[i]?'REPLAY':'PLAY')+'</button>';
+    detailEl.innerHTML=dh;
+  }
+  window._play=function(i){if(i<saveData.unlocked)startLevel(i);};
+
+  document.querySelectorAll('.lvl-btn').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      let lvl=parseInt(btn.dataset.lvl);
+      if(lvl<saveData.unlocked){
+        showDetail(lvl);
+        // Highlight selected
+        document.querySelectorAll('.lvl-btn').forEach(b=>b.style.outline='none');
+        btn.style.outline='2px solid #F1F5F9';
+      }
+    });
+    // Double-click / second tap to launch directly
+    btn.addEventListener('dblclick',()=>{
+      let lvl=parseInt(btn.dataset.lvl);
+      if(lvl<saveData.unlocked)startLevel(lvl);
+    });
+  });
+}
+
+function showCrashScreen(){
+  overlay.style.display='flex';
+  controlsEl.style.display='none';
+  let html='<h2 style="color:#dc2626">\uD83D\uDCA5 CRASHED!</h2>';
+  html+='<p class="desc">Distance: '+Math.floor(car.dist)+' m</p>';
+  html+='<p>Coins: '+car.coins+'</p>';
+  html+='<div style="margin-top:16px">';
+  html+='<button class="menu-btn" onclick="window._retry()">RETRY</button>';
+  html+='<button class="menu-btn secondary" onclick="window._menu()">MENU</button>';
+  html+='</div>';
+  overlayInner.innerHTML=html;
+}
+
+function showFinishScreen(time,stars){
+  overlay.style.display='flex';
+  controlsEl.style.display='none';
+  let starStr='';
+  for(let s=0;s<3;s++)starStr+=s<stars?'\u2B50':'\u2606';
+  let html='<h2>\uD83C\uDFC1 TRACK COMPLETE!</h2>';
+  html+='<h3>'+TRACKS[currentTrack].name+'</h3>';
+  html+='<p class="desc" style="font-size:24px">'+starStr+'</p>';
+  let prevBest=saveData.bestTimes[currentTrack];
+  let isNewBest=!prevBest||parseFloat(time)<=prevBest;
+  html+='<p>Time: '+time+'s'+(isNewBest?' <span style="color:#10B981;font-size:11px">NEW BEST!</span>':'')+'</p>';
+  html+='<p>Coins: '+car.coins+'</p>';
+  html+='<p>Fuel left: '+Math.floor(car.fuel)+'%</p>';
+  html+='<div style="margin-top:16px">';
+  if(currentTrack<TRACKS.length-1){
+    html+='<button class="menu-btn" onclick="window._next()">NEXT TRACK</button>';
+  }
+  html+='<button class="menu-btn secondary" onclick="window._retry()">REPLAY</button>';
+  html+='<button class="menu-btn secondary" onclick="window._menu()">MENU</button>';
+  html+='</div>';
+  overlayInner.innerHTML=html;
+}
+
+window._retry=()=>startLevel(currentTrack);
+window._next=()=>{if(currentTrack<TRACKS.length-1)startLevel(currentTrack+1);};
+window._menu=()=>showMenu();
+
+// ===== GAME LOOP =====
+function loop(){
+  if(gameState==='playing')update();
+  if(gameState!=='menu'){
+    draw();
+    // Also update particles in non-playing states
+    if(gameState!=='playing'){
+      for(let i=particles.length-1;i>=0;i--){
+        let p=particles[i];
+        p.x+=p.vx;p.y+=p.vy;p.vy+=0.15;p.life--;
+        if(p.life<=0)particles.splice(i,1);
+      }
+    }
+  }
+  requestAnimationFrame(loop);
+}
+
+showMenu();
+requestAnimationFrame(loop);
+
+document.addEventListener('visibilitychange',()=>{
+  if(document.hidden){gasPressed=false;brakePressed=false;}
+});
+})();
+</script>
+</body>
+</html>
