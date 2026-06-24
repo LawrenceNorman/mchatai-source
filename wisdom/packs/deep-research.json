@@ -1,0 +1,131 @@
+{
+  "packID": "deep-research",
+  "version": 1,
+  "displayName": "Deep Research",
+  "description": "Rules for source-grounded, DRACO-style research tasks that require accuracy, completeness, objectivity, and citation support.",
+  "categories": ["research", "citations", "evaluation"],
+  "keywords": [
+    "research",
+    "deep research",
+    "draco",
+    "citation",
+    "citations",
+    "sources",
+    "source-grounded",
+    "finance research",
+    "legal research",
+    "medical research",
+    "product comparison",
+    "academic literature",
+    "needle in a haystack",
+    "fact checking"
+  ],
+  "guidelines": [
+    {
+      "id": "dr-001-no-snippet-citations",
+      "rule": "Do not cite search result snippets, model summaries, cached previews, or unopened pages as sources.",
+      "why": "Snippet citations often misrepresent the source and cannot prove that the claim is actually supported.",
+      "severity": "critical",
+      "appliesTo": ["research", "citations", "web search"],
+      "examples": [
+        "Bad: citing a search result card as proof of a current legal status.",
+        "Good: open the regulator, court, filing, paper, or vendor page and cite that URL."
+      ]
+    },
+    {
+      "id": "dr-002-material-claims-need-support",
+      "rule": "Every material factual claim needs a supporting source URL or must be labeled as inference, estimate, or uncertainty.",
+      "why": "Research answers fail when plausible claims are presented as sourced facts without direct support.",
+      "severity": "critical",
+      "appliesTo": ["research", "answers", "citations"],
+      "examples": [
+        "Bad: 'The rule is blocked nationwide' with no source.",
+        "Good: 'A court order blocked the rule as of DATE (URL); this may change on appeal.'"
+      ]
+    },
+    {
+      "id": "dr-003-primary-sources-first",
+      "rule": "Prefer primary or authoritative sources for law, finance, medicine, academic claims, technical specs, pricing, and current product capabilities.",
+      "why": "High-stakes and date-sensitive domains are frequently distorted by secondary summaries or stale articles.",
+      "severity": "critical",
+      "appliesTo": ["legal research", "finance research", "medical research", "academic literature", "product comparison"],
+      "examples": [
+        "Finance: SEC filing or investor relations release before a news recap.",
+        "Law: statute, regulation, agency page, or court order before a blog post.",
+        "Medicine: guideline, regulator label, trial registry, or peer-reviewed trial before a general health article."
+      ]
+    },
+    {
+      "id": "dr-004-date-sensitive-check",
+      "rule": "For claims likely to change, include the source date, effective date, filing/report date, trial date, access date, or price date.",
+      "why": "A correct stale answer is still wrong for current-status research tasks.",
+      "severity": "critical",
+      "appliesTo": ["current events", "law", "finance", "medicine", "product comparison", "technology"],
+      "examples": [
+        "Good: 'Pricing page accessed June 23, 2026.'",
+        "Good: 'The filing covers fiscal Q1 2026 and was filed on DATE.'"
+      ]
+    },
+    {
+      "id": "dr-005-claim-ledger",
+      "rule": "Build a claim ledger before final synthesis: claim, source URL, support strength, relevant date, and caveat.",
+      "why": "A claim ledger catches unsupported assertions and makes citation verification tractable.",
+      "severity": "important",
+      "appliesTo": ["deep research", "DRACO", "citation-heavy answers"],
+      "examples": [
+        "Claim: 'Tool X supports local model Y.' Source: vendor docs URL. Date: accessed DATE. Caveat: only on beta channel."
+      ]
+    },
+    {
+      "id": "dr-006-deduplicate-sources",
+      "rule": "Collapse duplicate or derivative sources and cite the strongest original source for each claim family.",
+      "why": "Many search results repeat the same claim; citation count is not evidence quality.",
+      "severity": "important",
+      "appliesTo": ["web research", "source selection"],
+      "examples": [
+        "Bad: five articles repeating one press release.",
+        "Good: cite the filing or release, then use one independent source only for context."
+      ]
+    },
+    {
+      "id": "dr-007-facts-vs-inference",
+      "rule": "Separate observed facts, quoted source claims, expert interpretation, and your own inference.",
+      "why": "Objectivity suffers when the answer hides uncertainty or blends evidence levels.",
+      "severity": "important",
+      "appliesTo": ["analysis", "objectivity", "research answers"],
+      "examples": [
+        "Good: 'The filing reports X. I infer Y because Z, but the company does not state that directly.'"
+      ]
+    },
+    {
+      "id": "dr-008-objectivity-limitations-pass",
+      "rule": "Before finalizing, add relevant conflicts, limitations, counterarguments, missing evidence, and uncertainty.",
+      "why": "DRACO-style rubrics reward completeness and objectivity, not just a confident answer.",
+      "severity": "important",
+      "appliesTo": ["research synthesis", "final answer"],
+      "examples": [
+        "Good: 'The evidence is strongest for population A; it is weaker for population B because trials excluded B.'"
+      ]
+    },
+    {
+      "id": "dr-009-no-advice-in-high-stakes-domains",
+      "rule": "For legal, medical, and financial research, provide informational analysis only and avoid personalized advice.",
+      "why": "Research support can inform a reader, but it should not present itself as professional advice.",
+      "severity": "critical",
+      "appliesTo": ["law", "medicine", "finance"],
+      "examples": [
+        "Good: 'This is informational; consult a qualified professional for advice on a specific situation.'"
+      ]
+    },
+    {
+      "id": "dr-010-answer-shape",
+      "rule": "Use a final structure that makes verification easy: direct answer, evidence and analysis, caveats or uncertainty, and sources.",
+      "why": "Structured answers are easier to grade, audit, and reuse in benchmark comparisons.",
+      "severity": "recommended",
+      "appliesTo": ["research answer", "benchmark output"],
+      "examples": [
+        "Sections: Direct Answer; Evidence and Analysis; Caveats / Uncertainty; Sources."
+      ]
+    }
+  ]
+}
