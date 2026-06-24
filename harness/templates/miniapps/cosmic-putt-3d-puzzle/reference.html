@@ -1,0 +1,1090 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Cosmic Putt</title>
+<style>
+  :root{
+    --pink:#ff6ec7; --mint:#5ef2c0; --lemon:#ffe066; --sky:#6ec1ff;
+    --coral:#ff8c66; --lav:#b69bff; --gold:#ffd24d;
+    --ink:#0a0a23; --glass:rgba(20,16,52,.55);
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0; height:100%; overflow:hidden; background:#05030f;
+    font-family:'Trebuchet MS','Segoe UI',system-ui,sans-serif; color:#fff;
+    user-select:none; -webkit-user-select:none; touch-action:none;}
+  #stage{position:fixed; inset:0;}
+  #stage canvas{display:block; width:100%; height:100%;}
+  #confetti{position:fixed; inset:0; pointer-events:none; z-index:40;}
+
+  /* HUD */
+  #hud{position:fixed; top:0; left:0; right:0; z-index:20; display:flex;
+    flex-wrap:wrap; gap:6px 10px; padding:10px 14px; pointer-events:none;
+    align-items:center; text-shadow:0 2px 6px #000;}
+  .pill{background:var(--glass); border:1px solid rgba(255,255,255,.18);
+    border-radius:999px; padding:6px 14px; font-weight:bold; font-size:14px;
+    letter-spacing:.5px; backdrop-filter:blur(6px);}
+  .pill b{color:var(--lemon); font-size:16px;}
+  .pill.best b{color:var(--mint);}
+  .pill.tot b{color:var(--sky);}
+  .grow{flex:1;}
+
+  #hint{position:fixed; top:54px; left:50%; transform:translateX(-50%);
+    z-index:20; background:var(--glass); border:1px solid rgba(255,255,255,.16);
+    border-radius:14px; padding:7px 16px; font-size:13px; max-width:90vw;
+    text-align:center; backdrop-filter:blur(6px); pointer-events:none;
+    text-shadow:0 1px 4px #000; transition:opacity .5s; line-height:1.35;}
+
+  /* Power meter */
+  #power-wrap{position:fixed; left:50%; bottom:96px; transform:translateX(-50%);
+    width:min(70vw,360px); height:14px; z-index:20; background:rgba(0,0,0,.45);
+    border:1px solid rgba(255,255,255,.25); border-radius:999px; overflow:hidden;
+    opacity:0; transition:opacity .2s; pointer-events:none;}
+  #power-bar{height:100%; width:0%;
+    background:linear-gradient(90deg,var(--mint),var(--lemon),var(--coral),var(--pink));
+    transition:width .03s linear;}
+  #power-wrap.show{opacity:1;}
+  #power-label{position:fixed; left:50%; bottom:114px; transform:translateX(-50%);
+    z-index:20; font-size:12px; font-weight:bold; letter-spacing:1px; opacity:0;
+    transition:opacity .2s; text-shadow:0 1px 4px #000; pointer-events:none;}
+  #power-label.show{opacity:1;}
+
+  /* Controls */
+  #controls{position:fixed; bottom:0; left:0; right:0; z-index:25; display:flex;
+    gap:8px; padding:12px 12px calc(12px + env(safe-area-inset-bottom));
+    justify-content:center; align-items:flex-end;}
+  button.ctl{flex:0 1 auto; border:none; border-radius:16px; padding:14px 16px;
+    font-family:inherit; font-weight:bold; font-size:15px; color:#11052a;
+    cursor:pointer; min-width:84px; box-shadow:0 6px 18px rgba(0,0,0,.45);
+    transition:transform .08s, filter .15s, box-shadow .15s; letter-spacing:.3px;}
+  button.ctl:active{transform:translateY(2px) scale(.97);}
+  button.ctl:disabled{filter:grayscale(.7) brightness(.6); cursor:default; box-shadow:none;}
+  #modeBtn{background:linear-gradient(160deg,#fff,var(--sky));}
+  #modeBtn.orbit{background:linear-gradient(160deg,#fff,var(--lav)); color:#11052a;}
+  #shootBtn{background:linear-gradient(160deg,var(--lemon),var(--coral));
+    font-size:17px; padding:14px 22px;}
+  #resetBtn{background:linear-gradient(160deg,#fff,#cdd6ff);}
+  #nextBtn{background:linear-gradient(160deg,var(--mint),var(--sky)); font-size:17px;}
+
+  /* Banner */
+  #banner{position:fixed; inset:0; z-index:30; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; text-align:center; gap:8px;
+    pointer-events:none; opacity:0; transition:opacity .4s;}
+  #banner.show{opacity:1;}
+  #banner .big{font-size:clamp(34px,9vw,72px); font-weight:900; letter-spacing:1px;
+    text-shadow:0 4px 24px #000, 0 0 30px var(--pink); margin:0;
+    background:linear-gradient(90deg,var(--lemon),var(--pink),var(--sky));
+    -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent;}
+  #banner .sub{font-size:clamp(15px,4vw,22px); font-weight:bold; text-shadow:0 2px 10px #000;}
+  #banner .stars{font-size:clamp(34px,11vw,64px); letter-spacing:6px;
+    text-shadow:0 0 18px var(--gold);}
+
+  /* Scorecard */
+  #card{position:fixed; inset:0; z-index:50; display:flex; align-items:center;
+    justify-content:center; background:rgba(4,2,16,.82); backdrop-filter:blur(8px);
+    padding:18px; overflow:auto;}
+  #card .panel{background:linear-gradient(170deg,#1a1340,#0c0826);
+    border:1px solid rgba(255,255,255,.2); border-radius:24px; padding:22px;
+    width:min(460px,94vw); box-shadow:0 20px 60px rgba(0,0,0,.6);}
+  #card h1{margin:0 0 4px; font-size:30px; text-align:center;
+    background:linear-gradient(90deg,var(--lemon),var(--pink),var(--sky));
+    -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent;}
+  #card .tagline{text-align:center; color:#cfc9ff; margin-bottom:14px; font-size:14px;}
+  #card table{width:100%; border-collapse:collapse; font-size:14px;}
+  #card td{padding:6px 8px; border-bottom:1px solid rgba(255,255,255,.08);}
+  #card td.lv{color:#bdb6ff;}
+  #card td.st{text-align:right; font-weight:bold;}
+  #card td.sc{text-align:center; color:var(--gold); letter-spacing:2px;}
+  #card .totrow td{font-size:17px; font-weight:900; border-top:2px solid rgba(255,255,255,.25);
+    border-bottom:none; padding-top:10px;}
+  #card .best{text-align:center; margin:12px 0 4px; font-size:15px;}
+  #card .best b{color:var(--mint);}
+  #card .newbest{color:var(--lemon); font-weight:900; text-align:center;
+    font-size:18px; margin:8px 0; text-shadow:0 0 12px var(--lemon);}
+  #playAgain{display:block; width:100%; margin-top:16px; border:none; border-radius:16px;
+    padding:16px; font-family:inherit; font-weight:900; font-size:19px; color:#11052a;
+    cursor:pointer; background:linear-gradient(160deg,var(--lemon),var(--coral),var(--pink));
+    box-shadow:0 8px 24px rgba(0,0,0,.5);}
+  #playAgain:active{transform:translateY(2px);}
+
+  #loading{position:fixed; inset:0; z-index:60; display:flex; align-items:center;
+    justify-content:center; flex-direction:column; gap:14px; background:#05030f;
+    font-size:20px; font-weight:bold; letter-spacing:1px;}
+  #loading .dot{width:54px;height:54px;border-radius:50%;
+    border:5px solid rgba(255,255,255,.2); border-top-color:var(--pink);
+    animation:spin 1s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .hidden{display:none !important;}
+</style>
+</head>
+<body>
+  <div id="stage"></div>
+  <canvas id="confetti"></canvas>
+
+  <div id="hud">
+    <div class="pill">LEVEL <b id="lvlNum">1</b>/9</div>
+    <div class="pill">PAR <b id="parNum">2</b></div>
+    <div class="pill">STROKES <b id="strokeNum">0</b></div>
+    <div class="grow"></div>
+    <div class="pill tot">TOTAL <b id="totalNum">0</b></div>
+    <div class="pill best">BEST <b id="bestNum">—</b></div>
+  </div>
+
+  <div id="hint">Drag to aim &amp; pull back for power, then press SHOOT.</div>
+
+  <div id="power-label">POWER</div>
+  <div id="power-wrap"><div id="power-bar"></div></div>
+
+  <div id="banner"></div>
+
+  <div id="controls">
+    <button class="ctl" id="modeBtn">🎯 AIM</button>
+    <button class="ctl" id="shootBtn">🚀 SHOOT</button>
+    <button class="ctl" id="resetBtn">↺ RESET</button>
+    <button class="ctl hidden" id="nextBtn">NEXT ▶</button>
+  </div>
+
+  <div id="card" class="hidden">
+    <div class="panel">
+      <h1>🏁 Final Scorecard</h1>
+      <div class="tagline">Cosmic Putt — 9 Holes Complete!</div>
+      <table id="cardTable"></table>
+      <div class="best" id="cardBest"></div>
+      <div class="newbest hidden" id="cardNewBest">★ NEW BEST SCORE! ★</div>
+      <button id="playAgain">🔁 PLAY AGAIN</button>
+    </div>
+  </div>
+
+  <div id="loading"><div class="dot"></div>Loading Cosmic Putt…</div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+<script>
+(function(){
+  "use strict";
+
+  // ---------- Robust THREE loader (literal tag above is auto-vendored offline) ----------
+  function ensureThree(cb){
+    if (window.THREE){ cb(); return; }
+    var fallbacks = ['https://unpkg.com/three@0.160.0/build/three.min.js'];
+    (function next(i){
+      if (i >= fallbacks.length){ document.getElementById('loading').innerHTML =
+        '⚠️ Could not load three.js.<br>Check your connection and reload.'; return; }
+      var s = document.createElement('script');
+      s.src = fallbacks[i];
+      s.onload = function(){ window.THREE ? cb() : next(i+1); };
+      s.onerror = function(){ next(i+1); };
+      document.head.appendChild(s);
+    })(0);
+  }
+
+  ensureThree(function(){ try { init(); } catch(err){
+    document.getElementById('loading').innerHTML = '⚠️ '+ (err && err.message || err);
+    console.error(err);
+  }});
+
+  // ================= GAME =================
+  function init(){
+    var T = window.THREE;
+
+    // ---------- Tunables ----------
+    var GRAV = 46, LAUNCH_MIN = 5, LAUNCH_MAX = 30, MARBLE_R = 0.45;
+    var RESTITUTION = 0.62, DAMP = 0.9986, BOUND = 50, CAPTURE_R = 1.75;
+    var GOAL_PULL_R = 7, GOAL_MASS = 5.5, FIXED_DT = 1/120, MAX_SUBSTEPS = 8;
+    var SETTLE_SPEED = 1.1, SETTLE_TIME = 0.45, MAX_FLIGHT = 16;
+    var MAXDRAG = 200, PREVIEW_DT = 1/70, PREVIEW_STEPS = 220;
+    var V3 = function(a){ return new T.Vector3(a[0],a[1],a[2]); };
+
+    // ---------- Levels ----------
+    // type: 'planet' (mass>0), 'repulsor' (mass<0). asteroids = hazards (no field).
+    // move: {axis:[x,y,z], amp, speed, phase} optional on attractors & asteroids
+    var LEVELS = [
+      { par:2, start:[-15,1,2], goal:[15,-1,-2],
+        hint:"A lone candy world bends your putt. Curve around it into the hole.",
+        planets:[ {pos:[0,0,0], r:3.2, mass:11, color:0xff6ec7} ],
+        asteroids:[] },
+
+      { par:2, start:[-16,4,0], goal:[16,4,0],
+        hint:"Two worlds form a gateway — thread the gravity slalom.",
+        planets:[ {pos:[0,8,0], r:2.6, mass:9, color:0x5ef2c0},
+                  {pos:[0,-4,0], r:2.6, mass:9, color:0xffe066} ],
+        asteroids:[] },
+
+      { par:3, start:[-16,-7,3], goal:[16,8,-3],
+        hint:"Three planets, diagonal climb. Orbit the camera to read the field in 3D.",
+        planets:[ {pos:[0,0,0], r:3, mass:10, color:0x6ec1ff},
+                  {pos:[-5,7,4], r:2.2, mass:7, color:0xff8c66},
+                  {pos:[6,-6,-4], r:2.4, mass:8, color:0xb69bff} ],
+        asteroids:[] },
+
+      { par:3, start:[-16,0,0], goal:[16,0,3],
+        hint:"PURPLE = repulsor! It PUSHES your marble away. Go around its bubble.",
+        planets:[ {pos:[0,0,0], r:2.8, mass:-9, color:0xc061ff},
+                  {pos:[7,7,0], r:2.6, mass:10, color:0xffe066},
+                  {pos:[-7,-7,0], r:2.4, mass:8, color:0x5ef2c0} ],
+        asteroids:[] },
+
+      { par:3, start:[-16,0,4], goal:[16,0,-4],
+        hint:"A planet drifts up & down — time your putt as the gravity well moves.",
+        planets:[ {pos:[0,0,0], r:3, mass:11, color:0xff6ec7, move:{axis:[0,1,0],amp:7,speed:0.7,phase:0}},
+                  {pos:[6,-7,0], r:2.4, mass:8, color:0x6ec1ff} ],
+        asteroids:[] },
+
+      { par:4, start:[-17,2,0], goal:[17,-2,0],
+        hint:"Asteroid field! Grey rocks SHATTER your marble — dodge them.",
+        planets:[ {pos:[-3,8,3], r:2.6, mass:9, color:0xffe066},
+                  {pos:[4,-7,-3], r:2.8, mass:10, color:0x5ef2c0} ],
+        asteroids:[ {pos:[0,0,0], r:1.3}, {pos:[6,4,2], r:1.1},
+                    {pos:[-6,-3,-2], r:1.2}, {pos:[10,-4,4], r:1.0,
+                      move:{axis:[0,1,0],amp:5,speed:1.1,phase:1}} ] },
+
+      { par:4, start:[-17,0,0], goal:[17,0,0],
+        hint:"A repulsor guards the hole. Slingshot off the side worlds to swing in behind it.",
+        planets:[ {pos:[10,0,0], r:3, mass:-11, color:0xc061ff},
+                  {pos:[0,8,5], r:2.6, mass:10, color:0xff8c66},
+                  {pos:[0,-8,-5], r:2.6, mass:10, color:0x6ec1ff},
+                  {pos:[-6,0,6], r:2.2, mass:7, color:0xffe066} ],
+        asteroids:[ {pos:[3,3,-4], r:1.1}, {pos:[5,-4,4], r:1.0} ] },
+
+      { par:4, start:[-17,5,3], goal:[17,-5,-3],
+        hint:"Moving worlds AND a roaming asteroid. Read the rhythm, then commit.",
+        planets:[ {pos:[0,0,0], r:2.8, mass:10, color:0xff6ec7, move:{axis:[0,1,0],amp:6,speed:0.6,phase:0}},
+                  {pos:[6,0,0], r:2.4, mass:9, color:0x5ef2c0, move:{axis:[0,0,1],amp:6,speed:0.8,phase:1.5}},
+                  {pos:[-7,-6,0], r:2.4, mass:8, color:0xffe066} ],
+        asteroids:[ {pos:[2,6,-3], r:1.2, move:{axis:[1,0,0],amp:7,speed:0.9,phase:0}},
+                    {pos:[8,4,4], r:1.0} ] },
+
+      { par:4, start:[-18,0,0], goal:[18,0,0],
+        hint:"THE GAUNTLET: spinning worlds, a repulsor core, and flying rocks. Good luck, astro-golfer!",
+        planets:[ {pos:[0,0,0], r:3, mass:-12, color:0xc061ff},
+                  {pos:[-8,7,5], r:2.6, mass:10, color:0xff6ec7, move:{axis:[0,1,0],amp:4,speed:0.8,phase:0}},
+                  {pos:[8,-7,-5], r:2.6, mass:10, color:0x6ec1ff, move:{axis:[0,1,0],amp:4,speed:0.8,phase:3.1}},
+                  {pos:[0,9,-6], r:2.2, mass:8, color:0xffe066},
+                  {pos:[0,-9,6], r:2.2, mass:8, color:0x5ef2c0} ],
+        asteroids:[ {pos:[-5,-3,0], r:1.1, move:{axis:[0,0,1],amp:6,speed:1.0,phase:0}},
+                    {pos:[5,3,0], r:1.1, move:{axis:[0,0,1],amp:6,speed:1.0,phase:3.1}},
+                    {pos:[10,-2,3], r:1.0} ] }
+    ];
+
+    // ---------- Renderer / Scene / Camera ----------
+    var stage = document.getElementById('stage');
+    var renderer = new T.WebGLRenderer({ antialias:true, alpha:false });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio||1, 2));
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    stage.appendChild(renderer.domElement);
+
+    var scene = new T.Scene();
+    scene.fog = new T.FogExp2(0x070318, 0.0035);
+
+    var camera = new T.PerspectiveCamera(55, window.innerWidth/window.innerHeight, 0.1, 2000);
+
+    // ---------- Lights (bright, cheerful) ----------
+    scene.add(new T.HemisphereLight(0xbfe0ff, 0x301a44, 0.95));
+    scene.add(new T.AmbientLight(0xffffff, 0.45));
+    var key = new T.DirectionalLight(0xfff0d0, 1.05); key.position.set(20,30,20); scene.add(key);
+    var rim = new T.DirectionalLight(0x7fd4ff, 0.6); rim.position.set(-25,-10,-20); scene.add(rim);
+    var fill = new T.PointLight(0xff9ad8, 0.7, 300); fill.position.set(0,0,40); scene.add(fill);
+
+    // ---------- Glow texture helper ----------
+    function glowTexture(hex){
+      var c = document.createElement('canvas'); c.width = c.height = 128;
+      var g = c.getContext('2d');
+      var col = new T.Color(hex);
+      var r = Math.round(col.r*255), gg = Math.round(col.g*255), b = Math.round(col.b*255);
+      var grad = g.createRadialGradient(64,64,0,64,64,64);
+      grad.addColorStop(0,   'rgba('+r+','+gg+','+b+',1)');
+      grad.addColorStop(0.25,'rgba('+r+','+gg+','+b+',0.6)');
+      grad.addColorStop(1,   'rgba('+r+','+gg+','+b+',0)');
+      g.fillStyle = grad; g.fillRect(0,0,128,128);
+      var tex = new T.CanvasTexture(c); return tex;
+    }
+    var glowWhite = glowTexture(0xffffff);
+
+    // ---------- Starfield (deep but luminous) ----------
+    function buildStars(){
+      var grp = new T.Group();
+      var layers = [ {n:1400, near:120, far:520, size:1.4, colors:[0xffffff,0xbfe0ff,0xffd9f2]},
+                     {n:600, near:160, far:700, size:2.6, colors:[0xfff0c0,0xc7b3ff,0x9af2e0]} ];
+      layers.forEach(function(L){
+        var pos = new Float32Array(L.n*3), col = new Float32Array(L.n*3);
+        for (var i=0;i<L.n;i++){
+          var u = Math.random()*2-1, th = Math.random()*Math.PI*2;
+          var rr = L.near + Math.random()*(L.far-L.near);
+          var s = Math.sqrt(1-u*u);
+          pos[i*3]=Math.cos(th)*s*rr; pos[i*3+1]=u*rr; pos[i*3+2]=Math.sin(th)*s*rr;
+          var c = new T.Color(L.colors[(Math.random()*L.colors.length)|0]);
+          col[i*3]=c.r; col[i*3+1]=c.g; col[i*3+2]=c.b;
+        }
+        var geo = new T.BufferGeometry();
+        geo.setAttribute('position', new T.BufferAttribute(pos,3));
+        geo.setAttribute('color', new T.BufferAttribute(col,3));
+        var mat = new T.PointsMaterial({ size:L.size, vertexColors:true,
+          transparent:true, opacity:0.95, depthWrite:false, sizeAttenuation:true,
+          map:glowWhite, blending:T.AdditiveBlending });
+        grp.add(new T.Points(geo, mat));
+      });
+      // luminous nebula sprites
+      var nebColors = [0x6a2cff,0xff3ea0,0x1f8cff,0x18d0a0];
+      for (var k=0;k<6;k++){
+        var sp = new T.Sprite(new T.SpriteMaterial({ map:glowTexture(nebColors[k%nebColors.length]),
+          transparent:true, opacity:0.16, depthWrite:false, blending:T.AdditiveBlending }));
+        var rr2 = 220 + Math.random()*260;
+        var u2 = Math.random()*2-1, th2 = Math.random()*Math.PI*2, s2 = Math.sqrt(1-u2*u2);
+        sp.position.set(Math.cos(th2)*s2*rr2, u2*rr2, Math.sin(th2)*s2*rr2);
+        var sc = 200 + Math.random()*220; sp.scale.set(sc,sc,1);
+        grp.add(sp);
+      }
+      return grp;
+    }
+    var stars = buildStars(); scene.add(stars);
+
+    // ---------- Marble + comet trail ----------
+    var marble = new T.Mesh(
+      new T.SphereGeometry(MARBLE_R, 32, 32),
+      new T.MeshStandardMaterial({ color:0xeafcff, metalness:0.85, roughness:0.12,
+        emissive:0x2299cc, emissiveIntensity:0.5 }));
+    scene.add(marble);
+    var marbleLight = new T.PointLight(0x9fe9ff, 1.1, 22); marble.add(marbleLight);
+    var marbleHalo = new T.Sprite(new T.SpriteMaterial({ map:glowWhite, color:0xbff4ff,
+      transparent:true, opacity:0.8, depthWrite:false, blending:T.AdditiveBlending }));
+    marbleHalo.scale.set(2.4,2.4,1); marble.add(marbleHalo);
+
+    var TRAIL_N = 80;
+    var trailPos = new Float32Array(TRAIL_N*3), trailCol = new Float32Array(TRAIL_N*3);
+    var trailHist = [];
+    var trailGeo = new T.BufferGeometry();
+    trailGeo.setAttribute('position', new T.BufferAttribute(trailPos,3));
+    trailGeo.setAttribute('color', new T.BufferAttribute(trailCol,3));
+    var trailMat = new T.PointsMaterial({ size:0.55, vertexColors:true, transparent:true,
+      opacity:0.95, depthWrite:false, map:glowWhite, blending:T.AdditiveBlending, sizeAttenuation:true });
+    var trail = new T.Points(trailGeo, trailMat); scene.add(trail);
+    var trailBase = new T.Color(0x7fe9ff);
+    function clearTrail(){ trailHist.length = 0; updateTrailBuffer(); }
+    function pushTrail(p){ trailHist.unshift([p.x,p.y,p.z]); if (trailHist.length>TRAIL_N) trailHist.pop(); }
+    function updateTrailBuffer(){
+      for (var i=0;i<TRAIL_N;i++){
+        var h = trailHist[i];
+        if (h){ trailPos[i*3]=h[0]; trailPos[i*3+1]=h[1]; trailPos[i*3+2]=h[2]; }
+        else { trailPos[i*3]=10000; trailPos[i*3+1]=10000; trailPos[i*3+2]=10000; }
+        var f = 1 - i/TRAIL_N;
+        trailCol[i*3]=trailBase.r*f; trailCol[i*3+1]=trailBase.g*f; trailCol[i*3+2]=trailBase.b*f;
+      }
+      trailGeo.attributes.position.needsUpdate = true;
+      trailGeo.attributes.color.needsUpdate = true;
+    }
+
+    // ---------- Aim arrow + dotted preview ----------
+    var aimArrow = new T.ArrowHelper(new T.Vector3(1,0,0), new T.Vector3(), 6, 0xffe066, 1.4, 0.9);
+    aimArrow.visible = false; scene.add(aimArrow);
+
+    var PREV_MAX = 90;
+    var prevPos = new Float32Array(PREV_MAX*3);
+    var prevGeo = new T.BufferGeometry();
+    prevGeo.setAttribute('position', new T.BufferAttribute(prevPos,3));
+    var prevMat = new T.PointsMaterial({ size:0.42, color:0xffffff, transparent:true,
+      opacity:0.95, depthWrite:false, map:glowWhite, blending:T.AdditiveBlending, sizeAttenuation:true });
+    var preview = new T.Points(prevGeo, prevMat); preview.visible = false; scene.add(preview);
+
+    // ---------- Level container ----------
+    var levelGroup = new T.Group(); scene.add(levelGroup);
+    var attractors = [];   // {mesh, base:Vector3, pos:Vector3, r, mass, move, type, fieldMesh, ringMesh}
+    var asteroids = [];    // {mesh, base, pos, r, move}
+    var goalPos = new T.Vector3();
+    var goalGroup = null, goalSparkle = null;
+
+    function disposeGroup(g){
+      g.traverse(function(o){
+        if (o.geometry) o.geometry.dispose();
+        if (o.material){ if (Array.isArray(o.material)) o.material.forEach(function(m){m.dispose();}); else o.material.dispose(); }
+      });
+      while (g.children.length) g.remove(g.children[0]);
+    }
+
+    function makePlanet(p){
+      var grp = new T.Group();
+      var isRep = p.mass < 0;
+      var color = p.color;
+      var geo = isRep ? new T.IcosahedronGeometry(p.r, 1) : new T.SphereGeometry(p.r, 40, 40);
+      var mat = new T.MeshStandardMaterial({ color:color, roughness:isRep?0.35:0.5,
+        metalness:isRep?0.4:0.15, emissive:new T.Color(color).multiplyScalar(isRep?0.5:0.28),
+        emissiveIntensity:1, flatShading:isRep });
+      var core = new T.Mesh(geo, mat); grp.add(core);
+      // atmosphere glow
+      var halo = new T.Sprite(new T.SpriteMaterial({ map:glowTexture(color), color:0xffffff,
+        transparent:true, opacity:isRep?0.6:0.45, depthWrite:false, blending:T.AdditiveBlending }));
+      var hs = p.r*4.2; halo.scale.set(hs,hs,1); grp.add(halo);
+      // gravity-field wireframe (read the layout in 3D)
+      var fieldR = Math.min(Math.sqrt(Math.abs(p.mass))*2.0 + p.r, 14);
+      var field = new T.Mesh(new T.SphereGeometry(fieldR, 18, 12),
+        new T.MeshBasicMaterial({ color: isRep?0xc061ff:0x8fffe6, wireframe:true,
+          transparent:true, opacity:0.10, depthWrite:false }));
+      grp.add(field);
+      // a charming ring on some attractor planets
+      if (!isRep && Math.abs(p.mass) >= 9){
+        var ring = new T.Mesh(new T.TorusGeometry(p.r*1.8, p.r*0.12, 8, 40),
+          new T.MeshStandardMaterial({ color:0xffffff, emissive:new T.Color(color),
+            emissiveIntensity:0.6, metalness:0.3, roughness:0.4, transparent:true, opacity:0.85 }));
+        ring.rotation.x = Math.PI*0.42; ring.rotation.y = Math.random()*0.5; grp.add(ring);
+      }
+      grp.userData.core = core; grp.userData.field = field;
+      return grp;
+    }
+
+    function makeAsteroid(a){
+      var grp = new T.Group();
+      var geo = new T.IcosahedronGeometry(a.r, 1);
+      // jitter vertices for a rocky look
+      var pos = geo.attributes.position;
+      for (var i=0;i<pos.count;i++){
+        var f = 0.82 + Math.random()*0.36;
+        pos.setXYZ(i, pos.getX(i)*f, pos.getY(i)*f, pos.getZ(i)*f);
+      }
+      geo.computeVertexNormals();
+      var rock = new T.Mesh(geo, new T.MeshStandardMaterial({ color:0x9aa0ad, roughness:0.95,
+        metalness:0.1, emissive:0x331111, emissiveIntensity:0.5, flatShading:true }));
+      grp.add(rock);
+      // danger spikes glow
+      var halo = new T.Sprite(new T.SpriteMaterial({ map:glowTexture(0xff5a3c), color:0xffffff,
+        transparent:true, opacity:0.35, depthWrite:false, blending:T.AdditiveBlending }));
+      var hs = a.r*3.2; halo.scale.set(hs,hs,1); grp.add(halo);
+      grp.userData.rock = rock;
+      return grp;
+    }
+
+    function makeGoal(){
+      var grp = new T.Group();
+      var ring = new T.Mesh(new T.TorusGeometry(1.5, 0.28, 16, 48),
+        new T.MeshStandardMaterial({ color:0xffffff, emissive:0xffd24d, emissiveIntensity:1.6,
+          metalness:0.5, roughness:0.25 }));
+      grp.add(ring);
+      var ring2 = new T.Mesh(new T.TorusGeometry(2.2, 0.08, 12, 48),
+        new T.MeshBasicMaterial({ color:0xffe9a0, transparent:true, opacity:0.6 }));
+      grp.add(ring2);
+      var disk = new T.Mesh(new T.CircleGeometry(1.35, 40),
+        new T.MeshBasicMaterial({ color:0x120a04, transparent:true, opacity:0.85, side:T.DoubleSide }));
+      grp.add(disk);
+      var beam = new T.Sprite(new T.SpriteMaterial({ map:glowTexture(0xffd24d), color:0xffffff,
+        transparent:true, opacity:0.75, depthWrite:false, blending:T.AdditiveBlending }));
+      beam.scale.set(8,8,1); grp.add(beam);
+      grp.add(new T.PointLight(0xffd24d, 1.4, 40));
+      // orbiting sparkles
+      var sn = 40, sp = new Float32Array(sn*3);
+      var sparkData = [];
+      for (var i=0;i<sn;i++){
+        sparkData.push({ a:Math.random()*Math.PI*2, tilt:Math.random()*Math.PI, r:2.2+Math.random()*1.0, s:0.5+Math.random() });
+      }
+      var sgeo = new T.BufferGeometry(); sgeo.setAttribute('position', new T.BufferAttribute(sp,3));
+      var smat = new T.PointsMaterial({ size:0.5, color:0xfff2bf, map:glowWhite, transparent:true,
+        opacity:0.95, depthWrite:false, blending:T.AdditiveBlending });
+      var spk = new T.Points(sgeo, smat); grp.add(spk);
+      grp.userData = { ring:ring, ring2:ring2, beam:beam, spk:spk, sparkData:sparkData, sgeo:sgeo, sp:sp };
+      goalSparkle = grp.userData;
+      return grp;
+    }
+
+    function buildLevel(idx){
+      disposeGroup(levelGroup);
+      attractors = []; asteroids = []; goalGroup = null; goalSparkle = null;
+      var L = LEVELS[idx];
+
+      L.planets.forEach(function(p){
+        var mesh = makePlanet(p);
+        var base = V3(p.pos); mesh.position.copy(base);
+        levelGroup.add(mesh);
+        attractors.push({ mesh:mesh, base:base, pos:base.clone(), r:p.r, mass:p.mass,
+          move:p.move||null, type:(p.mass<0?'repulsor':'planet'),
+          spin:new T.Vector3((Math.random()-0.5)*0.4,(Math.random()-0.5)*0.4,(Math.random()-0.5)*0.4) });
+      });
+      L.asteroids.forEach(function(a){
+        var mesh = makeAsteroid(a);
+        var base = V3(a.pos); mesh.position.copy(base);
+        levelGroup.add(mesh);
+        asteroids.push({ mesh:mesh, base:base, pos:base.clone(), r:a.r, move:a.move||null,
+          spin:new T.Vector3(Math.random()*1.2,Math.random()*1.2,Math.random()*1.2) });
+      });
+
+      goalPos.copy(V3(L.goal));
+      goalGroup = makeGoal(); goalGroup.position.copy(goalPos);
+      goalGroup.lookAt(0,0,0);
+      levelGroup.add(goalGroup);
+
+      // camera target = midpoint of start & goal
+      camTarget.copy(V3(L.start)).add(goalPos).multiplyScalar(0.5);
+    }
+
+    // ---------- Orbit camera ----------
+    var camTarget = new T.Vector3();
+    var camTheta = 0.55, camPhi = 1.12, camRadius = 44;
+    function updateCamera(){
+      var sp = Math.sin(camPhi), cp = Math.cos(camPhi);
+      camera.position.set(
+        camTarget.x + camRadius*sp*Math.sin(camTheta),
+        camTarget.y + camRadius*cp,
+        camTarget.z + camRadius*sp*Math.cos(camTheta));
+      camera.lookAt(camTarget);
+      camera.updateMatrixWorld();
+    }
+
+    // ---------- Physics ----------
+    function gravAccel(pos, out){
+      out.set(0,0,0);
+      var d = _tmpA;
+      for (var i=0;i<attractors.length;i++){
+        var a = attractors[i];
+        d.subVectors(a.pos, pos);
+        var r2 = d.lengthSq();
+        var soft = (a.r+0.6); soft = soft*soft;
+        var denom = r2 < soft ? soft : r2;
+        var f = GRAV * a.mass / denom;
+        d.normalize(); out.addScaledVector(d, f);
+      }
+      // goal assist (gentle pull near hole)
+      d.subVectors(goalPos, pos);
+      var rg2 = d.lengthSq();
+      if (rg2 < GOAL_PULL_R*GOAL_PULL_R){
+        var dd = rg2 < 1 ? 1 : rg2;
+        d.normalize(); out.addScaledVector(d, GRAV*GOAL_MASS/dd);
+      }
+      return out;
+    }
+    var _tmpA = new T.Vector3(), _acc = new T.Vector3(), _n = new T.Vector3();
+
+    // returns: 0 nothing, 1 sink, 2 out, 3 asteroid, with collision bounce handled in-place
+    function stepPhysics(p, v, dt){
+      gravAccel(p, _acc);
+      v.addScaledVector(_acc, dt);
+      v.multiplyScalar(DAMP);
+      p.addScaledVector(v, dt);
+
+      // planet / repulsor bounce
+      for (var i=0;i<attractors.length;i++){
+        var a = attractors[i];
+        _n.subVectors(p, a.pos);
+        var minD = a.r + MARBLE_R;
+        var dist = _n.length();
+        if (dist < minD && dist > 0.0001){
+          _n.multiplyScalar(1/dist);
+          p.copy(a.pos).addScaledVector(_n, minD+0.001);
+          var vn = v.dot(_n);
+          if (vn < 0) v.addScaledVector(_n, -(1+RESTITUTION)*vn);
+          return 4; // bounce
+        }
+      }
+      // asteroid hazard
+      for (var j=0;j<asteroids.length;j++){
+        var s = asteroids[j];
+        var minD2 = s.r + MARBLE_R;
+        if (p.distanceToSquared(s.pos) < minD2*minD2) return 3;
+      }
+      // goal
+      if (p.distanceToSquared(goalPos) < CAPTURE_R*CAPTURE_R) return 1;
+      // out of bounds
+      if (p.lengthSq() > BOUND*BOUND) return 2;
+      return 0;
+    }
+
+    // ---------- Predicted arc ----------
+    var _pp = new T.Vector3(), _pv = new T.Vector3();
+    function computePreview(dir, power){
+      _pp.copy(marble.position);
+      _pv.copy(dir).multiplyScalar(launchSpeed(power));
+      var idx = 0, every = 3, count = 0;
+      for (var s=0; s<PREVIEW_STEPS && idx<PREV_MAX; s++){
+        var r = stepPhysics(_pp, _pv, PREVIEW_DT);
+        if (s % every === 0){
+          prevPos[idx*3]=_pp.x; prevPos[idx*3+1]=_pp.y; prevPos[idx*3+2]=_pp.z; idx++;
+        }
+        if (r===1 || r===2 || r===3){
+          prevPos[idx*3]=_pp.x; prevPos[idx*3+1]=_pp.y; prevPos[idx*3+2]=_pp.z; idx = Math.min(idx+1,PREV_MAX);
+          break;
+        }
+      }
+      count = idx;
+      // hide remaining
+      for (var k=count; k<PREV_MAX; k++){ prevPos[k*3]=10000; prevPos[k*3+1]=10000; prevPos[k*3+2]=10000; }
+      prevGeo.attributes.position.needsUpdate = true;
+      preview.visible = count > 1;
+    }
+
+    function launchSpeed(power){ return LAUNCH_MIN + power*(LAUNCH_MAX-LAUNCH_MIN); }
+
+    // ---------- Game state ----------
+    var BEST_KEY = 'BEST SCORE';
+    var levelIndex = 0;
+    var strokes = 0;
+    var totalStrokes = 0;
+    var results = []; // {strokes, par, stars, ace}
+    var lie = new T.Vector3();
+    var preShotStart = new T.Vector3();
+    var preShotStrokes = 0;
+    var vel = new T.Vector3();
+    var ballMoving = false;
+    var levelComplete = false;
+    var settleTimer = 0, flightTimer = 0;
+
+    var aiming = false;
+    var aimDir = new T.Vector3(1,0,0);
+    var aimPower = 0;
+    var hasAim = false;
+
+    // ---------- UI refs ----------
+    var $ = function(id){ return document.getElementById(id); };
+    var lvlNum=$('lvlNum'), parNum=$('parNum'), strokeNum=$('strokeNum'),
+        totalNum=$('totalNum'), bestNum=$('bestNum');
+    var hintEl=$('hint'), banner=$('banner'), modeBtn=$('modeBtn'), shootBtn=$('shootBtn'),
+        resetBtn=$('resetBtn'), nextBtn=$('nextBtn');
+    var powerWrap=$('power-wrap'), powerBar=$('power-bar'), powerLabel=$('power-label');
+
+    function getBest(){ var v = localStorage.getItem(BEST_KEY); return v===null?null:parseInt(v,10); }
+    function setBest(v){ try{ localStorage.setItem(BEST_KEY, String(v)); }catch(e){} }
+
+    function updateHUD(){
+      lvlNum.textContent = (levelIndex+1);
+      parNum.textContent = LEVELS[levelIndex].par;
+      strokeNum.textContent = strokes;
+      totalNum.textContent = totalStrokes + strokes;
+      var b = getBest();
+      bestNum.textContent = (b===null ? '—' : b);
+    }
+
+    var hintTimer = null;
+    function showHint(txt, persist){
+      hintEl.innerHTML = txt; hintEl.style.opacity = '1';
+      if (hintTimer) clearTimeout(hintTimer);
+      if (!persist) hintTimer = setTimeout(function(){ hintEl.style.opacity='0.0'; }, 3800);
+    }
+
+    function showBanner(big, sub, stars, dur, cb){
+      var html = '';
+      if (stars) html += '<div class="stars">'+stars+'</div>';
+      html += '<div class="big">'+big+'</div>';
+      if (sub) html += '<div class="sub">'+sub+'</div>';
+      banner.innerHTML = html; banner.classList.add('show');
+      if (dur){ setTimeout(function(){ banner.classList.remove('show'); if(cb) cb(); }, dur); }
+    }
+    function hideBanner(){ banner.classList.remove('show'); }
+
+    // ---------- Mode ----------
+    var mode = 'aim';
+    function setMode(m){
+      mode = m;
+      if (m==='aim'){ modeBtn.textContent='🎯 AIM'; modeBtn.classList.remove('orbit'); }
+      else { modeBtn.textContent='🔄 ORBIT'; modeBtn.classList.add('orbit'); }
+    }
+    modeBtn.addEventListener('click', function(){ setMode(mode==='aim'?'orbit':'aim'); });
+
+    function canShoot(){ return !ballMoving && !levelComplete; }
+
+    // ---------- Aim helpers ----------
+    function setAimFromDrag(dx, dy){
+      // camera world basis
+      var e = camera.matrixWorld.elements;
+      var right = _tmpRight.set(e[0], e[1], e[2]);
+      var up = _tmpUp.set(e[4], e[5], e[6]);
+      // drag vector in world (screen-up = +up)
+      var world = _tmpWorld.set(0,0,0)
+        .addScaledVector(right, dx)
+        .addScaledVector(up, -dy);
+      var len = world.length();
+      aimPower = Math.max(0, Math.min(1, len / MAXDRAG));
+      if (len > 0.0001){ aimDir.copy(world).multiplyScalar(-1/len); } // pull back -> launch opposite
+      hasAim = aimPower > 0.02;
+      refreshAimVisual();
+      updatePowerUI();
+    }
+    var _tmpRight=new T.Vector3(), _tmpUp=new T.Vector3(), _tmpWorld=new T.Vector3();
+
+    function refreshAimVisual(){
+      if (hasAim && canShoot()){
+        aimArrow.visible = true;
+        aimArrow.position.copy(marble.position);
+        aimArrow.setDirection(aimDir);
+        aimArrow.setLength(2 + aimPower*8, 1.3, 0.85);
+        computePreview(aimDir, aimPower);
+      } else {
+        aimArrow.visible = false; preview.visible = false;
+      }
+    }
+    function clearAim(){ aiming=false; hasAim=false; aimPower=0; aimArrow.visible=false; preview.visible=false; updatePowerUI(); }
+    function updatePowerUI(){
+      if (aiming && hasAim){ powerWrap.classList.add('show'); powerLabel.classList.add('show');
+        powerBar.style.width = Math.round(aimPower*100)+'%'; }
+      else { powerWrap.classList.remove('show'); powerLabel.classList.remove('show'); }
+    }
+
+    // ---------- Pointer input ----------
+    var canvas = renderer.domElement;
+    var pointers = new Map();
+    var dragKind = null; // 'aim' | 'orbit' | 'cam2'
+    var aimStartX=0, aimStartY=0, orbLastX=0, orbLastY=0;
+    var pinchDist=0, pinchCx=0, pinchCy=0;
+
+    function cur(){ var a=[]; pointers.forEach(function(v){a.push(v);}); return a; }
+
+    canvas.addEventListener('pointerdown', function(e){
+      canvas.setPointerCapture && canvas.setPointerCapture(e.pointerId);
+      pointers.set(e.pointerId, {x:e.clientX, y:e.clientY});
+      if (pointers.size === 2){
+        var p = cur(); pinchDist = Math.hypot(p[0].x-p[1].x, p[0].y-p[1].y);
+        pinchCx = (p[0].x+p[1].x)/2; pinchCy = (p[0].y+p[1].y)/2;
+        dragKind = 'cam2'; clearAim();
+      } else if (pointers.size === 1){
+        if (mode==='aim' && canShoot()){
+          dragKind='aim'; aimStartX=e.clientX; aimStartY=e.clientY; aiming=true;
+          setAimFromDrag(0,0);
+        } else {
+          dragKind='orbit'; orbLastX=e.clientX; orbLastY=e.clientY;
+        }
+      }
+    });
+
+    canvas.addEventListener('pointermove', function(e){
+      if (!pointers.has(e.pointerId)) return;
+      pointers.set(e.pointerId, {x:e.clientX, y:e.clientY});
+      if (dragKind==='cam2' && pointers.size>=2){
+        var p = cur();
+        var d = Math.hypot(p[0].x-p[1].x, p[0].y-p[1].y);
+        var cx = (p[0].x+p[1].x)/2, cy=(p[0].y+p[1].y)/2;
+        // pinch zoom
+        if (pinchDist>0){ camRadius *= pinchDist / d; camRadius = Math.max(16, Math.min(82, camRadius)); }
+        pinchDist = d;
+        // centroid drag -> orbit
+        camTheta -= (cx - pinchCx)*0.006;
+        camPhi   -= (cy - pinchCy)*0.006;
+        camPhi = Math.max(0.18, Math.min(Math.PI-0.18, camPhi));
+        pinchCx = cx; pinchCy = cy;
+      } else if (dragKind==='aim'){
+        setAimFromDrag(e.clientX-aimStartX, e.clientY-aimStartY);
+      } else if (dragKind==='orbit'){
+        camTheta -= (e.clientX-orbLastX)*0.006;
+        camPhi   -= (e.clientY-orbLastY)*0.006;
+        camPhi = Math.max(0.18, Math.min(Math.PI-0.18, camPhi));
+        orbLastX=e.clientX; orbLastY=e.clientY;
+      }
+    });
+
+    function endPointer(e){
+      if (pointers.has(e.pointerId)) pointers.delete(e.pointerId);
+      if (dragKind==='aim'){
+        aiming=false; updatePowerUI();
+        if (hasAim) showHint('Aim locked — press 🚀 SHOOT (or drag again to re-aim).');
+      }
+      if (pointers.size===1){
+        // resume single-finger behavior
+        var p = cur()[0];
+        if (mode==='aim' && canShoot()){ dragKind=null; }
+        else { dragKind='orbit'; orbLastX=p.x; orbLastY=p.y; }
+      } else if (pointers.size===0){
+        dragKind=null;
+      }
+    }
+    canvas.addEventListener('pointerup', endPointer);
+    canvas.addEventListener('pointercancel', endPointer);
+
+    canvas.addEventListener('wheel', function(e){
+      e.preventDefault();
+      camRadius *= (1 + Math.sign(e.deltaY)*0.08);
+      camRadius = Math.max(16, Math.min(82, camRadius));
+    }, {passive:false});
+
+    // ---------- Buttons ----------
+    shootBtn.addEventListener('click', function(){
+      audioResume();
+      if (!canShoot() || !hasAim || aimPower<=0.02){
+        if (canShoot()) showHint('Drag on the arena to aim &amp; set power first.');
+        return;
+      }
+      doShoot();
+    });
+    resetBtn.addEventListener('click', function(){ audioResume(); resetShot(); });
+    nextBtn.addEventListener('click', function(){ audioResume(); nextLevel(); });
+    $('playAgain').addEventListener('click', function(){ audioResume(); startGame(); });
+
+    function doShoot(){
+      preShotStart.copy(lie);
+      preShotStrokes = strokes;
+      strokes++;
+      vel.copy(aimDir).multiplyScalar(launchSpeed(aimPower));
+      ballMoving = true; settleTimer = 0; flightTimer = 0;
+      clearAim(); clearTrail();
+      sndWhoosh();
+      updateHUD();
+    }
+
+    function resetShot(){
+      if (levelComplete) return;
+      marble.position.copy(preShotStart);
+      lie.copy(preShotStart);
+      strokes = preShotStrokes;
+      vel.set(0,0,0); ballMoving=false; settleTimer=0;
+      clearTrail(); clearAim(); updateHUD();
+      showHint('Shot reset — re-aim from the previous spot.');
+    }
+
+    function lostInSpace(reason){
+      // penalty: the stroke already counted; return to where this shot began
+      marble.position.copy(preShotStart);
+      lie.copy(preShotStart);
+      vel.set(0,0,0); ballMoving=false; settleTimer=0;
+      clearTrail(); clearAim(); updateHUD();
+      if (reason==='asteroid'){ sndCrunch(); showHint('💥 SHATTERED on an asteroid! Stroke counts — putt again.'); }
+      else { sndLost(); showHint('🌌 LOST IN DEEP SPACE! Stroke counts — putt again.'); }
+    }
+
+    function settle(){
+      lie.copy(marble.position);
+      vel.set(0,0,0); ballMoving=false; settleTimer=0;
+      showHint('Marble settled. Take your next putt.');
+    }
+
+    function sink(){
+      ballMoving=false; levelComplete=true; clearTrail(); clearAim();
+      marble.position.copy(goalPos);
+      var par = LEVELS[levelIndex].par;
+      var ace = (strokes===1);
+      var rel = strokes - par;
+      var stars = ace ? 3 : (rel<0 ? 3 : (rel===0 ? 2 : 1));
+      results[levelIndex] = { strokes:strokes, par:par, stars:stars, ace:ace };
+      totalStrokes += strokes;
+      var starStr = '★★★☆☆'.substr(3-stars, 3); // fixed below
+      starStr = '';
+      for (var i=0;i<3;i++) starStr += (i<stars ? '★' : '☆');
+      var label = ace ? 'HOLE IN ONE!' : (rel<0 ? 'UNDER PAR!' : (rel===0 ? 'PAR!' : 'SUNK!'));
+      var sub = ace ? '✨ Ace bonus! ✨' :
+        (rel<0 ? ('-'+(-rel)+' under par') : (rel===0 ? 'Right on par' : '+'+rel+' over par'));
+      sndChime(); if (ace) sndFanfare();
+      burstConfetti(ace?180:120);
+      updateHUD();
+      showBanner(label, sub, starStr, 0);
+      nextBtn.classList.remove('hidden');
+      nextBtn.textContent = (levelIndex>=LEVELS.length-1) ? '🏁 SCORECARD' : 'NEXT ▶';
+      shootBtn.disabled = true;
+    }
+
+    function loadLevel(idx){
+      levelIndex = idx;
+      buildLevel(idx);
+      strokes = 0; levelComplete=false; ballMoving=false; vel.set(0,0,0);
+      lie.copy(V3(LEVELS[idx].start));
+      preShotStart.copy(lie); preShotStrokes=0;
+      marble.position.copy(lie);
+      clearTrail(); clearAim();
+      nextBtn.classList.add('hidden'); shootBtn.disabled=false;
+      setMode('aim');
+      updateHUD();
+      // pleasant default viewing angle
+      camTheta = 0.55; camPhi = 1.05; camRadius = 46;
+      showBanner('LEVEL '+(idx+1), 'PAR '+LEVELS[idx].par, '', 1700, function(){
+        showHint(LEVELS[idx].hint, false);
+      });
+    }
+
+    function nextLevel(){
+      hideBanner();
+      if (levelIndex >= LEVELS.length-1){ showScorecard(); return; }
+      loadLevel(levelIndex+1);
+    }
+
+    function startGame(){
+      $('card').classList.add('hidden');
+      totalStrokes = 0; results = [];
+      hideBanner();
+      loadLevel(0);
+    }
+
+    // ---------- Scorecard ----------
+    function showScorecard(){
+      var totalPar = 0;
+      LEVELS.forEach(function(L){ totalPar += L.par; });
+      var rows = '';
+      for (var i=0;i<LEVELS.length;i++){
+        var r = results[i] || {strokes:'-',par:LEVELS[i].par,stars:0,ace:false};
+        var st=''; for (var s=0;s<3;s++) st += (s<r.stars?'★':'☆');
+        rows += '<tr><td class="lv">Hole '+(i+1)+'</td>'+
+                '<td>par '+r.par+'</td>'+
+                '<td class="st">'+r.strokes+(r.ace?' 🏆':'')+'</td>'+
+                '<td class="sc">'+st+'</td></tr>';
+      }
+      var rel = totalStrokes - totalPar;
+      var relStr = rel===0 ? 'E (even)' : (rel<0 ? rel : '+'+rel);
+      rows += '<tr class="totrow"><td>TOTAL</td><td>par '+totalPar+'</td>'+
+              '<td class="st">'+totalStrokes+'</td><td class="sc">'+relStr+'</td></tr>';
+      $('cardTable').innerHTML = rows;
+
+      var prev = getBest();
+      var isNew = (prev===null || totalStrokes < prev);
+      if (isNew) setBest(totalStrokes);
+      var best = getBest();
+      $('cardBest').innerHTML = 'BEST SCORE: <b>'+best+'</b> strokes';
+      $('cardNewBest').classList.toggle('hidden', !isNew);
+      $('card').classList.remove('hidden');
+      sndFanfare(); burstConfetti(220);
+      updateHUD();
+    }
+
+    // ---------- Confetti (2D overlay) ----------
+    var cc = document.getElementById('confetti'), ctx = cc.getContext('2d');
+    var confetti = [];
+    function sizeConfetti(){ cc.width=window.innerWidth; cc.height=window.innerHeight; }
+    sizeConfetti();
+    var CONF_COLORS = ['#ff6ec7','#5ef2c0','#ffe066','#6ec1ff','#ff8c66','#b69bff','#ffffff'];
+    function burstConfetti(n){
+      for (var i=0;i<n;i++){
+        confetti.push({ x:Math.random()*cc.width, y:-20-Math.random()*cc.height*0.3,
+          vx:(Math.random()-0.5)*4, vy:2+Math.random()*5, g:0.06+Math.random()*0.05,
+          s:5+Math.random()*7, rot:Math.random()*Math.PI, vr:(Math.random()-0.5)*0.3,
+          c:CONF_COLORS[(Math.random()*CONF_COLORS.length)|0], life:1, shape:Math.random()<0.5?0:1 });
+      }
+    }
+    function drawConfetti(){
+      ctx.clearRect(0,0,cc.width,cc.height);
+      for (var i=confetti.length-1;i>=0;i--){
+        var p=confetti[i];
+        p.vy+=p.g; p.x+=p.vx; p.y+=p.vy; p.rot+=p.vr; p.life-=0.006;
+        if (p.y>cc.height+30 || p.life<=0){ confetti.splice(i,1); continue; }
+        ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(p.rot);
+        ctx.globalAlpha=Math.max(0,Math.min(1,p.life)); ctx.fillStyle=p.c;
+        if (p.shape===0) ctx.fillRect(-p.s/2,-p.s/2,p.s,p.s*0.6);
+        else { ctx.beginPath(); ctx.arc(0,0,p.s/2,0,Math.PI*2); ctx.fill(); }
+        ctx.restore();
+      }
+    }
+
+    // ---------- Audio ----------
+    var AC=null;
+    function audioResume(){
+      try{ if(!AC) AC = new (window.AudioContext||window.webkitAudioContext)();
+        if (AC.state==='suspended') AC.resume(); }catch(e){}
+    }
+    function tone(freq, dur, type, vol, slideTo, when){
+      if(!AC) return; var t0=AC.currentTime+(when||0);
+      var o=AC.createOscillator(), g=AC.createGain();
+      o.type=type||'sine'; o.frequency.setValueAtTime(freq,t0);
+      if (slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, t0+dur);
+      g.gain.setValueAtTime(0.0001,t0);
+      g.gain.exponentialRampToValueAtTime(vol||0.2, t0+0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0+dur);
+      o.connect(g); g.connect(AC.destination); o.start(t0); o.stop(t0+dur+0.02);
+    }
+    function noise(dur, vol){
+      if(!AC) return; var n=Math.floor(AC.sampleRate*dur);
+      var buf=AC.createBuffer(1,n,AC.sampleRate), d=buf.getChannelData(0);
+      for (var i=0;i<n;i++) d[i]=(Math.random()*2-1)*(1-i/n);
+      var src=AC.createBufferSource(); src.buffer=buf;
+      var g=AC.createGain(); g.gain.setValueAtTime(vol||0.25,AC.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001,AC.currentTime+dur);
+      var f=AC.createBiquadFilter(); f.type='lowpass'; f.frequency.value=1400;
+      src.connect(f); f.connect(g); g.connect(AC.destination); src.start();
+    }
+    function sndWhoosh(){ audioResume(); tone(180,0.35,'sawtooth',0.12,520); }
+    function sndThunk(){ audioResume(); tone(150,0.12,'square',0.10,80); }
+    function sndCrunch(){ audioResume(); noise(0.3,0.32); tone(90,0.25,'sawtooth',0.14,40); }
+    function sndLost(){ audioResume(); tone(440,0.5,'sine',0.12,90); }
+    function sndChime(){ audioResume(); [0,4,7,12].forEach(function(s,i){ tone(523.25*Math.pow(2,s/12),0.5,'sine',0.18,null,i*0.06); }); }
+    function sndFanfare(){ audioResume(); [0,4,7,12,16,19].forEach(function(s,i){ tone(523.25*Math.pow(2,s/12),0.4,'triangle',0.16,null,i*0.09); }); }
+
+    // ---------- Resize ----------
+    window.addEventListener('resize', function(){
+      camera.aspect = window.innerWidth/window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      sizeConfetti();
+    });
+
+    // ---------- Main loop ----------
+    var clock = new T.Clock();
+    function animate(){
+      requestAnimationFrame(animate);
+      var dt = Math.min(clock.getDelta(), 0.05);
+      var time = clock.elapsedTime;
+
+      // move attractors / asteroids
+      for (var i=0;i<attractors.length;i++){
+        var a=attractors[i];
+        if (a.move){
+          var off = Math.sin(time*a.move.speed + a.move.phase)*a.move.amp;
+          a.pos.copy(a.base).addScaledVector(_axisVec(a.move.axis), off);
+          a.mesh.position.copy(a.pos);
+        }
+        a.mesh.rotation.x += a.spin.x*dt; a.mesh.rotation.y += a.spin.y*dt; a.mesh.rotation.z += a.spin.z*dt;
+        if (a.mesh.userData.field) a.mesh.userData.field.rotation.y -= dt*0.2;
+      }
+      for (var j=0;j<asteroids.length;j++){
+        var s=asteroids[j];
+        if (s.move){
+          var off2 = Math.sin(time*s.move.speed + s.move.phase)*s.move.amp;
+          s.pos.copy(s.base).addScaledVector(_axisVec(s.move.axis), off2);
+          s.mesh.position.copy(s.pos);
+        }
+        s.mesh.rotation.x += s.spin.x*dt; s.mesh.rotation.y += s.spin.y*dt;
+      }
+
+      // goal animation
+      if (goalSparkle){
+        var pulse = 1 + Math.sin(time*3)*0.12;
+        goalSparkle.ring.scale.setScalar(pulse);
+        goalSparkle.ring2.rotation.z += dt*0.6;
+        goalSparkle.beam.material.opacity = 0.55 + Math.sin(time*3)*0.2;
+        var sp=goalSparkle.sp, sd=goalSparkle.sparkData;
+        for (var k=0;k<sd.length;k++){
+          var d=sd[k]; d.a += dt*d.s;
+          var ca=Math.cos(d.a), sa=Math.sin(d.a), ct=Math.cos(d.tilt), st=Math.sin(d.tilt);
+          sp[k*3]=ca*d.r; sp[k*3+1]=sa*d.r*ct; sp[k*3+2]=sa*d.r*st;
+        }
+        goalSparkle.sgeo.attributes.position.needsUpdate = true;
+      }
+
+      // physics
+      if (ballMoving){
+        var steps = Math.min(MAX_SUBSTEPS, Math.max(1, Math.round(dt/FIXED_DT)));
+        var sdt = dt/steps;
+        var resolved = 0;
+        for (var st2=0; st2<steps; st2++){
+          var r = stepPhysics(marble.position, vel, sdt);
+          if (r===4){ sndThunk(); }
+          else if (r===1){ resolved=1; break; }
+          else if (r===2){ resolved=2; break; }
+          else if (r===3){ resolved=3; break; }
+        }
+        pushTrail(marble.position);
+        if (resolved===1) sink();
+        else if (resolved===2) lostInSpace('space');
+        else if (resolved===3) lostInSpace('asteroid');
+        else {
+          flightTimer += dt;
+          var spd = vel.length();
+          if (spd < SETTLE_SPEED){ settleTimer += dt; if (settleTimer>SETTLE_TIME) settle(); }
+          else settleTimer = 0;
+          if (ballMoving && flightTimer > MAX_FLIGHT){
+            if (marble.position.lengthSq() > BOUND*BOUND) lostInSpace('space'); else settle();
+          }
+        }
+      } else {
+        // gentle fade-out of any leftover trail
+        if (trailHist.length){ trailHist.pop(); }
+      }
+      updateTrailBuffer();
+
+      // marble subtle pulse
+      marbleHalo.material.opacity = ballMoving ? 0.95 : (0.55 + Math.sin(time*4)*0.15);
+      marbleLight.intensity = ballMoving ? 1.6 : 1.0;
+
+      // keep aim arrow attached while idle
+      if (hasAim && canShoot() && !aiming){ aimArrow.position.copy(marble.position); }
+
+      updateCamera();
+      renderer.render(scene, camera);
+      drawConfetti();
+    }
+    var _axisCache = new T.Vector3();
+    function _axisVec(a){ return _axisCache.set(a[0],a[1],a[2]); }
+
+    // ---------- Go ----------
+    document.getElementById('loading').classList.add('hidden');
+    startGame();
+    animate();
+  }
+})();
+</script>
+</body>
+</html>
