@@ -24,9 +24,12 @@ ARTIFACT_SOURCE:
 
 EXISTING_TEMPLATES_BY_CATEGORY:
 {{EXISTING_TEMPLATES_BY_CATEGORY}}
-(map of categoryID → list of existing template IDs; if empty, the
- catalog has no template for this category yet, which raises the
- promote-bias.)
+(map of categoryID / subdir → list of existing template IDs already in
+ the catalog. This is the list you must avoid duplicating. Treat an empty
+ or sparse map as NEUTRAL, not as a promote signal — emptiness is usually
+ a snapshot-capture gap, not proof the catalog is bare. Promote on the
+ artifact's own reusable structure; never promote *because* this map is
+ empty.)
 ```
 
 ## Per-type rubric
@@ -55,6 +58,14 @@ The "reusable structure" bar varies by artifact type:
   - >70% structural duplicate of a template *explicitly listed* in
     `EXISTING_TEMPLATES_BY_CATEGORY`.
   - Visible stubs/placeholders (TODO, FIXME, lorem ipsum, "// TODO: implement").
+  - **Trivial / non-reusable content** — the artifact (or the goal) is a
+    one-shot content request, not an interactive app: a static page that
+    just prints generated text (a joke, a quote, a single fact, a short
+    answer), "tell me a joke about X", "write a poem", a one-screen info
+    dump. The test: is there a reusable game-loop, form, data-model, or
+    interactive scaffold a future user could re-skin? If the whole
+    artifact is "display this text," DECLINE — it teaches a future prompt
+    nothing reusable, even when the map is empty.
 
   **NOT decline reasons** (false-positive patterns to actively avoid):
   - Being a well-known classic game (Minesweeper, Pong, Snake, Chess,
@@ -94,8 +105,9 @@ The "reusable structure" bar varies by artifact type:
     common request).
   - Artifact structure is genre-typical, not user-personalized.
   - **No template in `EXISTING_TEMPLATES_BY_CATEGORY` overlaps >70%
-    structurally.** An empty/absent map = no possible overlap = strong
-    promote signal — do NOT treat empty as uncertainty.
+    structurally.** Absence of an overlap is necessary but NOT sufficient —
+    the artifact must still carry reusable, non-trivial structure of its
+    own. An empty map means "no overlap found," not "promote."
   - Code/files have no visible TODO / FIXME / lorem-ipsum stubs.
   - Source appears to compile/run (the original session deployed it).
 
@@ -108,6 +120,10 @@ The "reusable structure" bar varies by artifact type:
   - >70% structural duplicate of a template *explicitly named* in
     `EXISTING_TEMPLATES_BY_CATEGORY`.
   - Visible stubs / placeholders / unimplemented sections.
+  - Trivial / non-reusable content: a one-shot text-generation result
+    (joke, quote, poem, single fact, one-paragraph answer) or any
+    artifact with no interactive structure (no game-loop / form /
+    data-model / reusable scaffold). "Display this text" is not a template.
   - Genuinely niche subject another user is unlikely to want
     (e.g. "ASCII bird-watching log specifically for marshes near Madison WI").
 
@@ -117,9 +133,11 @@ The "reusable structure" bar varies by artifact type:
   If no matching templateID is listed, do NOT speculate. Promote.
 - If your reasoning says "specific to [game/topic]" — that's just the
   artifact being itself. Decline only if specific to a *user*.
-- If `EXISTING_TEMPLATES_BY_CATEGORY` is empty `{}`, you have a strong
-  promote signal — the catalog explicitly has nothing in this space yet.
-  Empty ≠ unknown.
+- If `EXISTING_TEMPLATES_BY_CATEGORY` is empty `{}`, treat it as NEUTRAL,
+  NOT a promote signal. Emptiness is most often a snapshot-capture gap,
+  not proof the catalog is bare. Still don't *speculate* that a specific
+  duplicate exists — but do require the artifact to carry reusable, non-
+  trivial structure on its own merits before promoting.
 
 ## Output
 
