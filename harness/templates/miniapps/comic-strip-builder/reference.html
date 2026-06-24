@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Comic Strip Builder</title>
+<style>
+:root{--bg:#fef3c7;--primary:#f59e0b;--accent:#ec4899;--dark:#1f2937;--paper:#fffbeb;--ok:#10b981;--bad:#ef4444}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;font-family:'Comic Sans MS','Marker Felt','Chalkboard SE',system-ui,sans-serif;background:var(--bg);color:var(--dark);overflow:hidden;touch-action:manipulation}
+body{display:flex;flex-direction:column}
+header{background:linear-gradient(135deg,#f59e0b,#ec4899,#7c3aed);padding:10px 16px;color:#fff;display:flex;justify-content:space-between;align-items:center;gap:8px;box-shadow:0 4px 0 rgba(0,0,0,.2);flex-wrap:wrap;z-index:5}
+h1{font-size:22px;text-shadow:2px 2px 0 rgba(0,0,0,.25);letter-spacing:1px;white-space:nowrap}
+.actions{display:flex;gap:6px;flex-wrap:wrap}
+.btn{background:#fff;color:var(--dark);border:3px solid var(--dark);border-radius:12px;padding:7px 12px;font:bold 13px inherit;cursor:pointer;box-shadow:3px 3px 0 var(--dark);transition:transform .08s,box-shadow .08s;white-space:nowrap}
+.btn:hover{transform:translate(-1px,-1px);box-shadow:4px 4px 0 var(--dark)}
+.btn:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--dark)}
+.btn.primary{background:var(--ok);color:#fff}
+.btn.danger{background:var(--bad);color:#fff}
+.btn.accent{background:var(--accent);color:#fff}
+main{flex:1;display:flex;overflow:hidden;min-height:0}
+aside{width:220px;background:var(--paper);border-right:4px dashed var(--dark);overflow-y:auto;padding:10px;flex-shrink:0}
+.palette-group{margin-bottom:14px}
+.palette-title{font-weight:bold;font-size:12px;text-transform:uppercase;letter-spacing:1px;color:#fff;margin-bottom:8px;background:var(--primary);padding:5px 10px;border-radius:10px;border:2px solid var(--dark);text-align:center;box-shadow:2px 2px 0 var(--dark)}
+.palette-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.sticker-btn{background:#fff;border:2px solid var(--dark);border-radius:10px;aspect-ratio:1;cursor:grab;display:flex;align-items:center;justify-content:center;padding:4px;box-shadow:2px 2px 0 var(--dark);transition:transform .08s}
+.sticker-btn:hover{transform:translate(-1px,-1px) rotate(-3deg);box-shadow:3px 3px 0 var(--dark)}
+.sticker-btn:active{cursor:grabbing;transform:translate(1px,1px) scale(.95);box-shadow:1px 1px 0 var(--dark)}
+.sticker-btn svg{width:100%;height:100%;pointer-events:none;display:block}
+.bg-btn{background:#fff;border:2px solid var(--dark);border-radius:8px;cursor:pointer;height:42px;overflow:hidden;box-shadow:2px 2px 0 var(--dark);padding:0}
+.bg-btn:hover{transform:translate(-1px,-1px);box-shadow:3px 3px 0 var(--dark)}
+.bg-btn svg{width:100%;height:100%;display:block}
+.workspace{flex:1;overflow:auto;padding:16px;background:repeating-linear-gradient(45deg,#fde68a,#fde68a 12px,#fcd34d 12px,#fcd34d 24px);display:flex;flex-direction:column;gap:10px;min-width:0}
+.title-bar{background:#fff;padding:8px 14px;border-radius:12px;border:3px solid var(--dark);box-shadow:4px 4px 0 var(--dark);display:flex;gap:10px;align-items:center}
+.title-bar label{font-weight:bold;font-size:13px;flex-shrink:0}
+.title-bar input{flex:1;border:2px solid var(--dark);border-radius:8px;padding:6px 10px;font:bold 17px inherit;background:#fef3c7;color:var(--dark);min-width:0}
+.title-bar input:focus{outline:none;background:#fff;box-shadow:0 0 0 3px var(--accent)}
+.panels-row{display:flex;gap:12px;background:#fff;padding:12px;border-radius:16px;border:4px solid var(--dark);box-shadow:6px 6px 0 var(--dark)}
+.panel{position:relative;flex:1 1 0;min-width:0;aspect-ratio:4/3;background:#fff;border:4px solid var(--dark);border-radius:6px;overflow:hidden;user-select:none;transition:box-shadow .15s}
+.panel.selected{box-shadow:0 0 0 5px var(--accent),0 0 0 8px var(--dark)}
+.panel-bg{position:absolute;inset:0;pointer-events:none}
+.panel-bg svg{width:100%;height:100%;display:block}
+.panel-label{position:absolute;top:6px;left:6px;background:var(--accent);color:#fff;padding:2px 9px;border-radius:10px;font-weight:bold;font-size:13px;border:2px solid var(--dark);pointer-events:none;z-index:5;box-shadow:1px 1px 0 var(--dark)}
+.items-container{position:absolute;inset:0}
+.item{position:absolute;cursor:move;transform-origin:center;will-change:transform}
+.item.selected{outline:3px dashed var(--accent);outline-offset:3px;border-radius:4px}
+.item svg{width:100%;height:100%;pointer-events:none;display:block}
+.bubble{position:absolute;cursor:move;user-select:none;min-width:70px}
+.bubble-shape{background:#fff;border:3px solid var(--dark);border-radius:18px;padding:7px 11px;font:bold 13px 'Comic Sans MS',sans-serif;color:var(--dark);text-align:center;position:relative;word-wrap:break-word;line-height:1.25;box-shadow:2px 2px 0 var(--dark)}
+.bubble-tail{position:absolute;bottom:-15px;left:18px;width:0;height:0;border-left:11px solid transparent;border-right:11px solid transparent;border-top:16px solid var(--dark)}
+.bubble-tail::after{content:'';position:absolute;left:-8px;top:-17px;width:0;height:0;border-left:8px solid transparent;border-right:8px solid transparent;border-top:12px solid #fff}
+.bubble.thought .bubble-shape{border-radius:30px}
+.bubble.thought .bubble-tail{display:none}
+.bubble.thought .think-dots{position:absolute;bottom:-22px;left:10px;display:flex;gap:4px}
+.bubble.thought .think-dots span{display:block;background:#fff;border:2px solid var(--dark);border-radius:50%}
+.bubble.thought .think-dots span:nth-child(1){width:10px;height:10px}
+.bubble.thought .think-dots span:nth-child(2){width:7px;height:7px;margin-top:5px}
+.bubble.thought .think-dots span:nth-child(3){width:4px;height:4px;margin-top:9px}
+.bubble.selected .bubble-shape{box-shadow:0 0 0 3px var(--accent),2px 2px 0 var(--dark)}
+.item-controls{position:absolute;top:-32px;right:-4px;display:flex;gap:4px;z-index:100}
+.ctrl{background:#fff;border:2px solid var(--dark);border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:13px;font-weight:bold;box-shadow:1px 1px 0 var(--dark);user-select:none;color:var(--dark)}
+.ctrl:active{transform:translate(1px,1px);box-shadow:0 0 0 var(--dark)}
+.ctrl.del{background:var(--bad);color:#fff}
+.ctrl.flip{background:#3b82f6;color:#fff}
+.ctrl.rot{background:var(--ok);color:#fff}
+.ctrl.edit{background:var(--primary);color:#fff}
+.ctrl.layer{background:#a78bfa;color:#fff}
+.resize-handle{position:absolute;bottom:-10px;right:-10px;width:20px;height:20px;background:var(--accent);border:2px solid var(--dark);border-radius:50%;cursor:nwse-resize;z-index:50;box-shadow:1px 1px 0 var(--dark)}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--dark);color:#fff;padding:12px 22px;border-radius:14px;font:bold 14px 'Comic Sans MS',sans-serif;z-index:3000;opacity:0;transition:opacity .25s,transform .25s;border:3px solid #fff;box-shadow:0 4px 0 rgba(0,0,0,.3);pointer-events:none;max-width:90vw;text-align:center}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.modal{position:fixed;inset:0;background:rgba(15,23,42,.7);display:flex;align-items:center;justify-content:center;z-index:2000;padding:16px;backdrop-filter:blur(4px)}
+.modal-content{background:#fff;padding:20px;border-radius:18px;border:4px solid var(--dark);box-shadow:8px 8px 0 var(--dark);max-width:560px;width:100%;max-height:92vh;overflow:auto;display:flex;flex-direction:column;gap:14px;align-items:center}
+.modal h2{color:var(--dark);text-align:center}
+.modal img{max-width:100%;border:3px solid var(--dark);border-radius:10px;display:block}
+.modal textarea{width:100%;min-height:90px;border:3px solid var(--dark);border-radius:10px;padding:10px;font:bold 16px 'Comic Sans MS',sans-serif;resize:vertical;background:#fef3c7;color:var(--dark)}
+.modal textarea:focus{outline:none;box-shadow:0 0 0 3px var(--accent)}
+.modal p{color:var(--dark);font-weight:bold;text-align:center}
+.tip{background:#fef3c7;border:2px dashed var(--dark);border-radius:10px;padding:8px 12px;font-size:12px;color:var(--dark);font-weight:bold;line-height:1.4;text-align:center}
+@media (max-width:760px){aside{width:130px;padding:6px}h1{font-size:17px}.btn{padding:6px 9px;font-size:12px}.palette-title{font-size:10px;padding:3px 6px}.panels-row{flex-direction:column;padding:8px;gap:8px}.panel{aspect-ratio:4/3;min-width:0}.workspace{padding:10px}.title-bar input{font-size:15px}.modal-content{padding:14px}}
+@media (max-width:420px){aside{width:110px}.palette-grid{grid-template-columns:repeat(2,1fr);gap:4px}}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🎨 Comic Builder</h1>
+  <div class="actions">
+    <button class="btn accent" id="addBubbleBtn">💬 Speech</button>
+    <button class="btn" id="addThoughtBtn">💭 Thought</button>
+    <button class="btn danger" id="clearBtn">🗑️ Clear</button>
+    <button class="btn primary" id="exportBtn">📸 Export PNG</button>
+  </div>
+</header>
+
+<main>
+  <aside id="palette">
+    <div class="tip">Drag or tap a sticker. Tap a panel to select it!</div>
+    <div class="palette-group">
+      <div class="palette-title">🎭 Characters</div>
+      <div class="palette-grid" id="charactersGrid"></div>
+    </div>
+    <div class="palette-group">
+      <div class="palette-title">✨ Props</div>
+      <div class="palette-grid" id="propsGrid"></div>
+    </div>
+    <div class="palette-group">
+      <div class="palette-title">🏞️ Scenes</div>
+      <div class="palette-grid" id="bgGrid"></div>
+    </div>
+  </aside>
+
+  <section class="workspace">
+    <div class="title-bar">
+      <label for="titleInput">Title:</label>
+      <input id="titleInput" type="text" placeholder="My Awesome Comic!" value="My Awesome Comic!" maxlength="60">
+    </div>
+    <div class="panels-row" id="panelsRow"></div>
+    <div class="tip">💡 Tap an item to flip, rotate, resize or delete it. Drag items to move them around the panel.</div>
+  </section>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const SVG = {
+  cat: '<svg viewBox="0 0 100 100"><polygon points="22,30 36,16 38,42" fill="#f59e0b" stroke="#1f2937" stroke-width="2"/><polygon points="78,30 64,16 62,42" fill="#f59e0b" stroke="#1f2937" stroke-width="2"/><polygon points="26,30 33,22 33,36" fill="#fbcfe8"/><polygon points="74,30 67,22 67,36" fill="#fbcfe8"/><circle cx="50" cy="56" r="32" fill="#fbbf24" stroke="#1f2937" stroke-width="2"/><ellipse cx="40" cy="54" rx="4" ry="5" fill="#1f2937"/><ellipse cx="60" cy="54" rx="4" ry="5" fill="#1f2937"/><circle cx="41" cy="52" r="1.5" fill="#fff"/><circle cx="61" cy="52" r="1.5" fill="#fff"/><polygon points="46,62 54,62 50,67" fill="#ec4899" stroke="#1f2937" stroke-width="1"/><path d="M 50 67 Q 45 73 41 70" stroke="#1f2937" stroke-width="1.8" fill="none" stroke-linecap="round"/><path d="M 50 67 Q 55 73 59 70" stroke="#1f2937" stroke-width="1.8" fill="none" stroke-linecap="round"/><line x1="15" y1="56" x2="33" y2="58" stroke="#1f2937" stroke-width="1.5" stroke-linecap="round"/><line x1="15" y1="63" x2="33" y2="63" stroke="#1f2937" stroke-width="1.5" stroke-linecap="round"/><line x1="85" y1="56" x2="67" y2="58" stroke="#1f2937" stroke-width="1.5" stroke-linecap="round"/><line x1="85" y1="63" x2="67" y2="63" stroke="#1f2937" stroke-width="1.5" stroke-linecap="round"/></svg>',
+  dog: '<svg viewBox="0 0 100 100"><ellipse cx="22" cy="48" rx="11" ry="22" fill="#92400e" stroke="#1f2937" stroke-width="2"/><ellipse cx="78" cy="48" rx="11" ry="22" fill="#92400e" stroke="#1f2937" stroke-width="2"/><ellipse cx="50" cy="58" rx="32" ry="28" fill="#c2410c" stroke="#1f2937" stroke-width="2"/><ellipse cx="38" cy="50" rx="7" ry="5" fill="#fef3c7"/><circle cx="39" cy="51" r="3" fill="#1f2937"/><ellipse cx="62" cy="50" rx="7" ry="5" fill="#fef3c7"/><circle cx="61" cy="51" r="3" fill="#1f2937"/><circle cx="39.5" cy="50" r="1" fill="#fff"/><circle cx="61.5" cy="50" r="1" fill="#fff"/><ellipse cx="50" cy="66" rx="6" ry="4" fill="#1f2937"/><path d="M 50 72 Q 44 80 40 76" stroke="#1f2937" stroke-width="2" fill="none" stroke-linecap="round"/><path d="M 50 72 Q 56 80 60 76" stroke="#1f2937" stroke-width="2" fill="none" stroke-linecap="round"/><ellipse cx="50" cy="81" rx="7" ry="3.5" fill="#ec4899" stroke="#1f2937" stroke-width="1"/></svg>',
+  robot: '<svg viewBox="0 0 100 100"><line x1="50" y1="15" x2="50" y2="5" stroke="#1f2937" stroke-width="2"/><circle cx="50" cy="5" r="4" fill="#ef4444" stroke="#1f2937" stroke-width="1.5"/><rect x="24" y="18" width="52" height="42" rx="8" fill="#94a3b8" stroke="#1f2937" stroke-width="2.5"/><rect x="30" y="25" width="40" height="18" rx="4" fill="#0f172a"/><circle cx="40" cy="34" r="5" fill="#22d3ee"/><circle cx="60" cy="34" r="5" fill="#22d3ee"/><circle cx="40" cy="34" r="2" fill="#fff"/><circle cx="60" cy="34" r="2" fill="#fff"/><rect x="38" y="50" width="24" height="6" rx="2" fill="#1f2937"/><line x1="42" y1="50" x2="42" y2="56" stroke="#fbbf24" stroke-width="1.5"/><line x1="50" y1="50" x2="50" y2="56" stroke="#fbbf24" stroke-width="1.5"/><line x1="58" y1="50" x2="58" y2="56" stroke="#fbbf24" stroke-width="1.5"/><rect x="30" y="62" width="40" height="28" rx="6" fill="#64748b" stroke="#1f2937" stroke-width="2.5"/><circle cx="40" cy="76" r="3.5" fill="#ef4444" stroke="#1f2937" stroke-width="1"/><circle cx="50" cy="76" r="3.5" fill="#10b981" stroke="#1f2937" stroke-width="1"/><circle cx="60" cy="76" r="3.5" fill="#fbbf24" stroke="#1f2937" stroke-width="1"/></svg>',
+  wizard: '<svg viewBox="0 0 100 100"><polygon points="50,6 28,42 72,42" fill="#6d28d9" stroke="#1f2937" stroke-width="2"/><polygon points="50,6 46,16 54,16" fill="#fbbf24"/><polygon points="40,25 38,30 42,30" fill="#fbbf24"/><polygon points="58,28 56,33 60,33" fill="#fbbf24"/><circle cx="45" cy="22" r="1.5" fill="#fde047"/><circle cx="55" cy="30" r="1.5" fill="#fde047"/><rect x="24" y="40" width="52" height="6" rx="3" fill="#fbbf24" stroke="#1f2937" stroke-width="2"/><ellipse cx="50" cy="60" rx="20" ry="20" fill="#fed7aa" stroke="#1f2937" stroke-width="2"/><circle cx="43" cy="56" r="2.5" fill="#1f2937"/><circle cx="57" cy="56" r="2.5" fill="#1f2937"/><circle cx="43.5" cy="55" r="0.8" fill="#fff"/><circle cx="57.5" cy="55" r="0.8" fill="#fff"/><circle cx="36" cy="62" r="3" fill="#fca5a5" opacity="0.7"/><circle cx="64" cy="62" r="3" fill="#fca5a5" opacity="0.7"/><path d="M 30 68 Q 50 95 70 68 Q 60 80 50 78 Q 40 80 30 68 Z" fill="#f8fafc" stroke="#1f2937" stroke-width="2"/><path d="M 44 62 Q 50 68 56 62" stroke="#1f2937" stroke-width="1.5" fill="none"/></svg>',
+  astronaut: '<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="33" fill="#f1f5f9" stroke="#1f2937" stroke-width="2.5"/><path d="M 22 50 Q 42 22 70 32 Q 78 38 78 50 Q 50 28 22 50 Z" fill="#60a5fa" opacity="0.6"/><ellipse cx="30" cy="40" rx="5" ry="3" fill="#fff" opacity="0.9"/><circle cx="42" cy="55" r="3" fill="#1f2937"/><circle cx="58" cy="55" r="3" fill="#1f2937"/><circle cx="43" cy="54" r="1" fill="#fff"/><circle cx="59" cy="54" r="1" fill="#fff"/><path d="M 42 64 Q 50 70 58 64" stroke="#1f2937" stroke-width="2" fill="none" stroke-linecap="round"/><rect x="40" y="82" width="20" height="10" fill="#ef4444" stroke="#1f2937" stroke-width="2" rx="2"/><circle cx="45" cy="87" r="1.5" fill="#fbbf24"/><circle cx="55" cy="87" r="1.5" fill="#10b981"/><rect x="48" y="78" width="4" height="6" fill="#94a3b8" stroke="#1f2937" stroke-width="1"/></svg>',
+  dino: '<svg viewBox="0 0 100 100"><ellipse cx="60" cy="68" rx="30" ry="19" fill="#16a34a" stroke="#1f2937" stroke-width="2"/><circle cx="30" cy="42" r="19" fill="#22c55e" stroke="#1f2937" stroke-width="2"/><polygon points="40,32 45,20 50,32" fill="#15803d" stroke="#1f2937" stroke-width="1.5"/><polygon points="52,30 57,18 62,30" fill="#15803d" stroke="#1f2937" stroke-width="1.5"/><polygon points="64,32 69,22 74,32" fill="#15803d" stroke="#1f2937" stroke-width="1.5"/><polygon points="76,38 84,30 80,42" fill="#15803d" stroke="#1f2937" stroke-width="1.5"/><circle cx="26" cy="38" r="4" fill="#fff" stroke="#1f2937" stroke-width="1.5"/><circle cx="26" cy="39" r="2" fill="#1f2937"/><circle cx="19" cy="44" r="1" fill="#1f2937"/><circle cx="22" cy="48" r="1" fill="#1f2937"/><path d="M 15 50 Q 22 54 30 51" stroke="#1f2937" stroke-width="1.5" fill="none"/><ellipse cx="45" cy="85" rx="5" ry="3" fill="#15803d" stroke="#1f2937" stroke-width="1.5"/><ellipse cx="70" cy="85" rx="5" ry="3" fill="#15803d" stroke="#1f2937" stroke-width="1.5"/></svg>',
+  unicorn: '<svg viewBox="0 0 100 100"><ellipse cx="60" cy="68" rx="26" ry="18" fill="#fbcfe8" stroke="#1f2937" stroke-width="2"/><circle cx="32" cy="44" r="16" fill="#fbcfe8" stroke="#1f2937" stroke-width="2"/><polygon points="32,12 28,38 36,38" fill="#fde047" stroke="#1f2937" stroke-width="1.5"/><polygon points="32,12 30,24 34,24" fill="#fef9c3"/><ellipse cx="38" cy="32" rx="3" ry="7" fill="#fbcfe8" stroke="#1f2937" stroke-width="1.5"/><circle cx="28" cy="44" r="2.5" fill="#1f2937"/><circle cx="28.5" cy="43" r="0.7" fill="#fff"/><ellipse cx="22" cy="50" rx="2" ry="1" fill="#1f2937"/><path d="M 48 38 Q 55 32 62 38 Q 70 34 75 42 Q 80 50 76 56" fill="#a78bfa" stroke="#1f2937" stroke-width="1.5"/><path d="M 50 42 Q 58 36 65 44" stroke="#ec4899" stroke-width="2" fill="none"/><path d="M 82 65 Q 90 75 85 85 Q 80 88 76 82" fill="#a78bfa" stroke="#1f2937" stroke-width="1.5"/><circle cx="60" cy="60" r="2" fill="#ec4899" opacity="0.6"/></svg>',
+  monster: '<svg viewBox="0 0 100 100"><ellipse cx="50" cy="58" rx="32" ry="34" fill="#a855f7" stroke="#1f2937" stroke-width="2.5"/><circle cx="35" cy="40" r="4" fill="#581c87"/><circle cx="60" cy="50" r="3" fill="#581c87"/><circle cx="70" cy="35" r="3" fill="#581c87"/><line x1="38" y1="22" x2="38" y2="12" stroke="#1f2937" stroke-width="2"/><line x1="62" y1="22" x2="62" y2="12" stroke="#1f2937" stroke-width="2"/><circle cx="38" cy="10" r="3.5" fill="#fbbf24" stroke="#1f2937" stroke-width="1.5"/><circle cx="62" cy="10" r="3.5" fill="#fbbf24" stroke="#1f2937" stroke-width="1.5"/><circle cx="36" cy="45" r="10" fill="#fff" stroke="#1f2937" stroke-width="2"/><circle cx="64" cy="45" r="10" fill="#fff" stroke="#1f2937" stroke-width="2"/><circle cx="36" cy="47" r="5" fill="#1f2937"/><circle cx="64" cy="47" r="5" fill="#1f2937"/><circle cx="37" cy="46" r="1.5" fill="#fff"/><circle cx="65" cy="46" r="1.5" fill="#fff"/><path d="M 28 70 Q 50 85 72 70 Q 70 85 50 85 Q 30 85 28 70 Z" fill="#1f2937"/><polygon points="36,72 40,82 32,80" fill="#fff"/><polygon points="50,73 54,83 46,83" fill="#fff"/><polygon points="64,72 68,80 60,82" fill="#fff"/></svg>',
+  princess: '<svg viewBox="0 0 100 100"><polygon points="32,22 38,8 44,22 50,6 56,22 62,8 68,22" fill="#fbbf24" stroke="#1f2937" stroke-width="2"/><circle cx="38" cy="10" r="2" fill="#ef4444"/><circle cx="50" cy="8" r="2" fill="#3b82f6"/><circle cx="62" cy="10" r="2" fill="#10b981"/><rect x="30" y="22" width="40" height="4" fill="#fbbf24" stroke="#1f2937" stroke-width="1.5"/><ellipse cx="50" cy="50" rx="22" ry="24" fill="#fed7aa" stroke="#1f2937" stroke-width="2"/><path d="M 28 30 Q 22 50 28 75 Q 35 80 40 75 Q 38 50 40 30 Z" fill="#7c3aed" stroke="#1f2937" stroke-width="2"/><path d="M 72 30 Q 78 50 72 75 Q 65 80 60 75 Q 62 50 60 30 Z" fill="#7c3aed" stroke="#1f2937" stroke-width="2"/><circle cx="42" cy="50" r="2.5" fill="#1f2937"/><circle cx="58" cy="50" r="2.5" fill="#1f2937"/><circle cx="42.5" cy="49" r="0.8" fill="#fff"/><circle cx="58.5" cy="49" r="0.8" fill="#fff"/><circle cx="36" cy="58" r="3" fill="#fca5a5" opacity="0.7"/><circle cx="64" cy="58" r="3" fill="#fca5a5" opacity="0.7"/><path d="M 42 62 Q 50 68 58 62" stroke="#ec4899" stroke-width="2" fill="none" stroke-linecap="round"/></svg>',
+  ninja: '<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="32" fill="#fde68a" stroke="#1f2937" stroke-width="2"/><path d="M 18 50 Q 50 18 82 50 L 82 38 Q 50 8 18 38 Z" fill="#1f2937"/><path d="M 18 56 Q 50 88 82 56 L 82 70 Q 50 92 18 70 Z" fill="#1f2937"/><path d="M 82 38 Q 92 38 90 50 Q 92 60 82 60 L 82 52 Q 88 50 82 48 Z" fill="#1f2937"/><rect x="28" y="45" width="44" height="8" fill="#fde68a"/><circle cx="40" cy="49" r="3" fill="#1f2937"/><circle cx="60" cy="49" r="3" fill="#1f2937"/><circle cx="41" cy="48" r="1" fill="#fff"/><circle cx="61" cy="48" r="1" fill="#fff"/><line x1="82" y1="35" x2="95" y2="22" stroke="#1f2937" stroke-width="3"/><line x1="82" y1="40" x2="95" y2="30" stroke="#1f2937" stroke-width="3"/></svg>',
+  heart: '<svg viewBox="0 0 100 100"><path d="M 50 88 L 14 52 Q 4 32 22 18 Q 38 12 50 30 Q 62 12 78 18 Q 96 32 86 52 Z" fill="#ef4444" stroke="#1f2937" stroke-width="3"/><ellipse cx="32" cy="32" rx="7" ry="10" fill="#fca5a5" transform="rotate(-30 32 32)"/></svg>',
+  star: '<svg viewBox="0 0 100 100"><polygon points="50,8 61,38 93,38 67,57 76,89 50,69 24,89 33,57 7,38 39,38" fill="#fbbf24" stroke="#1f2937" stroke-width="3" stroke-linejoin="round"/><polygon points="50,20 56,38 50,52 44,38" fill="#fef9c3"/></svg>',
+  bolt: '<svg viewBox="0 0 100 100"><polygon points="55,5 22,55 44,55 32,95 78,42 56,42 66,5" fill="#fbbf24" stroke="#1f2937" stroke-width="3" stroke-linejoin="round"/><polygon points="55,15 35,50 45,50" fill="#fef08a"/></svg>',
+  sun: '<svg viewBox="0 0 100 100"><g stroke="#f59e0b" stroke-width="7" stroke-linecap="round"><line x1="50" y1="6" x2="50" y2="20"/><line x1="50" y1="80" x2="50" y2="94"/><line x1="6" y1="50" x2="20" y2="50"/><line x1="80" y1="50" x2="94" y2="50"/><line x1="19" y1="19" x2="29" y2="29"/><line x1="71" y1="71" x2="81" y2="81"/><line x1="81" y1="19" x2="71" y2="29"/><line x1="19" y1="81" x2="29" y2="71"/></g><circle cx="50" cy="50" r="22" fill="#fbbf24" stroke="#1f2937" stroke-width="2.5"/><circle cx="42" cy="45" r="3" fill="#1f2937"/><circle cx="58" cy="45" r="3" fill="#1f2937"/><circle cx="42.5" cy="44" r="1" fill="#fff"/><circle cx="58.5" cy="44" r="1" fill="#fff"/><path d="M 40 56 Q 50 64 60 56" stroke="#1f2937" stroke-width="2" fill="none" stroke-linecap="round"/><circle cx="36" cy="54" r="3" fill="#fb7185" opacity="0.6"/><circle cx="64" cy="54" r="3" fill="#fb7185" opacity="0.6"/></svg>',
+  cloud: '<svg viewBox="0 0 100 100"><ellipse cx="28" cy="58" rx="22" ry="18" fill="#fff" stroke="#1f2937" stroke-width="2.5"/><ellipse cx="56" cy="45" rx="24" ry="22" fill="#fff" stroke="#1f2937" stroke-width="2.5"/><ellipse cx="78" cy="60" rx="18" ry="16" fill="#fff" stroke="#1f2937" stroke-width="2.5"/><ellipse cx="50" cy="65" rx="32" ry="12" fill="#fff"/><circle cx="40" cy="45" r="2.5" fill="#1f2937"/><circle cx="66" cy="45" r="2.5" fill="#1f2937"/><path d="M 42 55 Q 53 62 64 55" stroke="#1f2937" stroke-width="2" fill="none" stroke-linecap="round"/></svg>',
+  rainbow: '<svg viewBox="0 0 100 100"><path d="M 10 80 Q 50 8 90 80" fill="none" stroke="#ef4444" stroke-width="8"/><path d="M 18 80 Q 50 20 82 80" fill="none" stroke="#f97316" stroke-width="8"/><path d="M 26 80 Q 50 32 74 80" fill="none" stroke="#fbbf24" stroke-width="8"/><path d="M 34 80 Q 50 44 66 80" fill="none" stroke="#10b981" stroke-width="8"/><path d="M 42 80 Q 50 56 58 80" fill="none" stroke="#3b82f6" stroke-width="8"/><ellipse cx="14" cy="82" rx="12" ry="7" fill="#fff" stroke="#1f2937" stroke-width="2"/><ellipse cx="86" cy="82" rx="12" ry="7" fill="#fff" stroke="#1f2937" stroke-width="2"/><circle cx="10" cy="80" r="3" fill="#fbbf24"/><circle cx="90" cy="80" r="3" fill="#fbbf24"/></svg>',
+  rocket: '<svg viewBox="0 0 100 100"><path d="M 50 5 Q 32 28 32 58 L 32 75 L 68 75 L 68 58 Q 68 28 50 5 Z" fill="#e2e8f0" stroke="#1f2937" stroke-width="2.5"/><path d="M 50 5 Q 32 28 32 50 Q 50 30 68 50 Q 68 28 50 5 Z" fill="#ef4444"/><circle cx="50" cy="40" r="9" fill="#0c0a1e" stroke="#1f2937" stroke-width="2"/><circle cx="50" cy="40" r="5" fill="#22d3ee"/><circle cx="52" cy="38" r="1.5" fill="#fff"/><polygon points="32,55 14,78 32,70" fill="#dc2626" stroke="#1f2937" stroke-width="2"/><polygon points="68,55 86,78 68,70" fill="#dc2626" stroke="#1f2937" stroke-width="2"/><rect x="43" y="60" width="14" height="4" fill="#1f2937"/><polygon points="38,75 50,98 62,75" fill="#fbbf24"/><polygon points="42,75 50,92 58,75" fill="#fb923c"/><polygon points="46,75 50,86 54,75" fill="#fff"/></svg>',
+  cake: '<svg viewBox="0 0 100 100"><rect x="18" y="58" width="64" height="30" rx="4" fill="#fde68a" stroke="#1f2937" stroke-width="2.5"/><path d="M 18 66 Q 26 60 34 66 Q 42 60 50 66 Q 58 60 66 66 Q 74 60 82 66 L 82 70 L 18 70 Z" fill="#f472b6" stroke="#1f2937" stroke-width="1.5"/><rect x="24" y="42" width="52" height="18" rx="3" fill="#fff" stroke="#1f2937" stroke-width="2.5"/><circle cx="32" cy="50" r="2.5" fill="#ef4444"/><circle cx="44" cy="54" r="2.5" fill="#10b981"/><circle cx="56" cy="50" r="2.5" fill="#3b82f6"/><circle cx="68" cy="54" r="2.5" fill="#a855f7"/><rect x="48" y="25" width="4" height="18" fill="#fef08a" stroke="#1f2937" stroke-width="1"/><path d="M 50 14 Q 46 22 50 26 Q 54 22 50 14 Z" fill="#fbbf24" stroke="#f97316" stroke-width="1.5"/></svg>',
+  ball: '<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" fill="#fff" stroke="#1f2937" stroke-width="2.5"/><polygon points="50,20 38,32 42,46 58,46 62,32" fill="#1f2937"/><polygon points="24,46 32,54 28,68 14,64 12,52" fill="#1f2937"/><polygon points="76,46 68,54 72,68 86,64 88,52" fill="#1f2937"/><polygon points="38,68 36,82 50,86 64,82 62,68 50,62" fill="#1f2937"/></svg>',
+  flower: '<svg viewBox="0 0 100 100"><line x1="50" y1="50" x2="50" y2="95" stroke="#16a34a" stroke-width="4"/><path d="M 50 75 Q 35 70 30 80 Q 40 82 50 75" fill="#16a34a" stroke="#1f2937" stroke-width="1.5"/><path d="M 50 80 Q 65 75 70 85 Q 60 87 50 80" fill="#16a34a" stroke="#1f2937" stroke-width="1.5"/><circle cx="50" cy="22" r="12" fill="#ec4899" stroke="#1f2937" stroke-width="2"/><circle cx="30" cy="40" r="12" fill="#a855f7" stroke="#1f2937" stroke-width="2"/><circle cx="70" cy="40" r="12" fill="#a855f7" stroke="#1f2937" stroke-width="2"/><circle cx="30" cy="60" r="12" fill="#3b82f6" stroke="#1f2937" stroke-width="2"/><circle cx="70" cy="60" r="12" fill="#3b82f6" stroke="#1f2937" stroke-width="2"/><circle cx="50" cy="50" r="10" fill="#fbbf24" stroke="#1f2937" stroke-width="2"/></svg>'
+};
+
+const BG_SVG = {
+  blank: '<rect width="100" height="100" fill="#fffbeb"/><circle cx="15" cy="15" r="2" fill="#fbbf24"/><circle cx="85" cy="20" r="2" fill="#ec4899"/><circle cx="25" cy="85" r="2" fill="#3b82f6"/><circle cx="80" cy="80" r="2" fill="#10b981"/>',
+  park: '<defs><linearGradient id="skP" x2="0" y2="1"><stop offset="0" stop-color="#7dd3fc"/><stop offset="1" stop-color="#bae6fd"/></linearGradient><linearGradient id="grP" x2="0" y2="1"><stop offset="0" stop-color="#86efac"/><stop offset="1" stop-color="#22c55e"/></linearGradient></defs><rect width="100" height="72" fill="url(#skP)"/><rect y="72" width="100" height="28" fill="url(#grP)"/><circle cx="82" cy="18" r="7" fill="#fde047" stroke="#fbbf24" stroke-width="0.5"/><ellipse cx="18" cy="22" rx="10" ry="3" fill="#fff" opacity="0.9"/><ellipse cx="50" cy="14" rx="8" ry="2.5" fill="#fff" opacity="0.8"/><ellipse cx="68" cy="26" rx="7" ry="2" fill="#fff" opacity="0.7"/><polygon points="10,72 8,55 12,55" fill="#15803d"/><circle cx="10" cy="50" r="8" fill="#16a34a"/><polygon points="90,72 88,58 92,58" fill="#15803d"/><circle cx="90" cy="52" r="7" fill="#16a34a"/><ellipse cx="50" cy="82" rx="30" ry="3" fill="#15803d" opacity="0.4"/>',
+  space: '<defs><radialGradient id="spG"><stop offset="0" stop-color="#3b0764"/><stop offset="1" stop-color="#0c0a1e"/></radialGradient></defs><rect width="100" height="100" fill="url(#spG)"/><circle cx="10" cy="15" r="0.8" fill="#fff"/><circle cx="22" cy="30" r="0.6" fill="#fff"/><circle cx="42" cy="12" r="1" fill="#fff"/><circle cx="60" cy="22" r="0.5" fill="#fff"/><circle cx="15" cy="55" r="0.7" fill="#fff"/><circle cx="55" cy="75" r="1" fill="#fff"/><circle cx="35" cy="85" r="0.6" fill="#fff"/><circle cx="90" cy="85" r="0.8" fill="#fff"/><circle cx="5" cy="40" r="0.5" fill="#fff"/><circle cx="45" cy="50" r="0.7" fill="#fef08a"/><circle cx="75" cy="42" r="0.8" fill="#bae6fd"/><circle cx="30" cy="68" r="0.6" fill="#fef08a"/><polygon points="20,20 22,18 24,20 22,22" fill="#fef08a"/><polygon points="70,60 72,58 74,60 72,62" fill="#fef08a"/><circle cx="82" cy="22" r="9" fill="#fbbf24" opacity="0.95"/><circle cx="78" cy="20" r="1.5" fill="#a16207" opacity="0.5"/><circle cx="84" cy="24" r="1" fill="#a16207" opacity="0.5"/><ellipse cx="30" cy="45" rx="7" ry="3" fill="#9ca3af" opacity="0.4"/>',
+  beach: '<defs><linearGradient id="skB" x2="0" y2="1"><stop offset="0" stop-color="#fbcfe8"/><stop offset="1" stop-color="#fed7aa"/></linearGradient><linearGradient id="seB" x2="0" y2="1"><stop offset="0" stop-color="#06b6d4"/><stop offset="1" stop-color="#0ea5e9"/></linearGradient></defs><rect width="100" height="55" fill="url(#skB)"/><rect y="55" width="100" height="20" fill="url(#seB)"/><path d="M 0 58 Q 20 56 40 60 Q 60 64 80 58 Q 90 56 100 60 L 100 75 L 0 75 Z" fill="#38bdf8" opacity="0.6"/><path d="M 0 65 Q 25 63 50 67 Q 75 70 100 65 L 100 75 L 0 75 Z" fill="#7dd3fc" opacity="0.5"/><rect y="75" width="100" height="25" fill="#fde68a"/><circle cx="22" cy="79" r="1" fill="#fbbf24"/><circle cx="58" cy="86" r="1" fill="#fbbf24"/><circle cx="75" cy="82" r="1" fill="#fbbf24"/><circle cx="40" cy="92" r="1" fill="#fbbf24"/><circle cx="82" cy="22" r="8" fill="#fef08a" opacity="0.9"/><circle cx="82" cy="22" r="11" fill="none" stroke="#fde047" stroke-width="0.6" opacity="0.6"/>',
+  city: '<defs><linearGradient id="ciG" x2="0" y2="1"><stop offset="0" stop-color="#a78bfa"/><stop offset="0.6" stop-color="#f9a8d4"/><stop offset="1" stop-color="#fcd34d"/></linearGradient></defs><rect width="100" height="100" fill="url(#ciG)"/><circle cx="82" cy="18" r="6" fill="#fef3c7" opacity="0.95"/><rect x="5" y="55" width="15" height="45" fill="#475569" stroke="#1f2937" stroke-width="0.5"/><rect x="22" y="40" width="16" height="60" fill="#334155" stroke="#1f2937" stroke-width="0.5"/><rect x="40" y="50" width="12" height="50" fill="#475569" stroke="#1f2937" stroke-width="0.5"/><rect x="54" y="30" width="18" height="70" fill="#1e293b" stroke="#1f2937" stroke-width="0.5"/><rect x="74" y="45" width="14" height="55" fill="#334155" stroke="#1f2937" stroke-width="0.5"/><rect x="90" y="55" width="10" height="45" fill="#475569" stroke="#1f2937" stroke-width="0.5"/><rect x="8" y="60" width="2" height="2" fill="#fde047"/><rect x="13" y="65" width="2" height="2" fill="#fde047"/><rect x="8" y="72" width="2" height="2" fill="#fde047"/><rect x="25" y="45" width="2" height="2" fill="#fde047"/><rect x="30" y="50" width="2" height="2" fill="#fde047"/><rect x="25" y="58" width="2" height="2" fill="#fde047"/><rect x="33" y="68" width="2" height="2" fill="#fde047"/><rect x="43" y="55" width="2" height="2" fill="#fde047"/><rect x="48" y="62" width="2" height="2" fill="#fde047"/><rect x="58" y="35" width="2" height="2" fill="#fde047"/><rect x="63" y="40" width="2" height="2" fill="#fde047"/><rect x="58" y="48" width="2" height="2" fill="#fde047"/><rect x="66" y="55" width="2" height="2" fill="#fde047"/><rect x="77" y="50" width="2" height="2" fill="#fde047"/><rect x="82" y="58" width="2" height="2" fill="#fde047"/><rect x="93" y="60" width="2" height="2" fill="#fde047"/>',
+  forest: '<defs><linearGradient id="foG" x2="0" y2="1"><stop offset="0" stop-color="#bef264"/><stop offset="1" stop-color="#86efac"/></linearGradient></defs><rect width="100" height="75" fill="url(#foG)"/><rect y="75" width="100" height="25" fill="#65a30d"/><polygon points="15,78 5,40 25,40" fill="#166534" stroke="#14532d" stroke-width="0.5"/><polygon points="15,55 8,32 22,32" fill="#15803d"/><polygon points="35,80 22,30 48,30" fill="#14532d" stroke="#052e16" stroke-width="0.5"/><polygon points="35,55 25,20 45,20" fill="#166534"/><polygon points="60,78 50,38 70,38" fill="#166534" stroke="#14532d" stroke-width="0.5"/><polygon points="60,55 52,28 68,28" fill="#15803d"/><polygon points="85,80 73,32 97,32" fill="#14532d" stroke="#052e16" stroke-width="0.5"/><polygon points="85,55 75,22 95,22" fill="#166534"/><circle cx="25" cy="15" r="4" fill="#fef3c7" opacity="0.7"/><circle cx="75" cy="10" r="3" fill="#fef3c7" opacity="0.6"/>',
+  sunset: '<defs><linearGradient id="suG" x2="0" y2="1"><stop offset="0" stop-color="#7c3aed"/><stop offset="0.4" stop-color="#ec4899"/><stop offset="0.8" stop-color="#fbbf24"/><stop offset="1" stop-color="#fed7aa"/></linearGradient></defs><rect width="100" height="100" fill="url(#suG)"/><circle cx="50" cy="60" r="14" fill="#fef3c7" opacity="0.95"/><circle cx="50" cy="60" r="19" fill="none" stroke="#fef9c3" stroke-width="0.5" opacity="0.5"/><rect x="0" y="68" width="100" height="1" fill="#1e293b" opacity="0.6"/><rect x="0" y="72" width="100" height="0.5" fill="#1e293b" opacity="0.4"/><path d="M 0 78 Q 20 75 35 80 Q 50 85 65 78 Q 80 75 100 80 L 100 100 L 0 100 Z" fill="#1e293b" opacity="0.85"/><polygon points="15,78 12,68 18,68" fill="#1e293b"/><polygon points="82,80 78,70 86,70" fill="#1e293b"/>',
+  underwater: '<defs><linearGradient id="uwG" x2="0" y2="1"><stop offset="0" stop-color="#22d3ee"/><stop offset="1" stop-color="#0e7490"/></linearGradient></defs><rect width="100" height="100" fill="url(#uwG)"/><circle cx="15" cy="25" r="1.5" fill="#fff" opacity="0.7"/><circle cx="35" cy="40" r="1" fill="#fff" opacity="0.6"/><circle cx="60" cy="20" r="2" fill="#fff" opacity="0.7"/><circle cx="80" cy="45" r="1.2" fill="#fff" opacity="0.6"/><circle cx="25" cy="55" r="1" fill="#fff" opacity="0.5"/><circle cx="70" cy="60" r="1.3" fill="#fff" opacity="0.6"/><path d="M 0 85 Q 25 78 50 85 Q 75 92 100 85 L 100 100 L 0 100 Z" fill="#fcd34d"/><path d="M 10 85 Q 12 78 14 85 Q 16 78 18 85" fill="#16a34a" stroke="#15803d" stroke-width="0.5"/><path d="M 30 86 Q 33 76 36 86" fill="#16a34a" stroke="#15803d" stroke-width="0.5"/><path d="M 70 85 Q 74 75 78 85 Q 76 80 80 84" fill="#16a34a" stroke="#15803d" stroke-width="0.5"/><path d="M 88 86 Q 90 78 92 86" fill="#16a34a" stroke="#15803d" stroke-width="0.5"/>'
+};
+
+const CHARACTERS = ['cat','dog','robot','wizard','astronaut','dino','unicorn','monster','princess','ninja'];
+const PROPS = ['heart','star','bolt','sun','cloud','rainbow','rocket','cake','ball','flower'];
+const BGS = ['blank','park','space','beach','city','forest','sunset','underwater'];
+
+let selectedPanelIdx = 0;
+let selectedItem = null;
+let dragData = null;
+const panels = [
+  { bg: 'park', items: [] },
+  { bg: 'beach', items: [] },
+  { bg: 'space', items: [] }
+];
+
+function uid(){ return Math.random().toString(36).slice(2,9); }
+function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function escapeXml(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&apos;'}[c])); }
+
+function renderPalette() {
+  document.getElementById('charactersGrid').innerHTML = CHARACTERS.map(k =>
+    `<button class="sticker-btn" data-sticker="${k}" aria-label="${k}">${SVG[k]}</button>`
+  ).join('');
+  document.getElementById('propsGrid').innerHTML = PROPS.map(k =>
+    `<button class="sticker-btn" data-sticker="${k}" aria-label="${k}">${SVG[k]}</button>`
+  ).join('');
+  document.getElementById('bgGrid').innerHTML = BGS.map(k =>
+    `<button class="bg-btn" data-bg="${k}" aria-label="${k} background"><svg viewBox="0 0 100 100" preserveAspectRatio="xMidYMid slice">${BG_SVG[k]}</svg></button>`
+  ).join('');
+}
+
+function renderPanels() {
+  const row = document.getElementById('panelsRow');
+  row.innerHTML = panels.map((p,i) => `
+    <div class="panel ${i===selectedPanelIdx?'selected':''}" data-panel-idx="${i}">
+      <div class="panel-bg"><svg viewBox="0 0 100 100" preserveAspectRatio="xMidYMid slice">${BG_SVG[p.bg]}</svg></div>
+      <div class="panel-label">${i+1}</div>
+      <div class="items-container" data-items="${i}"></div>
+    </div>
+  `).join('');
+  panels.forEach((p,i) => {
+    const c = document.querySelector(`[data-items="${i}"]`);
+    p.items.forEach(it => renderItem(it, c));
+  });
+}
+
+function renderItem(item, container) {
+  let el;
+  if (item.type === 'sticker') {
+    el = document.createElement('div');
+    el.className = 'item';
+    el.dataset.itemId = item.id;
+    el.style.left = item.x + '%';
+    el.style.top = item.y + '%';
+    el.style.width = item.size + '%';
+    el.style.aspectRatio = '1';
+    el.style.transform = `rotate(${item.rot||0}deg) scaleX(${item.flip?-1:1})`;
+    el.style.zIndex = item.z || 1;
+    el.innerHTML = SVG[item.sticker];
+  } else if (item.type === 'bubble') {
+    el = document.createElement('div');
+    el.className = 'bubble' + (item.thought ? ' thought' : '');
+    el.dataset.itemId = item.id;
+    el.style.left = item.x + '%';
+    el.style.top = item.y + '%';
+    el.style.width = item.width + '%';
+    el.style.zIndex = item.z || 10;
+    const inner = `<div class="bubble-shape">${escapeHtml(item.text)}</div>` +
+      (item.thought
+        ? '<div class="think-dots"><span></span><span></span><span></span></div>'
+        : '<div class="bubble-tail"></div>');
+    el.innerHTML = inner;
+  }
+  if (selectedItem === item.id) el.classList.add('selected');
+  container.appendChild(el);
+
+  if (selectedItem === item.id) {
+    const controls = document.createElement('div');
+    controls.className = 'item-controls';
+    if (item.type === 'sticker') {
+      controls.innerHTML = `
+        <div class="ctrl flip" data-action="flip" title="Flip">↔</div>
+        <div class="ctrl rot" data-action="rotate" title="Rotate">↻</div>
+        <div class="ctrl layer" data-action="front" title="Bring to front">⬆</div>
+        <div class="ctrl del" data-action="delete" title="Delete">×</div>
+      `;
+    } else {
+      controls.innerHTML = `
+        <div class="ctrl edit" data-action="edit" title="Edit text">✎</div>
+        <div class="ctrl layer" data-action="front" title="Bring to front">⬆</div>
+        <div class="ctrl del" data-action="delete" title="Delete">×</div>
+      `;
+    }
+    el.appendChild(controls);
+    const handle = document.createElement('div');
+    handle.className = 'resize-handle';
+    handle.dataset.action = 'resize';
+    el.appendChild(handle);
+  }
+}
+
+function showToast(msg, duration=2000){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(()=>t.classList.remove('show'), duration);
+}
+
+function maxZ(panel){ return panel.items.reduce((m,it)=>Math.max(m, it.z||1), 1); }
+
+function addStickerToPanel(stickerKey, panelIdx, x, y){
+  const z = maxZ(panels[panelIdx]) + 1;
+  const item = { id: uid(), type:'sticker', sticker:stickerKey,
+    x: x ?? 32, y: y ?? 30, size: 32, rot: 0, flip: false, z };
+  panels[panelIdx].items.push(item);
+  selectedItem = item.id;
+  renderPanels();
+}
+
+function addBubble(panelIdx, thought, text){
+  const z = maxZ(panels[panelIdx]) + 1;
+  const t = text ?? (thought ? 'Hmm...' : 'Hello!');
+  const item = { id: uid(), type:'bubble', text:t, thought:!!thought,
+    x: 10 + panels[panelIdx].items.length * 3, y: 8, width: 42, z };
+  panels[panelIdx].items.push(item);
+  selectedItem = item.id;
+  renderPanels();
+}
+
+function deleteItem(itemId){
+  panels.forEach(p => {
+    const i = p.items.findIndex(it => it.id===itemId);
+    if (i>=0) p.items.splice(i,1);
+  });
+  if (selectedItem === itemId) selectedItem = null;
+  renderPanels();
+}
+
+function findItem(itemId){
+  for (const p of panels) {
+    const it = p.items.find(i => i.id===itemId);
+    if (it) return { item: it, panel: p, panelIdx: panels.indexOf(p) };
+  }
+  return null;
+}
+
+function getPoint(e){
+  const t = e.touches?.[0] || e.changedTouches?.[0] || e;
+  return { x: t.clientX, y: t.clientY };
+}
+
+function startPaletteDrag(e){
+  const bgBtn = e.target.closest('.bg-btn');
+  if (bgBtn) {
+    e.preventDefault();
+    panels[selectedPanelIdx].bg = bgBtn.dataset.bg;
+    renderPanels();
+    showToast(`Scene set in panel ${selectedPanelIdx+1}!`);
+    return;
+  }
+  const btn = e.target.closest('.sticker-btn');
+  if (!btn) return;
+  e.preventDefault();
+  const stickerKey = btn.dataset.sticker;
+  const point = getPoint(e);
+  const ghost = createGhost(stickerKey, point.x, point.y);
+  document.body.appendChild(ghost);
+  dragData = {
+    type: 'palette', stickerKey, ghost,
+    startX: point.x, startY: point.y, moved: false
+  };
+  document.addEventListener('mousemove', onDragMove);
+  document.addEventListener('mouseup', endDrag);
+  document.addEventListener('touchmove', onDragMove, { passive: false });
+  document.addEventListener('touchend', endDrag);
+  document.addEventListener('touchcancel', endDrag);
+}
+
+function createGhost(stickerKey, x, y){
+  const g = document.createElement('div');
+  g.style.cssText = `position:fixed;left:${x-32}px;top:${y-32}px;width:64px;height:64px;pointer-events:none;z-index:9999;opacity:.85;transform:rotate(-5deg);filter:drop-shadow(2px 4px 4px rgba(0,0,0,.3));`;
+  g.innerHTML = SVG[stickerKey];
+  const svg = g.querySelector('svg');
+  if (svg) { svg.style.width = '100%'; svg.style.height = '100%'; svg.style.display = 'block'; }
+  return g;
+}
+
+function onDragMove(e){
+  if (!dragData) return;
+  e.preventDefault();
+  const point = getPoint(e);
+  if (!dragData.moved && (Math.abs(point.x - dragData.startX) > 4 || Math.abs(point.y - dragData.startY) > 4)) {
+    dragData.moved = true;
+  }
+  if (dragData.ghost) {
+    dragData.ghost.style.left = (point.x - 32) + 'px';
+    dragData.ghost.style.top = (point.y - 32) + 'px';
+  }
+  if (dragData.type === 'move' || dragData.type === 'resize') {
+    handleItemDrag(point);
+  }
+}
+
+function endDrag(e){
+  if (!dragData) return;
+  const point = getPoint(e);
+  if (dragData.type === 'palette') {
+    const elem = document.elementFromPoint(point.x, point.y);
+    const panel = elem?.closest('.panel');
+    if (panel) {
+      const idx = +panel.dataset.panelIdx;
+      const rect = panel.getBoundingClientRect();
+      const x = ((point.x - rect.left) / rect.width) * 100 - 16;
+      const y = ((point.y - rect.top) / rect.height) * 100 - 16;
+      selectedPanelIdx = idx;
+      addStickerToPanel(dragData.stickerKey, idx, Math.max(0, Math.min(70, x)), Math.max(0, Math.min(70, y)));
+      showToast('Sticker added! ' + (dragData.moved ? '' : ''));
+    } else if (!dragData.moved) {
+      addStickerToPanel(dragData.stickerKey, selectedPanelIdx);
+      showToast(`Added to panel ${selectedPanelIdx+1}!`);
+    }
+    if (dragData.ghost) dragData.ghost.remove();
+  } else if (dragData.type === 'move' || dragData.type === 'resize') {
+    renderPanels();
+  }
+  document.removeEventListener('mousemove', onDragMove);
+  document.removeEventListener('mouseup', endDrag);
+  document.removeEventListener('touchmove', onDragMove);
+  document.removeEventListener('touchend', endDrag);
+  document.removeEventListener('touchcancel', endDrag);
+  dragData = null;
+}
+
+function onPanelMouseDown(e){
+  const action = e.target.closest('[data-action]');
+  if (action) {
+    e.preventDefault();
+    e.stopPropagation();
+    const a = action.dataset.action;
+    if (a === 'delete') { deleteItem(selectedItem); showToast('Removed!'); return; }
+    if (a === 'flip') { const f = findItem(selectedItem); if (f) { f.item.flip = !f.item.flip; renderPanels(); } return; }
+    if (a === 'rotate') { const f = findItem(selectedItem); if (f) { f.item.rot = ((f.item.rot||0)+15) % 360; renderPanels(); } return; }
+    if (a === 'front') { const f = findItem(selectedItem); if (f) { f.item.z = maxZ(f.panel) + 1; renderPanels(); } return; }
+    if (a === 'edit') { const f = findItem(selectedItem); if (f) editBubble(f.item); return; }
+    if (a === 'resize') { startResize(e); return; }
+  }
+  const itemEl = e.target.closest('.item, .bubble');
+  const panel = e.target.closest('.panel');
+  if (!panel) return;
+  const newPanelIdx = +panel.dataset.panelIdx;
+  if (itemEl) {
+    e.preventDefault();
+    selectedPanelIdx = newPanelIdx;
+    selectedItem = itemEl.dataset.itemId;
+    renderPanels();
+    startMove(e, selectedItem);
+  } else {
+    if (selectedPanelIdx !== newPanelIdx || selectedItem) {
+      selectedPanelIdx = newPanelIdx;
+      selectedItem = null;
+      renderPanels();
+    }
+  }
+}
+
+function startMove(e, itemId){
+  const point = getPoint(e);
+  const itemData = findItem(itemId);
+  if (!itemData) return;
+  const panelEl = document.querySelector(`[data-panel-idx="${itemData.panelIdx}"]`);
+  const rect = panelEl.getBoundingClientRect();
+  dragData = {
+    type: 'move', itemId,
+    startX: point.x, startY: point.y,
+    origX: itemData.item.x, origY: itemData.item.y,
+    panelRect: rect, moved: false
+  };
+  document.addEventListener('mousemove', onDragMove);
+  document.addEventListener('mouseup', endDrag);
+  document.addEventListener('touchmove', onDragMove, { passive: false });
+  document.addEventListener('touchend', endDrag);
+  document.addEventListener('touchcancel', endDrag);
+}
+
+function startResize(e){
+  const point = getPoint(e);
+  const itemData = findItem(selectedItem);
+  if (!itemData) return;
+  const panelEl = document.querySelector(`[data-panel-idx="${itemData.panelIdx}"]`);
+  const rect = panelEl.getBoundingClientRect();
+  dragData = {
+    type: 'resize', itemId: selectedItem,
+    startX: point.x, startY: point.y,
+    origSize: itemData.item.type === 'sticker' ? itemData.item.size : itemData.item.width,
+    panelRect: rect, moved: false
+  };
+  document.addEventListener('mousemove', onDragMove);
+  document.addEventListener('mouseup', endDrag);
+  document.addEventListener('touchmove', onDragMove, { passive: false });
+  document.addEventListener('touchend', endDrag);
+  document.addEventListener('touchcancel', endDrag);
+}
+
+function handleItemDrag(point){
+  const itemData = findItem(dragData.itemId);
+  if (!itemData) return;
+  if (dragData.type === 'move') {
+    const dx = (point.x - dragData.startX) / dragData.panelRect.width * 100;
+    const dy = (point.y - dragData.startY) / dragData.panelRect.height * 100;
+    itemData.item.x = Math.max(-3, Math.min(95, dragData.origX + dx));
+    itemData.item.y = Math.max(-3, Math.min(92, dragData.origY + dy));
+    const el = document.querySelector(`[data-item-id="${dragData.itemId}"]`);
+    if (el) {
+      el.style.left = itemData.item.x + '%';
+      el.style.top = itemData.item.y + '%';
+    }
+  } else if (dragData.type === 'resize') {
+    const dx = (point.x - dragData.startX) / dragData.panelRect.width * 100;
+    const minSize = itemData.item.type === 'sticker' ? 10 : 15;
+    const maxSize = itemData.item.type === 'sticker' ? 80 : 90;
+    const newSize = Math.max(minSize, Math.min(maxSize, dragData.origSize + dx));
+    if (itemData.item.type === 'sticker') itemData.item.size = newSize;
+    else itemData.item.width = newSize;
+    const el = document.querySelector(`[data-item-id="${dragData.itemId}"]`);
+    if (el) el.style.width = newSize + '%';
+  }
+}
+
+function editBubble(item){
+  const modal = document.createElement('div');
+  modal.className = 'modal';
+  modal.innerHTML = `
+    <div class="modal-content">
+      <h2>${item.thought ? '💭 Edit Thought' : '💬 Edit Speech'}</h2>
+      <textarea id="bubbleText" maxlength="140">${escapeHtml(item.text)}</textarea>
+      <div class="actions">
+        <button class="btn" id="cancelEdit">Cancel</button>
+        <button class="btn primary" id="saveEdit">Save</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+  const ta = modal.querySelector('#bubbleText');
+  setTimeout(()=>{ ta.focus(); ta.select(); }, 50);
+  const close = ()=> modal.remove();
+  const save = ()=> { item.text = (ta.value || '...').trim() || '...'; close(); renderPanels(); };
+  modal.querySelector('#cancelEdit').onclick = close;
+  modal.querySelector('#saveEdit').onclick = save;
+  modal.onclick = (e)=>{ if (e.target === modal) close(); };
+  ta.addEventListener('keydown', (e)=>{ if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) save(); });
+}
+
+function nsBg(bgKey, idx){
+  return BG_SVG[bgKey].replace(/(id=")([a-zA-Z0-9_]+)/g, `$1$2_p${idx}`).replace(/(url\(#)([a-zA-Z0-9_]+)/g, `$1$2_p${idx}`);
+}
+
+function wrapText(text, maxChars){
+  const paragraphs = text.split(/
++/);
+  const out = [];
+  for (const para of paragraphs) {
+    const words = para.split(/\s+/);
+    let cur = '';
+    for (const w of words) {
+      const candidate = (cur + ' ' + w).trim();
+      if (candidate.length > maxChars && cur) {
+        out.push(cur);
+        cur = w;
+      } else {
+        cur = candidate;
+      }
+    }
+    if (cur) out.push(cur);
+  }
+  return out.length ? out : [text];
+}
+
+async function exportComic(){
+  showToast('Creating your comic...', 1200);
+  await new Promise(r => setTimeout(r, 80));
+  const title = (document.getElementById('titleInput').value || 'My Comic').trim();
+  const PW = 480, PH = 360, GAP = 16, PAD = 24, TH = 64;
+  const W = PW * 3 + GAP * 2 + PAD * 2;
+  const H = PH + TH + PAD * 2 + 8;
+  let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">`;
+  svg += `<rect width="${W}" height="${H}" fill="#fef3c7"/>`;
+  for (let i = 0; i < 30; i++) {
+    const cx = (i * 137) % W;
+    const cy = (i * 89) % H;
+    svg += `<circle cx="${cx}" cy="${cy}" r="3" fill="#fcd34d" opacity="0.5"/>`;
+  }
+  svg += `<rect x="${PAD}" y="${PAD}" width="${W - PAD * 2}" height="${TH - 8}" rx="14" fill="#ffffff" stroke="#1f2937" stroke-width="4"/>`;
+  svg += `<rect x="${PAD + 4}" y="${PAD + 4}" width="${W - PAD * 2 - 8}" height="${TH - 16}" rx="10" fill="none" stroke="#ec4899" stroke-width="2" stroke-dasharray="6,4"/>`;
+  svg += `<text x="${W / 2}" y="${PAD + (TH - 8) / 2 + 2}" font-family="Comic Sans MS, Marker Felt, sans-serif" font-size="30" font-weight="bold" fill="#1f2937" text-anchor="middle" dominant-baseline="middle">${escapeXml(title)}</text>`;
+  for (let i = 0; i < 3; i++) {
+    const px = PAD + i * (PW + GAP);
+    const py = PAD + TH + 8;
+    const p = panels[i];
+    svg += `<defs><clipPath id="clip_p${i}"><rect x="${px}" y="${py}" width="${PW}" height="${PH}"/></clipPath></defs>`;
+    svg += `<g clip-path="url(#clip_p${i})">`;
+    svg += `<svg x="${px}" y="${py}" width="${PW}" height="${PH}" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid slice">${nsBg(p.bg, i)}</svg>`;
+    const sorted = [...p.items].sort((a, b) => (a.z || 1) - (b.z || 1));
+    for (const item of sorted) {
+      if (item.type === 'sticker') {
+        const sx = px + (item.x / 100) * PW;
+        const sy = py + (item.y / 100) * PH;
+        const sw = (item.size / 100) * PW;
+        const sh = sw;
+        const cx = sx + sw / 2;
+        const cy = sy + sh / 2;
+        const ts = [];
+        if (item.rot) ts.push(`rotate(${item.rot} ${cx} ${cy})`);
+        if (item.flip) ts.push(`translate(${cx * 2} 0) scale(-1 1)`);
+        const tStr = ts.length ? ` transform="${ts.join(' ')}"` : '';
+        svg += `<g${tStr}><svg x="${sx}" y="${sy}" width="${sw}" height="${sh}" viewBox="0 0 100 100">${SVG[item.sticker]}</svg></g>`;
+      } else if (item.type === 'bubble') {
+        const bx = px + (item.x / 100) * PW;
+        const by = py + (item.y / 100) * PH;
+        const bw = (item.width / 100) * PW;
+        const fontSize = 16;
+        const charW = fontSize * 0.55;
+        const maxChars = Math.max(8, Math.floor((bw - 20) / charW));
+        const lines = wrapText(item.text, maxChars);
+        const lineH = 20;
+        const bh = lines.length * lineH + 18;
+        const rx = item.thought ? 28 : 16;
+        svg += `<rect x="${bx}" y="${by}" width="${bw}" height="${bh}" rx="${rx}" fill="#ffffff" stroke="#1f2937" stroke-width="3.5"/>`;
+        if (!item.thought) {
+          const tailX = bx + 22;
+          const tailY = by + bh;
+          svg += `<polygon points="${tailX},${tailY} ${tailX + 18},${tailY} ${tailX + 4},${tailY + 18}" fill="#ffffff" stroke="#1f2937" stroke-width="3.5" stroke-linejoin="round"/>`;
+          svg += `<polygon points="${tailX + 2},${tailY - 1} ${tailX + 16},${tailY - 1} ${tailX + 5},${tailY + 14}" fill="#ffffff"/>`;
+        } else {
+          svg += `<circle cx="${bx + 18}" cy="${by + bh + 8}" r="5" fill="#ffffff" stroke="#1f2937" stroke-width="2.5"/>`;
+          svg += `<circle cx="${bx + 10}" cy="${by + bh + 18}" r="3.5" fill="#ffffff" stroke="#1f2937" stroke-width="2"/>`;
+          svg += `<circle cx="${bx + 4}" cy="${by + bh + 25}" r="2" fill="#ffffff" stroke="#1f2937" stroke-width="1.5"/>`;
+        }
+        lines.forEach((line, idx) => {
+          const ty = by + 15 + idx * lineH;
+          svg += `<text x="${bx + bw / 2}" y="${ty}" font-family="Comic Sans MS, Marker Felt, sans-serif" font-size="${fontSize}" font-weight="bold" fill="#1f2937" text-anchor="middle" dominant-baseline="hanging">${escapeXml(line)}</text>`;
+        });
+      }
+    }
+    svg += `</g>`;
+    svg += `<rect x="${px}" y="${py}" width="${PW}" height="${PH}" fill="none" stroke="#1f2937" stroke-width="5"/>`;
+    svg += `<rect x="${px + 8}" y="${py + 8}" width="30" height="22" rx="6" fill="#ec4899" stroke="#1f2937" stroke-width="2.5"/>`;
+    svg += `<text x="${px + 23}" y="${py + 24}" font-family="Comic Sans MS, sans-serif" font-size="16" font-weight="bold" fill="#ffffff" text-anchor="middle">${i + 1}</text>`;
+  }
+  svg += `</svg>`;
+  try {
+    const blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const img = new Image();
+    await new Promise((res, rej) => {
+      img.onload = res;
+      img.onerror = ()=> rej(new Error('Could not render SVG'));
+      img.src = url;
+    });
+    const canvas = document.createElement('canvas');
+    const scale = 2;
+    canvas.width = W * scale;
+    canvas.height = H * scale;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#fef3c7';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    URL.revokeObjectURL(url);
+    const pngUrl = canvas.toDataURL('image/png');
+    showExportModal(pngUrl, title);
+  } catch (err) {
+    console.error(err);
+    showToast('Export failed: ' + err.message, 3500);
+  }
+}
+
+function showExportModal(dataUrl, title){
+  const modal = document.createElement('div');
+  modal.className = 'modal';
+  modal.innerHTML = `
+    <div class="modal-content">
+      <h2>📸 Your Comic is Ready!</h2>
+      <img src="${dataUrl}" alt="${escapeHtml(title)}">
+      <p>Save it to your device or share with friends!</p>
+      <div class="actions">
+        <button class="btn" id="closeExport">Close</button>
+        <button class="btn primary" id="downloadBtn">⬇️ Download PNG</button>
+        <button class="btn accent" id="shareBtn">📤 Share</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+  const close = ()=> modal.remove();
+  modal.querySelector('#closeExport').onclick = close;
+  modal.onclick = (e)=>{ if (e.target === modal) close(); };
+  modal.querySelector('#downloadBtn').onclick = ()=>{
+    const a = document.createElement('a');
+    a.href = dataUrl;
+    a.download = (title || 'comic').replace(/[^a-z0-9_-]+/gi,'_').toLowerCase() + '.png';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    showToast('Downloaded!');
+  };
+  modal.querySelector('#shareBtn').onclick = async ()=>{
+    try {
+      const res = await fetch(dataUrl);
+      const blob = await res.blob();
+      const file = new File([blob], 'comic.png', { type: 'image/png' });
+      if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], title, text: 'Check out my comic!' });
+        showToast('Shared!');
+      } else if (navigator.clipboard && window.ClipboardItem) {
+        await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+        showToast('Copied to clipboard!');
+      } else {
+        showToast('Share not supported — use Download', 2600);
+      }
+    } catch (err) {
+      if (err.name !== 'AbortError') showToast('Could not share');
+    }
+  };
+}
+
+document.getElementById('palette').addEventListener('mousedown', startPaletteDrag);
+document.getElementById('palette').addEventListener('touchstart', startPaletteDrag, { passive: false });
+document.getElementById('panelsRow').addEventListener('mousedown', onPanelMouseDown);
+document.getElementById('panelsRow').addEventListener('touchstart', onPanelMouseDown, { passive: false });
+
+document.getElementById('addBubbleBtn').onclick = ()=> {
+  addBubble(selectedPanelIdx, false);
+  showToast(`Speech bubble added to panel ${selectedPanelIdx+1}`);
+};
+document.getElementById('addThoughtBtn').onclick = ()=> {
+  addBubble(selectedPanelIdx, true);
+  showToast(`Thought bubble added to panel ${selectedPanelIdx+1}`);
+};
+document.getElementById('clearBtn').onclick = ()=> {
+  if (panels.every(p => p.items.length === 0)) { showToast('Nothing to clear!'); return; }
+  if (confirm('Clear ALL panels? This cannot be undone.')) {
+    panels.forEach(p => p.items = []);
+    selectedItem = null;
+    renderPanels();
+    showToast('All cleared!');
+  }
+};
+document.getElementById('exportBtn').onclick = exportComic;
+
+document.addEventListener('keydown', (e)=>{
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+  if ((e.key === 'Delete' || e.key === 'Backspace') && selectedItem) {
+    e.preventDefault();
+    deleteItem(selectedItem);
+    showToast('Removed!');
+  }
+  if (e.key === '1' || e.key === '2' || e.key === '3') {
+    selectedPanelIdx = +e.key - 1;
+    selectedItem = null;
+    renderPanels();
+  }
+});
+
+renderPalette();
+addStickerToPanel('sun', 0, 62, 8);
+addStickerToPanel('cat', 0, 22, 38);
+addBubble(0, false, 'Hi! Let\u2019s play!');
+const b0 = panels[0].items[panels[0].items.length - 1];
+b0.x = 38; b0.y = 6; b0.width = 38;
+addStickerToPanel('dog', 1, 50, 42);
+addStickerToPanel('flower', 1, 8, 60);
+addBubble(1, true, 'A new friend?');
+const b1 = panels[1].items[panels[1].items.length - 1];
+b1.x = 8; b1.y = 6; b1.width = 38;
+addStickerToPanel('rocket', 2, 36, 28);
+addStickerToPanel('star', 2, 8, 12);
+addStickerToPanel('star', 2, 78, 18);
+selectedItem = null;
+selectedPanelIdx = 0;
+renderPanels();
+</script>
+</body>
+</html>
