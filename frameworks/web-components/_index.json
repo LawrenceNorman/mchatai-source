@@ -3398,6 +3398,592 @@
           "SPANISH_PHRASES: Array<{es,en,category}>"
         ]
       }
+    },
+    {
+      "id": "entities.incremental-economy",
+      "name": "IncrementalEconomy",
+      "category": "entities",
+      "path": "entities/IncrementalEconomy.js",
+      "exports": [
+        "IncrementalEconomy",
+        "formatBigNumber"
+      ],
+      "status": "ready",
+      "summary": "Self-contained, rendering-agnostic idle / incremental (\"clicker\") economy engine for AdVenture-Capitalist / Cookie-Clicker-style games. Owns all the math and game state — configurable income-producing units (each with baseCost, baseRevenue, cycleTimeMs and a managerCost), an exponential per-level cost curve (costGrowth default 1.15), one-shot revenue-multiplier upgrades targeting a single unit or \"all\", managers that auto-loop a unit forever, and prestige resets that bank sqrt-of-lifetime-earnings tokens for a permanent global multiplier (default +2%/token). Drive it with tick(dtMs) once per frame (handles large background-catch-up dt by paying out multiple whole cycles and returns revenue earned this tick), then read getters like unitCost / unitRevenue / unitProgressFraction / prestigeGain / availableUpgrades to repaint. Buy and automate via buyUnit / run / hireManager / buyUpgrade / prestige (all return true on success, false if unaffordable), wire optional onPayout / onPurchase / onPrestige callbacks for juice, and persist with validated save() / load() to localStorage (corrupt or schema-mismatched saves fall back to a fresh state, never throw). Ships a formatBigNumber helper for compact money display (4.20K, 6.90 Mil, ...). IMPORTANT: This is a PLAIN JAVASCRIPT CLASS, NOT a Custom Element. Do NOT call customElements.define() on it. Do NOT use <incrementaleconomy-foo> tags in HTML. Instantiate with `new` and call methods directly; YOU draw the UI from the instance state. (See wisdom rule fs-015.)",
+      "tags": [
+        "idle",
+        "incremental",
+        "clicker",
+        "economy",
+        "prestige",
+        "upgrades",
+        "manager",
+        "save-load"
+      ],
+      "contracts": {
+        "build": "new IncrementalEconomy({ units, upgrades, costGrowth, startingMoney, prestigeBonusPerToken, prestigeScale, prestigeThreshold, storage, storageKey, onPayout, onPurchase, onPrestige })",
+        "step": "tick(dtMs) -> earnedThisTick (advance economy, pay out completed cycles)",
+        "mutations": [
+          "buyUnit(i) -> bool",
+          "run(i) -> bool",
+          "hireManager(i) -> bool",
+          "buyUpgrade(id) -> bool",
+          "prestige() -> tokensGained",
+          "reset()"
+        ],
+        "queries": [
+          "unitCost(i, atLevel) -> number",
+          "unitRevenue(i) -> number",
+          "unitCycleTime(i) -> number",
+          "managerCost(i) -> number",
+          "unitProgressFraction(i) -> 0..1",
+          "prestigeMultiplier() -> number",
+          "prestigeGain() -> number",
+          "availableUpgrades() -> upgrade[]"
+        ],
+        "persistence": [
+          "save() -> bool",
+          "load() -> bool",
+          "toJSON() -> state"
+        ],
+        "state": "state.money: number; state.lifetimeEarnings: number; state.prestigeTokens: number; state.units[i]: {level, running, progress, hasManager, upgradeMult}; state.purchasedUpgrades: string[]",
+        "helpers": [
+          "formatBigNumber(n) -> string"
+        ]
+      },
+      "goodFits": [
+        "idle-game",
+        "incremental-game",
+        "clicker",
+        "adventure-capitalist",
+        "cookie-clicker",
+        "tycoon",
+        "business-sim"
+      ]
+    },
+    {
+      "id": "entities.terrain-car",
+      "name": "TerrainCar",
+      "category": "entities",
+      "path": "entities/TerrainCar.js",
+      "exports": [
+        "buildTrack",
+        "TerrainTrack",
+        "TerrainCar"
+      ],
+      "status": "ready",
+      "summary": "Hill-Climb-style 2D terrain + wheeled-chassis physics engine, renderer-agnostic (pure math - YOU draw). Two cooperating pieces: buildTrack(segments, options) expands a declarative segment-descriptor list (flat, hill_up, hill_down, ramp, chasm, loop, elevator, bumps, drop, wave) into a dense TerrainTrack polyline of {x,y} points carrying cumulative arc-length (dist), unit surface normals (nx,ny pointing 'up' away from ground), tangents (tx,ty) and per-point flags (solid/kill/finish/loop/elevator); the track samples any arc-length position via pathAt(d), finds the nearest point with closestIndex(wx,wy), animates lift platforms with stepElevators(), and reports curvatureAt(d). TerrainCar rides that surface with two physics regimes: ON-PATH (engine force + gravity-along-slope + brake + friction drive the car along the arc-length param, chassis pinned a fixed offset above the surface and rotated to the local tangent) and AIRBORNE (true ballistic projectile - the car detaches when it crests a hill, launches off a ramp, or runs off a chasm edge, flies, and re-attaches only when it drops onto an up-facing floor ahead of its launch point; landing roof-first or too hard crashes). Tracks fuel (gas burns it; running dry stalls), monotonic distance score, and coin/fuel pickups, and returns per-frame {crashed, finished, collected} events from update(). Two-button input (gas/brake) doubles as in-air chassis rotation. Static TerrainCar.scatterCollectibles(track, opts) seeds pickups along the drivable surface. Canvas coords (+y is DOWN), frame-stepped (call update() once per rAF), dependency-free and fully offline. IMPORTANT: These are PLAIN JAVASCRIPT CLASSES, NOT Custom Elements. Do NOT call customElements.define() on them. Do NOT use <terrain-car> tags in HTML. Instantiate with `new` and call methods directly; YOU draw the UI from the instance state. (See wisdom rule fs-015.)",
+      "tags": [
+        "hill-climb",
+        "terrain",
+        "car",
+        "physics",
+        "2d",
+        "ballistic",
+        "ramp-jump",
+        "side-scroller",
+        "mobile",
+        "arcade",
+        "offline"
+      ],
+      "contracts": {
+        "build": "buildTrack(segments, options?) -> TerrainTrack  (segment types: flat|hill_up|hill_down|ramp|chasm|loop|elevator|bumps|drop|wave)",
+        "track": [
+          "pathAt(d) -> {x,y,nx,ny,tx,ty,solid,kill,finish,loop,elevator,idx}",
+          "closestIndex(wx,wy) -> idx",
+          "stepElevators()",
+          "buildMetrics()",
+          "curvatureAt(d) -> number",
+          "totalDist (property)"
+        ],
+        "step": "update() -> {crashed, finished, collected:[{type,x,y}]}  (reads this.gas / this.brake each frame)",
+        "lifecycle": [
+          "new TerrainCar(track, options?)",
+          "reset()",
+          "setTrack(track)",
+          "setCollectibles([{x,y,type:'coin'|'fuel'}])",
+          "isDone() -> bool",
+          "static scatterCollectibles(track, opts?) -> [{x,y,type}]"
+        ],
+        "state": "car: {wx, wy, angle, speed, vx, vy, airborne, fuel, coins, dist, distanceMeters, crashed, finished, pathDist}; gas/brake: bool inputs",
+        "tunables": "gravity, airGravity, engineForce, brakeMult, friction, carOffset, maxLandAngle, crashImpact, gasFuelBurn, airGasFuelBurn, fuelMax, startDist, elevatorMaxSpeed, loopMinSpeed, voidY"
+      },
+      "goodFits": [
+        "hill-climb-racing",
+        "terrain-driving",
+        "ramp-jump-stunt",
+        "side-scroller-racing",
+        "physics-vehicle",
+        "endless-driver",
+        "mobile-arcade"
+      ]
+    },
+    {
+      "id": "entities.go-rules",
+      "name": "GoRules",
+      "category": "entities",
+      "path": "entities/GoRules.js",
+      "exports": [
+        "EMPTY",
+        "BLACK",
+        "WHITE",
+        "opponent",
+        "createBoard",
+        "GoRules",
+        "GoOpponent"
+      ],
+      "status": "ready",
+      "summary": "Board-size-agnostic Go (Weiqi/Baduk) rules engine plus a greedy opponent: group/liberty flood-fill, move legality with capture, suicide and ko/superko repetition checks, area-style territory scoring, and a heuristic AI. Build a square board of any size (9/13/19) with createBoard(size); EMPTY/BLACK/WHITE are exported constants and opponent(player) flips colour. rules.tryMove(board,row,col,player[,koState]) is PURE (never mutates input) and returns { legal, captured, capturedStones, newBoard, koPoint } for previewing/AI search, while rules.applyMove(row,col,player) commits to the engine's own board/captures/ko history; rules.legalMoves(board,player), rules.isLegal(...), rules.findGroup(...), rules.libertyCount(...) and rules.pass() round out the parallel to ChessRules/CheckersRules/TicTacToeRules for TurnBasedManager wiring. rules.calcTerritory(board) flood-fills empty regions and rules.score(board[,komi]) returns { black, white, winner, margin } (area = territory + captures + komi for white). koRule selects 'positional-superko' (default, whole-board hash history), 'simple' (previous-position + single-stone ko point), or 'none'. GoOpponent.pickMove(board[,koState]) scores legal moves by captures, atari pressure, escaping own atari, opening influence and self-eye avoidance, returning the best move or null to pass. IMPORTANT: This is a PLAIN JAVASCRIPT CLASS, NOT a Custom Element. Do NOT call customElements.define() on it. Do NOT use <go-rules> tags in HTML. Instantiate with `new` and call methods directly; YOU draw the UI from the instance state. (See wisdom rule fs-015.)",
+      "tags": [
+        "go",
+        "weiqi",
+        "baduk",
+        "board",
+        "rules",
+        "ai",
+        "ko",
+        "territory"
+      ],
+      "contracts": {
+        "factory": "new GoRules({ size?, komi?, koRule?, allowSuicide?, history? })",
+        "helpers": [
+          "createBoard(size) -> number[][]",
+          "opponent(player) -> player",
+          "rules.findGroup(board, row, col) -> { stones, liberties:Set, color }",
+          "rules.libertyCount(board, row, col) -> number",
+          "rules.neighbors(row, col) -> [[r,c],...]",
+          "rules.tryMove(board, row, col, player [, koState]) -> { legal, captured, capturedStones, newBoard, koPoint } | { legal:false, reason }",
+          "rules.isLegal(board, row, col, player [, koState]) -> boolean",
+          "rules.legalMoves(board, player) -> [{ row, col }, ...]",
+          "rules.applyMove(row, col, player) -> result",
+          "rules.pass(player)",
+          "rules.calcTerritory(board) -> { 1:black, 2:white, neutral }",
+          "rules.score(board [, komi]) -> { black, white, winner, margin }"
+        ],
+        "opponent": "new GoOpponent({ rules, player?, captureBonus?, atariBonus?, jitter? }); ai.pickMove(board [, koState]) -> { row, col } | null",
+        "scope": "tryMove is PURE (never mutates the input board); applyMove mutates the engine's board/captures/ko history. EMPTY=0, BLACK=1, WHITE=2 exported constants. For stronger play, swap in entities.minimax-ai with a custom evalFn."
+      },
+      "goodFits": [
+        "go",
+        "weiqi",
+        "baduk",
+        "playable-go",
+        "any-2-player-board-game"
+      ]
+    },
+    {
+      "id": "entities.quiz-drill",
+      "name": "QuizDrill",
+      "category": "entities",
+      "path": "entities/QuizDrill.js",
+      "exports": [
+        "QuizDrill"
+      ],
+      "status": "ready",
+      "summary": "Adaptive quiz / spaced-repetition drill engine — the brain behind any flash-card, times-tables, vocab, capitals, or trivia drill. Generic over item type: an item is any object with a stable `id`; the engine owns the bank (setItems / get items), tracks per-item progress (correct, total, totalMs, recency), and biases selection toward the weakest and never-tested items via weaknessScore(id) (LOWER = weaker; untested items return -Infinity so new material is introduced first). nextItem(mode) picks WHICH item to ask ('weak' = weighted ~70/20/10 weakest/second/random, 'mixed' = uniform), avoiding immediate repeats; YOU build the multiple-choice choices and draw the UI, then report the result with record(id, correct, elapsedMs) which folds it into progress and returns points (base + combo + speed bonus). An optional timed round runner — startRound({durationMs}), answer(id, correct, elapsedMs) -> {points, score, combo, correct}, remainingMs / isRoundOver, finishRound() -> {score, correct, total, accuracy, bestScore, isBest, durationMs, log} — drives a scored session and tracks the all-time best. Daily-engagement streaks via noteSessionPlayed() / streak() (self-healing consecutive-day counter), plus toJSON() / loadProgress() / reset() for persisting progress, best, and streak across reloads. Dependency-free, offline, render-agnostic, and seedable (inject rng + now for deterministic QA/replay). IMPORTANT: This is a PLAIN JAVASCRIPT CLASS, NOT a Custom Element. Do NOT call customElements.define() on it. Do NOT use <quiz-drill> tags in HTML. Instantiate with `new` and call methods directly; YOU draw the UI from the instance state. (See wisdom rule fs-015.)",
+      "tags": [
+        "quiz",
+        "drill",
+        "flashcards",
+        "spaced-repetition",
+        "adaptive",
+        "education",
+        "kids",
+        "vocab",
+        "trivia",
+        "times-tables",
+        "learning",
+        "mobile"
+      ],
+      "contracts": {
+        "build": "new QuizDrill({ items?, minSamples?, scoring?, weights?, rng?, now? })",
+        "bank": [
+          "setItems(items) -> this",
+          "items -> array (read-only)"
+        ],
+        "select": [
+          "nextItem(mode = 'weak') -> item | null",
+          "weaknessScore(id) -> number (lower = weaker; -Infinity if untested)",
+          "weakest(n = 1) -> [{item, score, accuracy, avgMs, total}]",
+          "accuracy(id) -> 0..1",
+          "avgMs(id) -> number",
+          "attempts(id) -> number"
+        ],
+        "grade": "record(id, correct, elapsedMs = 0) -> points",
+        "round": [
+          "startRound({ durationMs }) -> this",
+          "answer(id, correct, elapsedMs = 0) -> {points, score, combo, correct}",
+          "remainingMs() -> number",
+          "isRoundOver() -> bool",
+          "finishRound() -> {score, correct, total, accuracy, bestScore, isBest, durationMs, log} | null"
+        ],
+        "streak": [
+          "noteSessionPlayed() -> number",
+          "streak() -> number"
+        ],
+        "persist": [
+          "toJSON() -> {progress, bestScore, streak, lastPlayed}",
+          "loadProgress(obj) -> this",
+          "reset() -> this"
+        ],
+        "state": "score: number; combo: number; bestScore: number; round: object|null"
+      },
+      "goodFits": [
+        "flashcards",
+        "times-tables",
+        "math-drill",
+        "vocab-quiz",
+        "language-learning",
+        "capitals-quiz",
+        "trivia",
+        "spelling-drill",
+        "kids-education",
+        "spaced-repetition",
+        "study-app",
+        "quiz-game"
+      ]
+    },
+    {
+      "id": "entities.candlestick-chart",
+      "name": "CandlestickChart",
+      "category": "entities",
+      "path": "entities/CandlestickChart.js",
+      "exports": [
+        "OHLCGenerator",
+        "CandlestickChart"
+      ],
+      "status": "ready",
+      "summary": "Procedural OHLC price ENGINE plus a live D3 v7 candlestick RENDERER, cleanly split into two independent pieces. OHLCGenerator is pure math/data with ZERO dependencies: a regime-driven random walk (calm -> choppy -> crash by default) that emits realistic open/high/low/close candles with mean-reverting momentum, drift bias, symmetric noise, occasional gap \"shocks\", randomized wicks, and a rolling moving average; pass a numeric seed for deterministic, replayable streams (golden QA / daily-chart mode) or omit it for live randomness via Math.random, and it runs headless in a worker or on a server. CandlestickChart is a thin D3 v7 renderer that draws gen.candles into an <svg> you provide: wicks + up/down-colored bodies, auto-rescaling time x-axis and price y-axis, a moving-average line, a last-price tag, and arbitrary markers (price line, level line, point dot) via opts.markers; it uses the classic d3 enter/merge/exit join keyed by timestamp so calling render(gen.candles) every tick cheaply animates a live scrolling chart. d3 v7 is loaded as a vendored offline UMD global (<script src=\"./libs/d3.min.js\"></script>, never a CDN) and auto-resolved from globalThis.d3 or injected via the d3 option; the generator needs no d3. PLAIN JS CLASSES, not Custom Elements — instantiate with new and call methods, never customElements.define or <candlestick-chart> tags (wisdom rule fs-015). Enables trading/finance dashboards, market sims, and any live time-series price visualization without wiring up real market data.",
+      "tags": [
+        "candlestick",
+        "ohlc",
+        "chart",
+        "d3",
+        "finance",
+        "trading",
+        "generator",
+        "time-series",
+        "svg",
+        "miniapp"
+      ],
+      "contracts": {
+        "buildGenerator": "new OHLCGenerator({ startPrice?, stepMs?, startTime?, regimes?, regimeEvery?, maPeriod?, minPrice?, seed? })",
+        "step": "generator.step() -> { t:Date, o, h, l, c, ma:Number|null, shock:Boolean } (also pushes to .candles)",
+        "generatorMethods": [
+          "reset()",
+          "currentRegime() -> regime object for next step"
+        ],
+        "generatorState": [
+          "candles: Array<candle>",
+          "price: latest close",
+          "index: candle count"
+        ],
+        "buildChart": "new CandlestickChart({ svg, d3?, window?, margin?, colors?, yPadFraction?, bodyWidthFraction?, timeFormat?, priceFormat? })",
+        "render": "chart.render(candles, { markers? }) -> draw/refresh; markers = [{type:'price',value,color?} | {type:'line',value,color?,dash?,label?} | {type:'point',time,value,color?,radius?,label?}]",
+        "chartMethods": [
+          "clear()",
+          "scales() -> { x, y } d3 scales from last render"
+        ]
+      },
+      "goodFits": [
+        "trading-simulator",
+        "stock-chart",
+        "crypto-ticker",
+        "market-dashboard",
+        "finance-tracker",
+        "candlestick-game",
+        "time-series-visualization"
+      ]
+    },
+    {
+      "id": "ui.sticker-canvas",
+      "name": "StickerCanvas",
+      "category": "ui",
+      "path": "ui/StickerCanvas.js",
+      "exports": [
+        "SceneModel",
+        "StickerCanvas",
+        "buildSceneSvg",
+        "exportSceneToPng",
+        "shareOrDownloadPng",
+        "downloadDataUrl"
+      ],
+      "status": "ready",
+      "summary": "Dependency-free, offline sticker-scene editor + zero-dep scene-to-PNG exporter in three separable layers. Layer 1 SceneModel is PURE state+geometry (no DOM): holds an ordered list of scenes (panels/pages/frames), each a background key + items in [0..100] percent coords, with addSticker/addText/move/resize/rotate/flip/bringToFront/remove/setBackground/clear/find/itemsInPaintOrder and toJSON/fromJSON (unit-testable in node). Layer 2 StickerCanvas mounts that model into a host element and wires mouse+touch+keyboard input — drag-from-palette to drop SVG stickers, drag-to-move, corner-handle resize, per-item flip/rotate/bring-to-front/delete/edit-text buttons, multi-scene tray, optional palette grouping, injected default styles, and an onChange(model) callback; new StickerCanvas({root, stickers, backdrops, paletteGroups?, scenes?, aspectRatio?}).mount(). Layer 3 buildSceneSvg serialises the scenes to one namespaced SVG document (per-scene gradient/clip id suffixing so backgrounds never collide), exportSceneToPng rasters it to a 2x PNG via an offscreen canvas and resolves a data: URL, and shareOrDownloadPng offers it through the Web Share API -> clipboard -> <a download> fallback chain. Everything is offline + CDN-free (only the optional navigator.share/clipboard touches anything network-ish), enabling sticker-book creators, comic/meme makers, scene/diorama builders, greeting-card and poster designers, and any drag-and-drop SVG layout editor that needs a shareable PNG out.",
+      "tags": [
+        "sticker",
+        "scene-editor",
+        "drag-drop",
+        "svg",
+        "png-export",
+        "share",
+        "canvas",
+        "offline",
+        "ui"
+      ],
+      "contracts": {
+        "build": "new SceneModel({scenes?, sceneFactory?, defaultBackdrop?}) -> model; scenes = count | array | SceneModel",
+        "edit": "model.addSticker(sceneIdx, key, {x,y,size,rot,flip}?) / addText(sceneIdx, text, {x,y,width}?) / move(id,x,y) / resize(id,v) / rotate(id,byDeg=15) / flip(id) / bringToFront(id) / remove(id) / setBackground(sceneIdx,key) / clear(sceneIdx?) -> Item|bool",
+        "query": "model.find(id) -> {item,scene,sceneIdx}|null; dimension(id); itemsInPaintOrder(sceneIdx); isEmpty(); toJSON(); SceneModel.fromJSON(obj)",
+        "mount": "new StickerCanvas({root, stickers, backdrops, paletteGroups?, scenes?, aspectRatio?, defaultBackdrop?, classPrefix?, onChange?, injectStyles?}).mount() -> this",
+        "ui": "canvas.render() / destroy() / addText(text,opts?) -> item; canvas.model, .selectedSceneIdx, .selectedItemId; onChange(model) fires after any user mutation",
+        "render": "buildSceneSvg(sceneJson, {stickers, backdrops, title?, layout?, scale?, background?, titleHeight?, gap?, pad?, font?}) -> svg string",
+        "export": "exportSceneToPng(sceneJson, opts) -> Promise<pngDataUrl>; canvas.exportToPng(opts?) -> Promise<dataUrl>",
+        "share": "shareOrDownloadPng(dataUrl, {title?, fileName?, shareText?}) -> Promise<'shared'|'copied'|'downloaded'|'cancelled'>; downloadDataUrl(dataUrl, fileName)"
+      },
+      "goodFits": [
+        "sticker-book",
+        "comic-strip-maker",
+        "meme-generator",
+        "scene-builder",
+        "diorama-creator",
+        "greeting-card-designer",
+        "poster-maker",
+        "collage-editor",
+        "avatar-builder",
+        "drag-drop-svg-editor"
+      ]
+    },
+    {
+      "id": "core.gravity-nbody-2d",
+      "name": "GravityNbody2D",
+      "category": "core",
+      "path": "core/GravityNbody2D.js",
+      "exports": [
+        "GravityNbody2D"
+      ],
+      "status": "ready",
+      "summary": "Renderer-agnostic, dependency-free 2D inverse-square N-body gravity integrator whose trajectory predictor replays the exact same integrator used for live flight, so the dashed aim arc you draw before launch matches the flown path precisely. Construct with new GravityNbody2D({ G, bodies:[{x,y,radius,mass}], softening, subSteps, bounds, escapeMargin, predictSteps, predictDt }); call step(probe, dt) to advance a {x,y,vx,vy} point in place via semi-implicit Euler over configurable sub-steps, returning { event:'move'|'crash'|'escape', body }; call predict(probe, {steps,dt,sampleEvery}) to get { points, end, body, steps } for a non-mutating aim line; gravityAt(point) gives combined acceleration plus crash detection, isOutOfBounds(point) flags escape, and setBodies/addBody/setBounds reconfigure the field at runtime. The static GravityNbody2D.launchVelocity(origin, dragPoint, {power,maxPull,minPull}) computes drag-to-aim slingshot velocity. Softened 1/d^2 acceleration prevents singularity blow-ups, attractor-radius entry reports a crash, and leaving bounds reports an escape — enabling slingshot, orbit, and gravity-puzzle aiming with a preview that is guaranteed to match reality.",
+      "tags": [
+        "physics",
+        "gravity",
+        "n-body",
+        "trajectory",
+        "orbit",
+        "2d",
+        "miniapp"
+      ],
+      "contracts": {
+        "build": "new GravityNbody2D({ G, bodies, softening, subSteps, bounds, escapeMargin, predictSteps, predictDt, predictSampleEvery })",
+        "step": "step(probe, dt) -> { event:'move'|'crash'|'escape', body }",
+        "predict": "predict(probe, { steps, dt, sampleEvery }) -> { points:Array<{x,y}>, end:'crash'|'escape'|'maxSteps', body, steps }",
+        "gravityAt": "gravityAt(point, bodies?) -> { ax, ay, crashed, body }",
+        "isOutOfBounds": "isOutOfBounds(point) -> boolean",
+        "config": [
+          "setBodies(bodies)",
+          "addBody(body)",
+          "setBounds(bounds)"
+        ],
+        "launchVelocity": "GravityNbody2D.launchVelocity(origin, dragPoint, { power, maxPull, minPull }) -> { vx, vy, pull, angle }",
+        "probeFields": [
+          "x",
+          "y",
+          "vx",
+          "vy"
+        ],
+        "bodyFields": [
+          "x",
+          "y",
+          "radius",
+          "mass"
+        ]
+      },
+      "goodFits": [
+        "gravity-slingshot",
+        "orbit-puzzle",
+        "asteroids",
+        "solar-system-sim",
+        "space-golf",
+        "lunar-lander",
+        "planetary-defense"
+      ]
+    },
+    {
+      "id": "entities.spline-track-racer",
+      "name": "SplineTrackRacer",
+      "category": "entities",
+      "path": "entities/SplineTrackRacer.js",
+      "exports": [
+        "SplineTrack",
+        "RacerBody",
+        "WaypointDriver",
+        "LapTimer"
+      ],
+      "status": "ready",
+      "summary": "Renderer-agnostic math/logic core for a 2D top-down kart/car/boat racer, bundling four independent pieces. SplineTrack builds a closed Catmull-Rom centerline (SplineTrack.catmullRomClosed) from >=3 control points, derives left/right kerb ribbons (leftEdge/rightEdge) offset by half-width, axis-aligned bounds for a minimap, per-sample tangent/normal frames (frameAt), and a cheap windowed nearest-sample search (snapToTrack mutates body.sampleIndex + offTrackDistance; nearestSampleIndex for the initial O(N) seed); plus placeBodyAtStart grid placement, isOffTrack, lookAheadPoint, startLineFrame, and a static resolveBodyCollisions push-apart. RacerBody is a steerable arcade-physics body (applyControls({throttle,brake,steer}, dt) with speed-scaled steering authority, coast/reverse clamps, then applyOffTrack(off, dt) for off-surface drag/cap). WaypointDriver is a look-ahead waypoint-follow AI (update(dt) steers a RacerBody toward a sample N ahead and eases target speed down for sharp corners + off-track). LapTimer does start/finish gate crossing with a half-lap anti-cheat guard, best/last lap times, finish detection (update(body, elapsedMs)), plus displayLap and a static rank() for race-position ordering. Dependency-free pure math/logic: no canvas, no DOM, no rAF, offline only — you read the exposed state and paint it however you like (canvas/SVG/WebGL). IMPORTANT: These are PLAIN JAVASCRIPT CLASSES, NOT Custom Elements. Do NOT call customElements.define() on them. Do NOT use <spline-track-racer> tags in HTML. Instantiate with `new` and call methods directly; YOU draw the UI from the instance state. (See wisdom rule fs-015.)",
+      "tags": [
+        "racing",
+        "kart",
+        "top-down",
+        "spline",
+        "catmull-rom",
+        "track",
+        "lap-timer",
+        "racing-ai",
+        "arcade",
+        "mobile",
+        "offline"
+      ],
+      "contracts": {
+        "build": "new SplineTrack({controlPoints:[{x,y}]>=3, width=160, samplesPerSegment=24, startIndex=0, snapWindow=22, offTrackMargin=4})",
+        "trackGeometry": [
+          "static catmullRomClosed(points, samplesPerSegment) -> [{x,y}]",
+          "frameAt(i) -> {tx,ty,nx,ny}",
+          "startLineFrame() -> {x,y,angle,nx,ny,halfWidth}",
+          "lookAheadPoint(sampleIndex, lookAhead) -> {x,y}",
+          "nearestSampleIndex(x,y) -> i",
+          "snapToTrack(body) -> i (mutates body.sampleIndex + offTrackDistance)",
+          "isOffTrack(body) -> bool",
+          "placeBodyAtStart(body, {sampleIndex, laneOffset}) -> body",
+          "static resolveBodyCollisions(bodies, minDistance=34, speedKeep=0.86)"
+        ],
+        "body": "new RacerBody({maxSpeed, accel, brakePower, coast, reverseMax, turnRate, offTrackDrag, offTrackSpeedFactor, steerAuthoritySpeed})",
+        "step": [
+          "RacerBody.applyControls({throttle:0..1, brake:0..1, steer:-1..1}, dt) -> body",
+          "RacerBody.applyOffTrack(off:bool, dt) -> body",
+          "WaypointDriver.update(dt) -> body",
+          "static WaypointDriver.angleDelta(a,b) -> [-PI,PI]"
+        ],
+        "ai": "new WaypointDriver(body, track, {lookAhead=16, steerGain, speedSmoothing, sharpAngle, cornerAngle, hardCornerFactor, cornerFactor, offTrackFactor})",
+        "timing": [
+          "new LapTimer(track, {totalLaps=3, halfGuardLow, halfGuardHigh, crossPrevFrac, crossCurFrac})",
+          "LapTimer.update(body, elapsedMs) -> {lapped, finished, lapTime}",
+          "LapTimer.reset() -> timer",
+          "LapTimer.displayLap() -> number",
+          "static LapTimer.rank(entries:[{body,timer}], track) -> [{body,timer,place,progress}]"
+        ],
+        "state": "track.centerline/leftEdge/rightEdge/bounds/startIndex; body x/y/angle/speed/sampleIndex/offTrackDistance; timer lap/bestLap/lastLap/finished/finishTime",
+        "units": "distances in control-point units; angles in radians (0=+X, increasing clockwise on y-down canvas); dt is a unitless ~60fps time step (e.g. deltaMs/16.667, clamped)"
+      },
+      "goodFits": [
+        "top-down-racing",
+        "kart-racer",
+        "car-racing",
+        "boat-racing",
+        "time-trial",
+        "racing-ai-opponents",
+        "lap-based-arcade",
+        "spline-path-art",
+        "free-roam-driving"
+      ]
+    },
+    {
+      "id": "effects.point-cloud-projector",
+      "name": "PointCloudProjector",
+      "category": "effects",
+      "path": "effects/PointCloudProjector.js",
+      "exports": [
+        "rotatePoint",
+        "project",
+        "makeGlowSprite",
+        "Projector",
+        "drawGlowCloud",
+        "PointCloudProjector"
+      ],
+      "status": "ready",
+      "summary": "2D pseudo-3D point-cloud projector for Canvas2D — the classic \"thousands of stars / particles swirling in deep space\" look (particle galaxies, starfields, 3D scatter plots, orbiting-node graphs, music visualisers) without WebGL or three.js. The Projector class holds camera/view state and turns a cloud of {x,y,z,size?,brightness?} points into depth-sorted screen-space records: new Projector({focal,yaw,tilt,zoom}) → setView({yaw,tilt,zoom}) / orbit(dYaw,dTilt) for drag → setViewport(w,h) (recomputes cx/cy/scale) → projectCloud(points) returns [{x,y,depth,persp,scale,alpha,point}] sorted far-to-near with off-frame culling, never mutating the input (single-point variant projectPoint). It audits the three things every 2.5D field gets wrong: yaw-then-tilt rotation order (rotatePoint) so the camera orbits instead of tumbling, the focal/(focal+z) perspective divide (project) so distant points actually shrink, and back-to-front draw order under globalCompositeOperation=\"lighter\" so near glows aren't buried. Renderer-agnostic math emits plain screen records you can draw via SVG/DOM/your own routine; optional batteries-included Canvas2D helpers makeGlowSprite(hex) (pre-renders a cached radial glow sprite per colour) and drawGlowCloud(ctx, projected, {spriteFor, baseSize}) (additive-blended sprite blitting with save/restore of composite + alpha) cover the common additive-glow case. Enforces wisdom rule vq-depth-sorted-additive. Dependency-free, offline only — no CDN, no external libs.",
+      "tags": [
+        "point-cloud",
+        "projector",
+        "particles",
+        "3d",
+        "pseudo-3d",
+        "starfield",
+        "galaxy",
+        "perspective",
+        "depth-sort",
+        "additive",
+        "glow",
+        "canvas2d",
+        "visualizer",
+        "orbit"
+      ],
+      "contracts": {
+        "constructor": "new Projector({ focal?, yaw?, tilt?, zoom?, tiltMin?, tiltMax?, baseScaleFrac?, sort?, cullMargin? })",
+        "setView": "proj.setView({ yaw?, tilt?, zoom? }) -> this (tilt clamped, yaw wraps, zoom min 0.001)",
+        "orbit": "proj.orbit(dYaw?, dTilt?) -> this (relative nudge from a drag delta)",
+        "setViewport": "proj.setViewport(width, height) -> this (sets cx/cy/scale from device px)",
+        "camera": "proj.camera() -> { cx, cy, scale, focal }",
+        "project": "proj.projectCloud(points) -> [{ x, y, depth, persp, scale, alpha, point }] (depth-sorted far-to-near, culled, input never mutated)",
+        "projectPoint": "proj.projectPoint(point) -> { x, y, depth, persp, scale, alpha, point } | null",
+        "rotatePoint": "rotatePoint(p, cosY, sinY, cosT, sinT) -> { x, y, z } (yaw-then-tilt camera-space)",
+        "projectMath": "project(rotatedPoint, { cx, cy, scale, focal }) -> { x, y, depth, persp }",
+        "makeGlowSprite": "makeGlowSprite(hex, { size?, coreAlpha?, whiteCore? }) -> HTMLCanvasElement (cache once, reuse)",
+        "render": "drawGlowCloud(ctx, projected, { spriteFor, baseSize?, alphaMul?, additive? }) (sets composite='lighter', blits sprites, restores)"
+      },
+      "goodFits": [
+        "starfield",
+        "particle-galaxy",
+        "3d-scatter-plot",
+        "music-visualizer",
+        "point-cloud-scanner",
+        "orbiting-node-graph",
+        "space-shooter-backdrop",
+        "data-visualization",
+        "screensaver"
+      ]
+    },
+    {
+      "id": "entities.step-sequencer",
+      "name": "StepSequencer",
+      "category": "entities",
+      "path": "entities/StepSequencer.js",
+      "exports": [
+        "StepSequencer"
+      ],
+      "status": "ready",
+      "summary": "Generic ROWS x STEPS step-sequencer engine for drum machines, beat makers, arpeggiators, and loop stations — any on/off grid driven by a clock. Construct with `new StepSequencer({ rows, steps=16, tempo=120, subdivision='16n', trigger, onStep, ... })` where `rows` is an ordered list of `{ key, name?, ...meta }` lanes and `pattern[key]` is an Array(steps) of booleans that is the single source of truth you read to draw cells. Audio scheduling uses Tone.js (expects a VENDORED OFFLINE `window.Tone`, NEVER a CDN): a single Tone.Loop walks a wrapping stepIndex once per subdivision, fires your `trigger(key, step, time, velocity)` callback for every active lane at sample-accurate time, and uses Tone.Draw.schedule to call `onStep(step)` in visual lockstep so the playhead never drifts; setupAudio() (after Tone.start()), play()/stop()/togglePlay(), and setTempo() control the transport. The engine creates NO synths/voices and touches NO DOM — it stays renderer- and sound-agnostic, and if Tone is absent the pure pattern logic still runs (only playback no-ops). Editing API: toggle/setCell/getCell flip cells (auditioning a lane once when switched ON while idle), beginPaint/paintCell/endPaint give pointer drag-painting, clear() blanks all lanes, and randomize(density) fills via a deterministic seeded LCG (number for all lanes or a { [key]: 0..1 } per-lane map). setPattern(key, bools) loads a lane and toJSON()/loadJSON() persist tempo + pattern. IMPORTANT: This is a PLAIN JAVASCRIPT CLASS, NOT a Custom Element. Do NOT call customElements.define() on it. Do NOT use <step-sequencer> tags in HTML. Instantiate with `new` and call methods directly; YOU draw the grid, transport, and tempo UI from the instance state. (See wisdom rule fs-015.)",
+      "tags": [
+        "sequencer",
+        "step-sequencer",
+        "drum-machine",
+        "beat-maker",
+        "music",
+        "audio",
+        "tone",
+        "tonejs",
+        "grid"
+      ],
+      "contracts": {
+        "factory": "new StepSequencer({ rows, steps=16, tempo=120, subdivision='16n', trigger(key,step,time,velocity), onStep(step), defaultVelocity=1, seed=1337, Tone? })",
+        "audio": [
+          "setupAudio() -> bool",
+          "play() -> bool",
+          "stop() -> bool",
+          "togglePlay() -> bool",
+          "setTempo(bpm)",
+          "dispose()"
+        ],
+        "edit": [
+          "toggle(key, step) -> bool",
+          "setCell(key, step, on) -> bool",
+          "getCell(key, step) -> bool",
+          "setPattern(key, bools)",
+          "clear()",
+          "randomize(density: number | { [key]: 0..1 })",
+          "hasRow(key) -> bool"
+        ],
+        "paint": [
+          "beginPaint(key, step) -> bool",
+          "paintCell(key, step)",
+          "endPaint()"
+        ],
+        "persist": [
+          "toJSON() -> { tempo, steps, pattern }",
+          "loadJSON(obj)"
+        ],
+        "state": "pattern: { [key]: bool[] } (source of truth); rows: [{ key, name?, ... }]; steps: int; tempo: int; playing: bool; audioReady: bool; currentStep: int (-1 when stopped); isPainting: bool"
+      },
+      "goodFits": [
+        "drum-machine",
+        "beat-maker",
+        "step-sequencer",
+        "music-miniapps",
+        "synth-toys",
+        "loop-station",
+        "arpeggiator",
+        "rhythm-game"
+      ]
     }
   ],
   "compositionRecipes": [
