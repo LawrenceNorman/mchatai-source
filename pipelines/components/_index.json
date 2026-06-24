@@ -1,6 +1,6 @@
 {
   "$schema_version": "1.0.0",
-  "last_updated": "2026-05-06",
+  "last_updated": "2026-06-23",
   "notes": "Catalog of reusable pipeline step patterns (Lego bricks) for mChatAI+ AI Automation. AIWizard and pipeline-builder prompts should compose from these components before generating custom steps. CONTEXT.md has the full assembly guide.",
   "library": {
     "id": "framework.pipeline-components",
@@ -118,6 +118,87 @@
       "tags": ["research", "web", "search"],
       "requiredCredentials": [],
       "outputType": "document"
+    },
+    {
+      "id": "component.primary-source-finder",
+      "name": "Primary Source Finder",
+      "steps": ["builtin.webSearch", "builtin.webExtract", "builtin.llmGenerate"],
+      "summary": "Find authority-of-record sources for legal, finance, medical, academic, product, and technical claims before synthesis.",
+      "tags": ["research", "source-lego", "primary-source", "draco"],
+      "requiredCredentials": [],
+      "outputType": "source-list"
+    },
+    {
+      "id": "component.source-credibility-ranker",
+      "name": "Source Credibility Ranker",
+      "steps": ["builtin.llmGenerate"],
+      "summary": "Rank candidate sources by authority, recency, independence, proximity, and transparency.",
+      "tags": ["research", "source-lego", "credibility", "draco"],
+      "requiredCredentials": [],
+      "outputType": "ranked-source-list"
+    },
+    {
+      "id": "component.date-sensitive-source-checker",
+      "name": "Date-Sensitive Source Checker",
+      "steps": ["builtin.webSearch", "builtin.webExtract", "builtin.llmGenerate"],
+      "summary": "Verify facts likely to change and require source, effective, filing, access, trial, price, or release dates.",
+      "tags": ["research", "source-lego", "freshness", "dates", "draco"],
+      "requiredCredentials": [],
+      "outputType": "date-check-report"
+    },
+    {
+      "id": "component.duplicate-source-collapse",
+      "name": "Duplicate Source Collapse",
+      "steps": ["builtin.llmGenerate"],
+      "summary": "Collapse repeated or derivative coverage to the strongest original source for each claim family.",
+      "tags": ["research", "source-lego", "dedupe", "citations", "draco"],
+      "requiredCredentials": [],
+      "outputType": "source-map"
+    },
+    {
+      "id": "component.source-quote-extractor",
+      "name": "Source Quote Extractor",
+      "steps": ["builtin.llmGenerate"],
+      "summary": "Extract short evidence snippets or precise paraphrases that directly support material claims.",
+      "tags": ["research", "source-lego", "quotes", "evidence", "draco"],
+      "requiredCredentials": [],
+      "outputType": "evidence-table"
+    },
+    {
+      "id": "component.claim-ledger",
+      "name": "Claim Ledger",
+      "steps": ["builtin.llmGenerate"],
+      "summary": "Create claim, citation URL, support strength, date, and caveat rows before final synthesis.",
+      "tags": ["research", "answer-lego", "claim-ledger", "citations", "draco"],
+      "requiredCredentials": [],
+      "outputType": "claim-ledger"
+    },
+    {
+      "id": "component.citation-claim-verifier",
+      "name": "Citation-to-Claim Verifier",
+      "steps": ["builtin.llmGenerate"],
+      "summary": "Check that each cited source directly supports the sentence or claim it follows.",
+      "tags": ["research", "answer-lego", "citation-verification", "draco"],
+      "requiredCredentials": [],
+      "outputType": "verification-report"
+    },
+    {
+      "id": "component.rubric-expectation-checklist",
+      "name": "Rubric Expectation Checklist",
+      "steps": ["builtin.llmGenerate"],
+      "summary": "Predict what an expert rubric is likely to require and check the draft against those expectations.",
+      "tags": ["research", "answer-lego", "rubric", "draco"],
+      "requiredCredentials": [],
+      "outputType": "checklist"
+    },
+    {
+      "id": "component.objectivity-limitations-pass",
+      "name": "Objectivity and Limitations Pass",
+      "steps": ["builtin.llmGenerate"],
+      "summary": "Add conflicts, uncertainty, missing evidence, alternatives, and limitations before final answer delivery.",
+      "tags": ["research", "answer-lego", "objectivity", "limitations", "draco"],
+      "requiredCredentials": [],
+      "outputType": "revision-notes"
     }
   ]
 }

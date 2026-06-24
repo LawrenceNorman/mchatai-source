@@ -1,0 +1,46 @@
+{
+  "version": 1,
+  "_doc": "Immutable allowlist for the Meta-Harness proposer. MetaHarnessProtectedSections.swift loads this; any candidate bundle that violates an invariant is BLOCKED before benchmarking (and before any PR). This file is the authoritative SUPERSET of the Swift _fallback_only minimal set — if this file is missing/corrupt, the binary's frozen minimal invariants still apply, so a bad content push can never OPEN the gate. Rules: forbidEdit = no changed file may match this glob; regexMustRetain = if a baseline file matches `pattern`, the candidate version of that file must still match it; regexForbidNew = if a candidate file matches `pattern` and its baseline did not, that is a violation. glob: a path ending in '/' is a prefix; '*' matches every file; otherwise an exact relative path. ASCII only.",
+  "invariants": [
+    {
+      "id": "no-edit-meta-dir",
+      "glob": "harness/meta/",
+      "rule": "forbidEdit",
+      "reason": "Self-protection: the proposer must never modify the Meta-Harness's own brain (config, proposer prompt, invariants, objectives)."
+    },
+    {
+      "id": "no-edit-self-learn-dir",
+      "glob": "harness/self-learn/",
+      "rule": "forbidEdit",
+      "reason": "The sibling self-learn loop's policy is out of scope for harness-state optimization."
+    },
+    {
+      "id": "retain-universal-wisdom-layer",
+      "glob": "harness/context-recipes/",
+      "rule": "regexMustRetain",
+      "pattern": "\"loader\"\\s*:\\s*\"wisdom-universal\"",
+      "reason": "The universal-wisdom layer carries severity:critical + offline-safety rules. A recipe that included it must keep it — the proposer may retune its budget/priority but not delete it."
+    },
+    {
+      "id": "no-cdn-urls",
+      "glob": "*",
+      "rule": "regexForbidNew",
+      "pattern": "https?://[^\"' ]*(cdn|unpkg|jsdelivr|cdnjs|googleapis|esm\\.sh|skypack)",
+      "reason": "Offline-safety: harness content must not introduce CDN/network references. Generated apps must stay offline."
+    },
+    {
+      "id": "no-exec-smuggle",
+      "glob": "*",
+      "rule": "regexForbidNew",
+      "pattern": "(\\beval\\s*\\(|child_process|\\bexec\\s*\\(|curl\\s+[^\\n]*\\|\\s*sh|<script[ >])",
+      "reason": "No code-execution or prompt-injection smuggled into a recipe option or relevance rule."
+    },
+    {
+      "id": "relevance-gate-conservative-default",
+      "glob": "harness/systemprompt-relevance.json",
+      "rule": "regexForbidNew",
+      "pattern": "\"default\"\\s*:\\s*\"exclude\"",
+      "reason": "The relevance gate's conservative rule is 'when unknown, INCLUDE'. The proposer may add genre-scoped excludeForGenres, but must not flip a section-group's DEFAULT to exclude (that would silently drop context for unclassified goals)."
+    }
+  ]
+}

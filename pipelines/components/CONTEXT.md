@@ -149,6 +149,28 @@ builtin.shell.cliExecute  →  builtin.llmGenerate  →  builtin.notify
 Config defaults:
 - `llmGenerate`: `llmMaxInputChars: "4000"`, prompt: "Summarize the command output below..."
 
+### Deep Research Lego
+
+Use these components when the user asks for deep research, DRACO-style evaluation, legal/finance/medical research, product comparison, academic literature review, or needle-in-haystack source tracing.
+
+Recommended chain for rigorous web research:
+```
+primary-source-finder -> source-credibility-ranker -> date-sensitive-source-checker -> duplicate-source-collapse -> source-quote-extractor -> claim-ledger -> citation-claim-verifier -> rubric-expectation-checklist -> objectivity-limitations-pass
+```
+
+Config defaults:
+- Use `builtin.webSearch` with multiple query variants for `primary-source-finder` and `date-sensitive-source-checker`.
+- Use `builtin.webExtract` with `maxChars: "60000"` and `includeMetadata: "true"` for source-reading steps.
+- Use `builtin.llmGenerate` with `llmMaxTokens: "3200"` to produce source tables, claim ledgers, and verification reports.
+- Any final answer prompt must require: direct answer, evidence and analysis, caveats or uncertainty, and sources.
+
+Prompt rules:
+- Do not cite search snippets or unopened pages.
+- Prefer primary sources for law, finance, medicine, academic claims, product specs, prices, and current capabilities.
+- Every material claim needs a supporting source URL or must be labeled as inference/uncertain.
+- Date-sensitive claims need filing, release, effective, access, price, trial, or guideline dates as applicable.
+- For legal, medical, and financial topics, provide informational analysis only and avoid advice.
+
 ---
 
 ## Critical Rules for Pipeline LLM Prompts

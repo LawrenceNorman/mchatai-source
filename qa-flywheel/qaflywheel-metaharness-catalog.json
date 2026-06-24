@@ -1,0 +1,159 @@
+{
+  "$schema_version": "1.1.0",
+  "catalog_version": "2026.06.23-metaharness-v1",
+  "last_updated": "2026-06-23",
+  "notes": "Fixed benchmark for the Meta-Harness loop. MetaHarnessCoordinator fires each entry via in-process tunnelRunWizard against a candidate harness-content bundle, then scores land-rate (landing-ledger join) vs context cost (DebugTunnelWizardResult.inputTokens). Entries flagged holdout:true are used ONLY by the keep-bar for PR-eligibility (the proposer never sees benchmark cases anyway \u2014 it reads the trace corpus). Goals are deliberately OFF the saturated avoid_list and span difficulties so the frontier reflects real diversity. Keep this set SMALL + FAST (L1-heavy) so a full campaign stays within campaign_usd_cap. ASCII only.",
+  "difficulty_definitions": {
+    "L1": "Single view / static content. One wizard turn.",
+    "L2": "State mgmt, 2+ screens, one framework primitive. 1-2 turns.",
+    "L3": "Framework-heavy / stateful. 2-3 turns."
+  },
+  "entries": [
+    {
+      "id": "mh-l1-tide-clock-001",
+      "goal": "A tide clock mini-app: enter today's high-tide time and it draws a 12h25m circular dial with a moving marker showing how far into the current tide cycle we are, plus a text label 'rising' or 'falling'.",
+      "artifact_type": "miniApp",
+      "category": "science",
+      "difficulty": "L1",
+      "dispatch": "runWizard",
+      "holdout": false,
+      "max_turns": 2,
+      "timeout_seconds": 200
+    },
+    {
+      "id": "mh-l1-breath-pacer-002",
+      "goal": "A box-breathing pacer: an expanding/contracting square animates 4s inhale, 4s hold, 4s exhale, 4s hold, with a small cycle counter. Start/stop button. No sound.",
+      "artifact_type": "miniApp",
+      "category": "wellness",
+      "difficulty": "L1",
+      "dispatch": "runWizard",
+      "holdout": true,
+      "max_turns": 2,
+      "timeout_seconds": 200
+    },
+    {
+      "id": "mh-l1-color-contrast-003",
+      "goal": "A WCAG color-contrast checker: two color pickers (text + background), show the contrast ratio and PASS/FAIL badges for AA and AAA at normal and large text sizes.",
+      "artifact_type": "miniApp",
+      "category": "devtool",
+      "difficulty": "L1",
+      "dispatch": "runWizard",
+      "holdout": false,
+      "max_turns": 2,
+      "timeout_seconds": 200
+    },
+    {
+      "id": "mh-l1-interval-runner-004",
+      "goal": "A spoken-free interval workout timer: define a list of work/rest intervals, then run them with a big countdown and a color flip (green=work, blue=rest), auto-advancing through the list.",
+      "artifact_type": "miniApp",
+      "category": "fitness",
+      "difficulty": "L1",
+      "dispatch": "runWizard",
+      "holdout": false,
+      "max_turns": 2,
+      "timeout_seconds": 200
+    },
+    {
+      "id": "mh-l1-tip-split-005",
+      "goal": "A bill-splitter that handles uneven splits: enter a total and per-person line items, it computes each person's share plus a proportional tip and a rounding adjustment so the parts sum exactly to the total.",
+      "artifact_type": "miniApp",
+      "category": "productivity",
+      "difficulty": "L1",
+      "dispatch": "runWizard",
+      "holdout": false,
+      "max_turns": 2,
+      "timeout_seconds": 200
+    },
+    {
+      "id": "mh-l2-kanban-local-006",
+      "goal": "A single-board kanban with three columns (To do / Doing / Done), drag cards between columns, add/edit/delete cards, and persist the board to localStorage so it survives reload.",
+      "artifact_type": "miniApp",
+      "category": "productivity",
+      "difficulty": "L2",
+      "dispatch": "runWizard",
+      "holdout": false,
+      "max_turns": 3,
+      "timeout_seconds": 360
+    },
+    {
+      "id": "mh-l2-spectrogram-007",
+      "goal": "A live microphone spectrogram: request mic access, run an AnalyserNode FFT, and scroll a colored frequency-vs-time canvas. Pause/resume button. Degrade gracefully if mic is denied.",
+      "artifact_type": "miniApp",
+      "category": "dsp",
+      "difficulty": "L2",
+      "dispatch": "runWizard",
+      "holdout": false,
+      "max_turns": 3,
+      "timeout_seconds": 360
+    },
+    {
+      "id": "mh-l2-markdown-outliner-008",
+      "goal": "A two-pane markdown outliner: left pane is an editable markdown textarea, right pane live-renders it, and a collapsible heading tree is derived from the headings. Persist to localStorage.",
+      "artifact_type": "miniApp",
+      "category": "devtool",
+      "difficulty": "L2",
+      "dispatch": "runWizard",
+      "holdout": false,
+      "max_turns": 3,
+      "timeout_seconds": 360
+    },
+    {
+      "id": "mh-l2-orbit-sandbox-009",
+      "goal": "A 2D gravity sandbox on canvas: click to drop bodies with an initial velocity drag-vector, then integrate Newtonian gravity so they orbit/collide. Reset button and a body counter.",
+      "artifact_type": "miniApp",
+      "category": "simulation",
+      "difficulty": "L2",
+      "dispatch": "runWizard",
+      "holdout": false,
+      "max_turns": 3,
+      "timeout_seconds": 360
+    },
+    {
+      "id": "mh-l3-tilemap-editor-010",
+      "goal": "A tile-map editor + player: paint a grid with a small tile palette (grass/wall/water), save the map to localStorage, then switch to play mode where a character walks the grid with collision against walls.",
+      "artifact_type": "miniApp",
+      "category": "gametool",
+      "difficulty": "L3",
+      "dispatch": "runWizard",
+      "holdout": false,
+      "max_turns": 3,
+      "timeout_seconds": 480
+    },
+    {
+      "id": "mh-game-memory-match-001",
+      "goal": "A memory match (concentration) card game: a 4x4 grid of face-down cards, flip two to find matching pairs, track moves and matched pairs, win when all matched, with a restart button.",
+      "artifact_type": "miniApp",
+      "category": "card-game",
+      "difficulty": "L2",
+      "dispatch": "runWizard",
+      "holdout": false,
+      "max_turns": 3,
+      "timeout_seconds": 420,
+      "_note": "Component-loading: matches card/board web-components so component-reuse-hints + web-components layers render substantially, unlike simple utilities. Saturated genre = reliable landing."
+    },
+    {
+      "id": "mh-game-connect-four-002",
+      "goal": "A Connect Four game for two players on the same device: a 7-column by 6-row board, click a column to drop a disc, alternate red/yellow turns, detect 4-in-a-row (horizontal/vertical/diagonal) and declare the winner, with a reset button.",
+      "artifact_type": "miniApp",
+      "category": "board-game",
+      "difficulty": "L2",
+      "dispatch": "runWizard",
+      "holdout": true,
+      "max_turns": 3,
+      "timeout_seconds": 420,
+      "_note": "Board-game: loads board/grid components (held-out for the keep-bar gate)."
+    },
+    {
+      "id": "mh-game-tictactoe-003",
+      "goal": "A tic-tac-toe game for two players on the same device: a 3x3 grid, alternate X/O turns, detect the winner or a draw, show whose turn it is, and a new-game button.",
+      "artifact_type": "miniApp",
+      "category": "board-game",
+      "difficulty": "L1",
+      "dispatch": "runWizard",
+      "holdout": false,
+      "max_turns": 2,
+      "timeout_seconds": 300,
+      "_note": "Board-game, very reliable landing; loads board components."
+    }
+  ]
+}

@@ -1,0 +1,119 @@
+{
+  "version": 1,
+  "lastUpdated": "2026-06-23",
+  "purpose": "Reusable research recipes and Lego blocks for DRACO-style deep research workflows in mChatAI+.",
+  "recipes": [
+    {
+      "id": "academic-literature",
+      "name": "Academic Literature Review",
+      "domains": ["academic", "science", "technology", "policy"],
+      "keywords": ["paper", "literature", "study", "benchmark", "evidence", "meta-analysis"],
+      "sourcePriority": ["peer-reviewed papers", "preprints", "benchmark reports", "replication notes", "official datasets"],
+      "queryStrategy": ["Search the exact method or claim.", "Search author/title variants.", "Search follow-up citations and replications."],
+      "answerChecklist": ["Compare methods and metrics.", "Separate result strength from speculation.", "Include limitations and conflicting evidence."]
+    },
+    {
+      "id": "finance-research",
+      "name": "Finance Research",
+      "domains": ["finance", "markets", "company research"],
+      "keywords": ["earnings", "10-K", "10-Q", "8-K", "investor relations", "guidance", "segment"],
+      "sourcePriority": ["SEC filings", "investor relations releases", "earnings transcripts", "exchange notices", "regulator statements"],
+      "queryStrategy": ["Find the latest official filing first.", "Cross-check company claims against filed tables.", "Use dated market data only when the date is explicit."],
+      "answerChecklist": ["Include reporting period and filing dates.", "Separate reported numbers from analyst interpretation.", "Avoid investment advice."]
+    },
+    {
+      "id": "legal-regulatory",
+      "name": "Legal and Regulatory Research",
+      "domains": ["law", "regulation", "compliance", "policy"],
+      "keywords": ["statute", "regulation", "court", "agency", "rule", "guidance", "enforcement"],
+      "sourcePriority": ["statutes", "regulations", "court opinions", "agency guidance", "official registers", "enforcement releases"],
+      "queryStrategy": ["Identify jurisdiction first.", "Find the controlling primary authority.", "Check current status and effective dates."],
+      "answerChecklist": ["State jurisdiction and date status.", "Distinguish binding authority from commentary.", "Avoid legal advice."]
+    },
+    {
+      "id": "medical-health",
+      "name": "Medical and Health Research",
+      "domains": ["medicine", "health", "clinical", "biotech"],
+      "keywords": ["clinical trial", "guideline", "FDA", "label", "systematic review", "adverse event"],
+      "sourcePriority": ["clinical guidelines", "regulator labels", "trial registries", "peer-reviewed trials", "systematic reviews", "public-health agencies"],
+      "queryStrategy": ["Find guidelines and labels first.", "Verify trial endpoints and population.", "Check whether evidence applies to the asked scenario."],
+      "answerChecklist": ["Include dates and population limits.", "Distinguish approved uses from emerging evidence.", "Avoid patient-specific medical advice."]
+    },
+    {
+      "id": "product-comparison",
+      "name": "Product Comparison",
+      "domains": ["shopping", "software", "hardware", "tools"],
+      "keywords": ["compare", "pricing", "specs", "alternatives", "best", "review"],
+      "sourcePriority": ["vendor docs", "pricing pages", "release notes", "spec sheets", "independent benchmarks", "dated reviews"],
+      "queryStrategy": ["Define buyer criteria.", "Verify specs and pricing from vendor pages.", "Use independent reviews for tradeoffs only."],
+      "answerChecklist": ["Include source dates for prices/specs.", "Explain who each option is best for.", "Separate facts from preference."]
+    },
+    {
+      "id": "needle-in-haystack",
+      "name": "Needle in a Haystack",
+      "domains": ["investigation", "records", "debugging", "source tracing"],
+      "keywords": ["find exact", "where did", "original source", "quote", "reference", "obscure"],
+      "sourcePriority": ["original documents", "archives", "official pages", "repository history", "primary interviews"],
+      "queryStrategy": ["Search exact phrases.", "Search variants and quoted fragments.", "Record rejected close matches."],
+      "answerChecklist": ["Show the exact match context.", "Explain confidence.", "Cite the original source when found."]
+    },
+    {
+      "id": "technology-landscape",
+      "name": "Technology Landscape",
+      "domains": ["developer tools", "AI", "infrastructure", "standards"],
+      "keywords": ["API", "framework", "release", "benchmark", "standard", "roadmap"],
+      "sourcePriority": ["official docs", "release notes", "standards documents", "issue trackers", "benchmarks", "source repositories"],
+      "queryStrategy": ["Check versioned docs.", "Verify release dates.", "Compare reproducible evidence before claims."],
+      "answerChecklist": ["Include versions and dates.", "State operational constraints.", "Identify unresolved issues or risks."]
+    }
+  ],
+  "sourceLego": [
+    {
+      "id": "primary-source-finder",
+      "summary": "Find the authority of record for each major claim family before collecting secondary context.",
+      "outputs": ["source_url", "authority_type", "claim_family", "date", "why_primary"]
+    },
+    {
+      "id": "source-credibility-ranker",
+      "summary": "Rank sources by authority, recency, independence, proximity to the event, and transparency.",
+      "outputs": ["source_url", "credibility_score", "reason", "use_case", "caveat"]
+    },
+    {
+      "id": "date-sensitive-source-checker",
+      "summary": "Identify facts likely to change and require current or date-stamped verification.",
+      "outputs": ["claim", "date_type", "required_freshness", "source_url", "status"]
+    },
+    {
+      "id": "duplicate-source-collapse",
+      "summary": "Collapse repeated coverage to the strongest original source and mark derivative pages.",
+      "outputs": ["kept_source", "duplicates", "reason"]
+    },
+    {
+      "id": "source-quote-extractor",
+      "summary": "Extract short support snippets or precise paraphrases for material claims.",
+      "outputs": ["claim", "source_url", "support_excerpt", "support_strength"]
+    }
+  ],
+  "answerLego": [
+    {
+      "id": "claim-ledger",
+      "summary": "Maintain claim, citation, support strength, date, and caveat before final synthesis.",
+      "outputs": ["claim", "source_url", "support_strength", "date", "caveat"]
+    },
+    {
+      "id": "citation-to-claim-verifier",
+      "summary": "Check that the cited source directly supports the sentence it follows.",
+      "outputs": ["claim", "citation_url", "verdict", "fix"]
+    },
+    {
+      "id": "rubric-expectation-checklist",
+      "summary": "Predict what an expert rubric is likely to require and verify coverage before final answer.",
+      "outputs": ["expected_criterion", "covered", "missing_detail"]
+    },
+    {
+      "id": "objectivity-limitations-pass",
+      "summary": "Add conflicts, limitations, uncertainty, alternatives, and excluded interpretations.",
+      "outputs": ["issue", "limitation", "impact_on_answer"]
+    }
+  ]
+}

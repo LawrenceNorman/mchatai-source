@@ -1,0 +1,19 @@
+{
+  "id": "explore-frontier",
+  "version": 1,
+  "displayName": "Explore the full frontier",
+  "summary": "Map the whole accuracy-vs-cost Pareto frontier and let a human pick the operating point.",
+  "_doc": "Objective template consumed by MetaHarnessCoordinator + templated into the proposer prompt. The default objective: freeform multi-objective optimization (the paper's posture). The proposer is told to surface candidates across the whole frontier (cheap-but-good through expensive-but-best), not chase a single scalar. PR-eligible frontier knees are labeled by operating point.",
+  "objective": {
+    "mode": "pareto",
+    "accuracy_axis": "land_rate",
+    "cost_axis": "mean_input_tokens",
+    "target": "Find harness-content edits that expand the accuracy-vs-cost Pareto frontier vs the current baseline. Prefer surgical, single-hypothesis edits. A candidate is interesting if it (a) holds land-rate while cutting context tokens, OR (b) lifts land-rate at modest token cost.",
+    "proposer_hint": "Read the raw traces to find where context tokens are spent for little return (cost wins) AND where missing/mis-prioritized context correlates with low rubric scores or failed renders (accuracy wins). Across iterations, deliberately probe BOTH ends of the frontier: some candidates that aggressively trim, some that add targeted context."
+  },
+  "frontier_knees": [
+    { "label": "cost-optimal", "rule": "lowest mean_input_tokens among non-dominated candidates that match baseline land-rate within keep_bar epsilon" },
+    { "label": "balanced", "rule": "the non-dominated candidate with the best land-rate-per-token ratio" },
+    { "label": "quality-optimal", "rule": "highest land_rate among non-dominated candidates" }
+  ]
+}
