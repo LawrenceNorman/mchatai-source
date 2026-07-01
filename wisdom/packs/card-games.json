@@ -678,7 +678,18 @@
         "RIGHT (deterministic): controls.innerHTML=''; controls.appendChild(continueBtn); continueBtn.onclick = () => { pegPile=[]; pegCount=0; resetRound(); };",
         "WRONG: setTimeout(() => { pegPile=[]; pegCount=0; renderHands(); cpuPlay(); }, 800); — the player has no time to absorb the 31, and on a fast machine 800ms looks like a glitch."
       ]
+    },
+    {
+      "id": "cg-suit-glyph-emoji-ios",
+      "rule": "The four FILLED card-suit glyphs ♠ ♣ ♥ ♦ (U+2660/2663/2665/2666) default to COLOR EMOJI on iOS/Safari, so `<span style=\"color:${suitColor}\">♥</span>` renders as a color heart emoji that IGNORES your red/black CSS color — defeating cg-012. When you color suits via CSS, append the U+FE0E text-presentation selector to each suit glyph (in JS: '♥\\uFE0E', '♠\\uFE0E', '♦\\uFE0E', '♣\\uFE0E') and/or set `font-variant-emoji:text` on the card/suit element. The OUTLINE suits ♤♧♡♢ (U+2664/2667/2661/2662) are text-default and do NOT need it. This is invisible on the desktop/macOS preview and only shows up on a phone.",
+      "why": "Sibling of cg-012. Verified 2026-07-01 (chess had the same class of bug via the U+265F pawn). cg-012 says emit ♠♣ black / ♥♦ red via CSS color — but on iOS those emoji-presentation codepoints override CSS color and draw a full-color emoji, so the suits look wrong and inconsistent.",
+      "severity": "important",
+      "appliesTo": "card-games",
+      "examples": [
+        "WRONG: `<div class='suit' style='color:#dc2626'>♥</div>` — iOS shows a color heart emoji, not a red text heart",
+        "GOOD: `<div class='suit' style='color:#dc2626'>♥\\uFE0E</div>` (or set font-variant-emoji:text on .suit)"
+      ]
     }
   ],
-  "_last_updated": "2026-05-18"
+  "_last_updated": "2026-07-01"
 }

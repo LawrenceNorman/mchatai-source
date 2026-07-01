@@ -210,6 +210,20 @@
     {
       "id": "mob-015",
       "rule": "On phones the screen is small, so NO first-person weapon/viewmodel (3D mesh or sprite) may cover more than ~1/3 of the screen -- keep it bottom-anchored and compact so gameplay stays visible. Any game that uses WASD/arrows/mouse on desktop MUST render on-screen touch controls on mobile (virtual joystick + drag-look + action buttons, each >=44px), and must be fully completable with touch alone."
+    },
+    {
+      "id": "mob-016",
+      "rule": "When you render Unicode game glyphs (chess pieces, the four filled card suits, HUD 'lives' hearts) and color them via CSS, append the U+FE0E text-presentation variation selector to each glyph string — in JS write it as the escape \\uFE0E, e.g. '♟\\uFE0E', '♠\\uFE0E', '♥\\uFE0E', '♦\\uFE0E', '♣\\uFE0E' — and/or set `font-variant-emoji: text` on the container. U+265F (black chess pawn) and the four filled suits ♠♣♥♦ default to COLOR EMOJI on iOS/Safari, which IGNORES your CSS color, text-shadow, and SVG fill, so a white pawn / a red suit / a magenta heart renders as a wrong-colored emoji. U+265F is the ONLY chess codepoint with default emoji presentation (♔ through ♞ are text-default and already honor CSS color), which is why only PAWNS invert. CAVEAT: U+FE0E only works on codepoints that HAVE a defined text-variation sequence — it is a NO-OP for emoji-default glyphs without one, e.g. ⚪/⚫ (U+26AA/26AB medium circles, often used as checkers/draughts pieces) and the 🎲 game-die emoji; for those use a CSS/SVG shape or a text-default codepoint instead.",
+      "why": "On iOS/Safari, emoji-presentation codepoints render as full-color emoji and ignore CSS color/text-shadow/SVG fill. A chess mini-app colored its solid pawn glyph white via .piece.white, but iOS showed a dark emoji pawn (verified 2026-07-01) while every other piece rendered correctly — only U+265F is emoji-default. Card games hit the identical bug via ♠♣♥♦. Desktop renders all of these as text, so the bug is INVISIBLE on the macOS preview and only shows up on a phone.",
+      "severity": "important",
+      "appliesTo": "anymobile",
+      "examples": [
+        "WRONG: const GLYPH = { pawn: '♟' }; .piece.white{color:#fff} — iOS shows a color pawn emoji ignoring the white",
+        "WRONG: `<span style=\"color:${suitColor}\">♥</span>` — iOS renders a color heart emoji, not a red text heart",
+        "GOOD: const GLYPH = { pawn: '♟\\uFE0E' }; (or set font-variant-emoji:text on the piece/card/suit elements)",
+        "GOOD: livesEl.textContent = '♥\\uFE0E'.repeat(lives) so the HUD heart honors your CSS color",
+        "N/A: checkers built from '⚫'/'⚪' cannot be fixed with U+FE0E (no text variation sequence) — use a CSS/SVG circle"
+      ]
     }
   ]
 }
