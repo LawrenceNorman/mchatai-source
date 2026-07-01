@@ -149,6 +149,19 @@ export class ChessRules {
 
     board.set(move.from.row, move.from.col, null);
     board.set(move.to.row, move.to.col, { ...nextPiece, moved: true });
+
+    // Castling — a king move flagged with `castle` also slides the rook. The UI passes
+    // the full move object (from legalMoves) straight to applyMove, so the `castle`
+    // payload survives and both pieces move together.
+    if (move.castle && move.castle.rook) {
+      const rookFrom = move.castle.rook.from;
+      const rookTo = move.castle.rook.to;
+      const rook = board.get(rookFrom.row, rookFrom.col);
+      if (rook) {
+        board.set(rookFrom.row, rookFrom.col, null);
+        board.set(rookTo.row, rookTo.col, { ...clonePiece(rook), moved: true });
+      }
+    }
     return true;
   }
 
