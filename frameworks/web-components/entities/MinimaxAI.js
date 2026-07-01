@@ -155,6 +155,23 @@ export class MinimaxAI {
       capturePiece = board.get(captureCell.row, captureCell.col);
     }
 
+    // Castling moves a SECOND piece (the rook) inside applyMove. We must snapshot the
+    // rook's from + to squares too, or _undo leaves the rook permanently displaced on
+    // the search board (make/unmake asymmetry) — corrupting the real board the AI
+    // searches on. (2026-07-01 castling fix.)
+    let rook = null;
+    if (move.castle && move.castle.rook) {
+      const rf = move.castle.rook.from;
+      const rt = move.castle.rook.to;
+      const rfp = board.get(rf.row, rf.col);
+      const rtp = board.get(rt.row, rt.col);
+      rook = {
+        from: rf, to: rt,
+        fromPiece: rfp ? { ...rfp } : null,
+        toPiece: rtp ? { ...rtp } : null
+      };
+    }
+
     this.rules.applyMove(board, move);
 
     return {
@@ -162,16 +179,21 @@ export class MinimaxAI {
       captureCell: captureIsSeparate ? captureCell : null,
       fromPiece: fromPiece ? { ...fromPiece } : null,
       toPiece: toPiece ? { ...toPiece } : null,
-      capturePiece: capturePiece ? { ...capturePiece } : null
+      capturePiece: capturePiece ? { ...capturePiece } : null,
+      rook
     };
   }
 
   _undo(board, snapshot) {
-    const { move, fromPiece, toPiece, capturePiece, captureCell } = snapshot;
+    const { move, fromPiece, toPiece, capturePiece, captureCell, rook } = snapshot;
     board.set(move.from.row, move.from.col, fromPiece);
     board.set(move.to.row, move.to.col, toPiece);
     if (captureCell) {
       board.set(captureCell.row, captureCell.col, capturePiece);
+    }
+    if (rook) {
+      board.set(rook.from.row, rook.from.col, rook.fromPiece);
+      board.set(rook.to.row, rook.to.col, rook.toPiece);
     }
   }
 }
