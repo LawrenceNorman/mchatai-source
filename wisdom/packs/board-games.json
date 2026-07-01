@@ -576,7 +576,14 @@
         "puzzle-games",
         "all web mini-app generators"
       ]
+    },
+    {
+      "id": "bg-piece-glyph-emoji-ios",
+      "rule": "If you render chess pieces as Unicode glyphs colored via CSS (the common `const GLYPH = { pawn:'♟', ... }` + `.piece.white{color:#fff}` approach), append the U+FE0E text-presentation selector to the PAWN glyph — in JS write '♟\\uFE0E'. U+265F (♟) is the ONLY chess codepoint with default emoji presentation, so on iOS/Safari it renders as a COLOR EMOJI that IGNORES your CSS color: the white pawns show up dark while ♔♕♖♗♘ and ♚♛♜♝♞ all render correctly. Simplest safe fix: append \\uFE0E to EVERY glyph in the map (harmless for the non-emoji pieces) and/or set `font-variant-emoji:text` on the piece element. Invisible on the desktop/macOS preview — only breaks on a phone, so test glyph color on iOS.",
+      "why": "Verified 2026-07-01: a chess mini-app's white pawns rendered black on iOS while every other white piece was correct, because only U+265F has emoji presentation and iOS drew it as a color emoji ignoring .piece.white{color}.",
+      "severity": "important",
+      "appliesTo": "board-games"
     }
   ],
-  "_last_updated": "2026-05-30"
+  "_last_updated": "2026-07-01"
 }
