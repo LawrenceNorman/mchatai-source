@@ -125,6 +125,7 @@ export class ChessRules {
         [0, -1], [0, 1],
         [1, -1], [1, 0], [1, 1]
       ], moves);
+      this._castlingMoves(board, piece, row, col, moves);
     }
 
     return moves.map((move) => ({
@@ -252,7 +253,57 @@ export class ChessRules {
       ].filter((square) => board.inBounds(square.row, square.col));
     }
 
+    if (type === "king") {
+      // A king attacks the 8 adjacent squares. Compute them directly (NOT via
+      // pseudoLegalMoves) — otherwise _castlingMoves → isSquareAttacked → _attackSquares
+      // would recurse infinitely, and castling squares would count as "attacked".
+      return [
+        [-1, -1], [-1, 0], [-1, 1],
+        [0, -1], [0, 1],
+        [1, -1], [1, 0], [1, 1]
+      ].map(([dr, dc]) => ({ row: row + dr, col: col + dc }))
+       .filter((square) => board.inBounds(square.row, square.col));
+    }
+
     return this.pseudoLegalMoves(board, row, col).map((move) => move.to);
+  }
+
+  // Castling (2026-07-01). King slides two squares toward an unmoved rook when: neither
+  // has moved, the squares between are empty, the king is not in check, and it does not
+  // pass through (or land on) an attacked square. Emits a move carrying `castle` so
+  // applyMove also slides the rook. `moved` is stamped by applyMove; fresh pieces have
+  // it unset, so `!piece.moved` == hasn't moved.
+  _castlingMoves(board, piece, row, col, moves) {
+    if (piece.moved) return;
+    const color = normalizeColor(piece);
+    const homeRow = color === "white" ? 7 : 0;
+    if (row !== homeRow || col !== 4) return;         // king must be on its start square
+    const enemy = OPPOSITE[color];
+    if (this.isSquareAttacked(board, row, col, enemy)) return;   // can't castle out of check
+
+    // Kingside: rook on col 7; f,g (5,6) empty; king passes f,g unattacked.
+    const kRook = board.get(row, 7);
+    if (kRook && normalizeType(kRook) === "rook" && normalizeColor(kRook) === color && !kRook.moved
+        && !board.get(row, 5) && !board.get(row, 6)
+        && !this.isSquareAttacked(board, row, 5, enemy)
+        && !this.isSquareAttacked(board, row, 6, enemy)) {
+      moves.push({
+        from: { row, col }, to: { row, col: 6 }, capture: null,
+        castle: { side: "kingside", rook: { from: { row, col: 7 }, to: { row, col: 5 } } }
+      });
+    }
+
+    // Queenside: rook on col 0; b,c,d (1,2,3) empty; king passes d,c (3,2) unattacked.
+    const qRook = board.get(row, 0);
+    if (qRook && normalizeType(qRook) === "rook" && normalizeColor(qRook) === color && !qRook.moved
+        && !board.get(row, 1) && !board.get(row, 2) && !board.get(row, 3)
+        && !this.isSquareAttacked(board, row, 3, enemy)
+        && !this.isSquareAttacked(board, row, 2, enemy)) {
+      moves.push({
+        from: { row, col }, to: { row, col: 2 }, capture: null,
+        castle: { side: "queenside", rook: { from: { row, col: 0 }, to: { row, col: 3 } } }
+      });
+    }
   }
 
   _findKing(board, color) {
