@@ -1,62 +1,648 @@
 {
   "_doc": "Configuration for EndProductPublishView.composeRequestFromProduct. Move-rule-from-Swift content. Iterate freely; takes effect on next refreshMchataisourceCache.",
-  "_version": 1,
-
+  "_version": 2,
   "llm_picker": {
     "_doc": "Backend ladder for the LLM symbol picker. Tried in order; first available wins. The user's CloudProvider.getActive() is auto-prepended at runtime so the user's chosen provider gets first dibs. 'foundation' is Apple Intelligence (always available on supported devices, free, on-device). Set llm_picker.enabled=false to bypass the LLM and use the deterministic fallback below.",
     "enabled": true,
-    "fallback_ladder": ["foundation", "google", "anthropic", "openAI", "ollama", "mChatAICloud"],
+    "fallback_ladder": [
+      "foundation",
+      "google",
+      "anthropic",
+      "openAI",
+      "ollama",
+      "mChatAICloud"
+    ],
     "temperature": 0.2,
     "timeout_seconds": 12,
     "max_output_tokens": 200
   },
-
   "style_pools_by_category": {
     "_doc": "Style preset pool per category. The picker selects one preset from the pool seeded by the app's name+summary so the same app always lands on the same preset.",
-    "miniApp":          ["gradient", "flat", "neon", "glass", "3d", "clay"],
-    "game":             ["neon", "pixel", "cyberpunk", "3d"],
-    "unityGame":        ["neon", "pixel", "cyberpunk", "3d"],
-    "extensionPackage": ["minimal", "flat", "gradient"],
-    "media":            ["vintage", "watercolor", "gradient"],
-    "website":          ["flat", "minimal", "gradient"],
-    "macOSApp":         ["3d", "glass", "gradient", "clay"],
-    "default":          ["gradient", "flat", "neon", "glass", "3d", "clay"]
+    "miniApp": [
+      "gradient",
+      "flat",
+      "neon",
+      "glass",
+      "3d",
+      "clay"
+    ],
+    "game": [
+      "neon",
+      "pixel",
+      "cyberpunk",
+      "3d"
+    ],
+    "unityGame": [
+      "neon",
+      "pixel",
+      "cyberpunk",
+      "3d"
+    ],
+    "extensionPackage": [
+      "minimal",
+      "flat",
+      "gradient"
+    ],
+    "media": [
+      "vintage",
+      "watercolor",
+      "gradient"
+    ],
+    "website": [
+      "flat",
+      "minimal",
+      "gradient"
+    ],
+    "macOSApp": [
+      "3d",
+      "glass",
+      "gradient",
+      "clay"
+    ],
+    "default": [
+      "gradient",
+      "flat",
+      "neon",
+      "glass",
+      "3d",
+      "clay"
+    ]
   },
-
   "gradient_palette": [
-    {"start": "#FF6B6B", "end": "#4ECDC4", "label": "pastel red→teal"},
-    {"start": "#667EEA", "end": "#764BA2", "label": "blue→purple"},
-    {"start": "#F093FB", "end": "#F5576C", "label": "pink→coral"},
-    {"start": "#4FACFE", "end": "#00F2FE", "label": "sky→cyan"},
-    {"start": "#43E97B", "end": "#38F9D7", "label": "green→mint"},
-    {"start": "#FA709A", "end": "#FEE140", "label": "rose→yellow"},
-    {"start": "#30CFD0", "end": "#330867", "label": "teal→deep purple"},
-    {"start": "#A8EDEA", "end": "#FED6E3", "label": "mint→blush"},
-    {"start": "#FF9A8B", "end": "#FF6A88", "label": "peach→pink"},
-    {"start": "#08AEEA", "end": "#2AF598", "label": "cyan→lime"},
-    {"start": "#FEE140", "end": "#FA709A", "label": "yellow→rose"},
-    {"start": "#5EE7DF", "end": "#B490CA", "label": "aqua→lavender"}
+    {
+      "start": "#FF6B6B",
+      "end": "#4ECDC4",
+      "label": "pastel red\u2192teal"
+    },
+    {
+      "start": "#667EEA",
+      "end": "#764BA2",
+      "label": "blue\u2192purple"
+    },
+    {
+      "start": "#F093FB",
+      "end": "#F5576C",
+      "label": "pink\u2192coral"
+    },
+    {
+      "start": "#4FACFE",
+      "end": "#00F2FE",
+      "label": "sky\u2192cyan"
+    },
+    {
+      "start": "#43E97B",
+      "end": "#38F9D7",
+      "label": "green\u2192mint"
+    },
+    {
+      "start": "#FA709A",
+      "end": "#FEE140",
+      "label": "rose\u2192yellow"
+    },
+    {
+      "start": "#30CFD0",
+      "end": "#330867",
+      "label": "teal\u2192deep purple"
+    },
+    {
+      "start": "#A8EDEA",
+      "end": "#FED6E3",
+      "label": "mint\u2192blush"
+    },
+    {
+      "start": "#FF9A8B",
+      "end": "#FF6A88",
+      "label": "peach\u2192pink"
+    },
+    {
+      "start": "#08AEEA",
+      "end": "#2AF598",
+      "label": "cyan\u2192lime"
+    },
+    {
+      "start": "#FEE140",
+      "end": "#FA709A",
+      "label": "yellow\u2192rose"
+    },
+    {
+      "start": "#5EE7DF",
+      "end": "#B490CA",
+      "label": "aqua\u2192lavender"
+    }
   ],
-
   "deterministic_fallback": {
-    "_doc": "Used when llm_picker.enabled=false OR every backend in the ladder fails. Pure keyword match against name+summary, first hit wins. Generic apps fall through to a seeded random pick from generic_pool. Keep this list TINY — the LLM picker is the real solution; this is just a last-ditch safety net so the icon is never blank.",
+    "_doc": "Used when llm_picker.enabled=false OR every backend in the ladder fails. Pure substring match against lowercased name+summary, FIRST HIT WINS \u2014 keep multi-word/specific keywords before generic ones ('tower defense' before 'tower', 'sword' before 'word'). Symbols may be Material names OR vendored game-icons.net ids (resolve_symbol falls through material\u2192game). 'game'\u2192sports_esports stays LAST as the catch-all before generic_pool. Generic apps fall through to a seeded random pick from generic_pool.",
     "keyword_map": [
-      {"kw": "tic tac toe", "symbol": "grid_3x3"},
-      {"kw": "checkers", "symbol": "grid_on"},
-      {"kw": "weather", "symbol": "cloud"},
-      {"kw": "timer", "symbol": "timer"},
-      {"kw": "calendar", "symbol": "calendar_today"},
-      {"kw": "todo", "symbol": "check_circle"},
-      {"kw": "task", "symbol": "check_circle"},
-      {"kw": "music", "symbol": "music_note"},
-      {"kw": "photo", "symbol": "image"},
-      {"kw": "game", "symbol": "sports_esports"},
-      {"kw": "puzzle", "symbol": "extension"},
-      {"kw": "chat", "symbol": "chat_bubble"}
+      {
+        "kw": "tic tac toe",
+        "symbol": "tic-tac-toe"
+      },
+      {
+        "kw": "tic-tac-toe",
+        "symbol": "tic-tac-toe"
+      },
+      {
+        "kw": "noughts and crosses",
+        "symbol": "tic-tac-toe"
+      },
+      {
+        "kw": "tower defense",
+        "symbol": "stone-tower"
+      },
+      {
+        "kw": "tower defence",
+        "symbol": "stone-tower"
+      },
+      {
+        "kw": "space invader",
+        "symbol": "alien-bug"
+      },
+      {
+        "kw": "board game",
+        "symbol": "meeple"
+      },
+      {
+        "kw": "boardgame",
+        "symbol": "meeple"
+      },
+      {
+        "kw": "connect four",
+        "symbol": "grid_4x4"
+      },
+      {
+        "kw": "eight ball",
+        "symbol": "eight-ball"
+      },
+      {
+        "kw": "8 ball",
+        "symbol": "eight-ball"
+      },
+      {
+        "kw": "8-ball",
+        "symbol": "eight-ball"
+      },
+      {
+        "kw": "chess",
+        "symbol": "chess-knight"
+      },
+      {
+        "kw": "checkers",
+        "symbol": "grid_on"
+      },
+      {
+        "kw": "poker",
+        "symbol": "poker-hand"
+      },
+      {
+        "kw": "holdem",
+        "symbol": "poker-hand"
+      },
+      {
+        "kw": "blackjack",
+        "symbol": "card-ace-spades"
+      },
+      {
+        "kw": "solitaire",
+        "symbol": "card-ace-hearts"
+      },
+      {
+        "kw": "rummy",
+        "symbol": "card-random"
+      },
+      {
+        "kw": "card game",
+        "symbol": "poker-hand"
+      },
+      {
+        "kw": "cards",
+        "symbol": "poker-hand"
+      },
+      {
+        "kw": "casino",
+        "symbol": "suits"
+      },
+      {
+        "kw": "hearts",
+        "symbol": "card-ace-hearts"
+      },
+      {
+        "kw": "yahtzee",
+        "symbol": "rolling-dices"
+      },
+      {
+        "kw": "d20",
+        "symbol": "dice-twenty-faces-twenty"
+      },
+      {
+        "kw": "dice",
+        "symbol": "rolling-dices"
+      },
+      {
+        "kw": "sudoku",
+        "symbol": "grid_on"
+      },
+      {
+        "kw": "minesweeper",
+        "symbol": "land-mine"
+      },
+      {
+        "kw": "bomb",
+        "symbol": "unlit-bomb"
+      },
+      {
+        "kw": "battleship",
+        "symbol": "battleship"
+      },
+      {
+        "kw": "submarine",
+        "symbol": "submarine"
+      },
+      {
+        "kw": "snake",
+        "symbol": "snake"
+      },
+      {
+        "kw": "maze",
+        "symbol": "maze"
+      },
+      {
+        "kw": "labyrinth",
+        "symbol": "maze"
+      },
+      {
+        "kw": "jigsaw",
+        "symbol": "jigsaw-piece"
+      },
+      {
+        "kw": "tetris",
+        "symbol": "t-brick"
+      },
+      {
+        "kw": "pac-man",
+        "symbol": "ghost"
+      },
+      {
+        "kw": "pacman",
+        "symbol": "ghost"
+      },
+      {
+        "kw": "wordle",
+        "symbol": "abc"
+      },
+      {
+        "kw": "crossword",
+        "symbol": "abc"
+      },
+      {
+        "kw": "sword",
+        "symbol": "crossed-swords"
+      },
+      {
+        "kw": "scrabble",
+        "symbol": "domino-tiles"
+      },
+      {
+        "kw": "hangman",
+        "symbol": "abc"
+      },
+      {
+        "kw": "anagram",
+        "symbol": "abc"
+      },
+      {
+        "kw": "spelling",
+        "symbol": "abc"
+      },
+      {
+        "kw": "word",
+        "symbol": "abc"
+      },
+      {
+        "kw": "domino",
+        "symbol": "domino-tiles"
+      },
+      {
+        "kw": "roguelike",
+        "symbol": "dungeon-gate"
+      },
+      {
+        "kw": "rogue",
+        "symbol": "dungeon-gate"
+      },
+      {
+        "kw": "dungeon",
+        "symbol": "dungeon-gate"
+      },
+      {
+        "kw": "crawler",
+        "symbol": "dungeon-gate"
+      },
+      {
+        "kw": "role playing",
+        "symbol": "crossed-swords"
+      },
+      {
+        "kw": "rpg",
+        "symbol": "crossed-swords"
+      },
+      {
+        "kw": "battle",
+        "symbol": "crossed-swords"
+      },
+      {
+        "kw": "wizard",
+        "symbol": "fairy-wand"
+      },
+      {
+        "kw": "magic",
+        "symbol": "fairy-wand"
+      },
+      {
+        "kw": "spell",
+        "symbol": "spell-book"
+      },
+      {
+        "kw": "dragon",
+        "symbol": "dragon-head"
+      },
+      {
+        "kw": "castle",
+        "symbol": "medieval-castle"
+      },
+      {
+        "kw": "treasure",
+        "symbol": "locked-chest"
+      },
+      {
+        "kw": "ghost",
+        "symbol": "ghost"
+      },
+      {
+        "kw": "zombie",
+        "symbol": "death-skull"
+      },
+      {
+        "kw": "skull",
+        "symbol": "death-skull"
+      },
+      {
+        "kw": "knight",
+        "symbol": "chess-knight"
+      },
+      {
+        "kw": "crown",
+        "symbol": "royal-crown"
+      },
+      {
+        "kw": "alien",
+        "symbol": "alien-bug"
+      },
+      {
+        "kw": "ufo",
+        "symbol": "ufo"
+      },
+      {
+        "kw": "asteroid",
+        "symbol": "space-rocket"
+      },
+      {
+        "kw": "spaceship",
+        "symbol": "space-rocket"
+      },
+      {
+        "kw": "rocket",
+        "symbol": "space-rocket"
+      },
+      {
+        "kw": "shooter",
+        "symbol": "space-rocket"
+      },
+      {
+        "kw": "racing",
+        "symbol": "race-car"
+      },
+      {
+        "kw": "race",
+        "symbol": "race-car"
+      },
+      {
+        "kw": "kart",
+        "symbol": "race-car"
+      },
+      {
+        "kw": "driving",
+        "symbol": "race-car"
+      },
+      {
+        "kw": "platformer",
+        "symbol": "super-mushroom"
+      },
+      {
+        "kw": "arcade",
+        "symbol": "arcade-joystick"
+      },
+      {
+        "kw": "retro",
+        "symbol": "retro-controller"
+      },
+      {
+        "kw": "memory",
+        "symbol": "brain"
+      },
+      {
+        "kw": "simon",
+        "symbol": "brain"
+      },
+      {
+        "kw": "quiz",
+        "symbol": "brain"
+      },
+      {
+        "kw": "trivia",
+        "symbol": "brain"
+      },
+      {
+        "kw": "soccer",
+        "symbol": "soccer-ball"
+      },
+      {
+        "kw": "football",
+        "symbol": "sports_football"
+      },
+      {
+        "kw": "basketball",
+        "symbol": "basketball-ball"
+      },
+      {
+        "kw": "billiard",
+        "symbol": "eight-ball"
+      },
+      {
+        "kw": "snooker",
+        "symbol": "eight-ball"
+      },
+      {
+        "kw": "dart",
+        "symbol": "dart"
+      },
+      {
+        "kw": "bowling",
+        "symbol": "bowling-pin"
+      },
+      {
+        "kw": "golf",
+        "symbol": "sports_golf"
+      },
+      {
+        "kw": "tennis",
+        "symbol": "sports_tennis"
+      },
+      {
+        "kw": "baseball",
+        "symbol": "sports_baseball"
+      },
+      {
+        "kw": "trophy",
+        "symbol": "winners-trophy"
+      },
+      {
+        "kw": "tournament",
+        "symbol": "winners-trophy"
+      },
+      {
+        "kw": "tower",
+        "symbol": "stone-tower"
+      },
+      {
+        "kw": "clicker",
+        "symbol": "two-coins"
+      },
+      {
+        "kw": "coin",
+        "symbol": "two-coins"
+      },
+      {
+        "kw": "puzzle",
+        "symbol": "puzzle"
+      },
+      {
+        "kw": "weather",
+        "symbol": "cloud"
+      },
+      {
+        "kw": "countdown",
+        "symbol": "timer"
+      },
+      {
+        "kw": "stopwatch",
+        "symbol": "timer"
+      },
+      {
+        "kw": "pomodoro",
+        "symbol": "timer"
+      },
+      {
+        "kw": "timer",
+        "symbol": "timer"
+      },
+      {
+        "kw": "alarm",
+        "symbol": "alarm"
+      },
+      {
+        "kw": "clock",
+        "symbol": "schedule"
+      },
+      {
+        "kw": "calendar",
+        "symbol": "calendar_today"
+      },
+      {
+        "kw": "todo",
+        "symbol": "check_circle"
+      },
+      {
+        "kw": "task",
+        "symbol": "check_circle"
+      },
+      {
+        "kw": "habit",
+        "symbol": "check_circle"
+      },
+      {
+        "kw": "tracker",
+        "symbol": "check_circle"
+      },
+      {
+        "kw": "calculator",
+        "symbol": "calculate"
+      },
+      {
+        "kw": "math",
+        "symbol": "calculate"
+      },
+      {
+        "kw": "counter",
+        "symbol": "pin"
+      },
+      {
+        "kw": "music",
+        "symbol": "music_note"
+      },
+      {
+        "kw": "photo",
+        "symbol": "image"
+      },
+      {
+        "kw": "camera",
+        "symbol": "photo_camera"
+      },
+      {
+        "kw": "chat",
+        "symbol": "chat_bubble"
+      },
+      {
+        "kw": "notes",
+        "symbol": "edit_note"
+      },
+      {
+        "kw": "budget",
+        "symbol": "savings"
+      },
+      {
+        "kw": "expense",
+        "symbol": "payments"
+      },
+      {
+        "kw": "recipe",
+        "symbol": "restaurant"
+      },
+      {
+        "kw": "cooking",
+        "symbol": "restaurant"
+      },
+      {
+        "kw": "fitness",
+        "symbol": "fitness_center"
+      },
+      {
+        "kw": "workout",
+        "symbol": "fitness_center"
+      },
+      {
+        "kw": "game",
+        "symbol": "sports_esports"
+      }
     ],
     "generic_pool": [
-      "apps", "widgets", "grid_view", "auto_awesome",
-      "rocket_launch", "flare", "stars", "lightbulb"
+      "apps",
+      "widgets",
+      "grid_view",
+      "auto_awesome",
+      "rocket_launch",
+      "flare",
+      "stars",
+      "lightbulb"
     ]
   }
 }

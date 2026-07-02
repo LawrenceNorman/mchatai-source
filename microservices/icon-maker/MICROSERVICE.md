@@ -1,10 +1,10 @@
 ---
 name: Icon Maker
-version: 1.0.0
-description: Compose app icons (PNG + .icns + AppIcon.appiconset) from Material Icons, gradients, textures, and text overlays. Headless sibling of the macOS Icon Maker app.
+version: 1.1.0
+description: Compose app icons (PNG + .icns + AppIcon.appiconset) from Material Icons, game-icons.net glyphs, gradients, textures, and text overlays. Headless sibling of the macOS Icon Maker app.
 author: mChatAI
 category: media
-tags: [icon, media, composition, png, icns, appiconset, material-icons]
+tags: [icon, media, composition, png, icns, appiconset, material-icons, game-icons]
 python_deps: [fastapi, pydantic, "pillow>=11", numpy]
 bins: [python3]
 preconditions: []
@@ -61,6 +61,18 @@ redistributable. When a Swift caller passes an SF name like `"flame.fill"`,
 `symbols.py` resolves it to the nearest Material equivalent (`"whatshot"` in
 that case) via `assets/sf_symbol_hints.json`. The macOS Icon Maker app remains
 the authoritative local SF renderer for users who need true SF glyphs.
+
+**Game glyphs (v1.1.0):** ~60 curated [game-icons.net](https://game-icons.net)
+glyphs (chess pieces, cards, dice, snake, joystick, dungeon-gate, …) vendored
+as white-on-transparent 1024px PNGs under `assets/game_icons/png/`, tinted +
+scaled by the compositor like a font glyph. `symbol_set: "material"` falls
+through to the game catalog on a miss — existing callers pick up game glyphs
+with zero changes; explicit `symbol_set: "game"` also works. CC BY 3.0 —
+per-icon attribution in `assets/game_icons/LEDGER.json`.
+
+**Fail-loud (v1.1.0):** a missing Material font or game glyph PNG raises
+HTTP 500 (`code: font_missing` / `game_asset_missing`) instead of silently
+rendering a blank background plate.
 
 **Entry points:**
 - mChatAI+ publish-flow "Make Icon" button → `POST /compose`
