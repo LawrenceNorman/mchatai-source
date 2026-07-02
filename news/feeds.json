@@ -1,0 +1,91 @@
+{
+  "_comment": "AI News feed catalog for the mChatAI 'AI News' applet (iOS + macOS). This is the SOURCE OF TRUTH for the news source list. The app fetches this at runtime via NewsFeedCatalogService (raw.githubusercontent, no auth, ~1-day TTL cache, bundled offline fallback), so ADDING/REMOVING a feed is a zero-rebuild git PR. Humans curate additions here; the weekly news-feeds-sync Cloud Function health-checks every URL and stamps healthStatus/lastChecked/lastHttpStatus (the app skips sources marked healthStatus:'dead'). Do NOT hardcode feeds into Swift (CLAUDE.md RULE #1).",
+  "_schema": {
+    "source.id": "stable unique slug (never reuse)",
+    "source.kind": "rss (default) | youtube | gnews-topic | gnews-local | reddit. Controls URL placeholder resolution + UI presentation.",
+    "source.rssURL": "feed URL. May contain placeholders resolved on-device: {HL} host language (e.g. en-US), {GL} geo/country (e.g. US), {CEID} country:LANG (e.g. US:EN), {QUERY} local locality or country name. Non-placeholder URLs are used verbatim.",
+    "source.category": "one of the app categories incl. Local, Videos",
+    "source.language": "BCP-ish code the language filter matches; gnews-* are 'en' and localize by region in pass 1",
+    "source.{latitude,longitude}": "for the globe view",
+    "source.icon": "SF Symbol",
+    "health (cron-written, app ignores)": "healthStatus: ok|flaky|dead, lastChecked, lastHttpStatus, newestItemAgeHours"
+  },
+  "_source_of_truth": "mchatai-source/news/feeds.json",
+  "version": 1,
+  "lastUpdated": "2026-07-01",
+  "sources": [
+    { "id": "nyt", "name": "The New York Times", "country": "United States", "language": "en", "rssURL": "https://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml", "category": "General", "latitude": 40.7580, "longitude": -73.9855, "icon": "newspaper.fill" },
+    { "id": "npr", "name": "NPR News", "country": "United States", "language": "en", "rssURL": "https://feeds.npr.org/1001/rss.xml", "category": "General", "latitude": 38.8977, "longitude": -77.0365, "icon": "building.columns.fill" },
+    { "id": "npr-tech", "name": "NPR Technology", "country": "United States", "language": "en", "rssURL": "https://feeds.npr.org/1019/rss.xml", "category": "Tech", "latitude": 37.3861, "longitude": -122.0839, "icon": "cpu" },
+    { "id": "ars", "name": "Ars Technica", "country": "United States", "language": "en", "rssURL": "https://feeds.arstechnica.com/arstechnica/index", "category": "Tech", "latitude": 37.7749, "longitude": -122.4194, "icon": "desktopcomputer" },
+    { "id": "verge", "name": "The Verge", "country": "United States", "language": "en", "rssURL": "https://www.theverge.com/rss/index.xml", "category": "Tech", "latitude": 40.7128, "longitude": -74.0060, "icon": "iphone" },
+    { "id": "techcrunch", "name": "TechCrunch", "country": "United States", "language": "en", "rssURL": "https://techcrunch.com/feed/", "category": "Tech", "latitude": 37.7749, "longitude": -122.4194, "icon": "cpu" },
+    { "id": "wired", "name": "Wired", "country": "United States", "language": "en", "rssURL": "https://www.wired.com/feed/rss", "category": "Tech", "latitude": 37.7749, "longitude": -122.4194, "icon": "cpu" },
+
+    { "id": "bbc-world", "name": "BBC World", "country": "United Kingdom", "language": "en", "rssURL": "https://feeds.bbci.co.uk/news/world/rss.xml", "category": "World", "latitude": 51.5074, "longitude": -0.1278, "icon": "globe" },
+    { "id": "bbc-top", "name": "BBC Top Stories", "country": "United Kingdom", "language": "en", "rssURL": "https://feeds.bbci.co.uk/news/rss.xml", "category": "General", "latitude": 51.5074, "longitude": -0.1278, "icon": "newspaper.fill" },
+    { "id": "bbc-tech", "name": "BBC Technology", "country": "United Kingdom", "language": "en", "rssURL": "https://feeds.bbci.co.uk/news/technology/rss.xml", "category": "Tech", "latitude": 51.5074, "longitude": -0.1278, "icon": "cpu" },
+    { "id": "guardian", "name": "The Guardian", "country": "United Kingdom", "language": "en", "rssURL": "https://www.theguardian.com/world/rss", "category": "World", "latitude": 51.5074, "longitude": -0.1278, "icon": "globe" },
+
+    { "id": "cbc", "name": "CBC News", "country": "Canada", "language": "en", "rssURL": "https://www.cbc.ca/cmlink/rss-topstories", "category": "General", "latitude": 45.4215, "longitude": -75.6972, "icon": "leaf.fill" },
+    { "id": "france24", "name": "France 24", "country": "France", "language": "en", "rssURL": "https://www.france24.com/en/rss", "category": "World", "latitude": 48.8566, "longitude": 2.3522, "icon": "building.2.fill" },
+    { "id": "dw", "name": "Deutsche Welle", "country": "Germany", "language": "en", "rssURL": "https://rss.dw.com/rdf/rss-en-all", "category": "World", "latitude": 50.7374, "longitude": 7.0982, "icon": "globe.europe.africa.fill" },
+    { "id": "japantimes", "name": "Japan Times", "country": "Japan", "language": "en", "rssURL": "https://www.japantimes.co.jp/feed/", "category": "General", "latitude": 35.6762, "longitude": 139.6503, "icon": "sun.max.fill" },
+    { "id": "abc-au", "name": "ABC News Australia", "country": "Australia", "language": "en", "rssURL": "https://www.abc.net.au/news/feed/2942460/rss.xml", "category": "General", "latitude": -33.8688, "longitude": 151.2093, "icon": "globe.asia.australia.fill" },
+    { "id": "ndtv", "name": "NDTV", "country": "India", "language": "en", "rssURL": "https://feeds.feedburner.com/ndtvnews-top-stories", "category": "General", "latitude": 28.6139, "longitude": 77.2090, "icon": "building.columns.fill" },
+    { "id": "aljazeera", "name": "Al Jazeera", "country": "Qatar", "language": "en", "rssURL": "https://www.aljazeera.com/xml/rss/all.xml", "category": "World", "latitude": 25.2854, "longitude": 51.5310, "icon": "globe.central.south.asia.fill" },
+    { "id": "wsj", "name": "Wall Street Journal", "country": "United States", "language": "en", "rssURL": "https://feeds.a.dj.com/rss/RSSWorldNews.xml", "category": "World", "latitude": 40.7128, "longitude": -74.0060, "icon": "newspaper.fill" },
+
+    { "id": "bbc-sport", "name": "BBC Sport", "country": "United Kingdom", "language": "en", "rssURL": "https://feeds.bbci.co.uk/sport/rss.xml", "category": "Sports", "latitude": 51.5074, "longitude": -0.1278, "icon": "sportscourt.fill" },
+    { "id": "espn-top", "name": "ESPN", "country": "United States", "language": "en", "rssURL": "https://www.espn.com/espn/rss/news", "category": "Sports", "latitude": 41.8591, "longitude": -72.6706, "icon": "sportscourt.fill" },
+    { "id": "guardian-sport", "name": "The Guardian Sport", "country": "United Kingdom", "language": "en", "rssURL": "https://www.theguardian.com/uk/sport/rss", "category": "Sports", "latitude": 51.5074, "longitude": -0.1278, "icon": "sportscourt.fill" },
+
+    { "id": "bbc-business", "name": "BBC Business", "country": "United Kingdom", "language": "en", "rssURL": "https://feeds.bbci.co.uk/news/business/rss.xml", "category": "Business", "latitude": 51.5074, "longitude": -0.1278, "icon": "chart.line.uptrend.xyaxis" },
+    { "id": "cnbc-top", "name": "CNBC Top News", "country": "United States", "language": "en", "rssURL": "https://www.cnbc.com/id/100003114/device/rss/rss.html", "category": "Business", "latitude": 40.7128, "longitude": -74.0060, "icon": "chart.bar.fill" },
+
+    { "id": "bbc-health", "name": "BBC Health", "country": "United Kingdom", "language": "en", "rssURL": "https://feeds.bbci.co.uk/news/health/rss.xml", "category": "Health", "latitude": 51.5074, "longitude": -0.1278, "icon": "heart.text.square.fill" },
+
+    { "id": "bbc-science", "name": "BBC Science", "country": "United Kingdom", "language": "en", "rssURL": "https://feeds.bbci.co.uk/news/science_and_environment/rss.xml", "category": "Science", "latitude": 51.5074, "longitude": -0.1278, "icon": "atom" },
+    { "id": "nasa", "name": "NASA", "country": "United States", "language": "en", "rssURL": "https://www.nasa.gov/news-release/feed/", "category": "Science", "latitude": 38.8830, "longitude": -77.0163, "icon": "moon.stars.fill" },
+    { "id": "sciencemag", "name": "Science News", "country": "United States", "language": "en", "rssURL": "https://www.sciencenews.org/feed", "category": "Science", "latitude": 38.9072, "longitude": -77.0369, "icon": "atom" },
+
+    { "id": "bbc-entertainment", "name": "BBC Entertainment", "country": "United Kingdom", "language": "en", "rssURL": "https://feeds.bbci.co.uk/news/entertainment_and_arts/rss.xml", "category": "Entertainment", "latitude": 51.5074, "longitude": -0.1278, "icon": "film.fill" },
+    { "id": "variety", "name": "Variety", "country": "United States", "language": "en", "rssURL": "https://variety.com/feed/", "category": "Entertainment", "latitude": 34.0522, "longitude": -118.2437, "icon": "film.fill" },
+    { "id": "hollywood-reporter", "name": "The Hollywood Reporter", "country": "United States", "language": "en", "rssURL": "https://www.hollywoodreporter.com/feed/", "category": "Entertainment", "latitude": 34.0522, "longitude": -118.2437, "icon": "film.fill" },
+
+    { "id": "elpais", "name": "El País", "country": "Spain", "language": "es", "rssURL": "https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/portada", "category": "General", "latitude": 40.4168, "longitude": -3.7038, "icon": "newspaper.fill" },
+    { "id": "bbc-mundo", "name": "BBC Mundo", "country": "United Kingdom", "language": "es", "rssURL": "https://feeds.bbci.co.uk/mundo/rss.xml", "category": "World", "latitude": 51.5074, "longitude": -0.1278, "icon": "globe" },
+    { "id": "lemonde", "name": "Le Monde", "country": "France", "language": "fr", "rssURL": "https://www.lemonde.fr/rss/une.xml", "category": "General", "latitude": 48.8566, "longitude": 2.3522, "icon": "building.2.fill" },
+    { "id": "rfi", "name": "RFI", "country": "France", "language": "fr", "rssURL": "https://www.rfi.fr/fr/rss", "category": "World", "latitude": 48.8566, "longitude": 2.3522, "icon": "globe.europe.africa.fill" },
+    { "id": "folha", "name": "Folha de S.Paulo", "country": "Brazil", "language": "pt", "rssURL": "https://feeds.folha.uol.com.br/emcimadahora/rss091.xml", "category": "General", "latitude": -23.5505, "longitude": -46.6333, "icon": "globe.americas.fill" },
+    { "id": "bbc-portuguese", "name": "BBC Brasil", "country": "Brazil", "language": "pt", "rssURL": "https://feeds.bbci.co.uk/portuguese/rss.xml", "category": "World", "latitude": -15.7975, "longitude": -47.8919, "icon": "globe" },
+    { "id": "nhk", "name": "NHK News", "country": "Japan", "language": "ja", "rssURL": "https://www3.nhk.or.jp/rss/news/cat0.xml", "category": "General", "latitude": 35.6762, "longitude": 139.6503, "icon": "sun.max.fill" },
+    { "id": "bbc-chinese", "name": "BBC 中文", "country": "United Kingdom", "language": "zh", "rssURL": "https://feeds.bbci.co.uk/zhongwen/simp/rss.xml", "category": "World", "latitude": 51.5074, "longitude": -0.1278, "icon": "globe" },
+    { "id": "bbc-arabic", "name": "BBC عربي", "country": "United Kingdom", "language": "ar", "rssURL": "https://feeds.bbci.co.uk/arabic/rss.xml", "category": "World", "latitude": 51.5074, "longitude": -0.1278, "icon": "globe" },
+    { "id": "bbc-russian", "name": "BBC Русская", "country": "United Kingdom", "language": "ru", "rssURL": "https://feeds.bbci.co.uk/russian/rss.xml", "category": "World", "latitude": 55.7558, "longitude": 37.6173, "icon": "globe" },
+    { "id": "bbc-hindi", "name": "BBC हिन्दी", "country": "India", "language": "hi", "rssURL": "https://feeds.bbci.co.uk/hindi/rss.xml", "category": "General", "latitude": 28.6139, "longitude": 77.2090, "icon": "building.columns.fill" },
+    { "id": "bbc-swahili", "name": "BBC Swahili", "country": "Kenya", "language": "sw", "rssURL": "https://feeds.bbci.co.uk/swahili/rss.xml", "category": "General", "latitude": -1.2921, "longitude": 36.8219, "icon": "globe.europe.africa.fill" },
+    { "id": "bbc-korean", "name": "BBC 코리아", "country": "South Korea", "language": "ko", "rssURL": "https://feeds.bbci.co.uk/korean/rss.xml", "category": "World", "latitude": 37.5665, "longitude": 126.9780, "icon": "flag.fill" },
+
+    { "id": "gnews-local", "name": "Local Headlines", "kind": "gnews-local", "country": "United States", "language": "en", "rssURL": "https://news.google.com/rss/search?q={QUERY}&hl={HL}&gl={GL}&ceid={CEID}", "category": "Local", "latitude": 39.8283, "longitude": -98.5795, "icon": "mappin.and.ellipse" },
+    { "id": "gnews-world", "name": "Google News · World", "kind": "gnews-topic", "country": "United States", "language": "en", "rssURL": "https://news.google.com/rss/headlines/section/topic/WORLD?hl={HL}&gl={GL}&ceid={CEID}", "category": "World", "latitude": 39.8283, "longitude": -98.5795, "icon": "globe" },
+    { "id": "gnews-tech", "name": "Google News · Technology", "kind": "gnews-topic", "country": "United States", "language": "en", "rssURL": "https://news.google.com/rss/headlines/section/topic/TECHNOLOGY?hl={HL}&gl={GL}&ceid={CEID}", "category": "Tech", "latitude": 39.8283, "longitude": -98.5795, "icon": "cpu" },
+    { "id": "gnews-business", "name": "Google News · Business", "kind": "gnews-topic", "country": "United States", "language": "en", "rssURL": "https://news.google.com/rss/headlines/section/topic/BUSINESS?hl={HL}&gl={GL}&ceid={CEID}", "category": "Business", "latitude": 39.8283, "longitude": -98.5795, "icon": "chart.line.uptrend.xyaxis" },
+    { "id": "gnews-sports", "name": "Google News · Sports", "kind": "gnews-topic", "country": "United States", "language": "en", "rssURL": "https://news.google.com/rss/headlines/section/topic/SPORTS?hl={HL}&gl={GL}&ceid={CEID}", "category": "Sports", "latitude": 39.8283, "longitude": -98.5795, "icon": "sportscourt.fill" },
+    { "id": "gnews-science", "name": "Google News · Science", "kind": "gnews-topic", "country": "United States", "language": "en", "rssURL": "https://news.google.com/rss/headlines/section/topic/SCIENCE?hl={HL}&gl={GL}&ceid={CEID}", "category": "Science", "latitude": 39.8283, "longitude": -98.5795, "icon": "atom" },
+    { "id": "gnews-health", "name": "Google News · Health", "kind": "gnews-topic", "country": "United States", "language": "en", "rssURL": "https://news.google.com/rss/headlines/section/topic/HEALTH?hl={HL}&gl={GL}&ceid={CEID}", "category": "Health", "latitude": 39.8283, "longitude": -98.5795, "icon": "heart.text.square.fill" },
+    { "id": "gnews-entertainment", "name": "Google News · Entertainment", "kind": "gnews-topic", "country": "United States", "language": "en", "rssURL": "https://news.google.com/rss/headlines/section/topic/ENTERTAINMENT?hl={HL}&gl={GL}&ceid={CEID}", "category": "Entertainment", "latitude": 39.8283, "longitude": -98.5795, "icon": "film.fill" },
+
+    { "id": "yt-bbc", "name": "BBC News (Video)", "kind": "youtube", "country": "United Kingdom", "language": "en", "rssURL": "https://www.youtube.com/feeds/videos.xml?channel_id=UC16niRr50-MSBwiO3YDb3RA", "category": "Videos", "latitude": 51.5074, "longitude": -0.1278, "icon": "play.rectangle.fill" },
+    { "id": "yt-dw", "name": "DW News (Video)", "kind": "youtube", "country": "Germany", "language": "en", "rssURL": "https://www.youtube.com/feeds/videos.xml?channel_id=UCknLrEdhRCp1aegoMqRaCZg", "category": "Videos", "latitude": 50.7374, "longitude": 7.0982, "icon": "play.rectangle.fill" },
+    { "id": "yt-aljazeera", "name": "Al Jazeera English (Video)", "kind": "youtube", "country": "Qatar", "language": "en", "rssURL": "https://www.youtube.com/feeds/videos.xml?channel_id=UCNye-wNBqNL5ZzHSJj3l8Bg", "category": "Videos", "latitude": 25.2854, "longitude": 51.5310, "icon": "play.rectangle.fill" },
+    { "id": "yt-pbs", "name": "PBS NewsHour (Video)", "kind": "youtube", "country": "United States", "language": "en", "rssURL": "https://www.youtube.com/feeds/videos.xml?channel_id=UC6ZFN9Tx6xh-skXCuRHCDpQ", "category": "Videos", "latitude": 38.8830, "longitude": -77.1000, "icon": "play.rectangle.fill" },
+    { "id": "yt-bloomberg", "name": "Bloomberg Television (Video)", "kind": "youtube", "country": "United States", "language": "en", "rssURL": "https://www.youtube.com/feeds/videos.xml?channel_id=UCIALMKvObZNtJ6AmdCLP7Lg", "category": "Videos", "latitude": 40.7128, "longitude": -74.0060, "icon": "play.rectangle.fill" },
+    { "id": "yt-reuters", "name": "Reuters (Video)", "kind": "youtube", "country": "United States", "language": "en", "rssURL": "https://www.youtube.com/feeds/videos.xml?channel_id=UChqUTb7kYRX8-EiaN3XFrSQ", "category": "Videos", "latitude": 40.7128, "longitude": -74.0060, "icon": "play.rectangle.fill" },
+    { "id": "yt-sky", "name": "Sky News (Video)", "kind": "youtube", "country": "United Kingdom", "language": "en", "rssURL": "https://www.youtube.com/feeds/videos.xml?channel_id=UCoMdktPbSTixAyNGwb-UYkQ", "category": "Videos", "latitude": 51.5074, "longitude": -0.1278, "icon": "play.rectangle.fill" },
+    { "id": "yt-ap", "name": "Associated Press (Video)", "kind": "youtube", "country": "United States", "language": "en", "rssURL": "https://www.youtube.com/feeds/videos.xml?channel_id=UC52X5wxOL_s5yw0dQk7NtgA", "category": "Videos", "latitude": 40.7128, "longitude": -74.0060, "icon": "play.rectangle.fill" },
+
+    { "id": "reddit-worldnews", "name": "r/worldnews", "kind": "reddit", "country": "United States", "language": "en", "rssURL": "https://www.reddit.com/r/worldnews/.rss", "category": "World", "latitude": 37.7749, "longitude": -122.4194, "icon": "bubble.left.and.bubble.right.fill" },
+    { "id": "reddit-news", "name": "r/news", "kind": "reddit", "country": "United States", "language": "en", "rssURL": "https://www.reddit.com/r/news/.rss", "category": "General", "latitude": 37.7749, "longitude": -122.4194, "icon": "bubble.left.and.bubble.right.fill" }
+  ]
+}
