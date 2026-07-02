@@ -81,6 +81,41 @@ who need exact SF glyphs (matching Apple's HIG, sidebar consistency, etc.)
 use that. The microservice trades SF Symbol fidelity for cross-platform
 deployability.
 
+## Game glyph set (v1.1.0)
+
+`assets/game_icons/` vendors ~60 curated [game-icons.net](https://game-icons.net)
+glyphs (chess pieces, cards, dice, snake, mine, joystick, dungeon-gate, trophy,
+…) as white-on-transparent 1024×1024 PNGs. `catalog.json` mirrors the Material
+catalog shape; the compositor tints each PNG to `symbol_color` (glyph alpha
+masks a solid fill), scales it so the larger dimension ≈ `symbol_size` in
+1024-canvas units, and centers it. Shadow + glow passes work unchanged (they
+operate on the rasterized glyph layer's alpha).
+
+Resolution semantics (`symbols.py:resolve_symbol`):
+
+- `symbol_set: "material"` → Material catalog FIRST, then falls through to
+  the game catalog. The Swift client always sends `"material"`, so an
+  LLM-picked game glyph works with **zero client changes**.
+- `symbol_set: "game"` → game catalog first, Material as fallback.
+- Miss in both → 404 `symbol_not_found` with suggestions from BOTH catalogs.
+
+Licensing: CC BY 3.0. Per-icon attribution (author + source URL) is machine-
+readable in `assets/game_icons/LEDGER.json` (the mchatai.com `/credits` page
+is generated from it); provenance + upstream license text in
+`assets/game_icons/LICENSE.md`. When adding icons, re-run the curation flow
+(rasterize → white-tint → validate alpha coverage) and append to catalog +
+ledger together.
+
+## Fail-loud asset errors (v1.1.0)
+
+The compositor used to silently skip the glyph when the Material font file
+was missing — shipping a blank background plate as "the icon". It now raises
+`IconAssetError`, surfaced by `main.py` as HTTP 500 with
+`detail.code: "font_missing"` (Material font gone) or
+`"game_asset_missing"` (catalog entry exists but its PNG is missing/empty).
+A blank plate the caller can't detect is worse than a loud 500 they can
+retry after reinstalling assets.
+
 ## How to extend
 
 ### Add a style preset
@@ -131,8 +166,10 @@ Callers that want unpredictable textures can pass `req.seed` explicitly.
 
 | Condition | HTTP | `code` |
 |---|---|---|
-| Material symbol id not in catalog | 404 | `symbol_not_found` (with up-to-5 fuzzy suggestions) |
+| Symbol id in neither Material nor game catalog | 404 | `symbol_not_found` (fuzzy suggestions from both catalogs) |
 | `symbol_set: "sf"` with no Material map | 422 | `sf_symbols_unsupported_in_service` |
+| Material font file missing at render time | 500 | `font_missing` |
+| Game glyph PNG missing/empty at render time | 500 | `game_asset_missing` |
 | `bg_image_b64` not valid base64 | 400 | `bg_image_b64_invalid` |
 | `bg_image_b64` decodes but PIL can't open | 415 | `bg_image_unsupported_format` |
 | `style_preset` unknown | 400 | `style_preset_unknown` (lists known presets) |

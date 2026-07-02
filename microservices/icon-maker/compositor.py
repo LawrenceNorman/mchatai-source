@@ -27,6 +27,16 @@ from textures import make_texture
 RGBA = Tuple[int, int, int, int]
 
 
+class IconAssetError(RuntimeError):
+    """A bundled render asset (Material font / game glyph PNG) is missing or
+    unreadable. Raised instead of silently rendering a blank plate; main.py
+    surfaces it as HTTP 500 with `detail.code`."""
+
+    def __init__(self, code: str, message: str):
+        super().__init__(message)
+        self.code = code
+
+
 def parse_hex_color(hex_str: str) -> RGBA:
     """Parse '#RGB' / '#RRGGBB' / '#RRGGBBAA' into RGBA 0-255."""
     if not hex_str:
@@ -130,27 +140,79 @@ def _render_symbol(
 ) -> None:
     """Draw a Material Icons Round ligature centered on the canvas."""
     if not font_path or not font_path.exists():
-        # Graceful degradation — no font, no glyph. Compositor logs a warning via caller.
-        return
+        # Fail loudly — a blank plate silently shipped as "the icon" is worse
+        # than a 500 the caller can retry after reinstalling assets.
+        raise IconAssetError(
+            "font_missing",
+            f"Material Icons font not found at {font_path} — reinstall the icon-maker assets",
+        )
     font = ImageFont.truetype(str(font_path), size=max(8, int(size_px)))
     draw = ImageDraw.Draw(canvas)
     cx, cy = canvas.size[0] / 2, canvas.size[1] / 2
     draw.text((cx, cy), display_text, font=font, fill=color, anchor="mm")
 
 
-def _render_symbol_with_shadow(
+def _render_game_glyph(
     canvas: Image.Image,
-    display_text: str,
+    asset_path: Optional[str],
     color: RGBA,
     size_px: float,
-    font_path: Path,
+) -> None:
+    """Draw a vendored game-icons.net PNG centered on the canvas, tinted to
+    `color` (glyph alpha masks a solid fill) and scaled so the glyph's larger
+    dimension ≈ `size_px`."""
+    path = Path(asset_path) if asset_path else None
+    if not path or not path.exists():
+        raise IconAssetError(
+            "game_asset_missing",
+            f"game glyph PNG not found at {asset_path} — reinstall the icon-maker assets",
+        )
+    src = Image.open(path).convert("RGBA")
+    alpha = src.getchannel("A")
+    bbox = alpha.getbbox()
+    if bbox is None:
+        raise IconAssetError("game_asset_missing", f"game glyph PNG at {asset_path} is fully transparent")
+    alpha = alpha.crop(bbox)
+    scale = max(1.0, float(size_px)) / max(alpha.size)
+    target = (max(1, int(round(alpha.size[0] * scale))), max(1, int(round(alpha.size[1] * scale))))
+    alpha = alpha.resize(target, Image.LANCZOS)
+    if color[3] != 255:
+        alpha = alpha.point(lambda v: v * color[3] // 255)
+    glyph = Image.new("RGBA", target, (color[0], color[1], color[2], 255))
+    glyph.putalpha(alpha)
+    offset = ((canvas.size[0] - target[0]) // 2, (canvas.size[1] - target[1]) // 2)
+    canvas.alpha_composite(glyph, offset)
+
+
+def _rasterize_symbol_layer(
+    canvas_size: Tuple[int, int],
+    symbol,
+    color: RGBA,
+    size_px: float,
+    font_path: Optional[Path],
+) -> Image.Image:
+    """Render the resolved symbol (material ligature OR game PNG) onto a fresh
+    transparent layer — shared by the main draw, shadow, and glow passes."""
+    layer = Image.new("RGBA", canvas_size, (0, 0, 0, 0))
+    if getattr(symbol, "set", None) == "game":
+        _render_game_glyph(layer, getattr(symbol, "asset_path", None), color, size_px)
+    else:
+        _render_symbol(layer, symbol.display_text, color, size_px, font_path)
+    return layer
+
+
+def _render_symbol_with_shadow(
+    canvas: Image.Image,
+    symbol,
+    color: RGBA,
+    size_px: float,
+    font_path: Optional[Path],
     shadow: Optional[Dict],
 ) -> None:
     """Render glyph onto a transparent layer; optionally draw shadow underneath."""
-    if not display_text:
+    if not symbol:
         return
-    layer = Image.new("RGBA", canvas.size, (0, 0, 0, 0))
-    _render_symbol(layer, display_text, color, size_px, font_path)
+    layer = _rasterize_symbol_layer(canvas.size, symbol, color, size_px, font_path)
 
     if shadow:
         shadow_color = (0, 0, 0, int(255 * float(shadow.get("alpha", 0.3))))
@@ -361,16 +423,19 @@ def _render(canvas_size: int, req, symbol, material_font_path: Optional[Path], s
         dark.putalpha(clipped_alpha)
         canvas = Image.alpha_composite(canvas, dark)
 
-    # 5. Symbol (with optional shadow)
+    # 5. Symbol (with optional shadow) — material ligature or vendored game PNG
     extras = getattr(req, "extras", None) or {}
     if not isinstance(extras, dict):
         extras = {}
     shadow = extras.get("shadow")
-    if symbol and material_font_path:
+    # Draw whenever a symbol resolved — a material symbol with a missing font
+    # must reach _render_symbol's font_missing raise, not silently skip.
+    symbol_drawable = symbol is not None
+    if symbol_drawable:
         symbol_color = parse_hex_color(req.symbol_color)
         _render_symbol_with_shadow(
             canvas=canvas,
-            display_text=symbol.display_text,
+            symbol=symbol,
             color=symbol_color,
             size_px=_scale(req.symbol_size, canvas_size),
             font_path=material_font_path,
@@ -379,10 +444,9 @@ def _render(canvas_size: int, req, symbol, material_font_path: Optional[Path], s
 
     # 6. Optional glow (from style preset)
     glow = extras.get("glow") if isinstance(extras, dict) else None
-    if glow and symbol and material_font_path:
+    if glow and symbol_drawable:
         glow_color_rgba = parse_hex_color(glow.get("color", req.symbol_color))
-        glow_layer = Image.new("RGBA", canvas.size, (0, 0, 0, 0))
-        _render_symbol(glow_layer, symbol.display_text, glow_color_rgba, _scale(req.symbol_size, canvas_size), material_font_path)
+        glow_layer = _rasterize_symbol_layer(canvas.size, symbol, glow_color_rgba, _scale(req.symbol_size, canvas_size), material_font_path)
         glow_alpha = glow_layer.getchannel("A").point(lambda v: int(v * float(glow.get("alpha", 0.7))))
         glow_layer.putalpha(glow_alpha)
         glow_layer = glow_layer.filter(ImageFilter.GaussianBlur(radius=float(glow.get("blur", 40))))

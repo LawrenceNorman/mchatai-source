@@ -4,6 +4,11 @@ The Material Icons Round font uses the icon NAME itself as a ligature
 (drawing "whatshot" as a string renders the flame glyph). No codepoint
 table needed — we just need to validate that the name exists in the
 catalog before asking the font to render it.
+
+Also loads the vendored game-icons.net glyph set (`assets/game_icons/`):
+white-on-transparent PNGs the compositor tints + scales like a font glyph.
+`symbol_set: "material"` falls through to the game catalog on a miss so
+existing callers pick up game glyphs with zero client changes.
 """
 
 from __future__ import annotations
@@ -18,11 +23,12 @@ from pydantic import BaseModel
 
 class ResolvedSymbol(BaseModel):
     id: str
-    set: Literal["material", "sf"]
-    display_text: str  # what to draw via the font ligature
+    set: Literal["material", "sf", "game"]
+    display_text: str  # what to draw via the font ligature (game: the id, informational)
     categories: List[str] = []
     original_request: Optional[str] = None  # e.g. "flame.fill" when SF→Material remap happened
     remap_note: Optional[str] = None
+    asset_path: Optional[str] = None  # game set: absolute path to the vendored white-on-transparent PNG
 
 
 @dataclass
@@ -94,22 +100,93 @@ class MaterialSymbolCatalog:
         return None
 
 
-def resolve_symbol(symbol_id: Optional[str], symbol_set: str, catalog: MaterialSymbolCatalog) -> Optional[ResolvedSymbol]:
+@dataclass
+class GameIconCatalog:
+    """Vendored game-icons.net glyphs (assets/game_icons/). Same catalog JSON
+    shape as the Material catalog; each entry has a matching png/<id>.png."""
+
+    icons_by_name: Dict[str, Dict]
+    png_dir: Path
+
+    @property
+    def count(self) -> int:
+        return len(self.icons_by_name)
+
+    @classmethod
+    def load(cls, catalog_path: Path, png_dir: Path) -> "GameIconCatalog":
+        if not catalog_path.exists():
+            # Partial/stale install — degrade to material-only, but say so.
+            print(f"[icon-maker] WARNING: game icon catalog missing at {catalog_path}; game glyphs unavailable")
+            return cls(icons_by_name={}, png_dir=png_dir)
+        data = json.loads(catalog_path.read_text(encoding="utf-8"))
+        icons = {entry["n"]: {"name": entry["n"], "categories": entry.get("c", [])} for entry in data.get("icons", [])}
+        return cls(icons_by_name=icons, png_dir=png_dir)
+
+    def get(self, name: str) -> Optional[Dict]:
+        return self.icons_by_name.get(name)
+
+    def png_path(self, name: str) -> Path:
+        return self.png_dir / f"{name}.png"
+
+    def search(self, query: str, limit: int = 50) -> List[Dict]:
+        q = query.lower().strip()
+        prefix: List[Dict] = []
+        contains: List[Dict] = []
+        category_match: List[Dict] = []
+        for entry in self.icons_by_name.values():
+            name = entry["name"].lower()
+            if name.startswith(q):
+                prefix.append(entry)
+            elif q in name:
+                contains.append(entry)
+            elif any(q in cat.lower() for cat in entry.get("categories", [])):
+                category_match.append(entry)
+        return (prefix + contains + category_match)[:limit]
+
+
+def _resolve_game(symbol_id: str, game_catalog: GameIconCatalog) -> ResolvedSymbol:
+    entry = game_catalog.get(symbol_id) or {}
+    return ResolvedSymbol(
+        id=symbol_id,
+        set="game",
+        display_text=symbol_id,
+        categories=entry.get("categories", []),
+        asset_path=str(game_catalog.png_path(symbol_id)),
+    )
+
+
+def resolve_symbol(
+    symbol_id: Optional[str],
+    symbol_set: str,
+    catalog: MaterialSymbolCatalog,
+    game_catalog: Optional[GameIconCatalog] = None,
+) -> Optional[ResolvedSymbol]:
     if not symbol_id or symbol_set == "none":
         return None
+    game_catalog = game_catalog or GameIconCatalog(icons_by_name={}, png_dir=Path("."))
 
-    if symbol_set == "material":
-        if catalog.get(symbol_id) is None:
+    if symbol_set in ("material", "game"):
+        # Material tries the Material catalog FIRST, then falls through to the
+        # game catalog — the Swift client always sends symbol_set "material",
+        # so an LLM-picked game glyph works with zero client changes. Explicit
+        # "game" prefers the game catalog and falls back to Material.
+        in_material = catalog.get(symbol_id) is not None
+        in_game = game_catalog.get(symbol_id) is not None
+        if not in_material and not in_game:
             from fastapi import HTTPException
             suggestions = [s["name"] for s in catalog.search(symbol_id, limit=5)]
+            suggestions += [s["name"] for s in game_catalog.search(symbol_id, limit=5)]
             raise HTTPException(
                 status_code=404,
                 detail={
                     "code": "symbol_not_found",
-                    "message": f"Material icon '{symbol_id}' not found",
-                    "suggestions": suggestions,
+                    "message": f"Symbol '{symbol_id}' not found in the Material or game catalogs",
+                    "suggestions": suggestions[:10],
                 },
             )
+        prefer_game = symbol_set == "game"
+        if in_game and (prefer_game or not in_material):
+            return _resolve_game(symbol_id, game_catalog)
         entry = catalog.get(symbol_id)
         return ResolvedSymbol(
             id=symbol_id,

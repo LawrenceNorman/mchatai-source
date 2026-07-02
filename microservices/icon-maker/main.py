@@ -17,21 +17,26 @@ from typing import Dict, List, Literal, Optional
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 
-from compositor import compose_icon, downsample, render_at_native_size
+from compositor import IconAssetError, compose_icon, downsample, render_at_native_size
 from packaging import build_icns, build_appiconset_zip
 from prompt_parser import parse_to_request
 from styles import STYLE_PRESETS, list_style_names
-from symbols import MaterialSymbolCatalog, resolve_symbol
+from symbols import GameIconCatalog, MaterialSymbolCatalog, resolve_symbol
 from textures import list_texture_names
 
 router = APIRouter()
+
+SERVICE_VERSION = "1.1.0"
 
 ASSETS_DIR = Path(__file__).parent / "assets"
 MATERIAL_FONT_PATH = ASSETS_DIR / "MaterialIconsRound.otf"
 MATERIAL_CATALOG_PATH = ASSETS_DIR / "material_icons_catalog.json"
 SF_HINTS_PATH = ASSETS_DIR / "sf_symbol_hints.json"
+GAME_CATALOG_PATH = ASSETS_DIR / "game_icons" / "catalog.json"
+GAME_PNG_DIR = ASSETS_DIR / "game_icons" / "png"
 
 _catalog: Optional[MaterialSymbolCatalog] = None
+_game_catalog: Optional[GameIconCatalog] = None
 
 
 def _get_catalog() -> MaterialSymbolCatalog:
@@ -39,6 +44,13 @@ def _get_catalog() -> MaterialSymbolCatalog:
     if _catalog is None:
         _catalog = MaterialSymbolCatalog.load(MATERIAL_CATALOG_PATH, SF_HINTS_PATH)
     return _catalog
+
+
+def _get_game_catalog() -> GameIconCatalog:
+    global _game_catalog
+    if _game_catalog is None:
+        _game_catalog = GameIconCatalog.load(GAME_CATALOG_PATH, GAME_PNG_DIR)
+    return _game_catalog
 
 
 # ── Models ───────────────────────────────────────────────────────────────────
@@ -63,7 +75,7 @@ class TextOverlay(BaseModel):
     bg_corner_radius: float = 12.0
 
 
-SymbolSet = Literal["material", "sf", "none"]
+SymbolSet = Literal["material", "sf", "game", "none"]
 BgTexture = Literal["none", "noise", "dots", "grid", "stripes", "crosshatch", "waves"]
 Shape = Literal["rounded_rect", "circle", "squircle"]
 BundleKind = Literal["none", "icns", "appiconset", "all"]
@@ -161,6 +173,12 @@ def _canonical_seed(req: ComposeRequest) -> int:
     return int.from_bytes(digest[:4], "big") & 0x7FFFFFFF
 
 
+def _asset_http_error(exc: IconAssetError) -> HTTPException:
+    # font_missing / game_asset_missing — a bundled asset is gone. 500 so the
+    # caller sees the real problem instead of receiving a blank plate.
+    return HTTPException(status_code=500, detail={"code": exc.code, "message": str(exc)})
+
+
 # ── Endpoints ────────────────────────────────────────────────────────────────
 
 @router.post("/compose", response_model=ComposeResponse)
@@ -175,18 +193,21 @@ async def compose(req: ComposeRequest) -> ComposeResponse:
     _validate_sizes(normalized.sizes)
     _validate_workspace(normalized)
 
-    resolved = resolve_symbol(normalized.symbol_id, normalized.symbol_set, _get_catalog())
+    resolved = resolve_symbol(normalized.symbol_id, normalized.symbol_set, _get_catalog(), _get_game_catalog())
 
     seed = _canonical_seed(normalized)
 
     # Render canonical 1024 canvas once; derive larger sizes by supersampling
     # on demand and smaller sizes by Lanczos downsample or native re-render.
-    master = compose_icon(
-        req=normalized,
-        symbol=resolved,
-        material_font_path=MATERIAL_FONT_PATH if resolved and resolved.set == "material" else None,
-        seed=seed,
-    )
+    try:
+        master = compose_icon(
+            req=normalized,
+            symbol=resolved,
+            material_font_path=MATERIAL_FONT_PATH if resolved and resolved.set == "material" else None,
+            seed=seed,
+        )
+    except IconAssetError as exc:
+        raise _asset_http_error(exc)
 
     pngs: Dict[str, str] = {}
     files: Dict[str, str] = {}
@@ -195,13 +216,16 @@ async def compose(req: ComposeRequest) -> ComposeResponse:
     for size in sorted(set(int(s) for s in normalized.sizes), reverse=True):
         if size < 32:
             # Render from scratch at native size — downsampling blurs <32px glyphs.
-            img = render_at_native_size(
-                req=normalized,
-                symbol=resolved,
-                material_font_path=MATERIAL_FONT_PATH if resolved and resolved.set == "material" else None,
-                seed=seed,
-                target_size=size,
-            )
+            try:
+                img = render_at_native_size(
+                    req=normalized,
+                    symbol=resolved,
+                    material_font_path=MATERIAL_FONT_PATH if resolved and resolved.set == "material" else None,
+                    seed=seed,
+                    target_size=size,
+                )
+            except IconAssetError as exc:
+                raise _asset_http_error(exc)
         elif size == 1024:
             img = master
         else:
@@ -275,25 +299,28 @@ async def preview(req: PreviewRequest) -> PreviewResponse:
         normalized = apply_compositional(normalized, ComposeRequest())
     except Exception:
         pass
-    resolved = resolve_symbol(normalized.symbol_id, normalized.symbol_set, _get_catalog())
+    resolved = resolve_symbol(normalized.symbol_id, normalized.symbol_set, _get_catalog(), _get_game_catalog())
     seed = _canonical_seed(normalized)
 
-    if req.preview_size >= 128:
-        master = compose_icon(
-            req=normalized,
-            symbol=resolved,
-            material_font_path=MATERIAL_FONT_PATH if resolved and resolved.set == "material" else None,
-            seed=seed,
-        )
-        img = master if req.preview_size == 1024 else downsample(master, req.preview_size)
-    else:
-        img = render_at_native_size(
-            req=normalized,
-            symbol=resolved,
-            material_font_path=MATERIAL_FONT_PATH if resolved and resolved.set == "material" else None,
-            seed=seed,
-            target_size=req.preview_size,
-        )
+    try:
+        if req.preview_size >= 128:
+            master = compose_icon(
+                req=normalized,
+                symbol=resolved,
+                material_font_path=MATERIAL_FONT_PATH if resolved and resolved.set == "material" else None,
+                seed=seed,
+            )
+            img = master if req.preview_size == 1024 else downsample(master, req.preview_size)
+        else:
+            img = render_at_native_size(
+                req=normalized,
+                symbol=resolved,
+                material_font_path=MATERIAL_FONT_PATH if resolved and resolved.set == "material" else None,
+                seed=seed,
+                target_size=req.preview_size,
+            )
+    except IconAssetError as exc:
+        raise _asset_http_error(exc)
 
     buf = io.BytesIO()
     img.save(buf, format="PNG")
@@ -348,13 +375,16 @@ async def from_prompt(req: FromPromptRequest) -> FromPromptResponse:
 @router.get("/info")
 async def info() -> Dict:
     catalog = _get_catalog()
+    game_catalog = _get_game_catalog()
     return {
-        "version": "1.0.0",
+        "version": SERVICE_VERSION,
         "styles": list_style_names(),
         "textures": list_texture_names(),
-        "symbol_sets": ["material", "sf", "none"],
+        "symbol_sets": ["material", "sf", "game", "none"],
         "material_font_loaded": MATERIAL_FONT_PATH.exists(),
         "material_catalog_count": catalog.count,
+        "game_catalog_loaded": GAME_CATALOG_PATH.exists() and game_catalog.count > 0,
+        "game_catalog_count": game_catalog.count,
         "sf_hints_loaded": SF_HINTS_PATH.exists(),
         "supported_sizes": {"min": 8, "max": 2048, "recommended_bundle": [16, 32, 64, 128, 256, 512, 1024]},
     }
@@ -392,7 +422,7 @@ async def material_icon(icon_id: str) -> Dict:
 
 @router.get("/healthz")
 async def healthz() -> Dict:
-    return {"status": "ok", "service": "icon-maker", "version": "1.0.0"}
+    return {"status": "ok", "service": "icon-maker", "version": SERVICE_VERSION}
 
 
 # ── Validation helpers ───────────────────────────────────────────────────────
