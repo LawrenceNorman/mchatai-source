@@ -689,6 +689,18 @@
         "WRONG: `<div class='suit' style='color:#dc2626'>♥</div>` — iOS shows a color heart emoji, not a red text heart",
         "GOOD: `<div class='suit' style='color:#dc2626'>♥\\uFE0E</div>` (or set font-variant-emoji:text on .suit)"
       ]
+    },
+    {
+      "id": "cg-card-layout-responsive",
+      "rule": "Card TABLE layouts MUST stay responsive and cards MUST NEVER overlap or clip on a phone. (1) The community/board cards go in a SINGLE centered flex row (`.community{display:flex;gap;justify-content:center}`) that fits the narrowest phone (≤430px). Each player's hole cards live in their OWN seat area, clearly separated from the board — the board, the pot, and each hand must not overlap. (2) Do the arithmetic: on a 390px-wide phone, 5 community cards + gaps must be ≤ the width, e.g. 5×54px + 4×4px gap ≈ 286px fits; 5×118px does NOT. If you use a fixed-pixel absolute-positioned 'poker table' (seats at absolute top/left on a ~1300px canvas), you MUST scale it for mobile via @media breakpoints — an unscaled desktop table squeezed onto a phone collides. (3) CRITICAL for ITERATIONS: when a request says 'make the cards bigger', increase the size MODERATELY (~15-25%) at EACH existing @media breakpoint and re-verify the fit — do NOT hardcode one large base `.card{width}` that overrides the responsive breakpoints (that is exactly how a good responsive card table gets broken: doubled cards overflow and overlap on mobile while looking fine on desktop). Each card must show ONE rank + ONE suit, fully readable, never split/cut off.",
+      "why": "2026-07-01: a well-designed responsive Texas Hold'em (`.card{width:56px}` base → `44px` at ≤620px, clean `.community` flex row) was iterated with 'make the cards a little bigger' and the coding agent hardcoded `.card{width:118px;height:162px}`, blowing past the breakpoints. On a phone the doubled cards overflowed — community cards overlapped the opponent's hole cards and the pot, ranks/suits were split across colliding cards, unreadable. The playability gate did not catch it (it judges whether interactions WORK, not layout readability) and the agent edits BLIND (never renders the app), so 'bigger' with no visual feedback broke the layout.",
+      "severity": "critical",
+      "appliesTo": "card-games",
+      "examples": [
+        "WRONG (iteration): `.card{width:56px}` → `.card{width:118px;height:162px}` at base, leaving the `@media (max-width:620px)` rules stale → 5 cards overflow a phone and overlap",
+        "GOOD (iteration): bump proportionally at each breakpoint — base 56→66, `@media(max-width:620px)` 44→54 — then confirm 5×54+gaps ≤ 390px",
+        "GOOD (layout): `.community{display:flex;gap:6px;justify-content:center;flex-wrap:nowrap}` for the board; hole cards in a separate `.seat` area; nothing absolutely-positioned on top of the board on mobile"
+      ]
     }
   ],
   "_last_updated": "2026-07-01"

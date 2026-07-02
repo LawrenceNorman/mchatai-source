@@ -224,6 +224,19 @@
         "GOOD: livesEl.textContent = '♥\\uFE0E'.repeat(lives) so the HUD heart honors your CSS color",
         "N/A: checkers built from '⚫'/'⚪' cannot be fixed with U+FE0E (no text variation sequence) — use a CSS/SVG circle"
       ]
+    },
+    {
+      "id": "mob-017",
+      "rule": "Any game/app with a GRID or BOARD or a row/hand of repeated pieces (cards, chess/checkers pieces, tiles, dominoes, mahjong, gems, a 2048/match-3 grid, a poker board) MUST lay out responsively so nothing overlaps, clips off-screen, or overflows horizontally on a phone. Rules that always apply: (1) size the board/pieces in relative units or clamp to the viewport — e.g. `width:min(92vw, 560px)` for the board, and derive piece/cell size from it — so it fits the narrowest phone; NEVER a fixed desktop pixel canvas that gets squeezed. (2) A row of items (community cards, a captured-pieces tray, a tile rack) either fits the width or wraps/scrolls WITHIN its own container — it must not spill onto neighbors. (3) When enlarging elements on request ('make the pieces bigger'), scale proportionally at EACH @media breakpoint and re-verify the fit; do NOT hardcode one big base size. (4) Give the board/main-play-area the most space; fold controls/settings into a compact bar or collapsible panel. This is genre-agnostic — card games, board games, and tile/puzzle games all break the same way when a desktop-sized layout is shrunk to a phone.",
+      "why": "The mChatAI Playability Gate now runs a mobile-viewport LAYOUT check (PG.B3, 2026-07-02) on every branch across genres — horizontal overflow + off-screen clipping (deterministic) and overlap/unreadable (vision). A layout that overflows or overlaps on a phone will be FLAGGED (and reads as broken to users) even if the game logic works. Verified on a Texas Hold'em where oversized cards overlapped the board/pot on mobile while looking fine on desktop; the same failure mode applies to any grid/board/hand game.",
+      "severity": "important",
+      "appliesTo": "anymobile",
+      "examples": [
+        "GOOD: `.board{width:min(92vw,560px);aspect-ratio:1}` then cells = board/8 — fits every phone",
+        "GOOD: `.hand{display:flex;gap:6px;overflow-x:auto}` so a long rack scrolls inside itself, not over the board",
+        "WRONG: a 1300px absolute-positioned 'table' with seats at fixed px, shrunk to a 390px phone → pieces collide",
+        "WRONG (iteration): bumping a base `.card`/`.piece` width to a big value without matching the @media rules → overflow on mobile"
+      ]
     }
   ]
 }
