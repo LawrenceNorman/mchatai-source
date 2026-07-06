@@ -1,6 +1,6 @@
 {
   "packID": "three-js-games",
-  "version": 6,
+  "version": 7,
   "displayName": "three.js 3D Game Guidelines (web-components-3d)",
   "description": "Quality and correctness rules for offline three.js WebGL2 3D games built from the web-components-3d Lego catalog. Covers the local-importmap-only loading contract (no CDN, no network, runs under file://), draw-call and DPR budgets, delta-time movement, dispose-on-teardown and object pooling, mobile light limits, hand-rolled physics versus rigid bodies, audio unlock on first user gesture, and WebGL2-not-WebGPU. These rules are for 3D games only and must not leak into productivity mini-apps.",
   "categories": [
@@ -490,6 +490,57 @@
         "Sweep the car AABB/oriented-box against building+wall colliders (tjs-030); on hit, cancel the into-wall component and keep sliding",
         "const rig = new CameraRig({camera, mode: CHASE, target: car, lookAhead: 6}); apply cam.yawOffset/pitchOffset on top for free-look while driving",
         "WRONG: car at fixed y that floats over hills, clamped to a rectangle, camera welded to car.heading, no speed readout"
+      ]
+    },
+    {
+      "id": "tjs-035",
+      "rule": "EVERY per-frame system function you define MUST be CALLED from the single requestAnimationFrame loop (animate()) — or from a fixed-step update() that the loop drives. Defining updateGates / updateRocks / updateObstacles / updateEnemies / checkCollisions / updateHUD and then forgetting to invoke it is the single most common silent failure in these builds: the function exists, the diff looks complete and even reads as 'done', but the entities it drives never move, re-seat, scroll, or collide. Before you finish, scan your OWN code: for every function named update*/tick*/step*/check*/advance*, confirm there is an actual call site inside the frame loop. A per-frame function that is defined but never called is a bug — wire it in or delete it. Never trust that a build is complete because the functions are present; verify the call sites exist.",
+      "why": "Repeated real failure: an iteration added updateGates() and updateRocks() but never called them in animate(), so the terrain scrolled while the gates and rocks stayed frozen in world space and appeared to hang in mid-air. The delivery check even flagged the functions as 'unwired', but the fix did not land. Presence of a function is not evidence it runs. This is the 3D analogue of dead-code that passes a glance but fails in play.",
+      "severity": "critical",
+      "appliesTo": "anygame",
+      "examples": [
+        "function animate(){ requestAnimationFrame(animate); const dt=clock.getDelta(); updateTerrain(dt); updateProps(dt); updatePlayer(dt); checkCollisions(); updateHUD(); renderer.render(scene,camera); window.__threeFrameCount++; }",
+        "Self-check before finishing: grep your code for /function (update|tick|step|check)\\w+/ and confirm each name also appears as a CALL inside animate() (or a fixed-step update it feeds)",
+        "WRONG: define updateGates(){...} and updateRocks(){...} but animate() only calls updateTerrain() — the gates and rocks never move and detach from the scrolling ground"
+      ]
+    },
+    {
+      "id": "tjs-036",
+      "rule": "Props resting on a SCROLLING or PROCEDURALLY-REGENERATED ground must be re-seated EVERY frame from the SAME height sampler that shapes the terrain. In endless runners, downhill/descent, and flight-over-terrain, the ground moves toward the player or is rebuilt continuously; every object on it — gates, rocks, trees, obstacles, collectibles, flags, checkpoints — must have BOTH its along-track position (advance/recycle its z as the world scrolls) AND its vertical seat (y = heightAt(x, z) + objectHalfHeight) recomputed each frame using the exact heightAt(x,z) / getGroundY(x,z) function used for the terrain vertices. Seat the object ON the surface: a gate's pole bottoms and a rock's base sit AT the sampled height offset by the object's OWN half-height — never an arbitrary constant like +4. Placing a prop once at build time and not updating it makes it stay fixed in world space while the terrain flows underneath, so it visibly detaches and floats. This re-seating belongs in a per-frame updateProps() that tjs-035 requires you to actually call.",
+      "why": "Direct cause of the 'gates hanging in the air' bug: gates were positioned once at build with a fixed +4 vertical offset and were never repositioned as the terrain scrolled, so they floated above and behind the moving surface. Sampling the shared heightAt() every frame for both scroll and seat is what keeps props glued to the ground the player is actually skiing/running over.",
+      "severity": "critical",
+      "appliesTo": "anygame",
+      "examples": [
+        "updateProps(dt){ worldZ += speed*dt; for(const p of props){ p.position.z = p.baseZ + worldZ; if(p.position.z > recycleZ){ p.baseZ -= trackLen; p.userData.x = randX(); } p.position.y = heightAt(p.userData.x, p.position.z) + p.userData.seat; p.position.x = p.userData.x; } }",
+        "Seat exactly on surface: a slalom gate's group origin at heightAt(x,z) so the pole bottoms touch the snow (seat = 0 for base-anchored geometry), not heightAt+4",
+        "Use the SAME heightAt(x,z) for terrain vertices AND props so they can never disagree",
+        "WRONG: gate.position.set(x, heightAt(x,z)+4, 0) at build time only, with no per-frame update — it floats and detaches as the slope scrolls"
+      ]
+    },
+    {
+      "id": "tjs-037",
+      "rule": "DOWNHILL / DESCENT games (skiing, snowboarding, sledding, downhill runner, wingsuit, luge) must make the world visibly FALL AWAY from the camera — not read as rolling hills on a level plane. (1) Give the terrain a real net downgrade steep enough to SEE; the fall-line drop must dominate the surface noise, or a slope buried under ripples looks flat. Make the descent gradient clearly steeper than a gentle ramp (exaggerate it for readability — this is a game, not a survey). (2) Pitch the chase camera DOWN the fall line so the run descends toward a HIGH horizon and the slope fills the LOWER portion of the frame; a level, eye-height camera kills the sense of dropping even when the mesh technically slopes. (3) Place fog and the horizon so the descent recedes into distance ahead and below. If a playtester says 'it does not feel like I am going downhill', the grade is too shallow OR the camera is too level — fix BOTH, do not just add more noise.",
+      "why": "Reported failure: a ski run had more terrain ripples but still did not feel like dropping down a mountain, because the net slope was gentle and the camera looked roughly level. Sense of descent comes from a steep readable fall-line PLUS a camera aimed down it so the world drops toward a high horizon — surface noise alone reads as bumps on flat ground.",
+      "severity": "important",
+      "appliesTo": "anygame",
+      "examples": [
+        "Terrain: y = -GRADE*forwardDist + noise(x,z), with GRADE large enough that the drop is obvious (the descent term dwarfs the noise amplitude)",
+        "Camera down the fall line: place it above/behind the player and camera.lookAt a point well BELOW and ahead (aim at heightAt(aheadX, aheadZ) minus a drop bias) so the horizon sits high and the slope fills the lower frame",
+        "Horizon + fog ahead-and-below so the run recedes into the distance as it falls",
+        "WRONG: flat plane + rolling noise + a level eye-height camera — reads as driving over gentle hills, not descending a mountain"
+      ]
+    },
+    {
+      "id": "tjs-038",
+      "rule": "NEVER strand the player on an infinite 'Loading…' spinner. If three.js fails to load OR scene init throws, the loading overlay MUST be removed and a clear, visible error shown instead. Wrap init() in try/catch: on catch, hide the loader AND display an error message. Remove the loader on the FIRST successfully rendered frame (gate it on the animation loop actually running once), NOT on a blind setTimeout that fires even when init hung or threw. A locally vendored three.js has no real 'CDN fallback' — do NOT fabricate a multi-URL fallback list of three identical local paths; load the one local path, and if window.THREE is still undefined afterward, surface the error rather than silently retrying the same path. To the player, a frozen spinner is indistinguishable from a crashed build; an honest error (or a working scene) is mandatory.",
+      "why": "Observed failure: one version showed 'Couldn't start the 3D scene / Three.js could not be loaded' (the offline load contract, tjs-001) while the next version was stuck forever on 'Loading alpine terrain…' because init threw or hung and the overlay was hidden on a fixed timer that could not distinguish success from failure. Gating loader-removal on a real first frame, plus a visible catch, makes broken builds legible instead of a permanent spinner, and stops fake same-path 'fallback' loops.",
+      "severity": "important",
+      "appliesTo": "anygame",
+      "examples": [
+        "try { init(); } catch(err){ console.error(err); loadingEl.classList.add('hide'); showError(String(err&&err.message||err)); }",
+        "In animate(), the first time it runs: if(!started){ started=true; loadingEl.classList.add('hide'); } — hide the loader on a REAL rendered frame",
+        "if (!window.THREE) { showError('Three.js failed to load'); return; } // do not retry the same local path three times",
+        "WRONG: setTimeout(()=>loadingEl.classList.add('hide'), 250) that hides the loader whether or not the scene actually started, or a CDNS array of three identical './resources/three/three.min.js' entries"
       ]
     }
   ]
