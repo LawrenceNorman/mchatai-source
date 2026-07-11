@@ -3,6 +3,25 @@ export class AudioManager {
     this.context = null;
     this.masterVolume = options.masterVolume ?? 0.08;
     this.enabled = options.enabled !== false;
+    this._installGestureUnlock();
+  }
+
+  // Self-unlock (2026-07-10): browsers start an AudioContext SUSPENDED and reject
+  // resume() outside a user gesture, so a game whose FIRST sfx() fires from the
+  // render loop (not a tap/key) plays into a dead context = silence. Rather than
+  // require every game to prime audio from a gesture handler (a step generators
+  // routinely forget — see wisdom se-003), the manager resumes itself on the first
+  // pointer/key/touch, once. No-op off-DOM (SSR/tests).
+  _installGestureUnlock() {
+    if (this._unlockInstalled || typeof globalThis.addEventListener !== "function") return;
+    this._unlockInstalled = true;
+    const events = ["pointerdown", "keydown", "touchstart", "mousedown", "click"];
+    const unlock = () => {
+      const ctx = this.ensureContext();
+      if (ctx && ctx.state === "suspended") { try { ctx.resume(); } catch (_) {} }
+      events.forEach((ev) => globalThis.removeEventListener(ev, unlock, true));
+    };
+    events.forEach((ev) => globalThis.addEventListener(ev, unlock, { capture: true, passive: true }));
   }
 
   ensureContext() {

@@ -1,0 +1,47 @@
+{
+  "version": 1,
+  "enabled": true,
+  "_doc": "Output gate (Phase LB-GATE)  -  deterministic checks run at the install funnel (MiniAppManager.install, the single chokepoint every install path crosses as of LB-GATE.DRY 2026-07-11) on the generated HTML, AFTER input steering (which the model can ignore, per the Alpine 2026-07-10 case where the leaderboard wisdom was injected but the CLI rolled a bespoke localStorage board anyway). A rule fires when EVERY group in requireAllOf has a match AND no skipIfAny guard is present. Snippet-injecting corrections (injectAudioUnlock, neutralizeLeaderboardStoreOnHub) are deterministic, additive, idempotent (each carries a sentinel its own skipIfAny keys off); correction=flag surfaces a user-visible note + a targeted re-iterate hint (LLM-soft  -  never a destructive auto-strip). All substrings are case-insensitive.",
+  "rules": [
+    {
+      "id": "audio-context-no-unlock",
+      "kind": "audioUnlock",
+      "correction": "injectAudioUnlock",
+      "snippetPath": "harness/gates/audio-unlock-snippet.js",
+      "gate": "audio-unlock",
+      "requireAllOf": [
+        ["new AudioContext", "webkitAudioContext", "createOscillator", "new AudioManager", "new AudioManager3D"]
+      ],
+      "skipIfAny": ["__mchataiAudioUnlock"],
+      "note": "Game uses WebAudio; inject the universal first-gesture unlock so a suspended context can't leave it silent (the #1 silent-audio bug  -  the model routinely omits the gesture-unlock even when wisdom se-003 demands it)."
+    },
+    {
+      "id": "bespoke-localstorage-leaderboard",
+      "kind": "bespokeLeaderboard",
+      "correction": "flag",
+      "requireAllOf": [
+        ["localStorage.setItem", "localStorage.getItem"],
+        ["leaderboard", "highscore", "high_score", "hiscore", "high score", "top score", "topscore", "_best", "best_", "bestscore", "besttime", "best_time", "best time"]
+      ],
+      "skipIfAny": ["mchatai-leaderboard-mode", "window.mChatAI.leaderboard", "mChatAI.leaderboard", "Leaderboard.submitFinal", "GameOverWithRank"],
+      "userNote": "This build stores scores in the browser (localStorage) instead of the built-in hub leaderboard. The real cross-player leaderboard is added automatically when you Publish  -  re-iterate with 'use the hub leaderboard (meta tag + score element), remove the local score store' to switch over.",
+      "retryHint": "The app implements a bespoke localStorage high-score/best-score table. REMOVE it (the localStorage read/write AND its on-screen UI) and instead integrate the built-in hub leaderboard: add <meta name=\"mchatai-leaderboard-mode\" content=\"default|fastest|fewest-moves\"> in <head> and expose the score in an element (id=\"score\" or data-mchatai-score). The server injects the real leaderboard UI + submission on publish; do NOT render your own leaderboard UI (wisdom lb-007)."
+    },
+    {
+      "id": "bespoke-leaderboard-alongside-hub",
+      "kind": "bespokeLeaderboard",
+      "correction": "neutralizeLeaderboardStoreOnHub",
+      "snippetPath": "harness/gates/bespoke-leaderboard-neutralize-snippet.js",
+      "gate": "leaderboard-neutralize",
+      "requireAllOf": [
+        ["localStorage.setItem", "localStorage.getItem"],
+        ["highscore", "high_score", "hiscore", "high score", "top score", "topscore", "top times", "toptimes", "_best", "best_", "bestscore", "besttime", "best_time", "best time"],
+        ["mchatai-leaderboard-mode", "window.mChatAI.leaderboard", "mChatAI.leaderboard", "Leaderboard.submitFinal", "GameOverWithRank"]
+      ],
+      "_note_no_bare_leaderboard": "group2 (the bespoke-board signal) deliberately OMITS the bare word 'leaderboard' -- it is a substring of the REQUIRED hub markers in group3 ('mchatai-leaderboard-mode', 'window.mChatAI.leaderboard'), so including it would let a correct hub-only game satisfy group2 spuriously. Detect the bespoke board via distinctive score-KEY / heading tokens that never appear in the hub integration itself.",
+      "skipIfAny": ["__mchataiLBNeutralize"],
+      "userNote": "This build has BOTH a local score table (localStorage) AND the hub leaderboard hooks. On the community hub the server injects the REAL cross-player board, so the local one would double-render. I switched off the local table's saved scores on the hub so you won't see two boards' worth of data. To drop the extra local board UI entirely, re-iterate with 'remove the local score table, keep only the hub leaderboard'.",
+      "retryHint": "The app renders a bespoke localStorage score table ALONGSIDE the hub leaderboard hooks, so on the hub two boards appear. REMOVE the local score table (its localStorage read/write AND its on-screen UI) and keep ONLY the hub integration (the <meta name=\"mchatai-leaderboard-mode\"> tag + the score element). Do NOT render your own leaderboard UI (wisdom lb-007)."
+    }
+  ]
+}

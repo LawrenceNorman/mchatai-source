@@ -1,14 +1,30 @@
 {
   "packID": "sound-effects",
-  "version": "1.0.0",
+  "version": 1,
   "displayName": "Game Sound Effects (built-in AudioManager Lego)",
   "description": "How a generated web mini-app should add SOUND EFFECTS: reuse the built-in, dependency-free AudioManager Lego (pure WebAudio synthesis, zero .mp3/.wav, offline-safe under file://) instead of hand-rolling a bespoke oscillator setup from scratch. 2D games use resources/AudioManager.js; 3D games use web-components-3d/effects/audio-manager-3d.js. Music toys (synth / drum machine / sequencer) are a DIFFERENT path: vendored Tone.js (see tone-js pack), never AudioManager.",
-  "categories": ["miniapp", "webspa", "anyGame"],
-  "keywords": ["sound", "sound effect", "sound effects", "sfx", "audio", "beep", "mute", "sound design"],
+  "categories": [
+    "miniapp",
+    "webspa",
+    "anyGame"
+  ],
+  "keywords": [
+    "sound",
+    "sound effect",
+    "sound effects",
+    "sfx",
+    "audio",
+    "beep",
+    "mute",
+    "sound design"
+  ],
   "guidelines": [
     {
       "id": "se-001-use-audiomanager-2d",
-      "appliesTo": ["miniapp", "webspa"],
+      "appliesTo": [
+        "miniapp",
+        "webspa"
+      ],
       "severity": "important",
       "rule": "For one-shot game SFX in a 2D web mini-app, REUSE the built-in AudioManager Lego rather than synthesizing audio from scratch. Import the named export and call the high-level dispatcher: `import { AudioManager } from './web-components/resources/AudioManager.js'; const audio = new AudioManager({ masterVolume: 0.05 }); audio.sfx('score'|'hit'|'gameover'|'levelup'|'click'|'powerup');` An unknown name falls back to a soft default tone. Low-level escape hatches exist if you need a specific sound: `audio.beep({freq,duration,type:'square'|'sine'|'triangle'|'sawtooth',slideTo,volume})` and `audio.noise({duration,volume})`.",
       "why": "AudioManager is a maintained, offline, zero-asset Lego. Rolling a bespoke `new (window.AudioContext)()` + oscillator graph from scratch duplicates it, tends to be inconsistent across events, and is exactly the kind of reinvention the catalog exists to prevent. The real, working API is sfx()/beep()/noise()  -  NOT the phantom `playEffect()`/`resume()` that an older _index.json contract advertised.",
@@ -20,7 +36,10 @@
     },
     {
       "id": "se-002-use-audiomanager3d-for-3d",
-      "appliesTo": ["miniapp", "webspa"],
+      "appliesTo": [
+        "miniapp",
+        "webspa"
+      ],
       "severity": "important",
       "rule": "For a 3D (three.js / WebGL) game, use the 3D audio Lego instead of the 2D one: `import { AudioManager3D } from './web-components-3d/effects/audio-manager-3d.js'; const audio = new AudioManager3D({ camera }); audio.attachTo(loop); audio.play('shoot'|'hit'|'explosion'|'pickup'|'coin'|'levelup'|'jump'|'footstep'|'ui'|'hurt'|'powerup');` Pass `{ position: obj.position }` to spatialize (needs camera + THREE). `attachTo(loop)` reuses the game loop's first-tap unlock, so never block the render loop on audio.",
       "why": "AudioManager3D is procedural ADSR synthesis with optional THREE.PositionalAudio panning  -  the right primitive for a 3D scene. The 2D AudioManager works too but misses spatialization and the loop-unlock integration.",
@@ -30,18 +49,26 @@
       ]
     },
     {
-      "id": "se-003-gesture-gate",
-      "appliesTo": ["miniapp", "webspa"],
-      "severity": "important",
-      "rule": "Construct the audio manager at load (cheap  -  it does NOT open an AudioContext yet), but DEFER the first sfx()/play() call until AFTER a user gesture (tap / key / Start button). iOS Safari and in-app WKWebViews boot the AudioContext suspended and require a gesture before the first resume().",
-      "why": "Calling sfx() before any gesture silently no-ops on iOS and can log AudioContext warnings. Both AudioManager classes resume() lazily and no-op safely until the first gesture, so wire the first sound to game-start/first-input.",
+      "id": "se-003-gesture-unlock",
+      "appliesTo": [
+        "miniapp",
+        "webspa"
+      ],
+      "severity": "critical",
+      "rule": "Browsers start every AudioContext SUSPENDED and REJECT resume() unless it runs inside a real user gesture (pointer/key/touch). A game whose first sfx()/play() fires from the render loop (requestAnimationFrame) instead of a tap/key plays into a dead context = TOTAL SILENCE. The built-in AudioManager / AudioManager3D now SELF-UNLOCK (their constructor installs a one-time first-gesture listener that resumes the context), so if you use the REAL Lego OR inline its COMPLETE body including that self-unlock, you can call sfx()/play() from anywhere and it just works. If you hand-roll your own AudioContext OR inline a PARTIAL AudioManager, you MUST add the same one-time gesture-unlock yourself: ['pointerdown','keydown','touchstart'].forEach(ev=>addEventListener(ev,function u(){ if(ctx.state==='suspended')ctx.resume(); ['pointerdown','keydown','touchstart'].forEach(e=>removeEventListener(e,u,true)); },{capture:true})).",
+      "why": "This is the #1 reason generated game audio is silent: the code is present and wired, sfx() is called on the right events, but nobody unlocked the context from a gesture so every sound no-ops. Observed 2026-07-10 on weir-rabbit v4 (startGame did not prime audio; first sfx fired from the game loop; zero sound despite 6 correct sfx() calls). Relying on the game author to call the first sfx() from a gesture handler fails in practice, so the Lego now self-unlocks and any inline MUST replicate it.",
       "examples": [
-        "GOOD: play the first sound on the Start-button click or first arrow-key press, not on page load."
+        "GOOD: use new AudioManager() (self-unlocks) and call audio.sfx('coin') from anywhere, including the game loop.",
+        "BAD (silent): inline a partial AudioManager with no gesture listener; first audio.sfx() fires from requestAnimationFrame; ctx stays suspended.",
+        "GOOD (inline): after constructing, add the one-time pointerdown/keydown/touchstart listener that calls ctx.resume()."
       ]
     },
     {
       "id": "se-004-mute-toggle",
-      "appliesTo": ["miniapp", "webspa"],
+      "appliesTo": [
+        "miniapp",
+        "webspa"
+      ],
       "severity": "recommended",
       "rule": "Pair 2D sound with the built-in mute control: `import { MuteToggle } from './web-components/ui/MuteToggle.js'; MuteToggle.mount(document.body, { audio });` It renders a small top-right pill and persists the mute state to localStorage. (3D: use audio.setMuted()/toggleMuted() wired to your own button; the game stays fully playable while muted.)",
       "why": "Players expect a mute affordance; MuteToggle is a one-liner and persists across sessions so you don't re-implement it.",
@@ -51,7 +78,10 @@
     },
     {
       "id": "se-005-inline-when-lego-absent",
-      "appliesTo": ["miniapp", "webspa"],
+      "appliesTo": [
+        "miniapp",
+        "webspa"
+      ],
       "severity": "important",
       "rule": "If `./web-components/resources/AudioManager.js` (or the 3D equivalent) is NOT present in the working directory (common on an ITERATE of an existing single-file app, where the Lego kit isn't seeded), do NOT abandon the pattern and do NOT add a network/CDN dependency. Either (a) copy a compact AudioManager class body INLINE into the app's <script> and keep calling the same `sfx('hit'|'levelup'|'gameover'|...)` convention, or (b) write a tiny self-contained WebAudio helper that mirrors that same named-sfx interface. Stay OFFLINE and self-contained either way.",
       "why": "The iterate/branch workdir is often just the app's own files with no Lego kit. The goal is still to converge on the AudioManager conventions (named sfx dispatcher, gesture-gated, mute-able, offline WebAudio) so future extraction is trivial  -  not to justify a from-scratch one-off that ignores the house style.",
@@ -62,7 +92,10 @@
     },
     {
       "id": "se-006-music-toys-use-tone",
-      "appliesTo": ["miniapp", "webspa"],
+      "appliesTo": [
+        "miniapp",
+        "webspa"
+      ],
       "severity": "important",
       "rule": "SFX and MUSIC are different Lego. AudioManager is for one-shot game sound effects ONLY. For a musical instrument, synth, drum machine, step sequencer, or FFT/audio visualizer, use vendored Tone.js (loaded as a classic UMD <script src>, rewritten offline by the WEBLIB B-catch) and the entities/StepSequencer Lego  -  see the tone-js wisdom pack. Never use AudioManager for melodic/sequenced audio, and never load Tone via ESM/importmap (silent under file://).",
       "why": "Tone.js provides transport/scheduling/instruments AudioManager deliberately lacks; conflating them produces a broken music toy or a needlessly heavy SFX layer.",
