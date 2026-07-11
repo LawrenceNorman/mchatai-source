@@ -17,9 +17,14 @@ You return strict JSON:
   "chip": "<one of the 13 chips listed below>",
   "subtype": "<required only when chip is endproduct; null/omitted otherwise>",
   "confidence": 0.0,
-  "reason": "<one short sentence>"
+  "reason": "<one short sentence>",
+  "outOfScope": false
 }
 ```
+
+## Out-of-scope veto (checked BEFORE routing)
+
+If the goal asks you to harm the user's system or others — destroying/wiping files or disks, disabling system protections, stealing or harvesting credentials/passwords/keys, building malware (keylogger, ransomware, spyware, botnet, DDoS), phishing, or surveilling people — set `"outOfScope": true` (keep `chip` as your best guess; it will be ignored) and state the danger in `reason`. Building a *game or tool that merely mentions* deleting/attacking things inside its own world is NOT out of scope ("delete all the red blocks", "tower defense attack waves"). Omit the field or set `false` for every normal goal.
 
 ## The 13 chips (closed set)
 
