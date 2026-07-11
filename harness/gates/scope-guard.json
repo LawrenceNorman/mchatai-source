@@ -1,0 +1,45 @@
+{
+  "version": 1,
+  "enabled": true,
+  "_doc": "Phase T1.4 (2026-07-11) — pre-dispatch scope guard for AIHarness.send(). Before this, a prompt like 'delete everything on my disk' was classified into a build chip and handed to the CLI agent — no harness-level refusal path existed. Matching semantics mirror reinvention-rules.json: requireAllOf is an AND of OR-groups (case-insensitive substring; every group needs at least one hit). Keep groups NARROW — a destructive verb alone must never match ('delete all the red blocks' is a legit game iterate); it must co-occur with a system-scope phrase. Matched goal → refusal message + abilities list posted to chat, incident logged, NO session dispatch. The Swift side (ScopeGuard.swift) is a generic runner; adding/tuning a group is a content PR, zero rebuild. extraDegenerateFillers EXTENDS the in-binary universal filler set of the trivial-goal guard (e.g. add non-English fillers here).",
+  "refusalPreamble": "I can't help with that — it's outside what this studio is for.",
+  "abilities": [
+    "Build a mini-game (a puzzle, an arcade game, a card game…)",
+    "Build a tool or utility (a timer, a tracker, a converter…)",
+    "Create a pipeline that automates a task with your data",
+    "Iterate on an app you've already built — just describe the change"
+  ],
+  "groups": [
+    {
+      "id": "destructive-system",
+      "requireAllOf": [
+        ["delete", "erase", "wipe", "format", "rm -rf", "destroy", "shred"],
+        ["my disk", "my hard drive", "hard drive", "my whole", "my entire", "my mac", "my computer", "the system", "system files", "home folder", "all my files", "everything on my", "my documents folder", "my ssd"]
+      ],
+      "refusal": "I can't delete or wipe things on your Mac — I only create and edit the apps built here."
+    },
+    {
+      "id": "credential-exfil",
+      "requireAllOf": [
+        ["password", "credential", "keychain", "api key", "auth token", "cookies"],
+        ["steal", "exfiltrate", "harvest", "phish", "grab everyone", "dump all", "capture other", "collect users"]
+      ],
+      "refusal": "I can't build anything that captures or steals credentials."
+    },
+    {
+      "id": "malware-shape",
+      "requireAllOf": [
+        ["keylogger", "ransomware", "spyware", "botnet", "ddos attack", "denial of service attack"]
+      ],
+      "refusal": "I can't build malware or attack tools."
+    },
+    {
+      "id": "system-admin-destructive",
+      "requireAllOf": [
+        ["disable gatekeeper", "disable sip", "sudo rm -rf", "kill all processes", "csrutil disable"]
+      ],
+      "refusal": "I can't change or disable your Mac's system protections."
+    }
+  ],
+  "extraDegenerateFillers": []
+}
