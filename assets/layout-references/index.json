@@ -1,135 +1,153 @@
 {
-  "version": 4,
-  "description": "Keyword → layout-reference mapping. v4 (2026-04-20) Phase DF adds webSPA archetypes (webspa-product-landing for marketing pages, webspa-single-screen-app for product UIs) — see assets/layout-references/_AUDIT_2026-04-20.md. v3 (2026-04-19) composes archetype-level DOM+CSS (extracted from proven community builds) with game-specific logic snippets. v2 (2026-04-19) added `snippets`: a list of small atomic files the loader injects as separately-labeled VERBATIM blocks — LLMs follow short concrete blocks more reliably than single 540-line files. Legacy `html` field still honored when `snippets` is absent. To add a new genre: drop the .html/.css/.js files, list them in `snippets`, then add the entry below.",
-  "archetypes": {
-    "description": "Structural archetype → (dom + styles) reference pair. Multiple game entries below can borrow the same archetype. Phase QAF-AR will auto-extract new archetypes from best-rated published mini-apps; today this is hand-curated.",
-    "card-table-4-seat": {
-      "dom":    "card-table-4-seat.dom.html",
-      "styles": "card-table-4-seat.styles.css",
-      "notes":  "card-table-4-seat.md",
-      "source": "Texas Hold'em Poker (mchatai.com/u/GI1GHQ7wpLQKjJyf9QRQATyw5e33/texas-holdem-poker/)"
-    },
-    "webspa-product-landing": {
-      "dom":    "webspa-product-landing.dom.html",
-      "styles": "webspa-product-landing.styles.css",
-      "motion": "webspa-product-landing.motion.js",
-      "notes":  "webspa-product-landing.md",
-      "source": "Hand-authored Phase DF archetype (2026-04-20) — satisfies frontend-skill rubric fs-001..fs-012 for SaaS marketing pages."
-    },
-    "webspa-single-screen-app": {
-      "dom":    "webspa-single-screen-app.dom.html",
-      "styles": "webspa-single-screen-app.styles.css",
-      "notes":  "webspa-single-screen-app.md",
-      "source": "Hand-authored Phase DF archetype (2026-04-20) — fs-012 reference implementation for product UIs."
-    }
+ "version": 4,
+ "description": "Keyword → layout-reference mapping. v4 (2026-04-20) Phase DF adds webSPA archetypes (webspa-product-landing for marketing pages, webspa-single-screen-app for product UIs) — see assets/layout-references/_AUDIT_2026-04-20.md. v3 (2026-04-19) composes archetype-level DOM+CSS (extracted from proven community builds) with game-specific logic snippets. v2 (2026-04-19) added `snippets`: a list of small atomic files the loader injects as separately-labeled VERBATIM blocks — LLMs follow short concrete blocks more reliably than single 540-line files. Legacy `html` field still honored when `snippets` is absent. To add a new genre: drop the .html/.css/.js files, list them in `snippets`, then add the entry below. v5 (2026-07-11, HKI-010): removed the poker-holdem reference — it forced the 4-seat TRICK-TAKING card-table DOM onto poker (which is heads-up/betting, not 4-seat trick-taking), the 'poker prompt -> Hearts-shaped shell' symptom. Poker now falls through to frameworks/web-components/examples/poker/ (the HKI-009 poker-specific starting point). card-table-4-seat stays for genuine 4-player trick-taking (trick-taking-hearts: hearts/spades/bridge/euchre).",
+ "archetypes": {
+  "description": "Structural archetype → (dom + styles) reference pair. Multiple game entries below can borrow the same archetype. Phase QAF-AR will auto-extract new archetypes from best-rated published mini-apps; today this is hand-curated.",
+  "card-table-4-seat": {
+   "dom": "card-table-4-seat.dom.html",
+   "styles": "card-table-4-seat.styles.css",
+   "notes": "card-table-4-seat.md",
+   "source": "Texas Hold'em Poker (mchatai.com/u/GI1GHQ7wpLQKjJyf9QRQATyw5e33/texas-holdem-poker/)"
   },
-  "references": [
+  "webspa-product-landing": {
+   "dom": "webspa-product-landing.dom.html",
+   "styles": "webspa-product-landing.styles.css",
+   "motion": "webspa-product-landing.motion.js",
+   "notes": "webspa-product-landing.md",
+   "source": "Hand-authored Phase DF archetype (2026-04-20) — satisfies frontend-skill rubric fs-001..fs-012 for SaaS marketing pages."
+  },
+  "webspa-single-screen-app": {
+   "dom": "webspa-single-screen-app.dom.html",
+   "styles": "webspa-single-screen-app.styles.css",
+   "notes": "webspa-single-screen-app.md",
+   "source": "Hand-authored Phase DF archetype (2026-04-20) — fs-012 reference implementation for product UIs."
+  }
+ },
+ "references": [
+  {
+   "id": "trick-taking-hearts",
+   "displayName": "Trick-Taking Card Game (Hearts / Spades / Bridge / Euchre)",
+   "archetype": "card-table-4-seat",
+   "snippets": [
     {
-      "id": "trick-taking-hearts",
-      "displayName": "Trick-Taking Card Game (Hearts / Spades / Bridge / Euchre)",
-      "archetype": "card-table-4-seat",
-      "snippets": [
-        { "label": "DOM (card-table-4-seat archetype)",        "file": "card-table-4-seat.dom.html",     "language": "html" },
-        { "label": "Styles (card-table-4-seat archetype)",     "file": "card-table-4-seat.styles.css",   "language": "css" },
-        { "label": "Rules (Hearts scoring + legal play)",       "file": "trick-taking-hearts.rules.js",   "language": "js" },
-        { "label": "CPU AI (random-legal, 500ms delay)",        "file": "trick-taking-hearts.ai.js",      "language": "js" },
-        { "label": "Render + human click wiring",               "file": "trick-taking-hearts.render.js",  "language": "js" }
-      ],
-      "html": "trick-taking-hearts.html",
-      "notes": "trick-taking-hearts.md",
-      "keywords": [
-        "hearts",
-        "spades",
-        "bridge",
-        "euchre",
-        "whist",
-        "pinochle",
-        "tarot card game",
-        "trick-taking",
-        "trick taking",
-        "follow suit",
-        "trump card"
-      ],
-      "boost": 10,
-      "maxBytes": 48000,
-      "appliesTo": "card-games"
+     "label": "DOM (card-table-4-seat archetype)",
+     "file": "card-table-4-seat.dom.html",
+     "language": "html"
     },
     {
-      "id": "poker-holdem",
-      "displayName": "Texas Hold'em Poker (archetype demo)",
-      "archetype": "card-table-4-seat",
-      "snippets": [
-        { "label": "DOM (card-table-4-seat archetype)",    "file": "card-table-4-seat.dom.html",    "language": "html" },
-        { "label": "Styles (card-table-4-seat archetype)", "file": "card-table-4-seat.styles.css",  "language": "css" }
-      ],
-      "notes": "card-table-4-seat.md",
-      "keywords": [
-        "poker",
-        "texas hold",
-        "holdem",
-        "hold'em",
-        "omaha poker",
-        "seven-card stud",
-        "fold call raise"
-      ],
-      "boost": 10,
-      "maxBytes": 32000,
-      "appliesTo": "card-games"
+     "label": "Styles (card-table-4-seat archetype)",
+     "file": "card-table-4-seat.styles.css",
+     "language": "css"
     },
     {
-      "id": "webspa-product-landing",
-      "displayName": "Product Landing Page (webSPA)",
-      "archetype": "webspa-product-landing",
-      "snippets": [
-        { "label": "DOM (webspa-product-landing archetype)",    "file": "webspa-product-landing.dom.html",    "language": "html" },
-        { "label": "Styles (webspa-product-landing archetype)", "file": "webspa-product-landing.styles.css",  "language": "css" },
-        { "label": "Motion wiring (sticky-nav-compact)",         "file": "webspa-product-landing.motion.js",   "language": "js" }
-      ],
-      "notes": "webspa-product-landing.md",
-      "keywords": [
-        "landing",
-        "landing page",
-        "marketing page",
-        "marketing site",
-        "product page",
-        "saas",
-        "homepage",
-        "startup landing",
-        "lead gen",
-        "pricing page"
-      ],
-      "boost": 12,
-      "maxBytes": 56000,
-      "appliesTo": "webspa"
+     "label": "Rules (Hearts scoring + legal play)",
+     "file": "trick-taking-hearts.rules.js",
+     "language": "js"
     },
     {
-      "id": "webspa-single-screen-app",
-      "displayName": "Single-Screen Product UI (webSPA)",
-      "archetype": "webspa-single-screen-app",
-      "snippets": [
-        { "label": "DOM (webspa-single-screen-app archetype)",    "file": "webspa-single-screen-app.dom.html",   "language": "html" },
-        { "label": "Styles (webspa-single-screen-app archetype)", "file": "webspa-single-screen-app.styles.css", "language": "css" }
-      ],
-      "notes": "webspa-single-screen-app.md",
-      "keywords": [
-        "app ui",
-        "product ui",
-        "single-screen",
-        "single screen",
-        "habit tracker",
-        "writing tool",
-        "focus timer",
-        "pomodoro",
-        "notes app",
-        "calculator",
-        "unit converter",
-        "list manager",
-        "small dashboard",
-        "tool ui"
-      ],
-      "boost": 12,
-      "maxBytes": 40000,
-      "appliesTo": "webspa"
+     "label": "CPU AI (random-legal, 500ms delay)",
+     "file": "trick-taking-hearts.ai.js",
+     "language": "js"
+    },
+    {
+     "label": "Render + human click wiring",
+     "file": "trick-taking-hearts.render.js",
+     "language": "js"
     }
-  ]
+   ],
+   "html": "trick-taking-hearts.html",
+   "notes": "trick-taking-hearts.md",
+   "keywords": [
+    "hearts",
+    "spades",
+    "bridge",
+    "euchre",
+    "whist",
+    "pinochle",
+    "tarot card game",
+    "trick-taking",
+    "trick taking",
+    "follow suit",
+    "trump card"
+   ],
+   "boost": 10,
+   "maxBytes": 48000,
+   "appliesTo": "card-games"
+  },
+  {
+   "id": "webspa-product-landing",
+   "displayName": "Product Landing Page (webSPA)",
+   "archetype": "webspa-product-landing",
+   "snippets": [
+    {
+     "label": "DOM (webspa-product-landing archetype)",
+     "file": "webspa-product-landing.dom.html",
+     "language": "html"
+    },
+    {
+     "label": "Styles (webspa-product-landing archetype)",
+     "file": "webspa-product-landing.styles.css",
+     "language": "css"
+    },
+    {
+     "label": "Motion wiring (sticky-nav-compact)",
+     "file": "webspa-product-landing.motion.js",
+     "language": "js"
+    }
+   ],
+   "notes": "webspa-product-landing.md",
+   "keywords": [
+    "landing",
+    "landing page",
+    "marketing page",
+    "marketing site",
+    "product page",
+    "saas",
+    "homepage",
+    "startup landing",
+    "lead gen",
+    "pricing page"
+   ],
+   "boost": 12,
+   "maxBytes": 56000,
+   "appliesTo": "webspa"
+  },
+  {
+   "id": "webspa-single-screen-app",
+   "displayName": "Single-Screen Product UI (webSPA)",
+   "archetype": "webspa-single-screen-app",
+   "snippets": [
+    {
+     "label": "DOM (webspa-single-screen-app archetype)",
+     "file": "webspa-single-screen-app.dom.html",
+     "language": "html"
+    },
+    {
+     "label": "Styles (webspa-single-screen-app archetype)",
+     "file": "webspa-single-screen-app.styles.css",
+     "language": "css"
+    }
+   ],
+   "notes": "webspa-single-screen-app.md",
+   "keywords": [
+    "app ui",
+    "product ui",
+    "single-screen",
+    "single screen",
+    "habit tracker",
+    "writing tool",
+    "focus timer",
+    "pomodoro",
+    "notes app",
+    "calculator",
+    "unit converter",
+    "list manager",
+    "small dashboard",
+    "tool ui"
+   ],
+   "boost": 12,
+   "maxBytes": 40000,
+   "appliesTo": "webspa"
+  }
+ ]
 }
