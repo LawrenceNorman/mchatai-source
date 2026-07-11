@@ -105,6 +105,23 @@ export class AudioManager3D {
         this._listener = null;
       }
     }
+
+    // Self-unlock fallback (2026-07-10): attachTo(loop) is the primary unlock, but a
+    // game that forgets to call it (or has no compatible loop) leaves the context
+    // SUSPENDED = silence. Resume on the first pointer/key/touch, once, so audio is
+    // never dead just because attachTo() was skipped. No-op off-DOM.
+    this._installGestureUnlock();
+  }
+
+  _installGestureUnlock() {
+    if (this._unlockInstalled || typeof globalThis.addEventListener !== 'function') return;
+    this._unlockInstalled = true;
+    const events = ['pointerdown', 'keydown', 'touchstart', 'mousedown', 'click'];
+    const unlock = () => {
+      if (this.context && this.context.state === 'suspended') { try { this.context.resume(); } catch (_) {} }
+      events.forEach((ev) => globalThis.removeEventListener(ev, unlock, true));
+    };
+    events.forEach((ev) => globalThis.addEventListener(ev, unlock, { capture: true, passive: true }));
   }
 
   // Hand our context to core.three-game-loop so its first-tap unlock resumes it.
