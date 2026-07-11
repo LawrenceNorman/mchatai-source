@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "enabled": true,
+  "_doc": "Phase T1.1 (2026-07-11) — publish-time security review patterns for EndProductSecurityAgent.staticAnalysis. Extracted from the former hardcoded Swift array (RULE #1: pattern lists are content, not skeleton). The binary keeps a frozen _fallback_only copy for offline first-launch; this file is the source of truth and hot-loads via MchataisourceCacheService. blockSeverities lists the severity tiers that BLOCK publish (typed error before any bytes are uploaded); everything else remains advisory (securityFlags + moderationStatus). Fix vs the old Swift list: the credential-access regex used escaped pipes (matched a literal 'password|token|secret|key' string, so it never fired) — corrected to real alternation here.",
+  "blockSeverities": ["critical"],
+  "patterns": [
+    { "pattern": "eval\\s*\\(", "category": "code-injection", "severity": "high", "description": "Use of eval() can execute arbitrary code" },
+    { "pattern": "new\\s+Function\\s*\\(", "category": "code-injection", "severity": "high", "description": "Dynamic Function constructor can execute arbitrary code" },
+    { "pattern": "document\\.cookie", "category": "data-exfiltration", "severity": "medium", "description": "Accessing document.cookie could leak session data" },
+    { "pattern": "localStorage\\.getItem\\([^)]*(password|token|secret|key)", "category": "credential-access", "severity": "high", "description": "Accessing credentials from localStorage" },
+    { "pattern": "XMLHttpRequest|fetch\\s*\\(\\s*['\"]https?://(?!mchatai|localhost|127\\.0\\.0\\.1)", "category": "network-call", "severity": "medium", "description": "Network call to external domain" },
+    { "pattern": "window\\.open\\s*\\(", "category": "navigation", "severity": "low", "description": "Opening new windows could redirect users" },
+    { "pattern": "crypto\\.subtle", "category": "cryptography", "severity": "low", "description": "Using Web Crypto API — verify purpose" },
+    { "pattern": "<script\\s+src\\s*=\\s*['\"]https?://", "category": "external-script", "severity": "critical", "description": "Loading external scripts is a security risk" },
+    { "pattern": "postMessage\\s*\\(", "category": "cross-origin", "severity": "medium", "description": "postMessage could send data to parent frames" }
+  ],
+  "sizeLimits": {
+    "singleFileSuspiciousBytes": 5000000,
+    "bundleSuspiciousBytes": 25000000
+  }
+}
