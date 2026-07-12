@@ -49,6 +49,7 @@
       "ui/MiniHeader.js",
       "ui/ScoreBoard.js",
       "ui/VirtualJoystick.js",
+      "ui/TouchControls.js",
       "ui/PianoKeyboard.js",
       "ui/KeyboardInput.js",
       "ui/RestartOverlay.js",
@@ -2282,6 +2283,40 @@
       ]
     },
     {
+      "id": "ui.touch-controls",
+      "name": "TouchControls",
+      "category": "ui",
+      "path": "ui/TouchControls.js",
+      "exports": [
+        "TouchControls"
+      ],
+      "status": "ready",
+      "summary": "Canonical on-screen mobile control surface: d-pad plus action buttons in ONE container carrying data-mchatai=touch-controls. Self-hides on desktop pointers and while the native mChatAI controller overlay is up (window event mchatai:virtualgamepad). Delivers input as synthesized KeyboardEvents so existing keyboard handlers work unchanged. Cover EVERY axis the game logic reads (a runner needs its forward button, not just steering).",
+      "tags": [
+        "touch",
+        "mobile",
+        "controls",
+        "dpad",
+        "buttons",
+        "gamepad"
+      ],
+      "contracts": {
+        "mount": "TouchControls.mount(host, { dpad: [up,down,left,right subset], actions: [{label,key}], onInput }) -> { element, setVisible(bool), destroy() }",
+        "marker": "container carries data-mchatai=touch-controls (the platform hide/show contract, wisdom mob-013)",
+        "events": [
+          "listens window mchatai:virtualgamepad {detail:{active}}",
+          "dispatches synthesized keydown/keyup with keyCode/which patched"
+        ]
+      },
+      "goodFits": [
+        "platformers",
+        "runners",
+        "maze-arcade",
+        "top-down-arcade",
+        "any-keyboard-driven-game"
+      ]
+    },
+    {
       "id": "ui.piano-keyboard",
       "name": "PianoKeyboard",
       "category": "ui",
@@ -4082,7 +4117,8 @@
         "ui.scoreboard"
       ],
       "optionalComponents": [
-        "resources.swatches"
+        "resources.swatches",
+        "ui.touch-controls"
       ]
     },
     {
@@ -4140,7 +4176,8 @@
         "entities.turret",
         "resources.audio-manager",
         "ui.mini-header",
-        "ui.virtual-joystick"
+        "ui.virtual-joystick",
+        "ui.touch-controls"
       ]
     },
     {
@@ -4198,7 +4235,8 @@
         "resources.swatches"
       ],
       "optionalComponents": [
-        "resources.audio-manager"
+        "resources.audio-manager",
+        "ui.touch-controls"
       ]
     },
     {
@@ -4302,7 +4340,8 @@
       "optionalComponents": [
         "core.physics2d",
         "entities.entity",
-        "resources.audio-manager"
+        "resources.audio-manager",
+        "ui.touch-controls"
       ]
     },
     {
@@ -4351,7 +4390,8 @@
         "resources.swatches"
       ],
       "optionalComponents": [
-        "resources.audio-manager"
+        "resources.audio-manager",
+        "ui.touch-controls"
       ]
     },
     {
@@ -4413,7 +4453,8 @@
       "optionalComponents": [
         "resources.audio-manager",
         "resources.sprite-presets",
-        "resources.sprite-renderer"
+        "resources.sprite-renderer",
+        "ui.touch-controls"
       ]
     },
     {
