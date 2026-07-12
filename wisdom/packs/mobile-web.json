@@ -1,6 +1,6 @@
 {
   "packID": "mobile-web",
-  "version": 2,
+  "version": 3,
   "displayName": "Mobile Web Mini-App Guidelines",
   "description": "Cross-cutting rules to make ANY web mini-app (game, toy, scene, art, dataviz, music) work and feel great on phones and tablets, not just desktop. Covers the responsive viewport meta tag and safe-area insets, pointer/touch input instead of mouse-only and no hover dependence, touch-action to stop scroll/zoom hijacking gameplay, on-screen touch controls for anything that uses keyboard on desktop, large hit targets and readable type, portrait+landscape layout with resize/orientationchange handling, devicePixelRatio and entity-budget clamping for performance, never using pointer lock (use drag-look), tap-to-start audio unlock, and verifying the experience is fully playable with touch alone. These apply broadly to web mini-apps; load them alongside the per-library packs.",
   "categories": [
@@ -236,6 +236,19 @@
         "GOOD: `.hand{display:flex;gap:6px;overflow-x:auto}` so a long rack scrolls inside itself, not over the board",
         "WRONG: a 1300px absolute-positioned 'table' with seats at fixed px, shrunk to a 390px phone → pieces collide",
         "WRONG (iteration): bumping a base `.card`/`.piece` width to a big value without matching the @media rules → overflow on mobile"
+      ]
+    },
+    {
+      "id": "mob-018",
+      "rule": "Wrap ALL on-screen touch controls (d-pads, joysticks, action buttons) in ONE container carrying data-mchatai=\"touch-controls\" -- prefer mounting the ui.touch-controls Lego component, which does this for you. The container must (a) show only on touch/coarse-pointer devices and stay hidden on desktop, (b) hide while the native mChatAI controller overlay is active (listen for window CustomEvent 'mchatai:virtualgamepad' with detail {active:true|false}), and (c) never be the ONLY input path: every control must map to a keyboard handler the game also supports. Cover EVERY input axis the game logic reads -- if the code moves forward/back/left/right, the surface needs all four, not just steering.",
+      "why": "On-screen controls baked into the page are clutter on desktop (a keyboard exists) and DOUBLE controls on iOS when the user brings up the platform's built-in D-Pad overlay, which synthesizes real keyboard events. The single marked container is the platform contract that lets every layer (desktop, iOS overlay, install-time backstop) hide or show the surface deterministically. An incomplete surface (steering but no forward button) makes the game boring or unplayable on the very devices the controls exist for.",
+      "severity": "critical",
+      "appliesTo": "anymobile",
+      "examples": [
+        "import { TouchControls } from './web-components/ui/TouchControls.js'; TouchControls.mount(document.body, { dpad:['up','down','left','right'], actions:[{label:'JUMP', key:' '}] })",
+        "hand-rolled: <div data-mchatai=\"touch-controls\"> ...buttons... </div> plus a window listener for mchatai:virtualgamepad that toggles it",
+        "WRONG: control buttons scattered in the DOM with no shared marked container (nothing can hide them under the native D-Pad)",
+        "WRONG: a runner game whose touch surface has left/right only -- the accelerate control the game loop reads is missing"
       ]
     }
   ]
