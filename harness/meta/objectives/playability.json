@@ -1,0 +1,28 @@
+{
+ "id": "playability",
+ "version": 1,
+ "displayName": "Playable games, better rules",
+ "summary": "Lift the deep-play pass rate of generated games by improving wisdom-pack content, without inflating prompt cost.",
+ "_doc": "Objective consumed by MetaHarnessCoordinator + templated into the proposer prompt. Pairs with mutable surface wisdom/packs/ (MH.P3) and the PG.6 deep-play gate: the benchmark builds the catalog entries, runs the playability gate INCLUDING the deep-play assertion, and scores the candidate by pass rate. Evidence for the proposer: PlayabilityDebug/*__deep-play.json reports (turn-steal / wedge / NaN traces), QualityIntelligence/incidents.jsonl, and the rubric ledger.",
+ "objective": {
+  "mode": "pareto",
+  "accuracy_axis": "deep_play_pass_rate",
+  "cost_axis": "mean_input_tokens",
+  "target": "Find wisdom-pack edits (new or sharpened guidelines) that raise the deep-play pass rate of freshly generated games vs baseline. Prefer surgical single-hypothesis rules with the concrete failure trace quoted in the rule's why. A candidate is interesting if it (a) lifts deep-play pass rate at modest token cost, OR (b) holds pass rate while consolidating/removing redundant non-critical rules.",
+  "proposer_hint": "Read PlayabilityDebug deep-play reports and incidents first: every wedges>0 / turnSteals>0 / nanText>0 report is a rule candidate. Generalize the defect CLASS (e.g. 'exactly one turn-advance chokepoint'), never the specific game. Do not delete or downgrade critical rules - the validator blocks it."
+ },
+ "frontier_knees": [
+  {
+   "label": "cost-optimal",
+   "rule": "lowest mean_input_tokens among non-dominated candidates matching baseline deep_play_pass_rate within keep_bar epsilon"
+  },
+  {
+   "label": "balanced",
+   "rule": "the non-dominated candidate with the best pass-rate-per-token ratio"
+  },
+  {
+   "label": "quality-optimal",
+   "rule": "highest deep_play_pass_rate among non-dominated candidates"
+  }
+ ]
+}

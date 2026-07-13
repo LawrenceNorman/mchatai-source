@@ -1,79 +1,77 @@
 {
-  "$schema_version": "1.0.0",
-  "last_updated": "2026-06-23",
-  "notes": "Meta-Harness self-optimization loop policy. A proposer coding agent reads RAW execution traces (not summaries) + prior candidate bundles, rewrites the CONTENT surfaces listed in mutable_surfaces, and the loop benchmarks each candidate to build a Pareto frontier (accuracy vs context-token cost). MetaHarnessCoordinator (mChatAI+ Swift, DEBUG-only during soak) reads this. ALL policy here — no Swift constants (RULE #1). Tunable via PR to mchatai-source + refreshMchataisourceCache, no rebuild. Double-lock: enabled=true AND FeatureFlag metaHarnessEnabled=true are BOTH required for any non-dry-run campaign to fire. Either gate alone is a no-op.",
-
-  "enabled": false,
-  "enable_gate_flag": "metaHarnessEnabled",
-
-  "mutable_surfaces": [
-    "harness/context-recipes/",
-    "harness/systemprompt-relevance.json"
+ "$schema_version": "1.0.0",
+ "last_updated": "2026-07-12",
+ "notes": "Meta-Harness self-optimization loop policy. A proposer coding agent reads RAW execution traces (not summaries) + prior candidate bundles, rewrites the CONTENT surfaces listed in mutable_surfaces, and the loop benchmarks each candidate to build a Pareto frontier (accuracy vs context-token cost). MetaHarnessCoordinator (mChatAI+ Swift, DEBUG-only during soak) reads this. ALL policy here \u2014 no Swift constants (RULE #1). Tunable via PR to mchatai-source + refreshMchataisourceCache, no rebuild. Double-lock: enabled=true AND FeatureFlag metaHarnessEnabled=true are BOTH required for any non-dry-run campaign to fire. Either gate alone is a no-op.",
+ "enabled": false,
+ "enable_gate_flag": "metaHarnessEnabled",
+ "mutable_surfaces": [
+  "harness/context-recipes/",
+  "harness/systemprompt-relevance.json",
+  "wisdom/packs/"
+ ],
+ "_mutable_surfaces_notes": "Paths ending in '/' are directory prefixes (every file beneath is in-scope); others are single files. v1 = the paper's 'state construction' surfaces only. Generalize to wizard/prompts/*, harness/prompts/*, harness/routing/*, wisdom/packs/* in a later phase (each addition needs a schema-decode check in MetaHarnessBundleValidator + an invalidation hook in MetaHarnessOverlayService.invalidateContentCaches()). MH.P3 (2026-07-12): wisdom/packs/ added - validator decodes with the production GuidelinePack decoder, enforces ASCII-only + unique guideline ids, and blocks deletion/downgrade of baseline critical rules; MetaHarnessOverlayService.invalidateContentCaches() reloads HarnessWisdomService.",
+ "budget": {
+  "iterations": 8,
+  "candidates_per_iteration": 2,
+  "proposer_max_turns": 40,
+  "proposer_token_budget": 2000000,
+  "campaign_usd_cap": 15.0,
+  "per_candidate_usd_cap": 2.0,
+  "_notes": "Campaign cost = baseline benchmark + iterations*candidates_per_iteration*(proposer run + benchmark batch). campaign_usd_cap is a hard ceiling enforced from DebugTunnelWizardResult.estimatedCostUSD + proposer CLI spend; the loop breaks when reached. proposer_token_budget bounds a single proposer CLI run."
+ },
+ "benchmark": {
+  "catalog": "qa-flywheel/qaflywheel-metaharness-catalog.json",
+  "entries_per_candidate": 8,
+  "holdout_fraction": 0.4,
+  "repeats_per_entry": 1,
+  "difficulty_mix": {
+   "L1": 0.5,
+   "L2": 0.35,
+   "L3": 0.15
+  },
+  "_notes": "The coordinator fires DebugTunnelWizardResult-returning tunnelRunWizard in-process (same path SelfLearnCoordinator uses), so sessionID + inputTokens + estimatedCostUSD come back directly \u2014 no Python shell-out. holdout_fraction reserves a deterministic slice (entries flagged holdout:true, else every-Nth by index) used ONLY by the keep-bar for PR-eligibility; the proposer never sees benchmark cases (it reads the trace corpus + prior candidate bundles). Train metrics drive the frontier shown to the proposer; holdout metrics gate the PR."
+ },
+ "scoring": {
+  "accuracy_axis": "land_rate",
+  "accuracy_tiebreak": "mean_rubric_score",
+  "cost_axis": "mean_input_tokens",
+  "min_samples_for_score": 4,
+  "land_rate_source": "landing-ledger",
+  "_notes": "accuracy = land_rate (renderQuality=='playable' fraction joined from landing-ledger.jsonl by sessionID), tiebreak mean rubricScore/14 from rubric-ledger.jsonl. cost = mean DebugTunnelWizardResult.inputTokens (\u2248 context tokens fed to the model). A candidate with fewer than min_samples_for_score scored sessions is not placed on the frontier."
+ },
+ "keep_bar": {
+  "epsilon_land_rate": 0.02,
+  "require_holdout_nondominated": true,
+  "_notes": "A candidate is PR-eligible iff it Pareto-non-dominates-or-matches baseline on the HELD-OUT split AND does not regress land_rate beyond epsilon_land_rate. Lack of held-out coverage for a genre is NOT an auto-reject (RULE #3) \u2014 it is surfaced as a coverage-gap flag on the PR."
+ },
+ "proposer": {
+  "backend": "claude",
+  "invocation": "cat {PROMPT_FILE} | claude -p --dangerously-skip-permissions --model sonnet {ADD_DIRS}",
+  "_invocation_notes": "Print-mode CLI invocation run via mChatAIShell (unsandboxed) from the candidate dir as cwd. {PROMPT_FILE} = the composed proposer prompt written into the candidate dir; {ADD_DIRS} = --add-dir flags granting read access to the staged trace corpus + archive. Print mode (-p) is used instead of the agentic stream-json conductor because the proposer is a one-shot 'read traces, edit content files, write proposal.json' task. Swap 'sonnet' -> 'opus' here (zero rebuild) for higher-quality proposals at more cost. RULE #1: the CLI specifics live in content, not the Swift binary.",
+  "instructions_path": "harness/meta/proposer.md",
+  "protected_invariants_path": "harness/meta/protected-invariants.json",
+  "trace_corpus_globs": [
+   "DebugTunnel/settled/",
+   "Learning/rubric-ledger.jsonl",
+   "Learning/landing-ledger.jsonl",
+   "Learning/component-usage-ledger.jsonl",
+   "DebugTunnel/last_system_prompt_assembled.txt",
+   "DebugTunnel/autofix-cli/",
+   "PlayabilityDebug/",
+   "QualityIntelligence/incidents.jsonl"
   ],
-  "_mutable_surfaces_notes": "Paths ending in '/' are directory prefixes (every file beneath is in-scope); others are single files. v1 = the paper's 'state construction' surfaces only. Generalize to wizard/prompts/*, harness/prompts/*, harness/routing/*, wisdom/packs/* in a later phase (each addition needs a schema-decode check in MetaHarnessBundleValidator + an invalidation hook in MetaHarnessOverlayService.invalidateContentCaches()).",
-
-  "budget": {
-    "iterations": 8,
-    "candidates_per_iteration": 2,
-    "proposer_max_turns": 40,
-    "proposer_token_budget": 2000000,
-    "campaign_usd_cap": 15.00,
-    "per_candidate_usd_cap": 2.00,
-    "_notes": "Campaign cost = baseline benchmark + iterations*candidates_per_iteration*(proposer run + benchmark batch). campaign_usd_cap is a hard ceiling enforced from DebugTunnelWizardResult.estimatedCostUSD + proposer CLI spend; the loop breaks when reached. proposer_token_budget bounds a single proposer CLI run."
-  },
-
-  "benchmark": {
-    "catalog": "qa-flywheel/qaflywheel-metaharness-catalog.json",
-    "entries_per_candidate": 8,
-    "holdout_fraction": 0.40,
-    "repeats_per_entry": 1,
-    "difficulty_mix": { "L1": 0.50, "L2": 0.35, "L3": 0.15 },
-    "_notes": "The coordinator fires DebugTunnelWizardResult-returning tunnelRunWizard in-process (same path SelfLearnCoordinator uses), so sessionID + inputTokens + estimatedCostUSD come back directly — no Python shell-out. holdout_fraction reserves a deterministic slice (entries flagged holdout:true, else every-Nth by index) used ONLY by the keep-bar for PR-eligibility; the proposer never sees benchmark cases (it reads the trace corpus + prior candidate bundles). Train metrics drive the frontier shown to the proposer; holdout metrics gate the PR."
-  },
-
-  "scoring": {
-    "accuracy_axis": "land_rate",
-    "accuracy_tiebreak": "mean_rubric_score",
-    "cost_axis": "mean_input_tokens",
-    "min_samples_for_score": 4,
-    "land_rate_source": "landing-ledger",
-    "_notes": "accuracy = land_rate (renderQuality=='playable' fraction joined from landing-ledger.jsonl by sessionID), tiebreak mean rubricScore/14 from rubric-ledger.jsonl. cost = mean DebugTunnelWizardResult.inputTokens (≈ context tokens fed to the model). A candidate with fewer than min_samples_for_score scored sessions is not placed on the frontier."
-  },
-
-  "keep_bar": {
-    "epsilon_land_rate": 0.02,
-    "require_holdout_nondominated": true,
-    "_notes": "A candidate is PR-eligible iff it Pareto-non-dominates-or-matches baseline on the HELD-OUT split AND does not regress land_rate beyond epsilon_land_rate. Lack of held-out coverage for a genre is NOT an auto-reject (RULE #3) — it is surfaced as a coverage-gap flag on the PR."
-  },
-
-  "proposer": {
-    "backend": "claude",
-    "invocation": "cat {PROMPT_FILE} | claude -p --dangerously-skip-permissions --model sonnet {ADD_DIRS}",
-    "_invocation_notes": "Print-mode CLI invocation run via mChatAIShell (unsandboxed) from the candidate dir as cwd. {PROMPT_FILE} = the composed proposer prompt written into the candidate dir; {ADD_DIRS} = --add-dir flags granting read access to the staged trace corpus + archive. Print mode (-p) is used instead of the agentic stream-json conductor because the proposer is a one-shot 'read traces, edit content files, write proposal.json' task. Swap 'sonnet' -> 'opus' here (zero rebuild) for higher-quality proposals at more cost. RULE #1: the CLI specifics live in content, not the Swift binary.",
-    "instructions_path": "harness/meta/proposer.md",
-    "protected_invariants_path": "harness/meta/protected-invariants.json",
-    "trace_corpus_globs": [
-      "DebugTunnel/settled/",
-      "Learning/rubric-ledger.jsonl",
-      "Learning/landing-ledger.jsonl",
-      "Learning/component-usage-ledger.jsonl",
-      "DebugTunnel/last_system_prompt_assembled.txt",
-      "DebugTunnel/autofix-cli/"
-    ],
-    "_notes": "The proposer is a Claude Code CLI run (WizardCLIRunner) given --add-dir access to (a) its candidate bundle dir [RW] and (b) the read-only trace corpus + archive of prior candidates. Its instructions live in instructions_path (RULE #1 — the proposer's brain is hot-patchable content). It must edit ONLY files under its candidate dir; a deterministic post-run write-scope validator enforces this."
-  },
-
-  "apply": {
-    "auto_open_draft_pr": false,
-    "require_merge": true,
-    "max_draft_prs_per_campaign": 3,
-    "pr_branch_prefix": "meta/",
-    "_notes": "Ship posture: auto-open ONE draft PR per PR-eligible frontier knee (cost-optimal / balanced / quality-optimal), each labeled with its operating point + benchmark/cost deltas + the proposer's hypothesis. require_merge:true means a HUMAN merges the chosen operating point — the loop never merges. Gated by FeatureFlag metaHarnessAutoPR (default OFF); a dry-run (planned PR, no git) always works regardless of the flag."
-  },
-
-  "observability": {
-    "diag_command": "diagMetaHarness",
-    "log_namespace": "[MetaHarness]",
-    "session_metadata_tag": "metaharness-v1"
-  }
+  "_notes": "The proposer is a Claude Code CLI run (WizardCLIRunner) given --add-dir access to (a) its candidate bundle dir [RW] and (b) the read-only trace corpus + archive of prior candidates. Its instructions live in instructions_path (RULE #1 \u2014 the proposer's brain is hot-patchable content). It must edit ONLY files under its candidate dir; a deterministic post-run write-scope validator enforces this."
+ },
+ "apply": {
+  "auto_open_draft_pr": false,
+  "require_merge": true,
+  "max_draft_prs_per_campaign": 3,
+  "pr_branch_prefix": "meta/",
+  "_notes": "Ship posture: auto-open ONE draft PR per PR-eligible frontier knee (cost-optimal / balanced / quality-optimal), each labeled with its operating point + benchmark/cost deltas + the proposer's hypothesis. require_merge:true means a HUMAN merges the chosen operating point \u2014 the loop never merges. Gated by FeatureFlag metaHarnessAutoPR (default OFF); a dry-run (planned PR, no git) always works regardless of the flag."
+ },
+ "observability": {
+  "diag_command": "diagMetaHarness",
+  "log_namespace": "[MetaHarness]",
+  "session_metadata_tag": "metaharness-v1"
+ }
 }
