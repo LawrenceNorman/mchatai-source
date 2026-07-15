@@ -1,0 +1,34 @@
+{
+  "version": 1,
+  "lastUpdated": "2026-07-14",
+  "notes": "Phase M — the ONE model-choice policy for the harness (HarnessModelPolicyService). Per-surface x per-CLI model + the API provider order, all zero-rebuild. Resolution order: user override (Models UI) -> Best-Quality upgrade (claude build/iterate only) -> content (below) -> CLI native default. Gated by the harness_model_policy flag (default OFF); when OFF the harness uses the legacy AutoFixCLIPolicyService pins. NEVER auto-selects fable (too expensive) - fable is opt-in via an explicit user override only. RULE #1: per-CLI flag syntax lives in flagTemplate here, not in the binary.",
+  "flagTemplate": {
+    "claude": ["--model", "{model}"],
+    "codex": ["--model", "{model}"],
+    "gemini": []
+  },
+  "surfaces": {
+    "cli_autofix": {
+      "claude": {
+        "model": "haiku",
+        "ladder": ["haiku", "sonnet", "opus"],
+        "rationale": "Tiny single-file JS fixes: haiku benchmarked fastest (2026-06-01). Not upgraded by Best Quality - autofix is speed-sensitive, not the quality-sensitive path."
+      }
+    },
+    "cli_build": {},
+    "cli_iterate": {},
+    "_bestQuality": {
+      "claude": {
+        "model": "opus",
+        "ladder": ["opus", "sonnet", "haiku"],
+        "rationale": "In Best Quality routing mode, claude build+iterate surfaces upgrade to opus. Fable is intentionally NOT the auto-upgrade target (very expensive, burns tokens); a user can still pin fable per-surface via the Models UI."
+      }
+    }
+  },
+  "apiProviderOrder": ["google", "openai", "anthropic", "perplexity"],
+  "_apiProviderOrderNote": "Delivery audit / vision-judge provider order. Replaces the hardcoded [.google,.openAI,.anthropic,.perplexity] order in detectDefaultProvider (a RULE #1 in-binary provider preference). Reorder here to change which provider judges CLI output, zero-rebuild.",
+  "modelChoices": {
+    "claude": [["", "Default"], ["haiku", "Haiku (fastest)"], ["sonnet", "Sonnet"], ["opus", "Opus (best)"], ["fable", "Fable ($$$)"]]
+  },
+  "_modelChoicesNote": "The model options the Models UI picker offers per CLI ([value, label]; value '' = default). A CLI with a REAL curated list here (more than a lone Default) uses it verbatim - that's why claude keeps its family ALIASES (opus/sonnet/haiku auto-follow the newest of each family via the claude CLI). A CLI NOT listed here (codex today) is populated DYNAMICALLY from the weekly OpenRouter catalog (llm-catalog/providers/<provider>.json): claude<-anthropic, codex<-openai, filtered to real+live ids (directApiName present, heartbeat not-failed) so the value is a valid `--model`. So a new OpenAI model auto-appears in the codex picker after the Monday model-catalog-sync cron, zero rebuild. gemini/antigravity is NOT listed and has no `--model` (flagTemplate.gemini=[]) - its model is the stepwise planner's job - so it shows just 'Default (via planner)'."
+}

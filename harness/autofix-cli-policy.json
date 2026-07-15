@@ -1,7 +1,17 @@
 {
   "version": 1,
-  "lastUpdated": "2026-06-01",
-  "notes": "Per-CLI flags injected into the WizardCLIRunner extraArgs for the mini-app auto-fix path (autoFixMiniAppWithCLI in AIHarness+MiniAppOps.swift). Lets us pin a fast model per CLI without rebuilding mChatAI+ — ship via mchatai-source PR + refreshMchataisourceCache tunnel command. Phase ROUTE+2, see project_phase_route_cli_first_autofix memory.",
+  "lastUpdated": "2026-07-13",
+  "notes": "Per-CLI flags injected into the WizardCLIRunner extraArgs for the mini-app auto-fix path (autoFixMiniAppWithCLI in AIHarness+MiniAppOps.swift). Lets us pin a fast model per CLI without rebuilding mChatAI+ — ship via mchatai-source PR + refreshMchataisourceCache tunnel command. Phase ROUTE+2, see project_phase_route_cli_first_autofix memory. Phase 0 (2026-07-13): `perCLI` governs the AUTOFIX surface ONLY. Full feature/redesign iterates (Iterate button, typed follow-up, hub-URL remix) read `perSurface.iterate`; when absent they use the CLI default model and do NOT inherit the autofix haiku pin.",
+  "perSurface": {
+    "iterate": {
+      "claude": {
+        "extraArgs": [],
+        "rationale": "Phase 0 (2026-07-13): feature/redesign iterates use the CLI default model. The autofix `--model haiku` pin was benchmarked ONLY for tiny single-file JS fixes; it was silently starving full iterates (the chaos-chess redesign ran on haiku). Leave empty (CLI default) unless a per-model iterate benchmark says otherwise; this is the zero-rebuild lever to change it."
+      },
+      "codex": { "extraArgs": [], "rationale": "CLI default model for iterates." },
+      "gemini": { "extraArgs": [], "rationale": "Model selection is the StepwiseRunner planner's job; no CLI flag." }
+    }
+  },
   "perCLI": {
     "claude": {
       "extraArgs": ["--model", "haiku"],
