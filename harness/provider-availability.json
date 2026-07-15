@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "lastUpdated": "2026-04-28",
+  "lastUpdated": "2026-07-14",
   "_source_of_truth": true,
   "_comment": "Per CLAUDE.md ABSOLUTE RULE #1, the policy that decides 'is this provider available' lives here as content. The Swift skeleton (AgentModelRouter.checkAvailability) just consults this file plus a fixed set of named predicates whose implementations live in ProviderAvailabilityContent.swift. To add a new flavor of 'available' (e.g. require a minimum cached-model count for Ollama), add the predicate function in Swift (one rebuild) and from then on retunes ship via this JSON.",
 
@@ -11,7 +11,7 @@
     "perplexity":   { "predicate": "hasAPIKey_perplexity" },
     "ollama":       { "predicate": "hasOllamaModelsOrEnabled" },
     "foundation":   { "predicate": "always" },
-    "mchataicloud": { "predicate": "hasCloudTokens" },
+    "mchataicloud": { "predicate": "cloudReady" },
     "openrouter":   { "predicate": "hasAPIKey_openrouter" }
   },
 
@@ -26,6 +26,7 @@
     "hasAPIKey_perplexity": "Keychain has a non-empty Perplexity key.",
     "hasAPIKey_openrouter": "Keychain has a non-empty OpenRouter key.",
     "hasOllamaModelsOrEnabled": "Either OllamaEnabled UserDefault is true (legacy opt-in), OR there's at least one Ollama model cached locally (= user has installed something via Discover Models or `ollama pull`).",
-    "hasCloudTokens": "User has compute tokens via CloudTokenManager (mChatAICloud)."
+    "hasCloudTokens": "User has compute tokens via CloudTokenManager (mChatAICloud).",
+    "cloudReady": "mChatAI Cloud is routable: cloudComputeTokens feature flag ON AND a signed-in Firebase user AND a positive compute-token balance. Falls out of the routing ladder when logged out or out of tokens (the harness row can still show as unavailable)."
   }
 }
