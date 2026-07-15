@@ -349,6 +349,15 @@
           "verifyAfterEachStep": false
         }
       },
+      "plainText": {
+        "executable": "agy",
+        "baseFlags": ["--dangerously-skip-permissions", "--add-dir", "{workDir}"],
+        "promptFlag": "-p",
+        "defaultModel": "Gemini 3.1 Pro (High)",
+        "wallClockTimeoutSec": 900,
+        "heartbeatIntervalSec": 30,
+        "notes": "Phase AGY (2026-07-14) — Google's `agy` (Antigravity CLI) replaces the deprecated @google/gemini-cli (free tier dead: IneligibleTierError). agy is PLAIN TEXT, dump-at-end: it emits ZERO stdout until exit, so the runner's drivePlainText path spawns ONCE, treats the final stdout dump as assistantOutput, and reads edited files back from disk (the real result). CRITICAL: agy's `-p`/`--print` is a STRING flag — the goal must be the VALUE of -p, appended LAST (nothing between -p and the goal), NOT a trailing positional like the old gemini CLI. The runner appends [promptFlag, goal] after baseFlags + any extraArgs (which may carry --model from HarnessModelPolicyService). {workDir} is resolved by the runner (also the spawn cwd). Only entered when the antigravity_agy feature flag is ON; flag-OFF keeps the stream-json/stepwise path byte-identical. AUTH is Gemini-model-only today (Claude/GPT-OSS via agy need a separate paid Antigravity login), and the free tier is flaky on large single-shot builds — hence a generous 900s wall-clock cap and the OFF-by-default flag. defaultModel is used only when extraArgs carry no --model."
+      },
       "optimization": {
         "model": "gemini-2.5-pro",
         "contextFiles": [
