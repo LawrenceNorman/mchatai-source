@@ -1,12 +1,18 @@
 {
   "_meta": {
-    "purpose": "Which models the mChatAI Cloud (compute-token) provider exposes. sourceProviders = providers resold WHOLESALE (every active model, x markup). curatedOpenRouter = SPECIFIC OpenRouter slugs ALSO surfaced via Cloud (a curated short-list, NOT the full 400+). Read by macOS CloudProvider.computedMchataiCloudModels() via MchataisourceCacheService. Edit + git push + refreshMchataisourceCache ships with no app rebuild (RULE #1).",
+    "purpose": "Which models the mChatAI Cloud (compute-token) provider exposes. sourceProviders = providers resold WHOLESALE (every active model, x markup). autoExpose = POLICY-based auto-surfacing of OpenRouter chat models — no hand-maintained list; mirrors upstream and filters at the picker, so new OpenRouter models appear on Cloud automatically. curatedOpenRouter = explicit override slugs to ALSO surface (belt-and-suspenders for brand-new models not yet in the weekly catalog mirror). Read by macOS CloudProvider.computedMchataiCloudModels() via MchataisourceCacheService. Edit + git push + refreshMchataisourceCache ships with no app rebuild (RULE #1).",
     "consumer": "mchatai_macOS/mChatAI/mChatAI/CloudProvider.swift",
-    "fallback": "binary carries [anthropic,openai,google,perplexity] + [] curatedOpenRouter as _fallback_only defaults (offline first-launch)",
-    "server_note": "A curatedOpenRouter slug ALSO requires the compute-proxy PAID_PASSTHROUGH_ALLOWLIST env to include that slug (server allow-gate at index.js), and the catalog entry must keep directApiName:null so the id passes through verbatim to OpenRouter.",
-    "schema_version": "1",
-    "last_updated": "2026-07-14"
+    "fallback": "binary carries [anthropic,openai,google,perplexity] + [] curatedOpenRouter + autoExpose.enabled=false as _fallback_only defaults (offline first-launch is byte-identical to pre-autoExpose)",
+    "server_note": "The compute-proxy ACCEPT side is gated separately by env (billing is safe either way — passthrough cost is read from OpenRouter's usage.cost + markup, 0% drift): set PAID_PASSTHROUGH_AUTO=true so the proxy accepts ANY OpenRouter passthrough slug (optionally minus PAID_PASSTHROUGH_DENYLIST). PAID_PASSTHROUGH_ALLOWLIST remains as a narrow always-allow override. Known CHAT_MODELS still take the direct-provider path; only unknown OR-shaped slugs use passthrough. Do NOT set OPENROUTER_ENABLED=true for this — that reroutes known models off their direct APIs.",
+    "schema_version": "2",
+    "last_updated": "2026-07-20"
   },
   "sourceProviders": ["anthropic", "openai", "google", "perplexity"],
-  "curatedOpenRouter": ["z-ai/glm-5.2"]
+  "autoExpose": {
+    "enabled": true,
+    "requireCapability": "chat",
+    "excludeRetired": true,
+    "denylist": []
+  },
+  "curatedOpenRouter": ["z-ai/glm-5.2", "moonshotai/kimi-k3"]
 }
