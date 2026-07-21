@@ -18,6 +18,11 @@ bar-quantized launching, scenes, and transitions at a fixed per-pack BPM.
 |---|---|---|---|---|---|
 | Warehouse 128 (`loopstar-house-v1`) | `loops/` | `ls_` | 128 | 90,000 frames | straight (0.5) |
 | Boom Clack 90 (`loopstar-boombap-v1`) | `boombap/` | `lsb_` | 90 | 128,000 frames | 0.58 |
+| Neon Pop 100 (`loopstar-pop-v1`) | `pop/` | `lsp_` | 100 | 115,200 frames | straight (0.5) |
+| Dusty 75 (`loopstar-lofi-v1`) | `lofi/` | `lsl_` | 75 | 153,600 frames | 0.60 |
+| Purple Trap 140 (`loopstar-trap-v1`) | `trap/` | `lst_` | 140 | 82,284 frames | straight (0.5) |
+| East Grime 140 (`loopstar-grime-v1`) | `grime/` | `lsg_` | 140 | 82,284 frames | straight (0.5) |
+| Junglist 174 (`loopstar-dnb-v1`) | `dnb/` | `lsd_` | 174 | 66,208 frames | straight (0.5) |
 
 ## loops/ — "Warehouse 128" (`loopstar-house-v1`)
 
