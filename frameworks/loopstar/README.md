@@ -23,6 +23,15 @@ bar-quantized launching, scenes, and transitions at a fixed per-pack BPM.
 | Purple Trap 140 (`loopstar-trap-v1`) | `trap/` | `lst_` | 140 | 82,284 frames | straight (0.5) |
 | East Grime 140 (`loopstar-grime-v1`) | `grime/` | `lsg_` | 140 | 82,284 frames | straight (0.5) |
 | Junglist 174 (`loopstar-dnb-v1`) | `dnb/` | `lsd_` | 174 | 66,208 frames | straight (0.5) |
+| Garage Rock 120 (`loopstar-rock-v1`) | `rock/` | `lsr_` | 120 | 96,000 frames | straight (0.5) |
+| Motown Soul 96 (`loopstar-soul-v1`) | `soul/` | `lss_` | 96 | 120,000 frames | 0.54 |
+| Front Porch Folk 110 (`loopstar-folk-v1`) | `folk/` | `lsf_` | 110 | 104,728 frames | straight (0.5) |
+| Basement Punk 168 (`loopstar-punk-v1`) | `punk/` | `lsk_` | 168 | 68,572 frames | straight (0.5) |
+
+The 2026-07-21 additions (rock/soul/folk/punk) lean acoustic: rock and punk carry
+tonal-burst+noise snares and driven power-chord guitars, soul is a swung
+Rhodes-style kit with tambourine, and folk's guitar figures come from a
+deterministic Karplus-Strong plucked-string voice in the generator.
 
 ## loops/ — "Warehouse 128" (`loopstar-house-v1`)
 
