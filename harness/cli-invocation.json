@@ -1,7 +1,7 @@
 {
   "$schema": "https://mchatai.com/schemas/cli-invocation-v1.json",
   "version": "2.0.0",
-  "last_updated": "2026-05-01",
+  "last_updated": "2026-07-20",
   "description": "Per-CLI-backend invocation policy + optimization config for mChatAIShell dev sessions. Each CLI has unique capabilities (MCP, sub-agents, model selection, context management) — this file is the single source of truth for how we configure them.",
   "defaults": {
     "startBody": {
@@ -110,6 +110,7 @@
         "--output-format",
         "stream-json",
         "--verbose",
+        "--include-partial-messages",
         "--dangerously-skip-permissions"
       ],
       "awaitingApproval": {
@@ -137,7 +138,7 @@
         "requires": null,
         "textPath": null
       },
-      "notes": "Claude Code stream-json frames are line-delimited JSON objects with a top-level `type` field. `--verbose` is required when using --output-format stream-json (Claude Code refuses without it). Auto-approval writes y\\n on tool_use; complete fires on `result` event. Assistant text nests under message.content[].text (array of blocks)."
+      "notes": "Claude Code stream-json frames are line-delimited JSON objects with a top-level `type` field. `--verbose` is required when using --output-format stream-json (Claude Code refuses without it). Auto-approval writes y\\n on tool_use; complete fires on `result` event. Assistant text nests under message.content[].text (array of blocks). `--include-partial-messages` (added 2026-07-20, needs Claude Code >=2.x) streams `stream_event` frames with live text/thinking deltas so the PTY shows what the model is doing in real time; the runner ignores unknown event types, so these frames are visibility-only. Remove the flag to revert to quiet logs (~10-50x smaller)."
     },
     "codex": {
       "invocationFlags": [
