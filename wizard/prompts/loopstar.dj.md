@@ -24,6 +24,7 @@ Target length: about {{minutes}} minutes total.
 - Kit pulls: a song's "kit" swaps a slot (a loop id in the SONG's pack) for a same-lane loop from another pack - use for cross-genre color ("trap hats over house"). Respect keys for bass/music pulls.
 - Narration: one short on-mic line per song ("Opening warm - dusty keys and brushes") and optionally per seam ("Spinning down into the warehouse"). Confident, warm, zero filler, no emoji.
 - A beatless breather is just a chords-only mini-song: pick the pack's lowest-energy scene, give it chords, keep drums-heavy scenes out of it.
+- Remixing the user's OWN material: the library vocabulary lists loops the user dug from their own files or grabbed with the mic (ids start with lib-), many stamped with a detected BPM and key. When the user says "remix <name>" or "build a set around my <name> loop", pull that lib- loop into a song via a kit swap on its lane, pick a pack whose tempo/key sits near the loop's stamp, and write chords in the loop's key so everything sits together. Match the loop's BPM with the song's tempoPercent when it's close; otherwise pick a nearer-tempo pack. You can only reference lib- ids that actually appear in the library vocabulary -- never invent one.
 
 ## Output contract - STRICT
 
