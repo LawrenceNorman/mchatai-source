@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "_doc": "Fundamentals reinvention lint (2026-07-22). Observe-only detector run at the install chokepoint (InstallGateChain -> FundamentalsLint.swift) AFTER the mchatai-shell generator. Every earlier watcher was tuned to FAILURE (render probe, delivery audit, rubric) - an app that hand-inlines a 1,000-word dictionary renders fine, delivers the ask, and scores as a success, so nothing flagged it (Word Quest rejected 'honed', 2026-07-21). Each rule: `detect` (ICU regex) marks a reinvented fundamental; `unlessReference` suppresses when the artifact already uses the platform primitive (a kept inline FALLBACK next to the real API call is the golden-example pattern and must not fire). Hits land in the incident ledger as kind 'fundamentals-reinvented' with the suggestion text - a signal for the meta-harness and future delivery-report surfacing, NEVER a gate and NEVER a mutation (RULE #3). Bounded repetition counts ({40}/{60}) keep the scan cheap and false-positive-safe: 40 consecutive quoted short words / 60 consecutive bare 5-letter words do not occur in prose or ordinary code. Add rules here for future fundamentals (palettes, geo, ...) - zero rebuild.",
+  "rules": [
+    {
+      "id": "dict-inline-quoted-wordlist",
+      "fundamentalID": "dictionaries",
+      "detect": "(?:[\"'][a-z]{4,8}[\"']\\s*,\\s*){40}",
+      "unlessReference": "window\\.mchatai\\.dictionary",
+      "suggestion": "This app inlines its own word list (40+ consecutive quoted short words). Use the platform dictionary instead: const dict = window.mchatai.dictionary('english-5letter'); dict.contains(word.toLowerCase()) - the full 14,855-word guess set is auto-attached at install (mchatai-shell.js), and english-5letter-answers (2,315 curated words) covers daily answers. Keep a tiny inline list only as a feature-detect fallback. See wisdom u-dictionary-preferred / pg-009."
+    },
+    {
+      "id": "dict-inline-bare-wordrun",
+      "fundamentalID": "dictionaries",
+      "detect": "(?:\\b[a-z]{5}[ \\t\\n]+){60}",
+      "unlessReference": "window\\.mchatai\\.dictionary",
+      "suggestion": "This app embeds a whitespace-separated run of 60+ five-letter words (a hand-rolled dictionary blob). Use the platform dictionary instead: const dict = window.mchatai.dictionary('english-5letter'); dict.contains(word.toLowerCase()) - the full 14,855-word guess set is auto-attached at install (mchatai-shell.js). Keep a tiny inline list only as a feature-detect fallback. See wisdom u-dictionary-preferred / pg-009."
+    }
+  ]
+}
