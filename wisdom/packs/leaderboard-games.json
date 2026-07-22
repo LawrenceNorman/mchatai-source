@@ -1,6 +1,6 @@
 {
   "packID": "leaderboard-games",
-  "version": 2,
+  "version": 3,
   "displayName": "Leaderboard-Ready Mini-Games",
   "description": "Patterns extracted from shipping the v1 hosted high-score service across 10+ games on mchatai.com. Every rule here is rooted in a real bug we shipped + had to fix. Apply when generating ANY web mini-app that should integrate with window.mChatAI.leaderboard.",
   "categories": [
@@ -241,8 +241,23 @@
         "const LEVELS = [{target:1500,moves:30},{target:3000,moves:30},{target:5000,moves:28},{target:7500,moves:26},{target:10500,moves:25},{target:14000,moves:24},{target:18000,moves:22},{target:22500,moves:22},{target:28000,moves:20},{target:34500,moves:20},{target:42000,moves:18},{target:50000,moves:18}];",
         "On last-level win: button label = \"New Game+\", click handler resets cumulativeScore and starts level 0."
       ]
+    },
+    {
+      "id": "lb-017-no-client-publish-detection",
+      "rule": "NEVER derive leaderboard UI or messaging from whether `window.mChatAI.leaderboard` exists, and NEVER print a 'Publish this game to compete' / 'Publish to unlock the leaderboard' note from inside the game. The presence of `window.mChatAI.leaderboard` is a RUNTIME-HOST signal (the native app injects it in the in-app player, and the hub server injects it on the published page; it is ABSENT in a plain browser tab, a file:// open, or an exported copy) -- it is NOT a published-vs-unpublished signal. A game that keys UI off `!window.mChatAI.leaderboard` will tell an already-published game it needs publishing whenever it runs outside a bridge host. Publish state is invisible to client JS; only the host knows it. Follow lb-001 + lb-007: emit the meta tag + score/game-over DOM text and let the server-injected bridge render ALL leaderboard UI. If you want a no-bridge fallback, hide the leaderboard section silently, or call submit() and ignore a null return per lb-013 -- do not print publish instructions.",
+      "why": "2026-07-22: a published Word Quest showed 'Publish this game to compete on the global leaderboard' in its win modal when played in the in-app player. Root cause: the generated game did `const lb = window.mChatAI && window.mChatAI.leaderboard; if(!lb){ note.textContent='Publish this game to compete...'; }`. That object is injected by the host shim / hub bridge, so it was simply absent in that runtime -- the game mislabeled 'no bridge in this runtime' as 'not published'. Companion native fix landed the same day: the iOS in-app player now injects the same window.mChatAI.leaderboard shim macOS already had, so the bespoke branch no longer fires in-app; this rule stops new games from reintroducing the anti-pattern.",
+      "severity": "important",
+      "appliesTo": [
+        "miniapp",
+        "webspa",
+        "anyGame"
+      ],
+      "examples": [
+        "GOOD: leaderboard section stays hidden until a bridge submit resolves; on null (offline / no bridge) it stays hidden with no publish text.",
+        "BAD: if (!window.mChatAI || !window.mChatAI.leaderboard) note.textContent = 'Publish this game to compete on the global leaderboard';"
+      ]
     }
   ],
-  "_last_updated": "2026-05-11 — added lb-012 native-auth-bridge + lb-013 offline-graceful + lb-014 offline-queue (PR-2/PR-5)",
-  "lastUpdated": "2026-05-11"
+  "_last_updated": "2026-07-22 — added lb-017 no-client-publish-detection (mislabeled bridge-absence as unpublished)",
+  "lastUpdated": "2026-07-22"
 }

@@ -1,7 +1,7 @@
 {
   "$schemaVersion": "1.0.0",
   "$description": "Registry of post-deploy enhancement offers shown after a wizard run when the user confirms 'Was this automation set up successfully? → Yes' (or taps the 'Looks great!' pill). Loaded by macOS EnhancementOfferRegistry.swift, evaluated by EnhancementOfferMatcher.swift. Each offer becomes a tap-pill on the post-success assistant message. Tapping fires AIHarness.continueDevelopment(for:withFeedback:) with prose lifted from feedbackPromptTemplate.",
-  "$lastUpdated": "2026-05-12 — initial framework, leaderboard + sound-effects offers",
+  "$lastUpdated": "2026-07-22 -- added bodyContainsAny capability body-scan so already-present leaderboard/sound aren't re-offered on markerless off-catalog apps",
   "offers": [
     {
       "id": "offer.add-leaderboard",
@@ -13,7 +13,10 @@
       "deterministicMatcher": "scoringGame",
       "llmAppliesWhenPrompt": "Would this artifact benefit from a public leaderboard? Look for ANY scoring or ranking signal that persists between rounds: a `score`/`points`/`streak`/`bestTime`/`movesCount` variable that climbs during play, a final-screen reveal (game over, quiz finished, level cleared, win/lose dialog), or per-round outcome (correct/wrong tally, time-to-solve). Reply yes for: trivia, puzzle clears, arcade games, time-attack games, daily-streak games, score-attack games. Reply no for: pure tools/utilities (calculator, converter), creative sandboxes (drawing, music sequencer), informational dashboards. The leaderboard does NOT require an existing Lego marker — bare HTML/JS games with score state qualify.",
       "feedbackPromptTemplate": "prompts/add-leaderboard.md",
-      "alreadyAppliedMarker": { "addonsContains": "recipe.with-leaderboard" },
+      "alreadyAppliedMarker": {
+        "addonsContains": "recipe.with-leaderboard",
+        "bodyContainsAny": ["mchatai-leaderboard-mode", "leaderboard.submit"]
+      },
       "keywords": ["leaderboard", "high score", "compete"]
     },
     {
@@ -26,7 +29,10 @@
       "deterministicMatcher": null,
       "llmAppliesWhenPrompt": "Would this artifact benefit from sound effects? Look for game-loop events (collision, score change, game over, level up) WITHOUT existing audio calls (new Audio, AudioContext, .play(), AudioManager). Reply yes ONLY when the artifact is an interactive game/animation that's currently silent. Reply no for static UIs, forms, or already-sonified games.",
       "feedbackPromptTemplate": "prompts/add-sound-effects.md",
-      "alreadyAppliedMarker": { "componentsContains": "resources.audio-manager" },
+      "alreadyAppliedMarker": {
+        "componentsContains": "resources.audio-manager",
+        "bodyContainsAny": ["audiocontext", "webkitaudiocontext", "new audio(", "audiomanager", "tone.js", "howler"]
+      },
       "keywords": ["sound", "audio", "sfx", "music"]
     }
   ]
