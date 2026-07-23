@@ -39,8 +39,8 @@
         ["mchatai-leaderboard-mode", "window.mChatAI.leaderboard", "mChatAI.leaderboard", "Leaderboard.submitFinal", "GameOverWithRank"]
       ],
       "_note_no_bare_leaderboard": "group2 (the bespoke-board signal) deliberately OMITS the bare word 'leaderboard' -- it is a substring of the REQUIRED hub markers in group3 ('mchatai-leaderboard-mode', 'window.mChatAI.leaderboard'), so including it would let a correct hub-only game satisfy group2 spuriously. Detect the bespoke board via distinctive score-KEY / heading tokens that never appear in the hub integration itself.",
-      "skipIfAny": ["__mchataiLBNeutralize"],
-      "userNote": "This build has BOTH a local score table (localStorage) AND the hub leaderboard hooks. On the community hub the server injects the REAL cross-player board, so the local one would double-render. I switched off the local table's saved scores on the hub so you won't see two boards' worth of data. To drop the extra local board UI entirely, re-iterate with 'remove the local score table, keep only the hub leaderboard'.",
+      "skipIfAny": ["__mchataiLBNeutralize2"],
+      "userNote": "This build has BOTH a local score table (localStorage) AND the hub leaderboard hooks. On the community hub the server injects the REAL cross-player board (it uses your signed-in account name), so the local one would double up. I switched off the local table's saved scores AND hid its 'enter your name' prompt on the hub, so you'll only see the real board. The local list container may still render empty; re-iterate with 'remove the local score table, keep only the hub leaderboard' to drop it entirely.",
       "retryHint": "The app renders a bespoke localStorage score table ALONGSIDE the hub leaderboard hooks, so on the hub two boards appear. REMOVE the local score table (its localStorage read/write AND its on-screen UI) and keep ONLY the hub integration (the <meta name=\"mchatai-leaderboard-mode\"> tag + the score element). Do NOT render your own leaderboard UI (wisdom lb-007)."
     }
   ]

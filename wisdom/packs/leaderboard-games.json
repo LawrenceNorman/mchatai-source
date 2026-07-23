@@ -1,6 +1,6 @@
 {
   "packID": "leaderboard-games",
-  "version": 3,
+  "version": 4,
   "displayName": "Leaderboard-Ready Mini-Games",
   "description": "Patterns extracted from shipping the v1 hosted high-score service across 10+ games on mchatai.com. Every rule here is rooted in a real bug we shipped + had to fix. Apply when generating ANY web mini-app that should integrate with window.mChatAI.leaderboard.",
   "categories": [
@@ -255,6 +255,22 @@
       "examples": [
         "GOOD: leaderboard section stays hidden until a bridge submit resolves; on null (offline / no bridge) it stays hidden with no publish text.",
         "BAD: if (!window.mChatAI || !window.mChatAI.leaderboard) note.textContent = 'Publish this game to compete on the global leaderboard';"
+      ]
+    },
+    {
+      "id": "lb-018-no-bespoke-localstorage-board-or-name-entry",
+      "rule": "NEVER build a bespoke local high-score TABLE (a localStorage top-N list) or a name/initials ENTRY prompt (a text <input> at game-over with 'Add your name' / 'Enter your initials' + a Save button). The hub board is the ONLY leaderboard: emit <meta name=\"mchatai-leaderboard-mode\"> in <head>, expose the score (id=\"score\" / [data-mchatai-score] / call window.mChatAI.leaderboard.submit), and on the community hub the SERVER injects the real cross-player board that uses the player's signed-in ACCOUNT NAME -- there is no manual name entry and no localStorage table. Shipping your own alongside the hub hooks double-renders on the hub AND the name prompt asks for a name that goes nowhere (the account name is used, and its save is neutralized). Sibling of lb-007 (which forbids trophy/link/button UI); this one forbids the localStorage store + the name-entry input specifically. If you truly want an offline-only high-score memory, that is the SINGLE exception and it MUST render its table + name prompt ONLY when window.mChatAI.leaderboard is ABSENT (falsy).",
+      "why": "2026-07-23: weir-rabbit v7 shipped a localStorage Top-8 table plus a '\\ud83c\\udfc6 New high score! Add your name:' <input> alongside the hub meta tag + submit hooks. On the hub the server board (account-name, cross-player) is the real one, so the bespoke name box is dead + confusing and the local table duplicates the board. The reinvention gate now neutralizes both on the hub, and asking the wizard to 'remove the local table' is unreliable (the iterate/branch flow is removal-hostile and often makes no edits) -- so the durable fix is to NOT generate it. This rule is CRITICAL because it keeps recurring across games.",
+      "severity": "critical",
+      "appliesTo": [
+        "miniapp",
+        "webspa",
+        "anyGame"
+      ],
+      "examples": [
+        "GOOD: <meta name=\"mchatai-leaderboard-mode\" content=\"fastest\">; on game-over set the score element + call window.mChatAI.leaderboard.submit({score}); render NO local table and NO name input -- the server draws the board with the account name.",
+        "BAD: localStorage 'topTimes' array + an overlay with <input id=\"nameInput\" placeholder=\"YOU\"> and a SAVE button shown on every game-over.",
+        "OK offline-only exception: if (!(window.mChatAI && window.mChatAI.leaderboard)) { showLocalBoardAndNamePrompt(); }  // gated to hub-absent only"
       ]
     }
   ],
