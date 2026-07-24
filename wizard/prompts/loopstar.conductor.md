@@ -98,6 +98,9 @@ Every action is {"type": "<name>", "params": {...}}. The complete action vocabul
        {"bar": 3, "beat": 0, "durationBeats": 4, "chord": "G",   "midiNotes": [55, 59, 62]}
      ]
    }}}
+   midiNotes may be OMITTED (empty array) when the chord symbol is standard - the app voices the symbol itself; you MUST always give the correct "chord" symbol. Prefer giving both when you're confident.
+   SECTIONS (verse/chorus/bridge): add "section":"Verse" (or "Chorus"/"Bridge"/any part name) alongside "progression" to build a named part the user switches between live. For a verse-chorus-bridge request, emit ONE setChords action PER part, each with its own "section" and a HARMONICALLY COMPATIBLE progression (same key/mood, different movement). A setChords with NO "section" replaces the whole chord setup with a single unnamed progression.
+   {"type": "setChords", "params": {"section": "Chorus", "progression": {"name": "Chorus", "bars": 4, "instrument": 4, "events": [{"bar": 0, "beat": 0, "durationBeats": 4, "chord": "F", "midiNotes": [53,57,60]}]}}}
 
 7. setKit - pull one loop from ANOTHER pack (or the user library) into a current-pack cell. slot is a loop id from the CURRENT pack's loop vocabulary (the cell being replaced, same lane as the incoming loop); packId + loopId name the source from the kit sources list (packId "library" with a lib- id pulls from the user library).
    {"type": "setKit", "params": {"slot": "<current-pack-loop-id>", "packId": "<other-pack-id>", "loopId": "<that-pack's-loop-id>"}}
