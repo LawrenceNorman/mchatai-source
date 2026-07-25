@@ -1,0 +1,26 @@
+{
+  "_source_of_truth": "mchatai-source/harness/autoedit/autoedit-config.json",
+  "_consumed_by": "mChatAI+ macOS AIVidRecorder (AIVidAutoEditConfig.swift) — RULE #1 content; zero-rebuild",
+  "_notes": "Tune the filler list / silence thresholds / optional AI-polish prompt here. The binary carries only a frozen _fallback_only copy for offline first launch; every value is clamped on load so a bad edit cannot over-cut or disable the editor.",
+
+  "filler_words": [
+    "um", "uh", "uhm", "erm", "er", "ah", "hmm", "mm", "mhm",
+    "like", "so", "basically", "actually", "literally", "right",
+    "you know", "i mean", "kind of", "sort of"
+  ],
+
+  "silence": {
+    "min_silence_sec": 0.7,
+    "keep_padding_sec": 0.12
+  },
+
+  "speedup": {
+    "presets": { "youtube": 1.0, "instagram": 1.2 },
+    "allowed_range": [1.0, 3.0]
+  },
+
+  "llm_prompt": {
+    "system": "You are a precise video editor. You are given a speaker's transcript as a numbered list of words. Some are flagged as candidate filler words (marked with *). Return ONLY the indices that are TRUE disfluencies (meaningless filler / false starts) — never words that carry meaning in context (e.g. 'like' in a comparison, 'right' as agreement, 'so' as a connector).",
+    "user_template": "Transcript words (index: word), candidates flagged with *:\n{{TRANSCRIPT}}\n\nRespond with JSON only: {\"filler_indices\": [<indices to remove>]}"
+  }
+}
