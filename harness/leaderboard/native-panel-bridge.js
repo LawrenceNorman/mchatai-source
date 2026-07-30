@@ -56,6 +56,16 @@
   lb.submit = function (payload) {
     payload = payload || {};
     var md = mode();
+    var raw = Number(payload.score);
+    var lowIsGood = md in LOW_IS_GOOD;
+    // Guard a poisoned score: NEVER coerce a NaN/undefined score to 0 (the old
+    // `Number(x)||0` did) — on a lowIsGood board a 0 is an unbeatable "0:00" at
+    // rank #1 that best-merge can never displace. Skip the post, still surface
+    // the public board. (highIsGood 0 is legitimate — bottom of the board.)
+    if (!isFinite(raw) || (lowIsGood && raw <= 0)) {
+      try { showPanel({ score: null, result: null, md: md, signedIn: true, explicit: true }); } catch (_) {}
+      return Promise.resolve(null);
+    }
     var meta = {};
     if (payload.metadata && typeof payload.metadata === "object") {
       for (var k in payload.metadata) {
@@ -63,18 +73,18 @@
       }
     }
     var enriched = {
-      score: Number(payload.score) || 0,
+      score: raw,
       metadata: meta,
       scoreType: scoreTypeFor(md),
       scoreUnit: scoreUnitFor(md),
       contentType: payload.contentType || "miniApp",
     };
     return nativeSubmit(enriched).then(function (result) {
-      try { showPanel({ score: enriched.score, result: result, md: md, signedIn: true }); } catch (_) {}
+      try { showPanel({ score: enriched.score, result: result, md: md, signedIn: true, explicit: true }); } catch (_) {}
       return result;
     }, function (err) {
       // Not signed in (or transient) — still surface the board + a save CTA.
-      try { showPanel({ score: enriched.score, result: null, md: md, signedIn: false }); } catch (_) {}
+      try { showPanel({ score: enriched.score, result: null, md: md, signedIn: false, explicit: true }); } catch (_) {}
       throw err;
     });
   };
@@ -82,12 +92,20 @@
   // ── Panel ─────────────────────────────────────────────────────────────────
   var PANEL_ID = "__mchatai-gameover-top3__";
   var panelUp = false;
-  var sawSubmit = false;
+  // Per-PANEL flags (reset on removal), NOT a session latch: submitTriggeredPanel
+  // keeps a submit()-opened card sticky (no auto-remove on restart, since a
+  // time/score game may show no recognized restart text); panelSawGameOverText
+  // lets a submit panel auto-hide on restart when the game ALSO shows recognized
+  // game-over text. Mirrors mchataiweb's server bridge.
+  var submitTriggeredPanel = false;
+  var panelSawGameOverText = false;
 
   function removePanel() {
     var el = document.getElementById(PANEL_ID);
     if (el && el.parentNode) el.parentNode.removeChild(el);
     panelUp = false;
+    submitTriggeredPanel = false;
+    panelSawGameOverText = false;
   }
 
   function addCloseBtn(card) {
@@ -100,11 +118,11 @@
     card.appendChild(x);
   }
 
-  // opts = { score, result|null, md, signedIn, topOnly? }
+  // opts = { score, result|null, md, signedIn, explicit?, topOnly? }
   function showPanel(opts) {
-    if (opts && opts.result) sawSubmit = true;
     if (panelUp) removePanel();
     panelUp = true;
+    if (opts && opts.explicit) submitTriggeredPanel = true;
     var md = (opts && opts.md) || mode();
 
     var card = document.createElement("div");
@@ -189,17 +207,24 @@
   // ── Game-over text watcher ────────────────────────────────────────────────
   // Fallback for games that show a game-over screen but never call submit()
   // (or a loss with no submit): surface the public top-3 so the leaderboard is
-  // still discoverable. Never posts a score. submit()-triggered panels win.
-  var lastText = false;
-  setInterval(function () {
+  // still discoverable. Never posts a score.
+  //
+  // CAPABILITY-GATED: only runs when the app declares a leaderboard via the
+  // meta tag. Without this gate the 800ms watcher runs on EVERY injected
+  // mini-app and would pop a spurious board whenever a non-game app happens to
+  // show "game over"-like text. Games that use submit() without a meta tag
+  // still get the submit()-triggered panel above; they just skip the fallback.
+  function checkGameOver() {
     var over = false;
     try { over = GAME_OVER_RE.test(document.body ? document.body.innerText : ""); } catch (_) {}
-    if (over && !lastText && !panelUp && !sawSubmit) {
-      showPanel({ score: null, result: null, md: mode(), signedIn: true, topOnly: true });
+    if (over) {
+      if (!panelUp) showPanel({ score: null, result: null, md: mode(), signedIn: true, topOnly: true });
+      else panelSawGameOverText = true;   // recognized text alongside the current panel → can auto-hide on restart
+    } else if (panelUp && (!submitTriggeredPanel || panelSawGameOverText)) {
+      removePanel();   // restart: remove text-triggered panels, and submit panels that saw recognized text
     }
-    if (!over && lastText && panelUp && !sawSubmit) {
-      removePanel();   // game restarted; only auto-remove text-triggered panels
-    }
-    lastText = over;
-  }, 800);
+  }
+  if (document.querySelector('meta[name="mchatai-leaderboard-mode"]')) {
+    setInterval(checkGameOver, 800);
+  }
 })();
