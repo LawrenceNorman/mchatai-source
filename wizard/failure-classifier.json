@@ -1,9 +1,9 @@
 {
   "$schema_version": "1.0.0",
-  "_phase_tt_note": "Phase TT.0 failure-classifier rules. Hot-reloadable. The Swift binary at WizardFailureClassifier.swift knows the SHAPE of categories (.needsDecomposition / .realBug / .promptMiss / .qualityFail / .ok); this file holds the CONTENT (thresholds + pattern strings). Updating these rules is a content PR — no rebuild required, picked up on next refreshMchataisourceCache.",
+  "_phase_tt_note": "Phase TT.0 failure-classifier rules. Hot-reloadable. The Swift binary at WizardFailureClassifier.swift knows the SHAPE of categories (.needsDecomposition / .realBug / .promptMiss / .qualityFail / .ok / .awaitingUserInput); this file holds the CONTENT (thresholds + pattern strings). Updating these rules is a content PR — no rebuild required, picked up on next refreshMchataisourceCache.",
 
-  "version": 1,
-  "last_updated": "2026-04-25",
+  "version": 2,
+  "last_updated": "2026-08-02",
 
   "thresholds": {
     "minimalOutputBytes": 2000,
@@ -46,6 +46,7 @@
 
   "_decision_tree_reference": [
     "1. status=ok → .ok",
+    "1b. pendingUserInput (session parked on any pending* chip, the spec interview, or the reference-match offer — AIHarness.sessionParkedOnUserPause) → .awaitingUserInput. HKI-R-014 2026-08-02: runs BEFORE the pattern loops because the DX.1 question text is a promptMiss pattern; a chip-parked canary is waiting, not failed. State-keyed, so no pattern content here.",
     "2. realBug pattern match → .realBug",
     "3. promptMiss pattern match → .promptMiss",
     "4. timeout AND turns≥2 AND output≥substantialOutputBytes → .needsDecomposition",
