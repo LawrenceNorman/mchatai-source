@@ -4,6 +4,13 @@ Content for the mChatAI+ **LoopStar** applet (Experimental): a native loop-perfo
 and arrangement instrument. Six lanes (drums, hats, percussion, bass, music, fx),
 bar-quantized launching, scenes, and transitions at a fixed per-pack BPM.
 
+> **Generative material:** `{genre}/material.json` packs (registered in `styles.json`)
+> feed the on-device "Make it new" generator. The design for the next generation of
+> this content — a per-genre phrase library of hooks, comping patterns, and bass
+> riffs studied from the classic canon — is in
+> [`docs/MUSICAL_IDIOM_LIBRARY.md`](docs/MUSICAL_IDIOM_LIBRARY.md), with the
+> per-genre idiom source-books in [`docs/idiom-research/`](docs/idiom-research/).
+
 ## Multi-pack layout
 
 - `packs.json` — the pack index: `{id, name, bpm, manifest}` per pack. Add a pack
