@@ -13,9 +13,18 @@ bar-quantized launching, scenes, and transitions at a fixed per-pack BPM.
 
 ## Multi-pack layout
 
-- `packs.json` — the pack index: `{id, name, bpm, manifest}` per pack. Add a pack
-  by adding a directory with its manifest + WAVs and listing it here — no app
-  rebuild needed.
+- `packs.json` — the pack index: `{id, name, bpm, manifest, genre, family}` per
+  pack. Add a pack by adding a directory with its manifest + WAVs and listing it
+  here — no app rebuild needed. `genre` is the plain label the picker shows
+  (pack names are evocative but opaque — "Uplift" is trance); `family` groups the
+  menu. **File order IS picker order** (currently family, then tempo), so
+  re-ordering the menu is a content PR.
+
+> **Packs vs styles.** A *pack* is loop AUDIO; a *style* (`styles.json` +
+> `phrases/{genre}/`) is generative MUSICAL MATERIAL. They are independent: any
+> style can play over any pack. Four styles — funk, jazz, blues, classical —
+> currently have no pack of their own; they work over any loaded pack, they just
+> have no genre-specific loop audio yet.
 - Each pack directory holds one manifest JSON plus its WAVs as siblings.
 - Manifest filenames and WAV filenames must be **globally unique across all
   packs** (Xcode sync groups flatten the app's bundled Resources fallback into

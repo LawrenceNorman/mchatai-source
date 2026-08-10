@@ -1,11 +1,19 @@
 # LoopStar Musical Idiom Library — Design + Build/Maintain Guide
 
-> Status: SHIPPED through ML.3/ML.6-lite (2026-08-08): schema + validator (ML.1),
-> Swift phrase compiler (ML.2), and phrase packs for ALL 18 registered styles —
-> 300+ phrases, 100+ progressions, authored per §4 (agent-authored from the
-> source-books, cluster-critic reviewed, validator-gated). Pending: ML.4 PD pack,
-> ML.5 DJ grammar/hook browser, engine backlog (portamento, bII tokens,
-> arrangement-level riff switching).
+> Status: SHIPPED through ML.5 (2026-08-09). ML.1 schema + validator, ML.2 Swift
+> phrase compiler, ML.3/6 phrase packs for every registered style, ML.4 the
+> public-domain packs (jazz / blues / classical — real pre-1931 melodies encoded
+> verbatim with `pdSource`), ML.5 the COMPOSER: motif-development form
+> (AAAB / call-answer), the 8-bar riff-switch, a mechanical hook rubric used as a
+> best-of-N objective, and the in-app phrase browser (Style menu -> Browse
+> phrases) for auditioning and installing any phrase.
+>
+> The engine backlog called out by the pack critics is now CLOSED: real
+> portamento/glide (pitch-bend ramps; `glide` / `glideBeats`, and `art:"slide"`
+> implies a scoop), and borrowed-chord degree tokens (`"b2"` = bII) so phrygian
+> genres get true i-bII motion instead of an approximation.
+> Remaining backlog: per-progression non-uniform harmonic rhythm, inversion
+> control in `material.json` voicingStyle, drum-lane phrases.
 > Produced 2026-08-08 from an 11-agent deep-research pass; the full source reports
 > live in [`idiom-research/`](idiom-research/). This doc is the synthesis and the
 > operating manual. It answers: how do we get LoopStar's "Make it new" from
