@@ -25,6 +25,15 @@ bar-quantized launching, scenes, and transitions at a fixed per-pack BPM.
 > style can play over any pack. Four styles — funk, jazz, blues, classical —
 > currently have no pack of their own; they work over any loaded pack, they just
 > have no genre-specific loop audio yet.
+
+> **Songs vs phrases.** `songbook/` is a third, higher tier: whole public-domain
+> COMPOSITIONS (form, changes, the tune, and the words where they are free too),
+> where `phrases/` is 1–4 bars of genre idiom. They share one pitch vocabulary on
+> purpose, so the same compiler plays both. A song carries no kit and no bass
+> patch — the active *style* supplies those, which is what lets one composition
+> be loaded as a boom-bap flip or a house record. Schema and PD policy:
+> [`songbook/SPEC.md`](songbook/SPEC.md); validator
+> `node songbook/tests/validate_songbook.mjs`.
 - Each pack directory holds one manifest JSON plus its WAVs as siblings.
 - Manifest filenames and WAV filenames must be **globally unique across all
   packs** (Xcode sync groups flatten the app's bundled Resources fallback into

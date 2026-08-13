@@ -41,10 +41,16 @@ it your way.
 ```
 songbook/
   SPEC.md                    # this file
+  CANDIDATES.md              # the backlog: what to add next, and what NOT to
   index.json                 # the catalogue (browse + search reads ONLY this)
   songs/{song-id}.json       # one composition
   tests/validate_songbook.mjs
 ```
+
+Before picking a song to encode, read [`CANDIDATES.md`](CANDIDATES.md) — it lists
+the public-domain repertoire with the strongest modern pull, the meter and
+chord-granularity limits that block whole categories, and the songs people
+routinely assume are free but are not.
 
 `index.json` is a denormalised catalogue so the browser never has to open 50
 song files to draw a list. It is GENERATED from the song files —
@@ -63,9 +69,24 @@ one. A song qualifies on exactly one of these bases:
 - `author-died-pre-1930` — every credited composer died more than 95 years ago
   (covers the classical repertoire and clears life+70 jurisdictions too).
 
-**Melody and harmony only. Never lyrics.** Lyrics carry their own separate
-copyright term and a PD melody very often has in-copyright words attached. A
-song file has no lyric field and the validator rejects one.
+**Lyrics need their OWN, SEPARATE public-domain basis.** Words and music are
+different works by different people with different terms — a PD melody very
+often carries in-copyright words (a modern hymn text on an old tune, an English
+singing translation of a PD German original, a 1960s folk-revival rewrite of a
+traditional ballad). So lyrics are welcome, but only with their own `pd` block
+naming the lyricist and the basis, checked independently of the music's. When
+that basis cannot be established, the song ships with the tune and no words —
+which is a perfectly good real-book page.
+
+**Lyrics: transcribe, never reconstruct.** A half-remembered verse written down
+confidently is worse than no verse. If only the first stanza is certain, ship
+one stanza.
+
+**Historically offensive verses are omitted, and the omission is stated.** Parts
+of this repertoire — minstrel-era songs especially — carry racist dialect verses
+that no modern edition prints. Encode the standard modern singable text, drop
+those verses, and say so in `lyrics.notes`. Do not rewrite them into something
+new: that would be inventing words and attributing them to the composition.
 
 **Encode from a score, not from a recording.** A specific recorded performance
 and a specific published *arrangement* can each be in copyright even when the
@@ -75,17 +96,23 @@ When a song is famous through one modern recording (a folk tune everyone knows
 from a 1960s cover), encode the TRADITIONAL version, not the cover's
 arrangement, and say so in `pd.notes`.
 
-## Meter: 4/4 only in v1
+## Meter: 4/4, 3/4, 6/8, 7/8 (Phase SM)
 
-LoopStar's clock is 4/4 — bars are four beats everywhere in the engine, from
-`ChordEventSpec.beat` to the swing calculation. So v1 ships **4/4 songs only**.
-Cut-time and 2/4 material (ragtime, marches, many spirituals) maps cleanly and
-is encoded as 4/4 at half the written tempo; say so in `notes`.
+Supported meters: `"4/4"`, `"3/4"`, `"6/8"`, `"7/8"`. Playing a non-4/4 song
+flips the SESSION meter (generated channels are the band; the pack's 4/4 loop
+audio sits out — see `mchatai_macOS/docs/LOOPSTAR_METER_DESIGN.md`).
 
-3/4, 6/8 and 9/8 songs — waltzes, jigs, "Amazing Grace", "Greensleeves" — are
-NOT encodable yet and must not be forced into 4/4, which destroys the tune. The
-`meter` field is carried on every song so a future compound-meter phase is
-purely additive; today the validator rejects anything but `"4/4"`.
+- **3/4**: three beats per bar, each beat a quarter. A section of N bars spans
+  `[0, N*3)` melody beats.
+- **6/8**: SIX beats per bar on the eighth-note pulse — a dotted quarter is
+  `d: 3`, the two compound stresses fall on beats 0 and 3.
+- **7/8**: seven eighth-note beats, default 2+2+3 grouping.
+- Cut-time and 2/4 material still maps to 4/4 at half the written tempo; say so
+  in `notes`.
+
+**Never force a tune into the wrong meter.** If its real meter is unsupported
+(9/8, 5/4), do not encode it — the validator rejects unsupported meters rather
+than letting the tune be mangled.
 
 ## Chord granularity: one chord per bar
 
@@ -187,6 +214,7 @@ compile, one Song Part.
 | `energy` | yes | 0-1, drives the scene texture the Part gets |
 | `chords` | yes | `[{symbol, bars}]`, bars summing EXACTLY to the section's `bars` |
 | `melody` | no | the head for this section; omit for a solo/vamp section |
+| `lyrics` | no | the words sung over this section — see below |
 
 A 32-bar AABA form is four 8-bar sections, not one 32-bar section. That is the
 right shape anyway: it lets the user drop the bridge, double the A, or solo over
@@ -244,12 +272,48 @@ Melody accuracy checklist, in the order errors actually happen:
    unrecognisable.
 5. **Velocity has life** — accents on phrase peaks, softer on passing notes.
 
+### section.lyrics — the words, bar-aligned
+
+```json
+"lyrics": {
+  "pd": {
+    "lyricist": "Traditional",
+    "basis": "traditional",
+    "detail": "Anonymous English broadside text in circulation by the 1840s.",
+    "sourceEdition": "Sharp, English Folk Songs from the Southern Appalachians, 1917"
+  },
+  "notes": "Verses 3-4 of the 1848 printing are minstrel-dialect and are omitted.",
+  "stanzas": [
+    [ { "bar": 0, "text": "I come from Alabama" },
+      { "bar": 2, "text": "with a banjo on my knee" } ],
+    [ { "bar": 0, "text": "It rained all night" },
+      { "bar": 2, "text": "the day I left" } ]
+  ]
+}
+```
+
+`lyrics.pd` is **independent of the song's `pd`** and mandatory whenever lyrics
+are present. `basis` uses the same three values, applied to the LYRICIST:
+`published-pre-1930`, `traditional`, `author-died-pre-1930`.
+
+A `stanza` is an array of `{bar, text}` lines. `bar` is 0-based **relative to
+the section start** and must be less than the section's `bars` — bar-aligning
+the words is what lets the Score window follow along while you play, which is
+the entire reason to carry them.
+
+Multiple stanzas are how one melody carries several verses. `form` picks which
+one each occurrence sings (see `stanza` below). One stanza is fine; a chorus
+usually has exactly one.
+
+Keep `text` to a readable line — roughly what fits on one line of a chart, not a
+whole verse crammed into one entry. ASCII only, like everything else.
+
 ## form
 
 ```json
 "form": [
   { "section": "intro",  "label": "Intro",   "repeat": 1 },
-  { "section": "verse",  "label": "Verse 1", "repeat": 2 },
+  { "section": "verse",  "label": "Verse 1", "repeat": 2, "stanza": 1 },
   { "section": "chorus", "label": "Chorus",  "repeat": 1, "energy": 0.75 }
 ]
 ```
@@ -262,6 +326,7 @@ Each entry becomes ONE Song Part in the loaded arrangement, in order.
 | `label` | no | the Part's name; defaults to the section's `name` |
 | `repeat` | no | 1-4, plays the section back to back within the one Part |
 | `energy` | no | override the section's energy for this occurrence |
+| `stanza` | no | 1-based, which stanza of the section's lyrics this occurrence sings (default 1; clamped to what exists) |
 
 Referencing the same section twice is the point: "Verse 1" and "Verse 2" are
 independent Parts by birth (MPC-style deep copy), so the user can change one
