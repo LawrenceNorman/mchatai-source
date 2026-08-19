@@ -1,6 +1,6 @@
 {
  "packID": "universal",
- "version": 26,
+ "version": 27,
  "displayName": "Universal Guidelines",
  "description": "Rules that apply to ALL generated apps regardless of category.",
  "categories": [
@@ -176,7 +176,7 @@
   },
   {
    "id": "u-020",
-   "rule": "When a published web mini-app needs to fetch data from an external HTTPS API (weather, geocoding, Wikipedia, currency rates, jokes, photos, Pokémon, etc.), it MUST route the call through the mChatAI proxy: `https://mchatai.com/proxy/fetch?url=<URL-encoded target>`. Direct cross-origin fetch() calls from a published site are blocked by Content-Security-Policy and will silently fail in production.",
+   "rule": "When a published web mini-app needs to fetch data from an external HTTPS API (weather, geocoding, Wikipedia, currency rates, jokes, photos, Pokémon, etc.), it MUST route the call through the mChatAI proxy: `https://mchatai.com/proxy/fetch?url=<URL-encoded target>`. Direct cross-origin fetch() calls from a published site are blocked by Content-Security-Policy and will silently fail in production. Watch for TWO-HOST cases: when an API hands back a URL on a different host, that host needs its own allowlist entry. Wikipedia photos are the common one — you look the thumbnail up on en.wikipedia.org but the bytes live on upload.wikimedia.org, so both must be proxied and both must be allowlisted, or the lookup succeeds and the image 403s.",
    "why": "Published mini-apps run under a strict CSP (`connect-src 'self' https://mchatai.com ...`). Direct calls to api.weather.gov, en.wikipedia.org, etc. work in the AIHarness preview but fail once published, which produces 'Could not retrieve data' errors users can't diagnose. The proxy keeps CSP locked down (no data exfil to attacker servers) while letting the curated allowlist of safe public APIs reach published code. The allowlist lives at https://github.com/LawrenceNorman/mchatai-source/blob/main/proxy/allowlist.json — adding a host is a git PR.",
    "severity": "critical",
    "appliesTo": ["miniapp", "webspa", "website"],
@@ -612,7 +612,7 @@
   },
   {
    "id": "u-no-base64-data-uris",
-   "rule": "NEVER embed `data:<anything>;base64,...` URIs in generated mini-app HTML — image, audio, video, font, ANY type. Even one ~50KB base64 blob can exhaust the LLM's output-token budget, truncating the response mid-string and leaving an unclosed `\\`\\`\\`miniapp` fence that the parser rejects. Replacements: (1) Audio cues → Web Audio API oscillator (4-line beep generator, ~200 bytes); (2) Icons → inline SVG strings or Unicode emoji (⏸ ▶ 🔔 ⏱); (3) Fonts → -apple-system / system-ui (already required, no @import); (4) Sample data → inline JS arrays/objects, not base64-encoded JSON.",
+   "rule": "NEVER embed `data:<anything>;base64,...` URIs in generated mini-app HTML — image, audio, video, font, ANY type. Even one ~50KB base64 blob can exhaust the LLM's output-token budget, truncating the response mid-string and leaving an unclosed `\\`\\`\\`miniapp` fence that the parser rejects. Replacements: (1) Audio cues → Web Audio API oscillator (4-line beep generator, ~200 bytes); (2) Icons → inline SVG strings or Unicode emoji (⏸ ▶ 🔔 ⏱); (3) Fonts → -apple-system / system-ui (already required, no @import); (4) Sample data → inline JS arrays/objects, not base64-encoded JSON. This bans literal base64 in the source you WRITE. Building a `data:` URL at RUNTIME is fine and encouraged — fetching a remote photo, re-encoding it small through a canvas, and caching it in localStorage is the right way to make images persist offline.",
    "why": "Multi-Timer 2026-05-20 reproed twice: with audio cue at zero, OpenAI agentic loop embedded data:audio/wav;base64,...50KB+... in the html JSON-stringified field, output truncated mid-base64, no closing ```miniapp fence, parser gives nil, wizard silently fails. Same exhaustion happens with data:image (already forbidden) and would happen with data:video, data:font, etc. The fix is structural: forbid ALL base64 data URIs regardless of media type.",
    "severity": "critical",
    "appliesTo": [
@@ -674,11 +674,26 @@
     "after adding levels, confirm level 1 initializes on load",
     "keep the original physics/game loop intact unless the request is explicitly about them"
    ]
+  },
+  {
+   "id": "u-034",
+   "rule": "Every `id` in your markup MUST be referenced from your JS. Before finishing, grep your own output: for each `id=\"x\"` on a control (button, select, input) or on a container you intend to fill, there must be a matching `getElementById(\"x\")` or `querySelector(\"#x\")`. A button with no addEventListener, and an empty `<select>` with no fill function, are features the user can see but cannot use.",
+   "why": "Yellow Island Bloom Tracker 2026-08-19 shipped a settings gear, a reset button, a photo-load button and a `<select id=\"count\">` in the HTML with zero JS references, plus a complete Wikipedia photo pipeline whose entry points were defined but never called. It screenshotted as finished while three of its four features were inert. u-032 catches unwired FUNCTIONS; this catches unwired MARKUP, which is the more common half-landing.",
+   "severity": "critical",
+   "appliesTo": "all",
+   "examples": [
+    "BAD: <select id=\"count\"></select> with no fill function — renders empty, submit parses \"\" and the form silently refuses",
+    "GOOD: every id in the markup appears at least once in the script; selects are populated during init"
+   ]
   }
  ],
- "_last_updated": "2026-07-05",
- "lastUpdated": "2026-07-05",
+ "_last_updated": "2026-08-19",
+ "lastUpdated": "2026-08-19",
  "_changeLog": [
+  {
+   "date": "2026-08-19",
+   "change": "Added u-034 (unwired MARKUP, sibling of u-032's unwired functions) after Yellow Island Bloom Tracker shipped a gear button, a reset button, a photo button and an empty <select> with zero JS references. Amended u-020 with the two-host proxy case (en.wikipedia.org lookup vs upload.wikimedia.org bytes — both need allowlisting; upload.wikimedia.org added to proxy/allowlist.json the same day) and clarified u-no-base64-data-uris that the ban is on literal base64 in generated SOURCE, not on runtime data: URLs cached for offline use."
+  },
   {
    "date": "2026-07-05",
    "change": "u-032/u-033: dead-code wiring rule + iteration boot-verification rule (Sunset Glider v2 / Sling Shot Circus incidents; pairs with the harness IT.5 delivery audit)"
