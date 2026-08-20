@@ -1,6 +1,6 @@
 {
  "packID": "universal",
- "version": 27,
+ "version": 28,
  "displayName": "Universal Guidelines",
  "description": "Rules that apply to ALL generated apps regardless of category.",
  "categories": [
@@ -685,11 +685,26 @@
     "BAD: <select id=\"count\"></select> with no fill function — renders empty, submit parses \"\" and the form silently refuses",
     "GOOD: every id in the markup appears at least once in the script; selects are populated during init"
    ]
+  },
+  {
+   "id": "u-035",
+   "rule": "When you cache something fetched from the network, never store it without first proving it is what you expect, and never record a FAILURE as if it were a RESULT. Check `response.ok` before reading the body — a 4xx/5xx still has one, and the proxy's JSON error page will happily be saved as a photo. For an image, confirm it decodes (load it into an `Image`, or draw it to a canvas) before writing it to storage. If the fetch failed, store NOTHING so it is retried next time; only store a negative marker such as 'this genuinely has no image' when the upstream API authoritatively says so. And give every network-sourced `<img>` an `onerror` that falls back and evicts the bad entry.",
+   "why": "Yellow Island Bloom Tracker 2026-08-19: a proxy 403 was cached as a photo (the error JSON became a data: URL), so one flower showed a permanently broken image that reloading could never fix, while a separate path recorded any network blip as 'Wikipedia has no photo' and silently fell back forever. Cached failures are far worse than uncached ones — they are invisible, they never retry, and they outlive the outage that caused them by weeks.",
+   "severity": "critical",
+   "appliesTo": "all",
+   "examples": [
+    "BAD: fetch(u).then(r => r.blob()).then(b => cache[id] = URL/dataURL) — a 403 body is now a permanently cached 'photo'",
+    "GOOD: check r.ok, decode-verify the bytes, store only on success, and leave failures absent so they retry"
+   ]
   }
  ],
  "_last_updated": "2026-08-19",
  "lastUpdated": "2026-08-19",
  "_changeLog": [
+  {
+   "date": "2026-08-19",
+   "change": "Added u-035 (never cache an unverified network response; never remember a failure as a result). Same app, same day: a proxy 403 body was cached as a data: URL and rendered as a permanently broken photo, and a second path recorded transient network errors as an authoritative 'no image exists'. Both survived reloads indefinitely."
+  },
   {
    "date": "2026-08-19",
    "change": "Added u-034 (unwired MARKUP, sibling of u-032's unwired functions) after Yellow Island Bloom Tracker shipped a gear button, a reset button, a photo button and an empty <select> with zero JS references. Amended u-020 with the two-host proxy case (en.wikipedia.org lookup vs upload.wikimedia.org bytes — both need allowlisting; upload.wikimedia.org added to proxy/allowlist.json the same day) and clarified u-no-base64-data-uris that the ban is on literal base64 in generated SOURCE, not on runtime data: URLs cached for offline use."
