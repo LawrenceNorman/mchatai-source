@@ -59,11 +59,17 @@ scene is already at speed on its first frame. To change speed mid-scene use a
 travel cue: {"travel":{"dx":0},"at":2.0} glides to a stop; a new value pulls
 away. Sell the travel:
 • runners: give each a clip cue {"target":"Nia","clip":"run"} for the shot, or
-  their feet slide against the ground.
-• a car (when ts_prop_car is in the prop list): place it at scale ≈ 0.85 and
-  stage the riders at the car's x ± 0.2 with "y": 0.12 and scale ≈ 0.5 — the
-  body hides their legs, and heads above the roof is the gag. Add
-  {"target":"car","clip":"roll","at":0} so the wheels spin.
+  their feet slide against the ground. OMIT "pose" on lines spoken while
+  running — a pose owns the arms, and a runner whose arms freeze mid-sentence
+  looks broken. The run turns them to face the way they are going by itself.
+• DIALOGUE IN A CAR goes INSIDE it: backdrop ts_bd_car_interior, riders staged
+  at x ±0.36, "y": 0.02, scale ≈ 0.82, facing inward. The world streams past the
+  windows, the dash hides their legs, and their faces stay on camera — which is
+  the whole point of a dialogue scene. Do NOT stage a conversation against the
+  outside of a car: the body covers everyone from the neck down.
+• ts_bd_highway with ts_prop_car (scale ≈ 0.85, no cast staged, one short
+  pause beat, {"target":"car","clip":"roll","at":0}) is an ESTABLISHING shot —
+  cut to the interior for the talking.
 • garnish: effect ts_fx_speedlines behind the cast; a small shake for a bumpy
   road (cars only — never shake a run).
 
