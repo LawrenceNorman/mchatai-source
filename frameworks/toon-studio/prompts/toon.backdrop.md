@@ -62,6 +62,18 @@ HORIZON — character eye level is y=0.46. A distant silhouette topping out betw
 y=0.41 and y=0.51 draws a line straight through every face in every shot. Put
 your horizon at roughly 0.28 or 0.63 instead.
 
+MOTION-READY (repeat pans) — when the request is a road, a corridor, a chase, or
+anywhere a scene could TRAVEL through, give each layer a "loop": its tiling
+period in stage units. A travelling scene wraps each layer modulo its loop, so
+the art must continue across the seam: start and end paths at the same edge
+height, and make repeats fill the loop exactly (count × dx = loop). Give
+adjacent layers UNEQUAL loops (e.g. 3.6 / 3.2 / 3.0 / 3.7) so the composite
+almost never visibly repeats even though each layer loops fast. Add a sparse
+foreground layer at parallax 1.2–1.6 — a pole, a sign, a bush at irregular
+positions — with its own loop: passing near-field objects are the strongest
+speed cue there is. Keep the ground plane at parallax 1.0 exactly; the scene's
+travel speed IS its scroll speed.
+
 LEAVE SKY VISIBLE — the tallest element of the far and mid layers should top out
 below y≈0.95. Towers that run off the top of the frame leave no sky at all, and
 the gradient you just set is wasted.
@@ -104,4 +116,6 @@ CHECKS before you answer:
 • no distant silhouette tops out between y=0.41 and y=0.51
 • the tallest far/mid element stays below y≈0.95 so sky is visible
 • every layer spans at least x=-1.5..1.5; the ground plane spans x=-3..3
+• motion-ready only: every layer declares "loop", repeats fill it exactly
+  (count × dx = loop), and paths start and end at the same edge height
 • every "@token" you use exists in "palette"

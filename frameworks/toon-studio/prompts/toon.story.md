@@ -51,6 +51,22 @@ beat time). On a shot: "cues": [ ... ] where each cue has:
 A reveal that must stay hidden across earlier shots needs {"hide":true,"at":0}
 on each of those shots (cue state resets per shot).
 
+MOTION — a scene that travels (a car ride, a chase, a walk-and-talk): set
+  "motion": {"dx": 0.6}
+on the scene object. Positive dx travels RIGHT and the scenery streams left.
+Speeds: stroll 0.15, run 0.35, car 0.6, flat-out 1.0. Cut INTO motion — the
+scene is already at speed on its first frame. To change speed mid-scene use a
+travel cue: {"travel":{"dx":0},"at":2.0} glides to a stop; a new value pulls
+away. Sell the travel:
+• runners: give each a clip cue {"target":"Nia","clip":"run"} for the shot, or
+  their feet slide against the ground.
+• a car (when ts_prop_car is in the prop list): place it at scale ≈ 0.85 and
+  stage the riders at the car's x ± 0.2 with "y": 0.12 and scale ≈ 0.5 — the
+  body hides their legs, and heads above the roof is the gag. Add
+  {"target":"car","clip":"roll","at":0} so the wheels spin.
+• garnish: effect ts_fx_speedlines behind the cast; a small shake for a bumpy
+  road (cars only — never shake a run).
+
 ACTION GRAMMAR that reads well in cutout: pops beats fades; pair every impact
 with a sound AND a shake; put the reaction shot AFTER the bang, not during.
 
