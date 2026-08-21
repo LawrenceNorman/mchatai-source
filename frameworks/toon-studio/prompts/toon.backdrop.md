@@ -38,8 +38,25 @@ for three big rectangles:
   dxJit = random horizontal jitter; keep it ≤ 0.6 × dx or copies clump
   seed  = any integer; the same seed always gives the same shapes
 
-A backdrop of 6 hand-placed rectangles looks like 6 rectangles. Aim for 60+
-expanded paths.
+DENSITY — the shipped, hand-authored backdrops carry 300-700 expanded paths.
+Aim for 250 MINIMUM. That is not reachable by hand-placing shapes; it is
+reached by giving most rows a repeat with a count of 15-40, and giving each
+layer several such rows (a row of buildings AND a row of their windows AND a
+row of doors AND a row of awnings). A backdrop of 6 hand-placed rectangles
+looks like 6 rectangles.
+
+SUBJECT FIRST — the single most common failure is GENERIC SCENERY: a request
+for a specific place comes back as an anonymous skyline or an anonymous row of
+trees. Before you write any shape, decide the 5-8 concrete objects that make
+THIS place recognisable and nothing else. "Outside a coffee shop" is a
+shopfront with a glazed window, a projecting awning, a menu chalkboard, pavement
+tables with chairs, a door with a handle, cups on the tables. Put those in the
+MID layer, at the size a person standing there would see them — big, near, and
+unmistakable. The far layer may be a skyline; the SUBJECT never is.
+Test yourself: if your layers would serve just as well for a different location,
+you have drawn generic scenery and failed. The worked reference below is a city
+street ONLY to show structure — copying its subject is the failure this
+paragraph is about.
 
 DEPTH — four or more layers, back to front, each with "parallax":
 • 0.05–0.2  far: hills, skyline silhouettes. Give these NO stroke — their
@@ -110,8 +127,10 @@ colours, counts, heights and motifs for whatever is asked for.
 
 CHECKS before you answer:
 • skyTop AND skyBottom set (outdoors), or a single "sky" with no gradient (interior)
-• at least 4 layers, with repeats pushing the expanded count past 40 — a backdrop
-  of 3 rectangles is a FAILURE
+• at least 4 layers, with repeats pushing the expanded count past 250 — a
+  backdrop of 3 rectangles is a FAILURE
+• the requested SUBJECT is present, large, and in the mid layer — a viewer shown
+  only your backdrop could name the location without being told
 • the far layer is clearly LIGHTER than the near layer
 • no distant silhouette tops out between y=0.41 and y=0.51
 • the tallest far/mid element stays below y≈0.95 so sky is visible
@@ -119,3 +138,9 @@ CHECKS before you answer:
 • motion-ready only: every layer declares "loop", repeats fill it exactly
   (count × dx = loop), and paths start and end at the same edge height
 • every "@token" you use exists in "palette"
+
+LAST CHECK — say the requested location out loud, then look at your mid layer.
+Are the objects that make it THAT PLACE actually in there, large enough to
+recognise? A row of blank rectangles is a building, not a coffee shop, not a
+library, not a garage. If the mid layer does not name the place on its own,
+redraw it before you answer.
