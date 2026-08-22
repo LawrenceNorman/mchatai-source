@@ -1,0 +1,115 @@
+{
+  "id": "ts_prop_torch",
+  "name": "Wall Torch",
+  "kind": "prop",
+  "lineWidth": 0.013,
+  "height": 0.93,
+  "palette": {
+    "iron": "#3B3B44",
+    "ironDark": "#26262E",
+    "wood": "#7A5531",
+    "woodDark": "#5E4023",
+    "wrap": "#54341D",
+    "wrapLight": "#6B4426",
+    "flame": "#E8912B",
+    "flameCore": "#F8D24E",
+    "glow": "#9C4A16",
+    "line": "#251E18"
+  },
+  "parts": [
+    {
+      "id": "glow",
+      "z": 5,
+      "pivot": [0, 0.68],
+      "shapes": [
+        { "type": "ellipse", "x": -0.16, "y": 0.56, "w": 0.32, "h": 0.34, "fill": "@glow" }
+      ]
+    },
+    {
+      "id": "sconce",
+      "z": 10,
+      "pivot": [0, 0],
+      "shapes": [
+        { "type": "rect", "x": -0.13, "y": 0.0, "w": 0.26, "h": 0.05, "r": 0.01, "fill": "@ironDark", "stroke": "@line" },
+        { "type": "polygon", "points": [[-0.09, 0.05], [0.09, 0.05], [0.055, 0.16], [-0.055, 0.16]], "fill": "@iron", "stroke": "@line" },
+        { "type": "rect", "x": -0.036, "y": 0.15, "w": 0.072, "h": 0.42, "r": 0.01, "fill": "@wood", "stroke": "@line" },
+        { "type": "rect", "x": 0.006, "y": 0.17, "w": 0.014, "h": 0.38, "fill": "@woodDark" },
+        { "type": "rect", "x": -0.055, "y": 0.3, "w": 0.11, "h": 0.045, "r": 0.008, "fill": "@iron", "stroke": "@line" },
+        { "type": "rect", "x": -0.07, "y": 0.55, "w": 0.14, "h": 0.15, "r": 0.05, "fill": "@wrap", "stroke": "@line" },
+        { "type": "rect", "x": -0.07, "y": 0.585, "w": 0.14, "h": 0.02, "fill": "@wrapLight" },
+        { "type": "rect", "x": -0.07, "y": 0.64, "w": 0.14, "h": 0.02, "fill": "@wrapLight" }
+      ]
+    },
+    {
+      "id": "flameOuter",
+      "z": 20,
+      "pivot": [0, 0.67],
+      "shapes": [
+        { "type": "path", "d": "M 0 0.93 Q -0.125 0.85 -0.095 0.755 Q -0.075 0.69 0 0.665 Q 0.075 0.69 0.095 0.755 Q 0.125 0.85 0 0.93 Z", "fill": "@flame" }
+      ]
+    },
+    {
+      "id": "flameInner",
+      "z": 21,
+      "pivot": [0, 0.68],
+      "shapes": [
+        { "type": "path", "d": "M 0 0.85 Q -0.062 0.8 -0.05 0.75 Q -0.04 0.705 0 0.69 Q 0.04 0.705 0.05 0.75 Q 0.062 0.8 0 0.85 Z", "fill": "@flameCore" }
+      ]
+    }
+  ],
+  "visemes": {},
+  "poses": [
+    { "id": "idle", "parts": {} },
+    { "id": "lit", "parts": {} },
+    {
+      "id": "low",
+      "parts": {
+        "flameOuter": { "scale": 0.6 },
+        "flameInner": { "scale": 0.6 },
+        "glow": { "scale": 0.65 }
+      }
+    },
+    {
+      "id": "out",
+      "parts": {
+        "flameOuter": { "scale": 0.01 },
+        "flameInner": { "scale": 0.01 },
+        "glow": { "scale": 0.01 }
+      }
+    },
+    {
+      "id": "flickA",
+      "parts": {
+        "flameOuter": { "scale": 1.05, "rotate": 4 },
+        "flameInner": { "scale": 0.93, "rotate": -3, "dy": 0.004 },
+        "glow": { "scale": 1.06 }
+      }
+    },
+    {
+      "id": "flickB",
+      "parts": {
+        "flameOuter": { "scale": 0.93, "rotate": -5, "dy": -0.004 },
+        "flameInner": { "scale": 1.06, "rotate": 4 },
+        "glow": { "scale": 0.9 }
+      }
+    },
+    {
+      "id": "flickC",
+      "parts": {
+        "flameOuter": { "scale": 1.0, "rotate": 1, "dy": 0.006 },
+        "flameInner": { "scale": 0.98, "rotate": -1 },
+        "glow": { "scale": 1.0 }
+      }
+    }
+  ],
+  "animation": {
+    "keys": [
+      { "t": 0.0, "pose": "flickA" },
+      { "t": 0.35, "pose": "flickB" },
+      { "t": 0.7, "pose": "flickC" },
+      { "t": 1.0, "pose": "flickA" }
+    ],
+    "cycle": 0.5,
+    "loop": true
+  }
+}
