@@ -11,7 +11,8 @@
         2
       ],
       "name": "Simple duple",
-      "region": "Western"
+      "region": "Western",
+      "pulseUnit": 4
     },
     {
       "id": "waltz-3",
@@ -20,7 +21,8 @@
         3
       ],
       "name": "Waltz",
-      "region": "Western"
+      "region": "Western",
+      "pulseUnit": 4
     },
     {
       "id": "common-4",
@@ -30,7 +32,8 @@
         2
       ],
       "name": "Common time",
-      "region": "Western"
+      "region": "Western",
+      "pulseUnit": 4
     },
     {
       "id": "compound-6",
@@ -44,7 +47,8 @@
       "alsoKnownAs": [
         "Jig",
         "Bemb\u00e9"
-      ]
+      ],
+      "pulseUnit": 8
     },
     {
       "id": "rachenitsa-7",
@@ -55,7 +59,33 @@
         3
       ],
       "name": "Rachenitsa",
-      "region": "Balkan"
+      "region": "Balkan",
+      "pulseUnit": 8
+    },
+    {
+      "id": "slipjig-9",
+      "pulses": 9,
+      "groups": [
+        3,
+        3,
+        3
+      ],
+      "pulseUnit": 8,
+      "name": "Slip jig",
+      "region": "Celtic"
+    },
+    {
+      "id": "compound-12",
+      "pulses": 12,
+      "groups": [
+        3,
+        3,
+        3,
+        3
+      ],
+      "pulseUnit": 8,
+      "name": "Compound quadruple",
+      "region": "Western"
     }
   ],
   "unmatched": {
@@ -114,37 +144,7 @@
       ],
       "region": "Balkan",
       "note": "reachable today via meterGroups(rotation:), which nothing persists yet"
-    },
-    "slipjig-9": {
-      "traditional": [
-        3,
-        3,
-        3
-      ],
-      "engineDefault": [
-        3,
-        3,
-        3
-      ],
-      "blockedBy": "meterDenominator maps only 6,7 -> 8, so 9 renders as 9/4 not 9/8",
-      "region": "Celtic"
-    },
-    "compound-12": {
-      "traditional": [
-        3,
-        3,
-        3,
-        3
-      ],
-      "engineDefault": [
-        3,
-        3,
-        3,
-        3
-      ],
-      "blockedBy": "same as slipjig-9 -- renders 12/4, not 12/8",
-      "region": "Western"
     }
   },
-  "_denominator_caveat": "LoopStarConductor.meterDenominator maps 6 and 7 to /8 and everything else to /4. Any compound metre outside {6,7} therefore displays a WRONG signature (9/4 for a slip jig), so it stays unnamed until WM.1 gives each cycle its own pulseUnit. Naming it sooner would put a correct name on a wrong time signature."
+  "_denominator_caveat": "SUPERSEDED 2026-08-23 by the per-cycle `pulseUnit` field. The binary's LoopStarConductor.meterDenominator now consults this registry first and only falls back to its hardcoded 6-or-7-means-eighths rule when no cycle declares one. Declaring pulseUnit changes the CLOCK for that metre (clockBPM = packBPM * pulseUnit / 4), so a 9 declared as /8 has a bar half as long as a 9 left at /4 -- correct for a slip jig, and the reason it could not be named before."
 }
