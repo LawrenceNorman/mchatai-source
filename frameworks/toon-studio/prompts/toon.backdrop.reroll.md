@@ -1,0 +1,1 @@
+Your previous attempt drew only {{PATHS}} expanded paths — far too sparse to read as scenery, and it will look like flat slabs. Draw the SAME location again with far more substance: give every row a repeat with a count of 15-40, and give each layer several such rows. Make the specific objects of this location large and unmistakable in the mid layer.
