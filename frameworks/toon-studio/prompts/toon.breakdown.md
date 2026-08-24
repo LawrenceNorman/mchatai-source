@@ -71,20 +71,42 @@ say the time of day only if the script only ever plays there at one time.
 
 ## PROPS
 
-Only things the script ACTUALLY NEEDS on stage or in a character's hand, that
-carry story weight — the object someone fights over, hides, hands across, opens
-or breaks. Cap the list at about SIX. Nothing purely decorative: furniture,
-signage, plants and clutter are the backdrop's job, and listing them here just
-buys you worse scenery.
+A prop is an object THE SCRIPT NAMES. Two kinds earn a place on this list, and
+the second is the one that used to get thrown away:
+
+• STORY objects — the thing someone fights over, hides, hands across, opens or
+  breaks. The lunch container, the tally-book, the red briefcase.
+• MOOD objects — the thing nobody touches, that the scene is nonetheless about:
+  a fluorescent tube that flickers, a single desk lamp throwing a noir shadow, a
+  wall clock, blinds with the light coming through them. If the writer bothered
+  to put it on the page it is doing work, and a director cannot flicker a light
+  that was never built. "Fluorescent lights buzz overhead" is a prop.
+
+OUT of scope: furniture and set dressing the script never mentions, and anything
+the backdrop already draws. A chair nobody sits in and a plant nobody names are
+the backdrop's job, and listing them here just buys you worse scenery.
+
+Cap the list at about SIX. When the cap bites, STORY objects outrank MOOD ones —
+cut the wall clock before you cut the thing the plot turns on.
 
 • "ref" is a short lowercase snake_case instance name later passes will target
-  with cues (sandwich_container, ledger, red_briefcase).
+  with cues (sandwich_container, ledger, strip_light).
 • "scenes" lists the 1-based scene numbers the prop is needed in.
+• "anchor" is "ground" (the default, omit it) or "overhead". Ground props stand
+  on the floor at y 0. OVERHEAD props HANG, and the staging pass places them
+  with a raised y — around 1.25 to 1.6 — instead of sitting them at 0. Say
+  "overhead" here or nothing will: the rule everywhere downstream is "props sit
+  at y 0", and that rule is exactly what puts a ceiling light on the breakroom
+  floor. Ceiling fixtures, hanging signs, pendant lamps, chandeliers, banners.
 • Descriptions feed a flat cut-out PROP generator: bold masses that read at
   thumbnail size, sized against a character of height 1.0 (a mug ~0.12, a crate
-  ~0.42, a lamppost ~1.1). If the script makes it MOVE — a lid lifts, a door
-  swings, a case springs open — say so, because that becomes a hinge and a
-  pose.
+  ~0.42, a lamppost ~1.1). The generator draws every prop standing on its own
+  baseline; "overhead" is about where the STAGE hangs it, not how it is drawn.
+• If the script makes it MOVE — a lid lifts, a door swings, a case springs open
+  — say so, because that becomes a hinge and a pose. Mood objects usually move
+  too, and that is the whole reason to build them: a flickering tube needs a
+  dark state to flicker to, blinds need open and shut. NAME THE STATES, or the
+  director gets a still picture where the script asked for a flicker.
 
 ## TITLE
 
@@ -102,7 +124,8 @@ SHAPE:
     {"location":"BREAKROOM","description":"Interior office breakroom: wall-mounted microwave, a coffee machine with a scorched jug, a corkboard thick with curling notices, a round formica table with four stacking chairs, a tall white fridge with a handwritten sign taped to the door, a swing-bin in the corner.","backdropID":null}
   ],
   "props":[
-    {"ref":"sandwich_container","description":"Clear plastic lunch container with a snap-on blue lid, about 0.16 tall against a 1.0 character. The lid is a separate hinged part so it can be opened.","puppetID":null,"scenes":[1,3]}
+    {"ref":"sandwich_container","description":"Clear plastic lunch container with a snap-on blue lid, about 0.16 tall against a 1.0 character. The lid is a separate hinged part so it can be opened.","puppetID":null,"scenes":[1,3],"anchor":"ground"},
+    {"ref":"strip_light","description":"Long fluorescent ceiling tube in a shallow metal housing, about 0.7 wide and 0.1 tall, two short stems on top where it mounts. Needs a lit state and a dark state so it can flicker.","puppetID":null,"scenes":[1,3],"anchor":"overhead"}
   ]
 }
 
@@ -114,6 +137,10 @@ CHECKS before you answer:
 • every puppetID / backdropID is either null or an EXACT id from the catalogue
 • no id was invented, and no weak match was accepted to avoid a new asset
 • every location description names concrete objects, not moods
-• at most ~6 props, each one the script genuinely needs in hand or on stage
+• at most ~6 props, each one NAMED by the script — the objects it needs in hand
+  or on stage, plus the objects that carry the mood of a place
+• nothing on the list is unnamed furniture or something the backdrop already draws
+• every prop that hangs rather than stands carries "anchor":"overhead"
+• every prop the script makes move names the states it moves between
 • every prop "ref" is short snake_case and its "scenes" are 1-based numbers
 • the output is one JSON object, no prose, no code fence

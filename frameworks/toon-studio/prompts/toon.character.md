@@ -76,6 +76,70 @@ POSES — named joint rotations in DEGREES, counter-clockwise:
   "idle", "talk", "point", "shrug", "lean"
 Positive rotation swings a RIGHT arm outward; negative swings a LEFT arm outward.
 
+EXPRESSIONS — THE SIX FACES, AND THEY ARE NOT OPTIONAL
+
+A pose whose id begins "face_" is an EXPRESSION. The studio finds expressions by
+that prefix and by nothing else, so a rig without them is a rig that cannot
+react — the director's staging pass reaches for a face on every story turn,
+finds an empty list, and plays the whole film deadpan. Ship all six on every
+character, including animals, creatures, robots and anything else with eyes:
+
+  face_angry · face_happy · face_sad · face_surprised · face_suspicious · face_worried
+
+A FACE IS A POSE, so it COMPOSES with the body pose instead of replacing it.
+Face and body ride separate channels: a line of dialogue sets a "talk" body
+while face_worried keeps holding underneath it. That only works if a face_ pose
+touches FACE PARTS ONLY — put an arm rotation inside face_angry and it will
+fight every gesture in the film for as long as the face is up.
+
+WHICH PARTS MOVE. The work is done on "eyes", squashed and nudged about its own
+pivot. The eye part is one unit — whites and pupils together — so scaling it
+reads as a lid closing over the whole eye:
+  "scaleY" below 1 closes the lids: ~0.5 is a smile-squint, ~0.3 a narrowed glare
+  "scaleX" a little above 1 (1.06–1.10) widens the eye as it narrows, which is
+    what makes a squint read as a GLARE rather than a blink
+  "scale" above 1 (about 1.3) is the pop of surprise
+  "dy" of -0.004 to -0.014 drops the eyes a hair and +0.004 to +0.012 lifts
+    them; a small shift reads as a brow moving and is worth far more than the
+    number suggests
+  "rotate" of 3 to 4 degrees tilts the pair, which reads as a cocked head
+    without touching the head
+Keep the magnitudes small — scales between 0.3 and 1.3, offsets under 0.03. A
+face that travels further stops looking like an expression and starts looking
+like a broken rig.
+
+A SQUINT IS PROPORTIONAL; AN OFFSET IS NOT. This is the difference between a
+face that plays and a face that ships dead. "scaleY" moves the eye by a
+fraction of its own height, so on a human rig whose eye is 0.115 tall a
+scaleY of 0.92 moves about five thousandths of a puppet unit — roughly two
+pixels at 720p in a wide shot — and on a cat, whose eye is half that, it
+moves nothing a viewer will ever see. "dy" and "rotate" are absolute and
+survive at any eye size. So the SUBTLE faces — worried, sad — must carry a
+"dy" or a "rotate" and must never be built out of "scaleY" alone. Measured on
+the shipped animal cast, a scaleY-only worried is invisible on eight rigs out
+of twenty-two.
+
+BROWS, if your character has them, carry more emotion than the eyes do. They are
+a pair of thin polygons parented to "head" at z 36, each PIVOTED AT ITS INNER
+END so the nose end stays put and the outer end swings:
+  {"id":"browL","parent":"head","z":36,"pivot":[-0.017,0.897],"shapes":[
+    {"type":"polygon","points":[[-0.153,0.875],[-0.017,0.884],[-0.017,0.909],[-0.153,0.900]],"fill":"@hair","stroke":"@line"}]}
+  {"id":"browR","parent":"head","z":36,"pivot":[0.017,0.897],"shapes":[
+    {"type":"polygon","points":[[0.153,0.875],[0.017,0.884],[0.017,0.909],[0.153,0.900]],"fill":"@hair","stroke":"@line"}]}
+Then: angry swings the outer ends UP ({"browL":{"rotate":-17,"dy":-0.008},
+"browR":{"rotate":17,"dy":-0.008}}) so the brow slopes down toward the nose; sad
+swings them DOWN (+16 / -16, dy +0.004); worried is the same shape at half
+strength (+9 / -9); happy and surprised only lift both (dy +0.012 and +0.028);
+suspicious cocks ONE ({"browL":{"rotate":-11,"dy":-0.004},"browR":{"dy":0.016}}).
+
+NEVER build a face out of the mouth. "mouth" carries the visemes and is
+overwritten on every frame a character speaks, so a smile authored there
+survives exactly until the character opens it.
+
+The six must be distinguishable from "idle" AND from each other. Two faces with
+the same numbers are one face with two names, and a director who asks for
+face_worried and gets the idle stare has been given nothing.
+
 WORKING REFERENCE — a complete, correct character. Start from these numbers and
 CHANGE them. Keep the part ids and the nesting; change sizes, colours, hair,
 clothing, proportions, and add shapes.
@@ -134,16 +198,46 @@ clothing, proportions, and add shapes.
     {"id":"talk","parts":{"armL":{"rotate":-8},"armR":{"rotate":8},"head":{"rotate":-1.5}}},
     {"id":"point","parts":{"armR":{"rotate":62},"head":{"rotate":3}}},
     {"id":"shrug","parts":{"armL":{"rotate":-26,"dy":0.03},"armR":{"rotate":26,"dy":0.03}}},
-    {"id":"lean","parts":{"body":{"rotate":4},"head":{"rotate":-6}}}
+    {"id":"lean","parts":{"body":{"rotate":4},"head":{"rotate":-6}}},
+    {"id":"face_angry","parts":{"eyes":{"scaleY":0.60,"scaleX":1.12,"dy":-0.006}}},
+    {"id":"face_happy","parts":{"eyes":{"scaleY":0.50,"dy":0.004}}},
+    {"id":"face_sad","parts":{"eyes":{"scaleY":0.86,"dy":-0.014,"rotate":-3.5}}},
+    {"id":"face_surprised","parts":{"eyes":{"scale":1.32,"dy":0.006}}},
+    {"id":"face_suspicious","parts":{"eyes":{"scaleY":0.30,"scaleX":1.08,"dx":0.014}}},
+    {"id":"face_worried","parts":{"eyes":{"scaleY":0.90,"scaleX":0.96,"dy":0.010,"rotate":3}}}
   ]
 }
 
+HAIR MUST NOT COVER THE EYES.
+The eyes sit in the band y 0.75–0.88, across x -0.17..0.17, and `hair` is drawn
+IN FRONT of them (z 40 vs 34). So a hair drawable crossing that band hides the
+face. This is not hypothetical: a rig shipped with hair as one flat
+`{"type":"rect","x":-0.25,"y":0.775,"w":0.5,"h":0.05}` — a full-width bar at
+exactly eye height — and the character wore it like a blindfold in every shot.
+• Keep every hair drawable ABOVE y 0.88, or out at the SIDES (|x| > 0.17) where
+  it frames the face rather than crossing it.
+• A single full-width rect is not hair. Hair has a silhouette — a fringe that
+  dips and rises, a parting, a shape that reads at thumbnail size. Use a `path`
+  like the reference, or several shapes.
+• A hat or helmet follows the same rule: brim above the brow, never across it.
+
 CHECKS before you answer:
+    • no hair, hat or fringe drawable overlaps the eye band (y 0.75–0.88 between x -0.17 and 0.17)
 • head ellipse overlaps the top of the body (body top ≈ 0.55, head bottom ≈ 0.52)
 • the two legs do NOT overlap in x
 • eye whites sit inside the head ellipse, pupils inside the whites
 • the mouth and every viseme sit on the lower half of the head, above the chin
 • every "@token" you reference exists in "palette"
 • viseme D is visibly larger than C, and C larger than B
+• ALL SIX face_ poses are present — face_angry, face_happy, face_sad,
+  face_surprised, face_suspicious, face_worried — because a rig missing them
+  cannot react to anything for the whole film
+• every face_ pose is visibly different from "idle" and from the other five: it
+  changes at least one face part, and no two carry the same numbers
+• face_worried and face_sad each carry a "dy" or a "rotate" and are not built
+  out of "scaleY" alone — a squint is a fraction of the eye it squints, so on a
+  small-eyed rig a scaleY-only face moves nothing anybody can see
+• no face_ pose touches a body part — faces compose with poses, they do not
+  replace them
 • the character differs from the reference in SKIN, HAIR SHAPE, BUILD and CLOTHING
   SHAPE — not in colour alone

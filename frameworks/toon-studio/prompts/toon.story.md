@@ -61,7 +61,7 @@ SOUND — three tools, used differently:
 • A sound EFFECT between lines is a zero-width beat in the beat stream:
     {"type":"sound","sound":"boom","gain":0.9}
   It fires exactly between the beats around it, however long they end up.
-• MUSIC/AMBIENCE is per scene: "music": {"sound":"waves","gain":0.3,"loop":true}
+• MUSIC/AMBIENCE is per scene: "music": {"sound":"waves_loop","gain":0.3,"loop":true}
   on the scene object. It spans the whole scene automatically. Score the FEELING
   of each act — the same scene list with rising music reads as a different film.
   Going silent for the climax is a legitimate, powerful choice.
