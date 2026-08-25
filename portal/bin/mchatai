@@ -1,0 +1,226 @@
+#!/usr/bin/env bash
+# mchatai — talk to the mChatAI+ macOS app from your terminal.
+#
+# Self-contained on purpose: pure bash, no python, no repo checkout, no
+# dependencies. This file ships to every mChatAI+ user inside the app's own
+# content cache, so `portal/bin/mchatai` is always on their machine.
+#
+#   mchatai doctor                       check your setup and what to fix
+#   mchatai ready                        is the app listening?
+#   mchatai manifest [verb]              what can I ask it to do?
+#   mchatai skills                       list installed skills
+#   mchatai run "<goal>" [opts]          build something
+#   mchatai continue <sessionID> "<msg>" iterate on it
+#   mchatai status [sessionID]           how is it going?
+#   mchatai validate '<json>'            check a payload without running it
+#   mchatai raw '<json>' [--wait S]      any portal verb
+#
+# Options: --max-turns N  --timeout S  --wait S  --type T  --difficulty L1|L2|L3
+#
+# Env: TUNNEL_DIR (override the app's command directory)
+#      TUNNEL_OUT_DIR (where full responses are saved; default /tmp/mchatai-out)
+#
+# Exit codes: 0 a response came back (check its "status" field), 1 otherwise.
+
+set -u
+
+CONTAINER="$HOME/Library/Containers/com.sevenhillsstudio.mChatAImac/Data/Library/Application Support/mChatAI"
+TUNNEL_DIR="${TUNNEL_DIR:-$CONTAINER/DebugTunnel}"
+OUT_DIR="${TUNNEL_OUT_DIR:-/tmp/mchatai-out}"
+CACHE="$CONTAINER/source-cache/mchatai-source"
+
+die() { printf 'mchatai: %s\n' "$1" >&2; exit 1; }
+
+# Escape a string for embedding in JSON.
+json_escape() {
+  local s=$1
+  s=${s//\\/\\\\}; s=${s//\"/\\\"}
+  s=${s//$'\n'/\\n}; s=${s//$'\r'/\\r}; s=${s//$'\t'/\\t}
+  printf '%s' "$s"
+}
+
+new_rid() { printf 'mc-%s-%s' "$(date +%s)" "$RANDOM"; }
+
+# send <json-payload> <wait-seconds> — writes to the inbox, prints the response.
+send() {
+  local payload=$1 wait_s=${2:-30} rid
+  rid=$(printf '%s' "$payload" | sed -n 's/.*"requestID"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
+  [ -n "$rid" ] || die "internal: payload has no requestID"
+
+  [ -e "$TUNNEL_DIR/ready" ] || die "mChatAI+ is not listening. Run: mchatai doctor"
+  mkdir -p "$TUNNEL_DIR/inbox" "$TUNNEL_DIR/responses" "$OUT_DIR" 2>/dev/null
+
+  local req="$TUNNEL_DIR/inbox/$(date +%Y%m%d-%H%M%S)-$rid.json"
+  printf '%s' "$payload" > "$req" || die "could not write request (is the app installed?)"
+
+  local resp="$TUNNEL_DIR/responses/$rid.json" waited=0
+  while [ "$waited" -lt "$wait_s" ]; do
+    if [ -f "$resp" ]; then
+      sleep 0.2                      # let the writer finish
+      cp "$resp" "$OUT_DIR/$rid.json" 2>/dev/null
+      cat "$resp"
+      # Surface any produced files as clickable file:// links. Terminal.app and
+      # iTerm2 both make these openable, so you never have to go hunting in the
+      # sandbox container for what a run just made.
+      if grep -q '"artifactURLs"' "$resp" 2>/dev/null; then
+        # Foundation writes JSON with escaped slashes (file:\/\/\/...), so match
+        # loosely and unescape rather than looking for a literal "file://".
+        local links
+        links=$(sed -n '/"artifactURLs"/,/\]/p' "$resp" | grep -o 'file:[^"]*' | sed 's|\\/|/|g')
+        if [ -n "$links" ]; then
+          printf '\nFiles produced:\n' >&2
+          printf '  %s\n' $links >&2
+        fi
+      fi
+      return 0
+    fi
+    sleep 1; waited=$((waited + 1))
+  done
+  die "no response after ${wait_s}s. The app may be busy; try a longer --wait."
+}
+
+# ---------------------------------------------------------------- doctor
+
+doctor() {
+  local ok=1
+  printf 'mChatAI+ portal setup\n\n'
+
+  if pgrep -x mChatAI >/dev/null 2>&1; then
+    printf '  [ok]   mChatAI+ is running\n'
+  else
+    printf '  [FIX]  mChatAI+ is not running — open the app\n'; ok=0
+  fi
+
+  if [ -e "$TUNNEL_DIR/ready" ]; then
+    printf '  [ok]   app is listening for commands\n'
+  else
+    printf '  [FIX]  app is not listening.\n'
+    printf '         Quit mChatAI+, then relaunch it with the portal enabled:\n'
+    printf '           open -a mChatAI --args --mchatai-tunnel\n'
+    printf '         (Mac App Store builds cannot listen; use Shortcuts instead —\n'
+    printf '          try: shortcuts run "mChatAI Portal Info")\n'
+    ok=0
+  fi
+
+  if [ -d "$CACHE/portal" ]; then
+    printf '  [ok]   portal content is installed\n'
+  else
+    printf '  [FIX]  portal content missing — open mChatAI+ and let it sync,\n'
+    printf '         or run: mchatai raw %s\n' "'{\"command\":\"refreshMchataisourceCache\"}'"
+    ok=0
+  fi
+
+  local skills_dir="$HOME/.claude/skills/mchatai-portal"
+  if [ -e "$skills_dir" ]; then
+    printf '  [ok]   Claude Code skill installed\n'
+  else
+    printf '  [tip]  install the Claude Code skill so agents know how to drive the app:\n'
+    printf '           mkdir -p ~/.claude/skills && ln -s "%s/portal/skills/mchatai-portal" ~/.claude/skills/\n' "$CACHE"
+  fi
+
+  if command -v mchatai >/dev/null 2>&1 || [ -x "$HOME/bin/mchatai" ]; then
+    printf '  [ok]   mchatai is on your PATH\n'
+  else
+    printf '  [tip]  put mchatai on your PATH:\n'
+    printf '           mkdir -p ~/bin && ln -s "%s/portal/bin/mchatai" ~/bin/mchatai\n' "$CACHE"
+    printf '           (then add ~/bin to PATH in your shell profile)\n'
+  fi
+
+  printf '\n'
+  if [ "$ok" = "1" ]; then
+    printf 'Ready. Try:  mchatai manifest\n'
+  else
+    printf 'Fix the [FIX] items above, then run mchatai doctor again.\n'
+  fi
+  [ "$ok" = "1" ]
+}
+
+# ---------------------------------------------------------------- commands
+
+usage() { sed -n '2,30p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 1; }
+
+[ $# -ge 1 ] || usage
+cmd=$1; shift
+
+# shared option parsing
+MAX_TURNS=3; TIMEOUT=600; WAIT=0; ARTIFACT_TYPE=""; DIFFICULTY=""
+POSITIONAL=()
+while [ $# -gt 0 ]; do
+  case $1 in
+    --max-turns)  MAX_TURNS=$2; shift 2 ;;
+    --timeout|--timeout-seconds) TIMEOUT=$2; shift 2 ;;
+    --wait)       WAIT=$2; shift 2 ;;
+    --type)       ARTIFACT_TYPE=$2; shift 2 ;;
+    --difficulty) DIFFICULTY=$2; shift 2 ;;
+    -h|--help)    usage ;;
+    *)            POSITIONAL+=("$1"); shift ;;
+  esac
+done
+set -- ${POSITIONAL+"${POSITIONAL[@]}"}
+
+rid=$(new_rid)
+
+case $cmd in
+  doctor)
+    doctor ;;
+
+  ready)
+    if [ -e "$TUNNEL_DIR/ready" ]; then echo "ready: $TUNNEL_DIR"; else
+      die "not listening. Run: mchatai doctor"; fi ;;
+
+  manifest)
+    [ "$WAIT" -eq 0 ] && WAIT=20
+    if [ $# -ge 1 ]; then
+      send "{\"command\":\"portalManifest\",\"verb\":\"$(json_escape "$1")\",\"requestID\":\"$rid\"}" "$WAIT"
+    else
+      send "{\"command\":\"portalManifest\",\"requestID\":\"$rid\"}" 20
+    fi ;;
+
+  skills)
+    send "{\"command\":\"listSkills\",\"requestID\":\"$rid\"}" 20 ;;
+
+  extension-points)
+    if [ $# -ge 1 ]; then
+      send "{\"command\":\"portalExtensionPoints\",\"applet\":\"$(json_escape "$1")\",\"requestID\":\"$rid\"}" 20
+    else
+      send "{\"command\":\"portalExtensionPoints\",\"requestID\":\"$rid\"}" 20
+    fi ;;
+
+  validate)
+    [ $# -ge 1 ] || die "usage: mchatai validate '<json payload>'"
+    send "{\"command\":\"portalValidate\",\"payload\":$1,\"requestID\":\"$rid\"}" 20 ;;
+
+  run)
+    [ $# -ge 1 ] || die "usage: mchatai run \"<what you want built>\""
+    p="{\"command\":\"runWizard\",\"goal\":\"$(json_escape "$1")\",\"maxTurns\":$MAX_TURNS,\"timeoutSeconds\":$TIMEOUT"
+    [ -n "$ARTIFACT_TYPE" ] && p="$p,\"artifactType\":\"$(json_escape "$ARTIFACT_TYPE")\""
+    [ -n "$DIFFICULTY" ]    && p="$p,\"difficulty\":\"$(json_escape "$DIFFICULTY")\""
+    p="$p,\"requestID\":\"$rid\"}"
+    [ "$WAIT" -eq 0 ] && WAIT=$((TIMEOUT + 60))
+    send "$p" "$WAIT" ;;
+
+  continue)
+    [ $# -ge 2 ] || die "usage: mchatai continue <sessionID> \"<message>\""
+    p="{\"command\":\"continueWizard\",\"sessionID\":\"$(json_escape "$1")\",\"message\":\"$(json_escape "$2")\",\"timeoutSeconds\":$TIMEOUT,\"requestID\":\"$rid\"}"
+    [ "$WAIT" -eq 0 ] && WAIT=$((TIMEOUT + 60))
+    send "$p" "$WAIT" ;;
+
+  status)
+    if [ $# -ge 1 ]; then
+      send "{\"command\":\"diagSessionState\",\"sessionID\":\"$(json_escape "$1")\",\"requestID\":\"$rid\"}" 25
+    else
+      send "{\"command\":\"diagSessionState\",\"requestID\":\"$rid\"}" 25
+    fi ;;
+
+  raw)
+    [ $# -ge 1 ] || die "usage: mchatai raw '<json payload>'"
+    payload=$1
+    case "$payload" in
+      *'"requestID"'*) : ;;
+      *) payload="${payload%\}},\"requestID\":\"$rid\"}" ;;
+    esac
+    [ "$WAIT" -eq 0 ] && WAIT=60
+    send "$payload" "$WAIT" ;;
+
+  *) usage ;;
+esac

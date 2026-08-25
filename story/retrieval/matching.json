@@ -1,0 +1,70 @@
+{
+  "version": 1,
+  "lastUpdated": "2026-08-25",
+  "_source_of_truth": true,
+  "_comment": "How StoryMaker decides which story-bible entries a passage is ABOUT. Read by StoryRetrievalPolicy (mChatAI+ macOS); the binary carries identical _fallback_only defaults, so editing this file + git push + refreshMchataisourceCache ships with no rebuild. THE BUG THIS FIXES: the old matcher did a naive lowercased substring test over name tokens filtered only by length > 2, so a character named 'The Watcher' produced the token 'the' and matched essentially any English prose — dragging that character AND its whole relationship graph into every prompt. Two guards replace it: whole-word matching, and the stopword/denylist admission test below. DECODER SAFETY: comment keys appear at this TOP LEVEL ONLY. Never nest a _comment inside a typed object — a stray key at the wrong level once made a sibling content file silently decode-dead for weeks, and the app served frozen fallbacks the whole time with nothing to show for it. The Swift reader clamps every numeric to the stated range and falls back per-key on anything missing or malformed, so a bad edit here can never disable matching or unbound the candidate set.",
+
+  "scanBufferChars": 10000,
+  "caseSensitiveDefault": false,
+  "matchWholeWordsDefault": true,
+  "autoPluralize": true,
+  "minNameTokenLength": 3,
+
+  "_degenerateNamePolicy_comment": "What to do when EVERY token of an entity name is rejected by the admission test — 'The The', 'It', 'A'. 'aliasOnly' means the entity matches only via an explicit alias, never automatically. The tempting alternative (fall back to matching the full phrase) reintroduces the original bug for exactly these names: a single-token name that IS a stopword would match every page. Values: aliasOnly | fullPhraseIfDistinctive | never.",
+  "degenerateNamePolicy": "aliasOnly",
+
+  "_sharedTokenGuard_comment": "A token shared by too many entity names is not distinctive IN THIS BIBLE, whatever a static list says. 'Alpha Person', 'Bravo Person', 'Charlie Person' all yield 'person' — not a stopword, not a plausible denylist entry, yet it makes every one of them match any page containing the word. No hand-maintained list can anticipate this, because it depends on the author's naming habits: a cast of Sir Kael, Sir Bren and Sir Doyle has the same problem with 'sir'. So the check is corpus-relative — a token appearing in MORE THAN maxEntitiesPerSharedToken entity names stops counting as distinctive for all of them. Their remaining unique tokens (alpha, bravo, kael, bren) still work, and an entity left with nothing distinctive falls to degenerateNamePolicy. Set to 0 to disable.",
+  "maxEntitiesPerSharedToken": 2,
+
+  "maxCascadeDepth": 1,
+  "neighborLimit": 6,
+  "candidateCap": 200,
+
+  "_stopwords_comment": "Closed-class English FUNCTION words. Applied to entity-name tokens AND to keyword extraction. Tokens are lowercased and stripped to letters and digits before the list is consulted, so no entry here contains an apostrophe — contractions are covered by their stripped residues (dont, cant, wont). NEVER add a content word here: removing an entity's only distinctive token makes it unreachable, which is a silent omission bug and strictly worse than an over-eager match.",
+  "stopwords": [
+    "a", "about", "above", "after", "again", "against", "all", "am", "an", "and", "any", "are",
+    "arent", "as", "at", "be", "because", "been", "before", "being", "below", "between", "both",
+    "but", "by", "cant", "cannot", "could", "couldnt", "did", "didnt", "do", "does", "doesnt",
+    "doing", "dont", "down", "during", "each", "few", "for", "from", "further", "had", "hadnt",
+    "has", "hasnt", "have", "havent", "having", "he", "hed", "hell", "hes", "her", "here",
+    "heres", "hers", "herself", "him", "himself", "his", "how", "hows", "i", "id", "ill", "im",
+    "ive", "if", "in", "into", "is", "isnt", "it", "its", "itself", "lets", "me", "more", "most",
+    "mustnt", "my", "myself", "no", "nor", "not", "of", "off", "on", "once", "only", "or",
+    "other", "ought", "our", "ours", "ourselves", "out", "over", "own", "same", "shant", "she",
+    "shed", "shell", "shes", "should", "shouldnt", "so", "some", "such", "than", "that", "thats",
+    "the", "their", "theirs", "them", "themselves", "then", "there", "theres", "these", "they",
+    "theyd", "theyll", "theyre", "theyve", "this", "those", "through", "to", "too", "under",
+    "until", "up", "very", "was", "wasnt", "we", "wed", "well", "were", "weve", "werent", "what",
+    "whats", "when", "whens", "where", "wheres", "which", "while", "who", "whos", "whom", "why",
+    "whys", "with", "wont", "would", "wouldnt", "you", "youd", "youll", "youre", "youve", "your",
+    "yours", "yourself", "yourselves"
+  ],
+
+  "_nameTokenDenylist_comment": "High-frequency OPEN-class words that clear the stopword test but are still non-distinctive as an entity-name token. Applied ONLY to entity-name tokens, never to prose keyword extraction — a manuscript is allowed to be about a man in a house at night. Without this, 'A Man Called Ove' reduces to the token 'man' and fires on any page containing that word.",
+  "nameTokenDenylist": [
+    "back", "boy", "called", "came", "child", "city", "day", "door", "even", "eyes", "face",
+    "father", "feel", "felt", "girl", "going", "good", "got", "great", "hand", "hands", "head",
+    "hear", "heard", "house", "just", "keep", "kind", "knew", "know", "known", "last", "left",
+    "life", "like", "little", "long", "look", "looked", "made", "make", "man", "many", "matter",
+    "may", "men", "might", "mind", "moment", "mother", "much", "must", "name", "need", "never",
+    "new", "next", "night", "now", "old", "one", "open", "part", "people", "place", "put",
+    "right", "room", "said", "saw", "say", "see", "seemed", "she", "side", "since", "small",
+    "still", "take", "taken", "tell", "thing", "things", "think", "thought", "three", "time",
+    "today", "told", "took", "turn", "turned", "two", "us", "used", "voice", "want", "way",
+    "week", "well", "went", "will", "woman", "women", "word", "words", "work", "world", "year",
+    "years", "yes", "young"
+  ],
+
+  "_promptKeywordStopwords_comment": "Used when extracting search keywords from the author's instruction + selection for the cross-chapter grep. Distinct from name-token filtering: this list may contain craft vocabulary ('story', 'write', 'chapter') that would be wrong to strip from an entity name. Replaces the hardcoded Swift list this file supersedes.",
+  "promptKeywordStopwords": [
+    "about", "after", "again", "another", "because", "before", "being", "better", "chapter",
+    "character", "could", "does", "each", "even", "every", "from", "have", "here", "into",
+    "just", "like", "make", "more", "most", "much", "must", "need", "only", "other", "over",
+    "para", "paragraph", "please", "really", "rewrite", "scene", "should", "some", "story",
+    "such", "text", "than", "that", "their", "them", "then", "there", "these", "they", "this",
+    "those", "through", "very", "want", "what", "when", "where", "which", "while", "with",
+    "would", "write", "writing", "your"
+  ],
+  "promptKeywordMinLength": 4,
+  "promptKeywordMaxCount": 10
+}

@@ -1,0 +1,101 @@
+{
+  "version": 1,
+  "lastUpdated": "2026-08-25",
+  "_source_of_truth": true,
+  "_comment": "How StoryMaker divides a prompt's context budget between competing kinds of story context. Read by StoryRetrievalPolicy (mChatAI+ macOS); the binary carries identical _fallback_only defaults, so an edit here + git push + refreshMchataisourceCache ships with no rebuild. WHY ZONES AND NOT ONE POOL: the Narrative World Model ablation traced 83% of failures in a naive serialize-everything condition to facts the store DID contain but positional truncation dropped. A reserved floor is a GUARANTEE that a kind of context reaches the model even when something louder wants the room. DENOMINATORS — read this before editing a number: outputReserveFraction is a fraction of the model's TOTAL context. Every zone floor and ceiling is a fraction of the INPUT BUDGET, which is what remains after the output reserve. These are different denominators and confusing them is how the first draft of this file ended up with floors summing to 110% of a budget that could never satisfy them, silently starving the bottom-positioned zones. DECODER SAFETY: comment keys live at this TOP LEVEL ONLY; the zone objects are fixed-field and must stay that way.",
+
+  "outputReserveFraction": 0.25,
+
+  "_maxFloorSum_comment": "Ceiling on the sum of every zone floor, expressed as a fraction OF INPUT BUDGET — the same denominator as the floors themselves. It is NOT related to outputReserveFraction. The Swift assembler asserts the floors actually sum below this and refuses to start otherwise, so an over-committed edit fails loudly at load instead of quietly starving whichever zone sorts last.",
+  "maxFloorSum": 0.70,
+
+  "_neverTrimHardCap_comment": "A zone with trim policy 'never' still needs a terminal behaviour, or it can overrun the whole budget on its own. Past this fraction of input budget a never-trim zone degrades to byLine and logs a WARN rather than overflowing into another zone's floor.",
+  "neverTrimHardCapFraction": 0.12,
+
+  "_zones_comment": "floor = reserved, always allocated. ceiling = maximum after leftover flex is distributed. position = where the block renders (top is prompt-cacheable and stable; bottom gets the strongest attention and holds volatile scene state). priority = fill order for the leftover flex, lower number first. trim = how the zone degrades when it does not fit: never | wholeOrDrop | bySentence | byLine. order = which entries survive a cut.",
+  "zones": [
+    {
+      "id": "styleContract",
+      "floor": 0.04,
+      "ceiling": 0.06,
+      "position": "top",
+      "priority": 1,
+      "trim": "never",
+      "order": "authored"
+    },
+    {
+      "id": "worldRulesAlways",
+      "floor": 0.04,
+      "ceiling": 0.09,
+      "position": "top",
+      "priority": 2,
+      "trim": "wholeOrDrop",
+      "order": "authored"
+    },
+    {
+      "id": "rankedEntities",
+      "floor": 0.18,
+      "ceiling": 0.34,
+      "position": "middle",
+      "priority": 3,
+      "trim": "wholeOrDrop",
+      "order": "scoreDescending"
+    },
+    {
+      "id": "chapterDigests",
+      "floor": 0.08,
+      "ceiling": 0.14,
+      "position": "middle",
+      "priority": 5,
+      "trim": "wholeOrDrop",
+      "order": "recencyDescending"
+    },
+    {
+      "id": "openThreads",
+      "floor": 0.03,
+      "ceiling": 0.05,
+      "position": "bottom",
+      "priority": 6,
+      "trim": "byLine",
+      "order": "authored"
+    },
+    {
+      "id": "sceneBrief",
+      "floor": 0.06,
+      "ceiling": 0.10,
+      "position": "bottom",
+      "priority": 4,
+      "trim": "never",
+      "order": "authored"
+    },
+    {
+      "id": "verbatimProse",
+      "floor": 0.14,
+      "ceiling": 0.24,
+      "position": "bottom",
+      "priority": 7,
+      "trim": "byLine",
+      "order": "tailFirst"
+    }
+  ],
+
+  "_renderOrder_comment": "The order blocks are concatenated into the user prompt. verbatimProse renders LAST because it is the passage the instruction acts on, so it should sit closest to the instruction. sceneBrief precedes it. This array is the single source of truth for ordering — the per-zone 'position' field is descriptive only, and the Swift assembler asserts the two agree.",
+  "renderOrder": [
+    "styleContract",
+    "worldRulesAlways",
+    "rankedEntities",
+    "chapterDigests",
+    "openThreads",
+    "sceneBrief",
+    "verbatimProse"
+  ],
+
+  "_entityRender_comment": "How much room a single ranked entity may take, and how many get the full treatment. Without detailedTopN the maxRankedEntities knob is unreachable in practice: at ~700 tokens for a fully-filled dossier, a 34% ceiling on a 24k budget fits about 6 entities, so a cap of 48 never binds. Top N render as full dossiers, the remainder as name plus a one-line summary.",
+  "detailedTopN": 8,
+  "perEntityTokenCap": 400,
+  "summaryEntityTokenCap": 40,
+  "maxRankedEntities": 48,
+
+  "_tokenEstimate_comment": "Characters per token for budget arithmetic. Matches the app-wide heuristic used by QualitySignalComputer. Deliberately crude: the budget is a guard rail, not an accounting system, and an over-estimate costs a little unused room while an under-estimate costs a failed request.",
+  "charsPerToken": 4
+}

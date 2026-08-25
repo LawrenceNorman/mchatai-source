@@ -1,0 +1,71 @@
+{
+  "_source_of_truth": "frameworks/toon-studio/tuning/attention.json",
+  "_comment": "Who looks at whom, and when. Read by ToonAttention at compile time; the binary carries clamped _fallback_only copies of every number here. Every value is tunable by PR with no rebuild — which is the point, because gaze is a perceptual feature and the right numbers are found by watching, not by reasoning.",
+
+  "enabled": true,
+
+  "buckets": {
+    "_comment": "Three renderable states. `quarter` is the conversational default: it keeps two readable eyes and leaves the front-facing viseme artwork geometrically valid, so lip-sync and face_* expressions both still land. `profile` is reserved for confrontation — it shows one eye and lip-sync legibility collapses, which is exactly theatre's note that a profile 'will appear flat'.",
+    "front":   { "pose": null,        "variant": null },
+    "quarter": { "pose": "look_side", "variant": null },
+    "profile": { "pose": "turn_side", "variant": "turn_side" }
+  },
+
+  "listenerBucket": "profile",
+  "speakerBucket": "quarter",
+  "_bucket_comment": "A LISTENER goes to full profile — the viseme objection that caps a speaker does not apply to someone who is not talking, and a quarter turn measures as a ~6% narrowing with front-facing artwork, i.e. invisible. Profile is the bucket that swaps a rig's drawn one-eye-and-a-nose head. If profile reads as too flat in practice, this is the one line to change; no rebuild.",
+
+  "speakingClamp": "quarter",
+  "_speakingClamp_comment": "A character with a live line never goes past this bucket. Every viseme in this format is drawn on the centreline; a centreline mouth on a profile head reads as a hole in the cheek. The content proves it by omission — not one of the eight rigs shipping a profile HEAD ships a profile MOUTH. Costs nothing where it matters: the listener case is exactly the case that is not speaking.",
+
+  "damping": {
+    "_comment": "The single most important tuning in this file. Without it a five-line exchange swivels heads every 0.8s and reads as a malfunction rather than as attention.",
+    "minDwell": 0.5,
+    "minBetweenChanges": 1.2,
+    "maxChangesPerScene": 8
+  },
+
+  "stagger": {
+    "_comment": "Never turn two characters on the same frame. Drawn from the project seed so a film is identical across renders — diagToonRender's PASS gate compares renderHash across two runs, and a gaze system that randomised per render would break the existing determinism test. A minority turn EARLY (anticipating the next speaker), which is what stops an ensemble reading as a mechanism.",
+    "windowSeconds": 1.0,
+    "anticipateShare": 0.22,
+    "anticipateLead": 0.25
+  },
+
+  "listener": {
+    "_comment": "Anti-staring is not optional. A listener locked on the speaker for a whole scene is a failure mode, not a clean default — and the look-away is also what fills dead air on a long line.",
+    "aversionLength": 1.14,
+    "aversionLengthSD": 0.27,
+    "aversionInterval": 7.21,
+    "aversionIntervalSD": 1.88
+  },
+
+  "speaker": {
+    "_comment": "A speaker looks at the listener roughly half as much as the reverse. preUtteranceLead: people look AWAY before they start talking, on about 73% of utterances — formulating, not avoiding.",
+    "aversionLength": 1.96,
+    "aversionLengthSD": 0.32,
+    "aversionInterval": 4.75,
+    "aversionIntervalSD": 1.39,
+    "preUtteranceShare": 0.731,
+    "preUtteranceLead": 1.03
+  },
+
+  "group": {
+    "_comment": "3+ on stage. The speaker holds the addressee rather than sweeping the room; non-addressees get a small share of glances. Total gaze scales DOWN in a group, it does not divide evenly.",
+    "speakerToAddressee": 0.77,
+    "toNonAddressees": 0.12,
+    "triadScale": 0.6
+  },
+
+  "blink": {
+    "_comment": "In a discrete-swap system a blink is not decoration, it IS the transition — it hides the pop the way a cut hides a jump. Blinks genuinely co-occur with gaze shifts, so this is craft and physiology agreeing. At 12fps the closing phase (the fast one) and the opening phase both collapse to a single frame.",
+    "onHeadingChange": 0.9,
+    "downFrames": 1,
+    "upFrames": 1
+  },
+
+  "synthesis": {
+    "_comment": "A rig with no look_side pose gets one built from its turn_side at this fraction, head and mouth only — so it reads as a HEAD turn rather than a body turn. Same defence as ToonRigRepair synthesising the six face_* poses: every rig must be able to emote, and every rig must be able to look.",
+    "quarterOfProfile": 0.4
+  }
+}

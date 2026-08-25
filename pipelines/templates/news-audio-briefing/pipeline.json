@@ -1,0 +1,56 @@
+{
+  "id": "b9e5a1c7-0001-4a1b-8c2d-000000000001",
+  "name": "News Audio Briefing",
+  "description": "Search the live web for the last 24 hours on any topic, write a spoken ~2 minute briefing grounded only in what it found, and speak it to an audio file. Input: the topic, e.g. 'the latest AI news'.",
+  "components": [
+    "component.llm-to-doc-save",
+    "component.llm-to-speech-notify"
+  ],
+  "steps": [
+    {
+      "id": "b9e5a1c7-0002-4a1b-8c2d-000000000002",
+      "skillID": "builtin.perplexitySearch",
+      "config": {
+        "model": "sonar",
+        "recency": "day"
+      }
+    },
+    {
+      "id": "b9e5a1c7-0003-4a1b-8c2d-000000000003",
+      "skillID": "builtin.llmGenerate",
+      "config": {
+        "llmProvider": "mChatAI Cloud",
+        "llmFailoverProviders": "anthropic,google,openai",
+        "systemPrompt": "You write short spoken news briefings that are read aloud by a text-to-speech voice. You write ONLY from the supplied search results and never invent facts, numbers, dates, names, or quotes.",
+        "userPrompt": "Write a spoken news briefing of about 300 words on the topic implied by the SEARCH RESULTS below. It will be read aloud, so it must sound natural when spoken.\n\nRULES:\n(1) About 300 words. That is roughly two minutes of speech. Do not go over 340 words.\n(2) Ground every fact, number, date, name, and quote ONLY in the SEARCH RESULTS. If the results are thin, say so plainly rather than padding.\n(3) Open with one short sentence that says what this briefing covers and that it is from the last day.\n(4) Cover the three or four most significant items. Give each one two or three sentences: what happened, and why it matters.\n(5) Close with one short sign-off sentence.\n(6) Write for the EAR. Plain sentences. No markdown, no headings, no bullet points, no asterisks, no numbered lists, no emoji.\n(7) Never read out a URL, a citation marker like [1], or a bracketed source name. Attribute in speech instead, for example 'according to Reuters'.\n(8) Spell out things that would be read badly: say 'thirty percent' not '30%', 'twenty twenty six' not '2026', 'dollars' not '$'.\n(9) Plain ASCII characters only. No curly quotes or dashes.\n\nSEARCH RESULTS:\n{{INPUT}}",
+        "llmMaxInputChars": "14000",
+        "llmMaxTokens": "8000",
+        "llmTimeout": "180"
+      }
+    },
+    {
+      "id": "b9e5a1c7-0004-4a1b-8c2d-000000000004",
+      "skillID": "builtin.saveArtifact",
+      "config": {
+        "artifactName": "News Briefing Script",
+        "artifactExtension": "md"
+      }
+    },
+    {
+      "id": "b9e5a1c7-0005-4a1b-8c2d-000000000005",
+      "skillID": "builtin.ttsGenerate",
+      "config": {}
+    },
+    {
+      "id": "b9e5a1c7-0006-4a1b-8c2d-000000000006",
+      "skillID": "builtin.saveArtifact",
+      "config": {
+        "audioArtifactName": "News Briefing Audio",
+        "saveText": "false",
+        "notifyTitle": "News Audio Briefing",
+        "notifyBody": "Your briefing is ready to play.",
+        "productType": "com.mchatai.product.podcast.episode"
+      }
+    }
+  ]
+}

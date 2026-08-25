@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "lastUpdated": "2026-08-25",
+  "_source_of_truth": true,
+  "_comment": "How StoryMaker ranks story-bible entries competing for room in a prompt. Read by StoryRetrievalPolicy (mChatAI+ macOS); the binary carries identical _fallback_only defaults, so an edit here + git push + refreshMchataisourceCache ships with no rebuild. A 'POV_WEIGHT = 0.35' literal in Swift would be an ABSOLUTE RULE #1 violation — every coefficient below is content. SCALE: each signal is normalised to 0..1 by the retriever before weighting, so the coefficients are directly comparable and the weighted sum lands in 0..(sum of weights). Curve names are content too, not just their parameters, so a better decay can ship without a rebuild. DECODER SAFETY: comment keys at this TOP LEVEL ONLY; every signal object is fixed-field. SCOPE — READ BEFORE ADDING KNOBS: this file describes the signals that exist TODAY. Lane fusion (BM25 + embedding kNN + RRF) is deliberately absent because there is only one matching lane until the SQLite bible sidecar lands, and RRF over a single lane is an identity function. Prompt-tier boosts (always / whenDetected / notWhenDetected) are absent because StoryCharacter carries no inclusion field yet — a coefficient for data that does not exist is a knob that silently does nothing. Both arrive with the schema that gives them meaning. See docs/STORY_BIBLE_ARCHITECTURE.md.",
+
+  "weights": {
+    "directMention": 0.45,
+    "relationHop": 0.25,
+    "titleMention": 0.18,
+    "schemaDensity": 0.12
+  },
+
+  "_signals_comment": "What each signal measures and the curve that normalises it to 0..1. directMention: the entity name or an alias appears as a whole word in the scan window — binary. titleMention: the name appears in the chapter title — binary, and separate because a title mention is a strong topical signal that prose frequency does not capture. relationHop: 1.0 for a directly matched entity, decaying by hopDecay per relationship hop. schemaDensity: filled fields over available fields, so a thin stub sinks below a fully-authored entry. RECENCY AND SALIENCE ARE ABSENT ON PURPOSE: both need per-entity mention history across the manuscript, which arrives with the SQLite sidecar. Carrying a weight for a signal nobody computes is a knob that silently does nothing — it looks tunable, changes no ordering, and hides the fact that the feature is missing. INVARIANT WORTH KEEPING: relationHop * hopDecay must exceed minScore, or no sparsely-authored one-hop relation can ever be admitted and bounded expansion becomes dead weight. 0.25 * 0.55 = 0.1375 > 0.12. BibleRetrieverTests asserts this.",
+
+  "signals": {
+    "relationHop": { "curve": "geometric", "hopDecay": 0.55 },
+    "schemaDensity": { "curve": "linear" }
+  },
+
+  "_selection_comment": "minScore is an ABSOLUTE floor on the final weighted sum, not a percentile — an entity below it is not injected even when the zone has room, because padding a prompt with irrelevant entries is worse than leaving the room unused. candidateCap bounds work before scoring.",
+  "minScore": 0.12,
+  "candidateCap": 200,
+
+  "_worked_example_comment": "Sanity check for anyone editing the weights. (a) A well-authored character named in the current selection: directMention 0.45 + relationHop 1.0*0.25 + schemaDensity 0.9*0.12 = 0.808. (b) A sparse character one relationship hop away, not mentioned: 0.25*0.55 + 0.12*0.143 = 0.155 — above minScore 0.12, so bounded expansion actually works. (c) The same character two hops away: 0.25*0.3025 + 0.017 = 0.093 — below minScore, correctly dropped even if maxCascadeDepth allowed the hop. If an edit collapses (a) and (b) to within 0.1 of each other, the weights have stopped discriminating."
+}

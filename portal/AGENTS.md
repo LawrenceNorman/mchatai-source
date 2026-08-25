@@ -1,5 +1,34 @@
 # Driving mChatAI+ from a coding agent (the CLI Portal)
 
+## READ THIS FIRST — you have a live connection to this app
+
+mChatAI+ is running on this machine and you can drive it directly. **Never answer
+questions about mChatAI+ from memory, from the App Store listing, or from a web
+search.** Ask the app.
+
+```bash
+mchatai doctor      # is the connection healthy? (fixes printed for anything broken)
+mchatai manifest    # every command you are allowed to run, with examples
+mchatai skills      # the skills actually installed on THIS machine
+```
+
+If `mchatai` is not on PATH, call it by its full path — it is always present at:
+
+```
+~/Library/Containers/com.sevenhillsstudio.mChatAImac/Data/Library/Application Support/mChatAI/source-cache/mchatai-source/portal/bin/mchatai
+```
+
+When the user asks *"what can mChatAI+ do?"* the correct answer comes from
+`mchatai skills` and `mchatai extension-points` — not from the applet list in
+the store description. Those return what is installed for THIS user, which is
+the only answer that is true.
+
+If `mchatai doctor` reports the app is not listening, say so and give the user
+its fix. Do not silently fall back to describing the product from memory.
+
+---
+
+
 > Entry point for Claude Code, Codex, and other coding CLIs working on a machine
 > where mChatAI+ (macOS) is installed. This doc teaches you how to drive the app,
 > build and iterate artifacts, author applet content, and validate results.
@@ -67,24 +96,43 @@ mchatai raw '{"command":"portalValidate","payload":{"command":"runWizard","goal"
 Errors teach: an unknown or misspelled command comes back with the nearest
 curated verb and a corrected example payload.
 
+### Setting a user up
+
+If the person you're helping hasn't connected their app yet, `portal/SETUP.md`
+(next to this file) is the plain-English version — send them there, or walk them
+through it. The one command that diagnoses everything is `mchatai doctor`; it
+prints a checklist with the exact fix for each item.
+
+Two things trip up every first-time setup: the app only listens when launched
+with `--mchatai-tunnel`, and Mac App Store builds cannot listen at all (they use
+Shortcuts — see SETUP.md).
+
 ### Preferred: the `mchatai` shim
 
-If the platform repo is on this machine, use the argv shim instead of
-hand-writing JSON (`mchatai_macOS/scripts/mchatai`):
+Two shims exist. **`portal/bin/mchatai` (next to this file) is the one users
+have** — self-contained bash, no dependencies, ships to every machine in the
+app's content cache. It adds `doctor`, `manifest`, `extension-points`, and
+`validate`. The platform repo also has `mchatai_macOS/scripts/mchatai`, which
+wraps the full canary helper; prefer it only when working inside that repo.
 
 ```bash
-mchatai ready                                             # is the tunnel up?
-mchatai run "<goal>" [--max-turns N] [--timeout-seconds S] [--type T] [--difficulty L1|L2|L3] [--json]
-mchatai continue <sessionID> "<message>" [--timeout-seconds S] [--json]
-mchatai status <sessionID> [--json]                       # diagSessionState
-mchatai skills [--json]
-mchatai raw '<json-payload>' [--wait S] [--json]          # any tunnel command
+mchatai doctor                                  # setup checklist + exact fixes
+mchatai ready                                   # is the app listening?
+mchatai manifest [verb]                         # the contract (start here)
+mchatai skills                                  # installed skills
+mchatai extension-points [applet]               # what content you can add
+mchatai validate '<json>'                       # dry-run a payload
+mchatai run "<goal>" [--max-turns N] [--timeout S] [--type T] [--difficulty L1|L2|L3]
+mchatai continue <sessionID> "<message>" [--timeout S]
+mchatai status [sessionID]
+mchatai raw '<json-payload>' [--wait S]         # any tunnel command
 ```
 
 Exit code 0 = a response arrived (still inspect its `status` field);
-1 = tunnel not ready / timeout / usage error. Full responses land in
-`$TUNNEL_OUT_DIR/<requestID>.json` (default `/tmp/tunnel-out`). With `--json`,
-stdout is pure response JSON (pipe-safe).
+1 = not listening / timeout / usage error. Responses print to stdout as
+pretty JSON and are also saved to `$TUNNEL_OUT_DIR/<requestID>.json`
+(default `/tmp/mchatai-out`). The repo shim instead defaults to
+`/tmp/tunnel-out` and takes `--json`.
 
 ### The full command surface
 
