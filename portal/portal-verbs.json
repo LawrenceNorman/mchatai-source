@@ -1,0 +1,146 @@
+{
+  "_readme": "portal.v1 verb catalog. CONTENT per mChatAI RULE #1 — the app binary carries only a frozen minimal fallback. Edit here, then run the invalidateMchataisourceCaches (local edits) or refreshMchataisourceCache (committed) tunnel command; no rebuild needed. Served to agents by the portalManifest tunnel command.",
+  "_consumer": "mChatAI+ PortalContract.swift",
+  "portalVersion": 1,
+  "featureLevel": 1,
+  "versionPolicy": "portalVersion is a breaking-change counter: it increments only when an existing verb's name, required params, or response shape changes incompatibly. featureLevel increments on purely additive changes (new verbs, new optional params). Clients should refuse to run against a higher portalVersion than they understand, and may use featureLevel to detect optional capabilities.",
+  "verbs": [
+    {
+      "name": "portalManifest",
+      "summary": "Discover the portal contract: version, this build's lane, and every verb with its parameters and examples. Call this first.",
+      "kind": "read-only",
+      "required": [],
+      "optional": ["verb"],
+      "example": {"command": "portalManifest", "requestID": "pm-01"},
+      "shim": "mchatai raw '{\"command\":\"portalManifest\"}' --json",
+      "notes": "Pass a verb name to get just that entry. Available in every build lane that serves the tunnel."
+    },
+    {
+      "name": "portalValidate",
+      "summary": "Check a payload without executing it: verifies the command is known, available in this build lane, and has its required parameters.",
+      "kind": "read-only",
+      "required": ["payload"],
+      "optional": [],
+      "example": {"command": "portalValidate", "payload": {"command": "runWizard", "goal": "a tip calculator"}, "requestID": "pv-01"},
+      "shim": "mchatai raw '{\"command\":\"portalValidate\",\"payload\":{\"command\":\"runWizard\",\"goal\":\"a tip calculator\"}}' --json",
+      "notes": "The dry-run verb. Never dispatches the inner payload."
+    },
+    {
+      "name": "runWizard",
+      "summary": "Build a new artifact from a natural-language goal. The main workhorse: routes to a coding CLI for anything off-catalog.",
+      "kind": "mutating",
+      "required": ["goal"],
+      "optional": ["maxTurns", "timeoutSeconds", "artifactType", "difficulty", "swatchID"],
+      "example": {"command": "runWizard", "goal": "a wordle-style daily word game", "maxTurns": 4, "timeoutSeconds": 600, "requestID": "rw-01"},
+      "shim": "mchatai run \"<goal>\" --max-turns 4 --timeout-seconds 600 --json",
+      "pairedCheck": "diagRenderProbe",
+      "notes": "Slow (minutes). Returns a sessionID; poll diagSessionState rather than re-running. One wizard run at a time."
+    },
+    {
+      "name": "continueWizard",
+      "summary": "Send a follow-up turn to an existing wizard session (iterate, refine, fix).",
+      "kind": "mutating",
+      "required": ["sessionID", "message"],
+      "optional": ["timeoutSeconds"],
+      "example": {"command": "continueWizard", "sessionID": "<uuid>", "message": "make the keyboard bigger and add a dark theme", "timeoutSeconds": 600, "requestID": "cw-01"},
+      "shim": "mchatai continue <sessionID> \"<message>\" --json",
+      "pairedCheck": "diagRenderProbe"
+    },
+    {
+      "name": "diagSessionState",
+      "summary": "Ground truth for a session: phase, in-flight registration, held batons, settled state. This is how you ask the app what it is doing.",
+      "kind": "read-only",
+      "required": [],
+      "optional": ["sessionID"],
+      "example": {"command": "diagSessionState", "sessionID": "<uuid>", "requestID": "ss-01"},
+      "shim": "mchatai status <sessionID> --json",
+      "notes": "Omit sessionID for the active session. Safe to poll."
+    },
+    {
+      "name": "typeFollowUp",
+      "summary": "Follow up on an INSTALLED artifact through the app's normal typed-follow-up path (in-place versioning, snapshot protection).",
+      "kind": "mutating",
+      "required": ["miniAppID", "text"],
+      "optional": [],
+      "example": {"command": "typeFollowUp", "miniAppID": "speed-chess", "text": "add a leaderboard", "requestID": "fu-01"},
+      "shim": "mchatai raw '{\"command\":\"typeFollowUp\",\"miniAppID\":\"speed-chess\",\"text\":\"add a leaderboard\"}' --json",
+      "pairedCheck": "diagRenderProbe",
+      "notes": "Prefer this over hand-editing installed files: versions land in place and regressions are gated."
+    },
+    {
+      "name": "diagRenderProbe",
+      "summary": "Render gate for an installed artifact: loads it in a real WKWebView and reports whether it renders.",
+      "kind": "read-only",
+      "required": ["miniAppID"],
+      "optional": ["waitSeconds"],
+      "example": {"command": "diagRenderProbe", "miniAppID": "<id>", "waitSeconds": 6, "requestID": "rp-01"},
+      "shim": "mchatai raw '{\"command\":\"diagRenderProbe\",\"miniAppID\":\"<id>\",\"waitSeconds\":6}' --json",
+      "notes": "Keyed by miniAppID, NOT sessionID. Known quirk: the DOM-shape heuristic can flag deliberately minimal apps as sparse."
+    },
+    {
+      "name": "listSkills",
+      "summary": "Enumerate every registered skill with its risk level and worker profiles.",
+      "kind": "read-only",
+      "required": [],
+      "optional": [],
+      "example": {"command": "listSkills", "requestID": "ls-01"},
+      "shim": "mchatai skills --json"
+    },
+    {
+      "name": "runSkill",
+      "summary": "Execute one skill directly with a config dictionary.",
+      "kind": "mutating",
+      "required": ["skillID"],
+      "optional": ["input", "config"],
+      "example": {"command": "runSkill", "skillID": "custom.githubAPIRequest", "config": {"path": "/user", "method": "GET"}, "requestID": "rs-01"},
+      "shim": "mchatai raw '{\"command\":\"runSkill\",\"skillID\":\"<id>\",\"config\":{}}' --json"
+    },
+    {
+      "name": "listPipelines",
+      "summary": "Enumerate available pipelines (templates and saved).",
+      "kind": "read-only",
+      "required": [],
+      "optional": [],
+      "example": {"command": "listPipelines", "requestID": "lp-01"},
+      "shim": "mchatai raw '{\"command\":\"listPipelines\"}' --json"
+    },
+    {
+      "name": "runPipeline",
+      "summary": "Run a pipeline end to end by name.",
+      "kind": "mutating",
+      "required": ["pipelineName"],
+      "optional": ["input", "config"],
+      "example": {"command": "runPipeline", "pipelineName": "YouTube Research Digest", "input": "Swift concurrency", "config": {}, "requestID": "rp-02"},
+      "shim": "mchatai raw '{\"command\":\"runPipeline\",\"pipelineName\":\"<name>\",\"input\":\"\"}' --json",
+      "notes": "Saved snapshots shadow catalog templates of the same name; purgeSavedPipeline clears a stale one."
+    },
+    {
+      "name": "runAgent",
+      "summary": "Run the agent loop against an input for a bounded number of turns.",
+      "kind": "mutating",
+      "required": ["input"],
+      "optional": ["maxTurns"],
+      "example": {"command": "runAgent", "input": "What time is it?", "maxTurns": 4, "requestID": "ra-01"},
+      "shim": "mchatai raw '{\"command\":\"runAgent\",\"input\":\"<text>\",\"maxTurns\":4}' --json"
+    },
+    {
+      "name": "refreshMchataisourceCache",
+      "summary": "Pull mchatai-source and invalidate every content cache. Use after committed+pushed content edits.",
+      "kind": "mutating",
+      "required": [],
+      "optional": [],
+      "example": {"command": "refreshMchataisourceCache", "requestID": "rc-01"},
+      "shim": "mchatai raw '{\"command\":\"refreshMchataisourceCache\"}' --json",
+      "notes": "Also auto-installs source JS skills. Does a git pull --ff-only; uncommitted local edits are NOT picked up by this verb."
+    },
+    {
+      "name": "invalidateMchataisourceCaches",
+      "summary": "Invalidate content caches without pulling. Use when iterating on UNCOMMITTED local content edits.",
+      "kind": "mutating",
+      "required": [],
+      "optional": [],
+      "example": {"command": "invalidateMchataisourceCaches", "requestID": "ic-01"},
+      "shim": "mchatai raw '{\"command\":\"invalidateMchataisourceCaches\"}' --json"
+    }
+  ]
+}
