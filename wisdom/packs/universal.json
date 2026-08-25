@@ -1,6 +1,6 @@
 {
  "packID": "universal",
- "version": 28,
+ "version": 29,
  "displayName": "Universal Guidelines",
  "description": "Rules that apply to ALL generated apps regardless of category.",
  "categories": [
@@ -179,7 +179,11 @@
    "rule": "When a published web mini-app needs to fetch data from an external HTTPS API (weather, geocoding, Wikipedia, currency rates, jokes, photos, Pokémon, etc.), it MUST route the call through the mChatAI proxy: `https://mchatai.com/proxy/fetch?url=<URL-encoded target>`. Direct cross-origin fetch() calls from a published site are blocked by Content-Security-Policy and will silently fail in production. Watch for TWO-HOST cases: when an API hands back a URL on a different host, that host needs its own allowlist entry. Wikipedia photos are the common one — you look the thumbnail up on en.wikipedia.org but the bytes live on upload.wikimedia.org, so both must be proxied and both must be allowlisted, or the lookup succeeds and the image 403s.",
    "why": "Published mini-apps run under a strict CSP (`connect-src 'self' https://mchatai.com ...`). Direct calls to api.weather.gov, en.wikipedia.org, etc. work in the AIHarness preview but fail once published, which produces 'Could not retrieve data' errors users can't diagnose. The proxy keeps CSP locked down (no data exfil to attacker servers) while letting the curated allowlist of safe public APIs reach published code. The allowlist lives at https://github.com/LawrenceNorman/mchatai-source/blob/main/proxy/allowlist.json — adding a host is a git PR.",
    "severity": "critical",
-   "appliesTo": ["miniapp", "webspa", "website"],
+   "appliesTo": [
+    "miniapp",
+    "webspa",
+    "website"
+   ],
    "examples": [
     "BAD: const r = await fetch('https://api.weather.gov/points/47.6,-122.3') — blocked by CSP in production, looks fine in preview",
     "GOOD: const proxied = 'https://mchatai.com/proxy/fetch?url=' + encodeURIComponent('https://api.weather.gov/points/47.6,-122.3'); const r = await fetch(proxied)"
@@ -300,7 +304,10 @@
    "rule": "NEVER write literal `\\n` (backslash+n, two characters) into JavaScript string literals that become visible text. Either use a real newline character (press Enter in the source), or use `<br>` tags in HTML, or use CSS `white-space: pre-line`. The JS `'\\n'` escape is fine INSIDE a JavaScript string — it compiles to a real newline. But if you write `.textContent = 'Line 1\\\\n\\\\nLine 2'` with a DOUBLE backslash, the two literal characters `\\n` render on the page as visible text, not a line break. Same goes for template literals: `` `Line 1${'\\n'}Line 2` `` is fine; `` `Line 1\\\\nLine 2` `` is wrong.",
    "why": "Seen repeatedly 2026-04-22: top-down adventure, vector-shooter arcade, and Hearts sessions all shipped with literal `\\n\\n\\n` visible on title/overlay screens instead of line breaks. Root cause: generator string-concatenated with double-backslash `\\\\n` thinking it was an escape, but in source code the double-backslash emits two literal characters. Users reported apps as 'blank' or 'showing raw text' — actually functional games with a cosmetic rendering bug.",
    "severity": "important",
-   "appliesTo": ["miniapp", "webspa"],
+   "appliesTo": [
+    "miniapp",
+    "webspa"
+   ],
    "examples": [
     "BAD: `.textContent = 'Score: 0\\\\n\\\\nLives: 3'` — page shows literally 'Score: 0\\n\\nLives: 3'",
     "GOOD: `.innerHTML = 'Score: 0<br><br>Lives: 3'` — real line breaks rendered"
@@ -344,7 +351,11 @@
    "rule": "Mini-apps MUST be designed mobile-first. The header is the worst offender for stealing screen space — total header height ≤ 32px on mobile / ≤ 44px on desktop. For mini-apps using web-components, mount the `ui/MiniHeader` component (path: `ui/MiniHeader.js`, export: `MiniHeader`) — title-only by default; subtitle is OPTIONAL and hides on mobile. Never roll your own hero block. For non-Lego artifacts, the title `<h1>` font-size must be in `clamp(0.95rem, 3.4vw, 1.2rem)` (≈15-19px), no eyebrow line, no brief paragraph in the header. The header ANNOUNCES; the game/tool is the primary content. HUD widgets (score cards, lives, timers, action buttons) belong BELOW the header in their own row — they are NOT part of the header and must also be compact: ≤ 50px row height on mobile, ≤ 1.1rem (~18px) for the value text, ≤ 8px padding. Reserve at least 75% of the viewport height for the actual game/tool content.",
    "why": "Seen 2026-05-02 across recent generations (Chess, Adventure, Tower Defense, Pyramid Hopper, Mini Crossword): hero blocks with `h1 { font-size: clamp(3rem, 12vw, 7rem); }` plus eyebrow + brief paragraph consumed 200-300px before the game appeared. Then below the header, oversized HUD cards (TURN/MOVES/CAPTURED at ~80px each with `font-size: 2rem` and `padding: 24px`) ate another 100-150px. User feedback: 'still pretty massive ... I'd like to default to a mobile friendly view ... we would still have a whole chessboard that would need to fit below.' Mobile-first means designing for a 360px wide / 640px tall viewport FIRST and scaling up — not the reverse.",
    "severity": "critical",
-   "appliesTo": ["miniapp", "webspa", "website"],
+   "appliesTo": [
+    "miniapp",
+    "webspa",
+    "website"
+   ],
    "examples": [
     "GOOD (Lego): import { MiniHeader } from '../../ui/MiniHeader.js'; MiniHeader.mount('[data-mini-header]', { title: 'Chess' }); — title-only, ~28px tall on mobile.",
     "GOOD (non-Lego): <h1 style='font-size:clamp(0.95rem,3.4vw,1.2rem); margin:4px 8px'>Tower Defense</h1>."
@@ -696,10 +707,97 @@
     "BAD: fetch(u).then(r => r.blob()).then(b => cache[id] = URL/dataURL) — a 403 body is now a permanently cached 'photo'",
     "GOOD: check r.ok, decode-verify the bytes, store only on success, and leave failures absent so they retry"
    ]
+  },
+  {
+   "id": "u-036",
+   "rule": "NEVER use window.confirm(), window.alert() or window.prompt(). Build the confirmation or message into the page itself — a small modal with Cancel / Confirm buttons, or a toast.",
+   "why": "A mini-app runs inside several different WKWebViews (the app runtime, the wizard preview, the hub player, the feed preview). A WKWebView shows NO dialog unless its host implements the WKUIDelegate panel methods, and WebKit's fallback for an unimplemented confirm panel is to return FALSE. So `if (!confirm('Delete everything?')) return;` silently cancels and the button does nothing, with no error in the console. Measured 2026-08-24: 25+ installed apps had dead destructive buttons this way; one had five, including its main save path.",
+   "severity": "critical",
+   "appliesTo": "all",
+   "examples": [
+    "WRONG: if (!confirm('Delete all?')) return; obs = []; save();",
+    "RIGHT: askConfirm('Delete all?', 'Delete', function(){ obs = []; save(); }) — an in-page modal that calls back on the confirm button",
+    "A toast beats alert() for information: it never blocks and always renders"
+   ]
+  },
+  {
+   "id": "u-037",
+   "rule": "In MINIAPP.md write permissions as an UNQUOTED yaml inline array: permissions: [storage]. Never quote it as permissions: \"[storage]\".",
+   "why": "The manifest parser only treats a value as an array when it literally starts with '['. A quoted value parses as a plain String, the array cast fails, and the app ends up with ZERO permissions — so no permission prompt appears and every window.mChatAI bridge call is rejected with 'Permission denied', silently. Measured 2026-08-24: 68 of 798 installed manifests used the quoted form; 12 were requesting camera/location/scanner/audio that therefore never worked.",
+   "severity": "critical",
+   "appliesTo": "all",
+   "examples": [
+    "RIGHT: permissions: [storage]",
+    "RIGHT: permissions: [camera, share]",
+    "RIGHT (block form also parses): permissions: then a '- storage' line",
+    "WRONG: permissions: \"[storage]\" — parses to a String and grants nothing"
+   ]
+  },
+  {
+   "id": "u-038",
+   "rule": "If the app holds data the user would be upset to lose, mirror it to window.mChatAI.storage as well as localStorage, and declare permissions: [storage] so the bridge is allowed.",
+   "why": "localStorage lives in WebKit's website data, which the OS or a 'clear website data' can wipe. window.mChatAI.storage writes to a file the app owns, outside WebKit, which a purge does not touch. localStorage stays the fast synchronous copy every surface has; the bridge copy is the one that survives. On the web there is no bridge, so check for it and degrade quietly.",
+   "severity": "high",
+   "appliesTo": "all",
+   "examples": [
+    "var nativeStore = (window.mChatAI && window.mChatAI.storage) || null;",
+    "Write both on save; on launch read the bridge copy and adopt it when the local copy is empty or older (stamp each write with Date.now()).",
+    "Tell the user which store is active rather than promising durability the surface may not have."
+   ],
+   "checklist": [
+    "Does a save write BOTH copies?",
+    "On launch, does the durable copy win when website data was cleared?",
+    "Is demo/example seed data kept OUT of the durable copy?"
+   ]
+  },
+  {
+   "id": "u-039",
+   "rule": "A save that fails must never fail silently. try{ localStorage.setItem(...) }catch(e){} is data loss with no symptom.",
+   "why": "localStorage has a per-origin quota shared with anything else the app caches — images especially. When it fills, the write throws, an empty catch swallows it, the entry stays on screen, and it is gone on reload. The user finds out much later. Free space by dropping what can be re-fetched (cached images) to keep what cannot (the user's own records); if it still fails, say so.",
+   "severity": "critical",
+   "appliesTo": "all",
+   "examples": [
+    "WRONG: function save(){ try{ localStorage.setItem(KEY, JSON.stringify(data)); }catch(e){} }",
+    "RIGHT: on failure drop the image cache, retry, stop refilling that space, and show an explicit error if it still fails",
+    "Never announce success before an asynchronous write has resolved"
+   ]
+  },
+  {
+   "id": "u-040",
+   "rule": "Seed/example data must never overwrite real user data, and must never be written into a durable or cloud store.",
+   "why": "Seeding is usually gated on a flag in localStorage — and that flag is cleared by exactly the same purge the durable copy exists to survive. So on that launch the app re-seeds, and if seeding writes through to the durable store the examples destroy the real records before anything reads them. Seed the local copy only, and rank real data above examples when deciding which copy wins.",
+   "severity": "critical",
+   "appliesTo": "all",
+   "examples": [
+    "Seed writes localStorage only — never the bridge or cloud copy",
+    "Track 'these are only examples' so any real saved records outrank them on launch",
+    "Never seed when records already exist"
+   ]
+  },
+  {
+   "id": "u-041",
+   "rule": "Do not rely on an <a download> link or navigator.clipboard to get data out. Always ALSO show the exported text in a selectable element the user can copy by hand.",
+   "why": "In a WKWebView on a file:// page the download attribute is frequently ignored and navigator.clipboard may be unavailable, so an Export button appears to do nothing and the user has no other route to their data. A textarea holding the CSV or JSON always works, everywhere, with no permissions.",
+   "severity": "high",
+   "appliesTo": "all",
+   "examples": [
+    "Attempt the Blob download, attempt the clipboard, and open a panel containing the text regardless",
+    "Set it with element.value, never innerHTML — exported data is not markup"
+   ]
+  },
+  {
+   "id": "u-042",
+   "rule": "Show a small version string in the UI (footer or settings) and bump it on every rebuild or republish.",
+   "why": "The same app exists as an installed copy, a wizard preview and a published hub page, and they drift apart. Without a visible version neither the user nor the person fixing a bug can tell which build is on screen, and time is burned proving it.",
+   "severity": "recommended",
+   "appliesTo": "all",
+   "examples": [
+    "A footer <span>v1.0.23</span> matching the MINIAPP.md version"
+   ]
   }
  ],
- "_last_updated": "2026-08-19",
- "lastUpdated": "2026-08-19",
+ "_last_updated": "2026-08-24",
+ "lastUpdated": "2026-08-24",
  "_changeLog": [
   {
    "date": "2026-08-19",
@@ -737,6 +835,10 @@
   {
    "date": "2026-06-03",
    "change": "Phase ROUTE+CAM-HOIST: moved u-no-camera-microphone-getusermedia to position #2 (right after u-001 interaction rule) so it survives the 16KB autofix truncation cap. Initial position was at the bottom of guidelines; even with severity-sort in Swift (HarnessWisdomService.swift Phase ROUTE+SEVERITY), the rule was within the critical block but at index N-1 of critical rules — still dropped by `wisdom.prefix(16KB)`. Hoisting + severity sort = double safety."
+  },
+  {
+   "date": "2026-08-24",
+   "change": "Phase MINIAPP-DIALOGS/PERMS: added u-036..u-042 from the Yellow Island Bloom Tracker session. confirm()/alert() are inert in a WKWebView without host UIDelegate panels (25+ installed apps had dead destructive buttons); quoted permissions parse to a String so 68 of 798 manifests granted ZERO permissions (12 silently lost camera/location/scanner/audio); localStorage is purgeable so irreplaceable data needs the mChatAI.storage mirror; an empty catch around setItem is silent data loss; seed data must never reach the durable copy; <a download> is unreliable so always show copyable text; visible version string. Host-side fixes shipped alongside in MiniAppRuntimeView + MiniAppManifest."
   }
  ]
 }
