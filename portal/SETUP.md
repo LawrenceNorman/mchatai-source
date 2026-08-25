@@ -75,9 +75,16 @@ ln -s "$HOME/Library/Containers/com.sevenhillsstudio.mChatAImac/Data/Library/App
 Because that's a link into the synced folder, it updates itself whenever
 mChatAI+ syncs — you never reinstall it.
 
-**Codex (or any assistant that reads `AGENTS.md`):** point it at
-`<CACHE>/portal/AGENTS.md`, or copy that file into the project you're working
-in.
+**Codex (or any assistant that reads `AGENTS.md`):** link the guide into
+whatever project you're working in:
+
+```bash
+ln -sfn "$HOME/Library/Containers/com.sevenhillsstudio.mChatAImac/Data/Library/Application Support/mChatAI/source-cache/mchatai-source/portal/AGENTS.md" ./AGENTS.md
+```
+
+Use a **link, not a copy**. The guide changes when mChatAI+ syncs, and a stale
+copy is worse than none — it makes your assistant answer from an out-of-date
+file instead of asking the running app.
 
 ---
 

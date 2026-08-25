@@ -5,15 +5,15 @@
   "enabled": true,
 
   "buckets": {
-    "_comment": "Three renderable states. `quarter` is the conversational default: it keeps two readable eyes and leaves the front-facing viseme artwork geometrically valid, so lip-sync and face_* expressions both still land. `profile` is reserved for confrontation — it shows one eye and lip-sync legibility collapses, which is exactly theatre's note that a profile 'will appear flat'.",
+    "_comment": "Three renderable states. `quarter` is the conversational default and does the real work: BOTH eyes stay, the pupils slide toward whoever is talking, and the head narrows slightly. Deleting the far eye — which is what `profile` does — leaves one eye stranded on a front-facing skull and reads as a cyclops, not as a person looking sideways. The reference show keeps two eyes and moves the pupils, and it is right. `profile` is now reserved for locomotion and for beats the author explicitly marks confrontational.",
     "front":   { "pose": null,        "variant": null },
-    "quarter": { "pose": "look_side", "variant": null },
+    "quarter": { "pose": "look_side", "variant": "look_side" },
     "profile": { "pose": "turn_side", "variant": "turn_side" }
   },
 
-  "listenerBucket": "profile",
+  "listenerBucket": "quarter",
   "speakerBucket": "quarter",
-  "_bucket_comment": "A LISTENER goes to full profile — the viseme objection that caps a speaker does not apply to someone who is not talking, and a quarter turn measures as a ~6% narrowing with front-facing artwork, i.e. invisible. Profile is the bucket that swaps a rig's drawn one-eye-and-a-nose head. If profile reads as too flat in practice, this is the one line to change; no rebuild.",
+  "_bucket_comment": "Both listener and speaker sit at `quarter`: two eyes, pupils turned. Tried full profile first and it was genuinely creepy — a one-eyed head with a nose spur, because the shipped profile artwork drops an eye without reshaping the skull behind it. Pupils are the cheaper and far more legible signal, and they cost no artwork on any rig.",
 
   "speakingClamp": "quarter",
   "_speakingClamp_comment": "A character with a live line never goes past this bucket. Every viseme in this format is drawn on the centreline; a centreline mouth on a profile head reads as a hole in the cheek. The content proves it by omission — not one of the eight rigs shipping a profile HEAD ships a profile MOUTH. Costs nothing where it matters: the listener case is exactly the case that is not speaking.",
