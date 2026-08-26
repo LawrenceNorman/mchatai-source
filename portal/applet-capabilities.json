@@ -14,37 +14,74 @@
         {
           "verb": "loopstar.listGenres",
           "status": "callable",
-          "description": "The 24 generative genres you can ask for, plus which one is active.",
-          "example": { "command": "diagLoopStar", "action": "listGenres" }
+          "description": "The 24 generative genres you can ask for, plus which one is active. Also reachable as the raw diagLoopStar action.",
+          "example": {
+            "command": "applet",
+            "applet": "loopstar",
+            "verb": "listGenres"
+          }
         },
         {
           "verb": "loopstar.setGenre",
           "status": "callable",
-          "description": "Switch the generative genre, e.g. trap, jazz, lofi, house. Unknown names return the valid list.",
-          "example": { "command": "diagLoopStar", "action": "setGenre", "genre": "trap" }
+          "description": "Switch the generative genre, e.g. trap, jazz, lofi, house. Unknown names return the valid list. Also reachable as the raw diagLoopStar action.",
+          "example": {
+            "command": "applet",
+            "applet": "loopstar",
+            "verb": "setGenre",
+            "args": {
+              "genre": "trap"
+            }
+          }
         },
         {
           "verb": "loopstar.setBPM",
           "status": "callable",
-          "description": "Set an absolute tempo in BPM. Clamped to 50-150% of the pack's base tempo; the response reports the BPM actually applied.",
-          "example": { "command": "diagLoopStar", "action": "setBPM", "bpm": 138 }
+          "description": "Set an absolute tempo in BPM. Clamped to 50-150% of the pack's base tempo; the response reports the BPM actually applied. Also reachable as the raw diagLoopStar action.",
+          "example": {
+            "command": "applet",
+            "applet": "loopstar",
+            "verb": "setBPM",
+            "args": {
+              "bpm": 138
+            }
+          }
         },
         {
           "verb": "loopstar.setKey",
           "status": "callable",
-          "description": "Set the session key.",
-          "example": { "command": "diagLoopStar", "action": "setKey", "key": "F" }
+          "description": "Set the session key. Also reachable as the raw diagLoopStar action.",
+          "example": {
+            "command": "applet",
+            "applet": "loopstar",
+            "verb": "setKey",
+            "args": {
+              "key": "F"
+            }
+          }
         },
         {
           "verb": "loopstar.getState",
           "status": "callable",
-          "description": "Everything at once: active genre, pack, tempo, lane states, transport position, chord label.",
-          "example": { "command": "diagLoopStar", "action": "status" }
+          "description": "Everything at once: active genre, pack, tempo, lane states, transport position, chord label. Also reachable as the raw diagLoopStar action.",
+          "example": {
+            "command": "applet",
+            "applet": "loopstar",
+            "verb": "getState"
+          }
         },
         {
           "verb": "loopstar.exportToAudioLibrary",
-          "status": "planned",
-          "description": "Render the arrangement and file it in Audio Library. Both halves exist in Swift (exportArrangement + the library store); the joining verb does not."
+          "status": "callable",
+          "description": "Render the arrangement to a bar-exact WAV and file it in the Audio Library. Needs at least one arrangement section; the WAV is probed for silence before it is filed. Returns an openable audio.track entity.",
+          "example": {
+            "command": "applet",
+            "applet": "loopstar",
+            "verb": "exportToAudioLibrary",
+            "args": {
+              "title": "Noir Bed"
+            }
+          }
         }
       ],
       "notes": "LoopStar declares no AppletAIActions, so it is invisible to the built-in action catalog despite being the most capable applet in the app. Audio must be verified BY EAR - the diagnostic meters read 0 even while sound is playing."
@@ -82,6 +119,40 @@
         }
       ],
       "notes": "Audio placed here reaches iOS automatically (CKAsset sync), which makes it the best destination for agent-generated audio."
+    },
+    {
+      "applet": "portal",
+      "summary": "Cross-applet asset handoff. The noun that lets one applet's output become another applet's input across two separate CLI invocations — the gap CLI_PORTAL_ARCHITECTURE §2 names for the noir-ToonStudio case.",
+      "capabilities": [
+        {
+          "verb": "portal.composeMusic",
+          "status": "callable",
+          "description": "Compose music from a natural-language brief in LoopStar and return a portable assetID. Drives the OPEN LoopStar window when there is one; warns in `warnings` when it had to use a headless instance (invariant R4). Verifies the WAV's duration and peak before registering — a silent render fails the verb rather than returning a handle to nothing.",
+          "example": {
+            "command": "composeMusic",
+            "brief": "noir jazz, 92bpm, 8-bar intro then a 16-bar A section"
+          }
+        },
+        {
+          "verb": "portal.attachMusic",
+          "status": "callable",
+          "description": "Attach a composed audio asset to a ToonStudio project as a per-scene music cue. Copies into the project's audio directory (guarding source == destination), REPLACES stock generator cues rather than only filling empty slots, and returns the project with an open deep link. Paired check: diagToonLint.",
+          "example": {
+            "command": "attachMusic",
+            "projectID": "<toon project id>",
+            "musicAssetID": "music-4f2a91"
+          }
+        },
+        {
+          "verb": "portal.assets",
+          "status": "callable",
+          "description": "List, resolve or sweep asset handles. An assetID is the only thing that crosses the CLI boundary — container paths never leave the app because they differ per build lane and are frequently unreadable by the caller. `verified` is tri-state: true / false / null for not-yet-checked.",
+          "example": {
+            "command": "portalAssets",
+            "kind": "audio"
+          }
+        }
+      ]
     }
   ]
 }
