@@ -251,6 +251,34 @@
             "title": "Noir Bed"
           }
         }
+      },
+      "craftchords": {
+        "kind": "create",
+        "summary": "Ask the model for changes in this style and install them. Says whether the MODEL or the fallback generator wrote what you got.",
+        "optional": [
+          "changes"
+        ],
+        "notes": "A real LLM round trip — seconds, not milliseconds. `changes` grows the loop to fit, because asking for 4 changes in a 1-bar vamp is unsatisfiable and the model answers in prose when you do. Never claims the model wrote a fallback take.",
+        "pairedCheck": "applet loopstar getState",
+        "example": {
+          "command": "applet",
+          "applet": "loopstar",
+          "verb": "craftChords",
+          "args": {
+            "changes": 4
+          }
+        }
+      },
+      "craftmelody": {
+        "kind": "create",
+        "summary": "Ask the model for a melodic hook over the current changes and install it. Reports MODEL vs fallback.",
+        "notes": "Asks the model for SCALE DEGREES, not note names, so it cannot drift out of key — the mapping to pitch happens in the app against the session key.",
+        "pairedCheck": "applet loopstar getState",
+        "example": {
+          "command": "applet",
+          "applet": "loopstar",
+          "verb": "craftMelody"
+        }
       }
     },
     "audiolibrary": {
