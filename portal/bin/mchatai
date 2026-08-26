@@ -6,6 +6,7 @@
 # content cache, so `portal/bin/mchatai` is always on their machine.
 #
 #   mchatai doctor                       check your setup and what to fix
+#   mchatai open [match]                 open the last run's output in Finder
 #   mchatai ready                        is the app listening?
 #   mchatai manifest [verb]              what can I ask it to do?
 #   mchatai skills                       list installed skills
@@ -70,6 +71,7 @@ send() {
         if [ -n "$links" ]; then
           printf '\nFiles produced:\n' >&2
           printf '  %s\n' $links >&2
+          printf '\nOpen them:  mchatai open\n' >&2
         fi
       fi
       return 0
@@ -163,6 +165,22 @@ rid=$(new_rid)
 case $cmd in
   doctor)
     doctor ;;
+
+  open)
+    # Open what the last pipeline run produced. Terminal file:// links are
+    # awkward (sandbox container paths, %20 escaping, and .md opens in whatever
+    # app owns it), so this just opens the folder in Finder.
+    ART="$CONTAINER/AgentMemory/AIAutomation/artifacts"
+    if [ $# -ge 1 ]; then
+      target=$(ls -dt "$ART"/*"$1"* 2>/dev/null | head -1)
+      [ -n "$target" ] || die "no run matching '$1' under $ART"
+    else
+      target=$(ls -dt "$ART"/*/ 2>/dev/null | head -1)
+      [ -n "$target" ] || die "no pipeline runs found yet"
+    fi
+    echo "Opening: $target"
+    ls -1sh "$target" | tail -n +2
+    /usr/bin/open "$target" ;;
 
   ready)
     if [ -e "$TUNNEL_DIR/ready" ]; then echo "ready: $TUNNEL_DIR"; else

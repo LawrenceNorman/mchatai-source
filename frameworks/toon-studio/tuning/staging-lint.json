@@ -1,0 +1,42 @@
+{
+  "_source_of_truth": "frameworks/toon-studio/tuning/staging-lint.json",
+  "_comment": "Thresholds for the staging lint — the check that answers 'this will render, but it will look wrong'. Every number here was derived by measuring the shipped corpus, not invented. FALSE POSITIVES ARE THE ENEMY: a lint that fires on a film you already approved gets switched off within a week, so a rule earns its place only if it stays silent on all five shipped stories except where they are genuinely broken.",
+  "enabled": true,
+  "faceOccluded": {
+    "_comment": "Something in front of a character covers their face. Body coverage cannot be the test: the car dashboard covers ~31% of the cast's BODIES and 0% of their faces, which is correct, while ts_prop_door covered ~31% of Nan's FACE, which was a bug. Same number, opposite verdict — so the face is what gets measured.",
+    "severity": "error",
+    "coverFail": 0.25,
+    "coverSevere": 0.6,
+    "sustainSeconds": 0.5,
+    "_authored_comment": "An authored reveal is not a bug — the wall closing over Fortunato in The Last Cask IS that film's climax. Provenance is scoped to the SCENE, not the shot, because pose tracks are rebuilt per shot (ToonProject.swift:967) and a wall that was cued in shot 2 is still standing in shot 4 with no cue of its own. If the occluder is cued anywhere in the scene and started the scene clear, the coverage is deliberate.",
+    "authoredRiseRatio": 3.0
+  },
+  "feetCropped": {
+    "_comment": "A locomotion clip puts the performance in the legs. Framing that cuts them off leaves a torso sliding along with nothing driving it — the floating-torso read. Only fires while a clip is actually running, so a seated or waist-up dialogue shot is never flagged.",
+    "severity": "error",
+    "marginStageUnits": 0.0,
+    "sustainSeconds": 0.4
+  },
+  "gestureShadowed": {
+    "_comment": "The trap that cost the most time to find. Every line beat sets pose 'talk', and the named pose layers OVER the motion clip, so 'talk' — which claims armL/armR/head on every shipped rig — silently erases a wave or a point running underneath it. The cue is accepted, nothing errors, and the gesture just does not happen. Hand-authored poseParts is the one layer that outranks it.",
+    "severity": "warn"
+  },
+  "cuePastShotEnd": {
+    "_comment": "A cue whose start is beyond its shot's measured duration. Silently clamped at compile, so it fires at the wrong moment instead of failing. Common after re-voicing, when every line's real length differs from the estimate the cue was written against.",
+    "severity": "warn",
+    "graceSeconds": 0.05
+  },
+  "effectOnAbsentTarget": {
+    "_comment": "An effect spawned on a character who is not staged, hidden, or already gone. Draws at stage centre instead of on them.",
+    "severity": "warn"
+  },
+  "travelNoOp": {
+    "_comment": "A scene declares motion but no backdrop layer can express it — every layer either has travels:false or no loop/recede period. The camera says the world is moving and the world does not move.",
+    "severity": "warn"
+  },
+  "speakerOffFrame": {
+    "_comment": "A character MID-LINE who cannot be seen. Deliberately narrower than \"anyone off frame\": a single or an over-shoulder leaves the other party outside the frame by design, and 15 of the first 19 firings of the broader rule were exactly that.",
+    "severity": "error",
+    "sustainSeconds": 0.6
+  }
+}

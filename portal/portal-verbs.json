@@ -10,8 +10,13 @@
       "summary": "Discover the portal contract: version, this build's lane, and every verb with its parameters and examples. Call this first.",
       "kind": "read-only",
       "required": [],
-      "optional": ["verb"],
-      "example": {"command": "portalManifest", "requestID": "pm-01"},
+      "optional": [
+        "verb"
+      ],
+      "example": {
+        "command": "portalManifest",
+        "requestID": "pm-01"
+      },
       "shim": "mchatai raw '{\"command\":\"portalManifest\"}' --json",
       "notes": "Pass a verb name to get just that entry. Available in every build lane that serves the tunnel."
     },
@@ -19,9 +24,18 @@
       "name": "portalValidate",
       "summary": "Check a payload without executing it: verifies the command is known, available in this build lane, and has its required parameters.",
       "kind": "read-only",
-      "required": ["payload"],
+      "required": [
+        "payload"
+      ],
       "optional": [],
-      "example": {"command": "portalValidate", "payload": {"command": "runWizard", "goal": "a tip calculator"}, "requestID": "pv-01"},
+      "example": {
+        "command": "portalValidate",
+        "payload": {
+          "command": "runWizard",
+          "goal": "a tip calculator"
+        },
+        "requestID": "pv-01"
+      },
       "shim": "mchatai raw '{\"command\":\"portalValidate\",\"payload\":{\"command\":\"runWizard\",\"goal\":\"a tip calculator\"}}' --json",
       "notes": "The dry-run verb. Never dispatches the inner payload."
     },
@@ -29,9 +43,23 @@
       "name": "runWizard",
       "summary": "Build a new artifact from a natural-language goal. The main workhorse: routes to a coding CLI for anything off-catalog.",
       "kind": "mutating",
-      "required": ["goal"],
-      "optional": ["maxTurns", "timeoutSeconds", "artifactType", "difficulty", "swatchID"],
-      "example": {"command": "runWizard", "goal": "a wordle-style daily word game", "maxTurns": 4, "timeoutSeconds": 600, "requestID": "rw-01"},
+      "required": [
+        "goal"
+      ],
+      "optional": [
+        "maxTurns",
+        "timeoutSeconds",
+        "artifactType",
+        "difficulty",
+        "swatchID"
+      ],
+      "example": {
+        "command": "runWizard",
+        "goal": "a wordle-style daily word game",
+        "maxTurns": 4,
+        "timeoutSeconds": 600,
+        "requestID": "rw-01"
+      },
       "shim": "mchatai run \"<goal>\" --max-turns 4 --timeout-seconds 600 --json",
       "pairedCheck": "diagRenderProbe",
       "notes": "Slow (minutes). Returns a sessionID; poll diagSessionState rather than re-running. One wizard run at a time."
@@ -40,9 +68,20 @@
       "name": "continueWizard",
       "summary": "Send a follow-up turn to an existing wizard session (iterate, refine, fix).",
       "kind": "mutating",
-      "required": ["sessionID", "message"],
-      "optional": ["timeoutSeconds"],
-      "example": {"command": "continueWizard", "sessionID": "<uuid>", "message": "make the keyboard bigger and add a dark theme", "timeoutSeconds": 600, "requestID": "cw-01"},
+      "required": [
+        "sessionID",
+        "message"
+      ],
+      "optional": [
+        "timeoutSeconds"
+      ],
+      "example": {
+        "command": "continueWizard",
+        "sessionID": "<uuid>",
+        "message": "make the keyboard bigger and add a dark theme",
+        "timeoutSeconds": 600,
+        "requestID": "cw-01"
+      },
       "shim": "mchatai continue <sessionID> \"<message>\" --json",
       "pairedCheck": "diagRenderProbe"
     },
@@ -51,8 +90,14 @@
       "summary": "Ground truth for a session: phase, in-flight registration, held batons, settled state. This is how you ask the app what it is doing.",
       "kind": "read-only",
       "required": [],
-      "optional": ["sessionID"],
-      "example": {"command": "diagSessionState", "sessionID": "<uuid>", "requestID": "ss-01"},
+      "optional": [
+        "sessionID"
+      ],
+      "example": {
+        "command": "diagSessionState",
+        "sessionID": "<uuid>",
+        "requestID": "ss-01"
+      },
       "shim": "mchatai status <sessionID> --json",
       "notes": "Omit sessionID for the active session. Safe to poll."
     },
@@ -60,9 +105,17 @@
       "name": "typeFollowUp",
       "summary": "Follow up on an INSTALLED artifact through the app's normal typed-follow-up path (in-place versioning, snapshot protection).",
       "kind": "mutating",
-      "required": ["miniAppID", "text"],
+      "required": [
+        "miniAppID",
+        "text"
+      ],
       "optional": [],
-      "example": {"command": "typeFollowUp", "miniAppID": "speed-chess", "text": "add a leaderboard", "requestID": "fu-01"},
+      "example": {
+        "command": "typeFollowUp",
+        "miniAppID": "speed-chess",
+        "text": "add a leaderboard",
+        "requestID": "fu-01"
+      },
       "shim": "mchatai raw '{\"command\":\"typeFollowUp\",\"miniAppID\":\"speed-chess\",\"text\":\"add a leaderboard\"}' --json",
       "pairedCheck": "diagRenderProbe",
       "notes": "Prefer this over hand-editing installed files: versions land in place and regressions are gated."
@@ -71,9 +124,18 @@
       "name": "diagRenderProbe",
       "summary": "Render gate for an installed artifact: loads it in a real WKWebView and reports whether it renders.",
       "kind": "read-only",
-      "required": ["miniAppID"],
-      "optional": ["waitSeconds"],
-      "example": {"command": "diagRenderProbe", "miniAppID": "<id>", "waitSeconds": 6, "requestID": "rp-01"},
+      "required": [
+        "miniAppID"
+      ],
+      "optional": [
+        "waitSeconds"
+      ],
+      "example": {
+        "command": "diagRenderProbe",
+        "miniAppID": "<id>",
+        "waitSeconds": 6,
+        "requestID": "rp-01"
+      },
       "shim": "mchatai raw '{\"command\":\"diagRenderProbe\",\"miniAppID\":\"<id>\",\"waitSeconds\":6}' --json",
       "notes": "Keyed by miniAppID, NOT sessionID. Known quirk: the DOM-shape heuristic can flag deliberately minimal apps as sparse."
     },
@@ -83,16 +145,32 @@
       "kind": "read-only",
       "required": [],
       "optional": [],
-      "example": {"command": "listSkills", "requestID": "ls-01"},
+      "example": {
+        "command": "listSkills",
+        "requestID": "ls-01"
+      },
       "shim": "mchatai skills --json"
     },
     {
       "name": "runSkill",
       "summary": "Execute one skill directly with a config dictionary.",
       "kind": "mutating",
-      "required": ["skillID"],
-      "optional": ["input", "config"],
-      "example": {"command": "runSkill", "skillID": "custom.githubAPIRequest", "config": {"path": "/user", "method": "GET"}, "requestID": "rs-01"},
+      "required": [
+        "skillID"
+      ],
+      "optional": [
+        "input",
+        "config"
+      ],
+      "example": {
+        "command": "runSkill",
+        "skillID": "custom.githubAPIRequest",
+        "config": {
+          "path": "/user",
+          "method": "GET"
+        },
+        "requestID": "rs-01"
+      },
       "shim": "mchatai raw '{\"command\":\"runSkill\",\"skillID\":\"<id>\",\"config\":{}}' --json"
     },
     {
@@ -101,16 +179,30 @@
       "kind": "read-only",
       "required": [],
       "optional": [],
-      "example": {"command": "listPipelines", "requestID": "lp-01"},
+      "example": {
+        "command": "listPipelines",
+        "requestID": "lp-01"
+      },
       "shim": "mchatai raw '{\"command\":\"listPipelines\"}' --json"
     },
     {
       "name": "runPipeline",
       "summary": "Run a pipeline end to end by name.",
       "kind": "mutating",
-      "required": ["pipelineName"],
-      "optional": ["input", "config"],
-      "example": {"command": "runPipeline", "pipelineName": "YouTube Research Digest", "input": "Swift concurrency", "config": {}, "requestID": "rp-02"},
+      "required": [
+        "pipelineName"
+      ],
+      "optional": [
+        "input",
+        "config"
+      ],
+      "example": {
+        "command": "runPipeline",
+        "pipelineName": "YouTube Research Digest",
+        "input": "Swift concurrency",
+        "config": {},
+        "requestID": "rp-02"
+      },
       "shim": "mchatai raw '{\"command\":\"runPipeline\",\"pipelineName\":\"<name>\",\"input\":\"\"}' --json",
       "notes": "Saved snapshots shadow catalog templates of the same name; purgeSavedPipeline clears a stale one."
     },
@@ -118,9 +210,18 @@
       "name": "runAgent",
       "summary": "Run the agent loop against an input for a bounded number of turns.",
       "kind": "mutating",
-      "required": ["input"],
-      "optional": ["maxTurns"],
-      "example": {"command": "runAgent", "input": "What time is it?", "maxTurns": 4, "requestID": "ra-01"},
+      "required": [
+        "input"
+      ],
+      "optional": [
+        "maxTurns"
+      ],
+      "example": {
+        "command": "runAgent",
+        "input": "What time is it?",
+        "maxTurns": 4,
+        "requestID": "ra-01"
+      },
       "shim": "mchatai raw '{\"command\":\"runAgent\",\"input\":\"<text>\",\"maxTurns\":4}' --json"
     },
     {
@@ -129,7 +230,10 @@
       "kind": "mutating",
       "required": [],
       "optional": [],
-      "example": {"command": "refreshMchataisourceCache", "requestID": "rc-01"},
+      "example": {
+        "command": "refreshMchataisourceCache",
+        "requestID": "rc-01"
+      },
       "shim": "mchatai raw '{\"command\":\"refreshMchataisourceCache\"}' --json",
       "notes": "Also auto-installs source JS skills. Does a git pull --ff-only; uncommitted local edits are NOT picked up by this verb."
     },
@@ -139,8 +243,74 @@
       "kind": "mutating",
       "required": [],
       "optional": [],
-      "example": {"command": "invalidateMchataisourceCaches", "requestID": "ic-01"},
+      "example": {
+        "command": "invalidateMchataisourceCaches",
+        "requestID": "ic-01"
+      },
       "shim": "mchatai raw '{\"command\":\"invalidateMchataisourceCaches\"}' --json"
+    },
+    {
+      "name": "composeMusic",
+      "summary": "Compose music from a natural-language brief in LoopStar and return a portable asset handle. The producing half of the cross-applet handoff.",
+      "kind": "mutating",
+      "required": [
+        "brief"
+      ],
+      "optional": [
+        "title",
+        "existingArrangementOnly"
+      ],
+      "example": {
+        "command": "composeMusic",
+        "brief": "noir jazz, 92bpm, 8-bar intro then a 16-bar A section, brushed kit, upright bass",
+        "title": "noir-theme",
+        "requestID": "cm-01"
+      },
+      "shim": "mchatai raw '{\"command\":\"composeMusic\",\"brief\":\"<brief>\"}' --json",
+      "pairedCheck": "portalAssets",
+      "notes": "SLOW — the brief goes through a real LLM round trip in LoopStar's chat path, then an offline render. Budget minutes. Runs on the HEADLESS diagnostic conductor, so it never touches the user's open session. Set existingArrangementOnly=true to skip the LLM and export whatever arrangement is already loaded. The returned WAV is probed for duration and peak before it is registered: a silent or truncated render fails the verb rather than returning a handle to nothing."
+    },
+    {
+      "name": "attachMusic",
+      "summary": "Attach a composed audio asset to a ToonStudio project as a music bed. The consuming half of the handoff.",
+      "kind": "mutating",
+      "required": [
+        "projectID",
+        "musicAssetID"
+      ],
+      "optional": [
+        "gain",
+        "loop"
+      ],
+      "example": {
+        "command": "attachMusic",
+        "projectID": "2026-08-25-noir-short",
+        "musicAssetID": "music-4f2a91",
+        "gain": 0.25,
+        "requestID": "am-01"
+      },
+      "shim": "mchatai raw '{\"command\":\"attachMusic\",\"projectID\":\"<id>\",\"musicAssetID\":\"<assetID>\"}' --json",
+      "pairedCheck": "diagToonLint",
+      "notes": "Copies the audio INTO the project directory, because ToonProject.audioFile is relative to it and a project pointing outside itself stops being portable when duplicated or published. Attaches as a per-scene music CUE, never the project narration track — that slot holds mixed dialogue and overwriting it would silently delete voice work. Scenes that already have music are left alone; the response says how many were touched."
+    },
+    {
+      "name": "portalAssets",
+      "summary": "List, resolve or sweep cross-applet asset handles. Read-only; available in every build lane.",
+      "kind": "read-only",
+      "required": [],
+      "optional": [
+        "kind",
+        "assetID",
+        "limit",
+        "action"
+      ],
+      "example": {
+        "command": "portalAssets",
+        "kind": "audio",
+        "requestID": "pa-01"
+      },
+      "shim": "mchatai raw '{\"command\":\"portalAssets\",\"kind\":\"audio\"}' --json",
+      "notes": "An assetID is the ONLY thing that crosses the CLI boundary — absolute container paths never leave the app, because they differ per build lane and are frequently unreadable by the calling agent. `verified` is tri-state: true, false, or null for 'not yet checked', which is materially different from 'checked and failed'. action=sweep drops index entries whose file has vanished; a handle that resolves to nothing is worse than a missing one, because an agent will pass it downstream and fail two steps later."
     }
   ]
 }
