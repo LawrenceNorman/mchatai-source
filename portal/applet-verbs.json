@@ -331,6 +331,145 @@
           }
         }
       }
+    },
+    "aiwrite": {
+      "listdocs": {
+        "kind": "read",
+        "summary": "Documents, most recently updated first. Titles and sizes only — bodies come from getDoc.",
+        "optional": [
+          "limit"
+        ],
+        "example": {
+          "command": "applet",
+          "applet": "aiwrite",
+          "verb": "listDocs"
+        }
+      },
+      "getdoc": {
+        "kind": "read",
+        "summary": "One document's full text. Address it by `id` or exact `title`; a miss returns the ids that exist.",
+        "optional": [
+          "id",
+          "title"
+        ],
+        "example": {
+          "command": "applet",
+          "applet": "aiwrite",
+          "verb": "getDoc",
+          "args": {
+            "title": "Research notes"
+          }
+        }
+      },
+      "createdoc": {
+        "kind": "create",
+        "summary": "Write a new document. Takes the text INLINE — no file, no path, no sandbox problem.",
+        "optional": [
+          "text",
+          "title"
+        ],
+        "notes": "Verified by reading the document back out of the store and comparing length, not by the save call returning.",
+        "pairedCheck": "applet aiwrite getDoc with the returned id",
+        "example": {
+          "command": "applet",
+          "applet": "aiwrite",
+          "verb": "createDoc",
+          "args": {
+            "title": "Research notes",
+            "text": "# Findings\\n..."
+          }
+        }
+      },
+      "appenddoc": {
+        "kind": "modify",
+        "summary": "Add to the end of an existing document. Blank-line separated unless you pass `separator`.",
+        "required": [
+          "text"
+        ],
+        "optional": [
+          "id",
+          "title",
+          "separator"
+        ],
+        "example": {
+          "command": "applet",
+          "applet": "aiwrite",
+          "verb": "appendDoc",
+          "args": {
+            "title": "Research notes",
+            "text": "One more thing."
+          }
+        }
+      }
+    },
+    "todo": {
+      "listprojects": {
+        "kind": "read",
+        "summary": "Every list with its task and open counts.",
+        "example": {
+          "command": "applet",
+          "applet": "todo",
+          "verb": "listProjects"
+        }
+      },
+      "createproject": {
+        "kind": "create",
+        "summary": "Make a list. An existing name is reused rather than duplicated, so re-running a script is safe.",
+        "required": [
+          "name"
+        ],
+        "example": {
+          "command": "applet",
+          "applet": "todo",
+          "verb": "createProject",
+          "args": {
+            "name": "Toon backlog"
+          }
+        }
+      },
+      "addtask": {
+        "kind": "modify",
+        "summary": "Add a task to a list. Unknown list or priority returns the valid values.",
+        "required": [
+          "title",
+          "project"
+        ],
+        "optional": [
+          "priority"
+        ],
+        "notes": "priority is Low | Medium | High | Urgent. CloudKit-synced, so it appears on iOS without any extra step.",
+        "example": {
+          "command": "applet",
+          "applet": "todo",
+          "verb": "addTask",
+          "args": {
+            "project": "Toon backlog",
+            "title": "Record the narration",
+            "priority": "High"
+          }
+        }
+      },
+      "settaskstatus": {
+        "kind": "modify",
+        "summary": "Mark a task done or open. Already in that state is reported as changed:false rather than flipped.",
+        "required": [
+          "task",
+          "project"
+        ],
+        "optional": [
+          "done"
+        ],
+        "example": {
+          "command": "applet",
+          "applet": "todo",
+          "verb": "setTaskStatus",
+          "args": {
+            "project": "Toon backlog",
+            "task": "Record the narration",
+            "done": true
+          }
+        }
+      }
     }
   }
 }
