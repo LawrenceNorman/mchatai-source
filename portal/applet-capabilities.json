@@ -91,34 +91,110 @@
       "summary": "Place discovery, saved places, and narrated audio tours. Tours sync to iOS.",
       "capabilities": [
         {
+          "verb": "mapguide.geocode",
+          "status": "callable",
+          "description": "Resolve a place NAME to coordinates. Callers think in place names; every other location verb needs this first.",
+          "example": {
+            "command": "applet",
+            "applet": "mapguide",
+            "verb": "geocode",
+            "args": {
+              "place": "San Diego"
+            }
+          }
+        },
+        {
           "verb": "mapguide.discoverPlaces",
-          "status": "planned",
-          "description": "Find sights, restaurants, and beaches for a destination. AudioTourGeneratorService.generateStops already builds Wikipedia-enriched, category-filtered POI tours - it simply has no agent-reachable verb."
+          "status": "callable",
+          "description": "Find sights, restaurants, beaches and more near a place by name. Wikipedia-enriched, category-filtered. Accepts plain words ('sights','restaurants','beaches') and returns counts before contents. FINDINGS ONLY - nothing is saved.",
+          "example": {
+            "command": "applet",
+            "applet": "mapguide",
+            "verb": "discoverPlaces",
+            "args": {
+              "place": "San Diego",
+              "categories": [
+                "sights",
+                "restaurants",
+                "beaches"
+              ],
+              "maxStops": 12
+            }
+          }
+        },
+        {
+          "verb": "mapguide.getState",
+          "status": "callable",
+          "description": "Available verbs and the valid place categories.",
+          "example": {
+            "command": "applet",
+            "applet": "mapguide",
+            "verb": "getState"
+          }
         },
         {
           "verb": "mapguide.createTour",
           "status": "planned",
-          "description": "Assemble discovered places into a tour. Tours already CloudKit-sync to iOS, so an agent-created tour would reach the phone for free."
+          "description": "Persist discovered places as a durable Tour. Tours already CloudKit-sync to iOS, so this is what makes an agent-built itinerary reach the phone. discoverPlaces returns findings only until this lands."
         }
       ],
-      "notes": "The highest-value planned work in the app: the capability is built and syncs to iOS, but nothing can reach it. See docs/APPLET_VERB_SCOPING.md journey A."
+      "notes": "Discovery works today; persistence does not. The generator can skew toward civic/downtown results near a city centre - widen radiusMiles or narrow categories. See docs/APPLET_VERB_SCOPING.md journey A."
     },
     {
       "applet": "audioLibrary",
-      "summary": "Recorded and generated audio, organised in folders, with transcription. Tracks sync to iOS as CloudKit assets.",
+      "summary": "The app's durable audio store: folders, tracks, CloudKit sync, and the sink LoopStar exports into.",
       "capabilities": [
         {
-          "verb": "audiolibrary.speak",
-          "status": "planned",
-          "description": "Turn text into a saved audio track. AppleSpeechRenderer.renderToFile is already static and headless; only the verb is missing."
+          "verb": "audiolibrary.getState",
+          "status": "callable",
+          "description": "Track and folder counts.",
+          "example": {
+            "command": "applet",
+            "applet": "audiolibrary",
+            "verb": "getState"
+          }
+        },
+        {
+          "verb": "audiolibrary.listFolders",
+          "status": "callable",
+          "description": "Every folder with its track count.",
+          "example": {
+            "command": "applet",
+            "applet": "audiolibrary",
+            "verb": "listFolders"
+          }
         },
         {
           "verb": "audiolibrary.listTracks",
-          "status": "planned",
-          "description": "List tracks and folders. Store methods exist."
+          "status": "callable",
+          "description": "Tracks newest-first, optionally scoped to a folder.",
+          "example": {
+            "command": "applet",
+            "applet": "audiolibrary",
+            "verb": "listTracks"
+          }
+        },
+        {
+          "verb": "audiolibrary.createFolder",
+          "status": "callable",
+          "description": "Make a folder; an existing name is reused, not duplicated.",
+          "example": {
+            "command": "applet",
+            "applet": "audiolibrary",
+            "verb": "createFolder"
+          }
+        },
+        {
+          "verb": "audiolibrary.importTrack",
+          "status": "callable",
+          "description": "Bring an audio file in. Sandbox-aware, and the file is probed for real duration before filing.",
+          "example": {
+            "command": "applet",
+            "applet": "audiolibrary",
+            "verb": "importTrack"
+          }
         }
-      ],
-      "notes": "Audio placed here reaches iOS automatically (CKAsset sync), which makes it the best destination for agent-generated audio."
+      ]
     },
     {
       "applet": "portal",

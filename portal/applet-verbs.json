@@ -252,6 +252,85 @@
           }
         }
       }
+    },
+    "audiolibrary": {
+      "getstate": {
+        "kind": "read",
+        "summary": "How many tracks and folders the library holds.",
+        "example": {
+          "command": "applet",
+          "applet": "audiolibrary",
+          "verb": "getState"
+        }
+      },
+      "listfolders": {
+        "kind": "read",
+        "summary": "Every folder with its track count. Use a name or id with listTracks and importTrack.",
+        "example": {
+          "command": "applet",
+          "applet": "audiolibrary",
+          "verb": "listFolders"
+        }
+      },
+      "listtracks": {
+        "kind": "read",
+        "summary": "Tracks, newest first. Pass `folder` to scope to one; an unknown folder returns the valid names.",
+        "optional": [
+          "folder",
+          "limit"
+        ],
+        "notes": "Counts come before contents and the default limit is 50, so a large library cannot flood your context.",
+        "example": {
+          "command": "applet",
+          "applet": "audiolibrary",
+          "verb": "listTracks",
+          "args": {
+            "folder": "Generated",
+            "limit": 10
+          }
+        }
+      },
+      "createfolder": {
+        "kind": "create",
+        "summary": "Make a folder. An existing name is returned rather than duplicated, so re-running a script is safe.",
+        "required": [
+          "name"
+        ],
+        "optional": [
+          "emoji"
+        ],
+        "example": {
+          "command": "applet",
+          "applet": "audiolibrary",
+          "verb": "createFolder",
+          "args": {
+            "name": "Toon Beds"
+          }
+        }
+      },
+      "importtrack": {
+        "kind": "create",
+        "summary": "Bring an audio file into the library. The sink LoopStar's export and the artifact router both land in.",
+        "required": [
+          "path"
+        ],
+        "optional": [
+          "title",
+          "folder",
+          "provider"
+        ],
+        "notes": "The app is SANDBOXED: a path it can stat but not read fails with the sandbox named and a writable drop directory to copy into. The file is probed for real duration before it is filed — a full-size WAV with zero audio bytes is rejected, not stored.",
+        "pairedCheck": "applet audiolibrary listTracks with the same folder",
+        "example": {
+          "command": "applet",
+          "applet": "audiolibrary",
+          "verb": "importTrack",
+          "args": {
+            "path": "/…/bed.wav",
+            "folder": "Toon Beds"
+          }
+        }
+      }
     }
   }
 }
