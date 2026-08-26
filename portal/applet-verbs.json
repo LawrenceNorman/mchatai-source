@@ -1,0 +1,226 @@
+{
+  "_readme": "Per-applet verb PROSE for the CLI portal. The binary owns which verbs DISPATCH (PortalAppletRegistry reads each applet's own verb array); this file only describes them. A verb documented here that the build does not implement is reported by portalVerbs as `documentedButNotDispatched` rather than shown to an agent as callable — describing a verb into existence is how the last inventory went stale. Edit by PR; refreshMchataisourceCache picks it up with no rebuild.",
+  "_consumer": "mChatAI+ PortalAppletRegistry.docs() -> portalVerbs",
+  "version": 1,
+  "applets": {
+    "aividgen": {
+      "getstate": {
+        "kind": "read",
+        "summary": "Is ToonStudio open, and what film is loaded? Returns open:false when there is no window — the verbs that need one say so.",
+        "example": {
+          "command": "applet",
+          "applet": "aividgen",
+          "verb": "getState"
+        }
+      },
+      "listfilms": {
+        "kind": "read",
+        "summary": "Saved films and example templates. Counts come before contents so you can bound your own context.",
+        "example": {
+          "command": "applet",
+          "applet": "aividgen",
+          "verb": "listFilms"
+        }
+      },
+      "createfilm": {
+        "kind": "create",
+        "summary": "A whole film from one sentence: script, cast, staging, saved project. The headline verb.",
+        "required": [
+          "goal"
+        ],
+        "optional": [
+          "title",
+          "voice",
+          "render",
+          "save"
+        ],
+        "notes": "voice:true adds speech (a minute or so). render:true also writes an mp4. Both default false; save defaults true.",
+        "pairedCheck": "applet aividgen lint with the returned id",
+        "example": {
+          "command": "applet",
+          "applet": "aividgen",
+          "verb": "createFilm",
+          "args": {
+            "goal": "a noir detective interrogates a suspicious cat"
+          }
+        }
+      },
+      "importscript": {
+        "kind": "create",
+        "summary": "Same pipeline entered at the screenplay end. Dialogue is treated as VERBATIM — the model may only decide non-verbal things.",
+        "required": [
+          "script"
+        ],
+        "optional": [
+          "title",
+          "voice",
+          "render",
+          "save"
+        ],
+        "example": {
+          "command": "applet",
+          "applet": "aividgen",
+          "verb": "importScript",
+          "args": {
+            "script": "INT. OFFICE - NIGHT\nOWEN: Where is the fish?"
+          }
+        }
+      },
+      "render": {
+        "kind": "modify",
+        "summary": "Render the film you are looking at to an mp4. Needs the applet OPEN — for a headless render use diagToonRender with a projectID, or createFilm with render:true.",
+        "optional": [
+          "id"
+        ],
+        "example": {
+          "command": "applet",
+          "applet": "aividgen",
+          "verb": "render"
+        }
+      },
+      "lint": {
+        "kind": "read",
+        "summary": "Staging check: characters off-stage, overlapping speakers, props that never appear. Pass `id` to lint a saved film headlessly, or omit it for the open one.",
+        "optional": [
+          "id"
+        ],
+        "notes": "This is the paired check composeMusic and attachMusic point at. It checks STAGING, not sound.",
+        "example": {
+          "command": "applet",
+          "applet": "aividgen",
+          "verb": "lint",
+          "args": {
+            "id": "1787703512-f07-the-case-of"
+          }
+        }
+      },
+      "composemusic": {
+        "kind": "create",
+        "summary": "Compose a music bed in LoopStar from a brief and attach it to this film in one step. Same engine as the top-level composeMusic command.",
+        "required": [
+          "brief"
+        ],
+        "optional": [
+          "id",
+          "title",
+          "gain",
+          "loop"
+        ],
+        "notes": "Minutes, not seconds — it builds an arrangement and renders a WAV.",
+        "example": {
+          "command": "applet",
+          "applet": "aividgen",
+          "verb": "composeMusic",
+          "args": {
+            "brief": "noir jazz, 92bpm"
+          }
+        }
+      },
+      "attachmusic": {
+        "kind": "modify",
+        "summary": "Attach an already-composed audio asset to this film as a music bed. Replaces the generator's stock cues by default and names what it displaced.",
+        "required": [
+          "musicAssetID"
+        ],
+        "optional": [
+          "id",
+          "gain",
+          "loop",
+          "replace"
+        ],
+        "notes": "The bed lands in the project's audio/ directory and the verb confirms the mixer can resolve it before reporting success.",
+        "example": {
+          "command": "applet",
+          "applet": "aividgen",
+          "verb": "attachMusic",
+          "args": {
+            "musicAssetID": "music-e8bbbe"
+          }
+        }
+      }
+    },
+    "loopstar": {
+      "getstate": {
+        "kind": "read",
+        "summary": "Style, key, tempo, meter and how many arrangement sections exist. Call it after every write.",
+        "notes": "Drives the headless conductor, NOT the LoopStar window if one is open — the reply says so.",
+        "example": {
+          "command": "applet",
+          "applet": "loopstar",
+          "verb": "getState"
+        }
+      },
+      "listgenres": {
+        "kind": "read",
+        "summary": "Every generative style available, from the content registry. Use an id from here with setGenre.",
+        "example": {
+          "command": "applet",
+          "applet": "loopstar",
+          "verb": "listGenres"
+        }
+      },
+      "setgenre": {
+        "kind": "modify",
+        "summary": "Pick the generative style. An unknown id answers with the list rather than failing blind.",
+        "required": [
+          "genre"
+        ],
+        "example": {
+          "command": "applet",
+          "applet": "loopstar",
+          "verb": "setGenre",
+          "args": {
+            "genre": "boombap"
+          }
+        }
+      },
+      "setbpm": {
+        "kind": "modify",
+        "summary": "Set the tempo. Limited to 50-150% of the loaded pack's base tempo; an out-of-range ask is clamped and says by how much.",
+        "required": [
+          "bpm"
+        ],
+        "example": {
+          "command": "applet",
+          "applet": "loopstar",
+          "verb": "setBPM",
+          "args": {
+            "bpm": 92
+          }
+        }
+      },
+      "setkey": {
+        "kind": "modify",
+        "summary": "Set the session key. Everything generated is written in it.",
+        "required": [
+          "key"
+        ],
+        "notes": "Letter, optional #/b, optional m: \"F\", \"F#\", \"Bbm\".",
+        "example": {
+          "command": "applet",
+          "applet": "loopstar",
+          "verb": "setKey",
+          "args": {
+            "key": "Fm"
+          }
+        }
+      },
+      "exporttoaudiolibrary": {
+        "kind": "create",
+        "summary": "Render the arrangement to a bar-exact WAV and file it in the Audio Library. The verb that makes LoopStar a producer other applets can consume.",
+        "optional": [
+          "title"
+        ],
+        "notes": "Needs at least one arrangement section — composeMusic with a brief will build one. The WAV is probed for silence before it is filed.",
+        "example": {
+          "command": "applet",
+          "applet": "loopstar",
+          "verb": "exportToAudioLibrary",
+          "args": {
+            "title": "Noir Bed"
+          }
+        }
+      }
+    }
+  }
+}

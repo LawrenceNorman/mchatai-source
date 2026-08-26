@@ -1,0 +1,87 @@
+{
+  "_readme": "Applet capabilities that are NOT declared as AppletAIActions in Swift. portalApplets merges this over the built-in action catalog, so an applet driven by tunnel commands (LoopStar) or with capability that exists in Swift but is not yet exposed (MapGuide, AudioLibrary) still shows up when an agent asks what the app can do. CONTENT per RULE #1 — add an applet here by PR, no rebuild.",
+  "_consumer": "mChatAI+ DebugTestTunnel.handlePortalApplets",
+  "registryVersion": 1,
+  "_statusMeaning": {
+    "callable": "Works today. The example payload is real and has been run.",
+    "planned": "The capability EXISTS in Swift but has no agent-reachable verb yet. Tell the user it is not available rather than attempting it; see docs/APPLET_VERB_SCOPING.md for the roadmap."
+  },
+  "applets": [
+    {
+      "applet": "loopStar",
+      "summary": "Music sequencer and generative jam station. Genre packs, tempo, key, chords, arrangement, and audio export.",
+      "capabilities": [
+        {
+          "verb": "loopstar.listGenres",
+          "status": "callable",
+          "description": "The 24 generative genres you can ask for, plus which one is active.",
+          "example": { "command": "diagLoopStar", "action": "listGenres" }
+        },
+        {
+          "verb": "loopstar.setGenre",
+          "status": "callable",
+          "description": "Switch the generative genre, e.g. trap, jazz, lofi, house. Unknown names return the valid list.",
+          "example": { "command": "diagLoopStar", "action": "setGenre", "genre": "trap" }
+        },
+        {
+          "verb": "loopstar.setBPM",
+          "status": "callable",
+          "description": "Set an absolute tempo in BPM. Clamped to 50-150% of the pack's base tempo; the response reports the BPM actually applied.",
+          "example": { "command": "diagLoopStar", "action": "setBPM", "bpm": 138 }
+        },
+        {
+          "verb": "loopstar.setKey",
+          "status": "callable",
+          "description": "Set the session key.",
+          "example": { "command": "diagLoopStar", "action": "setKey", "key": "F" }
+        },
+        {
+          "verb": "loopstar.getState",
+          "status": "callable",
+          "description": "Everything at once: active genre, pack, tempo, lane states, transport position, chord label.",
+          "example": { "command": "diagLoopStar", "action": "status" }
+        },
+        {
+          "verb": "loopstar.exportToAudioLibrary",
+          "status": "planned",
+          "description": "Render the arrangement and file it in Audio Library. Both halves exist in Swift (exportArrangement + the library store); the joining verb does not."
+        }
+      ],
+      "notes": "LoopStar declares no AppletAIActions, so it is invisible to the built-in action catalog despite being the most capable applet in the app. Audio must be verified BY EAR - the diagnostic meters read 0 even while sound is playing."
+    },
+    {
+      "applet": "mapGuide",
+      "summary": "Place discovery, saved places, and narrated audio tours. Tours sync to iOS.",
+      "capabilities": [
+        {
+          "verb": "mapguide.discoverPlaces",
+          "status": "planned",
+          "description": "Find sights, restaurants, and beaches for a destination. AudioTourGeneratorService.generateStops already builds Wikipedia-enriched, category-filtered POI tours - it simply has no agent-reachable verb."
+        },
+        {
+          "verb": "mapguide.createTour",
+          "status": "planned",
+          "description": "Assemble discovered places into a tour. Tours already CloudKit-sync to iOS, so an agent-created tour would reach the phone for free."
+        }
+      ],
+      "notes": "The highest-value planned work in the app: the capability is built and syncs to iOS, but nothing can reach it. See docs/APPLET_VERB_SCOPING.md journey A."
+    },
+    {
+      "applet": "audioLibrary",
+      "summary": "Recorded and generated audio, organised in folders, with transcription. Tracks sync to iOS as CloudKit assets.",
+      "capabilities": [
+        {
+          "verb": "audiolibrary.speak",
+          "status": "planned",
+          "description": "Turn text into a saved audio track. AppleSpeechRenderer.renderToFile is already static and headless; only the verb is missing."
+        },
+        {
+          "verb": "audiolibrary.listTracks",
+          "status": "planned",
+          "description": "List tracks and folders. Store methods exist."
+        }
+      ],
+      "notes": "Audio placed here reaches iOS automatically (CKAsset sync), which makes it the best destination for agent-generated audio."
+    }
+  ]
+}

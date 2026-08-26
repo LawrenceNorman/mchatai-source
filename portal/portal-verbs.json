@@ -1,8 +1,8 @@
 {
-  "_readme": "portal.v1 verb catalog. CONTENT per mChatAI RULE #1 — the app binary carries only a frozen minimal fallback. Edit here, then run the invalidateMchataisourceCaches (local edits) or refreshMchataisourceCache (committed) tunnel command; no rebuild needed. Served to agents by the portalManifest tunnel command.",
+  "_readme": "portal.v1 verb catalog. CONTENT per mChatAI RULE #1 \u2014 the app binary carries only a frozen minimal fallback. Edit here, then run the invalidateMchataisourceCaches (local edits) or refreshMchataisourceCache (committed) tunnel command; no rebuild needed. Served to agents by the portalManifest tunnel command.",
   "_consumer": "mChatAI+ PortalContract.swift",
   "portalVersion": 1,
-  "featureLevel": 1,
+  "featureLevel": 2,
   "versionPolicy": "portalVersion is a breaking-change counter: it increments only when an existing verb's name, required params, or response shape changes incompatibly. featureLevel increments on purely additive changes (new verbs, new optional params). Clients should refuse to run against a higher portalVersion than they understand, and may use featureLevel to detect optional capabilities.",
   "verbs": [
     {
@@ -268,7 +268,7 @@
       },
       "shim": "mchatai raw '{\"command\":\"composeMusic\",\"brief\":\"<brief>\"}' --json",
       "pairedCheck": "portalAssets",
-      "notes": "SLOW — the brief goes through a real LLM round trip in LoopStar's chat path, then an offline render. Budget minutes. Runs on the HEADLESS diagnostic conductor, so it never touches the user's open session. Set existingArrangementOnly=true to skip the LLM and export whatever arrangement is already loaded. The returned WAV is probed for duration and peak before it is registered: a silent or truncated render fails the verb rather than returning a handle to nothing."
+      "notes": "SLOW \u2014 the brief goes through a real LLM round trip in LoopStar's chat path, then an offline render. Budget minutes. Runs on the HEADLESS diagnostic conductor, so it never touches the user's open session. Set existingArrangementOnly=true to skip the LLM and export whatever arrangement is already loaded. The returned WAV is probed for duration and peak before it is registered: a silent or truncated render fails the verb rather than returning a handle to nothing."
     },
     {
       "name": "attachMusic",
@@ -291,7 +291,7 @@
       },
       "shim": "mchatai raw '{\"command\":\"attachMusic\",\"projectID\":\"<id>\",\"musicAssetID\":\"<assetID>\"}' --json",
       "pairedCheck": "diagToonLint",
-      "notes": "Copies the audio INTO the project directory, because ToonProject.audioFile is relative to it and a project pointing outside itself stops being portable when duplicated or published. Attaches as a per-scene music CUE, never the project narration track — that slot holds mixed dialogue and overwriting it would silently delete voice work. Scenes that already have music are left alone; the response says how many were touched."
+      "notes": "Copies the audio INTO the project directory, because ToonProject.audioFile is relative to it and a project pointing outside itself stops being portable when duplicated or published. Attaches as a per-scene music CUE, never the project narration track \u2014 that slot holds mixed dialogue and overwriting it would silently delete voice work. Scenes that already have music are left alone; the response says how many were touched."
     },
     {
       "name": "portalAssets",
@@ -310,7 +310,63 @@
         "requestID": "pa-01"
       },
       "shim": "mchatai raw '{\"command\":\"portalAssets\",\"kind\":\"audio\"}' --json",
-      "notes": "An assetID is the ONLY thing that crosses the CLI boundary — absolute container paths never leave the app, because they differ per build lane and are frequently unreadable by the calling agent. `verified` is tri-state: true, false, or null for 'not yet checked', which is materially different from 'checked and failed'. action=sweep drops index entries whose file has vanished; a handle that resolves to nothing is worse than a missing one, because an agent will pass it downstream and fail two steps later."
+      "notes": "An assetID is the ONLY thing that crosses the CLI boundary \u2014 absolute container paths never leave the app, because they differ per build lane and are frequently unreadable by the calling agent. `verified` is tri-state: true, false, or null for 'not yet checked', which is materially different from 'checked and failed'. action=sweep drops index entries whose file has vanished; a handle that resolves to nothing is worse than a missing one, because an agent will pass it downstream and fail two steps later."
+    },
+    {
+      "name": "portalApplets",
+      "summary": "What each applet can DO: its AI actions with titles, plain-English descriptions, how each runs, and what it requires. Ask this before assuming an applet's capabilities.",
+      "kind": "read-only",
+      "required": [],
+      "optional": [
+        "applet"
+      ],
+      "example": {
+        "command": "portalApplets",
+        "applet": "aiWrite",
+        "requestID": "pa-01"
+      },
+      "shim": "mchatai raw '{\"command\":\"portalApplets\",\"applet\":\"aiWrite\"}' --json",
+      "notes": "Sourced from AppletAIActionCatalog. Covers the applets that declare AI actions; applets driven by diag commands (LoopStar, MapGuide) are not listed here yet - see docs/APPLET_VERB_SCOPING.md."
+    },
+    {
+      "name": "portalExtensionPoints",
+      "summary": "Which applet consumes which mchatai-source content, with an exemplar file to imitate, the reload verb, and how to verify.",
+      "kind": "read-only",
+      "required": [],
+      "optional": [
+        "applet"
+      ],
+      "example": {
+        "command": "portalExtensionPoints",
+        "applet": "LoopStar",
+        "requestID": "pe-01"
+      },
+      "shim": "mchatai extension-points LoopStar",
+      "notes": "Documentation, not a gate: unlisted surfaces are still extendable."
+    },
+    {
+      "name": "applet",
+      "summary": "Act on an applet. Implemented verb: 'place' - put content INTO an applet (a report into AIWrite, an episode into PodcastCreator). Returns the created entity plus a deep link that opens it.",
+      "kind": "mutating",
+      "required": [
+        "applet",
+        "verb"
+      ],
+      "optional": [
+        "args"
+      ],
+      "example": {
+        "command": "applet",
+        "applet": "aiwrite",
+        "verb": "place",
+        "args": {
+          "title": "My report",
+          "text": "# My report\n\nBody..."
+        },
+        "requestID": "ap-01"
+      },
+      "shim": "mchatai raw '{\"command\":\"applet\",\"applet\":\"aiwrite\",\"verb\":\"place\",\"args\":{\"title\":\"T\",\"text\":\"...\"}}' --json",
+      "notes": "PREFER args.text over args.path - the app is sandboxed and cannot read files outside its container. Full verb roadmap: docs/APPLET_VERB_SCOPING.md."
     }
   ]
 }

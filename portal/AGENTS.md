@@ -205,6 +205,15 @@ node frameworks/web-components/tests/check_component_usage.mjs <installed-index.
 mchatai raw '{"command":"diagRenderProbe","miniAppID":"<id>","waitSeconds":6}' --json
 ```
 
+## Adding a verb to an applet?
+
+Read `portal/VERB_AUTHORING.md` first (next to this file). It is the conventions
+every applet verb must follow — sandbox-safe paths, acting on the live store
+rather than a headless diagnostic host, returning an openable entity, and never
+reporting success for work that did not happen. Each rule exists because someone
+shipped the opposite. The roadmap of which verbs to build is
+`mchatai_macOS/docs/APPLET_VERB_SCOPING.md`.
+
 ## Rules that protect the platform (non-negotiable)
 
 1. **Binaries are skeletons.** Framework/applet-specific strings belong in this
