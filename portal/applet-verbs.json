@@ -290,10 +290,11 @@
           "seconds",
           "form",
           "character",
-          "seed"
+          "seed",
+          "plan"
         ],
-        "notes": "A jingle is not a genre. The brief is read for FUNCTION (news, sports, game), CHARACTER (cartoon, mystery, retro) and MODIFIERS (absurd) — a brief naming two characters gets the gesture of one played by the voices of the other. `seconds` picks the form and solves the tempo; when a character's tempo range cannot stretch that far the reply WARNS rather than quietly delivering a different length. Deterministic: same brief, same jingle. `readFromBrief` in the reply says what was recognised, so you can correct one field instead of re-rolling.",
-        "pairedCheck": "attachMusic with the returned assetID, then diagToonRender",
+        "notes": "A jingle is not a genre. The brief is read for FUNCTION (news, sports, game), CHARACTER (cartoon, mystery, retro) and MODIFIERS (absurd) — a brief naming two characters gets the gesture of one played by the voices of the other. `seconds` picks the form and solves the tempo; when a character's tempo range cannot stretch that far the reply WARNS rather than quietly delivering a different length. Deterministic: same brief, same jingle. `readFromBrief` in the reply says what was recognised, so you can correct one field instead of re-rolling. An LLM plans it when one is configured and refines the deterministic reading PER FIELD — a model that picks a better tempo but hallucinates a character keeps the tempo. `plan: false` skips the model. The reply's `plan` block reports source (model | model-failed | no-model | not-requested), whether that is DEGRADED, which providers are configured and which fields the model actually changed — so a pipeline can tell a config problem from a runtime one. No LLM is not a failure: the deterministic path is the designed floor.",
+        "pairedCheck": "check reply.plan.degraded, then attachMusic with the returned assetID",
         "example": {
           "command": "applet",
           "applet": "loopstar",
