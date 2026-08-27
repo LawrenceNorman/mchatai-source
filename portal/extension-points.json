@@ -1,5 +1,5 @@
 {
-  "_readme": "Extension-point registry: which applet/surface consumes which mchatai-source content, what shape it expects, and how to reload + verify it. CONTENT per mChatAI RULE #1 — served to agents by the portalExtensionPoints tunnel command; no rebuild to add an entry. This closes the discovery gap where each applet's Swift store hard-codes its own relative path with nothing telling an agent those paths exist.",
+  "_readme": "Extension-point registry: which applet/surface consumes which mchatai-source content, what shape it expects, and how to reload + verify it. CONTENT per mChatAI RULE #1 \u2014 served to agents by the portalExtensionPoints tunnel command; no rebuild to add an entry. This closes the discovery gap where each applet's Swift store hard-codes its own relative path with nothing telling an agent those paths exist.",
   "_consumer": "mChatAI+ PortalContract.swift (portalExtensionPoints)",
   "registryVersion": 1,
   "_howToAdd": "Copy an entry, point 'paths' at the real directories, name an existing file in 'exemplar' so an agent can imitate a known-good shape, and set 'reload' to the verb that makes the app re-read it. Entries are documentation, not a gate: an applet works whether or not it is listed here, and an agent may extend surfaces that are not listed.",
@@ -12,19 +12,28 @@
       "id": "loopstar.genre-material",
       "applet": "LoopStar",
       "summary": "Genre material packs: the loops, one-shots, and per-genre musical material LoopStar builds arrangements from.",
-      "paths": ["frameworks/loopstar/{genre}/material.json", "frameworks/loopstar/{genre}/*.wav"],
+      "paths": [
+        "frameworks/loopstar/{genre}/material.json",
+        "frameworks/loopstar/{genre}/*.wav"
+      ],
       "registry": "frameworks/loopstar/packs.json",
       "exemplar": "frameworks/loopstar/blues/material.json",
-      "alsoSee": ["frameworks/loopstar/styles.json", "frameworks/loopstar/sections.json", "frameworks/loopstar/cycles.json"],
+      "alsoSee": [
+        "frameworks/loopstar/styles.json",
+        "frameworks/loopstar/sections.json",
+        "frameworks/loopstar/cycles.json"
+      ],
       "reload": "invalidateMchataisourceCaches",
-      "verify": "Open LoopStar and audition the genre. Audio MUST be verified by ear — the diagnostic meters read 0 even while audio plays.",
+      "verify": "Open LoopStar and audition the genre. Audio MUST be verified by ear \u2014 the diagnostic meters read 0 even while audio plays.",
       "notes": "Audio filenames follow a per-genre prefix convention (lsbl_* for blues). Add the genre to packs.json or it will not be listed."
     },
     {
       "id": "loopstar.phrases",
       "applet": "LoopStar",
-      "summary": "Playable phrase library — melodic/rhythmic phrases installed onto part channels.",
-      "paths": ["frameworks/loopstar/phrases/{genre}/"],
+      "summary": "Playable phrase library \u2014 melodic/rhythmic phrases installed onto part channels.",
+      "paths": [
+        "frameworks/loopstar/phrases/{genre}/"
+      ],
       "exemplar": "frameworks/loopstar/phrases",
       "reload": "invalidateMchataisourceCaches",
       "verify": "Install a phrase in LoopStar and listen. Phrases ride PART channels, not lanes."
@@ -33,7 +42,9 @@
       "id": "loopstar.songbook",
       "applet": "LoopStar",
       "summary": "Song Book entries: form, changes, and head material for songs the applet can load.",
-      "paths": ["frameworks/loopstar/songbook/"],
+      "paths": [
+        "frameworks/loopstar/songbook/"
+      ],
       "exemplar": "frameworks/loopstar/songbook",
       "reload": "invalidateMchataisourceCaches",
       "verify": "Load the song in LoopStar's Song Book and play it.",
@@ -43,7 +54,11 @@
       "id": "loopstar.kits-and-fx",
       "applet": "LoopStar",
       "summary": "Drum kits, drum-synth presets, and lane FX presets.",
-      "paths": ["frameworks/loopstar/drums/", "frameworks/loopstar/fx/", "frameworks/loopstar/chords/"],
+      "paths": [
+        "frameworks/loopstar/drums/",
+        "frameworks/loopstar/fx/",
+        "frameworks/loopstar/chords/"
+      ],
       "reload": "invalidateMchataisourceCaches",
       "verify": "Audition in LoopStar by ear."
     },
@@ -51,9 +66,13 @@
       "id": "toonstudio.puppets",
       "applet": "ToonStudio (AIVidGen)",
       "summary": "Character rigs the animator can cast and pose.",
-      "paths": ["frameworks/toon-studio/puppets/{id}.json"],
+      "paths": [
+        "frameworks/toon-studio/puppets/{id}.json"
+      ],
       "exemplar": "frameworks/toon-studio/puppets/ts_ada.json",
-      "alsoSee": ["frameworks/toon-studio/parts/parts.json"],
+      "alsoSee": [
+        "frameworks/toon-studio/parts/parts.json"
+      ],
       "reload": "invalidateMchataisourceCaches",
       "verify": "Open ToonStudio, cast the puppet, and render a short.",
       "notes": "User-authored library items live on the user's machine and take precedence over source-cache entries."
@@ -62,7 +81,10 @@
       "id": "toonstudio.backdrops-and-sounds",
       "applet": "ToonStudio (AIVidGen)",
       "summary": "Scene backdrops and the sound-effect library.",
-      "paths": ["frameworks/toon-studio/backdrops/", "frameworks/toon-studio/sounds/"],
+      "paths": [
+        "frameworks/toon-studio/backdrops/",
+        "frameworks/toon-studio/sounds/"
+      ],
       "reload": "invalidateMchataisourceCaches",
       "verify": "Place the backdrop / trigger the sound in a ToonStudio scene."
     },
@@ -70,7 +92,11 @@
       "id": "toonstudio.prompts-and-tuning",
       "applet": "ToonStudio (AIVidGen)",
       "summary": "Generation prompts and tuning values for script/scene generation.",
-      "paths": ["frameworks/toon-studio/prompts/", "frameworks/toon-studio/tuning/", "frameworks/toon-studio/styles.json"],
+      "paths": [
+        "frameworks/toon-studio/prompts/",
+        "frameworks/toon-studio/tuning/",
+        "frameworks/toon-studio/styles.json"
+      ],
       "reload": "invalidateMchataisourceCaches",
       "verify": "Generate a short and inspect the result; ToonFidelity gates audit the output."
     },
@@ -78,7 +104,12 @@
       "id": "storymaker.prompts",
       "applet": "StoryMaker",
       "summary": "Prompt templates behind StoryMaker's AI actions (outline, expand chapter, character sheet, plot analysis, dialogue polish) plus the freeform/custom operation templates.",
-      "paths": ["story/prompts/story.custom.md", "story/prompts/story.freeform.md", "story/prompts/story.operation.md", "story/prompts/story.outputformats.json"],
+      "paths": [
+        "story/prompts/story.custom.md",
+        "story/prompts/story.freeform.md",
+        "story/prompts/story.operation.md",
+        "story/prompts/story.outputformats.json"
+      ],
       "exemplar": "story/prompts/story.operation.md",
       "reload": "invalidateMchataisourceCaches",
       "verify": "Run the corresponding AI action inside StoryMaker on a test project."
@@ -87,38 +118,55 @@
       "id": "miniapp.web-components",
       "applet": "AIWizard / mini-apps",
       "summary": "The web Lego catalog: reusable components, 3D components, and vendored offline libraries mini-apps are assembled from.",
-      "paths": ["frameworks/web-components/", "frameworks/web-components-3d/", "frameworks/web-libs/"],
+      "paths": [
+        "frameworks/web-components/",
+        "frameworks/web-components-3d/",
+        "frameworks/web-libs/"
+      ],
       "reload": "refreshMchataisourceCache",
       "verify": "node frameworks/web-components/tests/check_component_usage.mjs <installed-index.html> <recipe-id>",
-      "notes": "Components must work offline — a published mini-app runs under a CSP that blocks CDNs. Extract anything reusable here rather than inlining it in one app."
+      "notes": "Components must work offline \u2014 a published mini-app runs under a CSP that blocks CDNs. Extract anything reusable here rather than inlining it in one app."
     },
     {
       "id": "wizard.wisdom",
       "applet": "AIWizard / harness",
       "summary": "Wisdom rule packs that steer generation. universal.json applies to every build; other packs are scoped.",
-      "paths": ["wisdom/packs/{pack-id}.json", "wisdom/packs/universal.json"],
+      "paths": [
+        "wisdom/packs/{pack-id}.json",
+        "wisdom/packs/universal.json"
+      ],
       "exemplar": "wisdom/packs/universal.json",
       "reload": "refreshMchataisourceCache",
       "verify": "Run a wizard build that should trigger the rule and inspect the result.",
-      "notes": "Source is the authoritative superset. The app's bundled WizardWisdom copies are FROZEN offline fallbacks — never hand-edit those."
+      "notes": "Source is the authoritative superset. The app's bundled WizardWisdom copies are FROZEN offline fallbacks \u2014 never hand-edit those."
     },
     {
       "id": "harness.policy",
       "applet": "AIWizard / harness",
       "summary": "Harness policy content: routing and escalation thresholds, gates, steering, context recipes, playability rules.",
-      "paths": ["harness/"],
+      "paths": [
+        "harness/"
+      ],
       "exemplar": "harness/routing/escalation-thresholds.json",
       "reload": "refreshMchataisourceCache",
       "verify": "Use the matching diag verb (for example diagEscalation) to inspect the resolved values.",
-      "notes": "Values are clamped on load — a malformed edit falls back to frozen defaults rather than disabling a gate."
+      "notes": "Values are clamped on load \u2014 a malformed edit falls back to frozen defaults rather than disabling a gate."
     },
     {
       "id": "platform.fundamentals",
       "applet": "All applets (MchataiContentService)",
       "summary": "Shared content primitives: word dictionaries, color palettes, holiday calendars, emoji catalog, unit conversions.",
-      "paths": ["content/dictionaries/", "content/color-palettes/", "content/dates-and-holidays/", "content/emoji-catalog/", "content/unit-conversions/"],
+      "paths": [
+        "content/dictionaries/",
+        "content/color-palettes/",
+        "content/dates-and-holidays/",
+        "content/emoji-catalog/",
+        "content/unit-conversions/"
+      ],
       "registry": "wizard/builtin-fundamentals-catalog.json",
-      "alsoSee": ["content/_schema/"],
+      "alsoSee": [
+        "content/_schema/"
+      ],
       "reload": "refreshMchataisourceCache",
       "verify": "diagFundamentals tunnel command lists what resolved."
     },
@@ -126,7 +174,9 @@
       "id": "platform.skills",
       "applet": "Pipeline engine / skills",
       "summary": "JavaScript skills auto-installed into the app at launch and on refresh.",
-      "paths": ["skills/{skill-id}/"],
+      "paths": [
+        "skills/{skill-id}/"
+      ],
       "reload": "refreshMchataisourceCache",
       "verify": "listSkills, then runSkill against the new id."
     },
@@ -134,7 +184,10 @@
       "id": "platform.pipelines",
       "applet": "Pipeline builder",
       "summary": "Pipeline Lego steps and full pipeline templates.",
-      "paths": ["pipelines/components/", "pipelines/templates/{name}/pipeline.json"],
+      "paths": [
+        "pipelines/components/",
+        "pipelines/templates/{name}/pipeline.json"
+      ],
       "registry": "pipelines/components/_index.json",
       "reload": "refreshMchataisourceCache",
       "verify": "listPipelines, then runPipeline by name.",
@@ -144,10 +197,51 @@
       "id": "platform.microservices",
       "applet": "mChatAIShell",
       "summary": "Python microservice source users can opt into installing on their own machine.",
-      "paths": ["microservices/{name}/"],
+      "paths": [
+        "microservices/{name}/"
+      ],
       "reload": "refreshMchataisourceCache",
       "verify": "Install via Diagnostics, then call the service's health endpoint.",
       "notes": "RULE #2: these run on the user's machine, never centrally. Installation is always opt-in."
+    },
+    {
+      "id": "aiweb.agents",
+      "applet": "AI Web",
+      "summary": "Research agents that run against a web page: score it for relevance, extract claims, turn it into a podcast script. Authoring a NEW one is pure content \u2014 no rebuild, no App Store cycle.",
+      "paths": [
+        "aiweb-agents/{id}/agent.json"
+      ],
+      "registry": "aiweb-agents/index.json",
+      "exemplar": "aiweb-agents/relevance-scorer/agent.json",
+      "alsoSee": [
+        "aiweb-agents/podcast-script/agent.json",
+        "aiweb-agents/claim-extractor/agent.json"
+      ],
+      "reload": "refreshMchataisourceCache",
+      "verify": "mchatai raw '{\"command\":\"applet\",\"applet\":\"aiweb\",\"verb\":\"listAgents\"}' \u2014 your new id must appear. Then open the page in AI Web and run it.",
+      "schema": {
+        "required": [
+          "id",
+          "schemaVersion",
+          "version",
+          "title",
+          "shortDescription",
+          "icon",
+          "tint",
+          "recommendedModel",
+          "form",
+          "execution"
+        ],
+        "id": "Must match the directory name and the index.json entry.",
+        "schemaVersion": "\"1.0\"",
+        "icon": "SF Symbol name. tint: a colour word (blue, purple, orange...).",
+        "recommendedModel": "Ollama tag or provider model. Local models keep it free; relevance-scorer uses qwen2.5:7b.",
+        "form": "Array of input fields the user fills before running. Field types seen in shipping agents: textarea, slider. Each has id/label/help/type; textarea adds placeholder/required/minHeight; slider adds min/max/default/step/suffix. A textarea may carry an `enhancement` block ({system, userTemplate}) powering the sparkle button that expands a short description into a tuned prompt.",
+        "execution": "Where the work is defined. `singlePage: {system, userTemplate}` is the required core. `supportsListingScan: true` plus `listingShortPass` adds cheap pass-1 scoring across every link on an index page. `report: {system, userTemplate}` renders the markdown brief the user reads.",
+        "templateVariables": "Substituted at run time: {{url}}, {{pageText}}, {{currentValue}} (inside an enhancement), and {{<fieldId>}} for any form field \u2014 e.g. {{context}}, {{threshold}}.",
+        "results": "Optional presentation hints for how the output is displayed."
+      },
+      "notes": "The single best place in the app for an agent to add capability: the runtime loader (AIWebAgentCatalog) reads these at launch, so a new agent is a PR. Register it in index.json (id/path/title/shortDescription/icon/tint) or it will not be listed. Running an agent still requires the live page in AI Web \u2014 there is no headless page context, so `aiweb.runAgent` is deliberately not a verb."
     }
   ]
 }

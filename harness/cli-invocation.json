@@ -1,7 +1,7 @@
 {
   "$schema": "https://mchatai.com/schemas/cli-invocation-v1.json",
   "version": "2.0.0",
-  "last_updated": "2026-07-20",
+  "last_updated": "2026-08-26",
   "description": "Per-CLI-backend invocation policy + optimization config for mChatAIShell dev sessions. Each CLI has unique capabilities (MCP, sub-agents, model selection, context management) — this file is the single source of truth for how we configure them.",
   "defaults": {
     "startBody": {
@@ -210,6 +210,70 @@
       "notes": "Gemini CLI supports --output-format stream-json natively. Confirmed shape (probed 2026-04-21): init → message (role=user|assistant, content=string) → tool_use (tool_name, parameters) → tool_result (tool_id, status) → result (status=success). --yolo is the auto-approve flag (equivalent to Claude --dangerously-skip-permissions). assistantText extracts top-level `content` (Gemini stores text as a plain string, not nested blocks); requireField=role + requireValue=assistant scopes the extractor to assistant-only so user echo doesn't contaminate output. **WizardCLIRunner appends `goal` as the trailing positional argv** — Gemini accepts this via its `query` positional, so we DO NOT include `-p` in invocationFlags (`-p` consumes the IMMEDIATELY-following arg as its value, which collides with our trailing-positional convention and emits 'Not enough arguments following: p' + exit 1 with zero events). Probed 2026-04-22 after gemini-runner exit=1 canary failure."
     }
   },
+  "interactiveMapping": {
+    "claude": {
+      "invocationFlags": [
+        "-p",
+        "--input-format",
+        "stream-json",
+        "--output-format",
+        "stream-json",
+        "--verbose",
+        "--include-partial-messages",
+        "--permission-prompt-tool",
+        "stdio",
+        "--replay-user-messages"
+      ],
+      "resumeFlag": "--resume",
+      "modelFlag": "--model",
+      "permissionModeFlag": "--permission-mode",
+      "permissionModes": {
+        "default": "default",
+        "acceptEdits": "acceptEdits",
+        "plan": "plan",
+        "bypass": "bypassPermissions"
+      },
+      "userTurnType": "user",
+      "control": {
+        "requestType": "control_request",
+        "responseType": "control_response",
+        "cancelType": "control_cancel_request",
+        "requestIDField": "request_id",
+        "subtypeField": "request.subtype",
+        "subtypes": {
+          "canUseTool": "can_use_tool",
+          "initialize": "initialize",
+          "interrupt": "interrupt",
+          "setPermissionMode": "set_permission_mode",
+          "setModel": "set_model",
+          "hookCallback": "hook_callback",
+          "mcpMessage": "mcp_message"
+        }
+      },
+      "events": {
+        "init": {
+          "type": "system",
+          "requireField": "subtype",
+          "requireValue": "init"
+        },
+        "assistant": {
+          "type": "assistant",
+          "textPath": "message.content[*].text"
+        },
+        "streamDelta": {
+          "type": "stream_event"
+        },
+        "userEcho": {
+          "type": "user"
+        },
+        "result": {
+          "type": "result"
+        }
+      },
+      "sessionIDPath": "session_id",
+      "notes": "Phase Workbench W1 — interactive bidirectional session dialect (WorkbenchSessionDriver). Spawn with tty:false (plain pipes): a PTY's line discipline would echo our stdin JSON back into the output stream, where an echoed {\"type\":\"user\",...} parses as a fake event. User turns are NDJSON lines {\"type\":\"user\",\"message\":{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"...\"}]}} written to stdin mid-run (queued if a turn is in flight). REQUIRED: --permission-prompt-tool stdio routes permission prompts over the control channel as can_use_tool control_requests — WITHOUT it, headless -p mode silently DENIES everything not auto-approved (no prompt ever reaches the host; found live 2026-08-26, the fixture tests cannot catch it). Control channel (control_request/control_response, subtypes here) verified as strings in claude v2.1.210; feature-detect via the system/init capabilities[] array (present v2.1.205+) and treat unknown subtypes as safe-deny. permissionModes maps Workbench's logical modes to CLI values; the driver passes --permission-mode on EVERY spawn INCLUDING --resume respawns (claude-code issue #21974: resume does not preserve permission flags). No goal positional — the first user turn arrives via stdin. codex is intentionally absent until W6 ships the app-server dialect; an absent backend here = Workbench shows it unavailable (never a silent PTY fallback)."
+    }
+  },
   "backends": {
     "claude": {
       "displayName": "Claude Code CLI",
@@ -352,7 +416,11 @@
       },
       "plainText": {
         "executable": "agy",
-        "baseFlags": ["--dangerously-skip-permissions", "--add-dir", "{workDir}"],
+        "baseFlags": [
+          "--dangerously-skip-permissions",
+          "--add-dir",
+          "{workDir}"
+        ],
         "promptFlag": "-p",
         "defaultModel": "Gemini 3.1 Pro (High)",
         "wallClockTimeoutSec": 900,

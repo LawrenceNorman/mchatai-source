@@ -1,0 +1,77 @@
+{
+  "version": 1,
+  "lastUpdated": "2026-08-26",
+  "_source_of_truth": true,
+  "packID": "litrpg",
+  "displayName": "LitRPG / Progression",
+  "_comment": "Columns a LitRPG or progression-fantasy bible needs that a general novel bible does not. Read by the pack applier (EntitySchema.applyPack); the binary carries a frozen _fallback_only copy in BibleDemoSeed for the demo only. Applying a pack ADDS a view — it never widens Essentials, so a three-character short story that installs this by accident sees no change to its default columns. DECODER SAFETY: comment keys at this TOP LEVEL ONLY; every field object is fixed-field. NAMING: these are deliberately NOT D&D attribute names. The machinery is genre-neutral (NumericLedgerEntry over any .number field marked isTimeVarying) and the vocabulary is content — which is the whole point. A pack author renaming Clarity to Intelligence changes one string here and ships in seconds. matchesPackKey is how an upgrade finds an existing column: never the display name, which the author may have renamed, and never the FieldID.",
+
+  "_fieldNotes": "promptTier: always = injected every call (spend it carefully); whenRelevant = injected when the entity is retrieved; onDemand = fetchable by tool only. isTimeVarying: true routes writes to the numeric ledger rather than the entity's property map, which is what makes 'as of chapter N' answerable. aiVisible: false keeps a column out of prompts entirely — use it for anything the model would over-repeat.",
+
+  "entityKinds": [
+    { "kind": "character", "displayName": "Crawlers", "iconName": "person.2" },
+    { "kind": "faction",   "displayName": "Factions", "iconName": "flag.2.crossed" },
+    { "kind": "item",      "displayName": "Items",    "iconName": "shippingbox" },
+    { "kind": "skill",     "displayName": "Skills",   "iconName": "sparkles" },
+    { "kind": "floor",     "displayName": "Floors",   "iconName": "square.stack.3d.up" }
+  ],
+
+  "fields": {
+    "character": [
+      { "packKey": "litrpg.class", "name": "Class", "kind": "line", "section": "System",
+        "promptTier": "always", "aiVisible": true, "isTimeVarying": false,
+        "llmHint": "Named by the System at first delve. Changing it is a plot event, not a preference." },
+      { "packKey": "litrpg.tier", "name": "Tier", "kind": "number", "section": "System",
+        "promptTier": "always", "aiVisible": true, "isTimeVarying": true,
+        "llmHint": "Non-decreasing. A crawler never loses a tier." },
+      { "packKey": "litrpg.clarity", "name": "Clarity", "kind": "number", "section": "Attributes",
+        "promptTier": "whenRelevant", "aiVisible": true, "isTimeVarying": true,
+        "llmHint": "Reasoning and recall." },
+      { "packKey": "litrpg.grit", "name": "Grit", "kind": "number", "section": "Attributes",
+        "promptTier": "whenRelevant", "aiVisible": true, "isTimeVarying": true,
+        "llmHint": "Endurance. Falls with untreated injury and does not self-heal." },
+      { "packKey": "litrpg.standing", "name": "Standing", "kind": "number", "section": "Attributes",
+        "promptTier": "whenRelevant", "aiVisible": true, "isTimeVarying": true,
+        "llmHint": "Bureaucratic favour. CAN GO NEGATIVE; negative Standing is a plot state, not a debuff." },
+      { "packKey": "litrpg.affiliation", "name": "Affiliation", "kind": "link", "section": "System",
+        "promptTier": "whenRelevant", "aiVisible": true, "isTimeVarying": true,
+        "targetKind": "faction",
+        "llmHint": "Time-varying on purpose: who someone answers to in chapter 40 is rarely who they answered to in chapter 3." },
+      { "packKey": "litrpg.debts", "name": "Known Debts", "kind": "text", "section": "System",
+        "promptTier": "onDemand", "aiVisible": true, "isTimeVarying": false,
+        "llmHint": "Obligations the System can call in. Plot fuel — fetch when the scene turns on leverage." }
+    ],
+    "item": [
+      { "packKey": "litrpg.itemRule", "name": "Rule Text", "kind": "text", "section": "Mechanics",
+        "promptTier": "whenRelevant", "aiVisible": true, "isTimeVarying": false,
+        "llmHint": "The item's stated behaviour. Treat as an ENFORCEABLE CONSTRAINT, not flavour — a returning sword that was defined well enough to become a plot constraint has to behave like one." },
+      { "packKey": "litrpg.itemModifier", "name": "Modifier", "kind": "line", "section": "Mechanics",
+        "promptTier": "whenRelevant", "aiVisible": true, "isTimeVarying": false,
+        "llmHint": "e.g. '+4 Grit while worn'. Record the CONDITION — a modifier that only applies sometimes is the single most common source of stat drift." },
+      { "packKey": "litrpg.bearer", "name": "Held By", "kind": "link", "section": "Mechanics",
+        "promptTier": "whenRelevant", "aiVisible": true, "isTimeVarying": true,
+        "targetKind": "character",
+        "llmHint": "Time-varying: possession changes, and 'who had it in chapter 12' is a real question." }
+    ],
+    "faction": [
+      { "packKey": "litrpg.factionGoal", "name": "Wants", "kind": "text", "section": "Politics",
+        "promptTier": "whenRelevant", "aiVisible": true, "isTimeVarying": false },
+      { "packKey": "litrpg.factionStanding", "name": "Standing With Party", "kind": "number", "section": "Politics",
+        "promptTier": "whenRelevant", "aiVisible": true, "isTimeVarying": true,
+        "llmHint": "Tracks across the whole book. A faction's opinion is exactly the kind of number authors lose track of." }
+    ],
+    "skill": [
+      { "packKey": "litrpg.skillCost", "name": "Cost", "kind": "line", "section": "Mechanics",
+        "promptTier": "whenRelevant", "aiVisible": true, "isTimeVarying": false },
+      { "packKey": "litrpg.skillRank", "name": "Rank", "kind": "number", "section": "Mechanics",
+        "promptTier": "whenRelevant", "aiVisible": true, "isTimeVarying": true }
+    ],
+    "floor": [
+      { "packKey": "litrpg.floorRule", "name": "Floor Rule", "kind": "text", "section": "World",
+        "promptTier": "always", "aiVisible": true, "isTimeVarying": false,
+        "llmHint": "The rule that governs this floor. Always-tier because breaking it silently is the failure readers notice first." },
+      { "packKey": "litrpg.floorNumber", "name": "Number", "kind": "number", "section": "World",
+        "promptTier": "whenRelevant", "aiVisible": true, "isTimeVarying": false }
+    ]
+  }
+}

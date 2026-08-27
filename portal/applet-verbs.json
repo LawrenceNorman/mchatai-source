@@ -698,6 +698,109 @@
             "limit": 500
           }
         }
+      },
+      "createcollection": {
+        "kind": "create",
+        "summary": "Make a new collection. An existing name is REUSED rather than duplicated, so re-running a script is safe.",
+        "required": [
+          "name"
+        ],
+        "optional": [
+          "icon"
+        ],
+        "notes": "Idempotent by design — a retried step must not leave you with 'Birds', 'Birds 2', 'Birds 3'. The reply's created:false tells you it already existed.",
+        "pairedCheck": "applet ledger getState",
+        "example": {
+          "command": "applet",
+          "applet": "ledger",
+          "verb": "createCollection",
+          "args": {
+            "name": "Upstate NY Birds",
+            "icon": "bird"
+          }
+        }
+      },
+      "addcolumn": {
+        "kind": "modify",
+        "summary": "Add one typed column. Usually unnecessary — appendRows infers columns from your CSV header. Use this to force a type inference would get wrong.",
+        "required": [
+          "collection",
+          "column"
+        ],
+        "optional": [
+          "kind"
+        ],
+        "notes": "kind: text, line, number, checkbox, date, select, color, richText, link. Computed kinds (formula/rollup/count) are refused — they have no evaluator, so the column could never hold a value. An existing column is left as-is.",
+        "example": {
+          "command": "applet",
+          "applet": "ledger",
+          "verb": "addColumn",
+          "args": {
+            "collection": "Upstate NY Birds",
+            "column": "Sighted",
+            "kind": "checkbox"
+          }
+        }
+      },
+      "appendrows": {
+        "kind": "create",
+        "summary": "The headline write verb. Append rows from CSV (header row required). Creates the collection if absent, so one call is enough for 'make me a table of X'.",
+        "required": [
+          "collection",
+          "csv"
+        ],
+        "notes": "APPENDS — it never replaces. Types are inferred per column, but an EXISTING column's declared kind always wins, so a column you deliberately made text will not flip to number. Quote cells containing a comma and double an inner quote. Same path as CSV import and the pipeline skill, so an agent and a human dragging in the same file get identical columns.",
+        "pairedCheck": "applet ledger getRows with the same collection",
+        "example": {
+          "command": "applet",
+          "applet": "ledger",
+          "verb": "appendRows",
+          "args": {
+            "collection": "Upstate NY Birds",
+            "csv": "Species,Season,Sighted\nBlack-capped Chickadee,Year-round,no"
+          }
+        }
+      },
+      "setcell": {
+        "kind": "modify",
+        "summary": "Correct one cell. Row numbers are 1-based as displayed. For bulk loading use appendRows.",
+        "required": [
+          "collection",
+          "row",
+          "column",
+          "value"
+        ],
+        "notes": "Returns ok:false when nothing persisted — a missing row or column is reported, never silently swallowed.",
+        "example": {
+          "command": "applet",
+          "applet": "ledger",
+          "verb": "setCell",
+          "args": {
+            "collection": "Seattle Birds",
+            "row": 43,
+            "column": "Season",
+            "value": "Year-round"
+          }
+        }
+      },
+      "exportseed": {
+        "kind": "read",
+        "summary": "Write a collection to a .json or .csv file so a generated app can INLINE it. The verb that makes 'a single self-contained offline index.html' possible without carrying rows through your context.",
+        "required": [
+          "collection",
+          "path"
+        ],
+        "notes": "You supply the path because you know your working directory and the app does not — pass an absolute one. JSON keeps TYPES (a number stays a number, a checkbox stays a bool) so the generated app can sort and filter without re-parsing. .json or .csv only. Prefer this over getRows whenever the data is destined for a file: getRows spends context proportional to the row count, this spends none.",
+        "pairedCheck": "read the file you named",
+        "example": {
+          "command": "applet",
+          "applet": "ledger",
+          "verb": "exportSeed",
+          "args": {
+            "collection": "Upstate NY Birds",
+            "path": "/tmp/ny-birds/data.json"
+          }
+        }
       }
     },
     "hub": {

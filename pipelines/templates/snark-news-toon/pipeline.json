@@ -1,0 +1,56 @@
+{
+  "id": "official.pipeline.snark-news-toon",
+  "name": "Snark News Toon",
+  "description": "Today's headlines, reported accurately and then punctured — a 60-second satirical newscast.",
+  "components": [],
+  "steps": [
+    {
+      "id": "ADF7B9FE-E0A8-494A-BEB2-4F78159CBE00",
+      "skillID": "builtin.webExtract",
+      "config": {
+        "url": "https://feeds.bbci.co.uk/news/rss.xml https://www.theguardian.com/uk/rss",
+        "maxURLs": "2",
+        "maxChars": "40000",
+        "includeMetadata": "false"
+      }
+    },
+    {
+      "id": "7B65DEEE-1CBC-4176-AA25-3A353BEF06A7",
+      "skillID": "builtin.llmGenerate",
+      "config": {
+        "userPrompt": "From the RSS below, pick the THREE stories that are both NEWSWORTHY and can carry\nirony — institutions behaving absurdly, industries contradicting themselves, official\nnonsense. EXCLUDE anything whose subject is a death, an injury, a missing person, a crime\nagainst a person, or an obituary: those are reported straight or not at all, never joked\nabout. Return ONLY the article URLs, one per line, nothing else.\n\n{{INPUT}}",
+        "llmMaxTokens": "300",
+        "llmTimeout": "120"
+      }
+    },
+    {
+      "id": "7E327890-A504-480D-9D24-39555C6A9242",
+      "skillID": "builtin.webExtract",
+      "config": {
+        "maxURLs": "3",
+        "maxChars": "7000",
+        "includeMetadata": "true"
+      }
+    },
+    {
+      "id": "AF532A51-3756-427F-B1FC-91E904DE16AA",
+      "skillID": "builtin.llmGenerate",
+      "config": {
+        "userPrompt": "Write a SIXTY SECOND satirical news bulletin for a two-anchor cartoon newsdesk.\n\nANCHORS: DALE, lead anchor, unshakeable broadcast voice, treats the absurd as routine.\n         PRIYA, co-anchor, drier, lands the ironic observation.\n\nRULES\n- About 150 words. Sixty seconds read aloud.\n- Cover the three stories below, in order, three or four exchanges each.\n- THE NEWS MUST STILL LAND. Every story gets its actual facts FIRST — the number, the\n  place, the decision — and the wry line comes after. A viewer who watches this should\n  come away genuinely informed. A joke that replaces the fact has failed.\n- Aim the irony at institutions, industries and absurd situations. NEVER at individuals\n  suffering, NEVER at anyone's death or injury.\n- Anchors trade lines. Nobody makes a speech.\n- Open with a greeting, close with a sign-off.\n- Plain spoken lines only. NO stage directions, NO parentheses, NO camera notes —\n  anything in brackets gets read aloud by the voice engine.\n\nOUTPUT EXACTLY THIS SHAPE AND NOTHING ELSE:\nDALE: <line>\nPRIYA: <line>\n\nSOURCE MATERIAL:\n{{INPUT}}",
+        "llmMaxTokens": "900",
+        "llmTimeout": "180"
+      }
+    },
+    {
+      "id": "E5CD7266-10E8-4163-9BC9-39434E39F972",
+      "skillID": "builtin.appletVerb",
+      "config": {
+        "applet": "ToonStudio",
+        "verb": "importScript",
+        "textArg": "text",
+        "arg.title": "Snark News Toon",
+        "arg.save": "true"
+      }
+    }
+  ]
+}

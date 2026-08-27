@@ -1,0 +1,56 @@
+{
+  "id": "official.pipeline.straight-news-toon",
+  "name": "Straight News Toon",
+  "description": "Today's headlines read plainly by two animated anchors — the news, filmed.",
+  "components": [],
+  "steps": [
+    {
+      "id": "50AE1D18-D377-4CF6-9DD6-AFFD63C4A878",
+      "skillID": "builtin.webExtract",
+      "config": {
+        "url": "https://feeds.bbci.co.uk/news/rss.xml https://www.theguardian.com/uk/rss",
+        "maxURLs": "2",
+        "maxChars": "40000",
+        "includeMetadata": "false"
+      }
+    },
+    {
+      "id": "D474CE4E-E37F-4727-A809-1B374E6BF9CB",
+      "skillID": "builtin.llmGenerate",
+      "config": {
+        "userPrompt": "From the RSS below, pick the THREE most SIGNIFICANT stories. Return ONLY their article URLs, one per line, nothing else.\n\n{{INPUT}}",
+        "llmMaxTokens": "300",
+        "llmTimeout": "120"
+      }
+    },
+    {
+      "id": "05D2A68B-8FB2-452C-A559-4E2448320EFF",
+      "skillID": "builtin.webExtract",
+      "config": {
+        "maxURLs": "3",
+        "maxChars": "7000",
+        "includeMetadata": "true"
+      }
+    },
+    {
+      "id": "CC16AB69-BD8A-4700-B05E-61271BA9D728",
+      "skillID": "builtin.llmGenerate",
+      "config": {
+        "userPrompt": "Write a SIXTY SECOND news bulletin for a two-anchor cartoon newsdesk.\n\nANCHORS: DALE, lead anchor. PRIYA, co-anchor.\n\nRULES\n- About 150 words. Sixty seconds read aloud.\n- Cover the three stories below, in order, three or four exchanges each.\n- STRAIGHT delivery. Report what happened, who it affects and what comes next.\n- No jokes, no irony, no editorialising. Plain broadcast register.\n- Every story gets its actual facts: the number, the place, the decision.\n- Anchors trade lines. Nobody makes a speech.\n- Open with a greeting, close with a sign-off.\n- Plain spoken lines only. NO stage directions, NO parentheses, NO camera notes —\n  anything in brackets gets read aloud by the voice engine.\n\nOUTPUT EXACTLY THIS SHAPE AND NOTHING ELSE:\nDALE: <line>\nPRIYA: <line>\n\nSOURCE MATERIAL:\n{{INPUT}}",
+        "llmMaxTokens": "900",
+        "llmTimeout": "180"
+      }
+    },
+    {
+      "id": "3A9699E8-29BA-41EA-B692-0FB04D474DA2",
+      "skillID": "builtin.appletVerb",
+      "config": {
+        "applet": "ToonStudio",
+        "verb": "importScript",
+        "textArg": "text",
+        "arg.title": "Straight News Toon",
+        "arg.save": "true"
+      }
+    }
+  ]
+}

@@ -1,37 +1,39 @@
 {
   "_source_of_truth": "frameworks/toon-studio/tuning/attention.json",
   "_comment": "Who looks at whom, and when. Read by ToonAttention at compile time; the binary carries clamped _fallback_only copies of every number here. Every value is tunable by PR with no rebuild — which is the point, because gaze is a perceptual feature and the right numbers are found by watching, not by reasoning.",
-
   "enabled": true,
-
   "buckets": {
     "_comment": "Three renderable states. `quarter` is the conversational default and does the real work: BOTH eyes stay, the pupils slide toward whoever is talking, and the head narrows slightly. Deleting the far eye — which is what `profile` does — leaves one eye stranded on a front-facing skull and reads as a cyclops, not as a person looking sideways. The reference show keeps two eyes and moves the pupils, and it is right. `profile` is now reserved for locomotion and for beats the author explicitly marks confrontational.",
-    "front":   { "pose": null,        "variant": null },
-    "quarter": { "pose": "look_side", "variant": "look_side" },
-    "profile": { "pose": "turn_side", "variant": "turn_side" }
+    "front": {
+      "pose": null,
+      "variant": null
+    },
+    "quarter": {
+      "pose": "look_side",
+      "variant": "look_side"
+    },
+    "profile": {
+      "pose": "turn_side",
+      "variant": "turn_side"
+    }
   },
-
   "listenerBucket": "quarter",
   "speakerBucket": "quarter",
   "_bucket_comment": "Both listener and speaker sit at `quarter`: two eyes, pupils turned. Tried full profile first and it was genuinely creepy — a one-eyed head with a nose spur, because the shipped profile artwork drops an eye without reshaping the skull behind it. Pupils are the cheaper and far more legible signal, and they cost no artwork on any rig.",
-
   "speakingClamp": "quarter",
   "_speakingClamp_comment": "A character with a live line never goes past this bucket. Every viseme in this format is drawn on the centreline; a centreline mouth on a profile head reads as a hole in the cheek. The content proves it by omission — not one of the eight rigs shipping a profile HEAD ships a profile MOUTH. Costs nothing where it matters: the listener case is exactly the case that is not speaking.",
-
   "damping": {
     "_comment": "The single most important tuning in this file. Without it a five-line exchange swivels heads every 0.8s and reads as a malfunction rather than as attention.",
     "minDwell": 0.5,
     "minBetweenChanges": 1.2,
     "maxChangesPerScene": 8
   },
-
   "stagger": {
     "_comment": "Never turn two characters on the same frame. Drawn from the project seed so a film is identical across renders — diagToonRender's PASS gate compares renderHash across two runs, and a gaze system that randomised per render would break the existing determinism test. A minority turn EARLY (anticipating the next speaker), which is what stops an ensemble reading as a mechanism.",
     "windowSeconds": 1.0,
     "anticipateShare": 0.22,
     "anticipateLead": 0.25
   },
-
   "listener": {
     "_comment": "Anti-staring is not optional. A listener locked on the speaker for a whole scene is a failure mode, not a clean default — and the look-away is also what fills dead air on a long line.",
     "aversionLength": 1.14,
@@ -39,7 +41,6 @@
     "aversionInterval": 7.21,
     "aversionIntervalSD": 1.88
   },
-
   "speaker": {
     "_comment": "A speaker looks at the listener roughly half as much as the reverse. preUtteranceLead: people look AWAY before they start talking, on about 73% of utterances — formulating, not avoiding.",
     "aversionLength": 1.96,
@@ -49,23 +50,27 @@
     "preUtteranceShare": 0.731,
     "preUtteranceLead": 1.03
   },
-
   "group": {
     "_comment": "3+ on stage. The speaker holds the addressee rather than sweeping the room; non-addressees get a small share of glances. Total gaze scales DOWN in a group, it does not divide evenly.",
     "speakerToAddressee": 0.77,
     "toNonAddressees": 0.12,
     "triadScale": 0.6
   },
-
   "blink": {
     "_comment": "In a discrete-swap system a blink is not decoration, it IS the transition — it hides the pop the way a cut hides a jump. Blinks genuinely co-occur with gaze shifts, so this is craft and physiology agreeing. At 12fps the closing phase (the fast one) and the opening phase both collapse to a single frame.",
     "onHeadingChange": 0.9,
     "downFrames": 1,
     "upFrames": 1
   },
-
   "synthesis": {
     "_comment": "A rig with no look_side pose gets one built from its turn_side at this fraction, head and mouth only — so it reads as a HEAD turn rather than a body turn. Same defence as ToonRigRepair synthesising the six face_* poses: every rig must be able to emote, and every rig must be able to look.",
     "quarterOfProfile": 0.4
+  },
+  "presenter": {
+    "_comment": "The to-camera register: newsdesk, vlog, piece-to-camera. Opt in per project with ToonProject.presentation = \"presenter\". Inverts the ordinary rules — the SPEAKER addresses the viewer and the LISTENER attends to them — because two anchors turned to face each other is a conversation, not a broadcast.",
+    "enabled": true,
+    "speakerTurnsToCoHost": 0.28,
+    "listenerAsideEvery": 3,
+    "_aside_comment": "Every Nth line the silent anchor looks down the lens instead of at the speaker — the deadpan to-camera beat that makes a two-hander desk read as comedy rather than autocue. It YIELDS to a pointed line: short, questioned, exclaimed or shouted in caps. Looking away through someone's punchline is the one thing a co-anchor never does, so the counter only gets ordinary lines and anything that lands pulls the eye back."
   }
 }
