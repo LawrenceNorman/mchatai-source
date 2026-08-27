@@ -279,6 +279,39 @@
           "applet": "loopstar",
           "verb": "craftMelody"
         }
+      },
+      "jingle": {
+        "kind": "create",
+        "summary": "A SHORT piece that ENDS: 2-20 seconds, composed to a brief, rendered to a WAV and registered as a portal asset. Not a loop.",
+        "required": [
+          "brief"
+        ],
+        "optional": [
+          "seconds",
+          "form",
+          "character",
+          "seed"
+        ],
+        "notes": "A jingle is not a genre. The brief is read for FUNCTION (news, sports, game), CHARACTER (cartoon, mystery, retro) and MODIFIERS (absurd) — a brief naming two characters gets the gesture of one played by the voices of the other. `seconds` picks the form and solves the tempo; when a character's tempo range cannot stretch that far the reply WARNS rather than quietly delivering a different length. Deterministic: same brief, same jingle. `readFromBrief` in the reply says what was recognised, so you can correct one field instead of re-rolling.",
+        "pairedCheck": "attachMusic with the returned assetID, then diagToonRender",
+        "example": {
+          "command": "applet",
+          "applet": "loopstar",
+          "verb": "jingle",
+          "args": {
+            "brief": "a jingle for the Absurd News Cartoon Show",
+            "seconds": 8
+          }
+        }
+      },
+      "listjingleforms": {
+        "kind": "read",
+        "summary": "The jingle forms (button, sting, logo, bumper, theme) with their second ranges, and the characters with the words that trigger them. Call it to see what a brief can reach.",
+        "example": {
+          "command": "applet",
+          "applet": "loopstar",
+          "verb": "listJingleForms"
+        }
       }
     },
     "audiolibrary": {
@@ -495,6 +528,217 @@
             "project": "Toon backlog",
             "task": "Record the narration",
             "done": true
+          }
+        }
+      }
+    },
+    "workbench": {
+      "listsessions": {
+        "kind": "read",
+        "summary": "Every hosted session with its state, which front-end it is in (structured driver vs full TUI), the CLI session id, workdir, mode and cost. Each row carries an `open` deep link.",
+        "example": {
+          "command": "applet",
+          "applet": "workbench",
+          "verb": "listSessions"
+        }
+      },
+      "startsession": {
+        "kind": "create",
+        "summary": "Start a structured Claude Code session on a prompt. `ok` only once the CLI reported its init event — a process that never initialises is an error with the session id attached.",
+        "required": [
+          "text"
+        ],
+        "optional": [
+          "backend",
+          "workdir",
+          "mode",
+          "model",
+          "waitForInitSeconds"
+        ],
+        "notes": "`text` is the first prompt, inline. Omit `workdir` for a managed folder (a folder the app cannot read is probed via the shell; a typo is reported as missing). `mode`: default | acceptEdits | plan | bypass (default acceptEdits; unknown → candidates). `ok` only after the CLI's init event AND a live state. On an init timeout (default 15s, `waitForInitSeconds` ≤60) the driver is STILL LIVE: the reply says stillLive:true — do NOT start another; poll getTranscript/listSessions or interrupt force:true. Permission rows need a human (or the app's Allow All).",
+        "pairedCheck": "applet workbench getTranscript with the returned sessionID",
+        "example": {
+          "command": "applet",
+          "applet": "workbench",
+          "verb": "startSession",
+          "args": {
+            "text": "Build a small CLI that summarizes a folder of markdown files"
+          }
+        }
+      },
+      "starttui": {
+        "kind": "create",
+        "summary": "Open a full interactive Claude Code TUI (the real terminal UI) in a new workdir. Returns the PTY id; type into it via the app's Terminal pane or diagMetaCLI input.",
+        "optional": [
+          "title",
+          "backend",
+          "workdir"
+        ],
+        "notes": "A TUI takes keystrokes, not turns. Its transcript is readable with getTranscript after the first exchange.",
+        "example": {
+          "command": "applet",
+          "applet": "workbench",
+          "verb": "startTUI",
+          "args": {
+            "title": "refactor session"
+          }
+        }
+      },
+      "sendturn": {
+        "kind": "modify",
+        "summary": "Queue a user turn on a running structured session (mid-run is fine — it queues into the turn).",
+        "required": [
+          "sessionID",
+          "text"
+        ],
+        "notes": "Fails with the reason if the session is not running, is a TUI (use its ptyID with diagMetaCLI input), or is blocked on a permission prompt (answer it first — the reply carries pendingRequestID). Other delivery errors are reported verbatim; the session stays live.",
+        "example": {
+          "command": "applet",
+          "applet": "workbench",
+          "verb": "sendTurn",
+          "args": {
+            "sessionID": "<from listSessions>",
+            "text": "Now add tests"
+          }
+        }
+      },
+      "gettranscript": {
+        "kind": "read",
+        "summary": "Timeline rows (user/assistant/tool/permission/note) with paging. Cold sessions are hydrated from the CLI transcript first — the same thing selecting the session in the app does.",
+        "required": [
+          "sessionID"
+        ],
+        "optional": [
+          "since",
+          "limit",
+          "hydrate"
+        ],
+        "notes": "Use `nextSince` to page. A cold session is hydrated from the CLI transcript first (`hydrate`, default true); a LIVE session is never touched. `result.live` says which. A `permission` row with `resolved:false` means the CLI is blocked on a human.",
+        "example": {
+          "command": "applet",
+          "applet": "workbench",
+          "verb": "getTranscript",
+          "args": {
+            "sessionID": "<from listSessions>",
+            "since": 0,
+            "limit": 50
+          }
+        }
+      },
+      "interrupt": {
+        "kind": "modify",
+        "summary": "State-aware interrupt. A RUNNING turn gets the control-channel interrupt. Idle / starting: refused (nothing to interrupt). Blocked on a permission prompt: refused with the pendingRequestID — answer it instead. `force:true` sends SIGINT and the reply says so (result.action = sigint, escalated:true).",
+        "required": [
+          "sessionID"
+        ],
+        "example": {
+          "command": "applet",
+          "applet": "workbench",
+          "verb": "interrupt",
+          "args": {
+            "sessionID": "<from listSessions>"
+          }
+        },
+        "optional": [
+          "force"
+        ]
+      }
+    },
+    "ledger": {
+      "getstate": {
+        "kind": "read",
+        "summary": "How many collections and rows the user has.",
+        "example": {
+          "command": "applet",
+          "applet": "ledger",
+          "verb": "getState"
+        }
+      },
+      "listcollections": {
+        "kind": "read",
+        "summary": "Every collection with its row count and column names — the map of the user's structured data.",
+        "example": {
+          "command": "applet",
+          "applet": "ledger",
+          "verb": "listCollections"
+        }
+      },
+      "getschema": {
+        "kind": "read",
+        "summary": "A collection's columns (name, kind, hint). `collection` is a name or id.",
+        "required": [
+          "collection"
+        ],
+        "example": {
+          "command": "applet",
+          "applet": "ledger",
+          "verb": "getSchema",
+          "args": {
+            "collection": "Seattle Birds"
+          }
+        }
+      },
+      "getrows": {
+        "kind": "read",
+        "summary": "The rows as {column name: value}, paged. Build your UI from these. `collection` is a name (e.g. \"Seattle Birds\") or id.",
+        "required": [
+          "collection"
+        ],
+        "optional": [
+          "limit",
+          "offset"
+        ],
+        "notes": "Field NAMES are the keys. Page with offset/nextOffset.",
+        "example": {
+          "command": "applet",
+          "applet": "ledger",
+          "verb": "getRows",
+          "args": {
+            "collection": "Seattle Birds",
+            "limit": 500
+          }
+        }
+      }
+    },
+    "hub": {
+      "getstate": {
+        "kind": "read",
+        "summary": "How many mini-apps are installed (searchable templates).",
+        "example": {
+          "command": "applet",
+          "applet": "hub",
+          "verb": "getState"
+        }
+      },
+      "search": {
+        "kind": "read",
+        "summary": "Find installed (and loaded-catalog) apps by name.",
+        "optional": [
+          "query"
+        ],
+        "example": {
+          "command": "applet",
+          "applet": "hub",
+          "verb": "search",
+          "args": {
+            "query": "tracker"
+          }
+        }
+      },
+      "getapp": {
+        "kind": "read",
+        "summary": "Return an app's HTML (result.html) to reuse as a design/behavior template. Installed-first, then the Hub catalog. `app` is a name, slug or id.",
+        "required": [
+          "app"
+        ],
+        "notes": "Read its layout/styling/interactions and MATCH them; use the user's own data. Full reply saved to /tmp/mchatai-out/.",
+        "pairedCheck": "read result.html and mirror its structure",
+        "example": {
+          "command": "applet",
+          "applet": "hub",
+          "verb": "getApp",
+          "args": {
+            "app": "Yellow Island Bloom Tracker"
           }
         }
       }

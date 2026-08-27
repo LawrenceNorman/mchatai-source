@@ -105,6 +105,30 @@
             "applet": "loopstar",
             "verb": "craftMelody"
           }
+        },
+        {
+          "verb": "loopstar.jingle",
+          "status": "callable",
+          "description": "A 2-20 second piece that ends on a button, composed from a brief and registered as a portal asset. The one LoopStar output that is not a loop.",
+          "example": {
+            "command": "applet",
+            "applet": "loopstar",
+            "verb": "jingle",
+            "args": {
+              "brief": "a jingle for the Absurd News Cartoon Show",
+              "seconds": 8
+            }
+          }
+        },
+        {
+          "verb": "loopstar.listJingleForms",
+          "status": "callable",
+          "description": "The jingle form and character vocabulary a brief can reach.",
+          "example": {
+            "command": "applet",
+            "applet": "loopstar",
+            "verb": "listJingleForms"
+          }
         }
       ],
       "notes": "LoopStar declares no AppletAIActions, so it is invisible to the built-in action catalog despite being the most capable applet in the app. Audio must be verified BY EAR - the diagnostic meters read 0 even while sound is playing."
@@ -341,6 +365,179 @@
             "command": "applet",
             "applet": "todo",
             "verb": "setTaskStatus"
+          }
+        }
+      ]
+    },
+    {
+      "applet": "workbench",
+      "summary": "Hosted Claude Code sessions inside mChatAI+: list, start (structured or full TUI), queue a turn, read the transcript, interrupt. DEBUG lane only — not in the Release tunnel allowlist.",
+      "capabilities": [
+        {
+          "verb": "workbench.listSessions",
+          "status": "callable",
+          "description": "Every hosted session with state, front-end, CLI id, workdir, cost, and an open link.",
+          "example": {
+            "command": "applet",
+            "applet": "workbench",
+            "verb": "listSessions"
+          }
+        },
+        {
+          "verb": "workbench.startSession",
+          "status": "callable",
+          "description": "Start a structured session on an inline prompt; ok only after the CLI's init event and a live state (timeout ⇒ stillLive, do not retry).",
+          "example": {
+            "command": "applet",
+            "applet": "workbench",
+            "verb": "startSession",
+            "args": {
+              "text": "…"
+            }
+          }
+        },
+        {
+          "verb": "workbench.startTUI",
+          "status": "callable",
+          "description": "Open the full interactive Claude Code terminal in a new workdir; returns the PTY id.",
+          "example": {
+            "command": "applet",
+            "applet": "workbench",
+            "verb": "startTUI"
+          }
+        },
+        {
+          "verb": "workbench.sendTurn",
+          "status": "callable",
+          "description": "Queue a user turn on a running structured session.",
+          "example": {
+            "command": "applet",
+            "applet": "workbench",
+            "verb": "sendTurn",
+            "args": {
+              "sessionID": "…",
+              "text": "…"
+            }
+          }
+        },
+        {
+          "verb": "workbench.getTranscript",
+          "status": "callable",
+          "description": "Paged timeline rows; hydrates a cold session from the CLI transcript first.",
+          "example": {
+            "command": "applet",
+            "applet": "workbench",
+            "verb": "getTranscript",
+            "args": {
+              "sessionID": "…"
+            }
+          }
+        },
+        {
+          "verb": "workbench.interrupt",
+          "status": "callable",
+          "description": "Interrupt a RUNNING turn via the control channel; refused when idle or permission-blocked; force:true = SIGINT (named in the reply).",
+          "example": {
+            "command": "applet",
+            "applet": "workbench",
+            "verb": "interrupt",
+            "args": {
+              "sessionID": "…"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "applet": "ledger",
+      "summary": "The user's structured data (typed rows), read-only, for building from.",
+      "capabilities": [
+        {
+          "verb": "ledger.getState",
+          "status": "callable",
+          "description": "Collection and row counts.",
+          "example": {
+            "command": "applet",
+            "applet": "ledger",
+            "verb": "getState"
+          }
+        },
+        {
+          "verb": "ledger.listCollections",
+          "status": "callable",
+          "description": "Every collection with row count + columns.",
+          "example": {
+            "command": "applet",
+            "applet": "ledger",
+            "verb": "listCollections"
+          }
+        },
+        {
+          "verb": "ledger.getSchema",
+          "status": "callable",
+          "description": "A collection's columns.",
+          "example": {
+            "command": "applet",
+            "applet": "ledger",
+            "verb": "getSchema",
+            "args": {
+              "collection": "Seattle Birds"
+            }
+          }
+        },
+        {
+          "verb": "ledger.getRows",
+          "status": "callable",
+          "description": "Rows as {column: value}, paged.",
+          "example": {
+            "command": "applet",
+            "applet": "ledger",
+            "verb": "getRows",
+            "args": {
+              "collection": "Seattle Birds"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "applet": "hub",
+      "summary": "Published + installed mini-apps: search, and fetch one's HTML as a template.",
+      "capabilities": [
+        {
+          "verb": "hub.getState",
+          "status": "callable",
+          "description": "Installed app count.",
+          "example": {
+            "command": "applet",
+            "applet": "hub",
+            "verb": "getState"
+          }
+        },
+        {
+          "verb": "hub.search",
+          "status": "callable",
+          "description": "Find apps by name.",
+          "example": {
+            "command": "applet",
+            "applet": "hub",
+            "verb": "search",
+            "args": {
+              "query": "tracker"
+            }
+          }
+        },
+        {
+          "verb": "hub.getApp",
+          "status": "callable",
+          "description": "An app's HTML, to reuse.",
+          "example": {
+            "command": "applet",
+            "applet": "hub",
+            "verb": "getApp",
+            "args": {
+              "app": "Yellow Island Bloom Tracker"
+            }
           }
         }
       ]
