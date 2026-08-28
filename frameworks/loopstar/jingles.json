@@ -535,5 +535,37 @@
     "tempo": 120,
     "note": "A brief matching no character still gets a real jingle. 'clean' is the least-wrong neutral and is modern-electronic like everything else — there is no orchestral fallback, by design."
   },
-  "_fxComment": "Per-character MIX. gain is linear, pan is -1..1, reverb and delay are 0..1 wet. delayNote is a TEMPO-SYNCED division (1/4, 1/8, 1/8d, 1/8t, 1/16) resolved against the piece's BPM at render time — a delay in seconds lands on nothing and is the clearest tell of a preset. lead/pad/drums are the three layers."
+  "_fxComment": "Per-character MIX. gain is linear, pan is -1..1, reverb and delay are 0..1 wet. delayNote is a TEMPO-SYNCED division (1/4, 1/8, 1/8d, 1/8t, 1/16) resolved against the piece's BPM at render time — a delay in seconds lands on nothing and is the clearest tell of a preset. lead/pad/drums are the three layers.",
+  "soul": {
+    "_comment": "The sound identity, machine-readable. Prose lives in LOOPSTAR_SOUL.md; this is the part a planner has to obey. `avoidPrograms` are GM ranges that make LoopStar sound like a 50s game show — fake brass, thin winds, low-resolution bowed strings, clean guitars, novelty. A model asking for one of these gets `substitute` instead, chosen so the GESTURE survives and only the timbre changes.",
+    "avoidPrograms": [
+      {
+        "from": 24,
+        "to": 31,
+        "why": "clean/acoustic guitars — thin and fake at GM resolution"
+      },
+      {
+        "from": 40,
+        "to": 51,
+        "why": "bowed strings — low-resolution sample, immediately corny"
+      },
+      {
+        "from": 56,
+        "to": 63,
+        "why": "brass — the game-show fanfare sound"
+      },
+      {
+        "from": 64,
+        "to": 79,
+        "why": "winds and reeds — nasal, never edgy"
+      },
+      {
+        "from": 104,
+        "to": 119,
+        "why": "novelty and world — banjo, bagpipe, steel drum, whistle"
+      }
+    ],
+    "substitute": 1005,
+    "_substituteComment": "Fallback lead when a banned program is requested — an app synth voice (programs 1000+ route to LoopStarSynthEngine). Change this id to re-point every rejection at once, no rebuild."
+  }
 }
