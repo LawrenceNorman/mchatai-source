@@ -291,9 +291,10 @@
           "form",
           "character",
           "seed",
-          "plan"
+          "plan",
+          "library"
         ],
-        "notes": "A jingle is not a genre. The brief is read for FUNCTION (news, sports, game), CHARACTER (cartoon, mystery, retro) and MODIFIERS (absurd) — a brief naming two characters gets the gesture of one played by the voices of the other. `seconds` picks the form and solves the tempo; when a character's tempo range cannot stretch that far the reply WARNS rather than quietly delivering a different length. Deterministic: same brief, same jingle. `readFromBrief` in the reply says what was recognised, so you can correct one field instead of re-rolling. An LLM plans it when one is configured and refines the deterministic reading PER FIELD — a model that picks a better tempo but hallucinates a character keeps the tempo. `plan: false` skips the model. The reply's `plan` block reports source (model | model-failed | no-model | not-requested), whether that is DEGRADED, which providers are configured and which fields the model actually changed — so a pipeline can tell a config problem from a runtime one. No LLM is not a failure: the deterministic path is the designed floor.",
+        "notes": "A jingle is not a genre. The brief is read for FUNCTION (news, sports, game), CHARACTER (cartoon, mystery, retro) and MODIFIERS (absurd) — a brief naming two characters gets the gesture of one played by the voices of the other. `seconds` picks the form and solves the tempo; when a character's tempo range cannot stretch that far the reply WARNS rather than quietly delivering a different length. Deterministic: same brief, same jingle. `readFromBrief` in the reply says what was recognised, so you can correct one field instead of re-rolling. An LLM plans it when one is configured and refines the deterministic reading PER FIELD — a model that picks a better tempo but hallucinates a character keeps the tempo. `plan: false` skips the model. The reply's `plan` block reports source (model | model-failed | no-model | not-requested), whether that is DEGRADED, which providers are configured and which fields the model actually changed — so a pipeline can tell a config problem from a runtime one. No LLM is not a failure: the deterministic path is the designed floor. Each character carries its own MIX (gain/pan/reverb/delay per layer) as content, so its SPACE is part of its identity — a brass fanfare in a hall is a different instrument from a dry one. The file is also filed in the Audio Library under 'Jingles' so you can hear it in the app; `library: false` opts out.",
         "pairedCheck": "check reply.plan.degraded, then attachMusic with the returned assetID",
         "example": {
           "command": "applet",
@@ -800,6 +801,28 @@
           "args": {
             "collection": "Upstate NY Birds",
             "path": "/tmp/ny-birds/data.json"
+          }
+        }
+      },
+      "ask": {
+        "kind": "create",
+        "summary": "Hand a plain-English request to mChatAI+'s OWN data agent — it researches the web and writes the rows itself. The verb that lets an agent delegate table-building to the platform instead of doing the research in its own context.",
+        "required": [
+          "prompt"
+        ],
+        "optional": [
+          "collection",
+          "research",
+          "provider"
+        ],
+        "notes": "research defaults true (runs builtin.webSearch first and feeds the results to the model); pass false to use model knowledge only, which may be out of date. Returns ok:false when it answered but wrote NOTHING — prose without rows is a miss, not a success. The row deltas in result.changed are measured before/after against the store, not taken from the model's account of itself. Slow: a researched table is a web search plus a large generation, so allow minutes.",
+        "pairedCheck": "applet ledger getRows on the collection it reports",
+        "example": {
+          "command": "applet",
+          "applet": "ledger",
+          "verb": "ask",
+          "args": {
+            "prompt": "Build a checklist of birds commonly seen in upstate New York, with a Wikipedia link, season and a Sighted checkbox."
           }
         }
       }
