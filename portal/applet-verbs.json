@@ -304,7 +304,21 @@
             "brief": "a jingle for the Absurd News Cartoon Show",
             "seconds": 8
           }
-        }
+        },
+        "args": {
+          "brief": "what it is for — the only required argument",
+          "seconds": "0.5–30; the tempo solve fits the form into it, and says so when it cannot",
+          "form": "button | sting | logo | bumper | theme — otherwise read from the brief",
+          "character": "overrides the character the brief's words selected",
+          "plan": "false skips the LLM refine step entirely (fast, free, repeatable)",
+          "seed": "reuse the seed from a previous reply to get the same jingle back",
+          "bpm": "60–200 — overrides both the read and the model",
+          "key": "C, Am, F#m, Bb …",
+          "leadProgram / supportProgram": "GM 0–127 or an app synth voice 1000+. Programs in the ranges LOOPSTAR_SOUL.md names (brass, winds, bowed strings, clean guitars, novelty) are REFUSED with the reason; pass forceLeadProgram / forceSupportProgram to override that on purpose.",
+          "library": "false to skip the Audio Library copy",
+          "samples": "false to skip LoopStar's Samples shelf"
+        },
+        "returns": "assetID, the plan that produced it, where it was filed, and a `plan` block saying whether the model planned it, failed, or was never configured. A recipe is saved beside the audio — openJingle reads it back."
       },
       "listjingleforms": {
         "kind": "read",
@@ -313,6 +327,20 @@
           "command": "applet",
           "applet": "loopstar",
           "verb": "listJingleForms"
+        }
+      },
+      "openjingle": {
+        "kind": "read",
+        "summary": "Open a jingle by its assetID: the brief, every decision that shaped it, and the seed that reproduces it byte for byte. `load: true` installs its material — melody, chords and beat — onto the LoopStar board as Parts, so the finished thing becomes something you can keep working on. To re-render an edit, call jingle again with the same brief and seed plus one changed field.",
+        "pairedCheck": "result.audioPath is readable, and loadedParts is non-empty when load:true",
+        "example": {
+          "command": "applet",
+          "applet": "loopstar",
+          "verb": "openJingle",
+          "args": {
+            "assetID": "music-4783b1",
+            "load": true
+          }
         }
       }
     },
