@@ -2,7 +2,7 @@
   "$schema": "https://mchatai.com/schemas/cli-invocation-v1.json",
   "version": "2.0.0",
   "last_updated": "2026-08-26",
-  "description": "Per-CLI-backend invocation policy + optimization config for mChatAIShell dev sessions. Each CLI has unique capabilities (MCP, sub-agents, model selection, context management) — this file is the single source of truth for how we configure them.",
+  "description": "Per-CLI-backend invocation policy + optimization config for mChatAIShell dev sessions. Each CLI has unique capabilities (MCP, sub-agents, model selection, context management) \u2014 this file is the single source of truth for how we configure them.",
   "defaults": {
     "startBody": {
       "maxTurns": 15,
@@ -18,7 +18,7 @@
     "stalledWarnSeconds": 300
   },
   "turnBudget": {
-    "_comment": "RULE #1 — CLI agentic turn caps out of the binary. build = the main CLI dev-session/run budget (was a hardcoded 25 at 4 AIHarness call sites); retry = the quick re-attempt after a failed run (was 3); followUp = quick iteration on an existing artifact (was 6). The binary carries identical _fallback_only defaults; edit + push + refreshMchataisourceCache ships with no rebuild. [BUDGET-BUMP 2026-06-23: build 40->56 — L3 mashup builds (falling-sand, soft-body) over-researched and hit the cap mid-build; the WRITE-FIRST mandate in cli-project-context.md is the primary fix, this cap raise is the deterministic fallback.]",
+    "_comment": "RULE #1 \u2014 CLI agentic turn caps out of the binary. build = the main CLI dev-session/run budget (was a hardcoded 25 at 4 AIHarness call sites); retry = the quick re-attempt after a failed run (was 3); followUp = quick iteration on an existing artifact (was 6). The binary carries identical _fallback_only defaults; edit + push + refreshMchataisourceCache ships with no rebuild. [BUDGET-BUMP 2026-06-23: build 40->56 \u2014 L3 mashup builds (falling-sand, soft-body) over-researched and hit the cap mid-build; the WRITE-FIRST mandate in cli-project-context.md is the primary fix, this cap raise is the deterministic fallback.]",
     "build": 56,
     "retry": 3,
     "followUp": 6
@@ -172,7 +172,7 @@
         "requires": null,
         "textPath": null
       },
-      "notes": "Codex CLI uses subcommand `exec --json` for non-interactive JSONL output. Confirmed shape (probed 2026-04-21): thread.started → turn.started → item.completed (item.type=agent_message|file_change|...) → turn.completed. Auto-approval via --dangerously-bypass-approvals-and-sandbox flag (Codex's equivalent of Claude's --dangerously-skip-permissions). All payload-bearing events use type=item.completed, distinguished by item.type. The runner's awaitingApproval/toolUse/toolResult all share that same outer type — fine because Codex auto-approves with the bypass flag, the runner never needs to write y\\n for Codex."
+      "notes": "Codex CLI uses subcommand `exec --json` for non-interactive JSONL output. Confirmed shape (probed 2026-04-21): thread.started \u2192 turn.started \u2192 item.completed (item.type=agent_message|file_change|...) \u2192 turn.completed. Auto-approval via --dangerously-bypass-approvals-and-sandbox flag (Codex's equivalent of Claude's --dangerously-skip-permissions). All payload-bearing events use type=item.completed, distinguished by item.type. The runner's awaitingApproval/toolUse/toolResult all share that same outer type \u2014 fine because Codex auto-approves with the bypass flag, the runner never needs to write y\\n for Codex."
     },
     "gemini": {
       "invocationFlags": [
@@ -207,7 +207,7 @@
         "requires": null,
         "textPath": null
       },
-      "notes": "Gemini CLI supports --output-format stream-json natively. Confirmed shape (probed 2026-04-21): init → message (role=user|assistant, content=string) → tool_use (tool_name, parameters) → tool_result (tool_id, status) → result (status=success). --yolo is the auto-approve flag (equivalent to Claude --dangerously-skip-permissions). assistantText extracts top-level `content` (Gemini stores text as a plain string, not nested blocks); requireField=role + requireValue=assistant scopes the extractor to assistant-only so user echo doesn't contaminate output. **WizardCLIRunner appends `goal` as the trailing positional argv** — Gemini accepts this via its `query` positional, so we DO NOT include `-p` in invocationFlags (`-p` consumes the IMMEDIATELY-following arg as its value, which collides with our trailing-positional convention and emits 'Not enough arguments following: p' + exit 1 with zero events). Probed 2026-04-22 after gemini-runner exit=1 canary failure."
+      "notes": "Gemini CLI supports --output-format stream-json natively. Confirmed shape (probed 2026-04-21): init \u2192 message (role=user|assistant, content=string) \u2192 tool_use (tool_name, parameters) \u2192 tool_result (tool_id, status) \u2192 result (status=success). --yolo is the auto-approve flag (equivalent to Claude --dangerously-skip-permissions). assistantText extracts top-level `content` (Gemini stores text as a plain string, not nested blocks); requireField=role + requireValue=assistant scopes the extractor to assistant-only so user echo doesn't contaminate output. **WizardCLIRunner appends `goal` as the trailing positional argv** \u2014 Gemini accepts this via its `query` positional, so we DO NOT include `-p` in invocationFlags (`-p` consumes the IMMEDIATELY-following arg as its value, which collides with our trailing-positional convention and emits 'Not enough arguments following: p' + exit 1 with zero events). Probed 2026-04-22 after gemini-runner exit=1 canary failure."
     }
   },
   "interactiveMapping": {
@@ -226,6 +226,13 @@
       ],
       "resumeFlag": "--resume",
       "modelFlag": "--model",
+      "models": [
+        "claude-opus-5",
+        "claude-sonnet-5",
+        "claude-fable-5",
+        "claude-haiku-4-5-20251001"
+      ],
+      "defaultModel": "claude-opus-5",
       "permissionModeFlag": "--permission-mode",
       "permissionModes": {
         "default": "default",
@@ -271,7 +278,28 @@
         }
       },
       "sessionIDPath": "session_id",
-      "notes": "Phase Workbench W1 — interactive bidirectional session dialect (WorkbenchSessionDriver). Spawn with tty:false (plain pipes): a PTY's line discipline would echo our stdin JSON back into the output stream, where an echoed {\"type\":\"user\",...} parses as a fake event. User turns are NDJSON lines {\"type\":\"user\",\"message\":{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"...\"}]}} written to stdin mid-run (queued if a turn is in flight). REQUIRED: --permission-prompt-tool stdio routes permission prompts over the control channel as can_use_tool control_requests — WITHOUT it, headless -p mode silently DENIES everything not auto-approved (no prompt ever reaches the host; found live 2026-08-26, the fixture tests cannot catch it). Control channel (control_request/control_response, subtypes here) verified as strings in claude v2.1.210; feature-detect via the system/init capabilities[] array (present v2.1.205+) and treat unknown subtypes as safe-deny. permissionModes maps Workbench's logical modes to CLI values; the driver passes --permission-mode on EVERY spawn INCLUDING --resume respawns (claude-code issue #21974: resume does not preserve permission flags). No goal positional — the first user turn arrives via stdin. codex is intentionally absent until W6 ships the app-server dialect; an absent backend here = Workbench shows it unavailable (never a silent PTY fallback)."
+      "notes": "Phase Workbench W1 \u2014 interactive bidirectional session dialect (WorkbenchSessionDriver). Spawn with tty:false (plain pipes): a PTY's line discipline would echo our stdin JSON back into the output stream, where an echoed {\"type\":\"user\",...} parses as a fake event. User turns are NDJSON lines {\"type\":\"user\",\"message\":{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"...\"}]}} written to stdin mid-run (queued if a turn is in flight). REQUIRED: --permission-prompt-tool stdio routes permission prompts over the control channel as can_use_tool control_requests \u2014 WITHOUT it, headless -p mode silently DENIES everything not auto-approved (no prompt ever reaches the host; found live 2026-08-26, the fixture tests cannot catch it). Control channel (control_request/control_response, subtypes here) verified as strings in claude v2.1.210; feature-detect via the system/init capabilities[] array (present v2.1.205+) and treat unknown subtypes as safe-deny. permissionModes maps Workbench's logical modes to CLI values; the driver passes --permission-mode on EVERY spawn INCLUDING --resume respawns (claude-code issue #21974: resume does not preserve permission flags). No goal positional \u2014 the first user turn arrives via stdin. codex is intentionally absent until W6 ships the app-server dialect; an absent backend here = Workbench shows it unavailable (never a silent PTY fallback)."
+    },
+    "codex": {
+      "transport": "codex-jsonrpc",
+      "invocationFlags": [
+        "app-server"
+      ],
+      "models": [
+        "gpt-5.6-sol",
+        "gpt-5.6-terra",
+        "gpt-5.6-luna",
+        "gpt-5.5",
+        "gpt-5.4",
+        "gpt-5.4-mini"
+      ],
+      "permissionModes": {
+        "default": "on-request",
+        "acceptEdits": "on-request",
+        "plan": "on-request",
+        "bypass": "never"
+      },
+      "notes": "Codex app-server bidirectional JSON-RPC (verified codex-cli 0.144.4). Driven by CodexSessionDriver; NDJSON dialect fields (userTurnType/control/events) N/A. Model/approval-policy are content; JSON-RPC method names are protocol infra in the driver."
     }
   },
   "backends": {
@@ -409,7 +437,7 @@
               "--yolo",
               "--skip-trust"
             ],
-            "stepPromptTemplate": "Execute step {n} of {total}: {description}\n\nOriginal goal: {goal}\n\nWorking directory already contains the project so far. Make the change cleanly and exit when this step is done — do not try to complete the whole goal in one shot."
+            "stepPromptTemplate": "Execute step {n} of {total}: {description}\n\nOriginal goal: {goal}\n\nWorking directory already contains the project so far. Make the change cleanly and exit when this step is done \u2014 do not try to complete the whole goal in one shot."
           },
           "verifyAfterEachStep": false
         }
@@ -425,7 +453,7 @@
         "defaultModel": "Gemini 3.1 Pro (High)",
         "wallClockTimeoutSec": 900,
         "heartbeatIntervalSec": 30,
-        "notes": "Phase AGY (2026-07-14) — Google's `agy` (Antigravity CLI) replaces the deprecated @google/gemini-cli (free tier dead: IneligibleTierError). agy is PLAIN TEXT, dump-at-end: it emits ZERO stdout until exit, so the runner's drivePlainText path spawns ONCE, treats the final stdout dump as assistantOutput, and reads edited files back from disk (the real result). CRITICAL: agy's `-p`/`--print` is a STRING flag — the goal must be the VALUE of -p, appended LAST (nothing between -p and the goal), NOT a trailing positional like the old gemini CLI. The runner appends [promptFlag, goal] after baseFlags + any extraArgs (which may carry --model from HarnessModelPolicyService). {workDir} is resolved by the runner (also the spawn cwd). Only entered when the antigravity_agy feature flag is ON; flag-OFF keeps the stream-json/stepwise path byte-identical. AUTH is Gemini-model-only today (Claude/GPT-OSS via agy need a separate paid Antigravity login), and the free tier is flaky on large single-shot builds — hence a generous 900s wall-clock cap and the OFF-by-default flag. defaultModel is used only when extraArgs carry no --model."
+        "notes": "Phase AGY (2026-07-14) \u2014 Google's `agy` (Antigravity CLI) replaces the deprecated @google/gemini-cli (free tier dead: IneligibleTierError). agy is PLAIN TEXT, dump-at-end: it emits ZERO stdout until exit, so the runner's drivePlainText path spawns ONCE, treats the final stdout dump as assistantOutput, and reads edited files back from disk (the real result). CRITICAL: agy's `-p`/`--print` is a STRING flag \u2014 the goal must be the VALUE of -p, appended LAST (nothing between -p and the goal), NOT a trailing positional like the old gemini CLI. The runner appends [promptFlag, goal] after baseFlags + any extraArgs (which may carry --model from HarnessModelPolicyService). {workDir} is resolved by the runner (also the spawn cwd). Only entered when the antigravity_agy feature flag is ON; flag-OFF keeps the stream-json/stepwise path byte-identical. AUTH is Gemini-model-only today (Claude/GPT-OSS via agy need a separate paid Antigravity login), and the free tier is flaky on large single-shot builds \u2014 hence a generous 900s wall-clock cap and the OFF-by-default flag. defaultModel is used only when extraArgs carry no --model."
       },
       "optimization": {
         "model": "gemini-2.5-pro",
@@ -465,7 +493,7 @@
             "gemini-2.5-pro"
           ]
         },
-        "notes": "Gemini 2.5 Pro has 1M token context — largest of all three. Best for whole-codebase analysis or massive refactors. --yolo for full auto. GEMINI.md is the project context file (equivalent to CLAUDE.md). --include-directories expands scope. Extensions and hooks provide pre/post-action automation."
+        "notes": "Gemini 2.5 Pro has 1M token context \u2014 largest of all three. Best for whole-codebase analysis or massive refactors. --yolo for full auto. GEMINI.md is the project context file (equivalent to CLAUDE.md). --include-directories expands scope. Extensions and hooks provide pre/post-action automation."
       }
     }
   },
