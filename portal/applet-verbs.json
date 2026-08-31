@@ -774,22 +774,26 @@
       },
       "appendrows": {
         "kind": "create",
-        "summary": "The headline write verb. Append rows from CSV (header row required). Creates the collection if absent, so one call is enough for 'make me a table of X'.",
+        "summary": "The headline write verb. Append rows from CSV (header row required), or REFRESH an existing table in place by passing `matchOn`. Creates the collection if absent, so one call is enough for 'make me a table of X'.",
         "required": [
           "collection",
           "csv"
         ],
-        "notes": "APPENDS — it never replaces. Types are inferred per column, but an EXISTING column's declared kind always wins, so a column you deliberately made text will not flip to number. Quote cells containing a comma and double an inner quote. Same path as CSV import and the pipeline skill, so an agent and a human dragging in the same file get identical columns.",
+        "notes": "Appends by default - it never replaces. `matchOn` names a key column and turns this into an upsert: a row whose key already exists is MERGED (only the columns you send are touched, and an empty cell means 'not provided', not 'clear it'), and an unmatched key still appends. Key matching ignores case, accents and extra spaces but NOT punctuation, so 'A.J. Brown' and 'AJ Brown' are two different keys. If `matchOn` is not one of your csv columns the reply says so and the rows were appended - check for that rather than trusting the row count. Types are inferred per column, but an EXISTING column's declared kind always wins, so a column you deliberately made text will not flip to number. Quote cells containing a comma and double an inner quote. Same path as CSV import, the chat agent and the pipeline skill, so all four writers produce identical columns.",
         "pairedCheck": "applet ledger getRows with the same collection",
         "example": {
           "command": "applet",
           "applet": "ledger",
           "verb": "appendRows",
           "args": {
-            "collection": "Upstate NY Birds",
-            "csv": "Species,Season,Sighted\nBlack-capped Chickadee,Year-round,no"
+            "collection": "2026 Fantasy Draft",
+            "matchOn": "Player",
+            "csv": "Player,Rank,ProjPoints\nJa'Marr Chase,1,340.2"
           }
-        }
+        },
+        "optional": [
+          "matchOn"
+        ]
       },
       "setcell": {
         "kind": "modify",
@@ -894,6 +898,323 @@
           "verb": "getApp",
           "args": {
             "app": "Yellow Island Bloom Tracker"
+          }
+        }
+      }
+    },
+    "aislides": {
+      "getstate": {
+        "kind": "read",
+        "summary": "Deck count and the current decks (name, slide count).",
+        "example": {
+          "command": "applet",
+          "applet": "aislides",
+          "verb": "getState"
+        }
+      },
+      "listdecks": {
+        "kind": "read",
+        "summary": "Every deck with id, title, theme, slide count and updatedAt.",
+        "example": {
+          "command": "applet",
+          "applet": "aislides",
+          "verb": "listDecks"
+        }
+      },
+      "getdeck": {
+        "kind": "read",
+        "summary": "One deck as JSON: title, theme, and each slide's layout, slots, notes. `deck` is a title or id.",
+        "required": [
+          "deck"
+        ],
+        "example": {
+          "command": "applet",
+          "applet": "aislides",
+          "verb": "getDeck",
+          "args": {
+            "deck": "Q3 Review"
+          }
+        }
+      },
+      "compose": {
+        "kind": "create",
+        "summary": "A PROMPT becomes a deck. Outlines first, then writes the slides — the same two-step the app's own UI runs.",
+        "required": [
+          "brief"
+        ],
+        "optional": [
+          "source",
+          "slides",
+          "theme",
+          "title",
+          "provider",
+          "replace"
+        ],
+        "notes": "`source` is material the deck must follow (an article, notes, a transcript) — supplying it is the single biggest quality lever. Needs an LLM: with none configured this fails and says so rather than inventing a deck. A deck with the same title is UPDATED in place (same id, same link) when you passed an explicit `title`; its displaced slides are copied to the deck trash for 30 days. Without a title, a same-named deck is never overwritten. Pass replace:false / replace:true to force either behaviour.",
+        "pairedCheck": "applet aislides getDeck",
+        "example": {
+          "command": "applet",
+          "applet": "aislides",
+          "verb": "compose",
+          "args": {
+            "brief": "A five-slide internal update on why we moved off per-tenant compute",
+            "slides": 5,
+            "theme": "aurora"
+          }
+        }
+      },
+      "place": {
+        "kind": "create",
+        "summary": "CONTENT becomes a deck. The landing pad for text the platform already produced — a pipeline's script, a document, an agent's report.",
+        "required": [
+          "text"
+        ],
+        "optional": [
+          "path",
+          "title",
+          "theme",
+          "mode",
+          "slides",
+          "provider",
+          "replace"
+        ],
+        "notes": "PASS THE CONTENT AS `text`. The app is sandboxed: a path outside its container can be stat'd but not read, so `text` is the reliable form. `mode` is auto (default: parse structure when the text has it, compose from it when it does not), markdown (parse only — deterministic, no model, no cost, nothing invented) or compose (always ask a model, using the text as source material). Recognised structure: `#`/`##` headings with bullets, `---` separated slides, blockquotes, flat bullet lists, and SPEAKER: turn scripts (a two-anchor newscast becomes slides whose notes keep every line verbatim). The reply's `plan` block says which path actually ran. Replacement rule: a deck with the same title is UPDATED in place ONLY when you pass an explicit `title` (its displaced slides are copied to the deck trash for 30 days); a title derived from your text never overwrites an existing deck — it is saved alongside as \"Name (2)\". Pass replace:false to force keeping both, or replace:true to force the overwrite.",
+        "pairedCheck": "applet aislides getDeck",
+        "example": {
+          "command": "applet",
+          "applet": "aislides",
+          "verb": "place",
+          "args": {
+            "title": "Weekly update",
+            "mode": "markdown",
+            "text": "# Weekly update\n\n## Shipping is up\n- 14 releases\n- Two rollbacks\nBoth were the same flaky migration, now fixed.\n"
+          }
+        }
+      },
+      "outline": {
+        "kind": "read",
+        "summary": "What a deck WOULD be — titles, intent and layout per slide — without writing one. The cheap approval step before spending a deck-sized generation.",
+        "required": [
+          "brief"
+        ],
+        "optional": [
+          "source",
+          "slides",
+          "provider"
+        ],
+        "example": {
+          "command": "applet",
+          "applet": "aislides",
+          "verb": "outline",
+          "args": {
+            "brief": "A conference talk on why local-first beats per-tenant compute",
+            "slides": 10
+          }
+        }
+      },
+      "edit": {
+        "kind": "modify",
+        "summary": "Change an existing deck in plain English. Runs through the applet's own validated agent, so an agent's edit is bounded exactly like a human's.",
+        "required": [
+          "deck",
+          "instruction"
+        ],
+        "optional": [
+          "provider"
+        ],
+        "notes": "Reports what ACTUALLY changed, not what the model claimed. An instruction that changes nothing returns ok:false with the reason.",
+        "pairedCheck": "applet aislides getDeck",
+        "example": {
+          "command": "applet",
+          "applet": "aislides",
+          "verb": "edit",
+          "args": {
+            "deck": "Weekly update",
+            "instruction": "Cut every slide to four bullets and make the titles claims, not topics"
+          }
+        }
+      },
+      "createdeck": {
+        "kind": "create",
+        "summary": "Make a new deck. An existing title is REUSED rather than duplicated, so a retried script is safe. Optional `slides` is an array of slide objects ({layout, title, body, notes, ...}).",
+        "required": [
+          "title"
+        ],
+        "optional": [
+          "theme",
+          "slides",
+          "goal"
+        ],
+        "notes": "Slide objects use the flat wire form: layout (title|section|bullets|twoColumn|imageLeft|imageRight|fullBleed|quote|bigFact|chart|table|blank), title, subtitle, body[], left[], right[], quote, attribution, fact, label, caption, image_prompt, data{collection,field,kind}, notes, background.",
+        "pairedCheck": "applet aislides getDeck",
+        "example": {
+          "command": "applet",
+          "applet": "aislides",
+          "verb": "createDeck",
+          "args": {
+            "title": "Q3 Review",
+            "theme": "mono-noir",
+            "slides": [
+              {
+                "layout": "title",
+                "title": "Q3 Review",
+                "subtitle": "What happened and what is next"
+              }
+            ]
+          }
+        }
+      },
+      "addslide": {
+        "kind": "modify",
+        "summary": "Append (or insert at 1-based `index`) one slide in the flat wire form.",
+        "required": [
+          "deck",
+          "slide"
+        ],
+        "optional": [
+          "index"
+        ],
+        "example": {
+          "command": "applet",
+          "applet": "aislides",
+          "verb": "addSlide",
+          "args": {
+            "deck": "Q3 Review",
+            "slide": {
+              "layout": "bullets",
+              "title": "Wins",
+              "body": [
+                "Shipped the applet",
+                "Cut latency 40%"
+              ],
+              "notes": "Lead with the ship."
+            }
+          }
+        }
+      },
+      "updateslide": {
+        "kind": "modify",
+        "summary": "Update slide `index` (1-based). Only the keys you send change; layout may be switched.",
+        "required": [
+          "deck",
+          "index",
+          "slide"
+        ],
+        "example": {
+          "command": "applet",
+          "applet": "aislides",
+          "verb": "updateSlide",
+          "args": {
+            "deck": "Q3 Review",
+            "index": 2,
+            "slide": {
+              "title": "Wins this quarter"
+            }
+          }
+        }
+      },
+      "removeslide": {
+        "kind": "modify",
+        "summary": "Remove slide `index` (1-based). The deck itself is never deleted by verb — that stays behind the UI.",
+        "required": [
+          "deck",
+          "index"
+        ],
+        "example": {
+          "command": "applet",
+          "applet": "aislides",
+          "verb": "removeSlide",
+          "args": {
+            "deck": "Q3 Review",
+            "index": 5
+          }
+        }
+      },
+      "moveslide": {
+        "kind": "modify",
+        "summary": "Move a slide `from` one 1-based position `to` another.",
+        "required": [
+          "deck",
+          "from",
+          "to"
+        ],
+        "example": {
+          "command": "applet",
+          "applet": "aislides",
+          "verb": "moveSlide",
+          "args": {
+            "deck": "Q3 Review",
+            "from": 4,
+            "to": 2
+          }
+        }
+      },
+      "settheme": {
+        "kind": "modify",
+        "summary": "Restyle the whole deck. A miss returns the valid theme ids.",
+        "required": [
+          "deck",
+          "theme"
+        ],
+        "example": {
+          "command": "applet",
+          "applet": "aislides",
+          "verb": "setTheme",
+          "args": {
+            "deck": "Q3 Review",
+            "theme": "deep-sea"
+          }
+        }
+      },
+      "setnotes": {
+        "kind": "modify",
+        "summary": "Set the speaker notes on slide `index` (1-based).",
+        "required": [
+          "deck",
+          "index",
+          "notes"
+        ],
+        "example": {
+          "command": "applet",
+          "applet": "aislides",
+          "verb": "setNotes",
+          "args": {
+            "deck": "Q3 Review",
+            "index": 1,
+            "notes": "Welcome everyone; two minutes max."
+          }
+        }
+      },
+      "listthemes": {
+        "kind": "read",
+        "summary": "The valid theme ids and whether each is light or dark. Themes are content — the set grows without an app update.",
+        "example": {
+          "command": "applet",
+          "applet": "aislides",
+          "verb": "listThemes"
+        }
+      },
+      "listlayouts": {
+        "kind": "read",
+        "summary": "The slide layout archetypes and which slots each one renders — read this before authoring slide objects by hand.",
+        "example": {
+          "command": "applet",
+          "applet": "aislides",
+          "verb": "listLayouts"
+        }
+      },
+      "exportpdf": {
+        "kind": "produce",
+        "summary": "Render the deck to a vector PDF (one page per slide, skipped slides excluded) and register it as a portal asset. Returns the asset id and path.",
+        "required": [
+          "deck"
+        ],
+        "example": {
+          "command": "applet",
+          "applet": "aislides",
+          "verb": "exportPdf",
+          "args": {
+            "deck": "Q3 Review"
           }
         }
       }

@@ -10,7 +10,9 @@ Reply with a single JSON object: `{"reply": "...", "actions": [...]}`.
 
 - `createCollection` — `{"name": "...", "icon": "sf-symbol-name"}`. Skip it if a collection with that name already exists; you will be told which ones do.
 - `addColumn` — `{"collection": "...", "name": "...", "kind": "..."}`. Only needed for a column your CSV does not already introduce.
-- `appendRows` — `{"collection": "...", "csv": "..."}`. **This is how data arrives.** A header row, then data rows, comma-delimited. Quote any cell containing a comma and double an inner quote (`"Smith, Dr"`, `"said ""hi"""`).
+- `appendRows` — `{"collection": "...", "csv": "...", "matchOn": "..."}`. **This is how data arrives.** A header row, then data rows, comma-delimited. Quote any cell containing a comma and double an inner quote (`"Smith, Dr"`, `"said ""hi"""`).
+  - `matchOn` is optional and names a **key column**. With it, a row whose key already exists is UPDATED in place instead of duplicated — use it whenever you are refreshing a table that already has rows (new prices, new rankings, this week's numbers). Without it, every row is appended.
+  - Only the columns you send are touched, and an EMPTY cell means "I don't have this", not "erase it" — so a refresh carrying three columns leaves the rest of the row alone.
 - `setCell` — `{"collection": "...", "row": 1, "column": "...", "value": "..."}`. Row numbers are 1-based as displayed. Use for corrections, not bulk loading.
 
 ## Column types
@@ -33,7 +35,7 @@ A number stored as text cannot be charted or summed. When a column is numeric, m
 2. **When web results are supplied, they are the source of truth.** Do not extend beyond what they support. If they cover 40 of the 100 rows asked for, write 40 and say so.
 3. **Say what you could not get.** "I could not find bye weeks for the 2026 season" is a good reply. Silence about a gap is not.
 4. **Prefer fewer, correct rows.** A short accurate table beats a long speculative one.
-5. **Append, don't duplicate.** If the collection exists, add to it rather than creating a near-identical name.
+5. **Append, don't duplicate.** If the collection exists, add to it rather than creating a near-identical name. If it already holds the rows you are about to write again — you are correcting or refreshing them — set `matchOn` to the identifying column instead, or you will end up with two of everything.
 6. **One column per fact.** Do not pack "6'2\", 215 lbs" into one cell — that cannot be sorted or charted. Split it.
 
 ## Shape of a good table

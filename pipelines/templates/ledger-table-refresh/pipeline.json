@@ -1,0 +1,42 @@
+{
+  "id": "A5733CD0-C3EE-477B-8E9D-5013C9C0A488",
+  "name": "Ledger Table Refresh",
+  "description": "Search the web for current values and UPDATE an existing Ledger table in place, matching rows on a key column instead of appending duplicates.",
+  "components": [],
+  "steps": [
+    {
+      "id": "A8761E86-329A-41AF-AE99-E3BE9074486D",
+      "skillID": "builtin.webSearch",
+      "config": {
+        "dataSensitivity": "public",
+        "query": "2026 fantasy football PPR rankings ADP projected points",
+        "maxResults": "8",
+        "fetchTopN": "4",
+        "maxCharsPerPage": "7000"
+      }
+    },
+    {
+      "id": "A5875B11-5BE9-4DCD-9B7A-93878EAF2420",
+      "skillID": "builtin.llmGenerate",
+      "config": {
+        "dataSensitivity": "public",
+        "llmMaxInputChars": "30000",
+        "llmMaxTokens": "6000",
+        "llmTimeout": "180",
+        "userPrompt": "You are updating an existing table in mChatAI+ Ledger. Your entire output is the CSV that will be written into it.\n\nTARGET TABLE: 2026 Fantasy Draft\nKEY COLUMN: Player\n\n## Column contract\n\nEmit these headers EXACTLY, in this order, spelled this way:\n\nPlayer,Team,Position,Rank,ADP,ProjPoints,LastSeasonPoints,ByeWeek,Notes\n\nA header you spell differently does not update the existing column \u2014 it creates a NEW one. `Proj Points` and `ProjPoints` are two different columns. Copy the line above verbatim.\n\n**Each column already holds values on a specific scale. Writing a number on a different scale silently corrupts the column \u2014 it still looks like a plausible number afterwards, which is why this is the thing to get right:**\n\n| Column | Means | Scale it must be on |\n|---|---|---|\n| Player | Full name | text |\n| Team | NFL team abbreviation | 2-3 letters, e.g. `DET`, `SF` |\n| Position | Fantasy position | `QB`, `RB`, `WR`, `TE`, `K`, `DST` |\n| Rank | Overall rank, 1 = best | whole number, 1-300 |\n| ADP | Average draft position | decimal, e.g. `1.50`, `27.80` \u2014 NOT a whole-number rank |\n| ProjPoints | **FULL-SEASON** projected fantasy points | typically 100-400. A number under 30 is a PER-GAME projection \u2014 do not write it, and do not multiply it up |\n| LastSeasonPoints | **FULL-SEASON** points actually scored last year | typically 50-450 |\n| ByeWeek | Bye week number | whole number, 1-18 |\n| Notes | Short current status | text, usually empty |\n\n**The scale check is a hard rule.** Before writing any number, ask what scale the source is reporting on. Sources mix per-game and full-season projections freely and rarely label which. If you cannot tell, leave the cell EMPTY \u2014 that keeps the correct value already in the table. A wrong-scale number replaces a correct one and is indistinguishable from a real value afterwards.\n\n## What to output\n\nNothing but CSV. No preamble, no code fence, no trailing commentary. The first line is the header, every following line is one player.\n\n## Rules\n\n1. **Never invent a number.** If the sources below do not give you a player's rank, projection or ADP, leave that cell EMPTY. An empty cell keeps the value already in the table; a guessed one overwrites a real value with a fabrication.\n2. **Only what the sources support.** These excerpts are the source of truth. If they cover 40 players, emit 40 rows and stop. Do not fill in the rest from memory.\n3. **Numeric columns hold bare digits.** `12`, `2.2`, `324.9` \u2014 never `12th`, `$12`, `1,200` or `~324`. A number stored as text cannot be sorted or charted.\n4. **`Player` must match the existing spelling.** Matching is case- and accent-insensitive and ignores extra spaces, but punctuation counts: `A.J. Brown` and `AJ Brown` are different keys and will produce two rows. Use the full name as the sources write it.\n5. **Leave `Notes` empty unless the sources say something specific and current** \u2014 an injury, a suspension, a depth-chart change. Do not restate the other columns in prose.\n6. **A player not in the sources gets no row at all.** Omitting a player leaves their existing row untouched, which is correct. A row of blanks does nothing but cost tokens.\n7. **New players are fine.** A name not yet in the table becomes a new row.\n8. **When in doubt, send fewer columns.** A row carrying only `Player,Rank` is a good update. A row carrying nine columns you half-inferred is a bad one.\n\n## Sources\n\n{{INPUT}}"
+      }
+    },
+    {
+      "id": "6C393A62-811F-4FD0-B2A8-619D90E62A0B",
+      "skillID": "builtin.ledgerAppend",
+      "config": {
+        "ledgerCollection": "2026 Fantasy Draft",
+        "ledgerMatchOn": "Player",
+        "ledgerFormat": "csv",
+        "hasHeader": "true",
+        "delimiter": ",",
+        "ledgerMaxRows": "500"
+      }
+    }
+  ]
+}

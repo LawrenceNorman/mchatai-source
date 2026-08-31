@@ -338,6 +338,125 @@
       ]
     },
     {
+      "applet": "aiSlides",
+      "summary": "Presentation decks. Turn a prompt or a piece of content into slides, edit them in plain English, and export a PDF. Charts can read live rows out of the Ledger.",
+      "capabilities": [
+        {
+          "verb": "aislides.compose",
+          "status": "callable",
+          "description": "A PROMPT becomes a deck: outlines first, then writes the slides. Pass `source` (an article, notes, a transcript) when you have material — supplying it is the single biggest quality lever. Needs an LLM.",
+          "example": {
+            "command": "applet",
+            "applet": "aislides",
+            "verb": "compose",
+            "args": {
+              "brief": "A five-slide internal update on why we moved off per-tenant compute",
+              "slides": 5
+            }
+          }
+        },
+        {
+          "verb": "aislides.place",
+          "status": "callable",
+          "description": "CONTENT becomes a deck. The landing pad for text this platform already produced — a pipeline's script, a document, an agent's report. In markdown mode it is deterministic: no model, no cost, and nothing in the deck that was not in the text. Recognises headings+bullets, `---` separated slides, blockquotes, lists, and SPEAKER: turn scripts.",
+          "example": {
+            "command": "applet",
+            "applet": "aislides",
+            "verb": "place",
+            "args": {
+              "title": "Absurd News",
+              "mode": "markdown",
+              "text": "# Absurd News\n\n## Council bans a word\n- 4,000 documents reissued\n- The announcement used it twice\n"
+            }
+          }
+        },
+        {
+          "verb": "aislides.outline",
+          "status": "callable",
+          "description": "What a deck WOULD be — titles, intent and layout per slide — without writing one. The cheap approval step before spending a deck-sized generation.",
+          "example": {
+            "command": "applet",
+            "applet": "aislides",
+            "verb": "outline",
+            "args": {
+              "brief": "A conference talk on local-first architecture",
+              "slides": 10
+            }
+          }
+        },
+        {
+          "verb": "aislides.edit",
+          "status": "callable",
+          "description": "Change an existing deck in plain English, through the applet's own validated agent. Reports what actually changed; an instruction that changes nothing returns ok:false.",
+          "example": {
+            "command": "applet",
+            "applet": "aislides",
+            "verb": "edit",
+            "args": {
+              "deck": "Absurd News",
+              "instruction": "Cut every slide to four bullets and make the titles claims"
+            }
+          }
+        },
+        {
+          "verb": "aislides.listDecks",
+          "status": "callable",
+          "description": "Every deck with its id, title, theme and slide count.",
+          "example": {
+            "command": "applet",
+            "applet": "aislides",
+            "verb": "listDecks"
+          }
+        },
+        {
+          "verb": "aislides.getDeck",
+          "status": "callable",
+          "description": "One deck as slide objects — layout, slots, notes — so you can read what is there before changing it.",
+          "example": {
+            "command": "applet",
+            "applet": "aislides",
+            "verb": "getDeck",
+            "args": {
+              "deck": "Absurd News"
+            }
+          }
+        },
+        {
+          "verb": "aislides.listThemes",
+          "status": "callable",
+          "description": "The valid theme ids. Themes are content, so the set grows without an app update.",
+          "example": {
+            "command": "applet",
+            "applet": "aislides",
+            "verb": "listThemes"
+          }
+        },
+        {
+          "verb": "aislides.listLayouts",
+          "status": "callable",
+          "description": "The slide layout archetypes and which slots each renders. Read this before authoring slide objects by hand.",
+          "example": {
+            "command": "applet",
+            "applet": "aislides",
+            "verb": "listLayouts"
+          }
+        },
+        {
+          "verb": "aislides.exportPdf",
+          "status": "callable",
+          "description": "Render the deck to a vector PDF (one page per slide) and register it as a portal asset you can hand back to the user.",
+          "example": {
+            "command": "applet",
+            "applet": "aislides",
+            "verb": "exportPdf",
+            "args": {
+              "deck": "Absurd News"
+            }
+          }
+        }
+      ]
+    },
+    {
       "applet": "toDo",
       "summary": "Lists and tasks, CloudKit-synced — a list made here is already on the phone.",
       "capabilities": [

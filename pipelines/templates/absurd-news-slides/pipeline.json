@@ -1,0 +1,57 @@
+{
+  "id": "DF3E35FC-70CD-4071-AD1E-02314FE03758",
+  "name": "Absurd News Slides",
+  "description": "Today's headlines, reported accurately and then punctured — as a presentable slide deck.",
+  "components": [],
+  "steps": [
+    {
+      "id": "7561F2B3-4273-4349-9C4D-52195E9B37DA",
+      "skillID": "builtin.webExtract",
+      "config": {
+        "url": "https://feeds.bbci.co.uk/news/rss.xml",
+        "maxURLs": "2",
+        "maxChars": "40000",
+        "includeMetadata": "false"
+      }
+    },
+    {
+      "id": "A0757EE8-868A-423F-894D-C9B35463BEA1",
+      "skillID": "builtin.llmGenerate",
+      "config": {
+        "userPrompt": "From the RSS below, pick the THREE stories that are both NEWSWORTHY and can carry\nirony — institutions behaving absurdly, industries contradicting themselves, official\nnonsense. EXCLUDE anything whose subject is a death, an injury, a missing person, a crime\nagainst a person, or an obituary: those are reported straight or not at all, never joked\nabout. Return ONLY the article URLs, one per line, nothing else.\n\n{{INPUT}}",
+        "llmMaxTokens": "300",
+        "llmTimeout": "120"
+      }
+    },
+    {
+      "id": "572D60F6-CCCD-4E73-B9EE-D30112D47DA3",
+      "skillID": "builtin.webExtract",
+      "config": {
+        "maxURLs": "3",
+        "maxChars": "7000",
+        "includeMetadata": "true"
+      }
+    },
+    {
+      "id": "E37C3E32-94FF-4FDB-B4D6-E8F1B6598066",
+      "skillID": "builtin.llmGenerate",
+      "config": {
+        "userPrompt": "Write a SLIDE DECK of today's absurd news: real stories, reported accurately, then punctured.\n\nRULES\n- Cover the THREE stories below, in order, one slide each.\n- THE NEWS MUST STILL LAND. Every slide's bullets carry the actual facts FIRST — the number, the place, the decision — and the wry line comes last. A reader who only sees the slides should come away genuinely informed. A joke that replaces a fact has failed.\n- Aim the irony at institutions, industries and absurd situations. NEVER at individuals suffering, NEVER at anyone's death or injury.\n- Never invent a number, a name or a quote. If the source does not support it, leave it out.\n- Bullets are cues, not sentences: six words is comfortable, ten is the ceiling. At most four per slide.\n- The paragraph under the bullets becomes the speaker notes — that is where the full sentences and the source detail go.\n\nOUTPUT EXACTLY THIS MARKDOWN SHAPE AND NOTHING ELSE:\n\n# Absurd News\n\n## <headline as a claim, five words or fewer>\n- <fact>\n- <fact>\n- <the wry line>\n<One or two sentences of plain prose: what actually happened, and where it was reported. This becomes the speaker notes.>\n\n## <second story headline>\n- <fact>\n- <fact>\n- <the wry line>\n<notes paragraph>\n\n## <third story headline>\n- <fact>\n- <fact>\n- <the wry line>\n<notes paragraph>\n\nSOURCE MATERIAL:\n{{INPUT}}",
+        "llmMaxTokens": "1600",
+        "llmTimeout": "180"
+      }
+    },
+    {
+      "id": "3649D882-25DA-4130-80E8-DAAC81B35ABD",
+      "skillID": "builtin.appletVerb",
+      "config": {
+        "applet": "AISlides",
+        "verb": "place",
+        "textArg": "text",
+        "arg.title": "Absurd News",
+        "arg.mode": "markdown",
+        "arg.theme": "mono-noir"
+      }
+    }
+  ]
+}
