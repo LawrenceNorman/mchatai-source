@@ -1,0 +1,185 @@
+{
+  "_comment": "The Agentic Top Ten \u2014 the canonical demo/test reel of end-to-end agentic journeys a CLI agent (Claude Code / Codex / Antigravity) can drive over the tunnel by name. RULE #1: this is CONTENT. The binary knows how to RUN a named agent (NamedAgentResolver) and nothing about which journeys exist \u2014 adding one is a PR, no rebuild. Each journey ends in a durable EndProduct openable from the Workbench Products surface. `runs.via` \u2208 {pipeline, wizard, relevanceScan, aiwebHeadless, applet}. `status`: works | gap (gap = capability partial, tracked in docs/AGENTIC_TOP_TEN.md). Drive one with runNamedAgent {name|id, input?}; discover all with listNamedAgents.",
+  "schemaVersion": 1,
+  "journeys": [
+    {
+      "id": "ai-papers-relevance",
+      "name": "AI Papers Relevance",
+      "owner": "lawrence",
+      "applet": "aiweb",
+      "says": "Run my AI Web 'AI papers score for relevance' and report on the latest AI papers.",
+      "blurb": "Scores every paper on an arxiv listing against your stated interests and reports the top hits.",
+      "runs": {
+        "via": "relevanceScan",
+        "agentID": "relevance-scorer",
+        "url": "https://arxiv.org/list/cs.AI/recent",
+        "context": "papers relevant to agentic AI, LLM tool use, on-device inference, and coding agents"
+      },
+      "produces": "research.report",
+      "opensIn": "aiweb",
+      "status": "works",
+      "estSeconds": 120
+    },
+    {
+      "id": "absurd-news",
+      "name": "Absurd News",
+      "owner": "lawrence",
+      "applet": "toon",
+      "says": "Run my Absurd News ToonStudio Agent.",
+      "blurb": "Picks three genuinely ironic news stories and films a 60-second two-anchor satirical bulletin.",
+      "runs": {
+        "via": "pipeline",
+        "pipeline": "Snark News Toon"
+      },
+      "produces": "endproduct-toon-film",
+      "opensIn": "toon",
+      "status": "works",
+      "estSeconds": 240
+    },
+    {
+      "id": "seattle-center-dinner",
+      "name": "Seattle Center Dinner Pick",
+      "owner": "lawrence",
+      "applet": "mapguide",
+      "says": "I'm looking for a restaurant tonight around 6pm at the Seattle Center \u2014 what should I consider?",
+      "blurb": "Reasons over nearby restaurants for a 6pm table and saves an openable recommendation.",
+      "runs": {
+        "via": "applet",
+        "applet": "mapguide",
+        "verb": "recommend",
+        "args": {
+          "place": "Seattle Center, Seattle",
+          "time": "6:00 PM",
+          "query": "dinner tonight around 6pm near the Seattle Center, ideally walkable and able to seat two on short notice",
+          "latitude": "47.6221",
+          "longitude": "-122.3540"
+        }
+      },
+      "produces": "place.recommendation",
+      "opensIn": "mapguide",
+      "status": "works",
+      "estSeconds": 90
+    },
+    {
+      "id": "seattle-tech-podcast",
+      "name": "Seattle & Tech News Podcast",
+      "owner": "lawrence",
+      "applet": "ainews",
+      "says": "Give me a summary of Seattle and Tech news and turn it into a podcast.",
+      "blurb": "Pulls the day's Seattle-local and technology-industry news, writes a spoken briefing, and voices it as an audio episode.",
+      "runs": {
+        "via": "pipeline",
+        "pipeline": "News Audio Briefing",
+        "input": "Seattle local news and the technology industry, today"
+      },
+      "produces": "endproduct-audio-voice",
+      "opensIn": "audiolibrary",
+      "status": "works",
+      "estSeconds": 120
+    },
+    {
+      "id": "wordle-clone",
+      "name": "Wordle Clone",
+      "owner": "demo",
+      "applet": "wizard",
+      "says": "Build me a Wordle clone I can play.",
+      "blurb": "Generates a playable web mini-app from a one-line goal \u2014 the flagship build journey.",
+      "runs": {
+        "via": "wizard",
+        "goal": "Build a playable Wordle clone as a web mini-app with a 5-letter guessing grid, on-screen keyboard, and win/lose states."
+      },
+      "produces": "miniApp",
+      "opensIn": "hub",
+      "status": "works",
+      "estSeconds": 240
+    },
+    {
+      "id": "classic-story-cartoon",
+      "name": "Classic Story Cartoon",
+      "owner": "demo",
+      "applet": "toon",
+      "says": "Turn a classic children's story into a cartoon.",
+      "blurb": "Same named-agent machinery as Absurd News, different recipe \u2014 proves the mechanism is general.",
+      "runs": {
+        "via": "pipeline",
+        "pipeline": "Classic Children's Story"
+      },
+      "produces": "endproduct-toon-film",
+      "opensIn": "toon",
+      "status": "works",
+      "estSeconds": 240
+    },
+    {
+      "id": "product-photo",
+      "name": "Product Photo",
+      "owner": "demo",
+      "applet": "dreamsnap",
+      "says": "Generate a product photo of a matte black water bottle on a stone ledge.",
+      "blurb": "A single-shot image generation that lands a real endproduct-image in the vault.",
+      "runs": {
+        "via": "applet",
+        "applet": "dreamsnap",
+        "verb": "generatePhoto",
+        "argKey": "prompt",
+        "input": "a matte black insulated water bottle on a sunlit stone ledge, soft morning light, product photography"
+      },
+      "produces": "endproduct-image",
+      "opensIn": "dreamsnap",
+      "status": "works",
+      "estSeconds": 60
+    },
+    {
+      "id": "pitch-deck",
+      "name": "Pitch Deck from Notes",
+      "owner": "demo",
+      "applet": "aislides",
+      "says": "Compose a short pitch deck about a neighborhood coffee subscription.",
+      "blurb": "Composes a themed slide deck from a prompt.",
+      "runs": {
+        "via": "applet",
+        "applet": "aislides",
+        "verb": "compose",
+        "argKey": "prompt",
+        "input": "a 6-slide pitch deck for a neighborhood coffee subscription: problem, solution, how it works, pricing, traction, ask"
+      },
+      "produces": "deck",
+      "opensIn": "aislides",
+      "status": "works",
+      "estSeconds": 120
+    },
+    {
+      "id": "web-research-brief",
+      "name": "Web Research Brief",
+      "owner": "demo",
+      "applet": "aiweb",
+      "says": "Write me a grounded research brief on the state of on-device LLM inference.",
+      "blurb": "A cited, grounded research brief pipeline that ends in a saved report.",
+      "runs": {
+        "via": "pipeline",
+        "pipeline": "Web Research Brief",
+        "input": "the state of on-device LLM inference in 2026"
+      },
+      "produces": "research.report",
+      "opensIn": "aiweb",
+      "status": "works",
+      "estSeconds": 150
+    },
+    {
+      "id": "podcast-from-text",
+      "name": "Podcast from Text",
+      "owner": "demo",
+      "applet": "ainews",
+      "says": "Turn this text into a two-host podcast episode.",
+      "blurb": "Text in, multi-voice audio episode out \u2014 a second audio journey distinct from the news briefing.",
+      "runs": {
+        "via": "pipeline",
+        "pipeline": "Podcast from Text",
+        "input": "Agentic platforms are moving from chat destinations to background workers. The interesting shift is that the coding agent \u2014 Claude Code, Codex \u2014 becomes the control plane, and the app becomes a set of named, runnable capabilities that leave durable products behind."
+      },
+      "produces": "endproduct-audio-voice",
+      "opensIn": "audiolibrary",
+      "status": "works",
+      "estSeconds": 150
+    }
+  ]
+}

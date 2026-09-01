@@ -5,6 +5,15 @@ each rule below exists because someone shipped the opposite and it broke.
 Multiple agents now build verbs in parallel; without shared conventions each one
 rediscovers the same three failures.
 
+> **⚠ First, ask: does this verb need Swift at all?** The **content-defined verb
+> engine** (design: `mchatai_macOS/docs/CONTENT_VERB_ENGINE.md`, Phase EV) is the
+> direction: a verb that *composes existing capabilities* (read a Ledger, render a
+> map, create a deck…) will be authored as a CONTENT manifest — no Swift, no
+> rebuild. Only a genuinely NEW primitive (new native power) needs a Swift `case`.
+> Until the executor ships, verbs are still Swift (the rules below); but classify
+> yours first, and if it's pure composition, flag it for the manifest path rather
+> than adding a `case` that will later be migrated out.
+
 Roadmap and per-applet plan: `mchatai_macOS/docs/APPLET_VERB_SCOPING.md`.
 Working examples: `applet.place` (`DebugTestTunnel.handleAppletVerb`),
 `diagLoopStar` `setBPM`/`setGenre`/`listGenres`, and the aiVidGen verb set.

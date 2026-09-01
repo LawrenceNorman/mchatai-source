@@ -1,0 +1,295 @@
+{
+  "id": "ts_prop_house_straw",
+  "name": "Straw House",
+  "kind": "prop",
+  "_comment": "A house that COLLAPSES, with a window you can see the occupant through. Backdrops cannot do either: ToonBackdrop has no poses and is not a cue target, so anything the story breaks must be a prop. The wall is a FRAME of four rects, not a solid polygon with a painted-on window \u2014 the whole prop draws as one actor after anyone upstage of it, so the opening has to be real geometry or a pig behind it is simply hidden. States are POSES driven by a non-looping `collapse` clip; a non-loop clip holds its last key, which leaves a heap on screen instead of the house popping back.",
+  "height": 0.95,
+  "lineWidth": 0.014,
+  "palette": {
+    "straw": "#D9B85C",
+    "thatch": "#C49A3F",
+    "thatchDark": "#A57F2E",
+    "door": "#7A5230",
+    "sill": "#A57F2E",
+    "line": "#3A2A18"
+  },
+  "parts": [
+    {
+      "id": "body",
+      "z": 10,
+      "pivot": [
+        0,
+        0
+      ],
+      "shapes": [
+        {
+          "type": "rect",
+          "x": -0.34,
+          "y": 0.0,
+          "w": 0.21,
+          "h": 0.62,
+          "fill": "@straw",
+          "stroke": "@line"
+        },
+        {
+          "type": "rect",
+          "x": 0.13,
+          "y": 0.0,
+          "w": 0.21,
+          "h": 0.62,
+          "fill": "@straw",
+          "stroke": "@line"
+        },
+        {
+          "type": "rect",
+          "x": -0.13,
+          "y": 0.54,
+          "w": 0.26,
+          "h": 0.08,
+          "fill": "@straw",
+          "stroke": "@line"
+        },
+        {
+          "type": "rect",
+          "x": -0.13,
+          "y": 0.0,
+          "w": 0.26,
+          "h": 0.34,
+          "fill": "@straw",
+          "stroke": "@line"
+        },
+        {
+          "type": "rect",
+          "x": -0.17,
+          "y": 0.31,
+          "w": 0.34,
+          "h": 0.045,
+          "fill": "@sill",
+          "stroke": "@line"
+        },
+        {
+          "type": "rect",
+          "x": -0.09,
+          "y": 0.0,
+          "w": 0.18,
+          "h": 0.26,
+          "r": 0.02,
+          "fill": "@door",
+          "stroke": "@line"
+        },
+        {
+          "type": "rect",
+          "x": -0.32,
+          "y": 0.46,
+          "w": 0.05,
+          "h": 0.09,
+          "fill": "@thatchDark",
+          "repeat": {
+            "count": 3,
+            "dx": 0.062,
+            "seed": 5
+          }
+        },
+        {
+          "type": "rect",
+          "x": 0.16,
+          "y": 0.46,
+          "w": 0.05,
+          "h": 0.09,
+          "fill": "@thatchDark",
+          "repeat": {
+            "count": 3,
+            "dx": 0.062,
+            "seed": 7
+          }
+        },
+        {
+          "type": "rect",
+          "x": -0.32,
+          "y": 0.12,
+          "w": 0.05,
+          "h": 0.08,
+          "fill": "@thatchDark",
+          "repeat": {
+            "count": 3,
+            "dx": 0.062,
+            "seed": 11
+          }
+        }
+      ]
+    },
+    {
+      "id": "roofpart",
+      "parent": "body",
+      "z": 20,
+      "pivot": [
+        0,
+        0.6
+      ],
+      "shapes": [
+        {
+          "type": "polygon",
+          "points": [
+            [
+              -0.42,
+              0.6
+            ],
+            [
+              0.0,
+              0.98
+            ],
+            [
+              0.42,
+              0.6
+            ]
+          ],
+          "fill": "@thatch",
+          "stroke": "@line"
+        },
+        {
+          "type": "rect",
+          "x": -0.3,
+          "y": 0.63,
+          "w": 0.06,
+          "h": 0.1,
+          "fill": "@thatchDark",
+          "repeat": {
+            "count": 9,
+            "dx": 0.068,
+            "seed": 2
+          }
+        }
+      ]
+    },
+    {
+      "id": "debris",
+      "z": 5,
+      "pivot": [
+        0,
+        0
+      ],
+      "shapes": [
+        {
+          "type": "polygon",
+          "points": [
+            [
+              -0.46,
+              0.0
+            ],
+            [
+              0.46,
+              0.0
+            ],
+            [
+              0.38,
+              0.14
+            ],
+            [
+              -0.38,
+              0.14
+            ]
+          ],
+          "fill": "@straw",
+          "stroke": "@line"
+        },
+        {
+          "type": "rect",
+          "x": -0.3,
+          "y": 0.02,
+          "w": 0.07,
+          "h": 0.05,
+          "fill": "@thatchDark",
+          "repeat": {
+            "count": 8,
+            "dx": 0.078,
+            "dxJit": 0.02,
+            "seed": 3
+          }
+        }
+      ]
+    }
+  ],
+  "poses": [
+    {
+      "id": "idle",
+      "parts": {
+        "debris": {
+          "scaleY": 0.001
+        }
+      }
+    },
+    {
+      "id": "shudder",
+      "parts": {
+        "body": {
+          "rotate": -2.5
+        },
+        "roofpart": {
+          "rotate": 3,
+          "dy": 0.01
+        },
+        "debris": {
+          "scaleY": 0.001
+        }
+      }
+    },
+    {
+      "id": "lean",
+      "parts": {
+        "body": {
+          "rotate": -9,
+          "scaleY": 0.92
+        },
+        "roofpart": {
+          "rotate": 13,
+          "dx": -0.06
+        },
+        "debris": {
+          "scaleY": 0.001
+        }
+      }
+    },
+    {
+      "id": "collapsed",
+      "parts": {
+        "body": {
+          "scaleY": 0.06,
+          "dy": -0.01
+        },
+        "roofpart": {
+          "rotate": -24,
+          "dy": -0.52,
+          "dx": 0.14,
+          "scaleY": 0.35
+        },
+        "debris": {
+          "scaleY": 1.0
+        }
+      }
+    }
+  ],
+  "clips": {
+    "collapse": {
+      "cycle": 0.95,
+      "loop": false,
+      "keys": [
+        {
+          "t": 0.0,
+          "pose": "idle"
+        },
+        {
+          "t": 0.22,
+          "pose": "shudder"
+        },
+        {
+          "t": 0.46,
+          "pose": "lean"
+        },
+        {
+          "t": 1.0,
+          "pose": "collapsed"
+        }
+      ]
+    }
+  }
+}

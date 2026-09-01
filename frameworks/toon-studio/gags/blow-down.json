@@ -1,0 +1,138 @@
+{
+  "_source_of_truth": "frameworks/toon-studio/gags/blow-down.json",
+  "_comment": "The wolf blows a house down. Anticipation (lean back, inhale) → the blow (speedlines travelling agent→structure, wind) → the structure shuddering, leaning, collapsing → the settle. Timed for 12fps: nothing lands inside 2 frames (0.17s), and the anticipation HOLDS before the payoff, which is what makes slapstick read. This gag REQUIRES a structure that can collapse, so it declines the brick house and blow-fail plays there instead.",
+  "id": "blow-down",
+  "triggers": [
+    "huffs and puffs",
+    "huffed and puffed",
+    "huffs, and he puffs",
+    "blows the house",
+    "blew the house",
+    "blows it in",
+    "blew it in",
+    "blows the straw",
+    "blows the stick",
+    "blow your house in",
+    "takes a deep breath and blows",
+    "fills his lungs"
+  ],
+  "seconds": 3.6,
+  "roles": {
+    "agent": {
+      "kind": "cast",
+      "needsAnyOf": {
+        "poses": [
+          "lean",
+          "idle"
+        ]
+      }
+    },
+    "structure": {
+      "kind": "prop",
+      "_comment": "Ranked by how well each name fits the location: a brick set picks the brick house, which then CANNOT collapse, and the gag refuses rather than substituting a thatched cottage for it.",
+      "conjure": [
+        "ts_prop_house_straw",
+        "ts_prop_house_stick",
+        "ts_prop_house_brick"
+      ],
+      "needsAnyOf": {
+        "clips": [
+          "collapse"
+        ]
+      }
+    },
+    "occupant": {
+      "kind": "cast",
+      "optional": true,
+      "_comment": "Whoever is sheltering inside, put in the WINDOW so the audience can see who this is happening to. Optional: the house still comes down with nobody home. `dy` 0.07 stands them behind the wall with only head and shoulders in the opening — the classic face-at-the-window — and because the renderer draws upstage first, a higher y is also what puts them BEHIND the wall rather than in front of it.",
+      "at": {
+        "role": "structure",
+        "dx": 0.0,
+        "dy": 0.07,
+        "scale": 0.3
+      }
+    }
+  },
+  "persist": {
+    "role": "structure",
+    "pose": "collapsed"
+  },
+  "beats": [
+    {
+      "at": 0.0,
+      "role": "agent",
+      "pose": "lean",
+      "_comment": "anticipation — the biggest single contributor to a gag reading"
+    },
+    {
+      "at": 0.55,
+      "role": "agent",
+      "move": {
+        "scaleBy": 1.08
+      },
+      "eased": true,
+      "_comment": "the inhale, as an eased whole-actor scale RELATIVE to the mark: poseParts do NOT tween, whole-actor moves do. `scaleBy` not `scale` — staging places a character at 0.62, so an absolute 1.08 is a 1.74x giant."
+    },
+    {
+      "at": 1.25,
+      "role": "agent",
+      "pose": "idle"
+    },
+    {
+      "at": 1.25,
+      "sound": "whoosh",
+      "gain": 0.9
+    },
+    {
+      "at": 1.25,
+      "effect": "ts_fx_speedlines",
+      "fromRole": "agent",
+      "toRole": "structure",
+      "_comment": "the blow travelling across the gap — explicit endpoints, resolved at bind time"
+    },
+    {
+      "at": 1.35,
+      "role": "structure",
+      "clip": "collapse",
+      "_comment": "NO duration: a duration expires the clip and the house pops back intact"
+    },
+    {
+      "at": 1.4,
+      "shake": 0.028,
+      "duration": 0.5
+    },
+    {
+      "at": 1.55,
+      "sound": "wind",
+      "gain": 0.7
+    },
+    {
+      "at": 2.35,
+      "sound": "crumble",
+      "gain": 0.95
+    },
+    {
+      "at": 2.4,
+      "shake": 0.042,
+      "duration": 0.55
+    },
+    {
+      "at": 2.45,
+      "effect": "ts_fx_smoke",
+      "atRole": "structure",
+      "dy": 0.1
+    },
+    {
+      "at": 2.55,
+      "effect": "ts_fx_burst",
+      "atRole": "structure",
+      "dy": 0.22
+    },
+    {
+      "at": 3.1,
+      "role": "agent",
+      "pose": "idle",
+      "hold": true
+    }
+  ]
+}

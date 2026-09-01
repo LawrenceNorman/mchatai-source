@@ -1,0 +1,133 @@
+{
+  "_source_of_truth": "frameworks/toon-studio/gags/blow-fail.json",
+  "_comment": "THE HOUSE THAT HOLDS. Same setup as blow-down beat for beat — the lean, the inhale, the blow — and then the turn: the house only rattles, and the wolf deflates. Comedy is the BROKEN EXPECTATION, so this must open identically to the gag it subverts, which is why the first three beats are copied rather than varied.\n\nIt never has to be chosen. It requires only that the structure can `shudder`, which the straw and stick houses can too — but blow-down is tried first and binds there, so blow-fail only ever gets the scene where blow-down could not cast. Precedence is the index order, not a rule anybody has to encode.",
+  "id": "blow-fail",
+  "triggers": [
+    "huffs and puffs",
+    "huffed and puffed",
+    "huffs, and he puffs",
+    "blows the house",
+    "blew the house",
+    "blows it in",
+    "blew it in",
+    "blows the straw",
+    "blows the stick",
+    "blow your house in",
+    "takes a deep breath and blows",
+    "fills his lungs"
+  ],
+  "seconds": 3.8,
+  "roles": {
+    "agent": {
+      "kind": "cast",
+      "needsAnyOf": {
+        "poses": [
+          "lean",
+          "idle"
+        ]
+      }
+    },
+    "structure": {
+      "kind": "prop",
+      "conjure": [
+        "ts_prop_house_straw",
+        "ts_prop_house_stick",
+        "ts_prop_house_brick"
+      ],
+      "needsAnyOf": {
+        "poses": [
+          "shudder"
+        ]
+      }
+    },
+    "occupant": {
+      "kind": "cast",
+      "optional": true,
+      "_comment": "Whoever is sheltering inside, put in the WINDOW so the audience can see who this is happening to. Optional: the house still comes down with nobody home. `dy` 0.07 stands them behind the wall with only head and shoulders in the opening — the classic face-at-the-window — and because the renderer draws upstage first, a higher y is also what puts them BEHIND the wall rather than in front of it.",
+      "at": {
+        "role": "structure",
+        "dx": 0.0,
+        "dy": 0.07,
+        "scale": 0.3
+      }
+    }
+  },
+  "persist": {
+    "role": "structure",
+    "pose": "idle"
+  },
+  "beats": [
+    {
+      "at": 0.0,
+      "role": "agent",
+      "pose": "lean"
+    },
+    {
+      "at": 0.55,
+      "role": "agent",
+      "move": {
+        "scaleBy": 1.12
+      },
+      "eased": true,
+      "_comment": "a BIGGER inhale than blow-down's — he is trying harder, which is what makes the failure funny"
+    },
+    {
+      "at": 1.25,
+      "role": "agent",
+      "pose": "idle"
+    },
+    {
+      "at": 1.25,
+      "sound": "whoosh",
+      "gain": 0.9
+    },
+    {
+      "at": 1.25,
+      "effect": "ts_fx_speedlines",
+      "fromRole": "agent",
+      "toRole": "structure"
+    },
+    {
+      "at": 1.35,
+      "role": "structure",
+      "pose": "shudder"
+    },
+    {
+      "at": 1.45,
+      "shake": 0.018,
+      "duration": 0.4,
+      "_comment": "a rattle, not the 0.042 heave of a collapse. The camera says how much happened."
+    },
+    {
+      "at": 1.55,
+      "sound": "wind",
+      "gain": 0.6
+    },
+    {
+      "at": 1.95,
+      "role": "structure",
+      "pose": "idle",
+      "_comment": "THE TURN. The house settles back and is simply fine."
+    },
+    {
+      "at": 2.3,
+      "role": "agent",
+      "move": {
+        "scaleBy": 0.9
+      },
+      "eased": true,
+      "_comment": "out of breath — the deflate is the punchline and it needs the full second to land"
+    },
+    {
+      "at": 2.45,
+      "sound": "gasp",
+      "gain": 0.85
+    },
+    {
+      "at": 3.3,
+      "role": "agent",
+      "pose": "idle",
+      "hold": true
+    }
+  ]
+}

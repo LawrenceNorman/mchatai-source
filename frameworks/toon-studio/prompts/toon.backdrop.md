@@ -8,6 +8,31 @@ COORDINATES — stage space:
 • x=0 is frame centre. A 16:9 frame shows about x=-0.9..0.9 — but EXTEND
   scenery to x=-3..3 so a camera move never reveals an edge.
 
+  "EXTEND TO x=-3..3" MEANS THE GROUND, THE SKY BANDS AND THE DISTANT LAYERS —
+  the things that must not run out when the camera pans. It does NOT mean the
+  building. An OBJECT is sized against the CHARACTER standing next to it, and a
+  house six units wide with a roof above y=1.5 is not a big house, it is a house
+  the audience never sees the shape of, because the frame only shows 1.8 units.
+
+  THE VISIBLE FRAME IS ONLY x=-0.9..0.9 AND y=0..1.0. That is 1.8 units across.
+  An object 1.7 wide therefore fills the entire screen, and a roof whose ridge is
+  at y=1.1 has its point cut off above the top edge. Measure every object against
+  1.8, not against the -3..3 you extend the ground to.
+
+  SIZE OBJECTS FROM THIS TABLE. A character is 1.0 tall, standing at y=0.
+      a door                 0.38 high, 0.22 wide
+      a window               0.18 square, sill about y=0.42
+      a cottage: walls       x=-0.42..0.42 (0.84 wide), 0.55 high
+      its roof               x=-0.52..0.52, ridge at y=0.88 — NOT above 0.95
+      a fence post           0.18 high
+      a full-grown tree      1.3 high, crown about 0.5 across
+      a distant hill         tops out below y=0.40
+  A cottage occupies rather less than half the width of the frame, so that two
+  characters can stand in front of it and sky shows above its roof. If your
+  building is wider than 1.1 units or its highest point is above y=0.95, it is
+  too big — shrink it before answering. Draw a HOUSE the audience can see the
+  shape of, not a wall that fills the screen.
+
 ## THE SKY IS A GRADIENT
 
 A flat single-colour sky is the strongest "cheap cutout" tell there is, and dusk
@@ -97,31 +122,51 @@ the gradient you just set is wasted.
 
 SHAPES: ellipse · rect (x,y = BOTTOM-LEFT) · polygon(points) · path(d) with M L H V Q C Z.
 
-WORKED REFERENCE — a legible dusk cityscape. Copy this STRUCTURE and change the
-colours, counts, heights and motifs for whatever is asked for.
+A SET BUILT ONLY FROM RECTANGLES HAS FAILED. Whatever the location is NAMED
+after — the house, the tree, the bridge, the boat — is drawn with `polygon` and
+`path`, because the thing that makes it recognisable is its OUTLINE: a pitched
+roof, a rounded crown, a leaning stack of sticks. `rect` is for the ground, the
+sky bands and flat walls. Reach for `polygon` before you reach for `rect`.
+
+`repeat` is for genuine TEXTURE — bricks in a wall, planks in a fence, tiles on
+a roof — where the repeated unit is small next to the object it fills. Repeating
+something the size of the object itself produces a smear, not detail.
+
+WORKED REFERENCE — a cottage on a lane at midday. Copy this STRUCTURE, this MIX
+OF SHAPE TYPES and this layering, and change the colours, motifs and coordinates
+for whatever is asked for. Note that the house, the hill, the roof and the tree
+are polygons and paths; only the ground, the sky band, the walls and the fence
+planks are rects.
 
 {
-  "id":"ref_city","name":"City Street",
-  "skyTop":"#243B6B","skyBottom":"#F0A868","lineWidth":0.010,
-  "palette":{"line":"#2B2118","far":"#C6A98F","mid":"#7E7288","midDark":"#4E4560",
-             "window":"#F5D98A","ground":"#2F2A33","kerb":"#544C58"},
+  "id":"ref_lane","name":"Cottage Lane",
+  "skyTop":"#7FB2E5","skyBottom":"#D8ECFA","lineWidth":0.010,
+  "palette":{"line":"#2A2118","hill":"#8FB271","hillFar":"#B3C9A0","wall":"#E8D9BC",
+             "roof":"#8C5138","door":"#6B4A2E","window":"#CFE6F2","trunk":"#6E4B30",
+             "crown":"#4F8C4A","fence":"#C8B392","ground":"#9DAF7C","path":"#D6C9A6"},
   "layers":[
-    {"z":0,"parallax":0.10,"shapes":[
-      {"type":"rect","x":-3.0,"y":0.02,"w":0.34,"h":0.52,"fill":"@far",
-       "repeat":{"count":22,"dx":0.28,"dh":0.30,"dxJit":0.05,"seed":11}}]},
-    {"z":10,"parallax":0.45,"shapes":[
-      {"type":"rect","x":-2.8,"y":0.02,"w":0.30,"h":0.62,"fill":"@mid","stroke":"@line",
-       "repeat":{"count":18,"dx":0.34,"dh":0.40,"dxJit":0.07,"seed":5}},
-      {"type":"rect","x":-2.72,"y":0.30,"w":0.07,"h":0.09,"fill":"@window",
-       "repeat":{"count":34,"dx":0.17,"seed":9}},
-      {"type":"rect","x":-2.72,"y":0.52,"w":0.07,"h":0.09,"fill":"@window",
-       "repeat":{"count":34,"dx":0.17,"seed":13}}]},
-    {"z":20,"parallax":0.75,"shapes":[
-      {"type":"rect","x":-2.6,"y":0.02,"w":0.06,"h":0.30,"fill":"@midDark","stroke":"@line",
-       "repeat":{"count":9,"dx":0.62,"dh":0.10,"seed":21}}]},
+    {"z":0,"parallax":0.15,"shapes":[
+      {"type":"polygon","points":[[-3.2,0.02],[-1.9,0.46],[-0.6,0.18],[0.7,0.52],[2.0,0.22],[3.2,0.44],[3.2,0.02]],
+       "fill":"@hillFar"}]},
+    {"z":10,"parallax":0.40,"shapes":[
+      {"type":"polygon","points":[[-3.2,0.02],[-2.1,0.34],[-0.9,0.14],[0.6,0.38],[1.9,0.16],[3.2,0.32],[3.2,0.02]],
+       "fill":"@hill"},
+      {"type":"ellipse","x":-2.35,"y":0.30,"w":0.52,"h":0.46,"fill":"@crown","stroke":"@line"},
+      {"type":"rect","x":-2.13,"y":0.10,"w":0.07,"h":0.24,"fill":"@trunk","stroke":"@line"}]},
+    {"z":20,"parallax":0.80,"shapes":[
+      {"type":"rect","x":-0.62,"y":0.02,"w":1.24,"h":0.60,"fill":"@wall","stroke":"@line"},
+      {"type":"polygon","points":[[-0.76,0.60],[0.0,1.02],[0.76,0.60]],"fill":"@roof","stroke":"@line"},
+      {"type":"rect","x":-0.14,"y":0.02,"w":0.28,"h":0.40,"fill":"@door","stroke":"@line"},
+      {"type":"rect","x":-0.50,"y":0.30,"w":0.22,"h":0.20,"fill":"@window","stroke":"@line"},
+      {"type":"rect","x":0.28,"y":0.30,"w":0.22,"h":0.20,"fill":"@window","stroke":"@line"},
+      {"type":"rect","x":0.20,"y":0.62,"w":0.16,"h":0.30,"fill":"@wall","stroke":"@line"}]},
     {"z":30,"parallax":1.0,"shapes":[
       {"type":"rect","x":-3,"y":-0.60,"w":6,"h":0.625,"fill":"@ground"},
-      {"type":"rect","x":-3,"y":0.012,"w":6,"h":0.016,"fill":"@kerb"}]}
+      {"type":"polygon","points":[[-0.30,0.02],[0.30,0.02],[1.10,-0.30],[-1.10,-0.30]],"fill":"@path"},
+      {"type":"rect","x":-3.0,"y":0.02,"w":0.05,"h":0.19,"fill":"@fence","stroke":"@line",
+       "repeat":{"count":16,"dx":0.16,"seed":7}},
+      {"type":"rect","x":2.0,"y":0.02,"w":0.05,"h":0.19,"fill":"@fence","stroke":"@line",
+       "repeat":{"count":8,"dx":0.16,"seed":9}}]}
   ]
 }
 
@@ -129,6 +174,13 @@ CHECKS before you answer:
 • skyTop AND skyBottom set (outdoors), or a single "sky" with no gradient (interior)
 • at least 4 layers, with repeats pushing the expanded count past 250 — a
   backdrop of 3 rectangles is a FAILURE
+• the main object fits the scale table — a cottage no wider than 1.1 units, its
+  highest point below y=0.95, sky visible above it. Compute its actual width and
+  top from your own coordinates before answering, and shrink it if it fails
+• at least THREE `polygon` or `path` shapes, and the object the location is
+  NAMED after is one of them. Count them before you answer. A set whose shapes
+  are all `rect` has failed this check however many of them there are — reaching
+  250 by repeating one rectangle is the failure, not the fix
 • the requested SUBJECT is present, large, and in the mid layer — a viewer shown
   only your backdrop could name the location without being told
 • the far layer is clearly LIGHTER than the near layer

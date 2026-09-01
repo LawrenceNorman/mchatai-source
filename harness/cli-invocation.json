@@ -278,6 +278,10 @@
         }
       },
       "sessionIDPath": "session_id",
+      "planTool": "ExitPlanMode",
+      "planFirstDefault": true,
+      "planAutoApproveSeconds": 30,
+      "planRevisePrefix": "Revise the plan: ",
       "notes": "Phase Workbench W1 \u2014 interactive bidirectional session dialect (WorkbenchSessionDriver). Spawn with tty:false (plain pipes): a PTY's line discipline would echo our stdin JSON back into the output stream, where an echoed {\"type\":\"user\",...} parses as a fake event. User turns are NDJSON lines {\"type\":\"user\",\"message\":{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"...\"}]}} written to stdin mid-run (queued if a turn is in flight). REQUIRED: --permission-prompt-tool stdio routes permission prompts over the control channel as can_use_tool control_requests \u2014 WITHOUT it, headless -p mode silently DENIES everything not auto-approved (no prompt ever reaches the host; found live 2026-08-26, the fixture tests cannot catch it). Control channel (control_request/control_response, subtypes here) verified as strings in claude v2.1.210; feature-detect via the system/init capabilities[] array (present v2.1.205+) and treat unknown subtypes as safe-deny. permissionModes maps Workbench's logical modes to CLI values; the driver passes --permission-mode on EVERY spawn INCLUDING --resume respawns (claude-code issue #21974: resume does not preserve permission flags). No goal positional \u2014 the first user turn arrives via stdin. codex is intentionally absent until W6 ships the app-server dialect; an absent backend here = Workbench shows it unavailable (never a silent PTY fallback)."
     },
     "codex": {
@@ -321,6 +325,12 @@
       ],
       "notes": "Antigravity agy interactive-only (Gemini free tier; plain-text CLI, no structured protocol). agy needs --add-dir <workdir> to edit the session folder."
     }
+  },
+  "workbench": {
+    "_comment": "AP-3 \u2014 Workbench advisory session budget (RULE #1: the numbers are content, zero rebuild to tune). warnFraction posts a heads-up note; at 100% the app shows an advisory amber banner with an ask-to-wrap-up option \u2014 NEVER a kill, never a disabled composer. budgetChoices render as a segmented picker; 0 = Off. Baked _fallback_only mirror: CLIContentConfig.workbenchDefaults().",
+    "defaultSessionBudgetUSD": 5,
+    "budgetChoices": [0, 2, 5, 20],
+    "warnFraction": 0.8
   },
   "backends": {
     "claude": {

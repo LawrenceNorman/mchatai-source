@@ -1,679 +1,906 @@
 {
-  "_readme": "Applet capabilities that are NOT declared as AppletAIActions in Swift. portalApplets merges this over the built-in action catalog, so an applet driven by tunnel commands (LoopStar) or with capability that exists in Swift but is not yet exposed (MapGuide, AudioLibrary) still shows up when an agent asks what the app can do. CONTENT per RULE #1 — add an applet here by PR, no rebuild.",
-  "_consumer": "mChatAI+ DebugTestTunnel.handlePortalApplets",
-  "registryVersion": 1,
-  "_statusMeaning": {
-    "callable": "Works today. The example payload is real and has been run.",
-    "planned": "The capability EXISTS in Swift but has no agent-reachable verb yet. Tell the user it is not available rather than attempting it; see docs/APPLET_VERB_SCOPING.md for the roadmap."
-  },
-  "applets": [
+ "_readme": "Applet capabilities that are NOT declared as AppletAIActions in Swift. portalApplets merges this over the built-in action catalog, so an applet driven by tunnel commands (LoopStar) or with capability that exists in Swift but is not yet exposed (MapGuide, AudioLibrary) still shows up when an agent asks what the app can do. CONTENT per RULE #1 — add an applet here by PR, no rebuild.",
+ "_consumer": "mChatAI+ DebugTestTunnel.handlePortalApplets",
+ "registryVersion": 1,
+ "_statusMeaning": {
+  "callable": "Works today. The example payload is real and has been run.",
+  "planned": "The capability EXISTS in Swift but has no agent-reachable verb yet. Tell the user it is not available rather than attempting it; see docs/APPLET_VERB_SCOPING.md for the roadmap."
+ },
+ "applets": [
+  {
+   "applet": "loopStar",
+   "summary": "Music sequencer and generative jam station. Genre packs, tempo, key, chords, arrangement, and audio export.",
+   "capabilities": [
     {
-      "applet": "loopStar",
-      "summary": "Music sequencer and generative jam station. Genre packs, tempo, key, chords, arrangement, and audio export.",
-      "capabilities": [
-        {
-          "verb": "loopstar.listGenres",
-          "status": "callable",
-          "description": "The 24 generative genres you can ask for, plus which one is active. Also reachable as the raw diagLoopStar action.",
-          "example": {
-            "command": "applet",
-            "applet": "loopstar",
-            "verb": "listGenres"
-          }
-        },
-        {
-          "verb": "loopstar.setGenre",
-          "status": "callable",
-          "description": "Switch the generative genre, e.g. trap, jazz, lofi, house. Unknown names return the valid list. Also reachable as the raw diagLoopStar action.",
-          "example": {
-            "command": "applet",
-            "applet": "loopstar",
-            "verb": "setGenre",
-            "args": {
-              "genre": "trap"
-            }
-          }
-        },
-        {
-          "verb": "loopstar.setBPM",
-          "status": "callable",
-          "description": "Set an absolute tempo in BPM. Clamped to 50-150% of the pack's base tempo; the response reports the BPM actually applied. Also reachable as the raw diagLoopStar action.",
-          "example": {
-            "command": "applet",
-            "applet": "loopstar",
-            "verb": "setBPM",
-            "args": {
-              "bpm": 138
-            }
-          }
-        },
-        {
-          "verb": "loopstar.setKey",
-          "status": "callable",
-          "description": "Set the session key. Also reachable as the raw diagLoopStar action.",
-          "example": {
-            "command": "applet",
-            "applet": "loopstar",
-            "verb": "setKey",
-            "args": {
-              "key": "F"
-            }
-          }
-        },
-        {
-          "verb": "loopstar.getState",
-          "status": "callable",
-          "description": "Everything at once: active genre, pack, tempo, lane states, transport position, chord label. Also reachable as the raw diagLoopStar action.",
-          "example": {
-            "command": "applet",
-            "applet": "loopstar",
-            "verb": "getState"
-          }
-        },
-        {
-          "verb": "loopstar.exportToAudioLibrary",
-          "status": "callable",
-          "description": "Render the arrangement to a bar-exact WAV and file it in the Audio Library. Needs at least one arrangement section; the WAV is probed for silence before it is filed. Returns an openable audio.track entity.",
-          "example": {
-            "command": "applet",
-            "applet": "loopstar",
-            "verb": "exportToAudioLibrary",
-            "args": {
-              "title": "Noir Bed"
-            }
-          }
-        },
-        {
-          "verb": "loopstar.craftChords",
-          "status": "callable",
-          "description": "LLM-crafted chord changes, installed. Reports whether the model or the fallback generator produced them.",
-          "example": {
-            "command": "applet",
-            "applet": "loopstar",
-            "verb": "craftChords",
-            "args": {
-              "changes": 4
-            }
-          }
-        },
-        {
-          "verb": "loopstar.craftMelody",
-          "status": "callable",
-          "description": "LLM-crafted melodic hook over the current changes, installed. Reports model vs fallback.",
-          "example": {
-            "command": "applet",
-            "applet": "loopstar",
-            "verb": "craftMelody"
-          }
-        },
-        {
-          "verb": "loopstar.jingle",
-          "status": "callable",
-          "description": "A 2-20 second piece that ends on a button, composed from a brief and registered as a portal asset. The one LoopStar output that is not a loop.",
-          "example": {
-            "command": "applet",
-            "applet": "loopstar",
-            "verb": "jingle",
-            "args": {
-              "brief": "a jingle for the Absurd News Cartoon Show",
-              "seconds": 8
-            }
-          }
-        },
-        {
-          "verb": "loopstar.openJingle",
-          "status": "callable",
-          "description": "Read a jingle's recipe back — brief, decisions, seed — and optionally load its material onto the board as Parts. The artifact and the context that made it.",
-          "example": {
-            "command": "applet",
-            "applet": "loopstar",
-            "verb": "openJingle",
-            "args": {
-              "assetID": "music-4783b1",
-              "load": true
-            }
-          }
-        },
-        {
-          "verb": "loopstar.listJingleForms",
-          "status": "callable",
-          "description": "The jingle form and character vocabulary a brief can reach.",
-          "example": {
-            "command": "applet",
-            "applet": "loopstar",
-            "verb": "listJingleForms"
-          }
-        }
-      ],
-      "notes": "LoopStar declares no AppletAIActions, so it is invisible to the built-in action catalog despite being the most capable applet in the app. Audio must be verified BY EAR - the diagnostic meters read 0 even while sound is playing."
+     "verb": "loopstar.listGenres",
+     "status": "callable",
+     "description": "The 24 generative genres you can ask for, plus which one is active. Also reachable as the raw diagLoopStar action.",
+     "example": {
+      "command": "applet",
+      "applet": "loopstar",
+      "verb": "listGenres"
+     }
     },
     {
-      "applet": "mapGuide",
-      "summary": "Place discovery, saved places, and narrated audio tours. Tours sync to iOS.",
-      "capabilities": [
-        {
-          "verb": "mapguide.geocode",
-          "status": "callable",
-          "description": "Resolve a place NAME to coordinates. Callers think in place names; every other location verb needs this first.",
-          "example": {
-            "command": "applet",
-            "applet": "mapguide",
-            "verb": "geocode",
-            "args": {
-              "place": "San Diego"
-            }
-          }
-        },
-        {
-          "verb": "mapguide.discoverPlaces",
-          "status": "callable",
-          "description": "Find sights, restaurants, beaches and more near a place by name. Wikipedia-enriched, category-filtered. Accepts plain words ('sights','restaurants','beaches') and returns counts before contents. FINDINGS ONLY - nothing is saved.",
-          "example": {
-            "command": "applet",
-            "applet": "mapguide",
-            "verb": "discoverPlaces",
-            "args": {
-              "place": "San Diego",
-              "categories": [
-                "sights",
-                "restaurants",
-                "beaches"
-              ],
-              "maxStops": 12
-            }
-          }
-        },
-        {
-          "verb": "mapguide.getState",
-          "status": "callable",
-          "description": "Available verbs and the valid place categories.",
-          "example": {
-            "command": "applet",
-            "applet": "mapguide",
-            "verb": "getState"
-          }
-        },
-        {
-          "verb": "mapguide.createTour",
-          "status": "planned",
-          "description": "Persist discovered places as a durable Tour. Tours already CloudKit-sync to iOS, so this is what makes an agent-built itinerary reach the phone. discoverPlaces returns findings only until this lands."
-        }
-      ],
-      "notes": "Discovery works today; persistence does not. The generator can skew toward civic/downtown results near a city centre - widen radiusMiles or narrow categories. See docs/APPLET_VERB_SCOPING.md journey A."
+     "verb": "loopstar.setGenre",
+     "status": "callable",
+     "description": "Switch the generative genre, e.g. trap, jazz, lofi, house. Unknown names return the valid list. Also reachable as the raw diagLoopStar action.",
+     "example": {
+      "command": "applet",
+      "applet": "loopstar",
+      "verb": "setGenre",
+      "args": {
+       "genre": "trap"
+      }
+     }
     },
     {
-      "applet": "audioLibrary",
-      "summary": "The app's durable audio store: folders, tracks, CloudKit sync, and the sink LoopStar exports into.",
-      "capabilities": [
-        {
-          "verb": "audiolibrary.getState",
-          "status": "callable",
-          "description": "Track and folder counts.",
-          "example": {
-            "command": "applet",
-            "applet": "audiolibrary",
-            "verb": "getState"
-          }
-        },
-        {
-          "verb": "audiolibrary.listFolders",
-          "status": "callable",
-          "description": "Every folder with its track count.",
-          "example": {
-            "command": "applet",
-            "applet": "audiolibrary",
-            "verb": "listFolders"
-          }
-        },
-        {
-          "verb": "audiolibrary.listTracks",
-          "status": "callable",
-          "description": "Tracks newest-first, optionally scoped to a folder.",
-          "example": {
-            "command": "applet",
-            "applet": "audiolibrary",
-            "verb": "listTracks"
-          }
-        },
-        {
-          "verb": "audiolibrary.createFolder",
-          "status": "callable",
-          "description": "Make a folder; an existing name is reused, not duplicated.",
-          "example": {
-            "command": "applet",
-            "applet": "audiolibrary",
-            "verb": "createFolder"
-          }
-        },
-        {
-          "verb": "audiolibrary.importTrack",
-          "status": "callable",
-          "description": "Bring an audio file in. Sandbox-aware, and the file is probed for real duration before filing.",
-          "example": {
-            "command": "applet",
-            "applet": "audiolibrary",
-            "verb": "importTrack"
-          }
-        }
-      ]
+     "verb": "loopstar.setBPM",
+     "status": "callable",
+     "description": "Set an absolute tempo in BPM. Clamped to 50-150% of the pack's base tempo; the response reports the BPM actually applied. Also reachable as the raw diagLoopStar action.",
+     "example": {
+      "command": "applet",
+      "applet": "loopstar",
+      "verb": "setBPM",
+      "args": {
+       "bpm": 138
+      }
+     }
     },
     {
-      "applet": "portal",
-      "summary": "Cross-applet asset handoff. The noun that lets one applet's output become another applet's input across two separate CLI invocations — the gap CLI_PORTAL_ARCHITECTURE §2 names for the noir-ToonStudio case.",
-      "capabilities": [
-        {
-          "verb": "portal.composeMusic",
-          "status": "callable",
-          "description": "Compose music from a natural-language brief in LoopStar and return a portable assetID. Drives the OPEN LoopStar window when there is one; warns in `warnings` when it had to use a headless instance (invariant R4). Verifies the WAV's duration and peak before registering — a silent render fails the verb rather than returning a handle to nothing.",
-          "example": {
-            "command": "composeMusic",
-            "brief": "noir jazz, 92bpm, 8-bar intro then a 16-bar A section"
-          }
-        },
-        {
-          "verb": "portal.attachMusic",
-          "status": "callable",
-          "description": "Attach a composed audio asset to a ToonStudio project as a per-scene music cue. Copies into the project's audio directory (guarding source == destination), REPLACES stock generator cues rather than only filling empty slots, and returns the project with an open deep link. Paired check: diagToonLint.",
-          "example": {
-            "command": "attachMusic",
-            "projectID": "<toon project id>",
-            "musicAssetID": "music-4f2a91"
-          }
-        },
-        {
-          "verb": "portal.assets",
-          "status": "callable",
-          "description": "List, resolve or sweep asset handles. An assetID is the only thing that crosses the CLI boundary — container paths never leave the app because they differ per build lane and are frequently unreadable by the caller. `verified` is tri-state: true / false / null for not-yet-checked.",
-          "example": {
-            "command": "portalAssets",
-            "kind": "audio"
-          }
-        }
-      ]
+     "verb": "loopstar.setKey",
+     "status": "callable",
+     "description": "Set the session key. Also reachable as the raw diagLoopStar action.",
+     "example": {
+      "command": "applet",
+      "applet": "loopstar",
+      "verb": "setKey",
+      "args": {
+       "key": "F"
+      }
+     }
     },
     {
-      "applet": "aiWrite",
-      "summary": "Documents and prose, CloudKit-synced to iOS. Where an agent's research or report belongs.",
-      "capabilities": [
-        {
-          "verb": "aiwrite.listDocs",
-          "status": "callable",
-          "description": "Documents, newest first.",
-          "example": {
-            "command": "applet",
-            "applet": "aiwrite",
-            "verb": "listDocs"
-          }
-        },
-        {
-          "verb": "aiwrite.getDoc",
-          "status": "callable",
-          "description": "One document's full text.",
-          "example": {
-            "command": "applet",
-            "applet": "aiwrite",
-            "verb": "getDoc"
-          }
-        },
-        {
-          "verb": "aiwrite.createDoc",
-          "status": "callable",
-          "description": "Write a new document from inline text.",
-          "example": {
-            "command": "applet",
-            "applet": "aiwrite",
-            "verb": "createDoc"
-          }
-        },
-        {
-          "verb": "aiwrite.appendDoc",
-          "status": "callable",
-          "description": "Add to an existing document.",
-          "example": {
-            "command": "applet",
-            "applet": "aiwrite",
-            "verb": "appendDoc"
-          }
-        }
-      ]
+     "verb": "loopstar.getState",
+     "status": "callable",
+     "description": "Everything at once: active genre, pack, tempo, lane states, transport position, chord label. Also reachable as the raw diagLoopStar action.",
+     "example": {
+      "command": "applet",
+      "applet": "loopstar",
+      "verb": "getState"
+     }
     },
     {
-      "applet": "aiSlides",
-      "summary": "Presentation decks. Turn a prompt or a piece of content into slides, edit them in plain English, and export a PDF. Charts can read live rows out of the Ledger.",
-      "capabilities": [
-        {
-          "verb": "aislides.compose",
-          "status": "callable",
-          "description": "A PROMPT becomes a deck: outlines first, then writes the slides. Pass `source` (an article, notes, a transcript) when you have material — supplying it is the single biggest quality lever. Needs an LLM.",
-          "example": {
-            "command": "applet",
-            "applet": "aislides",
-            "verb": "compose",
-            "args": {
-              "brief": "A five-slide internal update on why we moved off per-tenant compute",
-              "slides": 5
-            }
-          }
-        },
-        {
-          "verb": "aislides.place",
-          "status": "callable",
-          "description": "CONTENT becomes a deck. The landing pad for text this platform already produced — a pipeline's script, a document, an agent's report. In markdown mode it is deterministic: no model, no cost, and nothing in the deck that was not in the text. Recognises headings+bullets, `---` separated slides, blockquotes, lists, and SPEAKER: turn scripts.",
-          "example": {
-            "command": "applet",
-            "applet": "aislides",
-            "verb": "place",
-            "args": {
-              "title": "Absurd News",
-              "mode": "markdown",
-              "text": "# Absurd News\n\n## Council bans a word\n- 4,000 documents reissued\n- The announcement used it twice\n"
-            }
-          }
-        },
-        {
-          "verb": "aislides.outline",
-          "status": "callable",
-          "description": "What a deck WOULD be — titles, intent and layout per slide — without writing one. The cheap approval step before spending a deck-sized generation.",
-          "example": {
-            "command": "applet",
-            "applet": "aislides",
-            "verb": "outline",
-            "args": {
-              "brief": "A conference talk on local-first architecture",
-              "slides": 10
-            }
-          }
-        },
-        {
-          "verb": "aislides.edit",
-          "status": "callable",
-          "description": "Change an existing deck in plain English, through the applet's own validated agent. Reports what actually changed; an instruction that changes nothing returns ok:false.",
-          "example": {
-            "command": "applet",
-            "applet": "aislides",
-            "verb": "edit",
-            "args": {
-              "deck": "Absurd News",
-              "instruction": "Cut every slide to four bullets and make the titles claims"
-            }
-          }
-        },
-        {
-          "verb": "aislides.listDecks",
-          "status": "callable",
-          "description": "Every deck with its id, title, theme and slide count.",
-          "example": {
-            "command": "applet",
-            "applet": "aislides",
-            "verb": "listDecks"
-          }
-        },
-        {
-          "verb": "aislides.getDeck",
-          "status": "callable",
-          "description": "One deck as slide objects — layout, slots, notes — so you can read what is there before changing it.",
-          "example": {
-            "command": "applet",
-            "applet": "aislides",
-            "verb": "getDeck",
-            "args": {
-              "deck": "Absurd News"
-            }
-          }
-        },
-        {
-          "verb": "aislides.listThemes",
-          "status": "callable",
-          "description": "The valid theme ids. Themes are content, so the set grows without an app update.",
-          "example": {
-            "command": "applet",
-            "applet": "aislides",
-            "verb": "listThemes"
-          }
-        },
-        {
-          "verb": "aislides.listLayouts",
-          "status": "callable",
-          "description": "The slide layout archetypes and which slots each renders. Read this before authoring slide objects by hand.",
-          "example": {
-            "command": "applet",
-            "applet": "aislides",
-            "verb": "listLayouts"
-          }
-        },
-        {
-          "verb": "aislides.exportPdf",
-          "status": "callable",
-          "description": "Render the deck to a vector PDF (one page per slide) and register it as a portal asset you can hand back to the user.",
-          "example": {
-            "command": "applet",
-            "applet": "aislides",
-            "verb": "exportPdf",
-            "args": {
-              "deck": "Absurd News"
-            }
-          }
-        }
-      ]
+     "verb": "loopstar.exportToAudioLibrary",
+     "status": "callable",
+     "description": "Render the arrangement to a bar-exact WAV and file it in the Audio Library. Needs at least one arrangement section; the WAV is probed for silence before it is filed. Returns an openable audio.track entity.",
+     "example": {
+      "command": "applet",
+      "applet": "loopstar",
+      "verb": "exportToAudioLibrary",
+      "args": {
+       "title": "Noir Bed"
+      }
+     }
     },
     {
-      "applet": "toDo",
-      "summary": "Lists and tasks, CloudKit-synced — a list made here is already on the phone.",
-      "capabilities": [
-        {
-          "verb": "todo.listProjects",
-          "status": "callable",
-          "description": "Every list with task and open counts.",
-          "example": {
-            "command": "applet",
-            "applet": "todo",
-            "verb": "listProjects"
-          }
-        },
-        {
-          "verb": "todo.createProject",
-          "status": "callable",
-          "description": "Make a list; an existing name is reused.",
-          "example": {
-            "command": "applet",
-            "applet": "todo",
-            "verb": "createProject"
-          }
-        },
-        {
-          "verb": "todo.addTask",
-          "status": "callable",
-          "description": "Add a task with an optional priority.",
-          "example": {
-            "command": "applet",
-            "applet": "todo",
-            "verb": "addTask"
-          }
-        },
-        {
-          "verb": "todo.setTaskStatus",
-          "status": "callable",
-          "description": "Mark a task done or open.",
-          "example": {
-            "command": "applet",
-            "applet": "todo",
-            "verb": "setTaskStatus"
-          }
-        }
-      ]
+     "verb": "loopstar.craftChords",
+     "status": "callable",
+     "description": "LLM-crafted chord changes, installed. Reports whether the model or the fallback generator produced them.",
+     "example": {
+      "command": "applet",
+      "applet": "loopstar",
+      "verb": "craftChords",
+      "args": {
+       "changes": 4
+      }
+     }
     },
     {
-      "applet": "workbench",
-      "summary": "Hosted Claude Code sessions inside mChatAI+: list, start (structured or full TUI), queue a turn, read the transcript, interrupt. DEBUG lane only — not in the Release tunnel allowlist.",
-      "capabilities": [
-        {
-          "verb": "workbench.listSessions",
-          "status": "callable",
-          "description": "Every hosted session with state, front-end, CLI id, workdir, cost, and an open link.",
-          "example": {
-            "command": "applet",
-            "applet": "workbench",
-            "verb": "listSessions"
-          }
-        },
-        {
-          "verb": "workbench.startSession",
-          "status": "callable",
-          "description": "Start a structured session on an inline prompt; ok only after the CLI's init event and a live state (timeout ⇒ stillLive, do not retry).",
-          "example": {
-            "command": "applet",
-            "applet": "workbench",
-            "verb": "startSession",
-            "args": {
-              "text": "…"
-            }
-          }
-        },
-        {
-          "verb": "workbench.startTUI",
-          "status": "callable",
-          "description": "Open the full interactive Claude Code terminal in a new workdir; returns the PTY id.",
-          "example": {
-            "command": "applet",
-            "applet": "workbench",
-            "verb": "startTUI"
-          }
-        },
-        {
-          "verb": "workbench.sendTurn",
-          "status": "callable",
-          "description": "Queue a user turn on a running structured session.",
-          "example": {
-            "command": "applet",
-            "applet": "workbench",
-            "verb": "sendTurn",
-            "args": {
-              "sessionID": "…",
-              "text": "…"
-            }
-          }
-        },
-        {
-          "verb": "workbench.getTranscript",
-          "status": "callable",
-          "description": "Paged timeline rows; hydrates a cold session from the CLI transcript first.",
-          "example": {
-            "command": "applet",
-            "applet": "workbench",
-            "verb": "getTranscript",
-            "args": {
-              "sessionID": "…"
-            }
-          }
-        },
-        {
-          "verb": "workbench.interrupt",
-          "status": "callable",
-          "description": "Interrupt a RUNNING turn via the control channel; refused when idle or permission-blocked; force:true = SIGINT (named in the reply).",
-          "example": {
-            "command": "applet",
-            "applet": "workbench",
-            "verb": "interrupt",
-            "args": {
-              "sessionID": "…"
-            }
-          }
-        }
-      ]
+     "verb": "loopstar.craftMelody",
+     "status": "callable",
+     "description": "LLM-crafted melodic hook over the current changes, installed. Reports model vs fallback.",
+     "example": {
+      "command": "applet",
+      "applet": "loopstar",
+      "verb": "craftMelody"
+     }
     },
     {
-      "applet": "ledger",
-      "summary": "The user's structured data (typed rows), read-only, for building from.",
-      "capabilities": [
-        {
-          "verb": "ledger.getState",
-          "status": "callable",
-          "description": "Collection and row counts.",
-          "example": {
-            "command": "applet",
-            "applet": "ledger",
-            "verb": "getState"
-          }
-        },
-        {
-          "verb": "ledger.listCollections",
-          "status": "callable",
-          "description": "Every collection with row count + columns.",
-          "example": {
-            "command": "applet",
-            "applet": "ledger",
-            "verb": "listCollections"
-          }
-        },
-        {
-          "verb": "ledger.getSchema",
-          "status": "callable",
-          "description": "A collection's columns.",
-          "example": {
-            "command": "applet",
-            "applet": "ledger",
-            "verb": "getSchema",
-            "args": {
-              "collection": "Seattle Birds"
-            }
-          }
-        },
-        {
-          "verb": "ledger.getRows",
-          "status": "callable",
-          "description": "Rows as {column: value}, paged.",
-          "example": {
-            "command": "applet",
-            "applet": "ledger",
-            "verb": "getRows",
-            "args": {
-              "collection": "Seattle Birds"
-            }
-          }
-        }
-      ]
+     "verb": "loopstar.jingle",
+     "status": "callable",
+     "description": "A 2-20 second piece that ends on a button, composed from a brief and registered as a portal asset. The one LoopStar output that is not a loop.",
+     "example": {
+      "command": "applet",
+      "applet": "loopstar",
+      "verb": "jingle",
+      "args": {
+       "brief": "a jingle for the Absurd News Cartoon Show",
+       "seconds": 8
+      }
+     }
     },
     {
-      "applet": "hub",
-      "summary": "Published + installed mini-apps: search, and fetch one's HTML as a template.",
-      "capabilities": [
-        {
-          "verb": "hub.getState",
-          "status": "callable",
-          "description": "Installed app count.",
-          "example": {
-            "command": "applet",
-            "applet": "hub",
-            "verb": "getState"
-          }
-        },
-        {
-          "verb": "hub.search",
-          "status": "callable",
-          "description": "Find apps by name.",
-          "example": {
-            "command": "applet",
-            "applet": "hub",
-            "verb": "search",
-            "args": {
-              "query": "tracker"
-            }
-          }
-        },
-        {
-          "verb": "hub.getApp",
-          "status": "callable",
-          "description": "An app's HTML, to reuse.",
-          "example": {
-            "command": "applet",
-            "applet": "hub",
-            "verb": "getApp",
-            "args": {
-              "app": "Yellow Island Bloom Tracker"
-            }
-          }
-        }
-      ]
+     "verb": "loopstar.openJingle",
+     "status": "callable",
+     "description": "Read a jingle's recipe back — brief, decisions, seed — and optionally load its material onto the board as Parts. The artifact and the context that made it.",
+     "example": {
+      "command": "applet",
+      "applet": "loopstar",
+      "verb": "openJingle",
+      "args": {
+       "assetID": "music-4783b1",
+       "load": true
+      }
+     }
+    },
+    {
+     "verb": "loopstar.listJingleForms",
+     "status": "callable",
+     "description": "The jingle form and character vocabulary a brief can reach.",
+     "example": {
+      "command": "applet",
+      "applet": "loopstar",
+      "verb": "listJingleForms"
+     }
     }
-  ]
+   ],
+   "notes": "LoopStar declares no AppletAIActions, so it is invisible to the built-in action catalog despite being the most capable applet in the app. Audio must be verified BY EAR - the diagnostic meters read 0 even while sound is playing."
+  },
+  {
+   "applet": "mapGuide",
+   "summary": "Place discovery, saved places, and narrated audio tours. Tours sync to iOS.",
+   "capabilities": [
+    {
+     "verb": "mapguide.geocode",
+     "status": "callable",
+     "description": "Resolve a place NAME to coordinates. Callers think in place names; every other location verb needs this first.",
+     "example": {
+      "command": "applet",
+      "applet": "mapguide",
+      "verb": "geocode",
+      "args": {
+       "place": "San Diego"
+      }
+     }
+    },
+    {
+     "verb": "mapguide.discoverPlaces",
+     "status": "callable",
+     "description": "Find sights, restaurants, beaches and more near a place by name. Wikipedia-enriched, category-filtered. Accepts plain words ('sights','restaurants','beaches') and returns counts before contents. FINDINGS ONLY - nothing is saved.",
+     "example": {
+      "command": "applet",
+      "applet": "mapguide",
+      "verb": "discoverPlaces",
+      "args": {
+       "place": "San Diego",
+       "categories": [
+        "sights",
+        "restaurants",
+        "beaches"
+       ],
+       "maxStops": 12
+      }
+     }
+    },
+    {
+     "verb": "mapguide.getState",
+     "status": "callable",
+     "description": "Available verbs and the valid place categories.",
+     "example": {
+      "command": "applet",
+      "applet": "mapguide",
+      "verb": "getState"
+     }
+    },
+    {
+     "verb": "mapguide.snapshot",
+     "status": "callable",
+     "description": "Render a static map PNG for a coordinate (reliable) or place name (needs geocoding - see notes) and save it to disk; returns path. Pair with aislides.addAsset to put a location into a slide deck.",
+     "example": {
+      "command": "applet",
+      "applet": "mapguide",
+      "verb": "snapshot",
+      "args": {
+       "latitude": 47.6097,
+       "longitude": -122.3422,
+       "title": "Pike Place Market"
+      }
+     }
+    },
+    {
+     "verb": "mapguide.createTour",
+     "status": "planned",
+     "description": "Persist discovered places as a durable Tour. Tours already CloudKit-sync to iOS, so this is what makes an agent-built itinerary reach the phone. discoverPlaces returns findings only until this lands."
+    }
+   ],
+   "notes": "Discovery works today; persistence does not. The generator can skew toward civic/downtown results near a city centre - widen radiusMiles or narrow categories. See docs/APPLET_VERB_SCOPING.md journey A. snapshot is coordinate-reliable; place-NAME lookups share the CLGeocoder sandbox caveat."
+  },
+  {
+   "applet": "audioLibrary",
+   "summary": "The app's durable audio store: folders, tracks, CloudKit sync, and the sink LoopStar exports into.",
+   "capabilities": [
+    {
+     "verb": "audiolibrary.getState",
+     "status": "callable",
+     "description": "Track and folder counts.",
+     "example": {
+      "command": "applet",
+      "applet": "audiolibrary",
+      "verb": "getState"
+     }
+    },
+    {
+     "verb": "audiolibrary.listFolders",
+     "status": "callable",
+     "description": "Every folder with its track count.",
+     "example": {
+      "command": "applet",
+      "applet": "audiolibrary",
+      "verb": "listFolders"
+     }
+    },
+    {
+     "verb": "audiolibrary.listTracks",
+     "status": "callable",
+     "description": "Tracks newest-first, optionally scoped to a folder.",
+     "example": {
+      "command": "applet",
+      "applet": "audiolibrary",
+      "verb": "listTracks"
+     }
+    },
+    {
+     "verb": "audiolibrary.createFolder",
+     "status": "callable",
+     "description": "Make a folder; an existing name is reused, not duplicated.",
+     "example": {
+      "command": "applet",
+      "applet": "audiolibrary",
+      "verb": "createFolder"
+     }
+    },
+    {
+     "verb": "audiolibrary.importTrack",
+     "status": "callable",
+     "description": "Bring an audio file in. Sandbox-aware, and the file is probed for real duration before filing.",
+     "example": {
+      "command": "applet",
+      "applet": "audiolibrary",
+      "verb": "importTrack"
+     }
+    }
+   ]
+  },
+  {
+   "applet": "portal",
+   "summary": "Cross-applet asset handoff. The noun that lets one applet's output become another applet's input across two separate CLI invocations — the gap CLI_PORTAL_ARCHITECTURE §2 names for the noir-ToonStudio case.",
+   "capabilities": [
+    {
+     "verb": "portal.composeMusic",
+     "status": "callable",
+     "description": "Compose music from a natural-language brief in LoopStar and return a portable assetID. Drives the OPEN LoopStar window when there is one; warns in `warnings` when it had to use a headless instance (invariant R4). Verifies the WAV's duration and peak before registering — a silent render fails the verb rather than returning a handle to nothing.",
+     "example": {
+      "command": "composeMusic",
+      "brief": "noir jazz, 92bpm, 8-bar intro then a 16-bar A section"
+     }
+    },
+    {
+     "verb": "portal.attachMusic",
+     "status": "callable",
+     "description": "Attach a composed audio asset to a ToonStudio project as a per-scene music cue. Copies into the project's audio directory (guarding source == destination), REPLACES stock generator cues rather than only filling empty slots, and returns the project with an open deep link. Paired check: diagToonLint.",
+     "example": {
+      "command": "attachMusic",
+      "projectID": "<toon project id>",
+      "musicAssetID": "music-4f2a91"
+     }
+    },
+    {
+     "verb": "portal.assets",
+     "status": "callable",
+     "description": "List, resolve or sweep asset handles. An assetID is the only thing that crosses the CLI boundary — container paths never leave the app because they differ per build lane and are frequently unreadable by the caller. `verified` is tri-state: true / false / null for not-yet-checked.",
+     "example": {
+      "command": "portalAssets",
+      "kind": "audio"
+     }
+    }
+   ]
+  },
+  {
+   "applet": "aiWrite",
+   "summary": "Documents and prose, CloudKit-synced to iOS. Where an agent's research or report belongs.",
+   "capabilities": [
+    {
+     "verb": "aiwrite.listDocs",
+     "status": "callable",
+     "description": "Documents, newest first.",
+     "example": {
+      "command": "applet",
+      "applet": "aiwrite",
+      "verb": "listDocs"
+     }
+    },
+    {
+     "verb": "aiwrite.getDoc",
+     "status": "callable",
+     "description": "One document's full text.",
+     "example": {
+      "command": "applet",
+      "applet": "aiwrite",
+      "verb": "getDoc"
+     }
+    },
+    {
+     "verb": "aiwrite.createDoc",
+     "status": "callable",
+     "description": "Write a new document from inline text.",
+     "example": {
+      "command": "applet",
+      "applet": "aiwrite",
+      "verb": "createDoc"
+     }
+    },
+    {
+     "verb": "aiwrite.appendDoc",
+     "status": "callable",
+     "description": "Add to an existing document.",
+     "example": {
+      "command": "applet",
+      "applet": "aiwrite",
+      "verb": "appendDoc"
+     }
+    }
+   ]
+  },
+  {
+   "applet": "aiSlides",
+   "summary": "Presentation decks. Turn a prompt or a piece of content into slides, edit them in plain English, and export a PDF. Charts can read live rows out of the Ledger.",
+   "capabilities": [
+    {
+     "verb": "aislides.compose",
+     "status": "callable",
+     "description": "A PROMPT becomes a deck: outlines first, then writes the slides. Pass `source` (an article, notes, a transcript) when you have material — supplying it is the single biggest quality lever. Needs an LLM.",
+     "example": {
+      "command": "applet",
+      "applet": "aislides",
+      "verb": "compose",
+      "args": {
+       "brief": "A five-slide internal update on why we moved off per-tenant compute",
+       "slides": 5
+      }
+     }
+    },
+    {
+     "verb": "aislides.place",
+     "status": "callable",
+     "description": "CONTENT becomes a deck. The landing pad for text this platform already produced — a pipeline's script, a document, an agent's report. In markdown mode it is deterministic: no model, no cost, and nothing in the deck that was not in the text. Recognises headings+bullets, `---` separated slides, blockquotes, lists, and SPEAKER: turn scripts.",
+     "example": {
+      "command": "applet",
+      "applet": "aislides",
+      "verb": "place",
+      "args": {
+       "title": "Absurd News",
+       "mode": "markdown",
+       "text": "# Absurd News\n\n## Council bans a word\n- 4,000 documents reissued\n- The announcement used it twice\n"
+      }
+     }
+    },
+    {
+     "verb": "aislides.outline",
+     "status": "callable",
+     "description": "What a deck WOULD be — titles, intent and layout per slide — without writing one. The cheap approval step before spending a deck-sized generation.",
+     "example": {
+      "command": "applet",
+      "applet": "aislides",
+      "verb": "outline",
+      "args": {
+       "brief": "A conference talk on local-first architecture",
+       "slides": 10
+      }
+     }
+    },
+    {
+     "verb": "aislides.edit",
+     "status": "callable",
+     "description": "Change an existing deck in plain English, through the applet's own validated agent. Reports what actually changed; an instruction that changes nothing returns ok:false.",
+     "example": {
+      "command": "applet",
+      "applet": "aislides",
+      "verb": "edit",
+      "args": {
+       "deck": "Absurd News",
+       "instruction": "Cut every slide to four bullets and make the titles claims"
+      }
+     }
+    },
+    {
+     "verb": "aislides.listDecks",
+     "status": "callable",
+     "description": "Every deck with its id, title, theme and slide count.",
+     "example": {
+      "command": "applet",
+      "applet": "aislides",
+      "verb": "listDecks"
+     }
+    },
+    {
+     "verb": "aislides.getDeck",
+     "status": "callable",
+     "description": "One deck as slide objects — layout, slots, notes — so you can read what is there before changing it.",
+     "example": {
+      "command": "applet",
+      "applet": "aislides",
+      "verb": "getDeck",
+      "args": {
+       "deck": "Absurd News"
+      }
+     }
+    },
+    {
+     "verb": "aislides.listThemes",
+     "status": "callable",
+     "description": "The valid theme ids. Themes are content, so the set grows without an app update.",
+     "example": {
+      "command": "applet",
+      "applet": "aislides",
+      "verb": "listThemes"
+     }
+    },
+    {
+     "verb": "aislides.listLayouts",
+     "status": "callable",
+     "description": "The slide layout archetypes and which slots each renders. Read this before authoring slide objects by hand.",
+     "example": {
+      "command": "applet",
+      "applet": "aislides",
+      "verb": "listLayouts"
+     }
+    },
+    {
+     "verb": "aislides.exportPdf",
+     "status": "callable",
+     "description": "Render the deck to a vector PDF (one page per slide) and register it as a portal asset you can hand back to the user.",
+     "example": {
+      "command": "applet",
+      "applet": "aislides",
+      "verb": "exportPdf",
+      "args": {
+       "deck": "Absurd News"
+      }
+     }
+    },
+    {
+     "verb": "aislides.addAsset",
+     "status": "callable",
+     "description": "Copy an image file on disk into a deck's assets so a slide can show it. Returns image_file — set a slide's `image_file` slot to that name. How a map snapshot (mapguide.snapshot) or any generated image gets into a deck; slides reference assets by filename, never embedded bytes.",
+     "example": {
+      "command": "applet",
+      "applet": "aislides",
+      "verb": "addAsset",
+      "args": {
+       "deck": "Seattle Trip",
+       "path": "/…/mChatAI/PortalAssets/image/map-snapshots/pike-place-3f9c2a.png",
+       "name": "pike-place"
+      }
+     }
+    },
+    {
+     "verb": "aislides.renderCards",
+     "status": "callable",
+     "description": "Every presentable slide written out as a PNG, with the words on each card — the verb that lets a deck become graphics somewhere else. Default 16:9; pass width/height (160-4096) to render at your destination's aspect instead of letterboxing.",
+     "example": {
+      "command": "applet",
+      "applet": "aislides",
+      "verb": "renderCards",
+      "args": {
+       "deck": "Absurd News",
+       "width": 2070,
+       "height": 900
+      }
+     }
+    }
+   ]
+  },
+  {
+   "applet": "toDo",
+   "summary": "Lists and tasks, CloudKit-synced — a list made here is already on the phone.",
+   "capabilities": [
+    {
+     "verb": "todo.listProjects",
+     "status": "callable",
+     "description": "Every list with task and open counts.",
+     "example": {
+      "command": "applet",
+      "applet": "todo",
+      "verb": "listProjects"
+     }
+    },
+    {
+     "verb": "todo.createProject",
+     "status": "callable",
+     "description": "Make a list; an existing name is reused.",
+     "example": {
+      "command": "applet",
+      "applet": "todo",
+      "verb": "createProject"
+     }
+    },
+    {
+     "verb": "todo.addTask",
+     "status": "callable",
+     "description": "Add a task with an optional priority.",
+     "example": {
+      "command": "applet",
+      "applet": "todo",
+      "verb": "addTask"
+     }
+    },
+    {
+     "verb": "todo.setTaskStatus",
+     "status": "callable",
+     "description": "Mark a task done or open.",
+     "example": {
+      "command": "applet",
+      "applet": "todo",
+      "verb": "setTaskStatus"
+     }
+    }
+   ]
+  },
+  {
+   "applet": "workbench",
+   "summary": "Hosted Claude Code sessions inside mChatAI+: list, start (structured or full TUI), queue a turn, read the transcript, interrupt. DEBUG lane only — not in the Release tunnel allowlist.",
+   "capabilities": [
+    {
+     "verb": "workbench.listSessions",
+     "status": "callable",
+     "description": "Every hosted session with state, front-end, CLI id, workdir, cost, and an open link.",
+     "example": {
+      "command": "applet",
+      "applet": "workbench",
+      "verb": "listSessions"
+     }
+    },
+    {
+     "verb": "workbench.startSession",
+     "status": "callable",
+     "description": "Start a structured session on an inline prompt; ok only after the CLI's init event and a live state (timeout ⇒ stillLive, do not retry).",
+     "example": {
+      "command": "applet",
+      "applet": "workbench",
+      "verb": "startSession",
+      "args": {
+       "text": "…"
+      }
+     }
+    },
+    {
+     "verb": "workbench.startTUI",
+     "status": "callable",
+     "description": "Open the full interactive Claude Code terminal in a new workdir; returns the PTY id.",
+     "example": {
+      "command": "applet",
+      "applet": "workbench",
+      "verb": "startTUI"
+     }
+    },
+    {
+     "verb": "workbench.sendTurn",
+     "status": "callable",
+     "description": "Queue a user turn on a running structured session.",
+     "example": {
+      "command": "applet",
+      "applet": "workbench",
+      "verb": "sendTurn",
+      "args": {
+       "sessionID": "…",
+       "text": "…"
+      }
+     }
+    },
+    {
+     "verb": "workbench.getTranscript",
+     "status": "callable",
+     "description": "Paged timeline rows; hydrates a cold session from the CLI transcript first.",
+     "example": {
+      "command": "applet",
+      "applet": "workbench",
+      "verb": "getTranscript",
+      "args": {
+       "sessionID": "…"
+      }
+     }
+    },
+    {
+     "verb": "workbench.interrupt",
+     "status": "callable",
+     "description": "Interrupt a RUNNING turn via the control channel; refused when idle or permission-blocked; force:true = SIGINT (named in the reply).",
+     "example": {
+      "command": "applet",
+      "applet": "workbench",
+      "verb": "interrupt",
+      "args": {
+       "sessionID": "…"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "applet": "ledger",
+   "summary": "The user's structured data (typed rows), read-only, for building from.",
+   "capabilities": [
+    {
+     "verb": "ledger.getState",
+     "status": "callable",
+     "description": "Collection and row counts.",
+     "example": {
+      "command": "applet",
+      "applet": "ledger",
+      "verb": "getState"
+     }
+    },
+    {
+     "verb": "ledger.listCollections",
+     "status": "callable",
+     "description": "Every collection with row count + columns.",
+     "example": {
+      "command": "applet",
+      "applet": "ledger",
+      "verb": "listCollections"
+     }
+    },
+    {
+     "verb": "ledger.getSchema",
+     "status": "callable",
+     "description": "A collection's columns.",
+     "example": {
+      "command": "applet",
+      "applet": "ledger",
+      "verb": "getSchema",
+      "args": {
+       "collection": "Seattle Birds"
+      }
+     }
+    },
+    {
+     "verb": "ledger.getRows",
+     "status": "callable",
+     "description": "Rows as {column: value}, paged.",
+     "example": {
+      "command": "applet",
+      "applet": "ledger",
+      "verb": "getRows",
+      "args": {
+       "collection": "Seattle Birds"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "applet": "hub",
+   "summary": "Published + installed mini-apps: search, and fetch one's HTML as a template.",
+   "capabilities": [
+    {
+     "verb": "hub.getState",
+     "status": "callable",
+     "description": "Installed app count.",
+     "example": {
+      "command": "applet",
+      "applet": "hub",
+      "verb": "getState"
+     }
+    },
+    {
+     "verb": "hub.search",
+     "status": "callable",
+     "description": "Find apps by name.",
+     "example": {
+      "command": "applet",
+      "applet": "hub",
+      "verb": "search",
+      "args": {
+       "query": "tracker"
+      }
+     }
+    },
+    {
+     "verb": "hub.getApp",
+     "status": "callable",
+     "description": "An app's HTML, to reuse.",
+     "example": {
+      "command": "applet",
+      "applet": "hub",
+      "verb": "getApp",
+      "args": {
+       "app": "Yellow Island Bloom Tracker"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "applet": "aiWeb",
+   "summary": "Web research over the user's own browser context: content-defined research agents, report scans, and (planned) headless agent runs.",
+   "capabilities": [
+    {
+     "verb": "aiweb.getState",
+     "status": "callable",
+     "description": "Readiness, loaded agent count, report scan count.",
+     "example": {
+      "command": "applet",
+      "applet": "aiweb",
+      "verb": "getState"
+     }
+    },
+    {
+     "verb": "aiweb.listAgents",
+     "status": "callable",
+     "description": "The research-agent catalog. Agents are content (mchatai-source/aiweb-agents) — a new agent is a JSON file, no rebuild.",
+     "example": {
+      "command": "applet",
+      "applet": "aiweb",
+      "verb": "listAgents"
+     }
+    },
+    {
+     "verb": "aiweb.describeAgent",
+     "status": "callable",
+     "description": "One agent's full definition including its form fields.",
+     "example": {
+      "command": "applet",
+      "applet": "aiweb",
+      "verb": "describeAgent",
+      "args": {
+       "id": "relevance-scorer"
+      }
+     }
+    },
+    {
+     "verb": "aiweb.listReports",
+     "status": "callable",
+     "description": "Completed research report scans.",
+     "example": {
+      "command": "applet",
+      "applet": "aiweb",
+      "verb": "listReports"
+     }
+    },
+    {
+     "verb": "aiweb.proposeActions",
+     "status": "callable",
+     "description": "Propose fill/click/submit actions on the live page. ENQUEUES an in-app approval card and executes NOTHING — the user reviews, can edit each value, and must click approve; approval is not a verb. Proposals come only from this payload, never parsed from page text. Password / autocomplete=cc-* / one-time-code fields are refused (human takeover). Every action is verified against the DOM and written to a truthful append-only log. Gated by the web_act_enabled flag and, in v1, refused outside the DEBUG lane by a verb-level floor.",
+     "example": {
+      "command": "applet",
+      "applet": "aiweb",
+      "verb": "proposeActions",
+      "args": {
+       "intent": "Post the drafted reply to this thread",
+       "url": "https://www.reddit.com/r/example/comments/abc/",
+       "actions": [
+        { "type": "fill", "selector": "textarea[name=text]", "value": "Thanks — this fixed it." },
+        { "type": "click", "selector": "button[type=submit]" }
+       ]
+      }
+     }
+    },
+    {
+     "verb": "aiweb.actionResult",
+     "status": "callable",
+     "description": "Status + verbatim append-only log for a proposed action batch (attempted → outcome; found, verified, domChanged, navigationStarted, refusals, no-effects, denials, expiries). A pure read that can never trigger execution. Omit id to list recent proposals.",
+     "example": {
+      "command": "applet",
+      "applet": "aiweb",
+      "verb": "actionResult",
+      "args": { "id": "<proposalID>" }
+     }
+    },
+    {
+     "verb": "aiweb.runAgent",
+     "status": "planned",
+     "description": "Run a research agent headlessly from the tunnel. Not shipped: agents execute against the live page in the summarizer's WebView and there is no headless page context yet — shipping it now would report success against an empty page (VERB_AUTHORING rule 6)."
+    }
+   ]
+  },
+  {
+   "applet": "dreamSnap",
+   "summary": "AI photo generation and projects. generatePhoto creates, saves, and returns an openable entity.",
+   "capabilities": [
+    {
+     "verb": "dreamsnap.getState",
+     "status": "callable",
+     "description": "Readiness and project/feed counts.",
+     "example": {
+      "command": "applet",
+      "applet": "dreamsnap",
+      "verb": "getState"
+     }
+    },
+    {
+     "verb": "dreamsnap.listProjects",
+     "status": "callable",
+     "description": "The user's image projects.",
+     "example": {
+      "command": "applet",
+      "applet": "dreamsnap",
+      "verb": "listProjects"
+     }
+    },
+    {
+     "verb": "dreamsnap.listFeed",
+     "status": "callable",
+     "description": "Feed entries.",
+     "example": {
+      "command": "applet",
+      "applet": "dreamsnap",
+      "verb": "listFeed"
+     }
+    },
+    {
+     "verb": "dreamsnap.generatePhoto",
+     "status": "callable",
+     "description": "Generate an image from a prompt and persist it as a project; verifies non-empty output before claiming success.",
+     "example": {
+      "command": "applet",
+      "applet": "dreamsnap",
+      "verb": "generatePhoto",
+      "args": {
+       "prompt": "a noir city street at night"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "applet": "aiNews",
+   "summary": "The curated news feed catalogue and article stream — lets agents and pipelines pull articles without web-search tokens.",
+   "capabilities": [
+    {
+     "verb": "ainews.getState",
+     "status": "callable",
+     "description": "Readiness: source and category counts.",
+     "example": {
+      "command": "applet",
+      "applet": "ainews",
+      "verb": "getState"
+     }
+    },
+    {
+     "verb": "ainews.listSources",
+     "status": "callable",
+     "description": "The curated feed catalogue (mchatai-source news/feeds.json).",
+     "example": {
+      "command": "applet",
+      "applet": "ainews",
+      "verb": "listSources"
+     }
+    },
+    {
+     "verb": "ainews.listCategories",
+     "status": "callable",
+     "description": "Categories articles can be pulled by.",
+     "example": {
+      "command": "applet",
+      "applet": "ainews",
+      "verb": "listCategories"
+     }
+    },
+    {
+     "verb": "ainews.listArticles",
+     "status": "callable",
+     "description": "Fetch articles; optional category (default All) and limit (1-100).",
+     "example": {
+      "command": "applet",
+      "applet": "ainews",
+      "verb": "listArticles",
+      "args": {
+       "category": "Technology",
+       "limit": 10
+      }
+     }
+    }
+   ]
+  }
+ ]
 }

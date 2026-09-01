@@ -50,7 +50,38 @@
         "textArg": "text",
         "arg.title": "Straight News Toon",
         "arg.save": "true",
-        "arg.voices": "{\"dale\":\"Daniel\",\"priya\":\"Samantha\"}"
+        "arg.voices": "{\"dale\":\"Daniel\",\"priya\":\"Samantha\"}",
+        "keepText": "true"
+      }
+    },
+    {
+      "id": "DCEC135C-280B-4CBD-B218-1F0A446607BB",
+      "skillID": "builtin.llmGenerate",
+      "config": {
+        "userPrompt": "Turn this news bulletin into the STUDIO GRAPHICS behind the anchors.\n\nWHAT THESE ARE. Not slides to read. Each card is the over-shoulder graphic a real\nnewsroom puts up while a story is being read: one story, one card, understood in two\nseconds from across a room, at a third of screen width, behind a cartoon anchor's head.\n\nTHE RULE THAT DECIDES WHETHER THIS WORKS. Every card must use the words the anchors\nactually SAY about that story — the name, the place, the organisation. That is what pairs\nthe card with the moment it goes up. A card whose words appear nowhere in the script\ncannot be placed and gets dropped.\n\nCHOOSING THE CARD, in this order:\n1. If the story turns on a NUMBER, make it a \"bigFact\": the number alone, huge, with a\n   short label under it.\n2. If it turns on something someone SAID, make it a \"quote\".\n3. Otherwise make it a \"title\": the headline, and one line under it.\n\nNever invent a number, a name or a quote. Only what the bulletin says. One card per\nstory, in the order the bulletin covers them. No opening card, no sign-off card.\n\nLENGTH. `fact` is at most 8 characters (\"£2.4bn\", \"15%\", \"50ft\"). Every `label`,\n`title` and `subtitle` is six words at most; three is better.\n\nOUTPUT RAW JSON, no fence, no commentary:\n\n{\"slides\":[\n  {\"layout\":\"bigFact\",\"fact\":\"50ft\",\"label\":\"Between two passenger jets\",\"caption\":\"Airlink\"},\n  {\"layout\":\"title\",\"title\":\"Met cancels Galliano show\",\"subtitle\":\"After sustained backlash\"},\n  {\"layout\":\"quote\",\"quote\":\"Nothing says enjoy the game like a near miss\",\"attribution\":\"Priya\"}\n]}\n\nTHE BULLETIN:\n{{INPUT}}",
+        "llmMaxTokens": "800",
+        "llmTimeout": "180"
+      }
+    },
+    {
+      "id": "79394B79-4F5A-40C2-B751-C24FF37FB891",
+      "skillID": "builtin.appletVerb",
+      "config": {
+        "applet": "AISlides",
+        "verb": "createDeck",
+        "argsFromText": "true",
+        "arg.title": "Bulletin Graphics",
+        "arg.theme": "broadcast",
+        "arg.replace": "true"
+      }
+    },
+    {
+      "id": "D37150E4-93CB-42B8-AF55-F055A36B0E5C",
+      "skillID": "builtin.appletVerb",
+      "config": {
+        "applet": "ToonStudio",
+        "verb": "cueDeck",
+        "arg.deck": "Bulletin Graphics"
       }
     }
   ]

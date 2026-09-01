@@ -20,6 +20,18 @@ a saving, not a goal: reuse when the audience would not notice, invent when
 they would. The test is one question — "if the finished film showed this, would
 anyone say that is the wrong character?" If yes, set the id to null.
 
+A SPECIES MATCH IS A STRONG MATCH. The rule above is about miscasting, and the
+mistake it does NOT cover is the opposite one: leaving a match on the table.
+If the catalogue holds the animal the part calls for — a Pig for LITTLE PIG 1,
+a Wolf for THE WOLF — that is not a weak match, it is the right one. Cast it.
+
+Generating an animal from cold is the case that fails worst, because a
+generator with no anatomy to copy falls back on a human body. An authored
+animal rig in the catalogue already has the snout, the ears and the tail. Three
+brothers who are all pigs can all be cast from the same Pig entry; the film
+tells them apart by where they stand and what they say, and that is normal
+cartoon practice, not a compromise.
+
 Never invent an id. Ids come from the catalogue verbatim, or they are null.
 
 ## ROLES
@@ -39,17 +51,45 @@ the action lines say they wear or carry, how other characters describe them,
 what the genre implies. Never write "a man" or "a woman" and stop — the
 description is the entire brief a flat cut-out character generator will get.
 
-Descriptions feed a CUT-OUT PUPPET generator, so write for that: build and
-height, skin tone, HAIR OR HEAD SILHOUETTE (afro, locs, bun, buzz, bald,
-headwrap, cap, helmet, long straight, curly), clothing SILHOUETTE (A-line
-dress, hoodie, long coat, tank top, apron, jacket with lapels, skirt), and a
-small palette. No shading, no texture, no photographic language.
+Descriptions feed a CUT-OUT PUPPET generator, so write for that. WHICH
+description you write depends on what the character IS, and getting this branch
+wrong is the single most damaging thing you can do here.
+
+IS THIS CHARACTER AN ANIMAL? Decide first, before writing a word of description.
+
+• A PERSON gets: build and height, skin tone, HAIR OR HEAD SILHOUETTE (afro,
+  locs, bun, buzz, bald, headwrap, cap, helmet, long straight, curly), clothing
+  SILHOUETTE (A-line dress, hoodie, long coat, tank top, apron, jacket with
+  lapels, skirt), and a small palette.
+
+• AN ANIMAL gets NONE of those words. No skin tone. No hairstyle. No clothing
+  silhouette. Write instead: the SPECIES by name, the SNOUT or MUZZLE (blunt
+  disc, long taper, short and square, beak), the EAR (small triangle, pricked
+  point, long and floppy, round), the TAIL (curly, brush, thin whip, stub,
+  none), and the PELT colour. Those five cues are the entire difference between
+  an animal and a person, and if you do not name them the generator will not
+  draw them.
+
+  A talking animal in a fable is still an ANIMAL. It may stand upright and hold
+  a bundle of sticks; that does not make it a person, and describing it as one
+  is how a wolf comes out as a man in a grey shirt.
+
+  RIGHT: "Pig. Barrel body, blunt pink disc snout with two nostrils, small
+  triangular ears, tight curly tail. Pale pink pelt, darker pink ears."
+  WRONG: "A pig with pink skin, a small bun, and blue dungarees."
+
+  Do not dress an animal unless the script explicitly puts clothing on it.
+
+No shading, no texture, no photographic language, for either kind.
 
 SILHOUETTE FIRST — two roles must never be recolours of each other. If your
 descriptions of two characters would produce the same body in a different
 shirt, you have failed the cast; change the build, the head shape and the
-clothing OUTLINE, not the colour. Draw skin tone from the full human range
-rather than defaulting everyone to the lightest.
+clothing OUTLINE, not the colour. For animals the same rule bites harder: two
+species that differ only in colour is the failure this whole branch exists to
+prevent — a pig and a wolf must differ in SNOUT, EAR and TAIL before they
+differ in palette. Draw human skin tone from the full range rather than
+defaulting everyone to the lightest.
 
 ## LOCATIONS
 
