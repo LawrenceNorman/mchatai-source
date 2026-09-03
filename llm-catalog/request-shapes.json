@@ -1,0 +1,79 @@
+{
+  "_source_of_truth": "llm-catalog/request-shapes.json",
+  "_last_updated": "2026-09-03",
+  "_purpose": "What SHAPE of chat-completions request each model family accepts. The shipped mChatAI+ binary carries a frozen fallback (ModelRequestShapes.fallback in Swift); the runtime reads this file so a provider shipping a new family — which is what broke every OpenAI call on 2026-09-03 when gpt-5.6-luna rejected 'max_tokens' — is a same-day PR plus refreshMchataisourceCache, not an App Store cycle.",
+  "_why_this_is_content": "The MODEL is already content: role-models.json and llm-catalog/providers/*.json pick which SKU a request uses, and openai.json already lists 70 gpt-5/o-series models. A one-line content change can therefore select a model the binary has never heard of. The rule for how to TALK to that model has to travel the same way, or content can break a shipped build with no way to fix it but a revert.",
+
+  "_matching": "Rules are tried IN ORDER; the first whose provider matches and whose `modelPrefix` OR `minMajorVersion` matches wins. `modelPrefix` is a literal prefix on the lowercased model id. `family` + `minMajorVersion` matches ids like '<family>-<N>...' where N >= minMajorVersion, so a version nobody has released yet is still covered.",
+
+  "rules": [
+    {
+      "id": "openai-reasoning",
+      "provider": "OpenAI",
+      "modelPrefix": ["o1", "o3", "o4", "o5"],
+      "tokenParameter": "max_completion_tokens",
+      "acceptsTemperature": false,
+      "acceptsResponseFormat": false,
+      "acceptsReasoningEffort": true,
+      "_notes": "o-series burn hidden reasoning tokens and reject temperature and response_format."
+    },
+    {
+      "id": "openai-gpt4.1",
+      "provider": "OpenAI",
+      "modelPrefix": ["gpt-4.1"],
+      "tokenParameter": "max_completion_tokens",
+      "acceptsTemperature": false,
+      "acceptsResponseFormat": true,
+      "acceptsReasoningEffort": false,
+      "_notes": "Does not think in the hidden way the o-series does, but shares the max_completion_tokens contract."
+    },
+    {
+      "id": "openai-gpt5-and-later",
+      "provider": "OpenAI",
+      "family": "gpt",
+      "minMajorVersion": 5,
+      "tokenParameter": "max_completion_tokens",
+      "acceptsTemperature": false,
+      "acceptsResponseFormat": true,
+      "acceptsReasoningEffort": true,
+      "_notes": "gpt-5 onward. Version-ranged rather than enumerated ON PURPOSE: gpt-5.6-luna was not on the enumerated list and every call 400'd. A gpt-6 nobody has announced is already covered."
+    },
+    {
+      "id": "openai-legacy-chat",
+      "provider": "OpenAI",
+      "modelPrefix": ["gpt-4o", "gpt-4-", "gpt-4", "gpt-3.5"],
+      "tokenParameter": "max_tokens",
+      "acceptsTemperature": true,
+      "acceptsResponseFormat": true,
+      "acceptsReasoningEffort": false
+    },
+    {
+      "id": "anthropic",
+      "provider": "Anthropic",
+      "modelPrefix": ["claude"],
+      "tokenParameter": "max_tokens",
+      "acceptsTemperature": true,
+      "acceptsResponseFormat": false,
+      "acceptsReasoningEffort": false,
+      "_notes": "The Messages API REQUIRES max_tokens. Never send max_completion_tokens here."
+    },
+    {
+      "id": "google",
+      "provider": "Google",
+      "modelPrefix": ["gemini"],
+      "tokenParameter": "maxOutputTokens",
+      "acceptsTemperature": true,
+      "acceptsResponseFormat": false,
+      "acceptsReasoningEffort": false,
+      "_notes": "Google nests generationConfig; the token key lives there, not at the top level."
+    }
+  ],
+
+  "default": {
+    "tokenParameter": "max_tokens",
+    "acceptsTemperature": true,
+    "acceptsResponseFormat": true,
+    "acceptsReasoningEffort": false,
+    "_notes": "Anything unmatched. Deliberately the LEGACY shape: an unknown model is more likely to be an OpenAI-compatible third party than a reasoning model, and the runtime 400-retry in LLMService corrects the guess and remembers it."
+  }
+}
