@@ -1,0 +1,138 @@
+{
+  "_source_of_truth": "frameworks/toon-studio/gags/topple-over.json",
+  "_comment": "Something big falls over. A PROP role with no needsAnyOf, so it plays on a tower, a wardrobe, a statue, a stack of crates — anything on stage.\n\nThe hard constraint: a whole actor CANNOT be rotated, only moved. So the fall is faked the way limited animation has always faked it — the prop slides sideways and DOWN in one eased move and the sound does the rest. boom on the impact frame, crumble a third of a second later as the debris settles, a hard camera shake, and smoke plus a dust burst at the base.\n\nAll of the comedy is in the 0.5 seconds where nothing happens. It creaks a hair the wrong way (dx -0.008), teeters back the OTHER way past its balance point (dx +0.016, then +0.020), and then HANGS there. A fall with no hang is a glitch; a fall with a hang is a joke. Nothing lands inside 0.17s of the beat before it — 12fps forgives nothing.\n\nTriggers stay clear of \"keels over\"/\"keeled over\": those are idiomatically a PERSON going down, they belong to the cast gag `faint`, and because this gag asks for nothing and sits above faint in the index it would win them every time and drop a crate instead of the character. It DOES deliberately share \"topples over\"/\"comes crashing down\" with `collapse`, which sits ABOVE it and needs a `collapse` clip: that is the specific-above-fallback ladder, and this is the tier-1-3 fallback that plays when the prop cannot collapse.\n\nEnds by standing it back up on the cut. Position carries to the end of the scene, so a prop left lying at dx -0.24 is a prop in the wrong place for every shot afterwards; a wreck that PERSISTS is the job of a rig pose, which this tier does not use.",
+  "id": "topple-over",
+  "triggers": [
+    "topples over",
+    "toppled over",
+    "comes crashing down",
+    "came crashing down",
+    "crashes to the ground",
+    "crashed to the ground",
+    "tips over and falls",
+    "tipped over and fell",
+    "tumbles to the ground",
+    "falls with a crash"
+  ],
+  "seconds": 3.0,
+  "roles": {
+    "object": {
+      "kind": "prop",
+      "_comment": "No needsAnyOf. Whatever prop the scene has staged can fall over; nothing has to be declared for it."
+    }
+  },
+  "beats": [
+    {
+      "at": 0.0,
+      "sound": "scrape",
+      "gain": 0.5,
+      "_comment": "the groan of something shifting on its base, before anything is visibly wrong"
+    },
+    {
+      "at": 0.0,
+      "role": "object",
+      "move": {
+        "dx": -0.008
+      },
+      "eased": true,
+      "_comment": "a hair the way it is ABOUT to go. dx/dy are offsets from the mark this role bound to, so the restore at the end is simply back to zero."
+    },
+    {
+      "at": 0.45,
+      "role": "object",
+      "move": {
+        "dx": 0.016
+      },
+      "eased": true,
+      "_comment": "the anticipation: it leans the WRONG way first. Every fall in animation is preceded by a lean in the opposite direction."
+    },
+    {
+      "at": 0.9,
+      "sound": "scrape",
+      "gain": 0.4
+    },
+    {
+      "at": 0.9,
+      "role": "object",
+      "move": {
+        "dx": 0.02
+      },
+      "eased": true,
+      "_comment": "creeps a further 0.004 past the balance point and then STOPS. 0.5s of dead air follows — this hold is the gag."
+    },
+    {
+      "at": 1.38,
+      "sound": "whoosh",
+      "gain": 0.8
+    },
+    {
+      "at": 1.4,
+      "role": "object",
+      "move": {
+        "dx": -0.24,
+        "dy": -0.3
+      },
+      "eased": true,
+      "_comment": "the fall itself: one eased whole-actor move, sideways and down together. There is no rotate channel for a whole actor, so the arc is entirely in this diagonal plus the audio."
+    },
+    {
+      "at": 1.74,
+      "sound": "boom",
+      "gain": 0.95,
+      "_comment": "impact, at the end of the 0.34s fall"
+    },
+    {
+      "at": 1.76,
+      "shake": 0.055,
+      "duration": 0.5
+    },
+    {
+      "at": 1.8,
+      "effect": "ts_fx_smoke",
+      "atRole": "object",
+      "dy": 0.04
+    },
+    {
+      "at": 1.86,
+      "effect": "ts_fx_burst",
+      "atRole": "object",
+      "dy": 0.06,
+      "_comment": "the dust punch. Offset 0.06 from the smoke so they read as two events, not one mush."
+    },
+    {
+      "at": 2.1,
+      "sound": "crumble",
+      "gain": 0.7,
+      "_comment": "debris settling AFTER the impact — the detail that gives the thing weight"
+    },
+    {
+      "at": 2.15,
+      "role": "object",
+      "move": {
+        "dx": -0.225,
+        "dy": -0.278
+      },
+      "eased": true,
+      "_comment": "the settle rock: a tiny bounce back up the way it came. Heavy things do not stop dead."
+    },
+    {
+      "at": 2.45,
+      "role": "object",
+      "move": {
+        "dx": -0.24,
+        "dy": -0.29
+      },
+      "eased": true,
+      "_comment": "and down to rest"
+    },
+    {
+      "at": 3.0,
+      "role": "object",
+      "move": {
+        "dx": 0.0,
+        "dy": 0.0
+      },
+      "_comment": "scene hygiene on the cut frame, not eased. Position carries to the end of the SCENE."
+    }
+  ]
+}

@@ -109,6 +109,15 @@ nothing and draw nothing. If your description would serve just as well for a
 different location in the same script, rewrite it. Say indoors or outdoors, and
 say the time of day only if the script only ever plays there at one time.
 
+**A location named for a building the story ACTS ON describes the PLACE, not
+the building.** "THE STRAW HOUSE" is a clearing: grass, a worn path, a leaning
+fence, a far hill line, the sky at that hour. Do NOT describe the house, and do
+NOT give such a location a `backdropID` from the catalogue even when one looks
+like an exact match — that building is a PROP (see PROPS below), because a
+backdrop has no poses, is not a cue target, and therefore can never be entered,
+climbed or blown down. Describing it here paints a second house that survives
+everything, standing next to the real one that collapses.
+
 ## PROPS
 
 A prop is an object THE SCRIPT NAMES. Two kinds earn a place on this list, and
@@ -121,6 +130,14 @@ the second is the one that used to get thrown away:
   wall clock, blinds with the light coming through them. If the writer bothered
   to put it on the page it is doing work, and a director cannot flicker a light
   that was never built. "Fluorescent lights buzz overhead" is a prop.
+• BUILDINGS THE STORY ACTS ON — and this one is counter-intuitive, because a
+  house feels like scenery. It is not. A backdrop has no poses and is not a cue
+  target, so a house painted into one can never be entered, climbed or blown
+  down; the wolf huffs and the scenery simply stands there. If the script
+  enters it, breaks it, climbs it, burns it, hides in it or knocks on it, it is
+  a PROP: the straw house, the stick house, the brick house, the gingerbread
+  cottage, the castle gate, the beanstalk. A building nobody touches — a row of
+  facades behind the action — stays scenery.
 
 OUT of scope: furniture and set dressing the script never mentions, and anything
 the backdrop already draws. A chair nobody sits in and a plant nobody names are

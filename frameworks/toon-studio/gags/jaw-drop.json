@@ -1,0 +1,133 @@
+{
+  "_source_of_truth": "frameworks/toon-studio/gags/jaw-drop.json",
+  "_comment": "The jaw drop, cheap tier. The joke is not the drop, it is the HANG: the mouth falls open on frame 7 and then nothing moves for nearly a second while the character stands there with an open face. A tick of `clock` fills that silence so the pause reads as deliberate rather than as a dropped frame, and the mouth sags a little FURTHER at 1.40 to prove the shot is still alive. Then it snaps shut on a `pop` and the character is left merely suspicious, which is funnier than leaving them amazed.\n\nDeliberately NOT animated: no arms, no legs, no body turn, no clip. Only `mouth` and `head` move, both guaranteed by ToonRigRepair, so this casts on any character that will ever exist. The whole-actor swell is `scaleBy` and returns to 1.0 at the end, because position and scale carry to the end of the SCENE.\n\nTrigger note: `mind-blown` already claims the exact phrase 'jaw drops', so this gag deliberately takes the past tense and the mouth/gape phrasings instead of shadowing it. Order in _index.json decides any overlap.",
+  "id": "jaw-drop",
+  "triggers": [
+    "his jaw dropped",
+    "her jaw dropped",
+    "jaw hits the floor",
+    "jaw hit the floor",
+    "jaw hangs open",
+    "mouth falls open",
+    "mouth fell open",
+    "mouth hangs open",
+    "stands there gaping",
+    "stood there gaping",
+    "gapes at",
+    "open-mouthed"
+  ],
+  "seconds": 3.0,
+  "roles": {
+    "agent": {
+      "kind": "cast",
+      "needsAnyOf": {
+        "parts": [
+          "mouth"
+        ]
+      }
+    }
+  },
+  "beats": [
+    {
+      "at": 0.0,
+      "role": "agent",
+      "expression": "face_suspicious",
+      "parts": {},
+      "_comment": "start from rest with a squint - 'hold on, what am I looking at'. The empty parts set guarantees we begin from the rig's own rest pose no matter what a previous gag left behind."
+    },
+    {
+      "at": 0.3,
+      "role": "agent",
+      "move": {
+        "scaleBy": 1.04
+      },
+      "eased": true,
+      "_comment": "ANTICIPATION: a small eased rise before the drop. Without this the open mouth reads as a glitch, not a take. scaleBy, never scale - staging puts characters at 0.62."
+    },
+    {
+      "at": 0.55,
+      "sound": "gasp",
+      "gain": 0.9,
+      "_comment": "the intake lands 3 frames BEFORE the mouth moves - the sound leads the picture"
+    },
+    {
+      "at": 0.58,
+      "role": "agent",
+      "expression": "face_surprised",
+      "parts": {
+        "mouth": {
+          "scaleY": 2.8,
+          "dy": -0.05
+        },
+        "head": {
+          "dy": -0.012
+        }
+      },
+      "_comment": "THE DROP. parts SNAP, which is exactly right here. scaleY alone would grow the mouth both up and down about its own centre, so dy pushes it downward and it reads as falling open; the head sinks a hair with it."
+    },
+    {
+      "at": 0.6,
+      "effect": "ts_fx_flash",
+      "atRole": "agent",
+      "dy": 0.42
+    },
+    {
+      "at": 0.62,
+      "sound": "sting_reveal",
+      "gain": 0.8
+    },
+    {
+      "at": 0.66,
+      "shake": 0.03,
+      "duration": 0.28
+    },
+    {
+      "at": 1.4,
+      "role": "agent",
+      "parts": {
+        "mouth": {
+          "scaleY": 3.4,
+          "dy": -0.075
+        },
+        "head": {
+          "rotate": 3,
+          "dy": -0.006
+        }
+      },
+      "_comment": "the sag. Nearly a second after the drop, the jaw gives up another notch. This is the beat that turns a pose into a HANG."
+    },
+    {
+      "at": 1.5,
+      "sound": "clock",
+      "gain": 0.5,
+      "_comment": "the awkward silence, made audible. Fills the hold so the pause reads as intended."
+    },
+    {
+      "at": 2.2,
+      "role": "agent",
+      "expression": "face_worried",
+      "parts": {},
+      "_comment": "SNAP SHUT. Empty transform set restores the rig to its rest pose - that is how a mouth gets closed and a head put back."
+    },
+    {
+      "at": 2.22,
+      "sound": "pop",
+      "gain": 0.7
+    },
+    {
+      "at": 2.55,
+      "role": "agent",
+      "move": {
+        "scaleBy": 1.0
+      },
+      "eased": true,
+      "_comment": "tidy up: back to the mark's own scale, or this character stays 4% tall for the rest of the scene"
+    },
+    {
+      "at": 2.8,
+      "role": "agent",
+      "expression": "face_suspicious",
+      "hold": true
+    }
+  ]
+}

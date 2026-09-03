@@ -1,0 +1,152 @@
+{
+  "_source_of_truth": "frameworks/toon-studio/gags/grow.json",
+  "_comment": "The beanstalk. A PROP role with no needsAnyOf at all, so it casts on any prop that has ever been made or ever will be — a bean, a mushroom, a pile of gold, a nose. The whole gag is one channel: eased whole-actor `scaleBy`, which is the only scale a reusable gag may touch (staging places things at 0.62, so an absolute `scale` of 1.06 would be a 1.7x giant). It deliberately animates NOTHING else — no parts, no leaves unfurling, no clip — because a prop rig is guaranteed to have none of that, and a growth read comes entirely from the ACCELERATION curve, not from detail.\n\nSix stages, not one move, and the deltas grow every time: 0.06, 0.24, 0.40, 0.50, 0.60, 0.80. A single 0..3.6 ease would decelerate into its final value and read as 'it finished'. Stepping it means the last and largest leap is still travelling when the shot cuts, which is what makes the audience believe it is going all the way to the clouds. Ground crumble and a shake arrive at stage three, the moment the earth would actually give way, not at the start.\n\nTriggers are all anchored to GROWING, never to bare upward motion: this gag has no dy channel at all, it only scales, so \"rises up into the sky\" / \"rose up into the sky\" were wrong twice over — the sun, smoke, a bird and a balloon all do that in ordinary narration, and none of them wants a prop inflated 3.6x.\n\nThe final beat lands ON the cut and returns scaleBy to 1.0. Position and scale carry to the end of the SCENE, so an untidied gag leaves a house-sized bean two shots later; a beanstalk that is still standing in the next shot is the job of a prop POSE, not of leaked gag state.",
+  "id": "grow",
+  "triggers": [
+    "grows and grows",
+    "grew and grew",
+    "grows taller and taller",
+    "grew taller and taller",
+    "shoots up out of the ground",
+    "shot up out of the ground",
+    "sprouts from the earth",
+    "sprouted overnight",
+    "grows right up into the sky",
+    "grew right up into the sky",
+    "right up into the clouds",
+    "swells to twice its size"
+  ],
+  "seconds": 5.0,
+  "roles": {
+    "object": {
+      "kind": "prop",
+      "_comment": "No needsAnyOf. A prop cannot be relied on to own a single pose, clip or part, so this gag asks for nothing and gets to play on all of them."
+    }
+  },
+  "beats": [
+    {
+      "at": 0.0,
+      "sound": "magic",
+      "gain": 0.8,
+      "_comment": "the seed takes — the sound arrives BEFORE any visible change, so the eye is already on the prop when it first stirs"
+    },
+    {
+      "at": 0.0,
+      "effect": "ts_fx_sparkle",
+      "atRole": "object",
+      "dy": 0.05
+    },
+    {
+      "at": 0.35,
+      "role": "object",
+      "move": {
+        "scaleBy": 1.06
+      },
+      "eased": true,
+      "_comment": "stage 1, deliberately almost nothing. The small first step is what lets every later step read as speeding up."
+    },
+    {
+      "at": 1.0,
+      "sound": "shimmer",
+      "gain": 0.6
+    },
+    {
+      "at": 1.05,
+      "role": "object",
+      "move": {
+        "scaleBy": 1.3
+      },
+      "eased": true,
+      "_comment": "stage 2 — delta 0.24"
+    },
+    {
+      "at": 1.2,
+      "effect": "ts_fx_glow",
+      "atRole": "object",
+      "dy": 0.18
+    },
+    {
+      "at": 1.9,
+      "role": "object",
+      "move": {
+        "scaleBy": 1.7
+      },
+      "eased": true,
+      "_comment": "stage 3 — delta 0.40"
+    },
+    {
+      "at": 2.0,
+      "sound": "crumble",
+      "gain": 0.5,
+      "_comment": "the earth breaking around the base. Held back to stage 3 on purpose: at stage 1 it would be a sound with nothing to explain it."
+    },
+    {
+      "at": 2.05,
+      "shake": 0.022,
+      "duration": 0.4
+    },
+    {
+      "at": 2.7,
+      "role": "object",
+      "move": {
+        "scaleBy": 2.2
+      },
+      "eased": true,
+      "_comment": "stage 4 — delta 0.50"
+    },
+    {
+      "at": 2.8,
+      "effect": "ts_fx_sparkle",
+      "atRole": "object",
+      "dy": 0.35,
+      "_comment": "the sparkle climbs with it — dy 0.05, 0.35, 0.60 across the gag traces the growing tip"
+    },
+    {
+      "at": 3.3,
+      "sound": "shimmer",
+      "gain": 0.7
+    },
+    {
+      "at": 3.4,
+      "role": "object",
+      "move": {
+        "scaleBy": 2.8
+      },
+      "eased": true,
+      "_comment": "stage 5 — delta 0.60"
+    },
+    {
+      "at": 4.1,
+      "sound": "whoosh",
+      "gain": 0.85
+    },
+    {
+      "at": 4.15,
+      "role": "object",
+      "move": {
+        "scaleBy": 3.6
+      },
+      "eased": true,
+      "_comment": "stage 6 — delta 0.80, the biggest leap of the gag and the last thing that happens. It is still easing towards 3.6 when the shot ends, which IS the 'still going' read."
+    },
+    {
+      "at": 4.2,
+      "shake": 0.03,
+      "duration": 0.55
+    },
+    {
+      "at": 4.3,
+      "effect": "ts_fx_sparkle",
+      "atRole": "object",
+      "dy": 0.6
+    },
+    {
+      "at": 5.0,
+      "role": "object",
+      "move": {
+        "scaleBy": 1.0
+      },
+      "_comment": "scene hygiene, landing on the cut: not eased, so it is a single-frame reset rather than a visible shrink. Scale carries to the end of the scene; a gag that does not put the mark back leaves a giant prop in a shot nobody is looking at."
+    }
+  ]
+}

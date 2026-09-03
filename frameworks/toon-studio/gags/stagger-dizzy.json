@@ -1,0 +1,229 @@
+{
+  "_source_of_truth": "frameworks/toon-studio/gags/stagger-dizzy.json",
+  "_comment": "Seeing stars. A damped wander: six whole-actor lurches whose amplitude decays (0.055 -> 0.045 -> 0.034 -> 0.024 -> 0.014 -> 0.008 -> 0), each one eased so the body DRIFTS, with the head snapping the opposite way on every swing because `parts` do not tween and a lolling head should pop. The halo is faked - there is no orbit channel - by spawning sparkles at the role's overhead mark at alternating heights (0.50 / 0.44 / 0.52 / 0.47) while the body wanders underneath them; the eye reads the changing gap as circling. Tier 1-3 only: whole-actor moves, ad-hoc `parts` on `head`, two expressions, stock effects and stock sounds. No clip, no new art, so it casts on every rig ToonRigRepair has touched.\n\nWhat it deliberately does NOT animate: feet. Nobody in limited animation staggers with their legs; the footsteps sound does that job for free, and a legless drift is what the whole form is built on.",
+  "id": "stagger-dizzy",
+  "triggers": [
+    "staggers back",
+    "staggered back",
+    "reels backward",
+    "reeled backwards",
+    "is seeing stars",
+    "was seeing stars",
+    "stumbles about dizzily",
+    "stumbled about dizzily",
+    "head is spinning",
+    "head was spinning",
+    "goes dizzy",
+    "wobbles unsteadily"
+  ],
+  "seconds": 3.1,
+  "roles": {
+    "agent": {
+      "kind": "cast",
+      "needsAnyOf": {
+        "parts": [
+          "head"
+        ]
+      }
+    }
+  },
+  "beats": [
+    {
+      "at": 0.0,
+      "role": "agent",
+      "expression": "face_surprised",
+      "_comment": "the moment it lands, before any drift - the anticipation is this held beat of registering it"
+    },
+    {
+      "at": 0.0,
+      "role": "agent",
+      "parts": {
+        "head": {
+          "rotate": -10
+        }
+      }
+    },
+    {
+      "at": 0.2,
+      "sound": "shimmer",
+      "gain": 0.6
+    },
+    {
+      "at": 0.22,
+      "effect": "ts_fx_glow",
+      "atRole": "agent",
+      "dy": 0.46,
+      "_comment": "the halo sits above the head at the mark; anchoring resolves at shot start, so it stays put while the body wanders under it - which is exactly the read we want"
+    },
+    {
+      "at": 0.3,
+      "role": "agent",
+      "expression": "face_worried"
+    },
+    {
+      "at": 0.32,
+      "role": "agent",
+      "move": {
+        "dx": 0.055
+      },
+      "eased": true,
+      "_comment": "swing 1, the widest. dx is an offset from the bound mark, so alternating signs with shrinking magnitude is a damped wander that ends home."
+    },
+    {
+      "at": 0.34,
+      "role": "agent",
+      "parts": {
+        "head": {
+          "rotate": 9
+        }
+      }
+    },
+    {
+      "at": 0.62,
+      "sound": "footsteps",
+      "gain": 0.45
+    },
+    {
+      "at": 0.66,
+      "role": "agent",
+      "move": {
+        "dx": -0.045
+      },
+      "eased": true
+    },
+    {
+      "at": 0.7,
+      "role": "agent",
+      "parts": {
+        "head": {
+          "rotate": -8
+        }
+      }
+    },
+    {
+      "at": 0.8,
+      "effect": "ts_fx_sparkle",
+      "atRole": "agent",
+      "dy": 0.5
+    },
+    {
+      "at": 1.0,
+      "role": "agent",
+      "move": {
+        "dx": 0.034
+      },
+      "eased": true
+    },
+    {
+      "at": 1.04,
+      "role": "agent",
+      "parts": {
+        "head": {
+          "rotate": 7
+        }
+      }
+    },
+    {
+      "at": 1.2,
+      "effect": "ts_fx_sparkle",
+      "atRole": "agent",
+      "dy": 0.44
+    },
+    {
+      "at": 1.34,
+      "role": "agent",
+      "move": {
+        "dx": -0.024
+      },
+      "eased": true
+    },
+    {
+      "at": 1.38,
+      "role": "agent",
+      "parts": {
+        "head": {
+          "rotate": -6
+        }
+      }
+    },
+    {
+      "at": 1.45,
+      "sound": "footsteps",
+      "gain": 0.4
+    },
+    {
+      "at": 1.62,
+      "sound": "magic",
+      "gain": 0.45
+    },
+    {
+      "at": 1.64,
+      "effect": "ts_fx_sparkle",
+      "atRole": "agent",
+      "dy": 0.52
+    },
+    {
+      "at": 1.68,
+      "role": "agent",
+      "move": {
+        "dx": 0.014
+      },
+      "eased": true
+    },
+    {
+      "at": 1.72,
+      "role": "agent",
+      "parts": {
+        "head": {
+          "rotate": 4
+        }
+      }
+    },
+    {
+      "at": 2.0,
+      "role": "agent",
+      "move": {
+        "dx": -0.008
+      },
+      "eased": true
+    },
+    {
+      "at": 2.04,
+      "role": "agent",
+      "parts": {
+        "head": {
+          "rotate": -3
+        }
+      }
+    },
+    {
+      "at": 2.3,
+      "effect": "ts_fx_sparkle",
+      "atRole": "agent",
+      "dy": 0.47,
+      "_comment": "one last star after the body has nearly settled - the head clears slower than the feet"
+    },
+    {
+      "at": 2.4,
+      "role": "agent",
+      "move": {
+        "dx": 0.0,
+        "scaleBy": 1.0
+      },
+      "eased": true,
+      "_comment": "back on the mark. Position carries to the end of the SCENE, so a wander that does not come home is permanent."
+    },
+    {
+      "at": 2.44,
+      "role": "agent",
+      "parts": {},
+      "_comment": "empty transform set = head upright again, at the rig's own rest pose"
+    },
+    {
+      "at": 2.75,
+      "role": "agent",
+      "expression": "face_worried",
+      "hold": true
+    }
+  ]
+}

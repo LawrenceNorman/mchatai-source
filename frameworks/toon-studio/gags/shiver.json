@@ -1,0 +1,216 @@
+{
+  "_source_of_truth": "frameworks/toon-studio/gags/shiver.json",
+  "_comment": "The shakes. PURE tier 1-3: one expression, whole-actor dx moves, and ad-hoc `parts` transforms on `head`, which ToonRigRepair guarantees on every character. No clip, no pose beyond the rig's own rest, no new art, so this casts on anything that will ever walk onto the stage.\n\nThe comedy is in the BRACE. He stiffens and pulls in 3% at 0.25 and then does NOTHING for half a second — that dead air is the fear landing. The tremble only starts at 0.75, and it starts BIG and decays, which is how a shiver actually reads; a constant-amplitude wobble reads as a rendering fault. The whole-actor dx alternates every 0.18s (just over two frames at 12fps, so every extreme is actually seen) and is deliberately NOT eased, because an eased tremble smooths itself into a slow sway. The head snaps counter to the body on three of the swings — parts SNAP where moves tween, and that mismatch is what stops it looking like a metronome.\n\nDeliberately NOT animated: no camera shake (a shake moves the whole stage, and one frightened character is not an earthquake) and no effect. A shiver is a body, not a firework. He is returned to his mark at scaleBy 1.0 with the head restored, and left wearing the worried face — expressions survive a cut, so that residue is the point."
+  ,
+  "id": "shiver",
+  "triggers": [
+    "shivers with fear",
+    "shivered with fear",
+    "trembles all over",
+    "trembled all over",
+    "shakes like a leaf",
+    "shook like a leaf",
+    "quakes with fright",
+    "quaking with fear",
+    "teeth chattering",
+    "his knees knock",
+    "knees knocking together",
+    "trembling from head to foot"
+  ],
+  "seconds": 3.0,
+  "roles": {
+    "agent": {
+      "kind": "cast",
+      "needsAnyOf": {
+        "parts": [
+          "head"
+        ]
+      }
+    }
+  },
+  "beats": [
+    {
+      "at": 0.0,
+      "role": "agent",
+      "expression": "face_worried",
+      "_comment": "the fear registers on the face BEFORE the body moves - that ordering is the whole take"
+    },
+    {
+      "at": 0.18,
+      "sound": "dread",
+      "gain": 0.45
+    },
+    {
+      "at": 0.25,
+      "role": "agent",
+      "move": {
+        "dx": 0.0,
+        "dy": 0.0,
+        "scaleBy": 0.97
+      },
+      "eased": true,
+      "_comment": "the brace - he pulls in 3% and then HOLDS for half a second. Anticipation. scaleBy, never scale: staging places him at 0.62 and an absolute 0.97 would be a giant."
+    },
+    {
+      "at": 0.32,
+      "sound": "wind",
+      "gain": 0.3
+    },
+    {
+      "at": 0.75,
+      "role": "agent",
+      "parts": {
+        "head": {
+          "dx": -0.012,
+          "rotate": -4
+        }
+      },
+      "_comment": "first jolt, on the head, a frame before the body goes. Parts snap; that is why this one is on the head."
+    },
+    {
+      "at": 0.8,
+      "role": "agent",
+      "move": {
+        "dx": 0.016,
+        "dy": 0.0,
+        "scaleBy": 0.97
+      },
+      "eased": false,
+      "_comment": "tremble starts at full amplitude and decays. Every move restates dx/dy/scaleBy so the braced 0.97 is never dropped by an omitted key."
+    },
+    {
+      "at": 0.98,
+      "role": "agent",
+      "move": {
+        "dx": -0.016,
+        "dy": 0.0,
+        "scaleBy": 0.97
+      },
+      "eased": false
+    },
+    {
+      "at": 1.16,
+      "role": "agent",
+      "move": {
+        "dx": 0.015,
+        "dy": 0.0,
+        "scaleBy": 0.97
+      },
+      "eased": false
+    },
+    {
+      "at": 1.2,
+      "role": "agent",
+      "parts": {
+        "head": {
+          "dx": 0.012,
+          "rotate": 4
+        }
+      },
+      "_comment": "head counter-swings against the body so the two never sync into a metronome"
+    },
+    {
+      "at": 1.34,
+      "role": "agent",
+      "move": {
+        "dx": -0.014,
+        "dy": 0.0,
+        "scaleBy": 0.97
+      },
+      "eased": false
+    },
+    {
+      "at": 1.52,
+      "role": "agent",
+      "move": {
+        "dx": 0.012,
+        "dy": 0.0,
+        "scaleBy": 0.97
+      },
+      "eased": false
+    },
+    {
+      "at": 1.62,
+      "role": "agent",
+      "parts": {
+        "head": {
+          "dx": -0.01,
+          "rotate": -4
+        }
+      }
+    },
+    {
+      "at": 1.7,
+      "role": "agent",
+      "move": {
+        "dx": -0.011,
+        "dy": 0.0,
+        "scaleBy": 0.97
+      },
+      "eased": false
+    },
+    {
+      "at": 1.88,
+      "role": "agent",
+      "move": {
+        "dx": 0.009,
+        "dy": 0.0,
+        "scaleBy": 0.97
+      },
+      "eased": false
+    },
+    {
+      "at": 2.06,
+      "role": "agent",
+      "move": {
+        "dx": -0.008,
+        "dy": 0.0,
+        "scaleBy": 0.97
+      },
+      "eased": false
+    },
+    {
+      "at": 2.1,
+      "role": "agent",
+      "parts": {},
+      "_comment": "head back on. An empty transform set restores the rig to its own rest pose."
+    },
+    {
+      "at": 2.24,
+      "role": "agent",
+      "move": {
+        "dx": 0.005,
+        "dy": 0.0,
+        "scaleBy": 0.97
+      },
+      "eased": false
+    },
+    {
+      "at": 2.42,
+      "role": "agent",
+      "move": {
+        "dx": -0.004,
+        "dy": 0.0,
+        "scaleBy": 0.97
+      },
+      "eased": false
+    },
+    {
+      "at": 2.6,
+      "role": "agent",
+      "move": {
+        "dx": 0.0,
+        "dy": 0.0,
+        "scaleBy": 1.0
+      },
+      "eased": true,
+      "_comment": "back on the mark at full size - position and scale carry to the end of the SCENE, so a gag that does not tidy up is permanent"
+    },
+    {
+      "at": 2.85,
+      "role": "agent",
+      "expression": "face_worried",
+      "hold": true
+    }
+  ]
+}

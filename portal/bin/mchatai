@@ -233,6 +233,15 @@ case $cmd in
   raw)
     [ $# -ge 1 ] || die "usage: mchatai raw '<json payload>'"
     payload=$1
+    # AT-4c — attach this Workbench session id (set in the child env at spawn) so
+    # any EndProduct the app registers for this call attributes back to this
+    # session and shows under the Workbench "This session" filter.
+    if [ -n "${MCHATAI_WORKBENCH_SESSION:-}" ]; then
+      case "$payload" in
+        *'"workbenchSessionID"'*) : ;;
+        *) payload="${payload%\}},\"workbenchSessionID\":\"$(json_escape "$MCHATAI_WORKBENCH_SESSION")\"}" ;;
+      esac
+    fi
     case "$payload" in
       *'"requestID"'*) : ;;
       *) payload="${payload%\}},\"requestID\":\"$rid\"}" ;;

@@ -1,6 +1,6 @@
 {
   "_source_of_truth": "frameworks/toon-studio/gags/blow-down.json",
-  "_comment": "The wolf blows a house down. Anticipation (lean back, inhale) → the blow (speedlines travelling agent→structure, wind) → the structure shuddering, leaning, collapsing → the settle. Timed for 12fps: nothing lands inside 2 frames (0.17s), and the anticipation HOLDS before the payoff, which is what makes slapstick read. This gag REQUIRES a structure that can collapse, so it declines the brick house and blow-fail plays there instead.",
+  "_comment": "The wolf blows a house down. The wind-up is the gag: he leans BACK over four stepped beats, holds at the top, then snaps forward. Stepped `parts` transforms rather than a pose, because the rigs' shipped `lean` is a conversational 4-degree tilt — casting on `poses:[lean, idle]` succeeded on `idle` and then played a `lean` nobody could see, so the house fell down by itself while the wolf stood there. Amplitude is what makes an action read; a correct gag with 4 degrees of movement is an invisible one. Timed for 12fps: every step is 2+ frames.",
   "id": "blow-down",
   "triggers": [
     "huffs and puffs",
@@ -16,7 +16,7 @@
     "takes a deep breath and blows",
     "fills his lungs"
   ],
-  "seconds": 3.6,
+  "seconds": 4.6,
   "roles": {
     "agent": {
       "kind": "cast",
@@ -52,7 +52,8 @@
         "dx": 0.0,
         "dy": 0.43,
         "scale": 0.3
-      }
+      },
+      "max": 3
     }
   },
   "persist": {
@@ -63,34 +64,111 @@
     {
       "at": 0.0,
       "role": "agent",
-      "pose": "lean",
-      "_comment": "anticipation — the biggest single contributor to a gag reading"
+      "expression": "face_angry"
     },
     {
-      "at": 0.55,
+      "at": 0.0,
+      "role": "occupant",
+      "expression": "face_worried"
+    },
+    {
+      "at": 0.05,
+      "role": "agent",
+      "parts": {
+        "body": {
+          "rotate": -5
+        },
+        "head": {
+          "rotate": -7
+        }
+      },
+      "_comment": "the wind-up begins — stepped, because part transforms SNAP and stepping is how limited animation moves"
+    },
+    {
+      "at": 0.25,
+      "role": "agent",
+      "parts": {
+        "body": {
+          "rotate": -10
+        },
+        "head": {
+          "rotate": -14
+        }
+      }
+    },
+    {
+      "at": 0.45,
+      "role": "agent",
+      "parts": {
+        "body": {
+          "rotate": -15
+        },
+        "head": {
+          "rotate": -20
+        }
+      }
+    },
+    {
+      "at": 0.45,
       "role": "agent",
       "move": {
-        "scaleBy": 1.08
+        "scaleBy": 1.12
       },
       "eased": true,
-      "_comment": "the inhale, as an eased whole-actor scale RELATIVE to the mark: poseParts do NOT tween, whole-actor moves do. `scaleBy` not `scale` — staging places a character at 0.62, so an absolute 1.08 is a 1.74x giant."
+      "_comment": "the inhale, eased — whole-actor moves TWEEN where parts do not"
+    },
+    {
+      "at": 0.7,
+      "role": "agent",
+      "parts": {
+        "body": {
+          "rotate": -18
+        },
+        "head": {
+          "rotate": -24
+        }
+      }
+    },
+    {
+      "at": 1.05,
+      "sound": "gasp",
+      "gain": 0.5,
+      "_comment": "the breath drawn in, under the hold"
     },
     {
       "at": 1.25,
       "role": "agent",
-      "pose": "idle"
+      "parts": {
+        "body": {
+          "rotate": 12
+        },
+        "head": {
+          "rotate": 16
+        }
+      },
+      "_comment": "THE BLOW — 36 degrees of swing in one frame, which is the whole point"
+    },
+    {
+      "at": 1.25,
+      "role": "agent",
+      "move": {
+        "dx": 0.1,
+        "scaleBy": 1.0
+      },
+      "eased": false,
+      "duration": 0.15,
+      "_comment": "the lurch into the blow. An explicit duration, because a move without one spreads over the whole rest of the shot and a snap becomes a slow drift."
     },
     {
       "at": 1.25,
       "sound": "whoosh",
-      "gain": 0.9
+      "gain": 0.95
     },
     {
       "at": 1.25,
       "effect": "ts_fx_speedlines",
       "fromRole": "agent",
-      "toRole": "structure",
-      "_comment": "the blow travelling across the gap — explicit endpoints, resolved at bind time"
+      "toRole": "structure"
     },
     {
       "at": 1.35,
@@ -104,9 +182,26 @@
       "duration": 0.5
     },
     {
+      "at": 1.48,
+      "role": "agent",
+      "parts": {
+        "body": {
+          "rotate": 17
+        },
+        "head": {
+          "rotate": 21
+        }
+      }
+    },
+    {
       "at": 1.55,
       "sound": "wind",
       "gain": 0.7
+    },
+    {
+      "at": 1.6,
+      "role": "occupant",
+      "expression": "face_surprised"
     },
     {
       "at": 2.35,
@@ -131,9 +226,46 @@
       "dy": 0.22
     },
     {
+      "at": 2.6,
+      "role": "occupant",
+      "move": {
+        "dx": -0.3,
+        "dy": 0.0,
+        "scaleBy": 2.0
+      },
+      "toRole": "structure",
+      "eased": true,
+      "_comment": "out of the wreckage. The occupant was staged at WINDOW height, so when the house flattened they stayed floating in mid-air above the heap. scaleBy 2.0 against their 0.30 window mark returns them to roughly full size on the ground."
+    },
+    {
       "at": 3.1,
       "role": "agent",
-      "pose": "idle",
+      "parts": {
+        "body": {
+          "rotate": 6
+        },
+        "head": {
+          "rotate": 5
+        }
+      }
+    },
+    {
+      "at": 3.6,
+      "role": "agent",
+      "parts": {}
+    },
+    {
+      "at": 3.6,
+      "role": "agent",
+      "expression": "face_happy"
+    },
+    {
+      "at": 4.2,
+      "role": "agent",
+      "move": {
+        "scaleBy": 1.0
+      },
+      "eased": true,
       "hold": true
     }
   ]

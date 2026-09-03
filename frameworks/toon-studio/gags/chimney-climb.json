@@ -1,0 +1,130 @@
+{
+  "_source_of_truth": "frameworks/toon-studio/gags/chimney-climb.json",
+  "_comment": "The wolf goes up the roof and down the chimney. ENTIRELY tier 1-2: whole-actor x/y/scale, a hide, sounds and an effect. It touches no part of any rig, declares no pose and needs no new art, which is why it works on ANY character against ANY prop that can be climbed. The perspective is sold by scaling DOWN as he rises - a cheat every cutout show uses, because a character who gets smaller as he goes up reads as going AWAY, and nobody has to draw a back view.\n\nThe payoff is deliberately offscreen. A splash from inside a house you cannot see into is funnier and costs nothing; animating a wolf hitting water would be tier 5.\n\nEVERY MOVE CARRIES A DURATION. A move with none eases over the REST OF THE SHOT, so a three-step climb never finished: the wolf was still drifting up the wall when the `hide` fired at 2.68 and he vanished halfway. Multi-step travel MUST time each leg, or only the last one has room to complete.",
+  "id": "chimney-climb",
+  "triggers": [
+    "climbed down the chimney",
+    "climbs down the chimney",
+    "down the chimney",
+    "up onto the roof",
+    "onto the roof",
+    "up the chimney",
+    "into the chimney",
+    "climbed onto the roof",
+    "up the drainpipe"
+  ],
+  "seconds": 4.2,
+  "roles": {
+    "agent": {
+      "kind": "cast",
+      "needsAnyOf": {
+        "poses": [
+          "idle"
+        ]
+      }
+    },
+    "structure": {
+      "kind": "prop",
+      "_comment": "Whatever house is standing here. No clip needed and no pose needed - he climbs ON it, he does not break it, so every house in the family qualifies and so will the next one.",
+      "conjure": [
+        "ts_prop_house_straw",
+        "ts_prop_house_stick",
+        "ts_prop_house_brick"
+      ],
+      "placeScale": 1.4
+    }
+  },
+  "beats": [
+    {
+      "at": 0.0,
+      "role": "agent",
+      "pose": "idle"
+    },
+    {
+      "at": 0.22,
+      "role": "agent",
+      "toRole": "structure",
+      "move": {
+        "dx": -0.3
+      },
+      "eased": true,
+      "_comment": "cross to the foot of the house. `toRole` resolves against the STRUCTURE's mark at bind time, so this is right wherever the story put the house.",
+      "duration": 0.45
+    },
+    {
+      "at": 0.75,
+      "sound": "scrape",
+      "gain": 0.7
+    },
+    {
+      "at": 0.8,
+      "role": "agent",
+      "toRole": "structure",
+      "move": {
+        "dx": -0.08,
+        "dy": 0.62,
+        "scaleBy": 0.84
+      },
+      "eased": true,
+      "_comment": "up the roof slope. Scaling DOWN as he rises sells the perspective - a character who shrinks as he climbs reads as going AWAY, and nobody has to draw a back view.",
+      "duration": 0.7
+    },
+    {
+      "at": 1.55,
+      "sound": "footsteps",
+      "gain": 0.5
+    },
+    {
+      "at": 1.7,
+      "role": "agent",
+      "toRole": "structure",
+      "move": {
+        "dx": 0.22,
+        "dy": 1.02,
+        "scaleBy": 0.64
+      },
+      "eased": true,
+      "_comment": "onto the chimney stack. The brick house puts its chimney at prop-local x 0.16-0.29, y 0.72-0.96.",
+      "duration": 0.65
+    },
+    {
+      "at": 2.45,
+      "role": "agent",
+      "pose": "idle"
+    },
+    {
+      "at": 2.68,
+      "role": "agent",
+      "hide": true,
+      "_comment": "in he goes"
+    },
+    {
+      "at": 2.74,
+      "effect": "ts_fx_smoke",
+      "atRole": "structure",
+      "dy": 1.35
+    },
+    {
+      "at": 3.0,
+      "sound": "splash",
+      "gain": 1.0
+    },
+    {
+      "at": 3.05,
+      "shake": 0.05,
+      "duration": 0.5,
+      "_comment": "the payoff is OFFSCREEN on purpose. A splash from inside a house you cannot see into is funnier and costs nothing; animating a wolf hitting water would be tier 5."
+    },
+    {
+      "at": 3.25,
+      "effect": "ts_fx_burst",
+      "atRole": "structure",
+      "dy": 1.3
+    },
+    {
+      "at": 3.7,
+      "sound": "boom",
+      "gain": 0.55
+    }
+  ]
+}

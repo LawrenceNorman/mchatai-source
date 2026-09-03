@@ -1,0 +1,206 @@
+{
+  "_source_of_truth": "frameworks/toon-studio/gags/bounce-for-joy.json",
+  "_comment": "Four bounces of decreasing height - 0.34, 0.21, 0.12, 0.05 - so the arc dies out like a dropped ball instead of stopping dead. That decay IS the comedy: a character too happy to stand still, running out of spring. PURE tier 1-3. The bounce itself is a whole-actor `move.dy` because whole-actor moves TWEEN and that is the only thing that gives air time; the squash and stretch are ad-hoc `parts` transforms on `body`, which SNAP, which is exactly right for a takeoff and a landing. No arms are animated, because arms are not a guaranteed part - the vertical stretch reads as arms-up and costs nothing.\n\nSEMANTIC NOTE: `move.dy` is treated as an offset from the mark the role was bound to, the same as a role `at.dy`, so `dy: 0.0` is the ground. Every bounce lands back at 0.0 and the gag ends on the ground with no scale touched at all.\n\nDeliberately NOT animated: legs, arms, any clip. Nothing here needs a rig to declare anything.",
+  "id": "bounce-for-joy",
+  "triggers": [
+    "jumps for joy",
+    "jumped for joy",
+    "leaps for joy",
+    "leapt for joy",
+    "bounces up and down",
+    "bounced up and down",
+    "hops up and down",
+    "hopped up and down",
+    "jumping up and down with excitement",
+    "dances a little jig",
+    "danced a little jig",
+    "skips with delight"
+  ],
+  "seconds": 3.2,
+  "roles": {
+    "agent": {
+      "kind": "cast",
+      "needsAnyOf": {
+        "parts": [
+          "body"
+        ]
+      },
+      "_comment": "ToonRigRepair guarantees body/head/mouth/eyes on every character rig, so this casts on anything that will ever be made."
+    }
+  },
+  "beats": [
+    {
+      "at": 0.0,
+      "role": "agent",
+      "expression": "face_happy"
+    },
+    {
+      "at": 0.2,
+      "role": "agent",
+      "parts": {
+        "body": {
+          "scaleY": 0.84,
+          "scaleX": 1.12
+        }
+      },
+      "_comment": "the crouch, HELD 0.28s before anything moves. This is the whole gag - a bounce with no anticipation reads as a rendering glitch."
+    },
+    {
+      "at": 0.48,
+      "role": "agent",
+      "parts": {
+        "body": {
+          "scaleY": 1.12,
+          "scaleX": 0.92
+        }
+      },
+      "_comment": "stretch on takeoff. Parts SNAP, so the change from crouch to stretch happens on one frame, which is what sells the pop."
+    },
+    {
+      "at": 0.48,
+      "role": "agent",
+      "move": {
+        "dy": 0.34
+      },
+      "eased": true,
+      "_comment": "bounce 1, the tallest. Eased whole-actor move = real air time. No `scale` and no `scaleBy` anywhere in this gag, so there is no stage scale to restore."
+    },
+    {
+      "at": 0.48,
+      "sound": "pop",
+      "gain": 0.8
+    },
+    {
+      "at": 0.52,
+      "effect": "ts_fx_sparkle",
+      "atRole": "agent",
+      "dy": 0.52
+    },
+    {
+      "at": 0.72,
+      "role": "agent",
+      "parts": {},
+      "_comment": "at the apex the body goes back to rest - an empty transform set restores the rig's own rest pose. Floating in neutral at the top of the arc is what reads as hang time."
+    },
+    {
+      "at": 0.9,
+      "role": "agent",
+      "move": {
+        "dy": 0.0
+      },
+      "eased": true,
+      "_comment": "back down to the mark"
+    },
+    {
+      "at": 0.94,
+      "sound": "pop",
+      "gain": 0.5
+    },
+    {
+      "at": 1.08,
+      "role": "agent",
+      "parts": {
+        "body": {
+          "scaleY": 0.88,
+          "scaleX": 1.1
+        }
+      },
+      "_comment": "landing squash, 0.18s after the move so it is visible at 12fps"
+    },
+    {
+      "at": 1.1,
+      "shake": 0.016,
+      "duration": 0.22,
+      "_comment": "a small one, on the biggest landing only. Joy is not an earthquake."
+    },
+    {
+      "at": 1.28,
+      "role": "agent",
+      "parts": {}
+    },
+    {
+      "at": 1.28,
+      "role": "agent",
+      "move": {
+        "dy": 0.21
+      },
+      "eased": true,
+      "_comment": "bounce 2 - about 60% of the first"
+    },
+    {
+      "at": 1.32,
+      "sound": "pop",
+      "gain": 0.45
+    },
+    {
+      "at": 1.62,
+      "role": "agent",
+      "move": {
+        "dy": 0.0
+      },
+      "eased": true
+    },
+    {
+      "at": 1.8,
+      "role": "agent",
+      "parts": {
+        "body": {
+          "scaleY": 0.92,
+          "scaleX": 1.06
+        }
+      },
+      "_comment": "shallower squash - the squash decays with the bounce"
+    },
+    {
+      "at": 2.0,
+      "role": "agent",
+      "parts": {}
+    },
+    {
+      "at": 2.0,
+      "role": "agent",
+      "move": {
+        "dy": 0.12
+      },
+      "eased": true,
+      "_comment": "bounce 3"
+    },
+    {
+      "at": 2.04,
+      "sound": "pop",
+      "gain": 0.3
+    },
+    {
+      "at": 2.28,
+      "role": "agent",
+      "move": {
+        "dy": 0.0
+      },
+      "eased": true
+    },
+    {
+      "at": 2.48,
+      "role": "agent",
+      "move": {
+        "dy": 0.05
+      },
+      "eased": true,
+      "_comment": "bounce 4 - barely off the floor, silent. The one that says the spring is gone."
+    },
+    {
+      "at": 2.66,
+      "role": "agent",
+      "move": {
+        "dy": 0.0
+      },
+      "eased": true,
+      "_comment": "put down. Back on the mark, body already at rest - the gag leaves nothing behind."
+    },
+    {
+      "at": 2.9,
+      "role": "agent",
+      "expression": "face_happy",
+      "hold": true
+    }
+  ]
+}

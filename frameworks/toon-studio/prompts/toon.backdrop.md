@@ -33,6 +33,33 @@ COORDINATES — stage space:
   too big — shrink it before answering. Draw a HOUSE the audience can see the
   shape of, not a wall that fills the screen.
 
+## DO NOT DRAW THE THING THE STORY ACTS ON
+
+A backdrop is a PLACE. It is never a cue target: it has no poses, it cannot be
+moved, entered, climbed, opened or broken. So anything the story DOES something
+to must not be painted into it.
+
+If the location is named for a building the story enters, blows down, climbs,
+burns, hides inside or knocks on — "the straw house", "the witch's cottage",
+"the castle gate" — then **draw the setting and leave that building out.** The
+clearing, the lane, the hill line, the fence, the ground, the sky at the right
+hour. The building itself arrives separately as a PROP, which can carry a window
+with somebody visible in it, and can fall down.
+
+Painting it into the set produces two of it — a scenic one that cannot move and
+a real one beside it — and the scenic one is always the bigger, so the audience
+watches the wrong house survive while a small one collapses next to it.
+
+  location "the straw house"  → a clearing: grass, a path, a fence, a far hill,
+                                dawn sky. NO house.
+  location "outside the mill" → the millpond, reeds, the track. NO mill.
+  location "a village square" → the square. Buildings that are pure SCENERY,
+                                that nobody enters, are fine — a row of facades
+                                behind the action is a place, not a prop.
+
+The test is one question: **does anybody in this story touch it?** If yes, leave
+it out. If it is only ever looked at, draw it.
+
 ## THE SKY IS A GRADIENT
 
 A flat single-colour sky is the strongest "cheap cutout" tell there is, and dusk

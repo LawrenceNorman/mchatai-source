@@ -1,0 +1,146 @@
+{
+  "_source_of_truth": "frameworks/toon-studio/gags/freeze.json",
+  "_comment": "The stop. Half a second of motion - an eased step forward, head leaning in, mouth opening to say something - then ONE flash and everything stops for 1.7 seconds. The comedy is entirely in the dead air: on a 12fps engine 1.7s is twenty frames of nothing, long past the point where an audience starts wondering if the film has broken, which is exactly the feeling being bought. Nothing at all moves between 0.80 (the last frame of the camera hit) and 2.30; the single low heartbeat at 1.40 exists only to prove the film is still running.\n\nThe caught pose SNAPS because `parts` do not tween - head thrown the other way, eyes blown up 1.3x, mouth caught open at 1.5x - and then it is simply never touched again. The release at the end is deliberately unceremonious: a pop, back to rest, a worried face. Tier 1-3 only (one whole-actor move, ad-hoc `parts` on head/eyes/mouth, three expressions, one stock effect, three stock sounds), so it casts on every rig with no new art.\n\nWhat it deliberately does NOT animate: the freeze itself. A freeze that is animated is not a freeze.",
+  "id": "freeze",
+  "triggers": [
+    "freezes in place",
+    "froze in place",
+    "stops dead in his tracks",
+    "stopped dead in his tracks",
+    "freezes mid-step",
+    "frozen to the spot",
+    "rooted to the spot",
+    "does not move a muscle",
+    "did not move a muscle",
+    "stands stock still",
+    "stood stock still",
+    "goes completely still"
+  ],
+  "seconds": 3.1,
+  "roles": {
+    "agent": {
+      "kind": "cast",
+      "needsAnyOf": {
+        "parts": [
+          "head"
+        ]
+      }
+    }
+  },
+  "beats": [
+    {
+      "at": 0.0,
+      "role": "agent",
+      "expression": "face_suspicious",
+      "_comment": "mid-thought, going about his business - the freeze needs something to interrupt"
+    },
+    {
+      "at": 0.04,
+      "role": "agent",
+      "move": {
+        "dx": 0.05
+      },
+      "eased": true,
+      "_comment": "an eased step forward. This is the ONLY whole-actor movement in the gag, and it is here so that the stop has something to stop."
+    },
+    {
+      "at": 0.06,
+      "role": "agent",
+      "parts": {
+        "head": {
+          "rotate": 7
+        }
+      }
+    },
+    {
+      "at": 0.3,
+      "role": "agent",
+      "parts": {
+        "head": {
+          "rotate": 10
+        },
+        "mouth": {
+          "scaleY": 1.2
+        }
+      },
+      "_comment": "leaning further in, mouth starting to open - he is about to say something he never says"
+    },
+    {
+      "at": 0.55,
+      "sound": "sting_reveal",
+      "gain": 1.0
+    },
+    {
+      "at": 0.56,
+      "effect": "ts_fx_flash",
+      "atRole": "agent",
+      "dy": 0.3,
+      "_comment": "ONE flash. A second one would turn a freeze into a strobe."
+    },
+    {
+      "at": 0.57,
+      "role": "agent",
+      "expression": "face_surprised"
+    },
+    {
+      "at": 0.58,
+      "role": "agent",
+      "parts": {
+        "head": {
+          "rotate": -9
+        },
+        "eyes": {
+          "scale": 1.3
+        },
+        "mouth": {
+          "scaleY": 1.5
+        }
+      },
+      "_comment": "caught. Snaps to this and is never touched again for the next 1.7 seconds."
+    },
+    {
+      "at": 0.6,
+      "shake": 0.03,
+      "duration": 0.2,
+      "_comment": "the camera hit on the stop, and it is OVER by 0.80 - the stillness that follows has to be total, including the camera. 0.20 is the FLOOR, not a taste call: shake renders as sin(t * 53) sampled per frame, so a window shorter than 0.17s catches a single frame at an arbitrary phase and can land on a zero crossing, i.e. no shake at all. Every other shake in the pack is 0.22-0.55."
+    },
+    {
+      "at": 1.4,
+      "sound": "heartbeat",
+      "gain": 0.45,
+      "_comment": "the only event in the dead air. Nothing on screen changes; this just marks how long it has been."
+    },
+    {
+      "at": 2.3,
+      "sound": "pop",
+      "gain": 0.6
+    },
+    {
+      "at": 2.34,
+      "role": "agent",
+      "parts": {},
+      "_comment": "release - empty set puts head, eyes and mouth back to the rig's rest pose"
+    },
+    {
+      "at": 2.4,
+      "role": "agent",
+      "expression": "face_worried"
+    },
+    {
+      "at": 2.5,
+      "role": "agent",
+      "move": {
+        "dx": 0.0,
+        "scaleBy": 1.0
+      },
+      "eased": true,
+      "_comment": "back on the mark. The step forward would otherwise carry to the end of the scene."
+    },
+    {
+      "at": 2.8,
+      "role": "agent",
+      "expression": "face_worried",
+      "hold": true
+    }
+  ]
+}

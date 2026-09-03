@@ -1,0 +1,170 @@
+{
+  "_source_of_truth": "frameworks/toon-studio/gags/jiggle.json",
+  "_comment": "The about-to-break wobble. A PROP role with no needsAnyOf, so any prop can rattle.\n\nOne channel only: alternating whole-actor dx, 0.18s apart — a shade over the two-frame floor at 12fps, which is the fastest a wobble can go and still be SEEN rather than aliasing into a blur.\n\nEVERY MOVE BEAT CARRIES AN EXPLICIT `duration`, AND MUST. A move cue with no duration runs its tween to the END OF THE SHOT (ToonProject.swift: `cue.duration.map { ... } ?? (shotStart + duration)`), so an 0.18s swing would complete about a tenth of its travel before the next beat superseded it — and the next swing, starting from that barely-moved position and heading the other way, cancels it. Authored at +/-0.022 this gag rendered at +/-0.0006 and the prop stood still. A short duration makes each swing LAND on its extreme within one frame and HOLD there until the next, which is what a rattle actually is.\n\nThe amplitude ESCALATES, 0.006 to 0.022: a constant-amplitude shake is a machine, a growing one is something losing the argument with gravity. eased:false so each swing snaps rather than gliding.\n\nIt deliberately does NOT break the prop — it stops on a shake, a dust puff and a settle back to the mark, so it can be dropped in front of topple-over or used alone for a thing that survives. The settle is the one eased move, and its duration is bounded too so it actually REACHES dx 0 before the cut: position is never auto-restored by the binder (only scale is), so an unfinished settle leaks to the end of the scene.",
+  "id": "jiggle",
+  "triggers": [
+    "begins to wobble",
+    "began to wobble",
+    "wobbles dangerously",
+    "shakes and rattles",
+    "shook and rattled",
+    "rattles on the shelf",
+    "rattled on the shelf",
+    "trembles violently",
+    "trembled violently",
+    "starts to shudder",
+    "shuddering in place",
+    "rattling as if it might break"
+  ],
+  "seconds": 2.2,
+  "roles": {
+    "object": {
+      "kind": "prop",
+      "_comment": "No needsAnyOf. Nothing has to be declared for a prop to shake."
+    }
+  },
+  "beats": [
+    {
+      "at": 0.0,
+      "sound": "scrape",
+      "gain": 0.45,
+      "_comment": "the strain, on frame one"
+    },
+    {
+      "at": 0.0,
+      "role": "object",
+      "move": {
+        "dx": -0.006
+      },
+      "eased": false,
+      "duration": 0.06,
+      "_comment": "eased:false throughout — a wobble SNAPS between extremes. Whole-actor moves ease by default, which would round the corners off the rattle and make it read as a gentle sway."
+    },
+    {
+      "at": 0.18,
+      "role": "object",
+      "move": {
+        "dx": 0.007
+      },
+      "eased": false,
+      "duration": 0.06
+    },
+    {
+      "at": 0.36,
+      "role": "object",
+      "move": {
+        "dx": -0.008
+      },
+      "eased": false,
+      "duration": 0.06
+    },
+    {
+      "at": 0.54,
+      "role": "object",
+      "move": {
+        "dx": 0.01
+      },
+      "eased": false,
+      "duration": 0.06
+    },
+    {
+      "at": 0.72,
+      "role": "object",
+      "move": {
+        "dx": -0.011
+      },
+      "eased": false,
+      "duration": 0.06
+    },
+    {
+      "at": 0.9,
+      "sound": "scrape",
+      "gain": 0.55,
+      "_comment": "second strain, louder, at the halfway mark — the audio escalates with the amplitude"
+    },
+    {
+      "at": 0.9,
+      "role": "object",
+      "move": {
+        "dx": 0.013
+      },
+      "eased": false,
+      "duration": 0.06
+    },
+    {
+      "at": 1.08,
+      "role": "object",
+      "move": {
+        "dx": -0.014
+      },
+      "eased": false,
+      "duration": 0.06
+    },
+    {
+      "at": 1.26,
+      "role": "object",
+      "move": {
+        "dx": 0.016
+      },
+      "eased": false,
+      "duration": 0.06
+    },
+    {
+      "at": 1.44,
+      "role": "object",
+      "move": {
+        "dx": -0.018
+      },
+      "eased": false,
+      "duration": 0.06
+    },
+    {
+      "at": 1.62,
+      "role": "object",
+      "move": {
+        "dx": 0.02
+      },
+      "eased": false,
+      "duration": 0.06
+    },
+    {
+      "at": 1.8,
+      "role": "object",
+      "move": {
+        "dx": -0.022
+      },
+      "eased": false,
+      "duration": 0.06,
+      "_comment": "widest swing of the gag, and the last one"
+    },
+    {
+      "at": 1.82,
+      "shake": 0.03,
+      "duration": 0.32,
+      "_comment": "the camera finally joins in, at the peak"
+    },
+    {
+      "at": 1.84,
+      "sound": "crumble",
+      "gain": 0.5,
+      "_comment": "the sound of something giving — but nothing actually breaks. The threat is the gag."
+    },
+    {
+      "at": 1.9,
+      "effect": "ts_fx_smoke",
+      "atRole": "object",
+      "dy": 0.02,
+      "_comment": "dust shaken loose at the base"
+    },
+    {
+      "at": 1.98,
+      "role": "object",
+      "move": {
+        "dx": 0.0
+      },
+      "eased": true,
+      "duration": 0.2,
+      "_comment": "and it settles. Eased this time, in contrast to the twelve snaps before it, and back to the mark — so this gag needs no separate hygiene beat."
+    }
+  ]
+}

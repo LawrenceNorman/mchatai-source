@@ -1,0 +1,123 @@
+{
+  "_source_of_truth": "frameworks/toon-studio/gags/swell-with-pride.json",
+  "_comment": "Slow. Everything else in the joy set is quick, and this one is the opposite - a small sink, then a long eased swell, then a HOLD of nearly a second where nothing moves at all, then the settle. The hold is the joke: pride is funny in proportion to how long the character stays inflated with nobody applauding.\n\nThe smooth part is a whole-actor `scaleBy` (which TWEENS); the chest-out is an ad-hoc `parts` transform on body + head (which SNAPS) landing at the TOP of the swell, so the puff arrives as one frame after a slow rise. That contrast is the entire effect and it costs no art.\n\n`scaleBy` NOT `scale` - staging places characters at 0.62, so an absolute 1.12 would be a giant. The gag returns to scaleBy 1.0 and parts {} so it leaves nothing behind for the rest of the scene.\n\nDeliberately NOT animated: arms on hips, a strut, any clip. There is no arm part to trust.",
+  "id": "swell-with-pride",
+  "triggers": [
+    "swells with pride",
+    "swelled with pride",
+    "puffs out his chest",
+    "puffs out her chest",
+    "puffed out his chest",
+    "puffs up with pride",
+    "beams with pride",
+    "beamed with pride",
+    "drew himself up to his full height",
+    "draws himself up to his full height",
+    "bursting with pride"
+  ],
+  "seconds": 3.4,
+  "roles": {
+    "agent": {
+      "kind": "cast",
+      "needsAnyOf": {
+        "parts": [
+          "body"
+        ]
+      },
+      "_comment": "body and head are both guaranteed by ToonRigRepair; needsAnyOf is ANY-of, so one entry is enough to declare the tier."
+    }
+  },
+  "beats": [
+    {
+      "at": 0.0,
+      "role": "agent",
+      "expression": "face_surprised",
+      "_comment": "taken aback first - the compliment landing. Swelling straight from happy has no arc."
+    },
+    {
+      "at": 0.2,
+      "role": "agent",
+      "move": {
+        "scaleBy": 0.97
+      },
+      "eased": true,
+      "_comment": "the sink. 3% down, and it is anticipation - the audience has to see him get smaller before he gets bigger."
+    },
+    {
+      "at": 0.65,
+      "role": "agent",
+      "move": {
+        "scaleBy": 1.12,
+        "dy": 0.02
+      },
+      "eased": true,
+      "_comment": "the swell itself, deliberately slow - 0.75s of eased travel. The tiny dy lifts him onto his toes as he inflates. RELATIVE to whatever mark he stands on."
+    },
+    {
+      "at": 0.7,
+      "sound": "shimmer",
+      "gain": 0.5
+    },
+    {
+      "at": 0.9,
+      "role": "agent",
+      "expression": "face_happy",
+      "_comment": "the face turns during the rise, not at the top - so the change is already made when the chest pops"
+    },
+    {
+      "at": 1.4,
+      "role": "agent",
+      "parts": {
+        "body": {
+          "scaleX": 1.09,
+          "scaleY": 1.05
+        },
+        "head": {
+          "rotate": -5,
+          "dy": 0.02
+        }
+      },
+      "_comment": "chest out, chin up, arriving on ONE frame at the top of the eased swell. Parts snap; that is why this reads as a puff and not as more of the same tween."
+    },
+    {
+      "at": 1.46,
+      "effect": "ts_fx_glow",
+      "atRole": "agent",
+      "dy": 0.3
+    },
+    {
+      "at": 2.05,
+      "effect": "ts_fx_sparkle",
+      "atRole": "agent",
+      "dy": 0.46,
+      "_comment": "the only thing that happens during the hold. Nearly a second where the character does not move is the point - do not fill it."
+    },
+    {
+      "at": 2.35,
+      "role": "agent",
+      "parts": {},
+      "_comment": "the deflate, snapping back to rest in one frame while the body scale is still up. Empty transform set = rig's own rest pose."
+    },
+    {
+      "at": 2.38,
+      "sound": "pop",
+      "gain": 0.35
+    },
+    {
+      "at": 2.55,
+      "role": "agent",
+      "move": {
+        "scaleBy": 1.0,
+        "dy": 0.0
+      },
+      "eased": true,
+      "_comment": "tidy up. scaleBy back to 1.0 and dy back to the mark - position and scale carry to the end of the SCENE, so a gag that does not restore them is permanent."
+    },
+    {
+      "at": 3.1,
+      "role": "agent",
+      "expression": "face_happy",
+      "hold": true
+    }
+  ]
+}

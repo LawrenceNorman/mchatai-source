@@ -8,6 +8,44 @@ not survive its second story.
 
 Adding a gag is a PR. No Swift, no rebuild.
 
+## What is cheap to animate
+
+The cost of a gag is decided by **which channel it moves**, not by how wild it
+looks. Check your idea against this before writing it.
+
+| Tier | Channel | Cost | Reach |
+|---|---|---|---|
+| 1 | whole-actor `move` — `x`/`y`/`dx`/`dy`/`scaleBy` | free, and it TWEENS | every rig, cast or prop |
+| 2 | `shake`, `effect`, `sound` | free, touches no rig | everything |
+| 3 | `expression`, and `parts` on `body`/`head`/`mouth`/`eyes` | free | every character |
+| 4 | a named **`clip`** the rig declares | one prop file | only rigs that declare it |
+| 5 | locomotion cycles, path-interpolated emission | hard, per rig | — |
+
+**Tiers 1–3 are free because `ToonRigRepair` guarantees it.** Every character
+rig gets `body`, `head`, `mouth`, `eyes`, visemes, a look pose and the six
+`face_*` expressions, synthesised if the author did not draw them. So a gag
+that touches only those casts on every character that will ever exist.
+`mind-blown` needed no new art and reaches 43/43.
+
+Tier 4 is not bad — it is a CONTRACT. `blow-down` requires a `collapse` clip,
+so any prop that declares one inherits the gag forever. But until some rig
+declares it, a tier-4 gag is dead content.
+
+Tier 5 is the exception, not the rule. Running was hard because locomotion is
+the one genuinely expensive thing; almost no slapstick is locomotion. A head
+that explodes and comes back is tier 1–3. So is a beanstalk growing, a wolf
+climbing a roof, a take, a stagger, a skid.
+
+Run `applet ToonStudio gagCoverage` to see what every gag can currently cast
+on. A gag that cannot cast is SILENT, and silent looks exactly like a gag
+nobody wrote.
+
+**Sanity-check new gags** with `validate_gags.py` — it catches the failures that
+are invisible at runtime: a sound or effect name that does not exist (plays as
+silence, reports success), an absolute `scale` where `scaleBy` was meant, two
+beats on one channel closer than 2 frames at 12fps, a part transform never
+restored, and single-word triggers that will misfire.
+
 ## Shape
 
 ```json
@@ -71,6 +109,11 @@ Adding a gag is a PR. No Swift, no rebuild.
    nothing plays as silence and reports success.
 4. **Effects spawn at an explicit `move`.** Anchoring to a target resolves at
    shot start, not cue time.
+4b. **Every move in a multi-step journey needs a `duration`.** A move without
+   one eases over the ENTIRE REST OF THE SHOT. One move is fine; three in a row
+   means legs 1 and 2 are still travelling when leg 3 starts, and whatever
+   follows — a `hide`, a landing — fires while the actor is still halfway.
+   The chimney climb vanished a wolf drifting up a wall because of this.
 5. **Scale a body with `scaleBy`, never `scale`.** `move.scale` is ABSOLUTE
    stage scale and staging places a character at 0.62, so an author writing
    `"scale": 1.08` for "inhale a little" gets a 1.74x giant. `scaleBy` is a

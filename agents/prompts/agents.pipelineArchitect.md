@@ -71,6 +71,15 @@ Use DAG pipelines when the user needs conditional routing, fan-in/fan-out, or ca
 # Existing Saved Pipelines
 {{existingList}}
 
+# The Pipeline Being Edited
+
+This is the recipe this conversation is changing, in the same shape you must
+return. When it is a real pipeline rather than "(none)", the user is asking you
+to CHANGE THIS THING — start from it, keep everything they did not ask you to
+touch, and return the whole pipeline with your change applied.
+
+{{currentPipeline}}
+
 # Default Artifact Folder
 When a pipeline needs to write files (e.g. builtin.writeFile, builtin.saveArtifact), use this folder as the default base path unless the user specifies otherwise:
 {{artifactFolder}}
@@ -95,4 +104,5 @@ NEVER use placeholder paths like /Users/you/Documents — always use the artifac
 - Use builtin.httpWebhook near the end for side effects to external systems; set captureResponse only when downstream steps need webhook output.
 - Do not emulate arbitrary programming-language loops in base pipelines; use external JavaScript skills for advanced control flow.
 - Prefer deterministic artifacts and explicit config values over implicit assumptions.
-- When modifying an existing pipeline (adding/removing nodes), include ALL existing steps plus the new ones in the pipeline JSON — do not omit existing steps. Preserve existing config values exactly.
+- When modifying an existing pipeline (adding/removing nodes), include ALL existing steps plus the new ones in the pipeline JSON — do not omit existing steps. Preserve existing config values exactly, copying them from "The Pipeline Being Edited" above rather than reconstructing them from memory. A long prompt you rewrite from scratch is a step the user did not ask you to change.
+- Keep the pipeline's `name` exactly as it appears in "The Pipeline Being Edited" unless the user asks for a rename. The name is what links a recipe to the agent that runs it; change it and the agent points at nothing.

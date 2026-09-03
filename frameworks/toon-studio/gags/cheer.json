@@ -1,0 +1,146 @@
+{
+  "_source_of_truth": "frameworks/toon-studio/gags/cheer.json",
+  "_comment": "Arms in the air, without any arms. There is no guaranteed arm part on a rig, so the arms-up read is faked the way limited animation has always faked it: a hard vertical STRETCH of the body (scaleY up, scaleX in) snapping out of a crouch, a whole-actor scaleBy pop with a bit of lift, sparkle over the head and a triumph sting. The audience supplies the arms.\n\nThe comedy is entirely in the 0.30s crouch before it - the wind-up is longer than the whoop. Face goes happy -> surprised (the open-mouth shout) -> happy, which is the closest the six faces get to a cheer.\n\nDeliberately NOT animated: arms, hat-throwing, any clip. Everything here works on the day a rig is generated, with no declarations.",
+  "id": "cheer",
+  "triggers": [
+    "lets out a cheer",
+    "let out a cheer",
+    "throws his arms in the air",
+    "throws her arms in the air",
+    "threw his arms in the air",
+    "punches the air",
+    "gives a great cheer",
+    "raises a cheer",
+    "whoops with delight",
+    "shouts hooray",
+    "shouted hooray",
+    "breaks into a cheer"
+  ],
+  "seconds": 2.4,
+  "roles": {
+    "agent": {
+      "kind": "cast",
+      "needsAnyOf": {
+        "parts": [
+          "body"
+        ]
+      }
+    }
+  },
+  "beats": [
+    {
+      "at": 0.0,
+      "role": "agent",
+      "expression": "face_happy"
+    },
+    {
+      "at": 0.22,
+      "role": "agent",
+      "parts": {
+        "body": {
+          "scaleY": 0.85,
+          "scaleX": 1.1
+        },
+        "head": {
+          "dy": -0.02
+        }
+      },
+      "_comment": "the crouch, held 0.30s. Longer than the cheer it launches - that asymmetry is the gag."
+    },
+    {
+      "at": 0.52,
+      "role": "agent",
+      "parts": {
+        "body": {
+          "scaleY": 1.16,
+          "scaleX": 0.9
+        },
+        "head": {
+          "dy": 0.04
+        }
+      },
+      "_comment": "the arms-up read: a hard stretch snapping out of the crouch on one frame. Parts do not tween, which is exactly what is wanted here."
+    },
+    {
+      "at": 0.52,
+      "role": "agent",
+      "move": {
+        "scaleBy": 1.1,
+        "dy": 0.1
+      },
+      "eased": true,
+      "_comment": "the pop, RELATIVE - scaleBy on the mark, never `scale`."
+    },
+    {
+      "at": 0.52,
+      "sound": "triumph",
+      "gain": 0.85
+    },
+    {
+      "at": 0.56,
+      "effect": "ts_fx_sparkle",
+      "atRole": "agent",
+      "dy": 0.48
+    },
+    {
+      "at": 0.7,
+      "role": "agent",
+      "expression": "face_surprised",
+      "_comment": "open mouth = the shout. 0.18s after the stretch so it is not eaten by the same frame at 12fps."
+    },
+    {
+      "at": 0.74,
+      "shake": 0.02,
+      "duration": 0.25
+    },
+    {
+      "at": 0.95,
+      "effect": "ts_fx_sparkle",
+      "atRole": "agent",
+      "dy": 0.3
+    },
+    {
+      "at": 1.1,
+      "role": "agent",
+      "expression": "face_happy"
+    },
+    {
+      "at": 1.14,
+      "role": "agent",
+      "move": {
+        "scaleBy": 1.0,
+        "dy": 0.0
+      },
+      "eased": true,
+      "_comment": "eased back down onto the mark - and this is also the restore, so nothing carries into the rest of the scene."
+    },
+    {
+      "at": 1.34,
+      "role": "agent",
+      "parts": {
+        "body": {
+          "scaleY": 0.94,
+          "scaleX": 1.06
+        }
+      },
+      "_comment": "small landing squash, arriving after the eased descent"
+    },
+    {
+      "at": 1.36,
+      "sound": "pop",
+      "gain": 0.45
+    },
+    {
+      "at": 1.56,
+      "role": "agent",
+      "parts": {},
+      "_comment": "back to the rig's rest pose"
+    },
+    {
+      "at": 1.85,
+      "role": "agent",
+      "expression": "face_happy",
+      "hold": true
+    }
+  ]
+}

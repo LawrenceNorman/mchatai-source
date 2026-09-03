@@ -1,0 +1,223 @@
+{
+  "_source_of_truth": "frameworks/toon-studio/gags/spin-around.json",
+  "_comment": "The cutout cheat for a spin. A whole actor cannot be rotated, so a revolution is sold by SQUASHING the actor horizontally to an edge-on sliver at the halfway point and popping back out - `parts` on `body` with a small scaleX, which snaps rather than tweens, which is precisely right: a revolution has no in-between frames in limited animation, it has a wide frame, a thin frame and a wide frame. Three revolutions, each thinner-sliver-shallower than the last (0.16 -> 0.20 -> 0.34) so the spin visibly slows down, then a head-thrown-by-momentum wobble and a settle.\n\nEach thin frame is held 0.20-0.22s - well over the 0.17s two-frame floor at 12fps - because a sliver that lands and leaves inside two frames is not a spin, it is a flicker. The anticipation is the 0.4s wind-up LEAN in the opposite direction before anything moves; without it the first squash reads as a rendering glitch.\n\nWhat it deliberately does NOT animate: any actual rotation, and the arms - there are none guaranteed. Tier 1-3 only, so it casts on every rig.",
+  "id": "spin-around",
+  "triggers": [
+    "spins around",
+    "spun around",
+    "whirls around",
+    "whirled around",
+    "spins on his heel",
+    "spun on his heel",
+    "twirls around",
+    "spins in a circle",
+    "spun in a circle",
+    "spinning like a top",
+    "does a full spin",
+    "whips round to face"
+  ],
+  "seconds": 2.7,
+  "roles": {
+    "agent": {
+      "kind": "cast",
+      "needsAnyOf": {
+        "parts": [
+          "body"
+        ]
+      }
+    }
+  },
+  "beats": [
+    {
+      "at": 0.0,
+      "role": "agent",
+      "expression": "face_surprised"
+    },
+    {
+      "at": 0.02,
+      "role": "agent",
+      "parts": {
+        "head": {
+          "rotate": -12
+        }
+      },
+      "_comment": "wind up AGAINST the spin - the head cocks the wrong way first"
+    },
+    {
+      "at": 0.05,
+      "role": "agent",
+      "move": {
+        "dx": -0.03
+      },
+      "eased": true,
+      "_comment": "the lean back. Then NOTHING until 0.46 - that 0.4s hold is the anticipation, and it is the whole gag."
+    },
+    {
+      "at": 0.46,
+      "sound": "whoosh",
+      "gain": 0.95
+    },
+    {
+      "at": 0.48,
+      "effect": "ts_fx_speedlines",
+      "atRole": "agent",
+      "dy": 0.22
+    },
+    {
+      "at": 0.5,
+      "role": "agent",
+      "move": {
+        "dx": 0.0
+      },
+      "eased": true,
+      "_comment": "slides back onto the mark as the spin starts - a spin happens on the spot"
+    },
+    {
+      "at": 0.5,
+      "role": "agent",
+      "parts": {
+        "body": {
+          "scaleX": 0.16
+        },
+        "head": {
+          "scaleX": 0.3,
+          "rotate": 0
+        }
+      },
+      "_comment": "revolution 1, edge-on. The head stays a little wider than the body because a head read side-on still shows a nose."
+    },
+    {
+      "at": 0.72,
+      "role": "agent",
+      "parts": {
+        "body": {
+          "scaleX": 1.04
+        },
+        "head": {
+          "scaleX": 1.04
+        }
+      },
+      "_comment": "face-on again with a 4% overshoot - the snap outward is what sells the whip"
+    },
+    {
+      "at": 0.9,
+      "sound": "whoosh",
+      "gain": 0.8
+    },
+    {
+      "at": 0.92,
+      "role": "agent",
+      "parts": {
+        "body": {
+          "scaleX": 0.2
+        },
+        "head": {
+          "scaleX": 0.34
+        }
+      },
+      "_comment": "revolution 2 - a hair wider than the first, which is how the eye reads deceleration"
+    },
+    {
+      "at": 0.94,
+      "effect": "ts_fx_speedlines",
+      "atRole": "agent",
+      "dy": 0.22
+    },
+    {
+      "at": 1.14,
+      "role": "agent",
+      "parts": {
+        "body": {
+          "scaleX": 1.03
+        },
+        "head": {
+          "scaleX": 1.03
+        }
+      }
+    },
+    {
+      "at": 1.3,
+      "sound": "whoosh",
+      "gain": 0.6
+    },
+    {
+      "at": 1.32,
+      "role": "agent",
+      "parts": {
+        "body": {
+          "scaleX": 0.34
+        },
+        "head": {
+          "scaleX": 0.46
+        }
+      },
+      "_comment": "revolution 3, barely edge-on - the spin is running out"
+    },
+    {
+      "at": 1.54,
+      "role": "agent",
+      "parts": {
+        "body": {
+          "scaleX": 1.02
+        },
+        "head": {
+          "scaleX": 1.02,
+          "rotate": 8
+        }
+      },
+      "_comment": "lands facing front, head still carried past by its own momentum"
+    },
+    {
+      "at": 1.58,
+      "sound": "pop",
+      "gain": 0.7
+    },
+    {
+      "at": 1.6,
+      "effect": "ts_fx_sparkle",
+      "atRole": "agent",
+      "dy": 0.48
+    },
+    {
+      "at": 1.62,
+      "role": "agent",
+      "expression": "face_worried"
+    },
+    {
+      "at": 1.78,
+      "sound": "shimmer",
+      "gain": 0.5
+    },
+    {
+      "at": 1.8,
+      "role": "agent",
+      "parts": {
+        "head": {
+          "rotate": -6
+        }
+      },
+      "_comment": "the counter-wobble. Note this drops the scaleX keys, so the body is already back at rest width."
+    },
+    {
+      "at": 2.05,
+      "role": "agent",
+      "parts": {},
+      "_comment": "everything back to the rig's rest pose - nothing left squashed"
+    },
+    {
+      "at": 2.1,
+      "role": "agent",
+      "move": {
+        "dx": 0.0,
+        "scaleBy": 1.0
+      },
+      "eased": true
+    },
+    {
+      "at": 2.4,
+      "role": "agent",
+      "expression": "face_worried",
+      "hold": true
+    }
+  ]
+}

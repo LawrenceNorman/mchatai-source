@@ -1,0 +1,157 @@
+{
+  "_source_of_truth": "frameworks/toon-studio/gags/recoil.json",
+  "_comment": "The whole body flinches away from something. Built on one asymmetry: the character leans IN first (0.30, eased, 4% bigger and a touch closer) and then leaves in a single un-eased frame. A move with `eased` tweens and a move without it snaps, so the recoil itself is a hard cut to the new position - that snap IS the impact - while the recovery at 2.35 is eased and slow, which is what makes it read as nerve rather than as a teleport. Between them the body settles OUT twice, not in, so it is still backing away while it looks like it is coming back.\n\nDeliberately NOT animated: no run, no fall, no clip, no arms thrown up. The travel is whole-actor dx plus a scaleBy DOWN, which reads as retreating from camera and costs no art at all. Only `head` and `eyes` take part transforms, both ToonRigRepair guarantees. The final beat writes dx/dy 0.0 and scaleBy 1.0 explicitly - dx/dy are offsets from the bound mark and position carries to the end of the SCENE, so a recoil that forgets this leaves the character standing a stride to the left forever.\n\nTrigger note: 'staggers back' / 'reels backward' belong to `stagger-dizzy` and are deliberately NOT claimed here. A stagger is a character who has been HIT and cannot walk straight; a recoil is a character who has SEEN something and will not go near it. Two phrases pointing at two gags is how a wrong gag fires, so this one keeps to recoil/flinch/shrink phrasing and leaves the dizzy vocabulary alone. Bare 'shrinks back' is likewise left to `shrink-in-fear`: it is a substring of that gag's own phrases, so claiming it here would swallow their sentence on index order alone.",
+  "id": "recoil",
+  "triggers": [
+    "recoils in horror",
+    "recoiled in horror",
+    "recoils from the sight",
+    "flinches away",
+    "flinched away",
+    "draws back sharply",
+    "drew back sharply",
+    "starts back in fright",
+    "leaps back in fright",
+    "leapt back in fright",
+    "jumps back in alarm",
+    "backs away in horror"
+  ],
+  "seconds": 3.3,
+  "roles": {
+    "agent": {
+      "kind": "cast",
+      "needsAnyOf": {
+        "poses": [
+          "idle"
+        ]
+      }
+    }
+  },
+  "beats": [
+    {
+      "at": 0.0,
+      "role": "agent",
+      "pose": "idle",
+      "expression": "face_suspicious",
+      "parts": {},
+      "_comment": "rest, and a squint - leaning in to inspect whatever this is"
+    },
+    {
+      "at": 0.3,
+      "role": "agent",
+      "move": {
+        "dx": 0.014,
+        "scaleBy": 1.04
+      },
+      "eased": true,
+      "_comment": "ANTICIPATION, and it goes the WRONG WAY on purpose: in and slightly bigger. A recoil with no lean-in has nothing to recoil from. Held 0.36s - four frames at 12fps - before it is thrown away."
+    },
+    {
+      "at": 0.62,
+      "sound": "gasp",
+      "gain": 0.85,
+      "_comment": "leads the picture by half a frame"
+    },
+    {
+      "at": 0.66,
+      "role": "agent",
+      "expression": "face_surprised",
+      "move": {
+        "dx": -0.11,
+        "dy": 0.015,
+        "scaleBy": 0.9
+      },
+      "_comment": "THE RECOIL. No `eased` - this move SNAPS, and the snap is the impact. Back (dx), fractionally up off the heels (dy) and 10% smaller, which reads as away from camera without a single new drawing."
+    },
+    {
+      "at": 0.68,
+      "effect": "ts_fx_speedlines",
+      "atRole": "agent",
+      "dy": 0.3
+    },
+    {
+      "at": 0.7,
+      "shake": 0.045,
+      "duration": 0.35
+    },
+    {
+      "at": 0.72,
+      "sound": "whoosh",
+      "gain": 0.9
+    },
+    {
+      "at": 0.95,
+      "role": "agent",
+      "move": {
+        "dx": -0.075,
+        "dy": 0.0,
+        "scaleBy": 0.94
+      },
+      "eased": true,
+      "_comment": "overshoot recovered - drifts back toward the mark. Feet down."
+    },
+    {
+      "at": 1.2,
+      "role": "agent",
+      "move": {
+        "dx": -0.095,
+        "scaleBy": 0.92
+      },
+      "eased": true,
+      "_comment": "and OUT again, further than it just came in. The second thought is worse than the first; this is what stops the recovery reading as relief."
+    },
+    {
+      "at": 1.45,
+      "role": "agent",
+      "parts": {
+        "head": {
+          "rotate": -6,
+          "dy": -0.008
+        },
+        "eyes": {
+          "scale": 1.25
+        }
+      },
+      "_comment": "held out there with the eyes wide. A snap, on top of a body that is barely moving."
+    },
+    {
+      "at": 1.75,
+      "role": "agent",
+      "expression": "face_worried"
+    },
+    {
+      "at": 2.05,
+      "sound": "heartbeat",
+      "gain": 0.55,
+      "_comment": "under the hold. The only thing happening for 0.9s is a pulse."
+    },
+    {
+      "at": 2.35,
+      "role": "agent",
+      "move": {
+        "dx": 0.0,
+        "dy": 0.0,
+        "scaleBy": 1.0
+      },
+      "eased": true,
+      "_comment": "THE EASED RETURN, and the tidy-up in the same beat. Slow back to the mark it was bound to - a nervous edge back in, against a departure that took one frame."
+    },
+    {
+      "at": 2.55,
+      "role": "agent",
+      "parts": {},
+      "_comment": "eyes and head back to the rig's rest pose. Sits 0.20s after the eased return starts, not 0.10s - at 12fps a 0.10s gap is barely one frame, and a restore that lands on the same frame as the move before it is a restore nobody sees."
+    },
+    {
+      "at": 2.8,
+      "role": "agent",
+      "expression": "face_suspicious"
+    },
+    {
+      "at": 3.05,
+      "role": "agent",
+      "pose": "idle",
+      "hold": true
+    }
+  ]
+}

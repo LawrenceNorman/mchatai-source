@@ -1,0 +1,106 @@
+{
+  "_source_of_truth": "frameworks/toon-studio/gags/mind-blown.json",
+  "_comment": "The take. Head goes, comes back. PURE tier 1-3 - one expression and two ad-hoc `parts` transforms on `head`, which ToonRigRepair guarantees exists on every character rig along with body/mouth/eyes and six synthesised face_* poses. So this casts on every character that will ever be made: no rig authoring, no new art, no clip. It is the cheapest possible demonstration that the cheap tier is real.\n\nThe head does not fly apart - it is scaled to nothing under a burst. Nobody animates skull fragments in limited animation; the FX and the sound carry it, which is the whole economics of the form.",
+  "id": "mind-blown",
+  "triggers": [
+    "mind blown",
+    "mind-blown",
+    "head explodes",
+    "his head explodes",
+    "cannot believe",
+    "can't believe what",
+    "does a double take",
+    "double take",
+    "jaw drops",
+    "reels in disbelief"
+  ],
+  "seconds": 2.6,
+  "roles": {
+    "agent": {
+      "kind": "cast",
+      "needsAnyOf": {
+        "parts": [
+          "head"
+        ]
+      }
+    }
+  },
+  "beats": [
+    {
+      "at": 0.0,
+      "role": "agent",
+      "expression": "face_surprised"
+    },
+    {
+      "at": 0.3,
+      "role": "agent",
+      "move": {
+        "scaleBy": 1.06
+      },
+      "eased": true,
+      "_comment": "the anticipation swell - relative, so it is 6% of whatever mark this character stands on"
+    },
+    {
+      "at": 0.75,
+      "sound": "boom",
+      "gain": 1.0
+    },
+    {
+      "at": 0.75,
+      "role": "agent",
+      "parts": {
+        "head": {
+          "scale": 0.01
+        }
+      },
+      "_comment": "gone. An ad-hoc part transform, needing no pose on the rig."
+    },
+    {
+      "at": 0.78,
+      "effect": "ts_fx_burst",
+      "atRole": "agent",
+      "dy": 0.42
+    },
+    {
+      "at": 0.82,
+      "shake": 0.055,
+      "duration": 0.45
+    },
+    {
+      "at": 1.05,
+      "effect": "ts_fx_smoke",
+      "atRole": "agent",
+      "dy": 0.38
+    },
+    {
+      "at": 1.7,
+      "sound": "pop",
+      "gain": 0.7
+    },
+    {
+      "at": 1.72,
+      "role": "agent",
+      "parts": {},
+      "_comment": "and back. An empty transform set restores the rig to its own rest pose."
+    },
+    {
+      "at": 1.92,
+      "role": "agent",
+      "expression": "face_worried"
+    },
+    {
+      "at": 2.1,
+      "role": "agent",
+      "move": {
+        "scaleBy": 1.0
+      },
+      "eased": true
+    },
+    {
+      "at": 2.3,
+      "role": "agent",
+      "expression": "face_surprised",
+      "hold": true
+    }
+  ]
+}

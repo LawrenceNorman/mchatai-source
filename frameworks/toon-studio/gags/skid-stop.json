@@ -1,0 +1,150 @@
+{
+  "_source_of_truth": "frameworks/toon-studio/gags/skid-stop.json",
+  "_comment": "Arrive fast, overshoot the mark, snap back onto it. The OVERSHOOT is the skid — there is no skid clip and there does not need to be one: a whole-actor move that carries the character PAST where they were supposed to stop, followed by a hard un-eased snap back, is what the eye reads as brakes. Everything else is dressing: speedlines on the way in, a scrape and a puff of smoke at the feet on the stop, a two-swing body wobble to bleed off the momentum.\n\nDeliberately NOT animated: legs, feet, any run cycle. Limited animation never draws the run — it draws the lean and lets the speedlines do the running. This is pure tier 1-3 (whole-actor move + camera shake + two effects + two guaranteed sounds + ad-hoc `body` transforms + two of the six faces), so it casts on every rig that will ever exist, with no new art and no rig authoring.\n\nOn `dx`: like a role's `at` block, a move's dx/dy are offsets from the mark the role was BOUND to, not accumulations — which is why the last move is `dx: 0.0` and not a mirror of the ones before it. Position carries to the end of the SCENE, so ending anywhere but 0.0 would leave the character permanently shoved sideways two shots later.",
+  "id": "skid-stop",
+  "triggers": [
+    "skids to a stop",
+    "skidded to a stop",
+    "screeches to a halt",
+    "screeched to a halt",
+    "comes to a screeching halt",
+    "slides to a halt",
+    "slid to a halt",
+    "dead in his tracks",
+    "dead in her tracks",
+    "dead in its tracks",
+    "pulls up short",
+    "pulled up short"
+  ],
+  "seconds": 2.25,
+  "roles": {
+    "agent": {
+      "kind": "cast",
+      "needsAnyOf": {
+        "parts": [
+          "body"
+        ]
+      }
+    }
+  },
+  "beats": [
+    {
+      "at": 0.0,
+      "role": "agent",
+      "hide": true,
+      "move": {
+        "dx": -0.62
+      },
+      "_comment": "the run has to start somewhere off the mark. Reposition while HIDDEN so the audience never sees the teleport — 0.30s of cover is nearly 4 frames at 12fps, comfortably enough for the move to land before anyone is looking."
+    },
+    {
+      "at": 0.3,
+      "role": "agent",
+      "show": true,
+      "expression": "face_surprised"
+    },
+    {
+      "at": 0.3,
+      "sound": "whoosh",
+      "gain": 0.9
+    },
+    {
+      "at": 0.3,
+      "effect": "ts_fx_speedlines",
+      "atRole": "agent",
+      "dy": 0.14,
+      "_comment": "the speedlines ARE the run. No legs are drawn."
+    },
+    {
+      "at": 0.58,
+      "role": "agent",
+      "parts": {
+        "body": {
+          "rotate": -12
+        }
+      },
+      "_comment": "0.28s of standing there visible before this is the anticipation — 'here they come'. The lean SNAPS (parts do not tween) which is right: a run lean is a held attitude, not a transition. Sign convention does not matter, because the read comes from the REVERSAL at 0.92, not from which way this leans."
+    },
+    {
+      "at": 0.58,
+      "role": "agent",
+      "move": {
+        "dx": 0.28
+      },
+      "eased": true,
+      "_comment": "the charge. It travels from -0.62 to +0.28, i.e. 0.28 PAST the mark — the overshoot is baked into the arrival, so the skid costs nothing extra. Eased, so it decelerates into the overshoot the way a slide does."
+    },
+    {
+      "at": 0.9,
+      "sound": "scrape",
+      "gain": 0.85
+    },
+    {
+      "at": 0.9,
+      "effect": "ts_fx_smoke",
+      "atRole": "agent",
+      "dy": 0.02,
+      "_comment": "dust at the FEET, not at the head — dy near zero"
+    },
+    {
+      "at": 0.92,
+      "role": "agent",
+      "parts": {
+        "body": {
+          "rotate": 15
+        }
+      },
+      "_comment": "the brace: the body slams back the other way while the feet keep sliding. This reversal is the whole gag and it must POP, which is exactly what a parts transform does."
+    },
+    {
+      "at": 1.12,
+      "role": "agent",
+      "move": {
+        "dx": 0.0
+      },
+      "_comment": "back onto the mark. Deliberately NOT eased — an eased return is a graceful glide, and this needs to be a recoil."
+    },
+    {
+      "at": 1.14,
+      "shake": 0.032,
+      "duration": 0.32
+    },
+    {
+      "at": 1.16,
+      "role": "agent",
+      "expression": "face_worried"
+    },
+    {
+      "at": 1.36,
+      "role": "agent",
+      "parts": {
+        "body": {
+          "rotate": -9
+        }
+      },
+      "_comment": "wobble past vertical — momentum bleeding off in decreasing swings, 0.20s apart so each one is a visible 2-3 frames"
+    },
+    {
+      "at": 1.56,
+      "role": "agent",
+      "parts": {
+        "body": {
+          "rotate": 5
+        }
+      }
+    },
+    {
+      "at": 1.74,
+      "role": "agent",
+      "parts": {},
+      "_comment": "empty transform set = back to the rig's own rest pose. This is the tidy-up rule 5 demands."
+    },
+    {
+      "at": 1.94,
+      "role": "agent",
+      "expression": "face_surprised",
+      "hold": true,
+      "_comment": "the button: they stopped, and only now do they register what they stopped for"
+    }
+  ]
+}

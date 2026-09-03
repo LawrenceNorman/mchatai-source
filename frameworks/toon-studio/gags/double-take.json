@@ -1,0 +1,168 @@
+{
+  "_source_of_truth": "frameworks/toon-studio/gags/double-take.json",
+  "_comment": "Look, dismiss, WAIT, snap back, then react. Three of those four are free; the one that costs is the WAIT. The head turns to the sight at 0.30, turns away at 0.70 with a happy face - the character has looked straight at it and not understood it - and then absolutely nothing happens until 1.55. Almost a full second of dead air, broken only by a 6-thousandths idle bob so the shot does not look frozen at 12fps. The snap-back is a `parts` transform because parts SNAP and a whip-pan must not tween; the reaction that follows it is a whole-actor eased move because a body swelling in horror must.\n\nDeliberately NOT animated: no walk, no turn-around, no clip, no arms. Only `head` and `mouth`, both ToonRigRepair guarantees. The idle bob's dy is inverted on the very next beat and the final beat zeroes dx/dy/scaleBy, because a gag that does not tidy up is permanent two scenes from where anyone is looking.\n\nTrigger note: `mind-blown` already claims the space-form phrases 'double take' and 'does a double take'. This gag takes the HYPHENATED forms plus the whip/second-look phrasings, so neither shadows the other whatever the index order.",
+  "id": "double-take",
+  "triggers": [
+    "does a double-take",
+    "did a double-take",
+    "looks away, then snaps back",
+    "looked away, then looked again",
+    "whips his head around",
+    "whips her head around",
+    "whipped his head back",
+    "snaps his head back",
+    "starts to walk away, then stops",
+    "stops, and looks again",
+    "stopped and looked again",
+    "takes a second look"
+  ],
+  "seconds": 3.6,
+  "roles": {
+    "agent": {
+      "kind": "cast",
+      "needsAnyOf": {
+        "parts": [
+          "head"
+        ]
+      }
+    }
+  },
+  "beats": [
+    {
+      "at": 0.0,
+      "role": "agent",
+      "expression": "face_happy",
+      "parts": {},
+      "_comment": "oblivious. Rest pose, pleasant face - we need somewhere to fall FROM."
+    },
+    {
+      "at": 0.3,
+      "role": "agent",
+      "parts": {
+        "head": {
+          "rotate": -12,
+          "dx": -0.018
+        }
+      },
+      "_comment": "the FIRST look. Casual, unbothered - he has now seen the thing and it has not registered."
+    },
+    {
+      "at": 0.7,
+      "role": "agent",
+      "expression": "face_happy",
+      "parts": {
+        "head": {
+          "rotate": 14,
+          "dx": 0.02
+        }
+      },
+      "_comment": "and away again, past neutral to the other side. Still smiling. The audience is now ahead of the character, which is the entire mechanism of the gag."
+    },
+    {
+      "at": 1.0,
+      "role": "agent",
+      "move": {
+        "dy": 0.006
+      },
+      "eased": true,
+      "_comment": "THE HOLD, 0.70 to 1.55. Nothing happens on purpose. This 6-thousandths breath is the only motion, so the pause reads as a character thinking rather than as a stalled render."
+    },
+    {
+      "at": 1.28,
+      "role": "agent",
+      "move": {
+        "dy": 0.0
+      },
+      "eased": true,
+      "_comment": "bob undone explicitly - dx/dy are offsets from the bound mark, so returning them to zero is what puts the actor back on it"
+    },
+    {
+      "at": 1.55,
+      "role": "agent",
+      "expression": "face_surprised",
+      "parts": {
+        "head": {
+          "rotate": -22,
+          "dx": -0.032,
+          "dy": 0.01
+        }
+      },
+      "_comment": "THE SNAP BACK - the whole joke. A parts transform, because parts SNAP: a whip-pan that tweens is not a whip-pan. 22 degrees the other way, further than the first look went."
+    },
+    {
+      "at": 1.57,
+      "sound": "whoosh",
+      "gain": 0.85
+    },
+    {
+      "at": 1.58,
+      "effect": "ts_fx_speedlines",
+      "atRole": "agent",
+      "dy": 0.4
+    },
+    {
+      "at": 1.62,
+      "shake": 0.035,
+      "duration": 0.3
+    },
+    {
+      "at": 1.66,
+      "sound": "sting_reveal",
+      "gain": 0.85
+    },
+    {
+      "at": 1.95,
+      "role": "agent",
+      "move": {
+        "scaleBy": 1.12
+      },
+      "eased": true,
+      "_comment": "NOW the reaction, a beat AFTER the snap - see it, then feel it. Eased, because the body inflating is the one thing here that should be smooth."
+    },
+    {
+      "at": 2.0,
+      "effect": "ts_fx_flash",
+      "atRole": "agent",
+      "dy": 0.44
+    },
+    {
+      "at": 2.35,
+      "role": "agent",
+      "parts": {
+        "head": {
+          "rotate": -18,
+          "dx": -0.028
+        },
+        "mouth": {
+          "scaleY": 2.2,
+          "dy": -0.04
+        }
+      },
+      "_comment": "the mouth catches up with the eyes. Head stays locked on the sight."
+    },
+    {
+      "at": 2.6,
+      "sound": "gasp",
+      "gain": 0.8
+    },
+    {
+      "at": 2.95,
+      "role": "agent",
+      "expression": "face_worried",
+      "parts": {},
+      "move": {
+        "dx": 0.0,
+        "dy": 0.0,
+        "scaleBy": 1.0
+      },
+      "eased": true,
+      "_comment": "tidy up in one beat: rest pose back, mark back, scale back. Everything this gag touched, it returns."
+    },
+    {
+      "at": 3.3,
+      "role": "agent",
+      "expression": "face_surprised",
+      "hold": true
+    }
+  ]
+}

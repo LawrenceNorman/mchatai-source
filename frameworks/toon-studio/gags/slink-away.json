@@ -1,0 +1,155 @@
+{
+  "_source_of_truth": "frameworks/toon-studio/gags/slink-away.json",
+  "_comment": "The defeated exit. PURE tier 1-3: two of the six synthesised faces, eased whole-actor dx/dy/scaleBy moves, three sounds, and one ad-hoc `parts` transform on `head`. No clip, no declared pose, no new art - it casts on every rig.\n\nThe comedy is that he does not want to go. The head turns away at 0.30 while the FEET stay planted, and he droops 2% in place at 0.60 - a whole second of hesitating before a single step. Then six evenly-spaced eased moves over three seconds, which is slow enough to be embarrassing. The exit travels dx negative AND dy POSITIVE while scaleBy falls to 0.52: a higher dy is further UPSTAGE, and the renderer draws upstage first, so he also passes BEHIND everyone still on stage. That is what sells distance rather than mere sideways sliding.\n\nDELIBERATELY NOT TIDIED BACK TO 1.0: the brief for this gag is that it ends with the actor still on stage, small and far, not hidden. Snapping him home to scaleBy 1.0 would erase the only thing the gag does. Per GAG_SCHEMA rule 5 the binder restores scale it changed when the gag ends, so this stays the shot's payoff without leaking into the rest of the scene. The one thing that IS restored by hand is the head, with an empty `parts` at 3.10.\n\nNo effect and no camera shake: a smoke puff at the exit would read as a vanish, and a vanish is the opposite of this gag."
+  ,
+  "id": "slink-away",
+  "triggers": [
+    "slinks away",
+    "slunk away",
+    "slinks off",
+    "slunk off",
+    "creeps away",
+    "crept away",
+    "backs away slowly",
+    "backed away slowly",
+    "retreats into the shadows",
+    "retreated into the shadows",
+    "tail between his legs",
+    "with his tail between his legs"
+  ],
+  "seconds": 4.0,
+  "roles": {
+    "agent": {
+      "kind": "cast",
+      "needsAnyOf": {
+        "parts": [
+          "head"
+        ]
+      }
+    }
+  },
+  "beats": [
+    {
+      "at": 0.0,
+      "role": "agent",
+      "expression": "face_worried"
+    },
+    {
+      "at": 0.2,
+      "sound": "lament",
+      "gain": 0.5
+    },
+    {
+      "at": 0.3,
+      "role": "agent",
+      "parts": {
+        "head": {
+          "rotate": -7,
+          "dx": -0.01
+        }
+      },
+      "_comment": "the head turns away while the feet stay planted. Parts snap, and this snap is the decision to leave."
+    },
+    {
+      "at": 0.6,
+      "role": "agent",
+      "move": {
+        "dx": 0.0,
+        "dy": 0.0,
+        "scaleBy": 0.98
+      },
+      "eased": true,
+      "_comment": "the droop, still rooted to the spot. A full second of not leaving before he leaves - that is the anticipation."
+    },
+    {
+      "at": 1.05,
+      "role": "agent",
+      "move": {
+        "dx": -0.07,
+        "dy": 0.015,
+        "scaleBy": 0.9
+      },
+      "eased": true,
+      "_comment": "first step. dy POSITIVE = upstage = further away, matched to the falling scaleBy so the perspective is honest. Every key restated on every move."
+    },
+    {
+      "at": 1.1,
+      "sound": "footsteps",
+      "gain": 0.5
+    },
+    {
+      "at": 1.45,
+      "role": "agent",
+      "expression": "face_sad"
+    },
+    {
+      "at": 1.55,
+      "role": "agent",
+      "move": {
+        "dx": -0.14,
+        "dy": 0.032,
+        "scaleBy": 0.81
+      },
+      "eased": true
+    },
+    {
+      "at": 2.05,
+      "role": "agent",
+      "move": {
+        "dx": -0.21,
+        "dy": 0.048,
+        "scaleBy": 0.72
+      },
+      "eased": true
+    },
+    {
+      "at": 2.1,
+      "sound": "footsteps",
+      "gain": 0.32,
+      "_comment": "quieter than the first - the only distance cue the sound library can give"
+    },
+    {
+      "at": 2.55,
+      "role": "agent",
+      "move": {
+        "dx": -0.27,
+        "dy": 0.062,
+        "scaleBy": 0.64
+      },
+      "eased": true
+    },
+    {
+      "at": 2.8,
+      "sound": "wind",
+      "gain": 0.3
+    },
+    {
+      "at": 3.05,
+      "role": "agent",
+      "move": {
+        "dx": -0.32,
+        "dy": 0.074,
+        "scaleBy": 0.58
+      },
+      "eased": true
+    },
+    {
+      "at": 3.1,
+      "role": "agent",
+      "parts": {},
+      "_comment": "head released to the rig's rest pose - the one thing this gag DOES restore by hand"
+    },
+    {
+      "at": 3.6,
+      "role": "agent",
+      "move": {
+        "dx": -0.38,
+        "dy": 0.086,
+        "scaleBy": 0.52
+      },
+      "eased": true,
+      "hold": true,
+      "_comment": "final state and the payoff: still on stage, half size, upstage. Not hidden, not gone - just diminished."
+    }
+  ]
+}
