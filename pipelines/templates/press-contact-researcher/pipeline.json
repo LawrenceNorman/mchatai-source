@@ -1,0 +1,42 @@
+{
+  "id": "AD8D19B3-7F79-4328-9E1E-5AC064488FC1",
+  "name": "Press Contact Researcher",
+  "description": "Research launch press/newsletter/podcast/community targets and upsert them into the Press CRM table in Ledger, matched on Outlet.",
+  "components": [],
+  "steps": [
+    {
+      "id": "6DBA39C3-6642-4D35-8FBC-DF920024ED6C",
+      "skillID": "builtin.webSearch",
+      "config": {
+        "dataSensitivity": "public",
+        "query": "indie Mac app press coverage how to pitch tips email MacStories 9to5Mac indie developer app launch",
+        "maxResults": "8",
+        "fetchTopN": "4",
+        "maxCharsPerPage": "7000"
+      }
+    },
+    {
+      "id": "AA3C2DF2-AF28-45C8-A0A1-A601B64BBADF",
+      "skillID": "builtin.llmGenerate",
+      "config": {
+        "dataSensitivity": "public",
+        "llmMaxInputChars": "30000",
+        "llmMaxTokens": "6000",
+        "llmTimeout": "180",
+        "userPrompt": "You are researching press outreach targets and writing them into an mChatAI+ Ledger table. Your entire output is the CSV that will be written into it.\n\nTARGET TABLE: Press CRM\nKEY COLUMN: Outlet\n\n## Column contract\n\nEmit these headers EXACTLY, in this order, spelled this way:\n\nOutlet,Category,Contact,Method,URL,Angle,Priority,Status,Contacted,FollowUp,Notes\n\nA header you spell differently does not update the existing column \u2014 it creates a NEW one. Copy the line above verbatim.\n\n| Column | Means | Rules |\n|---|---|---|\n| Outlet | Publication / show / community name | The upsert key \u2014 spell it the way the outlet spells itself |\n| Category | One of: press, newsletter, podcast, video, community, local, niche | Closed set \u2014 pick the nearest |\n| Contact | Person to pitch, if the sources name one | Empty if outlet-level |\n| Method | HOW to reach them: a verified email, a submission-form URL, or `unknown` | See the hard rule below |\n| URL | The outlet's site or the exact contact/about page | |\n| Angle | One line: why THIS outlet would care about THIS product | Specific beats generic \u2014 name the beat or column |\n| Priority | 1 = a cold pitch realistically lands, 2 = plausible, 3 = long shot | Whole number, 1-3 |\n| Status | Always `not contacted` for new rows | Leave existing rows' status alone by omitting rows you have no update for |\n| Contacted | Leave EMPTY | Filled in by hand when a pitch goes out |\n| FollowUp | Leave EMPTY | Filled in by hand |\n| Notes | Posting rules, tip-line quirks, best day to pitch | Empty unless the sources say something usable |\n\n**The email rule is a hard rule.** NEVER construct, guess or pattern-infer an email address (`firstname@outlet.com` is a fabrication). A made-up email is indistinguishable from a real one until the pitch silently bounces \u2014 or lands in a stranger's inbox. Write an email into Method ONLY if a source page actually displays it. Otherwise write the contact-form URL, or `unknown` with the best public page in URL.\n\n## What to output\n\nNothing but CSV. No preamble, no code fence, no trailing commentary. The first line is the header, every following line is one outlet.\n\n## Rules\n\n1. Only outlets the sources below actually support \u2014 if they cover 12 outlets, emit 12 rows and stop. Do not fill in more from memory.\n2. Drop anything the sources suggest is defunct or dormant.\n3. An outlet not in the sources gets no row at all \u2014 omitting it leaves any existing row untouched, which is correct.\n4. Quote any cell containing a comma; double an inner quote.\n5. Priority is honest triage for someone with no PR agency: a tips@ inbox or a self-serve community is a 1; a national desk is a 3.\n\n## Sources\n\n{{INPUT}}"
+      }
+    },
+    {
+      "id": "62A2FA60-B15C-4B05-841C-FF2DDE3FCCE4",
+      "skillID": "builtin.ledgerAppend",
+      "config": {
+        "ledgerCollection": "Press CRM",
+        "ledgerMatchOn": "Outlet",
+        "ledgerFormat": "csv",
+        "hasHeader": "true",
+        "delimiter": ",",
+        "ledgerMaxRows": "500"
+      }
+    }
+  ]
+}
