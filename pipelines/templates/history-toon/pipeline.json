@@ -1,0 +1,75 @@
+{
+  "_comment": "History Toon — a subject in, a filmed documentary out. Pictures are real Wikipedia images resolved from the SCRIPT, so they follow what is actually said.",
+  "id": "13D933AE-6A30-45D7-B3AB-11BA423A25AF",
+  "name": "History Toon",
+  "description": "Film a moment in history: a narrated documentary with real pictures from Wikipedia behind the cast.",
+  "steps": [
+    {
+      "skillID": "builtin.wikipedia",
+      "config": {
+        "wikipediaMode": "summary",
+        "maxChars": "4000"
+      },
+      "id": "CC85B458-B3EA-4896-A82C-4238349FC9C6"
+    },
+    {
+      "skillID": "builtin.llmGenerate",
+      "config": {
+        "userPrompt": "Write the screenplay for a short documentary film about the subject below.\n\nWHO IS ON SCREEN. Three named people, all of them visible characters:\n- CLARA is the historian. She carries the history: the dates, the numbers, the\n  names, the causes. She is the only one who states a fact for the first time,\n  and she speaks in complete, unhurried sentences.\n- ADA asks the question a curious person would actually ask next, once.\n- MILO draws out consequences — what it meant, who it was done to, what changed.\n\nDo NOT write a character called NARRATOR, and do not write any voice that is\nonly heard. Every speaker is a person standing in the scene. A film whose facts\nbelong to an unseen voice loses them.\n\nLENGTH. 700-850 words, which reads aloud in four to five minutes. CLARA should\nhave roughly half of the words. Give a speaker three or four sentences when the\npoint needs them; a script of one-line volleys reads as two people swapping\ntrivia, not as a film.\n\nHOW IT MUST READ.\n- Chronological. Say WHEN, in years, the first time each event appears.\n- Explain causes before consequences. Someone who knew nothing should be able\n  to say afterwards WHY each thing happened, not only that it did.\n- Name people and places specifically, and say who they were.\n- Plain declarative sentences. NO exclamation marks anywhere. None.\n  Enthusiasm comes from what is being described, not from punctuation.\n- No \"Wow\", \"Amazing\", \"Incredible\", \"That's crazy\", \"Buckle up\". No\n  rhetorical questions.\n- Every ADA or MILO line must move the history forward. Cut any line that only\n  reacts to the previous one.\n- End on what changed and what it led to, not on a summary of what was said.\n\nACCURACY. Only what the source material supports. No invented quotations from\nreal people. If something is disputed, say so rather than picking a side.\n\nFORMAT. Plain text. One line per speaker turn, `SPEAKER: text`, speaker in\ncapitals. Nothing else — no headings, no stage directions, no markdown, no\npreamble, no closing remark.\n\nSUBJECT AND SOURCE MATERIAL:\n{{INPUT}}",
+        "llmMaxTokens": "6000",
+        "llmTimeout": "300"
+      },
+      "id": "91541963-B8DF-4446-8756-54395DEBD089"
+    },
+    {
+      "skillID": "builtin.appletVerb",
+      "config": {
+        "applet": "ToonStudio",
+        "verb": "importScript",
+        "textArg": "text",
+        "arg.save": "true",
+        "keepText": "true",
+        "arg.title": "{{title}}",
+        "arg.voices": "{\"clara\": \"Samantha\", \"ada\": \"Karen\", \"milo\": \"Daniel\"}",
+        "arg.voice": "true"
+      },
+      "id": "4378B0E5-54F4-4350-90CF-C614ADD0BBB6"
+    },
+    {
+      "skillID": "builtin.llmGenerate",
+      "config": {
+        "userPrompt": "Below is a documentary screenplay. Choose SIX moments from it that deserve a\npicture on screen, in the order the script reaches them.\n\nFor each, name the English Wikipedia article whose own lead image best shows\nTHAT moment. Rules that decide whether this works:\n- Name the article for the SPECIFIC event, person, place, painting or object —\n  never the broad subject. \"Storming of the Bastille\", not \"French Revolution\".\n- The picture must belong to the period being described. An article whose lead\n  image is a modern photograph is wrong for anything historical: prefer\n  articles about a contemporary painting, engraving, portrait or document.\n- Six DIFFERENT articles. Repeating one wastes a beat.\n- Prefer a well-known article; an obscure person usually has no portrait, and\n  a beat with no picture is a beat lost.\n\nReturn ONLY JSON, no prose and no fences:\n{\"beats\":[{\"caption\":\"three to six words\",\"wikipedia_title\":\"Exact Article Title\"}]}\n\nSCREENPLAY:\n{{INPUT}}",
+        "llmMaxTokens": "1500",
+        "llmTimeout": "180"
+      },
+      "id": "CCC12429-FAC0-437D-B805-6BB421C11257"
+    },
+    {
+      "skillID": "builtin.wikipedia",
+      "config": {
+        "wikipediaMode": "images"
+      },
+      "id": "472BD62E-129E-4D20-AB35-CE13C08DE8DD"
+    },
+    {
+      "skillID": "builtin.appletVerb",
+      "config": {
+        "applet": "AISlides",
+        "verb": "composePictureDeck",
+        "textArg": "pictures",
+        "arg.title": "History Pictures",
+        "arg.theme": "broadcast"
+      },
+      "id": "8ED730E1-5662-4E3B-A998-0B5B1F542D6D"
+    },
+    {
+      "skillID": "builtin.appletVerb",
+      "config": {
+        "applet": "ToonStudio",
+        "verb": "cueDeck",
+        "arg.deck": "History Pictures"
+      },
+      "id": "A1811102-5F71-4DD3-B321-A173C8FB9D33"
+    }
+  ]
+}
