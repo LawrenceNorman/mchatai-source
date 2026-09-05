@@ -8,13 +8,27 @@
 
   "rules": [
     {
-      "id": "openai-reasoning",
+      "id": "openai-o1",
       "provider": "OpenAI",
-      "modelPrefix": ["o1", "o3", "o4", "o5"],
+      "modelPrefix": ["o1"],
       "tokenParameter": "max_completion_tokens",
       "acceptsTemperature": false,
       "acceptsResponseFormat": false,
       "acceptsReasoningEffort": true,
+      "acceptsPromptCacheRetention": false,
+      "substituteForCodeGeneration": true,
+      "_notes": "Split out of openai-reasoning for ONE reason: prompt_cache_retention has only ever been sent to gpt-4.1/o3/o4, and folding o1 in would smuggle a live behaviour change in under a refactor. If o1 does accept it, that is a one-word content flip."
+    },
+    {
+      "id": "openai-reasoning",
+      "provider": "OpenAI",
+      "modelPrefix": ["o3", "o4", "o5"],
+      "tokenParameter": "max_completion_tokens",
+      "acceptsTemperature": false,
+      "acceptsResponseFormat": false,
+      "acceptsReasoningEffort": true,
+      "acceptsPromptCacheRetention": true,
+      "substituteForCodeGeneration": true,
       "_notes": "o-series burn hidden reasoning tokens and reject temperature and response_format."
     },
     {
@@ -25,6 +39,8 @@
       "acceptsTemperature": false,
       "acceptsResponseFormat": true,
       "acceptsReasoningEffort": false,
+      "acceptsPromptCacheRetention": true,
+      "substituteForCodeGeneration": false,
       "_notes": "Does not think in the hidden way the o-series does, but shares the max_completion_tokens contract."
     },
     {
@@ -36,7 +52,9 @@
       "acceptsTemperature": false,
       "acceptsResponseFormat": true,
       "acceptsReasoningEffort": true,
-      "_notes": "gpt-5 onward. Version-ranged rather than enumerated ON PURPOSE: gpt-5.6-luna was not on the enumerated list and every call 400'd. A gpt-6 nobody has announced is already covered."
+      "acceptsPromptCacheRetention": false,
+      "substituteForCodeGeneration": false,
+      "_notes": "substituteForCodeGeneration is FALSE on purpose. The harness swaps o-series out for a code SKU because they answer a big-artifact ask with a short description; gpt-5 has no such record here, and turning it on would silently downgrade every gpt-5 user to gpt-4o. Flip it if evidence says otherwise. gpt-5 onward. Version-ranged rather than enumerated ON PURPOSE: gpt-5.6-luna was not on the enumerated list and every call 400'd. A gpt-6 nobody has announced is already covered."
     },
     {
       "id": "openai-legacy-chat",
@@ -68,6 +86,36 @@
       "_notes": "Google nests generationConfig; the token key lives there, not at the top level."
     }
   ],
+
+  "_outputTokenCaps": "A CEILING on the completion budget, which is a different question from which KEY the budget travels under. AIHarness.maxCompletionTokens used to answer it with nine hasPrefix/contains tests compiled into the binary — over-spec 400s, under-spec truncates, and either way the only fix was a release. Rules are tried in order; `modelContains` rather than `modelPrefix` where the id arrives namespaced (bedrock 'anthropic.claude-...', openrouter 'anthropic/claude-...'). Numbers are deliberately CONSERVATIVE: a cap below the model's real limit costs a truncation the wizard already recovers from, a cap above it costs a hard 400.",
+  "outputTokenCaps": {
+    "rules": [
+      { "provider": "OpenAI", "modelPrefix": ["o1", "o3"], "maxOutputTokens": 100000 },
+      { "provider": "OpenAI", "modelPrefix": ["o4-mini"], "maxOutputTokens": 65536 },
+      { "provider": "OpenAI", "modelPrefix": ["gpt-4.1"], "maxOutputTokens": 32768 },
+      { "provider": "OpenAI", "modelPrefix": ["gpt-4o"], "maxOutputTokens": 16384 },
+      { "provider": "Anthropic", "modelContains": ["claude-opus-4"], "maxOutputTokens": 32000 },
+      { "provider": "Anthropic", "modelContains": ["claude-sonnet-4-5"], "maxOutputTokens": 64000 },
+      { "provider": "Anthropic", "modelContains": ["claude-3-5-sonnet", "claude-3-5-haiku"], "maxOutputTokens": 8192 }
+    ],
+    "providerDefaults": {
+      "OpenAI": 16384,
+      "Anthropic": 8192,
+      "Google": 32000,
+      "Perplexity": 16000,
+      "OpenRouter": 16000,
+      "mChatAI Cloud": 16000,
+      "Ollama": 8000,
+      "Foundation": 8000
+    },
+    "fallbackDefault": 8000
+  },
+
+  "_providerAliases": "A proxy speaks its upstream's dialect. mChatAI Cloud and Azure OpenAI both serve OpenAI SKUs through an OpenAI-shaped endpoint, and the app's provider DISPLAY NAME ('mChatAI Cloud') matches no rule, so without this a Cloud user on gpt-5.6-luna falls to the default shape and 400s — the exact failure this file exists to stop. The literal name is tried first, so naming a proxy directly in `rules` still wins. Vertex AI and Amazon Bedrock are deliberately absent: they host models from more than one upstream, so a single alias would be a lie.",
+  "providerAliases": {
+    "Azure OpenAI": "OpenAI",
+    "mChatAI Cloud": "OpenAI"
+  },
 
   "default": {
     "tokenParameter": "max_tokens",
