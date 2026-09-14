@@ -17,6 +17,17 @@
  */
 (function () {
   "use strict";
+  // This file is a development aid for LOCAL Harness artifacts. A host may
+  // keep its WKUserScript configuration while browsing an external link in
+  // the same web view, so content-shape detection alone is not a sufficient
+  // boundary: ordinary sites can also contain #score or *score* classes.
+  var previewProtocol = window.location.protocol;
+  var previewOrigin = window.location.origin;
+  var isLocalFile = previewProtocol === "file:";
+  var isHarnessHTML = previewProtocol === "about:" &&
+    (previewOrigin === "null" || previewOrigin === "");
+  if (!isLocalFile && !isHarnessHTML) return;
+
   if (window.__mchataiPreviewLeaderboard) return;      // idempotent
   window.__mchataiPreviewLeaderboard = true;
 

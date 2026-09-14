@@ -1,8 +1,131 @@
 {
   "_readme": "Per-applet verb PROSE for the CLI portal. The binary owns which verbs DISPATCH (PortalAppletRegistry reads each applet's own verb array); this file only describes them. A verb documented here that the build does not implement is reported by portalVerbs as `documentedButNotDispatched` rather than shown to an agent as callable — describing a verb into existence is how the last inventory went stale. Edit by PR; refreshMchataisourceCache picks it up with no rebuild.",
   "_consumer": "mChatAI+ PortalAppletRegistry.docs() -> portalVerbs",
-  "version": 1,
+  "version": 3,
   "applets": {
+    "assistant": {
+      "getstatus": {
+        "kind": "read",
+        "summary": "Read whether Personal Assistant is enabled, its cost policy and budgets, daily-brief settings, counts, and latest run.",
+        "example": {
+          "command": "applet",
+          "applet": "assistant",
+          "verb": "getStatus"
+        }
+      },
+      "getcontext": {
+        "kind": "read",
+        "summary": "Read the Personal Assistant's conversational context: profile, a small set of broad priorities, learned Ledger memories, watched AI Web sources, and recent structured discoveries.",
+        "notes": "This reconciles user edits from the visible Assistant Context Ledger before returning. It does not start research or spend model tokens.",
+        "example": {
+          "command": "applet",
+          "applet": "assistant",
+          "verb": "getContext"
+        }
+      },
+      "remember": {
+        "kind": "create",
+        "summary": "Remember one durable fact the user stated or confirmed without turning it into a task. The fact is also written to the visible Assistant Context Ledger.",
+        "required": [
+          "kind",
+          "text"
+        ],
+        "optional": [
+          "detail",
+          "confidence"
+        ],
+        "notes": "kind is one of priority, interest, project, preference, constraint, place, person, feedback, or other. Do not infer sensitive facts or save every passing thought.",
+        "example": {
+          "command": "applet",
+          "applet": "assistant",
+          "verb": "remember",
+          "args": {
+            "kind": "interest",
+            "text": "Seattle AI meetups",
+            "detail": "Wants events where platform builders gather"
+          }
+        }
+      },
+      "forget": {
+        "kind": "delete",
+        "summary": "Forget one learned Assistant Context item by its exact id after the user explicitly asks to remove it.",
+        "required": [
+          "id"
+        ],
+        "example": {
+          "command": "applet",
+          "applet": "assistant",
+          "verb": "forget",
+          "args": {
+            "id": "<id from getContext>"
+          }
+        }
+      },
+      "listgoals": {
+        "kind": "read",
+        "summary": "List the user's explicit active goals in priority order so research or Workbench work can stay relevant.",
+        "optional": [
+          "includeInactive"
+        ],
+        "example": {
+          "command": "applet",
+          "applet": "assistant",
+          "verb": "listGoals"
+        }
+      },
+      "getlatestbrief": {
+        "kind": "read",
+        "summary": "Read the latest goal-ranked daily brief, including evidence links and why each item matters.",
+        "optional": [
+          "includeMarkdown"
+        ],
+        "example": {
+          "command": "applet",
+          "applet": "assistant",
+          "verb": "getLatestBrief"
+        }
+      },
+      "listproposals": {
+        "kind": "read",
+        "summary": "Inspect work suggested for user approval. By default only pending proposals are returned.",
+        "optional": [
+          "includeResolved"
+        ],
+        "example": {
+          "command": "applet",
+          "applet": "assistant",
+          "verb": "listProposals"
+        }
+      },
+      "proposeaction": {
+        "kind": "create",
+        "summary": "Queue a cross-applet action for human approval. This verb records a proposal and never executes, spends, edits, or drives a signed-in browser.",
+        "required": [
+          "title",
+          "detail"
+        ],
+        "optional": [
+          "risk",
+          "applet",
+          "requestedVerb",
+          "arguments",
+          "estimatedCostUSD"
+        ],
+        "notes": "risk is one of paidModel, modifiesExistingContent, signedInBrowser, or externalAction. Approval records intent in this MVP; a separate executor must revalidate and carry out the action.",
+        "example": {
+          "command": "applet",
+          "applet": "assistant",
+          "verb": "proposeAction",
+          "args": {
+            "title": "Research three matching AI platform roles",
+            "detail": "The user's active job-search goal matches several new postings.",
+            "risk": "signedInBrowser",
+            "applet": "aiweb",
+            "requestedVerb": "proposeActions"
+          }
+        }
+      }
+    },
     "aividgen": {
       "getstate": {
         "kind": "read",
@@ -667,9 +790,10 @@
           "workdir",
           "mode",
           "model",
+          "budgetUSD",
           "waitForInitSeconds"
         ],
-        "notes": "`text` is the first prompt, inline. Omit `workdir` for a managed folder (a folder the app cannot read is probed via the shell; a typo is reported as missing). `mode`: default | acceptEdits | plan | bypass (default acceptEdits; unknown → candidates). `ok` only after the CLI's init event AND a live state. On an init timeout (default 15s, `waitForInitSeconds` ≤60) the driver is STILL LIVE: the reply says stillLive:true — do NOT start another; poll getTranscript/listSessions or interrupt force:true. Permission rows need a human (or the app's Allow All).",
+        "notes": "`text` is the first prompt, inline. Omit `workdir` for a managed folder (a folder the app cannot read is probed via the shell; a typo is reported as missing). `mode`: default | acceptEdits | plan | bypass (default acceptEdits; unknown → candidates). `budgetUSD` sets the session's advisory cost ceiling and must be greater than zero. `ok` only after the CLI's init event AND a live state. On an init timeout (default 15s, `waitForInitSeconds` ≤60) the driver is STILL LIVE: the reply says stillLive:true — do NOT start another; poll getTranscript/listSessions or interrupt force:true. Permission rows need a human (or the app's Allow All).",
         "pairedCheck": "applet workbench getTranscript with the returned sessionID",
         "example": {
           "command": "applet",
@@ -1429,6 +1553,65 @@
           "command": "applet",
           "applet": "aiweb",
           "verb": "getState"
+        }
+      },
+      "getcurrentpage": {
+        "kind": "read",
+        "summary": "Read the URL, title, bounded visible text, and schema.org events/jobs/articles from the page currently open in AI Web, including a signed-in page.",
+        "notes": "Read-only. Cookies, credentials, local storage, and form values never cross the verb. Reads and moves whichever surface the user is actually looking at — the Workbench Preview pane beside an Assistant conversation, or the full AI Web applet. Never assume nothing is open; call getCurrentPage and look.",
+        "example": {
+          "command": "applet",
+          "applet": "aiweb",
+          "verb": "getCurrentPage"
+        }
+      },
+      "listhistory": {
+        "kind": "read",
+        "summary": "List pages the user has actually visited in AI Web, most recent first, so you can find the right starting point instead of asking them for a URL.",
+        "optional": [
+          "contains",
+          "limit"
+        ],
+        "notes": "Read-only. `contains` filters on URL and title (case-insensitive). Use this before openPage: their own history is a better guess than a constructed URL.",
+        "example": {
+          "command": "applet",
+          "applet": "aiweb",
+          "verb": "listHistory",
+          "args": {
+            "contains": "linkedin"
+          }
+        }
+      },
+      "openpage": {
+        "kind": "update",
+        "summary": "Navigate the user's signed-in browser to an http(s) page, in the surface they are already watching.",
+        "required": [
+          "url"
+        ],
+        "notes": "Navigation only — a GET in their own session. It clicks nothing, fills nothing and submits nothing; changing a page is proposeActions plus a human approval. Call getCurrentPage FIRST: opening blind navigates them away from the page you were about to read. Reads and moves whichever surface the user is actually looking at — the Workbench Preview pane beside an Assistant conversation, or the full AI Web applet. Never assume nothing is open; call getCurrentPage and look.",
+        "example": {
+          "command": "applet",
+          "applet": "aiweb",
+          "verb": "openPage",
+          "args": {
+            "url": "https://www.linkedin.com/jobs/search?keywords=CTO"
+          }
+        }
+      },
+      "captureforassistant": {
+        "kind": "create",
+        "summary": "Capture structured events, jobs, articles, or a bounded page summary from the current signed-in AI Web page for Personal Assistant recommendations.",
+        "optional": [
+          "watch"
+        ],
+        "notes": "watch:true remembers the exact current URL as a low-frequency daily starting point. This never clicks, fills, submits, applies, or exports login data.",
+        "example": {
+          "command": "applet",
+          "applet": "aiweb",
+          "verb": "captureForAssistant",
+          "args": {
+            "watch": true
+          }
         }
       },
       "listagents": {

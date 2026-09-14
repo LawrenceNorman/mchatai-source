@@ -1,12 +1,48 @@
 {
   "_readme": "Applet capabilities that are NOT declared as AppletAIActions in Swift. portalApplets merges this over the built-in action catalog, so an applet driven by tunnel commands (LoopStar) or with capability that exists in Swift but is not yet exposed (MapGuide, AudioLibrary) still shows up when an agent asks what the app can do. CONTENT per RULE #1 \u2014 add an applet here by PR, no rebuild.",
   "_consumer": "mChatAI+ DebugTestTunnel.handlePortalApplets",
-  "registryVersion": 1,
+  "registryVersion": 2,
   "_statusMeaning": {
     "callable": "Works today. The example payload is real and has been run.",
     "planned": "The capability EXISTS in Swift but has no agent-reachable verb yet. Tell the user it is not available rather than attempting it; see docs/APPLET_VERB_SCOPING.md for the roadmap."
   },
   "applets": [
+    {
+      "applet": "assistant",
+      "summary": "Goal-aware daily context for Claude, Codex, pipelines, and the rest of mChatAI+, with approval-gated suggestions.",
+      "capabilities": [
+        {
+          "verb": "assistant.getStatus",
+          "status": "callable",
+          "description": "Read Assistant enablement, budgets, policy, routine, counts, and latest run.",
+          "example": { "command": "applet", "applet": "assistant", "verb": "getStatus" }
+        },
+        {
+          "verb": "assistant.listGoals",
+          "status": "callable",
+          "description": "Read the user's explicit goals in priority order.",
+          "example": { "command": "applet", "applet": "assistant", "verb": "listGoals" }
+        },
+        {
+          "verb": "assistant.getLatestBrief",
+          "status": "callable",
+          "description": "Read the latest ranked brief and source evidence.",
+          "example": { "command": "applet", "applet": "assistant", "verb": "getLatestBrief" }
+        },
+        {
+          "verb": "assistant.listProposals",
+          "status": "callable",
+          "description": "Inspect pending or resolved approval proposals.",
+          "example": { "command": "applet", "applet": "assistant", "verb": "listProposals" }
+        },
+        {
+          "verb": "assistant.proposeAction",
+          "status": "callable",
+          "description": "Queue a suggested action for human review without executing it.",
+          "example": { "command": "applet", "applet": "assistant", "verb": "proposeAction", "args": { "title": "Prepare a job research pass", "detail": "Matches an active job-search goal.", "risk": "signedInBrowser" } }
+        }
+      ]
+    },
     {
       "applet": "loopStar",
       "summary": "Music sequencer and generative jam station. Genre packs, tempo, key, chords, arrangement, and audio export.",
