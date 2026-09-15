@@ -1,0 +1,52 @@
+{
+  "_comment": "Vendor quirks for driving dropdowns on job-application and signup forms. The ARIA path ([role=listbox] / [role=option]) lives in the binary because it is a W3C standard; ONLY vendor-specific markup belongs here, where a redesign can be answered in seconds instead of an App Store review. Hints are tried BEFORE the ARIA selectors and the ARIA selectors are always kept, so a stale entry degrades to slower, never to broken.",
+  "_source_of_truth": "mchatai-source/harness/web-forms/form-platforms.json",
+  "_added": "2026-09-15 — after a Greenhouse application answered 0 of 7 dropdowns: the agent guessed react-select's DEFAULT class names (.select__menu .select__option) and the page uses emotion-generated classes, so every click found zero elements.",
+  "platforms": [
+    {
+      "id": "greenhouse",
+      "hosts": ["job-boards.greenhouse.io", "boards.greenhouse.io", "greenhouse.io"],
+      "menuSelectors": ["[class*=\"select__menu\"]", "[class*=\"-menu\"]", "[id$=\"-listbox\"]"],
+      "optionSelectors": ["[class*=\"select__option\"]", "[id*=\"-option-\"]", "[class*=\"-option\"]"],
+      "typeToFilter": true,
+      "waitMs": 2000
+    },
+    {
+      "id": "lever",
+      "hosts": ["jobs.lever.co"],
+      "optionSelectors": [".application-dropdown li", "[class*=\"dropdown\"] li"],
+      "typeToFilter": false,
+      "waitMs": 1200
+    },
+    {
+      "id": "ashby",
+      "hosts": ["jobs.ashbyhq.com"],
+      "menuSelectors": ["[class*=\"_dropdown\"]", "[class*=\"Dropdown\"]"],
+      "optionSelectors": ["[class*=\"_option\"]", "[class*=\"Option\"]"],
+      "typeToFilter": true,
+      "waitMs": 1500
+    },
+    {
+      "id": "workday",
+      "hosts": ["myworkdayjobs.com", "wd1.myworkdayjobs.com", "wd5.myworkdayjobs.com"],
+      "menuSelectors": ["[data-automation-id=\"activeListContainer\"]", "ul[role=\"listbox\"]"],
+      "optionSelectors": ["[data-automation-id=\"promptOption\"]", "li[role=\"option\"]"],
+      "typeToFilter": false,
+      "waitMs": 2500
+    },
+    {
+      "id": "smartrecruiters",
+      "hosts": ["jobs.smartrecruiters.com", "careers.smartrecruiters.com"],
+      "optionSelectors": ["[class*=\"option\"]", "li[role=\"option\"]"],
+      "typeToFilter": true,
+      "waitMs": 1500
+    },
+    {
+      "id": "workable",
+      "hosts": ["apply.workable.com"],
+      "optionSelectors": ["[data-ui=\"option\"]", "li[role=\"option\"]"],
+      "typeToFilter": true,
+      "waitMs": 1500
+    }
+  ]
+}
