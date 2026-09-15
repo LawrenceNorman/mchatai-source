@@ -1,0 +1,53 @@
+{
+  "_readme": "How mChatAI+ recognises 'this CLI is not signed in' in a backend's own error text, and what to do about it. CONTENT, not binary: these strings are written by third parties (Anthropic, OpenAI, Google) and change on THEIR release cycle, not ours — a list baked into the app is wrong the day a vendor rewords a message, and a shipped user cannot recompile. Edit by PR; refreshMchataisourceCache picks it up with no rebuild.",
+  "_consumer": "mChatAI+ CLIAuthFailureDetector -> WorkbenchController.authFailures -> the Workbench sign-in card",
+  "_failure_mode": "If this file is missing or unparseable, NOTHING is classified and the raw CLI line is shown exactly as before. Degrading to the old behaviour is safe; inventing a second copy of these patterns inside the binary is not (ABSOLUTE RULE #1).",
+  "version": 1,
+  "backends": {
+    "claude": {
+      "displayName": "Claude Code",
+      "match": [
+        "oauth session expired",
+        "oauth token has expired",
+        "could not be refreshed",
+        "failed to authenticate",
+        "invalid api key",
+        "please run /login",
+        "authentication_error",
+        "not logged in"
+      ],
+      "loginInput": "/login",
+      "guidance": "Claude Code's sign-in expired. This is the CLI's own login on this Mac — nothing to do with the sites you are browsing, or with your mChatAI+ account.",
+      "afterAction": "A terminal opens here and runs /login. Claude Code will hand you a link to finish in the browser, then you can resume the conversation."
+    },
+    "codex": {
+      "displayName": "Codex CLI",
+      "match": [
+        "not logged in",
+        "please run `codex login`",
+        "please run codex login",
+        "unauthorized",
+        "401",
+        "invalid api key",
+        "authentication failed"
+      ],
+      "loginInput": "/login",
+      "guidance": "The Codex CLI is not signed in on this Mac. This is its own login, separate from your mChatAI+ account and from anything you are browsing.",
+      "afterAction": "A terminal opens here and starts the login. Finish it in the browser, then resume the conversation."
+    },
+    "gemini": {
+      "displayName": "Gemini CLI",
+      "match": [
+        "not authenticated",
+        "please run `gemini auth`",
+        "reauthenticate",
+        "invalid api key",
+        "401",
+        "credentials have expired"
+      ],
+      "loginInput": "/auth",
+      "guidance": "The Gemini CLI's credentials have expired on this Mac. This is its own login, separate from your mChatAI+ account.",
+      "afterAction": "A terminal opens here and starts re-authentication. Finish it in the browser, then resume the conversation."
+    }
+  }
+}
