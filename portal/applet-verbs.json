@@ -124,6 +124,37 @@
             "requestedVerb": "proposeActions"
           }
         }
+      },
+      "getapplicationprofile": {
+        "kind": "read",
+        "summary": "Read the saved answers job application forms keep asking for — name, email, phone, LinkedIn, and the EEO block.",
+        "notes": "Sensitive fields (gender, race, veteran and disability status) come back with value:null BY DESIGN. You are told the field exists and given a {{profile:key}} placeholder; aiweb.proposeActions substitutes the real answer in Swift and the user reads it in the approval card. So you can fill an answer you are not permitted to read, and it never enters your context or transcript. Never guess a value that is listed as missing.",
+        "example": {
+          "command": "applet",
+          "applet": "assistant",
+          "verb": "getApplicationProfile"
+        }
+      },
+      "saveapplicationprofile": {
+        "kind": "create",
+        "summary": "Save answers to the job application profile so the next form is one step instead of twenty.",
+        "optional": [
+          "fields",
+          "key",
+          "value"
+        ],
+        "notes": "Offer this when the user tells you an answer a form asked for. The key list is FIXED — an agent that can mint arbitrary keys can mint {{profile:ssn}}. Stored in a Ledger collection the user can read, edit and delete; it is not encrypted at rest, so say so rather than implying a vault.",
+        "example": {
+          "command": "applet",
+          "applet": "assistant",
+          "verb": "saveApplicationProfile",
+          "args": {
+            "fields": {
+              "phone": "(206) 555-0100",
+              "veteranStatus": "I am not a protected veteran"
+            }
+          }
+        }
       }
     },
     "aividgen": {
@@ -696,6 +727,27 @@
           "args": {
             "title": "Research notes",
             "text": "One more thing."
+          }
+        }
+      },
+      "export": {
+        "kind": "create",
+        "summary": "Write a document out as a real file — pdf, docx, doc, rtf, txt or md — and return its path.",
+        "required": [
+          "id"
+        ],
+        "optional": [
+          "title",
+          "format"
+        ],
+        "notes": "AI Write stores markdown; an upload field wants a file. The returned `path` is the ONLY kind of path aiweb attach accepts — the export directory IS the attachment allowlist, so exporting a document is what makes it attachable. Defaults to pdf. Re-export after editing: the file is a snapshot, not a live link.",
+        "example": {
+          "command": "applet",
+          "applet": "aiwrite",
+          "verb": "export",
+          "args": {
+            "title": "Resume",
+            "format": "pdf"
           }
         }
       }
@@ -1674,7 +1726,8 @@
               }
             ]
           }
-        }
+        },
+        "notes": "Actions are fill | click | submit | attach. Nothing runs until the user approves the card. `attach` uploads a file to an input[type=file]: its `value` must be a path returned by aiwrite.export — arbitrary filesystem paths are refused, because attach pushes local bytes into a web page and that is a larger surface than fill. Use {{profile:key}} in a fill `value` to insert a saved profile answer you are not allowed to read. Never propose a submit for a job application, a payment, or a message — the last click is the user's."
       },
       "actionresult": {
         "kind": "read",
