@@ -1747,6 +1747,19 @@
             "id": "<proposalID from proposeActions>"
           }
         }
+      },
+      "inspectform": {
+        "kind": "read",
+        "summary": "READ-ONLY: list every form control on the live page with a selector that actually reaches it, its label, kind, whether it is required, and what is already filled in. No approval needed — querySelectorAll changes nothing.",
+        "optional": [
+          "limit"
+        ],
+        "example": {
+          "command": "applet",
+          "applet": "aiweb",
+          "verb": "inspectForm"
+        },
+        "notes": "CALL THIS BEFORE proposeActions ON ANY FORM YOU HAVE NOT FILLED BEFORE. Guessing selectors from the page text costs an approval card per guess and the user's attention with it; on 2026-09-15 an agent spent three rounds guessing a resume input's attributes on a Rippling form and then started reading the site's JS bundle to infer how a component renders its `name` prop - to answer a question the DOM answers directly. Use the returned `selector` values VERBATIM. `selectorIsStable:false` means the selector is positional and will break on the next page - prefer matching by `label` instead. `kind` tells you which primitive to use: \"combobox\" and \"select\" need selectOption, never fill; \"file\" needs attach with a path from aiwrite.export. Credential-shaped fields come back with valueNow \"...\" masked and must be left to the human. If the site has been filled before, `knownSelectors` on getCurrentPage already lists what worked - start there."
       }
     },
     "dreamsnap": {
