@@ -1,0 +1,414 @@
+{
+  "_comment": "The atoms a content verb may compose (Phase EV). Adding one is a PR — but it can only ever proxy an applet verb that already exists in Swift. Content cannot conjure new native power, which is the whole reason a verb manifest is reviewable by reading it.",
+  "_safetyNote": "safetyClass here is a CEILING REQUEST, not the final word. Swift holds a floor (CapabilityRegistry.knownReadVerbs) and the effective class is max(declared, floor). Content may mark something MORE dangerous than Swift assumed; it can never mark something less. If it could, a verb declared 'read' could compose a write primitive and the class would certify nothing. Anything Swift has not classified floors at 'write' — nothing is blocked, the assumption is just pessimistic until a human says otherwise in the binary.",
+  "_source_of_truth": "mchatai-source/portal/capabilities.json",
+  "registryVersion": 1,
+  "capabilities": [
+    {
+      "id": "ainews.listArticles",
+      "applet": "ainews",
+      "verb": "listArticles",
+      "safetyClass": "read",
+      "summary": "Fetch articles from the curated feeds. Optional `category` (default All) and `limit` (1-100, default 20). Feeds pipelines/TTS chains without paying fo"
+    },
+    {
+      "id": "ainews.listCategories",
+      "applet": "ainews",
+      "verb": "listCategories",
+      "safetyClass": "read",
+      "summary": "The news categories articles can be pulled by."
+    },
+    {
+      "id": "ainews.listSources",
+      "applet": "ainews",
+      "verb": "listSources",
+      "safetyClass": "read",
+      "summary": "The curated feed catalogue (100+ sources from mchatai-source news/feeds.json) with categories."
+    },
+    {
+      "id": "aislides.addAsset",
+      "applet": "aislides",
+      "verb": "addAsset",
+      "safetyClass": "write",
+      "summary": "Copy an image FILE on disk into a deck's assets so a slide can show it. Returns image_file — set a slide's `image_file` slot to that name. This is how"
+    },
+    {
+      "id": "aislides.addSlide",
+      "applet": "aislides",
+      "verb": "addSlide",
+      "safetyClass": "write",
+      "summary": "Append (or insert at 1-based `index`) one slide in the flat wire form."
+    },
+    {
+      "id": "aislides.createDeck",
+      "applet": "aislides",
+      "verb": "createDeck",
+      "safetyClass": "write",
+      "summary": "Make a new deck. An existing title is REUSED rather than duplicated, so a retried script is safe. Optional `slides` is an array of slide objects ({lay"
+    },
+    {
+      "id": "aislides.exportPDF",
+      "applet": "aislides",
+      "verb": "exportPDF",
+      "safetyClass": "write",
+      "summary": "Render the deck to a vector PDF (one page per slide, skipped slides excluded) and register it as a portal asset. Returns the asset id and path."
+    },
+    {
+      "id": "aislides.getDeck",
+      "applet": "aislides",
+      "verb": "getDeck",
+      "safetyClass": "read",
+      "summary": "One deck as JSON: title, theme, and each slide's layout, slots, notes. `deck` is a title or id."
+    },
+    {
+      "id": "aislides.listDecks",
+      "applet": "aislides",
+      "verb": "listDecks",
+      "safetyClass": "read",
+      "summary": "Every deck with id, title, theme, slide count and updatedAt."
+    },
+    {
+      "id": "aislides.listLayouts",
+      "applet": "aislides",
+      "verb": "listLayouts",
+      "safetyClass": "read",
+      "summary": "The slide layout archetypes and which slots each one renders — read this before authoring slide objects by hand."
+    },
+    {
+      "id": "aislides.listThemes",
+      "applet": "aislides",
+      "verb": "listThemes",
+      "safetyClass": "read",
+      "summary": "The valid theme ids and whether each is light or dark. Themes are content — the set grows without an app update."
+    },
+    {
+      "id": "aislides.setNotes",
+      "applet": "aislides",
+      "verb": "setNotes",
+      "safetyClass": "write",
+      "summary": "Set the speaker notes on slide `index` (1-based)."
+    },
+    {
+      "id": "aislides.setTheme",
+      "applet": "aislides",
+      "verb": "setTheme",
+      "safetyClass": "write",
+      "summary": "Restyle the whole deck. A miss returns the valid theme ids."
+    },
+    {
+      "id": "aiweb.captureForAssistant",
+      "applet": "aiweb",
+      "verb": "captureForAssistant",
+      "safetyClass": "write",
+      "summary": "Capture structured events, jobs, articles, or a bounded page summary from the current signed-in AI Web page for Personal Assistant recommendations."
+    },
+    {
+      "id": "aiweb.getCurrentPage",
+      "applet": "aiweb",
+      "verb": "getCurrentPage",
+      "safetyClass": "read",
+      "summary": "Read the URL, title, bounded visible text, and schema.org events/jobs/articles from the page currently open in AI Web, including a signed-in page."
+    },
+    {
+      "id": "aiweb.getState",
+      "applet": "aiweb",
+      "verb": "getState",
+      "safetyClass": "read",
+      "summary": "AI Web readiness: verb list, loaded agent count, report scan count. NOTE: AI Web is not only research — it also has an ACT layer (proposeActions → use"
+    },
+    {
+      "id": "aiweb.inspectForm",
+      "applet": "aiweb",
+      "verb": "inspectForm",
+      "safetyClass": "read",
+      "summary": "READ-ONLY: list every form control on the live page with a selector that actually reaches it, its label, kind, whether it is required, and what is alr"
+    },
+    {
+      "id": "aiweb.listHistory",
+      "applet": "aiweb",
+      "verb": "listHistory",
+      "safetyClass": "read",
+      "summary": "List pages the user has actually visited in AI Web, most recent first, so you can find the right starting point instead of asking them for a URL."
+    },
+    {
+      "id": "aiweb.listReports",
+      "applet": "aiweb",
+      "verb": "listReports",
+      "safetyClass": "read",
+      "summary": "Completed AI Web research report scans from the reports store."
+    },
+    {
+      "id": "aiweb.openPage",
+      "applet": "aiweb",
+      "verb": "openPage",
+      "safetyClass": "write",
+      "summary": "Navigate the user's signed-in browser to an http(s) page, in the surface they are already watching."
+    },
+    {
+      "id": "aiwrite.appendDoc",
+      "applet": "aiwrite",
+      "verb": "appendDoc",
+      "safetyClass": "write",
+      "summary": "Add to the end of an existing document. Blank-line separated unless you pass `separator`."
+    },
+    {
+      "id": "aiwrite.createDoc",
+      "applet": "aiwrite",
+      "verb": "createDoc",
+      "safetyClass": "write",
+      "summary": "Write a new document. Takes the text INLINE — no file, no path, no sandbox problem."
+    },
+    {
+      "id": "aiwrite.export",
+      "applet": "aiwrite",
+      "verb": "export",
+      "safetyClass": "write",
+      "summary": "Write a document out as a real file — pdf, docx, doc, rtf, txt or md — and return its path."
+    },
+    {
+      "id": "aiwrite.getDoc",
+      "applet": "aiwrite",
+      "verb": "getDoc",
+      "safetyClass": "read",
+      "summary": "One document's full text. Address it by `id` or exact `title`; a miss returns the ids that exist."
+    },
+    {
+      "id": "aiwrite.listDocs",
+      "applet": "aiwrite",
+      "verb": "listDocs",
+      "safetyClass": "read",
+      "summary": "Documents, most recently updated first. Titles and sizes only — bodies come from getDoc."
+    },
+    {
+      "id": "aiwrite.listExports",
+      "applet": "aiwrite",
+      "verb": "listExports",
+      "safetyClass": "read",
+      "summary": "List the files already exported and ready to attach — filename, path, format, size, modified. Read-only; lists only the one directory aiweb attach acc"
+    },
+    {
+      "id": "assistant.getContext",
+      "applet": "assistant",
+      "verb": "getContext",
+      "safetyClass": "read",
+      "summary": "Read the Personal Assistant's conversational context: profile, a small set of broad priorities, learned Ledger memories, watched AI Web sources, and r"
+    },
+    {
+      "id": "assistant.listAssistants",
+      "applet": "assistant",
+      "verb": "listAssistants",
+      "safetyClass": "read",
+      "summary": "List the assistants that exist — id, display name, what each is for, and whether it has a thread yet."
+    },
+    {
+      "id": "assistant.listGoals",
+      "applet": "assistant",
+      "verb": "listGoals",
+      "safetyClass": "read",
+      "summary": "List the user's explicit active goals in priority order so research or Workbench work can stay relevant."
+    },
+    {
+      "id": "assistant.remember",
+      "applet": "assistant",
+      "verb": "remember",
+      "safetyClass": "write",
+      "summary": "Remember one durable fact the user stated or confirmed without turning it into a task. The fact is also written to the visible Assistant Context Ledge"
+    },
+    {
+      "id": "audiolibrary.createFolder",
+      "applet": "audiolibrary",
+      "verb": "createFolder",
+      "safetyClass": "write",
+      "summary": "Make a folder. An existing name is returned rather than duplicated, so re-running a script is safe."
+    },
+    {
+      "id": "audiolibrary.importTrack",
+      "applet": "audiolibrary",
+      "verb": "importTrack",
+      "safetyClass": "write",
+      "summary": "Bring an audio file into the library. The sink LoopStar's export and the artifact router both land in."
+    },
+    {
+      "id": "audiolibrary.listFolders",
+      "applet": "audiolibrary",
+      "verb": "listFolders",
+      "safetyClass": "read",
+      "summary": "Every folder with its track count. Use a name or id with listTracks and importTrack."
+    },
+    {
+      "id": "audiolibrary.listTracks",
+      "applet": "audiolibrary",
+      "verb": "listTracks",
+      "safetyClass": "read",
+      "summary": "Tracks, newest first. Pass `folder` to scope to one; an unknown folder returns the valid names."
+    },
+    {
+      "id": "hub.getApp",
+      "applet": "hub",
+      "verb": "getApp",
+      "safetyClass": "read",
+      "summary": "Return an app's HTML (result.html) to reuse as a design/behavior template. Installed-first, then the Hub catalog. `app` is a name, slug or id."
+    },
+    {
+      "id": "hub.search",
+      "applet": "hub",
+      "verb": "search",
+      "safetyClass": "read",
+      "summary": "Find installed (and loaded-catalog) apps by name."
+    },
+    {
+      "id": "ledger.addColumn",
+      "applet": "ledger",
+      "verb": "addColumn",
+      "safetyClass": "write",
+      "summary": "Add one typed column. Usually unnecessary — appendRows infers columns from your CSV header. Use this to force a type inference would get wrong."
+    },
+    {
+      "id": "ledger.appendRows",
+      "applet": "ledger",
+      "verb": "appendRows",
+      "safetyClass": "write",
+      "summary": "The headline write verb. Append rows from CSV (header row required), or REFRESH an existing table in place by passing `matchOn`. Creates the collectio"
+    },
+    {
+      "id": "ledger.createCollection",
+      "applet": "ledger",
+      "verb": "createCollection",
+      "safetyClass": "write",
+      "summary": "Make a new collection. An existing name is REUSED rather than duplicated, so re-running a script is safe."
+    },
+    {
+      "id": "ledger.getRows",
+      "applet": "ledger",
+      "verb": "getRows",
+      "safetyClass": "read",
+      "summary": "The rows as {column name: value}, paged. Build your UI from these. `collection` is a name (e.g. \"Seattle Birds\") or id."
+    },
+    {
+      "id": "ledger.getSchema",
+      "applet": "ledger",
+      "verb": "getSchema",
+      "safetyClass": "read",
+      "summary": "A collection's columns (name, kind, hint). `collection` is a name or id."
+    },
+    {
+      "id": "ledger.listCollections",
+      "applet": "ledger",
+      "verb": "listCollections",
+      "safetyClass": "read",
+      "summary": "Every collection with its row count and column names — the map of the user's structured data."
+    },
+    {
+      "id": "ledger.setCell",
+      "applet": "ledger",
+      "verb": "setCell",
+      "safetyClass": "write",
+      "summary": "Correct one cell. Row numbers are 1-based as displayed. For bulk loading use appendRows."
+    },
+    {
+      "id": "loopstar.craftChords",
+      "applet": "loopstar",
+      "verb": "craftChords",
+      "safetyClass": "write",
+      "summary": "Ask the model for changes in this style and install them. Says whether the MODEL or the fallback generator wrote what you got."
+    },
+    {
+      "id": "loopstar.craftMelody",
+      "applet": "loopstar",
+      "verb": "craftMelody",
+      "safetyClass": "write",
+      "summary": "Ask the model for a melodic hook over the current changes and install it. Reports MODEL vs fallback."
+    },
+    {
+      "id": "loopstar.exportToAudioLibrary",
+      "applet": "loopstar",
+      "verb": "exportToAudioLibrary",
+      "safetyClass": "write",
+      "summary": "Render the arrangement to a bar-exact WAV and file it in the Audio Library. The verb that makes LoopStar a producer other applets can consume."
+    },
+    {
+      "id": "loopstar.getState",
+      "applet": "loopstar",
+      "verb": "getState",
+      "safetyClass": "read",
+      "summary": "Style, key, tempo, meter and how many arrangement sections exist. Call it after every write."
+    },
+    {
+      "id": "loopstar.listGenres",
+      "applet": "loopstar",
+      "verb": "listGenres",
+      "safetyClass": "read",
+      "summary": "Every generative style available, from the content registry. Use an id from here with setGenre."
+    },
+    {
+      "id": "loopstar.setBPM",
+      "applet": "loopstar",
+      "verb": "setBPM",
+      "safetyClass": "write",
+      "summary": "Set the tempo. Limited to 50-150% of the loaded pack's base tempo; an out-of-range ask is clamped and says by how much."
+    },
+    {
+      "id": "loopstar.setGenre",
+      "applet": "loopstar",
+      "verb": "setGenre",
+      "safetyClass": "write",
+      "summary": "Pick the generative style. An unknown id answers with the list rather than failing blind."
+    },
+    {
+      "id": "loopstar.setKey",
+      "applet": "loopstar",
+      "verb": "setKey",
+      "safetyClass": "write",
+      "summary": "Set the session key. Everything generated is written in it."
+    },
+    {
+      "id": "mapguide.discoverPlaces",
+      "applet": "mapguide",
+      "verb": "discoverPlaces",
+      "safetyClass": "write",
+      "summary": "Place name -> POIs (Wikipedia-enriched, category-filterable). Findings only; persists nothing."
+    },
+    {
+      "id": "mapguide.geocode",
+      "applet": "mapguide",
+      "verb": "geocode",
+      "safetyClass": "read",
+      "summary": "Place NAME -> latitude/longitude. Note: name geocoding can fail in the sandboxed app; prefer coordinates from your data (a Ledger with lat/lng) when y"
+    },
+    {
+      "id": "mapguide.snapshot",
+      "applet": "mapguide",
+      "verb": "snapshot",
+      "safetyClass": "write",
+      "summary": "Render a static map PNG for a place or coordinate and save it to disk; returns `path`. Pass `latitude`+`longitude` (reliable) or `place` (needs geocod"
+    },
+    {
+      "id": "todo.addTask",
+      "applet": "todo",
+      "verb": "addTask",
+      "safetyClass": "write",
+      "summary": "Add a task to a list. Unknown list or priority returns the valid values."
+    },
+    {
+      "id": "todo.createProject",
+      "applet": "todo",
+      "verb": "createProject",
+      "safetyClass": "write",
+      "summary": "Make a list. An existing name is reused rather than duplicated, so re-running a script is safe."
+    },
+    {
+      "id": "todo.listProjects",
+      "applet": "todo",
+      "verb": "listProjects",
+      "safetyClass": "read",
+      "summary": "Every list with its task and open counts."
+    },
+    {
+      "id": "todo.setTaskStatus",
+      "applet": "todo",
+      "verb": "setTaskStatus",
+      "safetyClass": "write",
+      "summary": "Mark a task done or open. Already in that state is reported as changed:false rather than flipped."
+    }
+  ]
+}
