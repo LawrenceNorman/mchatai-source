@@ -1,0 +1,31 @@
+{
+  "_comment": "EV.4 proof: a genuinely useful verb that exists ONLY as content. Two steps, two applets, read then write — composed from registered capabilities, with no Swift case anywhere.",
+  "applet": "aiwrite",
+  "verb": "snapshotPage",
+  "summary": "Save the page the user is looking at as an AI Write document.",
+  "safetyClass": "write",
+  "releaseLanes": ["debug", "developerid"],
+  "params": {
+    "title": {
+      "type": "string",
+      "summary": "Document title. Defaults to the page's own title.",
+      "required": false
+    }
+  },
+  "steps": [
+    { "id": "page", "capability": "aiweb.getCurrentPage" },
+    {
+      "id": "doc",
+      "capability": "aiwrite.createDoc",
+      "with": {
+        "title": "${page.result.title}",
+        "text": "# ${page.result.title}\n\nSource: ${page.result.url}\n\n${page.result.text}"
+      }
+    }
+  ],
+  "output": {
+    "summary": "Saved “${page.result.title}” from ${page.result.url}",
+    "result": { "url": "${page.result.url}", "title": "${page.result.title}" }
+  },
+  "notes": "Reads whichever surface the user is watching — the Workbench preview counts. The document is a snapshot, not a live link; re-run it to refresh."
+}
