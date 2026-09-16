@@ -1,0 +1,40 @@
+{
+  "_comment": "Phrases that mean the user is stating a STANDING instruction, not making a passing remark. Matched deterministically at the start of a sentence in a user's turn; a hit writes a durable memory immediately and shows an undoable confirmation. Content because this is language, it is tunable, and getting it wrong should cost a PR rather than an App Store cycle.",
+  "_source_of_truth": "mchatai-source/harness/assistant/correction-cues.json",
+  "_added": "2026-09-15 — Lawrence, after scolding an assistant for something it got wrong in a cover letter: 'I asked it to remember to not do that in the future (how does that work? Does that hopefully get stored as a memory somewhere that's durable?)'. It did not, reliably: the only paths were the agent voluntarily calling assistant.remember (measured at 2 memories in 22 hours of real work) and a once-a-day distiller.",
+  "_falsePositivePolicy": "Be moderately liberal. Every hit is SHOWN to the user and undoable in one click, so a false positive costs a click; a miss costs a correction silently lost, which is what this replaces.",
+  "cues": [
+    { "match": "remember to",        "kind": "feedback",   "strip": true },
+    { "match": "remember not to",    "kind": "feedback",   "strip": true },
+    { "match": "remember that",      "kind": "feedback",   "strip": true },
+    { "match": "please remember",    "kind": "feedback",   "strip": true },
+    { "match": "don't ever",         "kind": "feedback",   "strip": false },
+    { "match": "do not ever",        "kind": "feedback",   "strip": false },
+    { "match": "never again",        "kind": "feedback",   "strip": false },
+    { "match": "from now on",        "kind": "preference", "strip": true },
+    { "match": "going forward",      "kind": "preference", "strip": true },
+    { "match": "in the future",      "kind": "preference", "strip": true },
+    { "match": "next time",          "kind": "preference", "strip": true },
+    { "match": "stop doing",         "kind": "feedback",   "strip": false },
+    { "match": "i prefer",           "kind": "preference", "strip": false },
+    { "match": "i'd prefer",         "kind": "preference", "strip": false },
+    { "match": "i always want",      "kind": "preference", "strip": false },
+    { "match": "i never want",       "kind": "preference", "strip": false },
+    { "match": "make sure you",      "kind": "feedback",   "strip": true },
+    { "match": "always use",         "kind": "preference", "strip": false },
+    { "match": "never use",          "kind": "feedback",   "strip": false }
+  ],
+  "_stoplistComment": "Sentences containing these are NOT standing instructions, however they start. 'Never mind' and 'remember when' are the obvious traps; the rest are narrative uses of the same words.",
+  "stoplist": [
+    "never mind",
+    "remember when",
+    "do you remember",
+    "if i remember",
+    "as i remember",
+    "not that i remember",
+    "i can't remember",
+    "i don't remember"
+  ],
+  "minLength": 12,
+  "maxLength": 300
+}
