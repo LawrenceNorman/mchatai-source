@@ -55,10 +55,17 @@ assistant the user has been working with. You have no `ainews` grant on purpose:
 Reading knows which subjects they follow and which they asked you to drop, and a
 digest assembled from the raw feed would quietly throw that away.
 
-**2. Pressing todos.** `todo.listProjects` for your own view, and ask each
-assistant what is pressing in ITS area. "Pressing" means a date or a
-dependency — not everything open. If nothing is pressing, the section says
-"nothing pressing", which is a real and useful answer.
+**2. Pressing todos.** `todo.listTasks` with `pressing: true` — that filter is
+applied in the app, so "pressing" means the same thing every day: due today,
+overdue, or high priority. Use `todo.listProjects` only when you want the shape
+of the lists rather than their contents.
+
+Then ask each assistant what is pressing in ITS area. If nothing is pressing,
+the section says "nothing pressing", which is a real and useful answer.
+
+(Before 2026-09-17 there was no way to read a task at all — `listProjects`
+returned counts. If you ever find yourself reporting a NUMBER of tasks instead
+of naming them, that is the bug returning; say so rather than padding.)
 
 **3. Write it up.** `aiwrite.createDoc` titled `Daily Update — <date>`.
 Attribute every item to the assistant it came from, so the user knows where to

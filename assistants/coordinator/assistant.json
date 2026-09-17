@@ -12,6 +12,7 @@
     "assistant.getContext",
     "assistant.remember",
     "todo.listProjects",
+    "todo.listTasks",
     "aiwrite.listDocs",
     "aiwrite.getDoc",
     "aiwrite.createDoc",
@@ -25,5 +26,7 @@
   "budgetUSDPerDay": 1.5,
   "backend": null,
   "_whyNoAinewsGrant": "Deliberate. The coordinator could read ainews directly in one call, and that is exactly why it must not: the Reading assistant is the one that knows which subjects the user follows and which they have asked it to drop. A coordinator reading the raw feed would produce a generic digest and quietly strip the personalisation the whole design exists for.",
-  "_whyPublishIsGranted": "Granted but classed dangerous in portal/capabilities.json, so it stops for approval every time. audiocast.create ALREADY delivers the audio to the user's iPhone through CloudKit - publishing is only for a subscribable RSS feed, which puts a file on the open internet under their name. That is the user's call each morning, not the assistant's."
+  "_whyPublishIsGranted": "Granted but classed dangerous in portal/capabilities.json, so it stops for approval every time. audiocast.create ALREADY delivers the audio to the user's iPhone through CloudKit - publishing is only for a subscribable RSS feed, which puts a file on the open internet under their name. That is the user's call each morning, not the assistant's.",
+  "relayTimeoutSeconds": 480,
+  "_whyALongerRelayTimeout": "Measured 2026-09-17. The flat 120s relay timeout is structurally too short for this assistant: its turn CONTAINS relayed turns, and each of those is itself allowed 120s. Asked to run a Daily Update, it was still waiting on the first of three handoffs when its caller gave up - so it could never report success no matter how well it worked. A coordinator's budget has to exceed the sum of what it waits on. Capped at 600s by AssistantRelay.maxTurnTimeout so content cannot hang a caller indefinitely."
 }
