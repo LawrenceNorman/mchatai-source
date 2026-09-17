@@ -1,0 +1,23 @@
+{
+  "_comment": "Which build lanes serve which hand-written Swift verbs (Phase EV.3). Content verbs declare their own lanes in their manifest; this is the same rule for the legacy ones.",
+  "_source_of_truth": "mchatai-source/portal/verb-lanes.json",
+  "_defaultIsAllow": "A verb NOT listed here is unrestricted, which preserves exactly what shipped builds serve today. Default-allow is deliberate for now: flipping to default-deny would change what every shipped user's agent can call, and there is no inventory of what they depend on. The mechanism ships in SHADOW MODE (flag verb_lane_enforcement, default OFF) — every would-be refusal is recorded and printed by diagVerbLanes, so the flip becomes a decision someone makes after reading a report.",
+  "_lanes": {
+    "debug": "Developer builds. Always served — a dev build that refused its own verbs would make every QA harness lie about what shipped builds do.",
+    "developerid": "Direct-download (DMG) builds.",
+    "mas": "Mac App Store builds."
+  },
+  "_howToUse": "List a verb here only when it should NOT be everywhere. Start with the ones whose blast radius is largest if an agent reaches them unattended.",
+  "verbs": {
+    "workbench.startsession": ["debug", "developerid"],
+    "workbench.starttui": ["debug", "developerid"],
+    "workbench.sendturn": ["debug", "developerid"],
+    "workbench.interrupt": ["debug", "developerid"],
+
+    "aiweb.proposeactions": ["debug", "developerid"],
+
+    "assistant.ask": ["debug", "developerid"],
+    "assistant.saveapplicationprofile": ["debug", "developerid"],
+    "assistant.getapplicationprofile": ["debug", "developerid"]
+  }
+}
