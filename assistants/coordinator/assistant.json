@@ -24,9 +24,10 @@
     "audiocast.publishEpisode"
   ],
   "budgetUSDPerDay": 1.5,
-  "backend": null,
+  "backend": "claude",
   "_whyNoAinewsGrant": "Deliberate. The coordinator could read ainews directly in one call, and that is exactly why it must not: the Reading assistant is the one that knows which subjects the user follows and which they have asked it to drop. A coordinator reading the raw feed would produce a generic digest and quietly strip the personalisation the whole design exists for.",
   "_whyPublishIsGranted": "Granted but classed dangerous in portal/capabilities.json, so it stops for approval every time. audiocast.create ALREADY delivers the audio to the user's iPhone through CloudKit - publishing is only for a subscribable RSS feed, which puts a file on the open internet under their name. That is the user's call each morning, not the assistant's.",
   "relayTimeoutSeconds": 480,
-  "_whyALongerRelayTimeout": "Measured 2026-09-17. The flat 120s relay timeout is structurally too short for this assistant: its turn CONTAINS relayed turns, and each of those is itself allowed 120s. Asked to run a Daily Update, it was still waiting on the first of three handoffs when its caller gave up - so it could never report success no matter how well it worked. A coordinator's budget has to exceed the sum of what it waits on. Capped at 600s by AssistantRelay.maxTurnTimeout so content cannot hang a caller indefinitely."
+  "_whyALongerRelayTimeout": "Measured 2026-09-17. The flat 120s relay timeout is structurally too short for this assistant: its turn CONTAINS relayed turns, and each of those is itself allowed 120s. Asked to run a Daily Update, it was still waiting on the first of three handoffs when its caller gave up - so it could never report success no matter how well it worked. A coordinator's budget has to exceed the sum of what it waits on. Capped at 600s by AssistantRelay.maxTurnTimeout so content cannot hang a caller indefinitely.",
+  "_whyPinnedToClaude": "2026-09-17. Left null, the resolver picked codex, which was out of credits until Sep 19 - and it could not have known, because backendAvailability() reads the content invocation mappings, not the health probe. So a coordinator run failed for a reason nothing in the selection path could see. Pinned to claude, which probes GREEN. Set back to null once backend selection consults health; this is a workaround for that gap, not a preference about which CLI is better."
 }
