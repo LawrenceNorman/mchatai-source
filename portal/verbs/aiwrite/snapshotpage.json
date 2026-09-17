@@ -4,7 +4,10 @@
   "verb": "snapshotPage",
   "summary": "Save the page the user is looking at as an AI Write document.",
   "safetyClass": "write",
-  "releaseLanes": ["debug", "developerid"],
+  "releaseLanes": [
+    "debug",
+    "developerid"
+  ],
   "params": {
     "title": {
       "type": "string",
@@ -13,7 +16,10 @@
     }
   },
   "steps": [
-    { "id": "page", "capability": "aiweb.getCurrentPage" },
+    {
+      "id": "page",
+      "capability": "aiweb.getCurrentPage"
+    },
     {
       "id": "doc",
       "capability": "aiwrite.createDoc",
@@ -25,7 +31,11 @@
   ],
   "output": {
     "summary": "Saved “${page.result.title}” from ${page.result.url}",
-    "result": { "url": "${page.result.url}", "title": "${page.result.title}" }
+    "result": {
+      "url": "${page.result.url}",
+      "title": "${page.result.title}"
+    }
   },
-  "notes": "Reads whichever surface the user is watching — the Workbench preview counts. The document is a snapshot, not a live link; re-run it to refresh."
+  "notes": "Reads whichever surface the user is watching — the Workbench preview counts. The document is a snapshot, not a live link; re-run it to refresh. NOT Shortcut-safe (appIntent:false): it writes, and it captures whatever page happens to be open. A person invoking it is deciding; an automation firing at 3am against a page left on screen is not. Reachable from the portal, not from Shortcuts.",
+  "appIntent": false
 }
