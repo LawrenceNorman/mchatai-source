@@ -1,6 +1,6 @@
 {
-  "_comment": "The atoms a content verb may compose (Phase EV). Adding one is a PR — but it can only ever proxy an applet verb that already exists in Swift. Content cannot conjure new native power, which is the whole reason a verb manifest is reviewable by reading it.",
-  "_safetyNote": "safetyClass here is a CEILING REQUEST, not the final word. Swift holds a floor (CapabilityRegistry.knownReadVerbs) and the effective class is max(declared, floor). Content may mark something MORE dangerous than Swift assumed; it can never mark something less. If it could, a verb declared 'read' could compose a write primitive and the class would certify nothing. Anything Swift has not classified floors at 'write' — nothing is blocked, the assumption is just pessimistic until a human says otherwise in the binary.",
+  "_comment": "The atoms a content verb may compose (Phase EV). Adding one is a PR \u2014 but it can only ever proxy an applet verb that already exists in Swift. Content cannot conjure new native power, which is the whole reason a verb manifest is reviewable by reading it.",
+  "_safetyNote": "safetyClass here is a CEILING REQUEST, not the final word. Swift holds a floor (CapabilityRegistry.knownReadVerbs) and the effective class is max(declared, floor). Content may mark something MORE dangerous than Swift assumed; it can never mark something less. If it could, a verb declared 'read' could compose a write primitive and the class would certify nothing. Anything Swift has not classified floors at 'write' \u2014 nothing is blocked, the assumption is just pessimistic until a human says otherwise in the binary.",
   "_source_of_truth": "mchatai-source/portal/capabilities.json",
   "registryVersion": 1,
   "capabilities": [
@@ -30,7 +30,7 @@
       "applet": "aislides",
       "verb": "addAsset",
       "safetyClass": "write",
-      "summary": "Copy an image FILE on disk into a deck's assets so a slide can show it. Returns image_file — set a slide's `image_file` slot to that name. This is how"
+      "summary": "Copy an image FILE on disk into a deck's assets so a slide can show it. Returns image_file \u2014 set a slide's `image_file` slot to that name. This is how"
     },
     {
       "id": "aislides.addSlide",
@@ -72,14 +72,14 @@
       "applet": "aislides",
       "verb": "listLayouts",
       "safetyClass": "read",
-      "summary": "The slide layout archetypes and which slots each one renders — read this before authoring slide objects by hand."
+      "summary": "The slide layout archetypes and which slots each one renders \u2014 read this before authoring slide objects by hand."
     },
     {
       "id": "aislides.listThemes",
       "applet": "aislides",
       "verb": "listThemes",
       "safetyClass": "read",
-      "summary": "The valid theme ids and whether each is light or dark. Themes are content — the set grows without an app update."
+      "summary": "The valid theme ids and whether each is light or dark. Themes are content \u2014 the set grows without an app update."
     },
     {
       "id": "aislides.setNotes",
@@ -114,7 +114,7 @@
       "applet": "aiweb",
       "verb": "getState",
       "safetyClass": "read",
-      "summary": "AI Web readiness: verb list, loaded agent count, report scan count. NOTE: AI Web is not only research — it also has an ACT layer (proposeActions → use"
+      "summary": "AI Web readiness: verb list, loaded agent count, report scan count. NOTE: AI Web is not only research \u2014 it also has an ACT layer (proposeActions \u2192 use"
     },
     {
       "id": "aiweb.inspectForm",
@@ -156,14 +156,14 @@
       "applet": "aiwrite",
       "verb": "createDoc",
       "safetyClass": "write",
-      "summary": "Write a new document. Takes the text INLINE — no file, no path, no sandbox problem."
+      "summary": "Write a new document. Takes the text INLINE \u2014 no file, no path, no sandbox problem."
     },
     {
       "id": "aiwrite.export",
       "applet": "aiwrite",
       "verb": "export",
       "safetyClass": "write",
-      "summary": "Write a document out as a real file — pdf, docx, doc, rtf, txt or md — and return its path."
+      "summary": "Write a document out as a real file \u2014 pdf, docx, doc, rtf, txt or md \u2014 and return its path."
     },
     {
       "id": "aiwrite.getDoc",
@@ -177,14 +177,14 @@
       "applet": "aiwrite",
       "verb": "listDocs",
       "safetyClass": "read",
-      "summary": "Documents, most recently updated first. Titles and sizes only — bodies come from getDoc."
+      "summary": "Documents, most recently updated first. Titles and sizes only \u2014 bodies come from getDoc."
     },
     {
       "id": "aiwrite.listExports",
       "applet": "aiwrite",
       "verb": "listExports",
       "safetyClass": "read",
-      "summary": "List the files already exported and ready to attach — filename, path, format, size, modified. Read-only; lists only the one directory aiweb attach acc"
+      "summary": "List the files already exported and ready to attach \u2014 filename, path, format, size, modified. Read-only; lists only the one directory aiweb attach acc"
     },
     {
       "id": "assistant.getContext",
@@ -198,7 +198,7 @@
       "applet": "assistant",
       "verb": "listAssistants",
       "safetyClass": "read",
-      "summary": "List the assistants that exist — id, display name, what each is for, and whether it has a thread yet."
+      "summary": "List the assistants that exist \u2014 id, display name, what each is for, and whether it has a thread yet."
     },
     {
       "id": "assistant.listGoals",
@@ -213,6 +213,62 @@
       "verb": "remember",
       "safetyClass": "write",
       "summary": "Remember one durable fact the user stated or confirmed without turning it into a task. The fact is also written to the visible Assistant Context Ledge"
+    },
+    {
+      "id": "audiocast.artwork",
+      "applet": "audiocast",
+      "verb": "artwork",
+      "safetyClass": "write",
+      "summary": "Ensure the channel has published cover art. `force: true` regenerates it."
+    },
+    {
+      "id": "audiocast.channel",
+      "applet": "audiocast",
+      "verb": "channel",
+      "safetyClass": "write",
+      "summary": "Read the user's podcast channel, or create/update it by passing `title`, `description`, `author` or `visibility`. Called with no args it only reads."
+    },
+    {
+      "id": "audiocast.create",
+      "applet": "audiocast",
+      "verb": "create",
+      "safetyClass": "write",
+      "summary": "Turn `script` text into spoken audio. Renders FREE on-device (no API cost, no tokens), saves an editable project, imports the track into AI Audio, and uploads to CloudKit so it reaches iOS. Optional `title`, `voice`. This alone is enough to hear it on your phone - publishEpisode is only needed for a subscribable RSS feed."
+    },
+    {
+      "id": "audiocast.getState",
+      "applet": "audiocast",
+      "verb": "getState",
+      "safetyClass": "read",
+      "summary": "Whether Audiocast Creator is ready, how many projects exist, and the free on-device default voice."
+    },
+    {
+      "id": "audiocast.listProjects",
+      "applet": "audiocast",
+      "verb": "listProjects",
+      "safetyClass": "read",
+      "summary": "Every audiocast project with its id, title and render count. Use an id with publishEpisode."
+    },
+    {
+      "id": "audiocast.listVoices",
+      "applet": "audiocast",
+      "verb": "listVoices",
+      "safetyClass": "read",
+      "summary": "The free on-device English voices. Pass a voice `id` to create; omit for the default (Samantha)."
+    },
+    {
+      "id": "audiocast.publishEpisode",
+      "applet": "audiocast",
+      "verb": "publishEpisode",
+      "safetyClass": "dangerous",
+      "summary": "Publish a rendered episode to the user's podcast FEED, reachable over the internet at a capability URL (or publicly, if the channel is public). Requires `title` plus `audioPath` or `projectID`. DANGEROUS because it puts a file on the open internet under the user's name - it is not undone by deleting a local file."
+    },
+    {
+      "id": "audiocast.unpublishEpisode",
+      "applet": "audiocast",
+      "verb": "unpublishEpisode",
+      "safetyClass": "dangerous",
+      "summary": "Remove a published episode from the feed and refund its storage. Requires `shareID`. DANGEROUS because it destroys a share other people may already be subscribed to."
     },
     {
       "id": "audiolibrary.createFolder",
@@ -261,7 +317,7 @@
       "applet": "ledger",
       "verb": "addColumn",
       "safetyClass": "write",
-      "summary": "Add one typed column. Usually unnecessary — appendRows infers columns from your CSV header. Use this to force a type inference would get wrong."
+      "summary": "Add one typed column. Usually unnecessary \u2014 appendRows infers columns from your CSV header. Use this to force a type inference would get wrong."
     },
     {
       "id": "ledger.appendRows",
@@ -296,7 +352,7 @@
       "applet": "ledger",
       "verb": "listCollections",
       "safetyClass": "read",
-      "summary": "Every collection with its row count and column names — the map of the user's structured data."
+      "summary": "Every collection with its row count and column names \u2014 the map of the user's structured data."
     },
     {
       "id": "ledger.setCell",

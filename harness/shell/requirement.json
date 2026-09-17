@@ -1,0 +1,29 @@
+{
+  "_comment": "Phase SM.1 — the copy every surface uses to explain that it needs mChatAIShell. Lawrence: 'if the shell is not installed then of course that the Workbench and Assistant and Harness and anything else NEEDS to state things CLEARLY and say This is not going to work without the Shell and explain why and given an install link to mchataiShell'. This is CONTENT because it is the sentence a stuck user reads, and the sentence a stuck user reads should be fixable in seconds rather than in an App Store review cycle.",
+  "_source_of_truth": "mchatai-source/harness/shell/requirement.json",
+  "_theDistinctionThatMatters": "'not running' and 'not installed' need DIFFERENT sentences. Telling someone to launch an app they have never installed is worse than saying nothing, because they go looking for it and find nothing. The old ShellBridgeError.notRunning made exactly that mistake for every caller.",
+  "_whyTheShellExistsAtAll": "Stated in `why` for the notInstalled state, because that is the only moment the user is actually asking. mChatAI+ is sandboxed in BOTH channels; the shell is the unsandboxed, thin, open-source companion that runs local processes. That split is the security posture, not a workaround for it.",
+
+  "installURL": "https://mchatai.com/shell-app",
+
+  "states": {
+    "notInstalled": {
+      "headline": "{feature} needs mChatAIShell, and it isn't installed yet",
+      "why": "mChatAI+ is sandboxed — it cannot start programs on your Mac, and that is deliberate. mChatAIShell is the small open-source companion that does that part, so the app holding your data never needs full access to your machine. Without it, {feature} has nothing to run.",
+      "actionLabel": "Install mChatAIShell",
+      "isDownload": true
+    },
+    "installedNotRunning": {
+      "headline": "{feature} needs mChatAIShell, which isn't running",
+      "why": "mChatAIShell is installed on this Mac but not running right now, so there is nothing for {feature} to talk to.",
+      "actionLabel": "Launch mChatAIShell",
+      "isDownload": false
+    },
+    "runningNotPaired": {
+      "headline": "{feature} needs mChatAIShell, which isn't paired yet",
+      "why": "mChatAIShell is running, but this app hasn't been given its port and token, so the connection is refused. Pairing is one step and only has to be done once.",
+      "actionLabel": "Pair with mChatAIShell",
+      "isDownload": false
+    }
+  }
+}

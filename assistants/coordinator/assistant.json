@@ -1,5 +1,5 @@
 {
-  "_comment": "AS.7 — an assistant whose tools are the other assistants. It has NO domain grants of its own on purpose: everything it reports comes from asking the assistant that owns that subject.",
+  "_comment": "AS.7 + DU.2 - an assistant whose tools are the other assistants. It still has NO grant over anyone else's SUBJECT: it cannot browse, cannot read the news feed, cannot touch Ledger or LoopStar. Everything it reports is asked for. What DU.2 adds is the ability to produce its OWN output - the daily report it was asked for, and that report read aloud. Writing up what you were told is not reaching into someone else's subject; it is the job.",
   "id": "coordinator",
   "displayName": "Daily Coordinator",
   "blurb": "Asks the other assistants what matters today and gives you one list.",
@@ -11,8 +11,19 @@
     "assistant.getLatestBrief",
     "assistant.getContext",
     "assistant.remember",
-    "todo.listProjects"
+    "todo.listProjects",
+    "aiwrite.listDocs",
+    "aiwrite.getDoc",
+    "aiwrite.createDoc",
+    "aiwrite.appendDoc",
+    "audiocast.getState",
+    "audiocast.listVoices",
+    "audiocast.create",
+    "audiocast.channel",
+    "audiocast.publishEpisode"
   ],
-  "budgetUSDPerDay": 1.50,
-  "backend": null
+  "budgetUSDPerDay": 1.5,
+  "backend": null,
+  "_whyNoAinewsGrant": "Deliberate. The coordinator could read ainews directly in one call, and that is exactly why it must not: the Reading assistant is the one that knows which subjects the user follows and which they have asked it to drop. A coordinator reading the raw feed would produce a generic digest and quietly strip the personalisation the whole design exists for.",
+  "_whyPublishIsGranted": "Granted but classed dangerous in portal/capabilities.json, so it stops for approval every time. audiocast.create ALREADY delivers the audio to the user's iPhone through CloudKit - publishing is only for a subscribable RSS feed, which puts a file on the open internet under their name. That is the user's call each morning, not the assistant's."
 }
