@@ -1,0 +1,51 @@
+{
+  "version": 1,
+  "lastUpdated": "2026-09-17",
+  "_source_of_truth": true,
+  "_comment": "Phase MC — the words a mail verb says when it CANNOT do what it was asked. Read by MailSetupLadder (mChatAI+ Swift), which carries an identical _fallback_only copy for offline first launch. The BUG this exists to kill: mail.search with zero authorized accounts used to answer `ok, 0 message(s) match`, so an assistant told the user it had searched and found nothing. Not-configured must never read as not-found. The rung NAMES and the probe ORDER are behaviour and live in Swift; only the copy, the one-click flags and the deep links live here, so the wording can improve with a git push and no rebuild. Swift clamps everything it reads: text is trimmed and capped, `open` is dropped unless its scheme is com.sevenhillsstudio.mchatai or https, and `one_click` is ANDed with the rungs that actually have an automatable action — so a bad edit here can make the copy worse but can never make a verb claim it did something it did not.",
+  "_probe_order": [
+    "shellDown",
+    "gwsMissing",
+    "clientSecretMissing",
+    "noAccounts",
+    "ready"
+  ],
+  "rungs": {
+    "shellDown": {
+      "blocker": "mChatAIShell isn't connected, so nothing here can reach your mail.",
+      "unlocks": "The Shell is what talks to Google — reconnecting it restores reading, searching and drafting in one step.",
+      "remedy": "Open mChatAIShell from the menu bar and let it pair with mChatAI+, then ask again. Nobody can do this part for you — the two apps have to be paired on this Mac.",
+      "one_click": false,
+      "open": "com.sevenhillsstudio.mchatai://product?applet=mail"
+    },
+    "gwsMissing": {
+      "blocker": "The Google Workspace tools mChatAI+ signs in with aren't installed on this Mac yet.",
+      "unlocks": "Installing them is what lets you connect a Google account at all; it is the step before sign-in, not sign-in itself.",
+      "remedy": "Click Install Google Workspace Tools in AI Inbox, or let me run it for you — it takes about 30–60 seconds and needs nothing from you while it runs.",
+      "one_click": true,
+      "open": "com.sevenhillsstudio.mchatai://product?applet=mail"
+    },
+    "clientSecretMissing": {
+      "blocker": "There's no Google sign-in key on this Mac, so no account can be authorized yet.",
+      "unlocks": "Once the key is in place you can sign in as many Google accounts as you like, and mail can read every one of them.",
+      "remedy": "Open AI Inbox and follow “Connect AI Inbox to your Google account” — a one-time setup of about 90 seconds that ends with a client_secret.json file in ~/.config/gws/. I can't do this one for you: Google only issues that key through its own console, to you.",
+      "one_click": false,
+      "open": "com.sevenhillsstudio.mchatai://product?applet=mail"
+    },
+    "noAccounts": {
+      "blocker": "No Google account is connected yet, so there is no mailbox to read.",
+      "unlocks": "Connect one and unread mail, search and message details all start working for that account — read-only, no permission to send.",
+      "remedy": "Click Add a Google Account in AI Inbox, or say the word and I'll open Google's consent page in your browser. You have to finish the consent yourself; I can open it, I can't agree to it.",
+      "one_click": true,
+      "open": "com.sevenhillsstudio.mchatai://product?applet=mail"
+    },
+    "ready": {
+      "blocker": "Nothing is missing — mail is connected.",
+      "unlocks": "Reading, searching and drafting all work. Sending is the exception: every message still waits for you to approve it.",
+      "remedy": "No setup left to do.",
+      "one_click": false,
+      "open": "com.sevenhillsstudio.mchatai://product?applet=mail"
+    }
+  },
+  "probe_failed_suffix": "That check didn't complete ({error}), so treat this as unknown rather than as an empty inbox."
+}

@@ -41,6 +41,71 @@ class AuthLoginInput(BaseModel):
     readonly: bool = Field(default=True, description="Request read-only scopes when supported")
 
 
+class SendEmailInput(BaseModel):
+    """Body for POST /emails/send.
+
+    `to`/`cc`/`bcc` are comma-separated address lists — that is `gws gmail
+    +send`'s own contract, not ours. Pass bare addresses: a display-name form
+    with a comma inside it (`"Doe, Jane" <jane@example.com>`) splits in the
+    wrong place and mails a stranger.
+    """
+    to: str = Field(..., description="Recipient address(es), comma-separated")
+    subject: str = Field(..., description="Subject line")
+    body: str = Field(..., description="Message body (plain text)")
+    cc: Optional[str] = Field(default=None, description="CC address(es), comma-separated")
+    bcc: Optional[str] = Field(default=None, description="BCC address(es), comma-separated")
+    # Optional send-as alias. The attribute is `from_address` because `from`
+    # is a Python keyword; the JSON key stays `from` (and `populate_by_name`
+    # keeps `from_address` working too) so neither spelling is silently
+    # dropped by a caller that guessed the other one.
+    from_address: Optional[str] = Field(
+        default=None,
+        alias="from",
+        description="send-as alias to send from; omit to use the account default",
+    )
+
+    model_config = {"populate_by_name": True}
+
+
+class ReplyEmailInput(BaseModel):
+    """Body for POST /emails/reply.
+
+    Only the message id and the new text are required — `gws gmail +reply`
+    sets In-Reply-To / References / threadId and quotes the original itself,
+    so we never hand-roll threading headers here.
+    """
+    message_id: str = Field(..., description="Gmail message ID being replied to")
+    body: str = Field(..., description="Reply body (plain text)")
+    cc: Optional[str] = Field(default=None, description="CC address(es), comma-separated")
+    bcc: Optional[str] = Field(default=None, description="BCC address(es), comma-separated")
+    from_address: Optional[str] = Field(
+        default=None,
+        alias="from",
+        description="send-as alias to reply from; omit to use the account default",
+    )
+
+    model_config = {"populate_by_name": True}
+
+
+class SendResult(BaseModel):
+    """What a completed send or reply returns.
+
+    `messageId` is Gmail's own id for the message that now exists in Sent —
+    it is the *evidence* the send happened, not a status flag we set. That is
+    why the send endpoints raise instead of returning this shape when gws
+    gives us no id (VERB_AUTHORING.md rule 6: never report success for work
+    that did not happen).
+
+    No web URL is returned on purpose: a Gmail deep link needs the account
+    (`?authuser=`) or the browser's profile index (`/u/N/`), and this service
+    is single-account via gws and knows neither reliably. The caller that
+    knows which mailbox it asked about builds the link.
+    """
+    messageId: str
+    threadId: Optional[str] = None
+    labelIds: List[str] = Field(default_factory=list)
+
+
 # ── Helpers ──
 
 def gws_path() -> Optional[str]:
@@ -195,6 +260,350 @@ async def read_email(message_id: str):
     """Read a specific email by message ID."""
     data = run_gws(["gmail", "+read", message_id])
     return data
+
+
+# ── Send path ──
+#
+# Kept apart from the read endpoints above on purpose. Everything else in this
+# service runs happily on a read-only Google scope; these two need a write
+# scope and therefore a fresh consent (POST /auth/login with readonly=false).
+# Someone reading this file should be able to see at a glance which half of it
+# can change the user's mailbox.
+#
+# Declared after `GET /emails/{message_id}` and that is safe only because the
+# methods differ — FastAPI would otherwise route `GET /emails/send` into the
+# catch-all. Any *GET* added under /emails/ must go above that route.
+#
+# Deliberate omission: `gws gmail +send` and `+reply` both take a `--draft`
+# flag and we do NOT expose it. In the verb surface `mail.draft` means "queue
+# an AssistantProposal for a human to approve", not "put a draft in Gmail". A
+# second endpoint called /emails/draft invites wiring the approval gate to the
+# wrong one, and the failure mode there is mail leaving without anyone having
+# approved it. If a real Gmail draft is ever wanted, give it a name that
+# cannot be mistaken for the approval step.
+
+# Deliberately more generous than the 30s default the read endpoints use. A
+# send is the one call where a timeout is genuinely *ambiguous* — the message
+# may or may not have left — so waiting longer is much cheaper than handing
+# the user an "unknown" and making them go check Sent.
+SEND_TIMEOUT_SECONDS = 60
+
+# Markers that mean "the credential is the problem", so the error can name the
+# fix instead of the symptom. Matched case-insensitively against gws's own
+# error text; the 401/403 codes are checked numerically off the error envelope.
+_REAUTH_MARKERS = (
+    "insufficient",
+    "scope",
+    "permission",
+    "forbidden",
+    "unauthorized",
+    "invalid_grant",
+    "authentication failed",
+    "autherror",
+)
+
+_REAUTH_HINT = (
+    " — Gmail send needs a write scope and this service's /auth/login defaults to "
+    "read-only. Re-run POST /auth/login with {\"readonly\": false} and complete the "
+    "browser consent again."
+)
+
+
+def _flag(name: str, value: str) -> str:
+    """Build a single `--name=value` argv token.
+
+    Always the `=` form, never two separate tokens. gws's parser treats a
+    value beginning with `-` as another flag, and none of this text is ours —
+    an agent composes it from email it just read, which is attacker-reachable
+    content. A body that starts with `--` has to stay a body.
+
+    (There is no shell here — subprocess gets an argv list — so this guards
+    flag injection, not shell injection.)
+    """
+    return f"--{name}={value}"
+
+
+def _require_nonempty(raw: Optional[str], field: str, *, keep_whitespace: bool = False) -> str:
+    """Reject blank required text with a 422 that says which field and why.
+
+    A send with an empty subject or body is never what anyone meant; it means
+    the message was assembled wrong upstream. Failing here is recoverable,
+    whereas a blank email in someone's inbox is not.
+    """
+    text = raw or ""
+    if not text.strip():
+        raise HTTPException(
+            status_code=422,
+            detail=f"`{field}` must not be empty — refusing to send a message with no {field}.",
+        )
+    return text if keep_whitespace else text.strip()
+
+
+def _clean_address_list(raw: Optional[str], field: str, *, required: bool) -> Optional[str]:
+    """Normalise a comma-separated address list, or 422.
+
+    Splitting on commas is gws's contract (see SendEmailInput). We only check
+    for an `@` — full RFC 5322 validation here would reject addresses Gmail
+    accepts, and Gmail is the authority anyway. The leading-`-` check is
+    belt-and-braces against a future rewrite that stops using `_flag`.
+    """
+    if raw is None:
+        if required:
+            raise HTTPException(status_code=422, detail=f"`{field}` is required.")
+        return None
+
+    parts = [p.strip() for p in raw.split(",")]
+    parts = [p for p in parts if p]
+    if not parts:
+        if required:
+            raise HTTPException(status_code=422, detail=f"`{field}` is required.")
+        return None
+
+    bad = [p for p in parts if "@" not in p or p.startswith("-")]
+    if bad:
+        raise HTTPException(
+            status_code=422,
+            detail=f"`{field}` is not a usable address list: {bad}. Use bare, comma-separated addresses.",
+        )
+    return ",".join(parts)
+
+
+def _gws_error_detail(stdout: str, stderr: str, rc: int) -> str:
+    """Turn a failed gws invocation into a message that names the fix.
+
+    gws prints a structured `{"error": {code, message, reason}}` envelope on
+    stdout *and* a one-line human version on stderr, and it exits non-zero for
+    both kinds of failure (observed on v0.22.5: rc 3 for a bad flag, rc 2 for
+    an auth failure). Prefer the envelope — it carries the HTTP code — and
+    fall back to stderr when stdout is not JSON.
+    """
+    code: Optional[int] = None
+    message = ""
+    reason = ""
+    try:
+        parsed = json.loads(stdout) if stdout else None
+    except json.JSONDecodeError:
+        parsed = None
+
+    if isinstance(parsed, dict) and isinstance(parsed.get("error"), dict):
+        err = parsed["error"]
+        raw_code = err.get("code")
+        code = raw_code if isinstance(raw_code, int) else None
+        message = str(err.get("message") or "").strip()
+        reason = str(err.get("reason") or "").strip()
+
+    if message:
+        detail = f"[{code or 'error'}/{reason or 'unknown'}] {message}"
+    else:
+        detail = (stderr or stdout or f"gws exited {rc} with no output").strip()
+    detail = detail[:400]
+
+    haystack = " ".join([message, reason, stderr]).lower()
+    if code in (401, 403) or any(marker in haystack for marker in _REAUTH_MARKERS):
+        detail += _REAUTH_HINT
+    return detail
+
+
+def _candidate_objects(payload: Any, depth: int = 0) -> List[Dict[str, Any]]:
+    """Depth-limited walk yielding every dict that could carry the sent message."""
+    if depth > 2 or payload is None:
+        return []
+    if isinstance(payload, dict):
+        found = [payload]
+        for key in ("message", "result", "data", "response", "body"):
+            nested = payload.get(key)
+            if nested is not None:
+                found.extend(_candidate_objects(nested, depth + 1))
+        return found
+    if isinstance(payload, list):
+        found: List[Dict[str, Any]] = []
+        for item in payload[:3]:
+            found.extend(_candidate_objects(item, depth + 1))
+        return found
+    return []
+
+
+def _extract_sent_ids(payload: Any) -> Tuple[Optional[str], Optional[str], List[str]]:
+    """Pull (messageId, threadId, labelIds) out of whatever gws printed.
+
+    `users.messages.send` returns a bare Gmail Message resource — `{"id",
+    "threadId", "labelIds"}` — and gws passes API responses straight through
+    (auth_status above reads `emailAddress` right off getProfile the same way).
+    We still peek one level into the wrapper keys gws uses elsewhere, because
+    the machine this was written on has no send scope, so the *success* shape
+    could not be observed live. Tolerating the plausible wrappers costs
+    nothing; hard-coding one shape and silently finding no id would turn every
+    successful send into a spurious failure — and a retried duplicate email.
+    """
+    for node in _candidate_objects(payload):
+        raw_id = node.get("id") or node.get("messageId")
+        if not isinstance(raw_id, str) or not raw_id.strip():
+            continue
+        thread = node.get("threadId") or node.get("thread_id")
+        labels = node.get("labelIds")
+        return (
+            raw_id.strip(),
+            thread.strip() if isinstance(thread, str) and thread.strip() else None,
+            [label for label in labels if isinstance(label, str)] if isinstance(labels, list) else [],
+        )
+    return None, None, []
+
+
+async def _run_send(args: List[str], action: str, *, failure_hint: str = "") -> SendResult:
+    """Run one `gws gmail +<action>` and turn its output into a SendResult — or raise.
+
+    There is deliberately no third outcome. This function never returns a
+    success shape for a message that did not leave: if we cannot point at
+    Gmail's own id for the sent message, we raise and let the caller decide.
+    `run_gws` is not reused here because it treats any zero exit as success,
+    which is exactly the check a send cannot skip.
+    """
+    try:
+        rc, stdout, stderr = await run_gws_raw_async(args, timeout=SEND_TIMEOUT_SECONDS)
+    except FileNotFoundError:
+        raise HTTPException(status_code=503, detail="gws CLI not installed. Install: brew install gws")
+    except subprocess.TimeoutExpired:
+        # Not a failure — an unknown. gws may well have handed the message to
+        # Gmail before we stopped waiting. Reporting "failed" here invites a
+        # retry that sends the same email twice, which is worse than the wait.
+        raise HTTPException(
+            status_code=504,
+            detail=(
+                f"gws gmail +{action} did not finish within {SEND_TIMEOUT_SECONDS}s. "
+                "The outcome is UNKNOWN — the message may already have been sent. "
+                "Check the Sent folder before retrying."
+            ),
+        )
+
+    if rc != 0:
+        raise HTTPException(
+            status_code=500,
+            detail=f"gws gmail +{action} failed: {_gws_error_detail(stdout, stderr, rc)}{failure_hint}",
+        )
+
+    try:
+        parsed: Any = json.loads(stdout) if stdout else None
+    except json.JSONDecodeError:
+        parsed = None
+
+    # gws has exited non-zero for every failure we could provoke, but it still
+    # prints the error envelope. Check it on a zero exit too: a future gws that
+    # reports a soft failure this way would otherwise read as a clean send.
+    if isinstance(parsed, dict) and isinstance(parsed.get("error"), dict):
+        raise HTTPException(
+            status_code=500,
+            detail=f"gws gmail +{action} failed: {_gws_error_detail(stdout, stderr, rc)}{failure_hint}",
+        )
+
+    # The --dry-run envelope describes a request, not a result. We never pass
+    # --dry-run, but a wrapper script or env default could; nothing was sent,
+    # so it must not be allowed to look like a send.
+    if isinstance(parsed, dict) and parsed.get("dry_run"):
+        raise HTTPException(
+            status_code=500,
+            detail=f"gws gmail +{action} ran in dry-run mode — nothing was sent.",
+        )
+
+    message_id, thread_id, labels = _extract_sent_ids(parsed)
+    if not message_id:
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                f"gws gmail +{action} exited 0 but returned no message id, so the send "
+                f"cannot be confirmed — treating it as NOT sent. gws said: "
+                f"{(stdout or stderr or '<no output>')[:300]}"
+            ),
+        )
+    return SendResult(messageId=message_id, threadId=thread_id, labelIds=labels)
+
+
+@router.post("/emails/send", response_model=SendResult)
+async def send_email(payload: SendEmailInput) -> SendResult:
+    """Send a new email via `gws gmail +send`. There is no undo.
+
+    **This endpoint does not and cannot enforce human approval.** A
+    microservice sees an HTTP request, not who made it. The approval gate
+    lives one layer up, in the Swift verb surface: `mail.send` refuses unless
+    it is handed an approved AssistantProposal id, and `mail.draft` is what an
+    agent is allowed to call. Keep it that way — if this endpoint ever becomes
+    reachable without that gate, an agent that read an attacker's email can
+    send mail as the user, which is the exact injection path the Assistant SDK
+    architecture warns about.
+
+    Returns Gmail's own message/thread ids on success; raises on anything else.
+    """
+    to = _clean_address_list(payload.to, "to", required=True) or ""
+    subject = _require_nonempty(payload.subject, "subject")
+    # keep_whitespace: a body's leading indentation is content, not noise. We
+    # only assert it is not blank.
+    body_text = _require_nonempty(payload.body, "body", keep_whitespace=True)
+    cc = _clean_address_list(payload.cc, "cc", required=False)
+    bcc = _clean_address_list(payload.bcc, "bcc", required=False)
+    sender = (payload.from_address or "").strip() or None
+
+    args: List[str] = [
+        "gmail", "+send",
+        _flag("to", to),
+        _flag("subject", subject),
+        _flag("body", body_text),
+    ]
+    if cc:
+        args.append(_flag("cc", cc))
+    if bcc:
+        args.append(_flag("bcc", bcc))
+    if sender:
+        args.append(_flag("from", sender))
+
+    return await _run_send(args, "send")
+
+
+@router.post("/emails/reply", response_model=SendResult)
+async def reply_email(payload: ReplyEmailInput) -> SendResult:
+    """Reply to an existing message via `gws gmail +reply`. There is no undo.
+
+    gws derives In-Reply-To / References / threadId from the message id and
+    quotes the original, so the reply lands in the existing thread instead of
+    starting a new one — which is why this is a separate endpoint rather than
+    /emails/send with a subject prefixed "Re:".
+
+    Same approval rules as /emails/send: the gate is in the verb layer, not here.
+    """
+    message_id = _require_nonempty(payload.message_id, "message_id")
+    if any(ch.isspace() for ch in message_id):
+        # Callers reach for the subject line or a mail.google.com URL when they
+        # cannot find the id. Say so here rather than letting gws 404 on it.
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"`message_id` contains whitespace: {message_id!r}. Pass Gmail's raw message id "
+                "(GET /emails/search returns one per row), not a subject or a URL."
+            ),
+        )
+    body_text = _require_nonempty(payload.body, "body", keep_whitespace=True)
+    cc = _clean_address_list(payload.cc, "cc", required=False)
+    bcc = _clean_address_list(payload.bcc, "bcc", required=False)
+    sender = (payload.from_address or "").strip() or None
+
+    args: List[str] = [
+        "gmail", "+reply",
+        _flag("message-id", message_id),
+        _flag("body", body_text),
+    ]
+    if cc:
+        args.append(_flag("cc", cc))
+    if bcc:
+        args.append(_flag("bcc", bcc))
+    if sender:
+        args.append(_flag("from", sender))
+
+    # A wrong id is the most likely caller mistake here, and gws reports it as
+    # a flat 404. Point at the lookup that produces a right one rather than
+    # leaving the agent to guess (VERB_AUTHORING.md rule 5).
+    return await _run_send(
+        args,
+        "reply",
+        failure_hint=" — if the message id is the problem, find a current one with GET /emails/search?query=...",
+    )
 
 
 # ── Auth Endpoints ──

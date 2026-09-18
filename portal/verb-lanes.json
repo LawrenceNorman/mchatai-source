@@ -40,8 +40,18 @@
     "assistant.getapplicationprofile": [
       "debug",
       "developerid"
+    ],
+    "mail.draft": [
+      "debug",
+      "developerid"
+    ],
+    "mail.send": [
+      "debug",
+      "developerid"
     ]
   },
+  "_whyMailIsListed": "Phase JM. mail.send puts text on the open internet under the user's name with no undo, which is the same blast radius audiocast.publishEpisode has. mail.draft is listed with it because a draft is precisely what a human is later asked to approve: an agent that can draft unattended can manufacture the thing someone says yes to. The READ verbs (mail.getState, mail.listAccounts, mail.listUnread, mail.search, mail.read) are deliberately NOT listed — reading the user's own mailbox under their own consent is the feature, and refusing it by lane would make an assistant blind rather than safe. Note this is belt and braces, not the gate: mail.send already refuses any caller that cannot present the id of a proposal a human approved, and that check is in Swift. Delete these two lines and send is still gated.",
+  "_whyMailConnectIsUnlisted": "Phase MC, and this is a DECISION, not an omission. mail.connect is deliberately NOT listed here, so _defaultIsAllow serves it on every lane including MAS. The argument for listing it debug+developerid is real: one of its rungs drives mChatAIShell to install a command-line tool. It loses to the argument against, which is that a MAS user with no Google account connected is exactly the user this verb exists for - gating it to the developer lanes would withhold the one-click fix from the people most likely to be stuck, and teach agents not to offer it at all. What connect can do alone is install a local CLI or OPEN a consent page in the user's own browser; it cannot grant consent, and it puts nothing on the open internet under the user's name the way mail.send does. Revisit if the install rung ever grows reach beyond gws.",
   "_whereThisActuallyBites": "MEASURED 2026-09-16, because the first write-up overstated it. The tunnel is compiled OUT of MAS builds entirely (DebugTestTunnel is inside #if DEBUG || DIRECT_DISTRIBUTION), and in Developer ID builds it only runs when the user turns on 'allow terminal commands' in Settings or launches with --mchatai-tunnel. So enforcing these lanes changes NOTHING for a Mac App Store user and nothing for a DMG user who has not opted in. It bites exactly one population: a DMG user who deliberately turned the portal on. That is a much smaller blast radius than 'what every shipped build serves'.",
   "_theMasLaneIsWaitingForEV6": "The 'mas' lane is listed for completeness and is currently INERT, because no agent-reachable surface exists in MAS. It becomes real the day App Intents can dispatch a verb (EV.6) — App Intents compile in every lane, so they would be the FIRST agent-reachable path in a Mac App Store build. Author these lanes now so that door opens already gated rather than gated afterwards."
 }

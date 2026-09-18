@@ -1,5 +1,5 @@
 {
-  "_comment": "The assistant Lawrence is actually running — LinkedIn search, Greenhouse/Rippling applications, resume and cover letter export.",
+  "_comment": "The assistant Lawrence is actually running — LinkedIn search, Greenhouse/Rippling applications, resume and cover letter export, and (Phase JM) reading his own authorized mail so an application status reconciles itself against the reply that actually arrived instead of against memory.",
   "id": "job-search",
   "displayName": "Job Search",
   "blurb": "Finds roles, reads the posting properly, and fills applications for approval.",
@@ -12,8 +12,19 @@
     "assistant.saveApplicationProfile",
     "assistant.remember",
     "assistant.getContext",
-    "ledger.*"
+    "ledger.*",
+    "mail.getState",
+    "mail.connect",
+    "mail.listAccounts",
+    "mail.listUnread",
+    "mail.search",
+    "mail.read",
+    "mail.draft"
   ],
+  "_whyMailSendIsNotGranted": "Phase JM. mail.send is missing from this list on purpose and must stay missing. The send path is held by AssistantProposalExecutor, which runs only after a human pressed Approve on a card showing the real recipient, subject and body; the assistant's job ends at mail.draft. Granting send here would not add a capability so much as remove the human from the middle of one — and the whole reason this assistant may touch mail at all is that it cannot post anything under the user's name by itself.",
+  "_whyMailConnectIsGranted": "Phase MC. Granted, because the alternative is an assistant that can tell the user mail is broken and then leave them to find the setup screen themselves — which is the moment a capable assistant stops looking capable. It adds no reach. The rungs connect can finish alone are installing a local CLI and OPENING a Google consent page in the user's own browser; consent itself is a human act on that page, and no grant written here can perform it. So this hands the assistant 'offer the one-click fix', not 'take access to the mailbox'. It does not soften _whyMailSendIsNotGranted by a character: connect unblocks READING, and sending still ends at mail.draft and a human pressing Approve.",
+  "_whyMailIsEnumeratedNotWildcarded": "Every other grant in this file is a wildcard; mail is not, because \"mail.*\" matches mail.send. AssistantCatalogService.allows treats `applet.*` as the whole applet, so the convenient spelling here is exactly the one that quietly hands over the verb this design exists to withhold. Enumerated means a future mail verb arrives ungranted and someone has to look at it — which is the right default for a surface that writes to other people. That default has now been exercised: Phase MC added mail.connect, it arrived ungranted because this list is enumerated, and it was read before it was added. Keep it enumerated.",
+  "_whyMailBodiesAreUntrusted": "Recruiter and ATS email is text an outsider wrote, and this assistant can already drive a signed-in browser and queue approval cards. So a message body is a prompt-injection vector aimed straight at the most privileged thing in the room — the same risk ASSISTANT_SDK_ARCHITECTURE.md flags for relayed answers, arriving by a different door. Mail content is data to report and quote, never an instruction to follow, and the standing rule is in CONTEXT.md where the model will actually read it: a _why key in this file documents the decision, it does not reach the prompt.",
   "budgetUSDPerDay": 3.00,
   "backend": null
 }

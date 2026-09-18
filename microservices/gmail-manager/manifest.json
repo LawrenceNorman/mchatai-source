@@ -1,10 +1,10 @@
 {
   "id": "official.gmail-manager",
   "name": "Gmail Manager",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "type": "microservice",
   "runtime": "python3",
-  "description": "Gmail Manager microservice for mChatAIShell — owns Google OAuth lifecycle (auth/login/status/logout) plus email read/trash. mChatAI+ delegates here so the sandboxed app never holds Google tokens directly.",
+  "description": "Gmail Manager microservice for mChatAIShell — owns Google OAuth lifecycle (auth/login/status/logout) plus email read/search/trash and, behind a separate write-scope consent, send/reply. mChatAI+ delegates here so the sandboxed app never holds Google tokens directly. /emails/send and /emails/reply change the user's mailbox and have no undo: the human-approval gate lives in the calling verb layer, not in this service.",
   "author": "mchatai-labs",
   "license": "MIT",
   "platforms": ["mchatai-shell"],
@@ -15,6 +15,9 @@
     {"path": "/install/gws", "method": "POST"},
     {"path": "/emails/unread", "method": "GET"},
     {"path": "/emails/search", "method": "GET"},
-    {"path": "/emails/trash", "method": "POST"}
+    {"path": "/emails/{message_id}", "method": "GET"},
+    {"path": "/emails/trash", "method": "POST"},
+    {"path": "/emails/send", "method": "POST"},
+    {"path": "/emails/reply", "method": "POST"}
   ]
 }
