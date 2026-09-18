@@ -295,6 +295,35 @@ async def add_account() -> AddAccountResult:
         def do_GET(self):  # noqa: N802
             qs = parse_qs(urlparse(self.path).query)
             received_state = qs.get("state", [""])[0]
+
+            # A request carrying NONE of the OAuth parameters is not part of the
+            # flow — it is the browser fetching /favicon.ico immediately after it
+            # renders the success page below, or a probe. This check must come
+            # FIRST, before the state comparison.
+            #
+            # 2026-09-18: it did not, and the `else: # Browser hit / favicon,
+            # ignore` branch at the bottom was therefore UNREACHABLE — an absent
+            # state ("") is not an equal state, so every favicon hit fell into
+            # the CSRF branch and set state_mismatch. The sequence was: consent
+            # succeeds, code is captured, success page renders, browser requests
+            # the favicon a few ms later, error is set, and the waiter (which
+            # polls every 0.5s) sees the error it had no reason to expect. A
+            # completed, valid authorization was discarded and the user was told
+            # "OAuth error: state_mismatch" after a flow that looked perfect.
+            # An empty state is a missing state, not a mismatched one.
+            if not qs.get("code") and not qs.get("error") and not qs.get("state"):
+                self.send_response(204)
+                self.end_headers()
+                return
+
+            # Once the code is captured the flow is OVER. A late arrival must
+            # never be able to overwrite a success with a failure — that is the
+            # same bug in its second form.
+            if code_holder["code"] is not None:
+                self.send_response(204)
+                self.end_headers()
+                return
+
             if "code" in qs and received_state == state:
                 code_holder["code"] = qs["code"][0]
                 code_holder["state"] = received_state
@@ -311,14 +340,14 @@ async def add_account() -> AddAccountResult:
                     f"<h2>Sign-in cancelled</h2><p>{qs['error'][0]}</p>"
                     f"</body></html>"
                 )
-            elif received_state != state:
+            else:
+                # A state that is PRESENT and WRONG is the real CSRF case, and
+                # it is the only thing that reaches here now: stray requests and
+                # post-success arrivals were both returned above. Keeping this
+                # branch strict is the point — the fix above narrows WHAT counts
+                # as a mismatch, it does not soften the response to a genuine one.
                 code_holder["error"] = "state_mismatch"
                 body = "<html><body><h2>State mismatch — possible CSRF attempt; aborted.</h2></body></html>"
-            else:
-                # Browser hit / favicon, ignore
-                self.send_response(204)
-                self.end_headers()
-                return
 
             self.send_response(200)
             self.send_header("Content-Type", "text/html; charset=utf-8")
@@ -340,10 +369,20 @@ async def add_account() -> AddAccountResult:
                 "client_id": secret["client_id"],
                 "redirect_uri": redirect_uri,
                 "response_type": "code",
-                # gmail.readonly is a restricted scope but Google verification
-                # is NOT required when the OAuth client is owned by the user
-                # (their Cloud project, External + Testing). The user accepts
-                # the "unverified app" warning during consent.
+                # gmail.readonly is a RESTRICTED scope, so a shared, verified
+                # client would need a CASA third-party security assessment,
+                # re-done annually. Verification is NOT required when the OAuth
+                # client is owned by the user (their own Cloud project); they
+                # accept the "unverified app" warning during consent instead.
+                #
+                # That project must be published "In production", NOT left in
+                # "Testing" (which an earlier version of this comment advised):
+                # Testing revokes refresh tokens after 7 DAYS and restricts
+                # consent to a hand-maintained test-user list. In production and
+                # unverified, tokens persist and any account can click through —
+                # the cost is a permanent, unresettable 100-user cap per project,
+                # which is irrelevant when each user brings their own client and
+                # is its only user.
                 "scope": "https://www.googleapis.com/auth/gmail.readonly openid email profile",
                 "access_type": "offline",
                 # Force fresh consent so a refresh_token is always issued —
