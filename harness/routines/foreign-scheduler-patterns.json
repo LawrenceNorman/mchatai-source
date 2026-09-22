@@ -1,0 +1,58 @@
+{
+  "version": 1,
+  "lastUpdated": "2026-09-21",
+  "_source_of_truth": true,
+  "_comment": "Commands and paths that create background persistence OUTSIDE mChatAI+ Routines: launchd, cron, at, login items (mchatai_macOS/docs/ROUTINES_ARCHITECTURE.md §5.3, §8). R10 denies these in agent turns (before any armed auto-allow) and points the agent at routines.propose; the Background Jobs view lists what already exists under 'Outside mChatAI+'. Read by ForeignSchedulerPatterns (Routines/RoutineContent.swift). The binary carries the same entries as a FLOOR and unions this file on top by id, so content can add or tighten patterns but can never remove a floor pattern. Regexes use the ICU/NSRegularExpression dialect (lookahead allowed) and must also compile in Python (checked by mchatai_macOS/scripts/check_routine_content.py). Globs: ~ is the user's home, ** matches any depth.",
+
+  "commands": [
+    {
+      "id": "launchctl-load",
+      "regex": "\\blaunchctl\\s+(load|bootstrap|enable|kickstart|submit)\\b",
+      "description": "Loading, enabling or starting a launchd job. Read-only launchctl subcommands (list, print) stay allowed."
+    },
+    {
+      "id": "crontab-write",
+      "regex": "\\bcrontab\\b(?!\\s+-l\\b)",
+      "description": "Installing or editing a crontab. `crontab -l` (list) stays allowed."
+    },
+    {
+      "id": "at-job",
+      "regex": "(^|[;&|(]\\s*)at\\s+(-[a-zA-Z]+\\s+\\S+\\s+)*(now|noon|midnight|teatime|tomorrow|[0-9])",
+      "description": "Queueing a one-off job with at(1). Anchored to the start of a command so the English word 'at' in arguments doesn't match."
+    },
+    {
+      "id": "osascript-login-item",
+      "regex": "\\bosascript\\b.*\\blogin\\s+item",
+      "caseInsensitive": true,
+      "description": "Adding a login item through System Events."
+    },
+    {
+      "id": "sfltool",
+      "regex": "\\bsfltool\\b",
+      "description": "Editing the background task management / login items database."
+    },
+    {
+      "id": "smappservice",
+      "regex": "\\bSMAppService\\b",
+      "description": "Registering a login item, launch agent or daemon from code (matched in commands and in files an agent writes)."
+    }
+  ],
+
+  "paths": [
+    {
+      "id": "user-launch-agents",
+      "glob": "~/Library/LaunchAgents/**",
+      "description": "Per-user launchd agents. Writing a plist here is the usual way a script gets scheduled outside mChatAI+."
+    },
+    {
+      "id": "system-launch-agents",
+      "glob": "/Library/LaunchAgents/**",
+      "description": "System-wide launchd agents."
+    },
+    {
+      "id": "system-launch-daemons",
+      "glob": "/Library/LaunchDaemons/**",
+      "description": "System launchd daemons."
+    }
+  ]
+}

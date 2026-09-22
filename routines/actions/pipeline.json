@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "_source_of_truth": true,
+  "_comment": "Routine action kind `pipeline` (mchatai_macOS/docs/ROUTINES_ARCHITECTURE.md §3.3). Runs in the app through the live AI Automation view model or the headless executor. A missing pipeline is failed: actionUnavailable; a pipeline paused after failures is skipped: breakerOpen (§8).",
+  "kind": "pipeline",
+  "displayName": "Pipeline",
+  "summary": "Run one of your pipelines on a schedule.",
+  "help": "Runs a saved pipeline (or a built-in template, by name) inside mChatAI+. If mChatAI+ is closed when it is due, it runs when the app next opens. Pipelines share one lane, so a pipeline that is due while another runs waits its turn.",
+  "availability": "v1",
+  "params": {
+    "type": "object",
+    "additionalProperties": false,
+    "anyOf": [
+      { "required": ["pipelineID"] },
+      { "required": ["templateName"] }
+    ],
+    "properties": {
+      "pipelineID": {
+        "type": "string",
+        "title": "Pipeline",
+        "description": "The saved pipeline's id."
+      },
+      "templateName": {
+        "type": "string",
+        "title": "Template",
+        "description": "A built-in pipeline template, by name, when no saved pipeline is given."
+      },
+      "input": {
+        "type": "string",
+        "title": "Input",
+        "description": "Text passed to the pipeline's first step. Optional.",
+        "default": ""
+      }
+    }
+  }
+}

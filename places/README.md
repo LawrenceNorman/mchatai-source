@@ -55,21 +55,50 @@ emits **one artifact** and takes a destination.
 ### Where the bytes live — `file`, `url`, `access` (Phase SL.5)
 
 The index is always small, always public, always in git. **Only the pack bytes
-move.** Three cases:
+move.** Four cases:
 
 | entry has | bytes come from | used for |
 |---|---|---|
 | `file` | `<base>/<file>` in this repo | first-party packs small enough for git |
 | `url` (absolute https) | that URL | packs too large or too numerous for git |
-| `access: "premium"` | a signed URL from `GET /v1/places/packs/<id>/url` | paid packs |
+| `access: "account"` | a signed URL from `GET /v1/places/packs/<id>/url` | free packs that need a signed-in account |
+| `access: "premium"` | the same endpoint | paid packs |
 
 `url` wins over `file` when both are present — so an entry carrying **both** stays
 readable by clients shipped before `url` existed. Prefer that during a migration.
 
-**Premium entries stay listed here on purpose.** People should be able to see
-what exists, with its name, summary, place count and region, before they pay.
-Only the bytes are gated, and the gate lives on the server — a client never
-decides its own entitlement. A locked pack renders as locked, not missing.
+### Access levels — `public`, `account`, `premium`
+
+`access` says who may have the bytes. The server decides who is entitled to a
+`premium` pack; a client never decides that. For `account` there is one thing
+the client decides and the server does not: whether the user is anonymous. The
+endpoint accepts an anonymous session's token, so the client must treat an
+anonymous user as signed out (see the table). An `account` or `premium` entry
+carries **no** `file` or `url` (either would hand the bytes to anyone) and
+**must** carry `sizeBytes`, because the endpoint charges each download to the
+user's monthly bandwidth.
+
+| `access` | who gets the bytes | what a client does |
+|---|---|---|
+| `public` (or omitted) | anyone, signed in or not | fetches `file` / `url` directly. No auth, no API call. |
+| `account` | any user signed in with a real account, free | signed in with a real (non-anonymous) account: calls the endpoint with the user's Firebase ID token and downloads the signed URL. An anonymous Firebase session, which every fresh install has, counts as signed out: do not call the endpoint, show the sign-in caption. Signed out: keeps the entry listed and shows a small caption asking the user to sign in for free (e.g. *Sign in — it's free — for "Seattle Landmarks — narrated"*, with the name taken from the index). If the screen already has a way to sign in, the caption opens it. **Not a paid thing.** Never show "Premium", "Subscription required", a lock icon or any paid-plan copy for it. |
+| `premium` | signed-in users the server entitles: a paid plan, a grant, or the owner | calls the endpoint like `account`. A `402` means not entitled: render the pack **locked, not missing**, show the server's `error` text, and don't retry. Tier and plan names come from that response, never from client code. |
+
+Both gated levels share the endpoint's other answers. A `401` for a signed-in
+user (an expired token, or `code: app_check_*`) is not a sign-out. Refresh the
+token once, then show the server's `error` text. Only a missing sign-in shows
+the sign-in caption. `429` with `reason: "bandwidth-exceeded"` shows the
+server's `error` text.
+
+**Gated entries stay listed here on purpose.** People should be able to see
+what exists, with its name, summary, place count and region, before they sign
+in or pay. Only the bytes are gated.
+
+**Unknown access values are skipped.** A client drops an entry whose `access`
+it does not recognise and that has no `file` or `url` it can use. That is how
+builds made before `account` existed treat an `account` entry. For a family
+(see below), they still show the base pack. So adding a gated level never
+breaks an old client. It just hides the new entry from it.
 
 **Hosts are allow-listed on every client** (`raw.githubusercontent.com`,
 `storage.googleapis.com`, `api.mchatai.com`, `mchatai.com`). This file is remote
@@ -79,17 +108,62 @@ host is skipped. Adding a host means shipping all three clients — so don't.
 **Cache paths derive from the pack `id`, never from `file` or `url`.** A remote
 string must not choose where a client writes on disk.
 
+An API-served entry, with no `file` or `url`:
+
 ```json
 {
   "id": "seattle-landmarks-narrated",
-  "name": "Seattle Landmarks — narrated walks",
-  "summary": "All 435 landmarks with full audio-tour narration.",
-  "access": "premium",
-  "placeCount": 435,
-  "sizeBytes": 794624,
-  "region": { "anchorLat": 47.6062, "anchorLon": -122.3321, "radiusKm": 25, "locality": "Seattle, WA" }
+  "variantOf": "seattle-landmarks",
+  "name": "Seattle Landmarks — narrated",
+  "summary": "All 451 designated City of Seattle landmarks, 435 with a full spoken narration …",
+  "access": "account",
+  "placeCount": 451,
+  "sizeBytes": 343782,
+  "region": { "anchorLat": 47.61024, "anchorLon": -122.33452, "radiusKm": 15.4, "locality": "Seattle, WA" }
 }
 ```
+
+### Families — `variantOf`
+
+Some packs are richer editions of another pack: the same places with more on
+each one (narration instead of a summary, extra links). Listing them as two
+unrelated packs shows people two near-identical rows, and importing both makes
+two copies of every place. `variantOf` groups them instead:
+
+```json
+{ "id": "seattle-landmarks-narrated", "variantOf": "seattle-landmarks", "access": "account", … }
+```
+
+A **family** is one base entry (no `variantOf`) plus every entry whose
+`variantOf` names it.
+
+- **One row per family, named after the base.** Clients show the base entry's
+  `name`, `summary` and `region`, never a second row for the variant.
+- **Get fetches the richest edition the user can have.** A client tries the
+  variants first and falls back to the base when a variant is locked, the
+  user is signed out, or the fetch fails. When the base is used because a
+  `premium` variant is locked, the client still shows the server's denial
+  message, so people know the richer edition exists. When it is used because
+  the user is signed out of an `account` variant, the client shows the
+  sign-in caption instead (see "Access levels"). Access stays whatever each
+  entry says, and the server decides.
+- **One identity per family.** A client stores the imported pack under the
+  base `id` whichever edition it fetched, so switching editions later updates
+  the same list rather than making another one.
+- **Same place-id set.** A variant carries exactly the base's place ids. It may
+  change what is on each place, not which places exist. `placeCount` and the
+  region anchor should match the base.
+- **No chains.** A base cannot itself have `variantOf`; families are one level
+  deep. An entry cannot name itself.
+- **Older clients ignore the field** and keep showing both rows. That is the
+  state before `variantOf` existed, so the field is additive and does not bump
+  `schemaVersion`.
+
+The validator errors on a `variantOf` that names a missing entry, itself, or
+another variant, and warns when `placeCount` or the region anchor differs from
+the base. It cannot check the place-id set for an `account` or `premium`
+variant, because those bytes are not in this repo, so check it wherever the
+variant is built.
 
 ## packs/&lt;id&gt;.json
 

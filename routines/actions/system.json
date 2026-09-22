@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "_source_of_truth": true,
+  "_comment": "Routine action kind `system` (mchatai_macOS/docs/ROUTINES_ARCHITECTURE.md §3.3). The handler list and each handler's defaults live in routines/system.json; the handler enum here must list exactly those ids, which must match RoutineSystemHandlerID.known in Swift (checked by scripts/check_routine_content.py). Handler-specific params (forYouBrief takes today's AssistantRoutine fields) pass through.",
+  "kind": "system",
+  "displayName": "Built-in job",
+  "summary": "One of mChatAI+'s own background jobs.",
+  "help": "Built-in upkeep and briefing jobs. Their schedules can be changed and they can be switched off; what they do is part of mChatAI+.",
+  "availability": "v1",
+  "params": {
+    "type": "object",
+    "required": ["handler"],
+    "additionalProperties": true,
+    "properties": {
+      "handler": {
+        "type": "string",
+        "title": "Job",
+        "enum": ["forYouBrief", "ccaa", "ambientObserver", "webSummarizer", "healthMonitor", "contentWorker", "selfLearn", "mpCompetition"]
+      },
+      "assistantID": {
+        "type": "string",
+        "title": "Assistant",
+        "description": "forYouBrief only."
+      },
+      "includeWebUpdates": { "type": "boolean", "description": "forYouBrief only." },
+      "includeResearch": { "type": "boolean", "description": "forYouBrief only." },
+      "includeOpportunities": { "type": "boolean", "description": "forYouBrief only." },
+      "createAIWriteDocument": { "type": "boolean", "description": "forYouBrief only." },
+      "generateSpokenBrief": { "type": "boolean", "description": "forYouBrief only." },
+      "sendNotification": { "type": "boolean", "description": "forYouBrief only." }
+    }
+  }
+}

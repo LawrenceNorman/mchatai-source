@@ -1,0 +1,100 @@
+{
+  "version": 1,
+  "lastUpdated": "2026-09-21",
+  "_source_of_truth": true,
+  "_comment": "Handlers for the `system` routine action (mchatai_macOS/docs/ROUTINES_ARCHITECTURE.md §3.3, §7). The handler REGISTRY is Swift (RoutineSystemHandlerID.known in Routines/RoutineContent.swift, wrapping the ScheduledJobExecutor descriptors); this file owns each handler's label, default schedule and defaultEnabled. An id Swift doesn't know is ignored; a known id missing here keeps its frozen Swift default. defaultEnabled mirrors today's intended first-launch defaults (ScheduledJobExecutor.firstLaunchDefaults: AmbientObserver daily 9:30, CCAA daily 10:00, HealthMonitor hourly) and SchedulerService.loadSavedJob's defaults for the rest (off, daily 8:00). It replaces the broken bootstrap (D2) from R3; on a Mac where D2 already left these jobs off, R3's GATE 2 asks the owner before applying it. System routines never wake the app (§9 decision 1): whenAppClosed is waitForApp. Checked by mchatai_macOS/scripts/check_routine_content.py.",
+
+  "handlers": [
+    {
+      "id": "forYouBrief",
+      "displayName": "Daily For You brief",
+      "summary": "Builds the Daily For You brief from your web updates, research and opportunities.",
+      "legacyJobID": "PersonalAssistant",
+      "owner": { "kind": "user", "surface": "forYou" },
+      "defaultEnabled": false,
+      "trigger": { "kind": "calendar", "hour": 8, "minute": 0 },
+      "whenAppClosed": "waitForApp",
+      "params": { "assistantID": "personal" },
+      "notes": "Off until the Personal Assistant toggle turns it on (AssistantRoutine.dailyBriefDefault). The single daily-brief row in AssistantStore.routines stays mirrored for iOS; nothing else is ever written there."
+    },
+    {
+      "id": "ambientObserver",
+      "displayName": "Ambient Observer",
+      "summary": "Runs an ambient observation pass (AmbientObserverService.runObservation).",
+      "legacyJobID": "AmbientObserver",
+      "owner": { "kind": "system" },
+      "defaultEnabled": true,
+      "trigger": { "kind": "calendar", "hour": 9, "minute": 30 },
+      "whenAppClosed": "waitForApp"
+    },
+    {
+      "id": "ccaa",
+      "displayName": "CCAA synthesis",
+      "summary": "Runs the CCAA synthesis pass (CCAASynthesisEngine.runSynthesis).",
+      "legacyJobID": "CCAA",
+      "owner": { "kind": "system" },
+      "defaultEnabled": true,
+      "trigger": { "kind": "calendar", "hour": 10, "minute": 0 },
+      "whenAppClosed": "waitForApp"
+    },
+    {
+      "id": "healthMonitor",
+      "displayName": "System health monitor",
+      "summary": "Runs one system health check (SystemHealthMonitorService.performHealthCheck).",
+      "legacyJobID": "HealthMonitor",
+      "owner": { "kind": "system" },
+      "defaultEnabled": true,
+      "trigger": { "kind": "interval", "seconds": 3600 },
+      "whenAppClosed": "waitForApp",
+      "notes": "Hourly (the scheduler cadence). The 5-minute cycle belongs to SystemHealthMonitorService's own timer, not to this routine."
+    },
+    {
+      "id": "webSummarizer",
+      "displayName": "AI Web summaries",
+      "summary": "Summarizes the sites you track in AI Web.",
+      "legacyJobID": "WebSummarizer",
+      "owner": { "kind": "system" },
+      "defaultEnabled": false,
+      "trigger": { "kind": "calendar", "hour": 8, "minute": 0 },
+      "whenAppClosed": "waitForApp",
+      "notes": "Off by default, as today. With no tracked sites a run records skipped: noChanges."
+    },
+    {
+      "id": "contentWorker",
+      "displayName": "Content factory worker",
+      "summary": "Polls for cross-machine content-factory jobs and runs the highest-priority one it can claim (DEBUG builds).",
+      "legacyJobID": "ContentWorker",
+      "owner": { "kind": "system" },
+      "defaultEnabled": false,
+      "developerOnly": true,
+      "trigger": { "kind": "calendar", "hour": 8, "minute": 0 },
+      "whenAppClosed": "waitForApp"
+    },
+    {
+      "id": "selfLearn",
+      "displayName": "Self-learn nightly",
+      "summary": "Nightly QA flywheel pass over the catalog.",
+      "legacyJobID": null,
+      "owner": { "kind": "system" },
+      "defaultEnabled": false,
+      "developerOnly": true,
+      "featureFlag": "selfLearnNightly",
+      "trigger": { "kind": "calendar", "hour": 2, "minute": 0 },
+      "whenAppClosed": "waitForApp",
+      "notes": "Today SelfLearnCoordinator schedules itself from harness/self-learn/config.json (cadence.cron, enabled:false) behind the selfLearnNightly flag. As a routine it keeps that flag and gains catch-up."
+    },
+    {
+      "id": "mpCompetition",
+      "displayName": "Competitive intelligence",
+      "summary": "Runs the competitive-intelligence daily scan (MPCompetitionService.runDailyScan).",
+      "legacyJobID": "MPCompetition",
+      "owner": { "kind": "system" },
+      "defaultEnabled": false,
+      "debugOnly": true,
+      "developerOnly": true,
+      "trigger": { "kind": "calendar", "hour": 8, "minute": 0 },
+      "whenAppClosed": "waitForApp",
+      "notes": "DEBUG builds only, as today."
+    }
+  ]
+}

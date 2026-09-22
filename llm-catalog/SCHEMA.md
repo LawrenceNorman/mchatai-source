@@ -125,18 +125,24 @@ If you see red on the pill, the runbook at
 | `deprecatedAt` | date | conditional | Required when `status == "deprecated"`. |
 | `retiredAt` | date | conditional | Required when `status == "retired"`. |
 | `replacedBy` | string | conditional | Required when `status == "retired"`. Names another model (same or `providerID:name`). |
-| `inputPerMillion` | number | yes | USD per 1M input tokens. |
-| `outputPerMillion` | number | yes | USD per 1M output tokens. |
+| `inputPerMillion` | number | yes | USD per 1M input tokens; `-1000000` is OpenRouter's dynamic-price sentinel, not a displayable price. |
+| `outputPerMillion` | number | yes | USD per 1M output tokens; same sentinel rule. |
 | `pricingSource` | enum | optional | `openrouter` / `provider-direct` / `hand-maintained` / `on-device` / `unknown`. |
 | `costTier` | enum | yes | `low` / `medium` / `high` — picker bucket. |
 | `equivalentTier` | enum | yes | `T0-fast` / `T1-balanced` / `T2-power` — ladder rung. |
-| `capabilities[]` | enum array | yes | Subset of `chat, vision, thinking, reasoning, search, code, audio, file`. |
+| `capabilities[]` | enum array | yes | Feature flags. Producer flags include `stt`, `tts`, `music`, `image`, `video`; ambiguous upstream outputs stay `audio-out`, `image-out`, or `video-out` until curated. |
+| `inputModalities[]` | string array | optional¹ | Media accepted by the model, from upstream discovery or a curated correction. |
+| `outputModalities[]` | string array | optional¹ | Media produced by the model. Output routing must use this field, not input modality. |
+| `capabilityProvenance` | object | optional¹ | Where modality/capability claims came from (`openrouter`, `provider-direct`, `curated-correction`, `hand-maintained`, or `legacy`) plus optional source fields/reason. |
+| `routeStatus` | enum | optional¹ | `candidate` / `executable` / `blocked` / `unavailable`. `executable` still requires a live join to `executable-routes.json`. |
 | `contextTokens` | integer | optional | Max input window. |
 | `maxOutputTokens` | integer | optional | Provider cap on output. |
 | `notes` | string | optional | Free-form, never read by code. |
 
 ¹ `addedAt` is optional for legacy entries (we don't know when each existing
 model first shipped). The cron sets it whenever it inserts a fresh model.
+The modality/provenance/route fields are optional only for pre-CC.CAR cached
+rows; the weekly sync backfills them without overwriting curated values.
 
 ### Status semantics (the contract every consumer must honor)
 
@@ -144,9 +150,11 @@ model first shipped). The cron sets it whenever it inserts a fresh model.
 - **`deprecated`** — still callable. Pickers may show a badge. The cross-provider
   failover ladder should prefer `active` siblings over `deprecated` ones at the
   same tier. Planner / wizard shouldn't pick `deprecated` for new work.
-- **`retired`** — *not callable anymore*. A request for a `retired` model name
-  MUST be transparently resolved to `replacedBy` before sending. This is the
-  fix for the gemini-2.0-flash-lite class of 404s.
+- **`retired`** — *not callable on this catalog route anymore*. If `replacedBy`
+  is present, a request may resolve to it before sending. If it is absent, the
+  row is an exclusion record and must not be called. This distinction is needed
+  for rows such as direct-Google Lyria: OpenRouter has a route, but Google's
+  Gemini chat endpoint has no truthful direct replacement.
 
 `replacedBy` may be a bare model name (same provider, e.g. `gemini-2.5-flash`)
 or a `providerID:name` cross-provider hop (e.g. `anthropic:claude-sonnet-4-6`)
@@ -186,6 +194,9 @@ When the cron rebuilds a provider file, it carries forward these fields
 - `addedAt` — when the entry first appeared
 - `costTier`, `equivalentTier` — picker bucket + ladder rung
 - `capabilities[]` — capability flags
+- `inputModalities[]`, `outputModalities[]` — directional media contract
+- `capabilityProvenance` — correction/discovery provenance
+- `routeStatus` — curated execution-join state
 - `notes` — free-form humans-only context
 
 The cron refreshes only `inputPerMillion`, `outputPerMillion`, `pricingSource`

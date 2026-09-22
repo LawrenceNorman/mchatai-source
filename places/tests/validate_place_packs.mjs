@@ -6,9 +6,9 @@
 //
 // Enforces the schema rules in places/README.md: flat camelCase keys, ISO date
 // strings (never epoch numbers), omit-rather-than-null, required place fields,
-// index ↔ pack consistency. Unknown additive SCALAR fields are allowed by
-// design — additive fields never bump schemaVersion, so this validator never
-// rejects a scalar key it does not know. Nested (object/array) values stay
+// index ↔ pack consistency, `variantOf` families. Unknown additive SCALAR
+// fields are allowed by design — additive fields never bump schemaVersion, so
+// this validator never rejects a scalar key it does not know. Nested (object/array) values stay
 // forbidden everywhere except `links`: places are flat, and that flatness is
 // itself part of the contract. Exit 0 pass / 1 fail. Single-file mode also
 // prints a machine-readable {ok, id, placeCount, bytes} JSON line on stdout.
@@ -134,6 +134,35 @@ function validatePack(filePath) {
   return { pack, bytes: raw.length };
 }
 
+// `variantOf` groups a richer pack with its base so clients show ONE row per
+// family (see README "Families"). Runs after the per-entry loop so an entry may
+// name a base listed after it. A dangling or chained reference is an error:
+// clients would either orphan the variant or have to guess which base wins.
+// Region/placeCount drift is only a warning — the bytes of API-served
+// (account / premium) variants are not in this repo, so the place-id-set rule
+// cannot be checked here.
+function checkVariantFamilies(entries) {
+  const byId = new Map();
+  for (const e of entries) if (isObj(e) && nonEmptyString(e.id)) byId.set(e.id, e);
+  for (const entry of entries) {
+    if (!isObj(entry) || !("variantOf" in entry)) continue;
+    const ew = `index.json pack "${entry.id ?? "?"}"`;
+    const baseId = entry.variantOf;
+    if (!nonEmptyString(baseId) || !KEBAB.test(baseId)) { err(`${ew}: variantOf must be a kebab-case pack id (got ${JSON.stringify(baseId)})`); continue; }
+    if (baseId === entry.id) { err(`${ew}: variantOf names itself`); continue; }
+    const base = byId.get(baseId);
+    if (!base) { err(`${ew}: variantOf "${baseId}" is not a pack in index.json`); continue; }
+    if ("variantOf" in base) { err(`${ew}: variantOf "${baseId}" is itself a variant — families are one level deep (no chains)`); continue; }
+    const r = isObj(entry.region) ? entry.region : {};
+    const br = isObj(base.region) ? base.region : {};
+    if (r.anchorLat !== br.anchorLat || r.anchorLon !== br.anchorLon)
+      warn(`${ew}: region anchor (${r.anchorLat}, ${r.anchorLon}) differs from its base "${baseId}" (${br.anchorLat}, ${br.anchorLon}) — a variant covers the same places`);
+    if (entry.placeCount !== base.placeCount)
+      warn(`${ew}: placeCount ${entry.placeCount} differs from its base "${baseId}" (${base.placeCount}) — a variant must carry the same place-id set`);
+    ok(`${ew}: variant of "${baseId}"`);
+  }
+}
+
 function validateRepo() {
   const indexPath = join(placesDir, "index.json");
   if (!existsSync(indexPath)) { err(`missing ${indexPath}`); return; }
@@ -160,20 +189,21 @@ function validateRepo() {
     // Keep these as strict as the clients: a looser rule here validates green
     // and is permanently unloadable on every device.
     const access = String(entry.access ?? "public").toLowerCase();
-    if (!["public", "premium"].includes(access)) {
-      err(`${ew}: access must be "public" or "premium" (got ${JSON.stringify(entry.access)})`);
+    if (!["public", "account", "premium"].includes(access)) {
+      err(`${ew}: access must be "public", "account" or "premium" (got ${JSON.stringify(entry.access)})`);
       continue;
     }
 
-    if (access === "premium") {
+    if (access === "account" || access === "premium") {
       // Bytes come from GET /v1/places/packs/<id>/url, which is the only place
-      // entitlement is decided. A premium entry that also published a fetchable
-      // location would hand the content away for free.
+      // access is decided: "account" = any signed-in user, "premium" = a paid
+      // plan or a grant. Either way an entry that also published a fetchable
+      // location would hand the bytes to anyone, signed in or not, unmetered.
       if (entry.file || entry.url) {
-        err(`${ew}: premium entries must NOT carry file or url — the bytes are served by the API`);
+        err(`${ew}: ${access} entries must NOT carry file or url — the bytes are served by the API`);
       }
       if (!Number.isInteger(entry.sizeBytes) || entry.sizeBytes <= 0) {
-        err(`${ew}: premium entries need sizeBytes (the bandwidth meter bills against it)`);
+        err(`${ew}: ${access} entries need sizeBytes (the bandwidth meter bills against it)`);
       }
     } else if (nonEmptyString(entry.url)) {
       // Off-repo public pack. Host list mirrors allowedPackHosts on iOS and
@@ -194,7 +224,7 @@ function validateRepo() {
       // Exactly packs/<kebab>.json — clients reject anything else (prefix check
       // + ".." refusal on iOS/Android).
       if (!nonEmptyString(entry.file) || !/^packs\/[a-z0-9-]+\.json$/.test(entry.file)) {
-        err(`${ew}: needs file as packs/<kebab-id>.json, or url, or access:"premium" (got file=${JSON.stringify(entry.file)})`);
+        err(`${ew}: needs file as packs/<kebab-id>.json, or url, or access "account"/"premium" (got file=${JSON.stringify(entry.file)})`);
         continue;
       }
       listedFiles.add(entry.file);
@@ -203,8 +233,9 @@ function validateRepo() {
     checkIsoDate(entry, "updatedAt", ew);
 
     // The checks below open the pack file and compare it against the entry.
-    // Only in-repo packs have one — off-repo (`url`) and premium packs are
-    // verified where they are published, not here. Skip rather than crash.
+    // Only in-repo packs have one — off-repo (`url`) and API-served (account /
+    // premium) packs are verified where they are published, not here. Skip
+    // rather than crash.
     if (!nonEmptyString(entry.file)) continue;
 
     const packPath = join(placesDir, entry.file);
@@ -220,6 +251,8 @@ function validateRepo() {
       if (drift > 0.05) warn(`${ew}: sizeBytes ${entry.sizeBytes} drifts ${(drift * 100).toFixed(1)}% from actual ${result.bytes}`);
     }
   }
+
+  checkVariantFamilies(index.packs);
 
   const packsDir = join(placesDir, "packs");
   if (existsSync(packsDir)) {

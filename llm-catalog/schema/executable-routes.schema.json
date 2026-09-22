@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/LawrenceNorman/mchatai-source/main/llm-catalog/schema/executable-routes.schema.json",
+  "title": "Executable Model Route Registry",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "updatedAt", "requestShapes", "routes"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "version": { "type": "integer", "minimum": 1 },
+    "updatedAt": { "type": "string", "format": "date" },
+    "requestShapes": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/requestShape" }
+    },
+    "routes": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/route" }
+    }
+  },
+  "$defs": {
+    "requestShape": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "method", "endpointPath", "responseStyle"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "method": { "type": "string", "enum": ["POST"] },
+        "endpointPath": { "type": "string", "pattern": "^/" },
+        "responseStyle": {
+          "type": "string",
+          "enum": ["json", "audio-bytes", "multipart-json", "image-json", "music-sse"]
+        },
+        "requiresStreaming": { "type": "boolean" },
+        "notes": { "type": "string", "maxLength": 1000 }
+      }
+    },
+    "route": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id", "catalogSource", "catalogModelID", "capability", "transport",
+        "endpointStyle", "requestShapeID", "executionProviderID", "availability", "priority"
+      ],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "catalogSource": {
+          "type": "string",
+          "enum": ["providerCatalog", "cloudExtras", "imageModels"]
+        },
+        "catalogProviderID": { "type": "string" },
+        "catalogModelID": { "type": "string", "minLength": 1 },
+        "capability": {
+          "type": "string",
+          "enum": ["text", "stt", "tts", "image", "music", "video"]
+        },
+        "transport": {
+          "type": "string",
+          "enum": ["providerDirect", "cloudProxy", "onDevice", "bridge"]
+        },
+        "endpointStyle": { "type": "string", "minLength": 1 },
+        "requestShapeID": { "type": "string", "minLength": 1 },
+        "executionProviderID": { "type": "string", "minLength": 1 },
+        "credentialKind": { "type": ["string", "null"] },
+        "costHint": { "type": ["string", "null"] },
+        "availability": { "type": "string", "enum": ["active", "unavailable", "blocked"] },
+        "priority": { "type": "integer", "minimum": 0 },
+        "notes": { "type": "string", "maxLength": 1000 }
+      }
+    }
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "_source_of_truth": true,
+  "_comment": "Routine action kind `verb` (mchatai_macOS/docs/ROUTINES_ARCHITECTURE.md §3.3, §4.6). v1.1. Only verbs marked unattended:true in portal/capabilities.json (no such field exists yet) may run, dispatched through PortalAppletRegistry.dispatch so the grant is enforced. The Swift floor refuses dangerous ids (mail.send, audiocast publish/unpublish, hub publish, share, deploy) and any routines.* write or turn-driving verb, whatever content says.",
+  "kind": "verb",
+  "displayName": "App action",
+  "summary": "Run one app action on a schedule.",
+  "help": "Runs a single mChatAI+ action that is marked safe to run unattended. Actions that send, publish or share are never run by a routine; a routine can only propose them.",
+  "availability": "v1.1",
+  "params": {
+    "type": "object",
+    "required": ["applet", "verb"],
+    "additionalProperties": false,
+    "properties": {
+      "applet": { "type": "string", "title": "App" },
+      "verb": { "type": "string", "title": "Action" },
+      "args": {
+        "type": "object",
+        "title": "Arguments",
+        "additionalProperties": true,
+        "default": {}
+      }
+    }
+  }
+}

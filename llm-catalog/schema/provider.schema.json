@@ -119,13 +119,13 @@
         },
         "inputPerMillion": {
           "type": "number",
-          "minimum": 0,
-          "description": "USD per 1M input tokens. 0 for on-device / free models. May be 0 if pricingSource is 'unknown' — consumers should treat that as conservative-ceiling rather than 'free'."
+          "anyOf": [{ "minimum": 0 }, { "const": -1000000 }],
+          "description": "USD per 1M input tokens. -1000000 is OpenRouter's dynamic-price sentinel and must not be displayed as a literal price."
         },
         "outputPerMillion": {
           "type": "number",
-          "minimum": 0,
-          "description": "USD per 1M output tokens."
+          "anyOf": [{ "minimum": 0 }, { "const": -1000000 }],
+          "description": "USD per 1M output tokens. -1000000 is OpenRouter's dynamic-price sentinel."
         },
         "pricingSource": {
           "type": "string",
@@ -147,9 +147,43 @@
           "uniqueItems": true,
           "items": {
             "type": "string",
-            "enum": ["chat", "vision", "thinking", "reasoning", "search", "code", "audio", "file"]
+            "enum": ["chat", "vision", "thinking", "reasoning", "search", "code", "audio", "file", "stt", "tts", "music", "image", "video", "audio-out", "image-out", "video-out"]
           },
-          "description": "Feature flags consumers gate on. 'thinking' (Gemini-style extended-thinking budgets) is distinct from 'reasoning' (o-series, R1, Sonar-Reasoning)."
+          "description": "Feature flags consumers gate on. Output capabilities must come from output modalities or a curated correction, never provider/model-name inference. 'thinking' is distinct from 'reasoning'."
+        },
+        "inputModalities": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 },
+          "description": "Accepted input media copied from upstream discovery or supplied by a curated correction."
+        },
+        "outputModalities": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 },
+          "description": "Produced output media. This, not input modality, determines whether a model can satisfy a media request."
+        },
+        "capabilityProvenance": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["source"],
+          "properties": {
+            "source": {
+              "type": "string",
+              "enum": ["openrouter", "provider-direct", "curated-correction", "hand-maintained", "legacy"]
+            },
+            "inputField": { "type": "string" },
+            "outputField": { "type": "string" },
+            "correctedAt": { "type": "string", "format": "date" },
+            "note": { "type": "string", "maxLength": 1000 }
+          }
+        },
+        "routeStatus": {
+          "type": "string",
+          "enum": ["candidate", "executable", "blocked", "unavailable"],
+          "description": "Discovery/execution join state. 'executable' still requires a matching active route registry entry at planning time."
         },
         "contextTokens": {
           "type": "integer",
@@ -163,14 +197,29 @@
         },
         "notes": {
           "type": "string",
-          "maxLength": 480,
+          "maxLength": 2000,
           "description": "Free-form humans-only context (e.g. 'Gemini's thinking tokens count against maxTokens — budget 800+ for validation'). Never used for behavior."
-        }
+        },
+        "discoveredVia": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "enum": ["openrouter", "direct", "catalog-overlay"] }
+        },
+        "openrouterId": { "type": ["string", "null"] },
+        "directApiName": { "type": ["string", "null"] },
+        "heartbeatStatus": {
+          "type": "string",
+          "enum": ["success", "failed", "skipped"]
+        },
+        "heartbeatError": { "type": ["string", "null"] },
+        "heartbeatLatencyMs": { "type": "integer", "minimum": 0 },
+        "heartbeatSkipReason": { "type": ["string", "null"] },
+        "lastHeartbeat": { "type": "string", "format": "date-time" }
       },
       "allOf": [
         {
           "if": { "properties": { "status": { "const": "retired" } }, "required": ["status"] },
-          "then": { "required": ["replacedBy", "retiredAt"] }
+          "then": { "required": ["retiredAt"] }
         },
         {
           "if": { "properties": { "status": { "const": "deprecated" } }, "required": ["status"] },

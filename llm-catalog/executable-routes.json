@@ -1,0 +1,230 @@
+{
+  "$schema": "schema/executable-routes.schema.json",
+  "version": 1,
+  "updatedAt": "2026-09-18",
+  "requestShapes": [
+    {
+      "id": "cloud.audio.transcription.v1",
+      "method": "POST",
+      "endpointPath": "/v1/audio/transcriptions",
+      "responseStyle": "multipart-json"
+    },
+    {
+      "id": "openai.audio.transcription.v1",
+      "method": "POST",
+      "endpointPath": "/v1/audio/transcriptions",
+      "responseStyle": "multipart-json"
+    },
+    {
+      "id": "cloud.audio.speech.v1",
+      "method": "POST",
+      "endpointPath": "/v1/audio/speech",
+      "responseStyle": "audio-bytes"
+    },
+    {
+      "id": "openai.audio.speech.v1",
+      "method": "POST",
+      "endpointPath": "/v1/audio/speech",
+      "responseStyle": "audio-bytes"
+    },
+    {
+      "id": "cloud.openrouter.music-sse.v1",
+      "method": "POST",
+      "endpointPath": "/v1/chat/completions",
+      "responseStyle": "music-sse",
+      "requiresStreaming": true,
+      "notes": "Lyria audio arrives in choices[].delta.audio.data and requires stream=true."
+    },
+    {
+      "id": "cloud.images.v1",
+      "method": "POST",
+      "endpointPath": "/v1/images/generations",
+      "responseStyle": "image-json"
+    },
+    {
+      "id": "openai.images.v1",
+      "method": "POST",
+      "endpointPath": "/v1/images/generations",
+      "responseStyle": "image-json"
+    }
+  ],
+  "routes": [
+    {
+      "id": "cloud-openai-whisper-1",
+      "catalogSource": "cloudExtras",
+      "catalogModelID": "openai/whisper-1",
+      "capability": "stt",
+      "transport": "cloudProxy",
+      "endpointStyle": "transcription",
+      "requestShapeID": "cloud.audio.transcription.v1",
+      "executionProviderID": "mchataiCloud",
+      "credentialKind": "computeTokens",
+      "costHint": "$0.006/min",
+      "availability": "active",
+      "priority": 10
+    },
+    {
+      "id": "direct-openai-whisper-1",
+      "catalogSource": "cloudExtras",
+      "catalogModelID": "openai/whisper-1",
+      "capability": "stt",
+      "transport": "providerDirect",
+      "endpointStyle": "transcription",
+      "requestShapeID": "openai.audio.transcription.v1",
+      "executionProviderID": "openai",
+      "credentialKind": "openaiAPIKey",
+      "costHint": "$0.006/min",
+      "availability": "active",
+      "priority": 20
+    },
+    {
+      "id": "cloud-openai-tts-1",
+      "catalogSource": "cloudExtras",
+      "catalogModelID": "openai/tts-1",
+      "capability": "tts",
+      "transport": "cloudProxy",
+      "endpointStyle": "speech",
+      "requestShapeID": "cloud.audio.speech.v1",
+      "executionProviderID": "mchataiCloud",
+      "credentialKind": "computeTokens",
+      "costHint": "$15/M chars",
+      "availability": "active",
+      "priority": 10
+    },
+    {
+      "id": "direct-openai-tts-1",
+      "catalogSource": "cloudExtras",
+      "catalogModelID": "openai/tts-1",
+      "capability": "tts",
+      "transport": "providerDirect",
+      "endpointStyle": "speech",
+      "requestShapeID": "openai.audio.speech.v1",
+      "executionProviderID": "openai",
+      "credentialKind": "openaiAPIKey",
+      "costHint": "$15/M chars",
+      "availability": "active",
+      "priority": 20
+    },
+    {
+      "id": "cloud-openai-tts-1-hd",
+      "catalogSource": "cloudExtras",
+      "catalogModelID": "openai/tts-1-hd",
+      "capability": "tts",
+      "transport": "cloudProxy",
+      "endpointStyle": "speech",
+      "requestShapeID": "cloud.audio.speech.v1",
+      "executionProviderID": "mchataiCloud",
+      "credentialKind": "computeTokens",
+      "costHint": "$30/M chars",
+      "availability": "active",
+      "priority": 30
+    },
+    {
+      "id": "cloud-lyria-3-clip-preview",
+      "catalogSource": "providerCatalog",
+      "catalogProviderID": "openrouter",
+      "catalogModelID": "google/lyria-3-clip-preview",
+      "capability": "music",
+      "transport": "cloudProxy",
+      "endpointStyle": "musicSSE",
+      "requestShapeID": "cloud.openrouter.music-sse.v1",
+      "executionProviderID": "mchataiCloud-openrouter",
+      "credentialKind": "computeTokens",
+      "costHint": "OpenRouter preview; cloud usage policy applies",
+      "availability": "active",
+      "priority": 10,
+      "notes": "The provider brand is Google, but this route is OpenRouter passthrough."
+    },
+    {
+      "id": "cloud-lyria-3-pro-preview",
+      "catalogSource": "providerCatalog",
+      "catalogProviderID": "openrouter",
+      "catalogModelID": "google/lyria-3-pro-preview",
+      "capability": "music",
+      "transport": "cloudProxy",
+      "endpointStyle": "musicSSE",
+      "requestShapeID": "cloud.openrouter.music-sse.v1",
+      "executionProviderID": "mchataiCloud-openrouter",
+      "credentialKind": "computeTokens",
+      "costHint": "OpenRouter preview; cloud usage policy applies",
+      "availability": "active",
+      "priority": 20,
+      "notes": "The provider brand is Google, but this route is OpenRouter passthrough."
+    },
+    {
+      "id": "cloud-gpt-image-2",
+      "catalogSource": "imageModels",
+      "catalogProviderID": "openai",
+      "catalogModelID": "gpt-image-2",
+      "capability": "image",
+      "transport": "cloudProxy",
+      "endpointStyle": "image",
+      "requestShapeID": "cloud.images.v1",
+      "executionProviderID": "mchataiCloud",
+      "credentialKind": "computeTokens",
+      "costHint": "10 compute tokens",
+      "availability": "active",
+      "priority": 10
+    },
+    {
+      "id": "direct-openai-gpt-image-2",
+      "catalogSource": "imageModels",
+      "catalogProviderID": "openai",
+      "catalogModelID": "gpt-image-2",
+      "capability": "image",
+      "transport": "providerDirect",
+      "endpointStyle": "image",
+      "requestShapeID": "openai.images.v1",
+      "executionProviderID": "openai",
+      "credentialKind": "openaiAPIKey",
+      "costHint": null,
+      "availability": "active",
+      "priority": 20
+    },
+    {
+      "id": "cloud-gpt-image-1",
+      "catalogSource": "imageModels",
+      "catalogProviderID": "openai",
+      "catalogModelID": "gpt-image-1",
+      "capability": "image",
+      "transport": "cloudProxy",
+      "endpointStyle": "image",
+      "requestShapeID": "cloud.images.v1",
+      "executionProviderID": "mchataiCloud",
+      "credentialKind": "computeTokens",
+      "costHint": "8 compute tokens",
+      "availability": "active",
+      "priority": 30
+    },
+    {
+      "id": "cloud-gpt-image-1-mini",
+      "catalogSource": "imageModels",
+      "catalogProviderID": "openai",
+      "catalogModelID": "gpt-image-1-mini",
+      "capability": "image",
+      "transport": "cloudProxy",
+      "endpointStyle": "image",
+      "requestShapeID": "cloud.images.v1",
+      "executionProviderID": "mchataiCloud",
+      "credentialKind": "computeTokens",
+      "costHint": "4 compute tokens",
+      "availability": "active",
+      "priority": 40
+    },
+    {
+      "id": "cloud-imagen-3",
+      "catalogSource": "imageModels",
+      "catalogProviderID": "google",
+      "catalogModelID": "imagen-3.0-generate-002",
+      "capability": "image",
+      "transport": "cloudProxy",
+      "endpointStyle": "image",
+      "requestShapeID": "cloud.images.v1",
+      "executionProviderID": "mchataiCloud",
+      "credentialKind": "computeTokens",
+      "costHint": "5 compute tokens",
+      "availability": "active",
+      "priority": 50
+    }
+  ]
+}

@@ -1,0 +1,55 @@
+{
+  "version": 1,
+  "_source_of_truth": true,
+  "_comment": "Routine action kind `script` (mchatai_macOS/docs/ROUTINES_ARCHITECTURE.md §3.3, §4.2). Runs in mChatAIShell (placement from harness/routines/policy.json), never inside the sandboxed app. params is a JSON-Schema subset validated by the propose verb and the detail form (R5/R8) and by scripts/check_routine_content.py for templates. The shell re-checks every fire: signed lease, realpath(cwd) under the allowed roots, interpreter on the allowlist, script hash unchanged (a changed script is refused: scriptChanged).",
+  "kind": "script",
+  "displayName": "Script",
+  "summary": "Run a script from this conversation's folder on a schedule.",
+  "help": "The script runs in mChatAIShell, so it keeps running while mChatAI+ is closed. It must live inside the conversation's folder or a folder you picked. The script is fingerprinted when you approve the routine: if it changes, the routine stops and asks you to review the change. The runner passes MCHATAI_ROUTINE_ID, MCHATAI_ROUTINE_RUN_ID, MCHATAI_ROUTINE_OUTPUT_DIR and MCHATAI_WORKBENCH_SESSION. A script can report back by writing $MCHATAI_ROUTINE_OUTPUT_DIR/result.json as {\"summary\", \"status\": \"ok|warning|error\", \"outputs\": [{\"path\", \"title\", \"kind\"}]}; otherwise the last stdout line (if it is JSON), then the exit code and the collected files are used.",
+  "availability": "v1",
+  "interpreters": ["python3", "bash", "node"],
+  "envAllowlist": [],
+  "params": {
+    "type": "object",
+    "required": ["cwd", "entry", "interpreter"],
+    "additionalProperties": false,
+    "properties": {
+      "cwd": {
+        "type": "string",
+        "title": "Folder",
+        "description": "Relative to the owning conversation's folder, or an absolute folder you picked. Must resolve (symlinks followed) inside an allowed root."
+      },
+      "entry": {
+        "type": "string",
+        "title": "Script file",
+        "description": "Path of the script inside the folder."
+      },
+      "interpreter": {
+        "type": "string",
+        "title": "Interpreter",
+        "enum": ["python3", "bash", "node"],
+        "description": "Found through your login shell's PATH when the schedule is handed to mChatAIShell. Never falls back to /usr/bin/python3."
+      },
+      "args": {
+        "type": "array",
+        "title": "Arguments",
+        "items": { "type": "string" },
+        "default": []
+      },
+      "env": {
+        "type": "object",
+        "title": "Environment",
+        "description": "Extra environment variables. Only names on this file's envAllowlist are passed; the list is empty in v1.",
+        "additionalProperties": { "type": "string" },
+        "default": {}
+      },
+      "timeoutSeconds": {
+        "type": "integer",
+        "title": "Time limit (seconds)",
+        "minimum": 10,
+        "maximum": 7200,
+        "default": 900
+      }
+    }
+  }
+}

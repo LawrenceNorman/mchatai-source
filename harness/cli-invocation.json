@@ -212,6 +212,7 @@
   },
   "interactiveMapping": {
     "claude": {
+      "displayName": "Claude Code",
       "invocationFlags": [
         "-p",
         "--input-format",
@@ -286,6 +287,7 @@
       "notes": "Phase Workbench W1 \u2014 interactive bidirectional session dialect (WorkbenchSessionDriver). Spawn with tty:false (plain pipes): a PTY's line discipline would echo our stdin JSON back into the output stream, where an echoed {\"type\":\"user\",...} parses as a fake event. User turns are NDJSON lines {\"type\":\"user\",\"message\":{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"...\"}]}} written to stdin mid-run (queued if a turn is in flight). REQUIRED: --permission-prompt-tool stdio routes permission prompts over the control channel as can_use_tool control_requests \u2014 WITHOUT it, headless -p mode silently DENIES everything not auto-approved (no prompt ever reaches the host; found live 2026-08-26, the fixture tests cannot catch it). Control channel (control_request/control_response, subtypes here) verified as strings in claude v2.1.210; feature-detect via the system/init capabilities[] array (present v2.1.205+) and treat unknown subtypes as safe-deny. permissionModes maps Workbench's logical modes to CLI values; the driver passes --permission-mode on EVERY spawn INCLUDING --resume respawns (claude-code issue #21974: resume does not preserve permission flags). No goal positional \u2014 the first user turn arrives via stdin. codex is intentionally absent until W6 ships the app-server dialect; an absent backend here = Workbench shows it unavailable (never a silent PTY fallback)."
     },
     "codex": {
+      "displayName": "Codex",
       "transport": "codex-jsonrpc",
       "invocationFlags": [
         "app-server"
@@ -311,6 +313,7 @@
       "notes": "Codex app-server bidirectional JSON-RPC (verified codex-cli 0.144.4). Driven by CodexSessionDriver; NDJSON dialect fields (userTurnType/control/events) N/A. Model/approval-policy are content; JSON-RPC method names are protocol infra in the driver."
     },
     "gemini": {
+      "displayName": "Antigravity",
       "transport": "tui-only",
       "tuiFlags": [
         "--dangerously-skip-permissions"

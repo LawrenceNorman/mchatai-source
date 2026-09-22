@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "_source_of_truth": true,
+  "_comment": "Routine template for a weekly script report (mchatai_macOS/docs/ROUTINES_ARCHITECTURE.md §3.1, §3.3): a script in the conversation's folder runs weekly in mChatAIShell, writes a dated HTML report, and the app files it as a Research Report product, copies the newest report to result.html for the conversation's Preview, and turns the Markdown twin into an AI Write document. `routine` is a partial Routine (§3.1). The propose verb or the UI (R5/R8) fills it in two ways: a placeholder WITHOUT `target` replaces its {name} inside strings; a placeholder WITH `target` overwrites the value at that path (dot path, [n] for an array index), so numeric fields stay literal and the routine still validates against the action schema as written. {date} is NOT a placeholder: it is a run-time token the runner expands for each run (reserved; never declare it here). owner, approval, state and placement are never taken from a template: owner is the calling conversation, agent-proposed routines always start awaiting approval, and placement comes from harness/routines/policy.json. Checked by mchatai_macOS/scripts/check_routine_content.py (action params against routines/actions/script.json; registerProduct.productType must be a type the app already knows).",
+  "id": "weekly-script-report",
+  "displayName": "Weekly script report",
+  "summary": "Run a script from this conversation's folder once a week and keep each report it writes.",
+  "placeholders": {
+    "title": { "description": "Routine title, also used in each report's product name.", "example": "Weekly report" },
+    "slug": { "description": "Folder name under ./routines/ in the conversation's folder.", "example": "weekly-report" },
+    "entry": { "description": "Script file inside that folder.", "example": "report.py" },
+    "interpreter": { "description": "One of routines/actions/script.json interpreters.", "example": "python3", "target": "action.params.interpreter" },
+    "weekday": { "description": "Foundation weekday, 1 = Sunday (launchd w becomes (w % 7) + 1).", "example": 2, "target": "trigger.weekdays[0]" },
+    "hour": { "description": "Hour, 0-23, local time.", "example": 7, "target": "trigger.hour" },
+    "minute": { "description": "Minute, 0-59.", "example": 13, "target": "trigger.minute" }
+  },
+  "routine": {
+    "title": "{title}",
+    "trigger": { "kind": "calendar", "hour": 7, "minute": 13, "weekdays": [2] },
+    "catchUp": { "mode": "once", "withinHours": 72 },
+    "action": {
+      "kind": "script",
+      "params": {
+        "cwd": "routines/{slug}",
+        "entry": "{entry}",
+        "interpreter": "python3",
+        "args": [],
+        "timeoutSeconds": 900
+      }
+    },
+    "followUp": null,
+    "outputs": {
+      "collect": ["runs/*.html"],
+      "previewFile": "result.html",
+      "aiwriteFromMarkdown": "runs/{date}.md",
+      "registerProduct": { "productType": "research.report", "titleTemplate": "{title}: {date}" }
+    },
+    "notify": "always",
+    "limits": { "timeoutSeconds": 900 }
+  }
+}

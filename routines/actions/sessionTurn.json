@@ -1,0 +1,61 @@
+{
+  "version": 1,
+  "_source_of_truth": true,
+  "_comment": "Routine action kind `sessionTurn` (mchatai_macOS/docs/ROUTINES_ARCHITECTURE.md §3.3, §4.5). Behind feature flag routines_session_turn (default OFF) until R11 passes its gate. The prompt and grant are frozen at approval and hashed; fetched or relayed text can't widen the grant. A tool request outside the grant leaves the run blocked, then failed: blockedOnApproval after harness/routines/policy.json waits.approvalWaitMinutes. Never runs in bypass permission mode.",
+  "kind": "sessionTurn",
+  "displayName": "Conversation turn",
+  "summary": "Send a message to a conversation on a schedule.",
+  "help": "Sends the same message to a Workbench conversation on each run, as if you had typed it, and waits for the reply. It can only use the tools you approved for it; anything else stops the run and asks you. If the conversation is busy it waits a while, then skips that run.",
+  "availability": "flagged",
+  "featureFlag": "routines_session_turn",
+  "params": {
+    "type": "object",
+    "required": ["prompt"],
+    "additionalProperties": false,
+    "properties": {
+      "sessionID": {
+        "type": "string",
+        "title": "Conversation",
+        "description": "\"owner\" means the conversation that owns the routine.",
+        "default": "owner"
+      },
+      "prompt": {
+        "type": "string",
+        "title": "Message",
+        "description": "Sent on every run. Stored as routine data, never as something you said."
+      },
+      "grant": {
+        "type": "object",
+        "title": "Allowed tools",
+        "additionalProperties": false,
+        "properties": {
+          "tools": { "type": "array", "items": { "type": "string" } },
+          "bashPrefixes": { "type": "array", "items": { "type": "string" } },
+          "applets": { "type": "array", "items": { "type": "string" } }
+        }
+      },
+      "timeoutSeconds": {
+        "type": "integer",
+        "title": "Time limit (seconds)",
+        "minimum": 30,
+        "maximum": 7200,
+        "default": 900
+      },
+      "busyWaitMinutes": {
+        "type": "integer",
+        "title": "Wait if busy (minutes)",
+        "minimum": 0,
+        "maximum": 120
+      },
+      "expects": {
+        "type": "object",
+        "title": "Check afterwards",
+        "additionalProperties": false,
+        "properties": {
+          "file": { "type": "string" },
+          "modifiedAfterStart": { "type": "boolean" }
+        }
+      }
+    }
+  }
+}

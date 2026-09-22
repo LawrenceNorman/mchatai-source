@@ -1,0 +1,50 @@
+{
+  "version": 1,
+  "lastUpdated": "2026-09-21",
+  "_source_of_truth": true,
+  "_comment": "Routines policy (mchatai_macOS/docs/ROUTINES_ARCHITECTURE.md §3.3, §4.2, §4.4, §4.5, §8, §9). Read by RoutinePolicy in mChatAI+ (Routines/RoutineContent.swift); the binary carries identical _fallback_only defaults and clamps every value, so a bad edit can't break scheduling. Edit + git push + refreshMchataisourceCache ships with no rebuild. Checked by mchatai_macOS/scripts/check_routine_content.py.",
+
+  "placement": {
+    "_comment": "Which process runs each action kind. DERIVED per kind, never chosen by the caller. Swift floor: script can only be shell (the sandboxed app never runs user scripts), every other known kind can only be app (the shell has no pipeline/agent/web/system engine). A value outside that is ignored. Every kind listed here must have routines/actions/<kind>.json.",
+    "script": "shell",
+    "pipeline": "app",
+    "agent": "app",
+    "webWatch": "app",
+    "system": "app",
+    "sessionTurn": "app",
+    "verb": "app"
+  },
+
+  "concurrency": {
+    "_comment": "ONE cap shared by routines and the legacy SchedulerService jobs until R3 retires them (§4.4; RunPermitPool in mChatAI+). Legacy first: legacy jobs are capped at this among themselves (exactly as before routines), and a routine starts only while ALL runs (legacy + routines) are under it, so routines never delay a legacy job. Lowering it therefore also serialises the legacy jobs (e.g. 1 = the Daily Brief waits behind a running pipeline) — a RULE #4 change; review it as one. Read at launch (relaunch to apply). Swift clamps to 1-4. Single-flight per routine and one sessionTurn per session apply on top.",
+    "globalCap": 2
+  },
+
+  "lease": {
+    "_comment": "§4.2 step 3 / §9 decision 5 (approved): script routines stop when the app hasn't pushed a lease for `days`; the shell warns by notification and menu badge on `warnDay`. Swift clamps days to 2-90 and warnDay to 1..days-1.",
+    "days": 30,
+    "warnDay": 25
+  },
+
+  "retention": {
+    "_comment": "routine_runs rows kept per routine and by age (§3.2). Swift clamps maxRunsPerRoutine to 10-1000 and maxAgeDays to 1-365. Running rows are never deleted.",
+    "maxRunsPerRoutine": 100,
+    "maxAgeDays": 90
+  },
+
+  "waits": {
+    "_comment": "busyWaitMinutes: a sessionTurn routine waits this long for a busy conversation, then records skipped: conversationBusy (§4.5); a routine's own busyWaitMinutes param overrides it. Swift clamps 0-120. approvalWaitMinutes: a blocked unattended turn waits this long for the user, then denies, interrupts and records failed: blockedOnApproval (§9 decision 4). Swift clamps 1-240. pipelineLaneWaitMinutes: how long a scheduled pipeline queues for the single AI Automation pipeline lane (R0 SerialRunGate); consumed from R2. Swift clamps 1-120.",
+    "busyWaitMinutes": 10,
+    "approvalWaitMinutes": 30,
+    "pipelineLaneWaitMinutes": 30
+  },
+
+  "catchUp": {
+    "_comment": "Default catch-up when a routine has none of its own (§4.4). once = one run for the latest missed slot if it is within withinHours, otherwise one missed row. skip = a missed row for calendar routines, nothing for intervals. The doc fixes weekly once/72h, daily once/20h and intervals of 6 h or less skip; monthly and longInterval are this file's choice. Swift clamps withinHours to 0-720 and shortInterval.maxSeconds to 0-86400.",
+    "daily": { "mode": "once", "withinHours": 20 },
+    "weekly": { "mode": "once", "withinHours": 72 },
+    "monthly": { "mode": "once", "withinHours": 72 },
+    "shortInterval": { "maxSeconds": 21600, "mode": "skip" },
+    "longInterval": { "mode": "once", "withinHours": 24 }
+  }
+}
