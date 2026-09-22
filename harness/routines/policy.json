@@ -46,5 +46,10 @@
     "monthly": { "mode": "once", "withinHours": 72 },
     "shortInterval": { "maxSeconds": 21600, "mode": "skip" },
     "longInterval": { "mode": "once", "withinHours": 24 }
+  },
+
+  "retry": {
+    "_comment": "R3 (routines replace the legacy scheduler). interruptedMaxRetries: a scheduled slot whose attempt was cut short by a quit (its row is interrupted: appQuit, including an attempt still queued for a run permit or the pipeline lane) is re-run at the next launch under <slot>#retry-<n>, at most this many times per slot; after that one skipped: retryLimitReached row marks the slot handled, so a crash loop stops. The legacy scheduler re-ran such a slot at every launch with no bound; 3 differs from it only when the same slot is cut short 4+ times. 0 = never retry. Swift clamps 0-10.",
+    "interruptedMaxRetries": 3
   }
 }
