@@ -1,10 +1,10 @@
 {
   "id": "official.inbox-multi",
   "name": "Inbox Multi",
-  "version": "1.2.1",
+  "version": "1.5.0",
   "type": "microservice",
   "runtime": "python3",
-  "description": "Multi-account Gmail inbox via direct Google OAuth + Gmail API. Universal-inbox aggregation and Gmail-query search across all of a user's Gmail accounts; read-only and metadata-only (no message bodies). Bypasses gws's single-account limitation.",
+  "description": "Multi-account Gmail inbox via direct Google OAuth + Gmail API. Universal-inbox aggregation and Gmail-query search across all of a user's Gmail accounts. Read-only. The list/search routes are METADATA ONLY and are the agent-reachable surface; /messages/{id}/body returns a full message body and is for a human reader behind a quarantined view only (see the Phase MX.2 block comment in main.py). Bypasses gws's single-account limitation.",
   "author": "mchatai-labs",
   "license": "MIT",
   "platforms": [
@@ -46,6 +46,26 @@
     {
       "path": "/emails/search",
       "method": "GET"
+    },
+    {
+      "path": "/accounts/{email}/messages/{message_id}/body",
+      "method": "GET"
+    },
+    {
+      "path": "/accounts/{email}/threads/{thread_id}",
+      "method": "GET"
+    },
+    {
+      "path": "/accounts/{email}/messages/modify",
+      "method": "POST"
+    },
+    {
+      "path": "/accounts/{email}/messages/trash",
+      "method": "POST"
+    },
+    {
+      "path": "/accounts/{email}/messages/untrash",
+      "method": "POST"
     }
   ]
 }

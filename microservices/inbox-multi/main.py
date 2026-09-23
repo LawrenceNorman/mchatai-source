@@ -12,6 +12,7 @@ behalf, however it is called.
 """
 
 import asyncio
+import base64
 import json
 import os
 import secrets
@@ -46,11 +47,38 @@ ACCOUNTS_DIR = Path.home() / ".config" / "mchatai" / "inbox-accounts"
 
 # ── Models ──
 
+# Phase MX.4 — the two access levels this service can hold.
+#
+# `gmail.modify` is a superset of `gmail.readonly`: it adds label changes and
+# trash, and it does NOT add permanent delete (that needs the full
+# `https://mail.google.com/` scope, which this service deliberately never
+# requests — "delete" here means "move to Trash", recoverable for 30 days by
+# the user, in Gmail, without us).
+READONLY_SCOPE = "https://www.googleapis.com/auth/gmail.readonly"
+MODIFY_SCOPE = "https://www.googleapis.com/auth/gmail.modify"
+
+
+def _granted_scopes(tokens: Dict[str, Any]) -> List[str]:
+    return [s for s in (tokens.get("scope", "") or "").split(" ") if s]
+
+
+def _can_modify(tokens: Dict[str, Any]) -> bool:
+    """Whether THIS account's stored grant allows writes.
+
+    Per account, never per app. Accounts authorised before MX.4 hold
+    `gmail.readonly` and keep working read-only; a user is not silently
+    upgraded, and the UI must not draw a control the grant cannot serve.
+    """
+    return MODIFY_SCOPE in _granted_scopes(tokens)
+
+
 class AccountInfo(BaseModel):
     email: str
     expires_at: int                  # unix seconds
     has_refresh_token: bool
     last_refreshed_at: Optional[int] = None
+    # MX.4 — what this account's grant actually permits.
+    can_modify: bool = False
 
 
 class AccountsList(BaseModel):
@@ -79,6 +107,13 @@ class EmailsResult(BaseModel):
     emails: List[GmailMessage]
     accounts: List[str]              # which accounts contributed
     errors: Dict[str, str] = Field(default_factory=dict)  # accountEmail → error string
+    # Phase MX.10 — where to resume, PER ACCOUNT.
+    #
+    # A universal inbox merges N independent Gmail result sets, so there is no
+    # single cursor: each account is at its own depth and they exhaust at
+    # different times. An account that runs out simply drops out of this dict,
+    # and when the dict is empty there is nothing older anywhere.
+    next_page_tokens: Dict[str, str] = Field(default_factory=dict)
 
 
 # ── OAuth helpers ──
@@ -269,6 +304,7 @@ async def list_accounts() -> AccountsList:
                 expires_at=int(t.get("expires_at", 0)),
                 has_refresh_token=bool(t.get("refresh_token")),
                 last_refreshed_at=t.get("last_refreshed_at"),
+                can_modify=_can_modify(t),
             ))
     return AccountsList(
         accounts=items,
@@ -277,10 +313,16 @@ async def list_accounts() -> AccountsList:
 
 
 @router.post("/accounts/add", response_model=AddAccountResult)
-async def add_account() -> AddAccountResult:
+async def add_account(access: str = "modify") -> AddAccountResult:
     """Run OAuth loopback flow for a new Google account. Long-running
     (≤5 min while user completes consent in browser).
     """
+    # Unknown values fall back to the WIDER grant rather than erroring, because
+    # the alternative is a typo silently producing a read-only account whose
+    # controls then quietly do nothing — the failure mode this whole phase is
+    # about. Google's consent screen is the real gate either way.
+    requested_scope = READONLY_SCOPE if access.lower() == "readonly" else MODIFY_SCOPE
+
     secret = _load_client_secret()
     state = secrets.token_urlsafe(24)
     port = _find_free_port()
@@ -383,7 +425,12 @@ async def add_account() -> AddAccountResult:
                 # the cost is a permanent, unresettable 100-user cap per project,
                 # which is irrelevant when each user brings their own client and
                 # is its only user.
-                "scope": "https://www.googleapis.com/auth/gmail.readonly openid email profile",
+                # MX.4 — `access` decides. Default is `modify`, because a mail
+                # client that cannot archive is a feed reader; Google's consent
+                # screen names exactly what is being granted, so the user sees
+                # and approves the difference. `readonly` remains available for
+                # a caller that wants the narrower grant.
+                "scope": f"{requested_scope} openid email profile",
                 "access_type": "offline",
                 # Force fresh consent so a refresh_token is always issued —
                 # Google only returns refresh_token on the FIRST authorization
@@ -514,6 +561,9 @@ class _FetchOutcome(NamedTuple):
     """
     messages: List[GmailMessage]
     dropped: int
+    # Gmail's own cursor for "the next page of THIS query for THIS account".
+    # Empty string means this account has nothing older left.
+    next_page_token: str = ""
 
 
 def _dropped_note(dropped: int) -> str:
@@ -581,6 +631,7 @@ async def _fetch_messages_for(
     email: str,
     max_results: int,
     q: str = DEFAULT_UNREAD_QUERY,
+    page_token: str = "",
 ) -> _FetchOutcome:
     """Inner helper: list the message IDs matching `q` for one account, then
     parallel-fetch metadata for each. The single fetch behind every endpoint
@@ -608,6 +659,9 @@ async def _fetch_messages_for(
         params={
             "q": q,
             "maxResults": max(1, min(max_results, MAX_RESULTS_PER_ACCOUNT)),
+            # Gmail ignores an empty pageToken, so the first page and the Nth
+            # go through exactly one code path.
+            **({"pageToken": page_token} if page_token else {}),
         },
         timeout=15,
     )
@@ -619,7 +673,9 @@ async def _fetch_messages_for(
             status_code=list_resp.status_code,
             detail=f"Gmail list for {email} (q={q!r}) failed: {list_resp.text[:300]}",
         )
-    msg_refs = list_resp.json().get("messages", [])
+    listing = list_resp.json()
+    msg_refs = listing.get("messages", [])
+    next_token = listing.get("nextPageToken", "") or ""
 
     async def _fetch_meta(msg_id: str) -> Optional[GmailMessage]:
         r = await client.get(
@@ -652,7 +708,11 @@ async def _fetch_messages_for(
 
     metas = await asyncio.gather(*(_fetch_meta(m["id"]) for m in msg_refs))
     messages = [m for m in metas if m is not None]
-    return _FetchOutcome(messages=messages, dropped=len(metas) - len(messages))
+    return _FetchOutcome(
+        messages=messages,
+        dropped=len(metas) - len(messages),
+        next_page_token=next_token,
+    )
 
 
 async def _fetch_one_account(email: str, q: str, max_results: int) -> EmailsResult:
@@ -668,10 +728,16 @@ async def _fetch_one_account(email: str, q: str, max_results: int) -> EmailsResu
         emails=_newest_first(outcome.messages),
         accounts=[email],
         errors=errors,
+        next_page_tokens=({email: outcome.next_page_token}
+                          if outcome.next_page_token else {}),
     )
 
 
-async def _fetch_all_accounts(q: str, max_per_account: int) -> EmailsResult:
+async def _fetch_all_accounts(
+    q: str,
+    max_per_account: int,
+    page_tokens: Optional[Dict[str, str]] = None,
+) -> EmailsResult:
     """Fan out one query across every authorized account and merge the
     results newest-first.
 
@@ -683,13 +749,24 @@ async def _fetch_all_accounts(q: str, max_per_account: int) -> EmailsResult:
     if not account_emails:
         return EmailsResult(emails=[], accounts=[])
 
+    tokens = page_tokens or {}
+    # A CONTINUATION asks only the accounts that still have pages. An account
+    # that already ran out has no token, and re-listing it from the top would
+    # re-deliver its newest mail as though it were older — duplicate rows
+    # appearing BELOW the ones they duplicate, which reads as corruption.
+    targets = [em for em in account_emails if em in tokens] if tokens else account_emails
+    if not targets:
+        return EmailsResult(emails=[], accounts=account_emails)
+
     errors: Dict[str, str] = {}
     all_emails: List[GmailMessage] = []
+    next_tokens: Dict[str, str] = {}
 
     async with httpx.AsyncClient() as client:
         async def _safe_fetch(em: str) -> List[GmailMessage]:
             try:
-                outcome = await _fetch_messages_for(client, em, max_per_account, q=q)
+                outcome = await _fetch_messages_for(
+                    client, em, max_per_account, q=q, page_token=tokens.get(em, ""))
             except HTTPException as e:
                 errors[em] = str(e.detail)
                 return []
@@ -698,17 +775,20 @@ async def _fetch_all_accounts(q: str, max_per_account: int) -> EmailsResult:
                 return []
             if outcome.dropped:
                 errors[em] = _dropped_note(outcome.dropped)
+            if outcome.next_page_token:
+                next_tokens[em] = outcome.next_page_token
             return outcome.messages
 
-        results = await asyncio.gather(*(_safe_fetch(em) for em in account_emails))
+        results = await asyncio.gather(*(_safe_fetch(em) for em in targets))
 
     for chunk in results:
         all_emails.extend(chunk)
 
     return EmailsResult(
         emails=_newest_first(all_emails),
-        accounts=account_emails,
+        accounts=targets,
         errors=errors,
+        next_page_tokens=next_tokens,
     )
 
 
@@ -805,16 +885,46 @@ async def fetch_one_message(email: str, message_id: str) -> GmailMessage:
     )
 
 
+def _decode_page_tokens(raw: str) -> Dict[str, str]:
+    """`page_tokens` arrives as a JSON object in a query string.
+
+    A malformed value is treated as "no cursor" rather than as an error: the
+    worst case is the caller gets page one again, which is recoverable and
+    obvious. Refusing the whole request because a cursor was garbled would
+    take the inbox down over a resumption detail.
+    """
+    if not raw:
+        return {}
+    try:
+        parsed = json.loads(raw)
+    except (ValueError, TypeError):
+        return {}
+    if not isinstance(parsed, dict):
+        return {}
+    return {str(k): str(v) for k, v in parsed.items() if v}
+
+
 @router.get("/emails/unread/all", response_model=EmailsResult)
-async def fetch_unread_all_accounts(max_per_account: int = 20) -> EmailsResult:
+async def fetch_unread_all_accounts(
+    max_per_account: int = 20,
+    page_tokens: str = "",
+) -> EmailsResult:
     """Universal-inbox path: parallel-fetch unread emails from every
     authorized account, merged newest-first.
+
+    `page_tokens` is a JSON object of accountEmail → Gmail pageToken, echoed
+    back from a previous response's `next_page_tokens`. Omit it for page one.
     """
-    return await _fetch_all_accounts(DEFAULT_UNREAD_QUERY, max_per_account)
+    return await _fetch_all_accounts(
+        DEFAULT_UNREAD_QUERY, max_per_account, _decode_page_tokens(page_tokens))
 
 
 @router.get("/emails/search", response_model=EmailsResult)
-async def search_emails_all_accounts(q: str = "", max_results: int = 25) -> EmailsResult:
+async def search_emails_all_accounts(
+    q: str = "",
+    max_results: int = 25,
+    page_tokens: str = "",
+) -> EmailsResult:
     """Run a Gmail query across EVERY authorized account, merged newest-first.
 
     `max_results` is per account, not per call — the merged list can be
@@ -824,4 +934,427 @@ async def search_emails_all_accounts(q: str = "", max_results: int = 25) -> Emai
     Accounts that fail are reported in `errors` and the rest still return, so
     a search never comes back empty just because one token went stale.
     """
-    return await _fetch_all_accounts(_normalize_query(q), max_results)
+    return await _fetch_all_accounts(
+        _normalize_query(q), max_results, _decode_page_tokens(page_tokens))
+
+
+# ── Message BODIES (Phase MX.2) ────────────────────────────────────────────
+#
+# ⚠️ READ THIS BEFORE TOUCHING ANYTHING BELOW. ⚠️
+#
+# Everything above this line is METADATA ONLY, on purpose, and the module
+# docstring says so. This section is the one exception, and it exists because
+# a mail reader that cannot show the message is not a mail reader — the macOS
+# AI Inbox could only ever render Gmail's ~200-character snippet and then told
+# the user to "open in Gmail for full message".
+#
+# THE RULE THAT MAKES THIS SAFE IS NOT IN THIS FILE.
+#
+# Message bodies are attacker-controlled text: anyone can mail you, and the
+# 2026 literature on this is not theoretical — zero-click exfiltration via
+# white-on-white HTML aimed at a mailbox-connected agent is a demonstrated
+# attack, and the payload hides in HTML, in MIME structure and in headers.
+# The metadata routes above feed AGENTS. This route feeds a HUMAN, through a
+# quarantined WKWebView, and the split is enforced on the Swift side:
+#
+#   * `AIInboxAppletVerbs.verbs` does NOT list a body verb, and a test fails
+#     if one ever appears there. An agent cannot reach this route.
+#   * `MailBodyService` is the only Swift caller. It hands the result to
+#     `QuarantinedMailBodyView` (JavaScript off, remote images blocked, every
+#     navigation cancelled and routed to the in-app browser).
+#   * Anything that later summarises a body runs `MailTextSanitizer` FIRST,
+#     which strips hidden/zero-width/colour-matched text before a prompt is
+#     ever built, and wraps what survives as labelled untrusted data.
+#
+# So: do not add a body field to `GmailMessage`. Do not widen the list routes
+# to `format=full`. Do not "helpfully" call this from a verb. Each of those is
+# one line of diff and each one undoes the whole boundary. If you need bodies
+# somewhere new, the question to answer first is who reads the result — a
+# person, or a model that can act.
+
+
+class MailAttachment(BaseModel):
+    """One attachment, by reference. The bytes are NOT inlined.
+
+    A 20 MB PDF base64'd into a JSON response is 27 MB of string that has to
+    cross the loopback socket and be parsed before a single word of the email
+    renders. `attachmentId` is enough to fetch it on demand, when and if the
+    user asks.
+    """
+    attachmentId: Optional[str] = None
+    filename: str = ""
+    mimeType: str = ""
+    size: int = 0
+    # Inline images referenced by the HTML as `cid:<contentId>`.
+    contentId: Optional[str] = None
+    isInline: bool = False
+
+
+class MailBody(BaseModel):
+    id: str
+    threadId: str
+    accountEmail: str
+    # Both parts when the message carries both — the client decides. text is
+    # the safe default; html is what the quarantined view renders.
+    text: str = ""
+    html: str = ""
+    attachments: List[MailAttachment] = Field(default_factory=list)
+    # Recipients live here rather than on the metadata model because they are
+    # only needed once you are READING a message, and a reply needs them.
+    to: str = ""
+    cc: str = ""
+    reply_to: str = ""
+    # True when Gmail truncated us — a caller that renders a partial body
+    # without saying so is lying by omission.
+    truncated: bool = False
+
+
+def _b64url_decode(data: str) -> bytes:
+    """Gmail returns base64url WITHOUT padding. `base64.urlsafe_b64decode`
+    raises on that, so pad it back rather than letting a body fail to decode
+    for a reason that has nothing to do with the mail."""
+    if not data:
+        return b""
+    pad = "=" * (-len(data) % 4)
+    try:
+        return base64.urlsafe_b64decode(data + pad)
+    except Exception:
+        return b""
+
+
+def _decode_part_text(part: Dict[str, Any]) -> str:
+    """Body bytes of one MIME part, as a string.
+
+    Decodes with the part's declared charset and falls back to utf-8 with
+    replacement. `errors="replace"` rather than `"ignore"`: a visible U+FFFD
+    tells the reader a byte was mangled, whereas silently dropping it can
+    change what a sentence says.
+    """
+    raw = _b64url_decode(part.get("body", {}).get("data", ""))
+    if not raw:
+        return ""
+    charset = "utf-8"
+    for h in part.get("headers", []) or []:
+        if h.get("name", "").lower() == "content-type":
+            value = h.get("value", "")
+            if "charset=" in value.lower():
+                charset = value.lower().split("charset=", 1)[1]
+                charset = charset.split(";")[0].strip().strip('"').strip("'")
+            break
+    try:
+        return raw.decode(charset, errors="replace")
+    except (LookupError, TypeError):
+        return raw.decode("utf-8", errors="replace")
+
+
+def _walk_parts(payload: Dict[str, Any]) -> tuple[str, str, List[MailAttachment]]:
+    """Depth-first MIME walk → (text, html, attachments).
+
+    Gmail nests arbitrarily (multipart/mixed wrapping multipart/alternative
+    wrapping the actual parts), so this recurses rather than looking one level
+    down. FIRST text/plain and FIRST text/html win: `multipart/alternative`
+    orders parts worst-to-best, and taking the first of each type per branch
+    avoids concatenating a plain-text fallback onto the HTML that replaced it.
+    """
+    text_out, html_out = "", ""
+    attachments: List[MailAttachment] = []
+
+    def visit(part: Dict[str, Any]) -> None:
+        nonlocal text_out, html_out
+        mime = (part.get("mimeType") or "").lower()
+        filename = part.get("filename") or ""
+        body = part.get("body", {}) or {}
+        headers = {
+            (h.get("name") or "").lower(): (h.get("value") or "")
+            for h in (part.get("headers") or [])
+        }
+        disposition = headers.get("content-disposition", "").lower()
+        content_id = headers.get("content-id", "").strip("<>") or None
+
+        if part.get("parts"):
+            for child in part["parts"]:
+                visit(child)
+            return
+
+        # An attachment is anything with a filename or an explicit attachment
+        # disposition — NOT "anything that isn't text". A text/plain file the
+        # sender attached is an attachment, and a bare inline image is not.
+        if filename or "attachment" in disposition or body.get("attachmentId"):
+            attachments.append(MailAttachment(
+                attachmentId=body.get("attachmentId"),
+                filename=filename,
+                mimeType=part.get("mimeType") or "application/octet-stream",
+                size=int(body.get("size") or 0),
+                contentId=content_id,
+                isInline=("inline" in disposition) or bool(content_id),
+            ))
+            return
+
+        if mime == "text/plain" and not text_out:
+            text_out = _decode_part_text(part)
+        elif mime == "text/html" and not html_out:
+            html_out = _decode_part_text(part)
+
+    visit(payload)
+    return text_out, html_out, attachments
+
+
+@router.get("/accounts/{email}/messages/{message_id}/body", response_model=MailBody)
+async def fetch_message_body(email: str, message_id: str) -> MailBody:
+    """The full body of ONE message, for a HUMAN to read.
+
+    Deliberately NOT reachable from `AIInboxAppletVerbs` — see the block
+    comment above this section for the whole reasoning. The route lives under
+    `/messages/` rather than `/emails/` so that it is visibly not a sibling of
+    the metadata routes, and so no future wildcard under `/emails/` picks it
+    up by accident.
+    """
+    access_token = await _get_valid_access_token(email)
+    async with httpx.AsyncClient() as client:
+        r = await client.get(
+            GMAIL_GET_URL_FMT.format(id=message_id),
+            headers={"Authorization": f"Bearer {access_token}"},
+            params={"format": "full"},
+            timeout=30,
+        )
+    if r.status_code == 404:
+        raise HTTPException(status_code=404, detail=f"No message {message_id} in {email}.")
+    if r.status_code != 200:
+        raise HTTPException(
+            status_code=r.status_code,
+            detail=f"Gmail body fetch for {email} failed: {r.text[:300]}",
+        )
+
+    d = r.json()
+    payload = d.get("payload", {}) or {}
+    headers_dict = {
+        (h.get("name") or "").lower(): (h.get("value") or "")
+        for h in payload.get("headers", [])
+    }
+    text, html, attachments = _walk_parts(payload)
+
+    # A `full` fetch with neither part is not an error, but it IS worth being
+    # honest about: Gmail returns this for some calendar invites and encrypted
+    # messages. Fall back to the snippet so the reader shows SOMETHING true
+    # rather than an empty page that looks like a rendering failure.
+    if not text and not html:
+        text = d.get("snippet", "") or ""
+
+    return MailBody(
+        id=d["id"],
+        threadId=d.get("threadId", d["id"]),
+        accountEmail=email,
+        text=text,
+        html=html,
+        attachments=attachments,
+        to=headers_dict.get("to", ""),
+        cc=headers_dict.get("cc", ""),
+        reply_to=headers_dict.get("reply-to", ""),
+        truncated=False,
+    )
+
+
+@router.get("/accounts/{email}/threads/{thread_id}", response_model=EmailsResult)
+async def fetch_thread(email: str, thread_id: str) -> EmailsResult:
+    """Every message in one thread, oldest-first, METADATA ONLY.
+
+    Threading was the other half of "this is not a reader": `threadId` has
+    always been carried on each message and never used to group anything, so
+    a ten-message conversation drew ten unrelated rows. This is the read that
+    turns them into one.
+
+    Metadata only, like its siblings — the reader fetches each message's body
+    lazily, and only the ones the user actually expands. A thread route that
+    returned ten full bodies would pull megabytes to render a list.
+    """
+    access_token = await _get_valid_access_token(email)
+    async with httpx.AsyncClient() as client:
+        r = await client.get(
+            f"https://gmail.googleapis.com/gmail/v1/users/me/threads/{thread_id}",
+            headers={"Authorization": f"Bearer {access_token}"},
+            params={
+                "format": "metadata",
+                "metadataHeaders": ["Subject", "From", "Date", "To"],
+            },
+            timeout=20,
+        )
+    if r.status_code == 404:
+        raise HTTPException(status_code=404, detail=f"No thread {thread_id} in {email}.")
+    if r.status_code != 200:
+        raise HTTPException(
+            status_code=r.status_code,
+            detail=f"Gmail thread fetch for {email} failed: {r.text[:300]}",
+        )
+
+    messages: List[GmailMessage] = []
+    for d in r.json().get("messages", []) or []:
+        hd = {
+            h["name"]: h["value"]
+            for h in d.get("payload", {}).get("headers", [])
+        }
+        messages.append(GmailMessage(
+            id=d["id"],
+            threadId=d.get("threadId", thread_id),
+            accountEmail=email,
+            sender=hd.get("From", ""),
+            subject=hd.get("Subject", ""),
+            date=hd.get("Date", ""),
+            snippet=d.get("snippet", "") or "",
+            labelIds=d.get("labelIds", []) or [],
+            internalDate=d.get("internalDate"),
+        ))
+    # Oldest first — a thread reads top to bottom, unlike an inbox.
+    messages.sort(key=lambda m: int(m.internalDate or 0))
+    return EmailsResult(emails=messages, accounts=[email], errors={})
+
+
+
+# ── Mutations (Phase MX.4) ─────────────────────────────────────────────────
+#
+# WHAT THIS CAN AND CANNOT DO, precisely.
+#
+# `gmail.modify` covers label changes and trash. It does NOT cover permanent
+# delete — that needs the full `https://mail.google.com/` scope, which this
+# service never requests. So "delete" here means MOVE TO TRASH: reversible by
+# the user, in Gmail, for 30 days, without us. A mail client that can
+# irreversibly destroy mail on behalf of an agent is a different risk category,
+# and declining the scope is how we stay out of it.
+#
+# PER-ACCOUNT ENFORCEMENT. Every route below checks the stored grant for THAT
+# mailbox and 403s with a specific, actionable message when it is read-only.
+# Accounts authorised before MX.4 hold `gmail.readonly` and are refused here —
+# they are not silently upgraded, and the Mac UI reads `can_modify` so the
+# control is not drawn in the first place. This check is the backstop for the
+# case where it is.
+
+
+class ModifyRequest(BaseModel):
+    message_ids: List[str]
+    add_label_ids: List[str] = Field(default_factory=list)
+    remove_label_ids: List[str] = Field(default_factory=list)
+
+
+class ModifyResult(BaseModel):
+    modified: List[str]
+    failed: Dict[str, str] = Field(default_factory=dict)
+
+
+async def _require_modify(email: str) -> str:
+    """Access token for an account that may write, or a 403 that says why."""
+    tokens = _read_tokens(email)
+    if not _can_modify(tokens):
+        raise HTTPException(
+            status_code=403,
+            detail=(
+                f"{email} is authorised read-only. Remove it in AI Inbox → Accounts "
+                "and add it again to grant permission to archive, star and trash. "
+                "Google's consent screen is the only thing that can grant this."
+            ),
+        )
+    return await _get_valid_access_token(email)
+
+
+@router.post("/accounts/{email}/messages/modify", response_model=ModifyResult)
+async def modify_messages(email: str, req: ModifyRequest) -> ModifyResult:
+    """Add/remove labels on one or more messages in one account.
+
+    Archive is `remove_label_ids: ["INBOX"]`. Mark-read is removing `UNREAD`.
+    Star is adding `STARRED`. The CALLER names the labels rather than this
+    service growing a verb per action, because Gmail's label model already is
+    the vocabulary and a `/archive` route would just be a rename of one call.
+
+    Uses batchModify: one request for N messages, so archiving a selection is
+    one round trip rather than N.
+    """
+    if not req.message_ids:
+        return ModifyResult(modified=[], failed={})
+    access_token = await _require_modify(email)
+    async with httpx.AsyncClient() as client:
+        r = await client.post(
+            "https://gmail.googleapis.com/gmail/v1/users/me/messages/batchModify",
+            headers={"Authorization": f"Bearer {access_token}"},
+            json={
+                "ids": req.message_ids,
+                "addLabelIds": req.add_label_ids,
+                "removeLabelIds": req.remove_label_ids,
+            },
+            timeout=20,
+        )
+    if r.status_code not in (200, 204):
+        raise HTTPException(
+            status_code=r.status_code,
+            detail=f"Gmail batchModify for {email} failed: {r.text[:300]}",
+        )
+    # batchModify returns 204 with no body: it succeeded for all ids or it
+    # failed for all of them. Reporting every id as modified is therefore
+    # accurate here, and is NOT a guess.
+    return ModifyResult(modified=req.message_ids, failed={})
+
+
+@router.post("/accounts/{email}/messages/trash", response_model=ModifyResult)
+async def trash_messages(email: str, req: ModifyRequest) -> ModifyResult:
+    """Move messages to Trash. Recoverable in Gmail for 30 days.
+
+    One call per message: Gmail has no batch trash. Failures are reported
+    PER MESSAGE rather than aborting, so trashing twelve messages with one
+    bad id moves eleven and tells you which one did not — the alternative is
+    an all-or-nothing error and a user who does not know what happened.
+    """
+    if not req.message_ids:
+        return ModifyResult(modified=[], failed={})
+    access_token = await _require_modify(email)
+    headers = {"Authorization": f"Bearer {access_token}"}
+    modified: List[str] = []
+    failed: Dict[str, str] = {}
+
+    async with httpx.AsyncClient() as client:
+        async def _trash(mid: str) -> None:
+            try:
+                r = await client.post(
+                    f"https://gmail.googleapis.com/gmail/v1/users/me/messages/{mid}/trash",
+                    headers=headers,
+                    timeout=20,
+                )
+            except Exception as e:  # noqa: BLE001
+                failed[mid] = str(e)
+                return
+            if r.status_code == 200:
+                modified.append(mid)
+            else:
+                failed[mid] = f"{r.status_code}: {r.text[:160]}"
+
+        await asyncio.gather(*(_trash(m) for m in req.message_ids))
+
+    return ModifyResult(modified=modified, failed=failed)
+
+
+@router.post("/accounts/{email}/messages/untrash", response_model=ModifyResult)
+async def untrash_messages(email: str, req: ModifyRequest) -> ModifyResult:
+    """Undo a trash. The other half of a reversible destructive action —
+    shipped WITH it, because an undo added later is an undo nobody trusts."""
+    if not req.message_ids:
+        return ModifyResult(modified=[], failed={})
+    access_token = await _require_modify(email)
+    headers = {"Authorization": f"Bearer {access_token}"}
+    modified: List[str] = []
+    failed: Dict[str, str] = {}
+
+    async with httpx.AsyncClient() as client:
+        async def _untrash(mid: str) -> None:
+            try:
+                r = await client.post(
+                    f"https://gmail.googleapis.com/gmail/v1/users/me/messages/{mid}/untrash",
+                    headers=headers,
+                    timeout=20,
+                )
+            except Exception as e:  # noqa: BLE001
+                failed[mid] = str(e)
+                return
+            if r.status_code == 200:
+                modified.append(mid)
+            else:
+                failed[mid] = f"{r.status_code}: {r.text[:160]}"
+
+        await asyncio.gather(*(_untrash(m) for m in req.message_ids))
+
+    return ModifyResult(modified=modified, failed=failed)
