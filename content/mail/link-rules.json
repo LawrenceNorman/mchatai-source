@@ -1,0 +1,138 @@
+{
+  "schema_version": "1",
+  "id": "link-rules",
+  "version": "1.0.0",
+  "_summary": "Deterministic phishing-link heuristics for the AI Inbox reader. Consumed by MailLinkAssessor.swift. Authoritative source of truth — the Swift binary carries only clamped _fallback_only defaults, because threat lists go stale in days and shipped users cannot recompile.",
+
+  "maxRedirectDepth": 5,
+  "maxSubdomainLabels": 4,
+
+  "_redirectors_note": "Link wrappers that carry the real destination inside a parameter. `encoding` says how to read it: 'plain' = percent-decoded parameter value. Anything else is NOT decoded in v1 — the assessor reports redirectorNotDecoded and refuses to guess a destination rather than showing a garbled one. Adding a decoder is a Swift change; adding a wrapper that uses an existing decoder is content-only.",
+  "redirectors": [
+    {
+      "name": "Microsoft SafeLinks",
+      "hostSuffix": "safelinks.protection.outlook.com",
+      "params": ["url"],
+      "encoding": "plain"
+    },
+    {
+      "name": "Proofpoint URLDefense",
+      "hostSuffix": "urldefense.proofpoint.com",
+      "params": ["u"],
+      "encoding": "proofpoint_v2"
+    },
+    {
+      "name": "Proofpoint URLDefense",
+      "hostSuffix": "urldefense.com",
+      "params": ["u"],
+      "encoding": "proofpoint_v3"
+    },
+    {
+      "name": "Barracuda LinkProtect",
+      "hostSuffix": "linkprotect.cudasvc.com",
+      "params": ["a"],
+      "encoding": "plain"
+    },
+    {
+      "name": "Mimecast",
+      "hostSuffix": "protect-us.mimecast.com",
+      "params": ["u"],
+      "encoding": "mimecast"
+    },
+    {
+      "name": "Google redirect",
+      "hostSuffix": "google.com",
+      "pathPrefix": "/url",
+      "params": ["q", "url"],
+      "encoding": "plain"
+    },
+    {
+      "name": "Outlook legacy redirect",
+      "hostSuffix": "linkprotect.outlook.com",
+      "params": ["url"],
+      "encoding": "plain"
+    }
+  ],
+
+  "_generic_note": "Applied to ANY host when a parameter holds something that parses as an absolute http(s) URL. Catches the long tail of marketing redirectors without naming them.",
+  "genericRedirectParams": [
+    "url", "u", "redirect", "redirect_uri", "redirecturl", "target",
+    "dest", "destination", "next", "link", "out", "goto", "continue"
+  ],
+
+  "_tld_note": "Risk tiers, not a blocklist. A risky TLD alone is CAUTION, never DANGER — plenty of legitimate mail uses .link and .live. It escalates when it co-occurs with another signal.",
+  "tldRisk": {
+    "high": [
+      "icu", "top", "xyz", "cfd", "sbs", "rest", "quest", "cyou", "click",
+      "zip", "mov", "country", "kim", "work", "party", "date", "faith",
+      "review", "stream", "bid", "loan", "download", "racing", "win",
+      "gq", "cf", "ml", "tk", "ga"
+    ],
+    "elevated": [
+      "online", "site", "shop", "live", "fun", "info", "biz", "monster",
+      "buzz", "life", "world", "today", "space", "website", "store", "link"
+    ]
+  },
+
+  "_impersonation_note": "Hosts whose NAME appearing anywhere other than the authority position is a deception signal — the 'https://mail.google.com/https://evil.icu/' shape. Naming these is how impersonation is detected; it is not branding content.",
+  "impersonatedHosts": [
+    "mail.google.com", "accounts.google.com", "drive.google.com",
+    "docs.google.com", "login.microsoftonline.com", "outlook.office.com",
+    "outlook.office365.com", "login.live.com", "account.microsoft.com",
+    "appleid.apple.com", "icloud.com", "paypal.com", "www.paypal.com",
+    "amazon.com", "signin.aws.amazon.com", "dropbox.com", "docusign.net",
+    "adobe.com", "linkedin.com", "facebook.com", "instagram.com",
+    "netflix.com", "chase.com", "wellsfargo.com", "bankofamerica.com",
+    "coinbase.com", "github.com", "id.atlassian.com", "okta.com"
+  ],
+
+  "_credential_note": "Path/query tokens that mean 'this page wants your identity'. Harmless alone; they set the stakes when the host is already suspect.",
+  "credentialPathTokens": [
+    "login", "signin", "sign-in", "logon", "verify", "verification",
+    "validate", "secure", "account", "auth", "authenticate", "password",
+    "reset", "unlock", "confirm", "recovery", "mfa", "2fa", "otp",
+    "session", "billing", "invoice", "payment", "wallet", "seed", "mnemonic"
+  ],
+
+  "knownBadDomains": [
+    "watlinbelom.icu",
+    "reliableinviteto.icu"
+  ],
+  "_knownBad_note": "Seeded from a real 2026-09-23 phish reported by the owner. This list is a courtesy, not the mechanism — the heuristics above must catch an unlisted domain of the same shape, and the unit test asserts exactly that by scoring this URL with the list emptied.",
+
+  "_attachment_note": "Extensions that execute or can carry a macro/loader. Advisory only — the reader never blocks a download, it labels it.",
+  "attachmentRisk": {
+    "executable": [
+      "exe", "scr", "com", "pif", "cpl", "msi", "msix", "bat", "cmd",
+      "ps1", "vbs", "vbe", "js", "jse", "wsf", "wsh", "hta", "jar",
+      "app", "dmg", "pkg", "command", "workflow", "scpt", "term"
+    ],
+    "macroCapable": [
+      "docm", "dotm", "xlsm", "xltm", "xlam", "pptm", "potm", "ppam", "slk", "iqy"
+    ],
+    "container": [
+      "iso", "img", "vhd", "vhdx", "zip", "rar", "7z", "cab", "ace", "arj", "lzh"
+    ]
+  },
+
+  "_scoring_note": "Weights sum to a score; the score picks a tier. Tunable without a rebuild — that is the point of putting it here. Any single reason with weight >= dangerAt reaches DANGER on its own.",
+  "scoring": {
+    "cautionAt": 30,
+    "dangerAt": 60,
+    "weights": {
+      "hostPathDeception": 60,
+      "anchorTextMismatch": 60,
+      "userinfoTrick": 60,
+      "knownBadDomain": 100,
+      "punycodeHost": 50,
+      "rawIPHost": 40,
+      "redirectorNotDecoded": 30,
+      "riskyTLDHigh": 35,
+      "riskyTLDElevated": 15,
+      "deepSubdomain": 20,
+      "credentialPath": 15,
+      "senderDomainDivergence": 10,
+      "redirectorUnwrapped": 0
+    }
+  }
+}

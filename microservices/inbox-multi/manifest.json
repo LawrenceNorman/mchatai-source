@@ -1,10 +1,10 @@
 {
   "id": "official.inbox-multi",
   "name": "Inbox Multi",
-  "version": "1.5.0",
+  "version": "1.10.0",
   "type": "microservice",
   "runtime": "python3",
-  "description": "Multi-account Gmail inbox via direct Google OAuth + Gmail API. Universal-inbox aggregation and Gmail-query search across all of a user's Gmail accounts. Read-only. The list/search routes are METADATA ONLY and are the agent-reachable surface; /messages/{id}/body returns a full message body and is for a human reader behind a quarantined view only (see the Phase MX.2 block comment in main.py). Bypasses gws's single-account limitation.",
+  "description": "Multi-account Google access via direct OAuth: Gmail, Drive, Tasks, Calendar and Contacts. Universal-inbox aggregation and Gmail-query search across all of a user's accounts, plus Drive file listing and Google Tasks (Phase GW). Read-only EXCEPT Google Tasks and (opt-in, per account) moving Drive files to Trash and renaming them, which is read/write when the account grants the wider `tasks` scope (create/update/delete a task; nothing else writes). The list/search routes are METADATA ONLY and are the agent-reachable surface; /messages/{id}/body and /documents/{id}/text return attacker-authored CONTENT and are for a human reader behind a quarantined view only (see the Phase MX.2 and Phase GW block comments in main.py). One account list and one token refresh serve every Google surface in the app, which is why the Google Workspace applet no longer shells out to the single-account gws CLI.",
   "author": "mchatai-labs",
   "license": "MIT",
   "platforms": [
@@ -65,6 +65,70 @@
     },
     {
       "path": "/accounts/{email}/messages/untrash",
+      "method": "POST"
+    },
+    {
+      "path": "/accounts/{email}/drive/files",
+      "method": "GET"
+    },
+    {
+      "path": "/drive/files",
+      "method": "GET"
+    },
+    {
+      "path": "/accounts/{email}/tasks/lists",
+      "method": "GET"
+    },
+    {
+      "path": "/tasks",
+      "method": "GET"
+    },
+    {
+      "path": "/accounts/{email}/documents/{file_id}/text",
+      "method": "GET"
+    },
+    {
+      "path": "/calendar/events",
+      "method": "GET"
+    },
+    {
+      "path": "/contacts",
+      "method": "GET"
+    },
+    {
+      "path": "/accounts/{email}/documents/{file_id}/content",
+      "method": "GET"
+    },
+    {
+      "path": "/drive/activity",
+      "method": "GET"
+    },
+    {
+      "path": "/accounts/{email}/tasks/lists/{list_id}/tasks",
+      "method": "POST"
+    },
+    {
+      "path": "/accounts/{email}/tasks/lists/{list_id}/tasks/{task_id}",
+      "method": "PATCH"
+    },
+    {
+      "path": "/accounts/{email}/tasks/lists/{list_id}/tasks/{task_id}",
+      "method": "DELETE"
+    },
+    {
+      "path": "/accounts/{email}/drive/folder",
+      "method": "GET"
+    },
+    {
+      "path": "/accounts/{email}/drive/files/{file_id}/trash",
+      "method": "POST"
+    },
+    {
+      "path": "/accounts/{email}/drive/files/{file_id}/untrash",
+      "method": "POST"
+    },
+    {
+      "path": "/accounts/{email}/drive/files/{file_id}/rename",
       "method": "POST"
     }
   ]
