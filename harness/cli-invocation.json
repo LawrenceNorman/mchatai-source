@@ -1,7 +1,7 @@
 {
   "$schema": "https://mchatai.com/schemas/cli-invocation-v1.json",
   "version": "2.0.0",
-  "last_updated": "2026-08-26",
+  "last_updated": "2026-09-25",
   "description": "Per-CLI-backend invocation policy + optimization config for mChatAIShell dev sessions. Each CLI has unique capabilities (MCP, sub-agents, model selection, context management) \u2014 this file is the single source of truth for how we configure them.",
   "defaults": {
     "startBody": {
@@ -284,6 +284,7 @@
       "planFirstDefault": true,
       "planAutoApproveSeconds": 30,
       "planRevisePrefix": "Revise the plan: ",
+      "addDirFlag": "--add-dir",
       "notes": "Phase Workbench W1 \u2014 interactive bidirectional session dialect (WorkbenchSessionDriver). Spawn with tty:false (plain pipes): a PTY's line discipline would echo our stdin JSON back into the output stream, where an echoed {\"type\":\"user\",...} parses as a fake event. User turns are NDJSON lines {\"type\":\"user\",\"message\":{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"...\"}]}} written to stdin mid-run (queued if a turn is in flight). REQUIRED: --permission-prompt-tool stdio routes permission prompts over the control channel as can_use_tool control_requests \u2014 WITHOUT it, headless -p mode silently DENIES everything not auto-approved (no prompt ever reaches the host; found live 2026-08-26, the fixture tests cannot catch it). Control channel (control_request/control_response, subtypes here) verified as strings in claude v2.1.210; feature-detect via the system/init capabilities[] array (present v2.1.205+) and treat unknown subtypes as safe-deny. permissionModes maps Workbench's logical modes to CLI values; the driver passes --permission-mode on EVERY spawn INCLUDING --resume respawns (claude-code issue #21974: resume does not preserve permission flags). No goal positional \u2014 the first user turn arrives via stdin. codex is intentionally absent until W6 ships the app-server dialect; an absent backend here = Workbench shows it unavailable (never a silent PTY fallback)."
     },
     "codex": {
@@ -334,7 +335,10 @@
     "_comment": "AP-3 \u2014 Workbench advisory session budget (RULE #1: the numbers are content, zero rebuild to tune). warnFraction posts a heads-up note; at 100% the app shows an advisory amber banner with an ask-to-wrap-up option \u2014 NEVER a kill, never a disabled composer. budgetChoices render as a segmented picker; 0 = Off. Baked _fallback_only mirror: CLIContentConfig.workbenchDefaults().",
     "defaultSessionBudgetUSD": 5,
     "budgetChoices": [0, 2, 5, 20],
-    "warnFraction": 0.8
+    "warnFraction": 0.8,
+    "_comment_projectFolder": "Phase UC.18 — the composer's 'Add Project Folder…'. projectFolderNotice rides ONCE, as an extra text block, on the first message after the folder is set; projectFolderRemovedNotice after it is removed. {path} and {name} are substituted. Structured claude sessions are also granted the folder with interactiveMapping.claude.addDirFlag on every spawn; codex (danger-full-access) is only told. Baked _fallback_only mirror: CLIInvocationConfig.projectFolderNotice(path:).",
+    "projectFolderNotice": "The user pointed this conversation at a project folder: {path}. Treat it as the project this conversation is about and read what you need from it — its README, CLAUDE.md or AGENTS.md are usually the fastest way in. It is the user's own folder: change files in it only when they ask you to.",
+    "projectFolderRemovedNotice": "The user removed the project folder from this conversation. Do not read from it or change it unless they point you at it again."
   },
   "backends": {
     "claude": {
