@@ -8,7 +8,7 @@
 # had landed. Probe for a new response KEY instead, or read
 # /microservices health `fingerprints`.)
 name: Inbox Multi
-version: 1.5.0
+version: 1.11.0
 description: Multi-account Gmail inbox via direct Google OAuth + Gmail API. Lets AI Inbox merge multiple Google accounts into one universal timeline without going through gws (which is single-account by design).
 author: mChatAI
 category: communication

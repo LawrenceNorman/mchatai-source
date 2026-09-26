@@ -23,6 +23,7 @@ import time
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 from typing import Any, Dict, List, NamedTuple, Optional
+from html import unescape as _unescape_html
 from urllib.parse import parse_qs, urlencode, urlparse
 
 import httpx
@@ -778,6 +779,17 @@ def _newest_first(messages: List[GmailMessage]) -> List[GmailMessage]:
     return sorted(messages, key=_key, reverse=True)
 
 
+def _snippet(d: Dict[str, Any]) -> str:
+    """Gmail's snippet, as plain text.
+
+    Gmail returns snippets HTML-ESCAPED (`You&#39;re`, `&gt;`, `&amp;`), and
+    every reader — the inbox rows, the mail verbs, the chat scope — showed the
+    codes verbatim. Decoded once, here at the source, so no consumer has to
+    know. Safe: it is text before and after, and nothing renders it as HTML.
+    """
+    return _unescape_html(d.get("snippet", "") or "")
+
+
 async def _fetch_messages_for(
     client: httpx.AsyncClient,
     email: str,
@@ -853,7 +865,7 @@ async def _fetch_messages_for(
             sender=headers_dict.get("From", ""),
             subject=headers_dict.get("Subject", ""),
             date=headers_dict.get("Date", ""),
-            snippet=d.get("snippet", "") or "",
+            snippet=_snippet(d),
             labelIds=d.get("labelIds", []) or [],
             internalDate=d.get("internalDate"),
         )
@@ -889,6 +901,7 @@ async def _fetch_all_accounts(
     q: str,
     max_per_account: int,
     page_tokens: Optional[Dict[str, str]] = None,
+    only_account: Optional[str] = None,
 ) -> EmailsResult:
     """Fan out one query across every authorized account and merge the
     results newest-first.
@@ -897,7 +910,16 @@ async def _fetch_all_accounts(
     (revoked refresh token, say) degrades that column instead of taking down
     the whole inbox — the same contract the unread fan-out has always had.
     """
-    account_emails = _authorized_account_emails()
+    if only_account:
+        # ONE mailbox, through the same paged fan-out. The per-account routes
+        # below cannot page (no `page_tokens`), so the reader's single-account
+        # view used them and could never get past page one — or skipped them
+        # and showed every account. An unknown address 404s naming the real
+        # ones (`_read_tokens`).
+        _read_tokens(only_account)
+        account_emails = [only_account]
+    else:
+        account_emails = _authorized_account_emails()
     if not account_emails:
         return EmailsResult(emails=[], accounts=[])
 
@@ -1031,7 +1053,7 @@ async def fetch_one_message(email: str, message_id: str) -> GmailMessage:
         sender=headers_dict.get("From", ""),
         subject=headers_dict.get("Subject", ""),
         date=headers_dict.get("Date", ""),
-        snippet=d.get("snippet", "") or "",
+        snippet=_snippet(d),
         labelIds=d.get("labelIds", []) or [],
         internalDate=d.get("internalDate"),
     )
@@ -1060,15 +1082,18 @@ def _decode_page_tokens(raw: str) -> Dict[str, str]:
 async def fetch_unread_all_accounts(
     max_per_account: int = 20,
     page_tokens: str = "",
+    account: str = "",
 ) -> EmailsResult:
     """Universal-inbox path: parallel-fetch unread emails from every
-    authorized account, merged newest-first.
+    authorized account, merged newest-first. `account` narrows it to one
+    mailbox (1.11.0) — with paging, unlike /accounts/{email}/emails/unread.
 
     `page_tokens` is a JSON object of accountEmail → Gmail pageToken, echoed
     back from a previous response's `next_page_tokens`. Omit it for page one.
     """
     return await _fetch_all_accounts(
-        DEFAULT_UNREAD_QUERY, max_per_account, _decode_page_tokens(page_tokens))
+        DEFAULT_UNREAD_QUERY, max_per_account, _decode_page_tokens(page_tokens),
+        account or None)
 
 
 @router.get("/emails/search", response_model=EmailsResult)
@@ -1076,6 +1101,7 @@ async def search_emails_all_accounts(
     q: str = "",
     max_results: int = 25,
     page_tokens: str = "",
+    account: str = "",
 ) -> EmailsResult:
     """Run a Gmail query across EVERY authorized account, merged newest-first.
 
@@ -1085,9 +1111,11 @@ async def search_emails_all_accounts(
 
     Accounts that fail are reported in `errors` and the rest still return, so
     a search never comes back empty just because one token went stale.
+    `account` narrows it to one mailbox, WITH paging (1.11.0).
     """
     return await _fetch_all_accounts(
-        _normalize_query(q), max_results, _decode_page_tokens(page_tokens))
+        _normalize_query(q), max_results, _decode_page_tokens(page_tokens),
+        account or None)
 
 
 # ── Message BODIES (Phase MX.2) ────────────────────────────────────────────
@@ -1351,7 +1379,7 @@ async def fetch_thread(email: str, thread_id: str) -> EmailsResult:
             sender=hd.get("From", ""),
             subject=hd.get("Subject", ""),
             date=hd.get("Date", ""),
-            snippet=d.get("snippet", "") or "",
+            snippet=_snippet(d),
             labelIds=d.get("labelIds", []) or [],
             internalDate=d.get("internalDate"),
         ))

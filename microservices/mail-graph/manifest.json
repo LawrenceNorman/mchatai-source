@@ -1,0 +1,74 @@
+{
+  "id": "official.mail-graph",
+  "name": "Mail Graph",
+  "version": "1.0.0",
+  "type": "microservice",
+  "runtime": "python3",
+  "description": "Outlook.com, Hotmail, Live and Microsoft 365 mail for AI Inbox via Microsoft Graph \u2014 the Microsoft counterpart of inbox-multi, with the same routes and paging contract. Sign-in is PKCE with a public client ID (client.json, no secret). The list/search/thread routes are METADATA ONLY and are the agent-safe surface; /messages/{id}/body returns attacker-authored CONTENT for a human reader behind a quarantined view only. Writes are limited to read state, flags and folder moves (archive, Deleted Items) with undo; it never requests Mail.Send and never deletes permanently.",
+  "author": "mchatai-labs",
+  "license": "MIT",
+  "platforms": [],
+  "endpoints": [
+    {
+      "path": "/healthz",
+      "method": "GET"
+    },
+    {
+      "path": "/client/status",
+      "method": "GET"
+    },
+    {
+      "path": "/accounts",
+      "method": "GET"
+    },
+    {
+      "path": "/accounts/add",
+      "method": "POST"
+    },
+    {
+      "path": "/accounts/add/{flow_id}",
+      "method": "GET"
+    },
+    {
+      "path": "/accounts/add/{flow_id}/cancel",
+      "method": "POST"
+    },
+    {
+      "path": "/accounts/{email}",
+      "method": "DELETE"
+    },
+    {
+      "path": "/emails/unread/all",
+      "method": "GET"
+    },
+    {
+      "path": "/emails/search",
+      "method": "GET"
+    },
+    {
+      "path": "/accounts/{email}/threads/{thread_id}",
+      "method": "GET"
+    },
+    {
+      "path": "/accounts/{email}/messages/{message_id}/body",
+      "method": "GET"
+    },
+    {
+      "path": "/accounts/{email}/messages/read",
+      "method": "POST"
+    },
+    {
+      "path": "/accounts/{email}/messages/flag",
+      "method": "POST"
+    },
+    {
+      "path": "/accounts/{email}/messages/move",
+      "method": "POST"
+    },
+    {
+      "path": "/accounts/{email}/messages/restore",
+      "method": "POST"
+    }
+  ],
+  "_status": "PARKED 2026-09-26 \u2014 built and tested, not shipped (owner decision: surface area). `platforms` is empty on purpose: the Microservice Store lists only manifests that declare \"mchatai-shell\", so this service cannot be offered to anyone while parked. To un-park, restore [\"mchatai-shell\"] \u2014 see mchatai_macOS/PLATFORM_ROADMAP.md item 2g."
+}
