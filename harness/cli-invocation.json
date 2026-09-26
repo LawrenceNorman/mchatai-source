@@ -84,17 +84,32 @@
     "description": "Fail fast before session planning if required CLI binary or credential is missing. Keeps failures deterministic and avoids launching long-running sessions that cannot succeed."
   },
   "cliVersionPolicy": {
+    "_comment": "Read by mChatAIShell (minimum/npmPackage: dev-session npm auto-upgrade below `minimum`) AND by mChatAI+ Phase CU (CLIUpdateService). mChatAI+ shows an Update button beside the Workbench CLI chip when the installed version is below `recommended`, offers Update & Restart on a failed turn whose text contains a `needsUpdatePatterns` entry, and starts new sessions on `interactiveMapping.<cli>.preferredModel` only when the installed version meets `modelMinimums` for it. Do NOT raise `minimum` for claude: it installs natively, and the shell's npm auto-upgrade would add a second copy. Raise `recommended` instead.",
     "claude": {
       "minimum": "2.1.80",
-      "recommended": "2.1.85",
+      "recommended": "2.1.280",
       "npmPackage": "@anthropic-ai/claude-code",
-      "autoUpgradeWhenBelowMinimum": true
+      "autoUpgradeWhenBelowMinimum": true,
+      "versionCommand": "claude --version",
+      "updateCommand": "claude update",
+      "modelMinimums": {
+        "claude-opus-5-5": "2.1.280"
+      },
+      "needsUpdatePatterns": [
+        "does not support this model; version"
+      ]
     },
     "codex": {
       "minimum": "0.114.0",
       "recommended": "0.114.0",
       "npmPackage": "@openai/codex",
-      "autoUpgradeWhenBelowMinimum": true
+      "autoUpgradeWhenBelowMinimum": true,
+      "versionCommand": "codex --version",
+      "updateCommand": "npm install -g @openai/codex@latest",
+      "needsUpdatePatterns": [
+        "requires a newer version of codex",
+        "upgrade to the latest app or cli"
+      ]
     },
     "gemini": {
       "minimum": "0.17.1",
@@ -237,6 +252,7 @@
         "claude-haiku-4-5-20251001"
       ],
       "defaultModel": "claude-opus-5",
+      "preferredModel": "claude-opus-5-5",
       "permissionModeFlag": "--permission-mode",
       "permissionModes": {
         "default": "default",
