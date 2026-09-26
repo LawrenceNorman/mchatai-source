@@ -1,0 +1,290 @@
+{
+  "_comment": "Content for the public-writing gate: mchatai_macOS/scripts/content_lint.py (deterministic checks) and content_readers.py (three cold-reader agents). Edit here, no rebuild. Rules and rationale: mchatai_macOS/docs/CONTENT_PLAYBOOK.md. Written 2026-09-25 after blog post #4 was rejected as a changelog in prose.",
+  "version": "1.0.0",
+  "readerModel": "claude-sonnet-5",
+  "gate": {
+    "_why": "A post is written for ONE reader (--reader A|B|C). That reader must want to click it and find it useful; the whole panel must find it clear and not feel sold to; a term the target reader or two panelists didn't understand fails it. Without --reader, all three must clear minMedian (the stricter, older rule). Changed 2026-09-25 after round 1: a post for the private-Mac reader was failing because the non-coding maker had searched for something else.",
+    "targetReaderMin": {
+      "click": 4,
+      "useful": 4
+    },
+    "panelMinMedian": {
+      "clear": 4,
+      "trust": 3
+    },
+    "confusingFailsWhenFlaggedBy": "target-or-two",
+    "minMedian": {
+      "click": 4,
+      "clear": 4,
+      "useful": 4
+    },
+    "minImagesWithCaptions": 3,
+    "titleMaxChars": 70,
+    "wordCount": {
+      "min": 800,
+      "max": 1400,
+      "hardMin": 500,
+      "hardMax": 2000
+    }
+  },
+  "titleSuperlatives": [
+    "fastest",
+    "best",
+    "first ever",
+    "most powerful",
+    "revolutionary",
+    "ultimate",
+    "game-changing",
+    "game changing",
+    "unleash",
+    "unlock the power"
+  ],
+  "titleSeriesPrefixPattern": "^(Built in mChatAI|Recipe of the Week|Behind the Magic|Founder Notes)\\s*#?\\d*\\s*[:—-]",
+  "bannedTerms": [
+    {
+      "term": "Workbench",
+      "say": "the app / the agent window / the build window",
+      "caseSensitive": true
+    },
+    {
+      "term": "harness",
+      "say": "the app",
+      "caseSensitive": false
+    },
+    {
+      "term": "AIWizard",
+      "say": "the app",
+      "caseSensitive": true
+    },
+    {
+      "term": "EndProduct",
+      "say": "the result / the file",
+      "caseSensitive": true
+    },
+    {
+      "term": "artifact",
+      "say": "the result / the file",
+      "caseSensitive": false
+    },
+    {
+      "term": "Lego",
+      "say": "ready-made parts",
+      "caseSensitive": true
+    },
+    {
+      "term": "registry",
+      "say": "a library of ready-made parts",
+      "caseSensitive": false
+    },
+    {
+      "term": "wisdom pack",
+      "say": "(nothing)",
+      "caseSensitive": false
+    },
+    {
+      "term": "canary",
+      "say": "(nothing)",
+      "caseSensitive": false
+    },
+    {
+      "term": "verified live",
+      "say": "show a screenshot instead",
+      "caseSensitive": false
+    },
+    {
+      "term": "signed rebuild",
+      "say": "(nothing)",
+      "caseSensitive": false
+    },
+    {
+      "term": "acceptance suite",
+      "say": "(nothing)",
+      "caseSensitive": false
+    },
+    {
+      "term": "test oracle",
+      "say": "(nothing)",
+      "caseSensitive": false
+    },
+    {
+      "term": "contract lock",
+      "say": "(nothing)",
+      "caseSensitive": false
+    },
+    {
+      "term": "permissionMode",
+      "say": "permission",
+      "caseSensitive": true
+    },
+    {
+      "term": "bypass",
+      "say": "allow for this session",
+      "caseSensitive": false
+    },
+    {
+      "term": "resolver",
+      "say": "(nothing)",
+      "caseSensitive": false
+    },
+    {
+      "term": "mounts",
+      "say": "opens",
+      "caseSensitive": false
+    },
+    {
+      "term": "mounted",
+      "say": "opened",
+      "caseSensitive": false
+    },
+    {
+      "term": "surface raise",
+      "say": "(nothing)",
+      "caseSensitive": false
+    },
+    {
+      "term": "preview registry",
+      "say": "(nothing)",
+      "caseSensitive": false
+    },
+    {
+      "term": "compute tokens",
+      "say": "credits",
+      "caseSensitive": false
+    },
+    {
+      "term": "provenance",
+      "say": "where it came from",
+      "caseSensitive": false
+    },
+    {
+      "term": "idempotent",
+      "say": "(nothing)",
+      "caseSensitive": false
+    },
+    {
+      "term": "the scoreboard",
+      "say": "(nothing)",
+      "caseSensitive": false
+    },
+    {
+      "term": "genuinely",
+      "say": "(cut)",
+      "caseSensitive": false
+    },
+    {
+      "term": "the actual hard part",
+      "say": "(cut)",
+      "caseSensitive": false
+    },
+    {
+      "term": "the interesting work",
+      "say": "(cut)",
+      "caseSensitive": false
+    },
+    {
+      "term": "security theater",
+      "say": "(cut)",
+      "caseSensitive": false
+    },
+    {
+      "term": "the whole ballgame",
+      "say": "(cut)",
+      "caseSensitive": false
+    },
+    {
+      "term": "the honest bit",
+      "say": "(cut: say what went wrong, plainly)",
+      "caseSensitive": false
+    },
+    {
+      "term": "the honest version",
+      "say": "(cut)",
+      "caseSensitive": false
+    },
+    {
+      "term": "the honest part",
+      "say": "(cut)",
+      "caseSensitive": false
+    },
+    {
+      "term": "rather leave a gap",
+      "say": "(cut: leave the gap without announcing it)",
+      "caseSensitive": false
+    },
+    {
+      "term": "to be honest",
+      "say": "(cut)",
+      "caseSensitive": false
+    }
+  ],
+  "calendarNarrationPattern": "\\b(we spent|spent|went to|took up)\\s+(January|February|March|April|May|June|July|August|September|October|November|December|the month|this month|a month)\\b|\\b(January|February|March|April|May|June|July|August|September|October|November|December)\\s+(went|was spent)\\b|\\bthis month went\\b",
+  "testCountPattern": "\\b\\d+\\s*/\\s*\\d+\\s*/\\s*\\d+\\b|\\b\\d+\\s*/\\s*\\d+\\s*(tests?|passed|green)\\b|\\b(suite|suites)\\b\\s*\\|",
+  "identifierAllowlist": [
+    "mChatAI",
+    "mChatAI+",
+    "DreamSnap",
+    "ToonStudio",
+    "MapGuide",
+    "LoopStar",
+    "IconMaker",
+    "AudioCast",
+    "ChatGPT",
+    "OpenAI",
+    "GitHub",
+    "YouTube",
+    "LinkedIn",
+    "TikTok",
+    "PayPal",
+    "WordPress",
+    "JavaScript",
+    "TypeScript",
+    "iPhone",
+    "iPad",
+    "macOS",
+    "iOS",
+    "iCloud",
+    "iMessage",
+    "QuickTime",
+    "FaceTime",
+    "AirDrop",
+    "MacBook",
+    "iMac",
+    "PowerPoint",
+    "OneDrive",
+    "DeepSeek",
+    "OpenClaw",
+    "HeyGen",
+    "ElevenLabs",
+    "SwiftUI",
+    "WebKit",
+    "Xcode",
+    "Ollama",
+    "LM Studio",
+    "VS Code",
+    "Klondike",
+    "PacMan",
+    "Pac-Man",
+    "HistoryLink",
+    "OpenStreetMap",
+    "CloudKit",
+    "WhatsApp"
+  ],
+  "readers": [
+    {
+      "id": "A",
+      "name": "the private-Mac person",
+      "persona": "You are a 41-year-old architect in Portland with an M3 MacBook Air. You use ChatGPT for drafts and image ideas but you don't like your client files going to a cloud you can't see. You have never heard of mChatAI. You are not a programmer. You searched Google for 'run AI locally on Mac' last week. You give an article about four seconds before deciding whether to keep reading."
+    },
+    {
+      "id": "B",
+      "name": "the maker who doesn't code",
+      "persona": "You are a 29-year-old middle-school science teacher in Austin. You want to make a small game for your students and maybe a podcast of your class notes. You've read that AI can build apps now and you tried one web tool that produced something broken. You don't code and you don't want to learn. You have never heard of mChatAI. You want to know exactly what to type, how long it takes, what it costs, and to SEE the result."
+    },
+    {
+      "id": "C",
+      "name": "the coding-agent regular",
+      "persona": "You are a 35-year-old backend engineer in Berlin who runs Claude Code and Codex all day. You are tired of 'autonomous agent' hype and close any tab that claims one-shot magic. You have never heard of mChatAI. You respect specifics: what was typed, what came back, what it cost, what broke, and what the tool asks permission for. You will quote any sentence that sounds like marketing."
+    }
+  ],
+  "readerInstructions": "Read the article below exactly as a stranger would. Do not be generous. Return ONLY a JSON object with these keys: \"click\" (1-5: from the title and first two sentences alone, would you open and keep reading?), \"clear\" (1-5: by the end of the second paragraph, do you know what this is about and who it's for?), \"useful\" (1-5: could you do or decide something after reading it?), \"trust\" (1-5: did anything feel like marketing, hype, or made up? 5 = nothing did), \"share\" (1-5: would you send it to someone?), \"confusing\" (array of exact quoted words or sentences you did not understand or had to guess at; empty array if none), \"cut\" (array of the three things you would remove), \"more\" (one sentence: the one thing you wanted more of), \"title_verdict\" (one sentence on the title: would you have typed anything like it into a search box, and does it tell you what the article is?). No prose outside the JSON."
+}

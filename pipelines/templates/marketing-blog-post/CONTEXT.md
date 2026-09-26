@@ -3,10 +3,10 @@ artifact:
   type: pipeline
   id: official.pipeline.marketing-blog-post
   name: Marketing Blog Post
-  version: 1.0.0
+  version: 1.1.0
   created_by: mchatai-labs
   created_at: 2026-05-24
-  updated_at: 2026-05-24
+  updated_at: 2026-09-25
 
 purpose:
   summary: Three-pass LLM pipeline that turns a topic into a publish-ready blog post with YAML frontmatter for mchatai.com/blog.
@@ -79,3 +79,7 @@ A future v2 will auto-commit to the repo via the GitHub API (see `reference_mcha
 
 Input: `"Why local-first AI is the right default for creators"`.
 Expect: ~2000-word markdown with valid YAML frontmatter, 4-5 H2 sections, ASCII-only, ending with a concrete next-action CTA. Pipeline runs in 60-120s on Claude Sonnet or Gemini Pro.
+
+## v1.1.0 (2026-09-25) — reader-first prompts
+
+The prompts now carry the rules from `mchatai_macOS/docs/CONTENT_PLAYBOOK.md`: name the reader (A/B/C) and the search phrase the piece answers, five title candidates checked against the four title tests, banned internal vocabulary, `[SCREENSHOT: …]` / `[TABLE: …]` slots so no piece goes out without visuals, a numbers section and an honest wrinkle, `[NEED: …]` instead of invented facts. Written after the 2026-09-25 blog post, drafted from the changelog, was rejected as unreadable. Output is still not auto-published: it goes through `scripts/content_lint.py` and `scripts/content_readers.py`, then Lawrence.

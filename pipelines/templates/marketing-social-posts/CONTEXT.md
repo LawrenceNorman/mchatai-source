@@ -3,10 +3,10 @@ artifact:
   type: pipeline
   id: official.pipeline.marketing-social-posts
   name: Marketing Social Posts
-  version: 1.0.0
+  version: 1.1.0
   created_by: mchatai-labs
   created_at: 2026-05-24
-  updated_at: 2026-05-24
+  updated_at: 2026-09-25
 
 purpose:
   summary: Turn a blog post or topic into platform-tailored social drafts for X, LinkedIn, Bluesky, Reddit, and HackerNews.
@@ -116,3 +116,7 @@ Expect: digest with 5 sections, each respecting its platform's format. X thread 
 - **No per-platform A/B**: All five variants are from one LLM call with one temperature. Re-run for alternates.
 - **No image attachments**: Each social skill (MM-1) supports media IDs / URLs, but this pipeline doesn't generate them. Pair with the ImageGen pipeline for hero images per variant.
 - **No scheduling**: Pipeline writes drafts; dispatch is manual. Buffer/Hypefury replacement is a future MM-3 pipeline that wraps the social skills + ScheduledJobExecutor.
+
+## v1.1.0 (2026-09-25) — reader-first prompts
+
+The prompts now carry the rules from `mchatai_macOS/docs/CONTENT_PLAYBOOK.md`: name the reader (A/B/C) and the search phrase the piece answers, five title candidates checked against the four title tests, banned internal vocabulary, `[SCREENSHOT: …]` / `[TABLE: …]` slots so no piece goes out without visuals, a numbers section and an honest wrinkle, `[NEED: …]` instead of invented facts. Written after the 2026-09-25 blog post, drafted from the changelog, was rejected as unreadable. Output is still not auto-published: it goes through `scripts/content_lint.py` and `scripts/content_readers.py`, then Lawrence.
