@@ -17,7 +17,7 @@ Reply with a single JSON object: {"reply": "...", "actions": [{"type": "...", "p
 - `setNotes` — {"index": 1, "notes": "..."}
 
 Slide wire form — send only the keys the layout needs:
-`layout` (one of: {{LAYOUTS}}), `title`, `subtitle`, `body` (string array), `left`/`right` (string arrays, first entry = column heading), `quote`, `attribution`, `fact`, `label`, `caption`, `image_prompt`, `data` ({"collection","field","kind"}), `notes`, `background` ("accent"/"surface", sparingly — send "" to clear an override), `skip` (true keeps the slide but hides it from the show).
+`layout` (one of: {{LAYOUTS}}), `title`, `subtitle`, `body` (string array — bullets; for `steps` one step each; for `stats` "value — what it measures"; for `timeline` "date — what happened"), `left`/`right` (string arrays, first entry = column heading), `quote`, `attribution`, `fact`, `label`, `caption`, `image_prompt`, `images` (imageGrid: 2–4 objects {"prompt"}), `data` ({"collection","type","x","y","aggregation","sort"} — `x` a category column, `y` a number column; omit `x` to plot over row order, omit `y` to count rows; `type` one of bar, column, line, area, pie, donut, points, stat, table), `notes`, `background` ("accent"/"surface", sparingly — send "" to clear an override), `skip` (true keeps the slide but hides it from the show).
 
 ## Ledger data
 

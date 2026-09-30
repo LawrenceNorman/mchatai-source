@@ -1,0 +1,23 @@
+{
+  "_comment": "mail.summarize (MailSafeSummary.swift): a message body summarised FOR an agent by a separate, tool-less model on the user's Mac. The body never reaches the agent. Cost is $0 by design: junk is refused before any fetch, only LOCAL models run, and each message is summarised once (shared cache with AI Inbox's Summarise button).",
+  "_consumer": "mChatAI+ MailSafeSummary.Policy.current",
+  "providers": [
+    "Foundation",
+    "Ollama"
+  ],
+  "_providers": "Which LOCAL kinds may run at all: an allowlist, nothing else. ORDER is no longer this list's: since Phase KN (2026-09-29) the mail.summary AI job's card decides (content/ai-jobs/jobs.json + the user's Best Quality | Lowest Cost choice on this Mac). Anything not local here is ignored on purpose: a mail body does not leave the Mac to save a click.",
+  "maxBodyChars": 4000,
+  "_maxBodyChars": "Sanitised body text handed to the model (clamped 500-12000). Apple's on-device model has a ~4k-token window.",
+  "skipLanes": [
+    "newsletters",
+    "receipts",
+    "junk"
+  ],
+  "skipLabels": [
+    "CATEGORY_PROMOTIONS",
+    "CATEGORY_SOCIAL",
+    "CATEGORY_FORUMS",
+    "SPAM"
+  ],
+  "_skip": "Never summarised unless the caller passes force:true. Gmail's own classifier already ran; paying anything to read a newsletter is the waste this file exists to prevent."
+}

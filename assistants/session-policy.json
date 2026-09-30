@@ -1,0 +1,14 @@
+{
+  "_comment": "Phase AQ (2026-09-30). How many mChatAIShell sessions assistants may hold, and when they let go. mChatAIShell runs at most 8 CLI sessions and everything shares them: Workbench, Harness terminals, the iPhone Terminal and assistants. On 2026-09-29 the Daily Coordinator's fan-out to other assistants helped fill the app's connection pool, and nothing ever closed an assistant session that had finished its work. Read by mChatAI+ AssistantSessionPolicy.swift; the values there are clamped _fallback_only copies.",
+  "_source_of_truth": "this file",
+  "idleCloseMinutes": 15,
+  "_idleCloseMinutes": "An assistant session closes once it has been idle this long AFTER a turn finished. A running turn is never cut off, however quiet. Closed sessions keep their conversation and resume on the next message. Not closed while it is the session on screen in Workbench, or while its interactive terminal is open.",
+  "maxAssistantSessions": 3,
+  "_maxAssistantSessions": "Live assistant sessions at once. Limits AUTOMATED starts: one assistant asking another (the coordinator's fan-out). The owner opening or messaging an assistant is never blocked by it.",
+  "reservedForOwner": 2,
+  "_reservedForOwner": "mChatAIShell session slots an automated start must leave free for the owner.",
+  "reclaimIdleAfterMinutes": 2,
+  "_reclaimIdleAfterMinutes": "At the limit, an automated start first closes the longest-idle assistant session that has been idle at least this long (same exemptions as idle close), then waits for a slot.",
+  "maxSlotWaitSeconds": 240,
+  "_maxSlotWaitSeconds": "Longest an automated start waits for a slot before failing with a reason the asker can report. Never more than half the ask's own timeout, so the answer still has time."
+}

@@ -1,0 +1,54 @@
+{
+  "_comment": "Phase KN (docs/AI_JOB_KNOBS_SPEC.md in mchatai_macOS). An AI JOB is a recurring thing mChatAI+ asks a model to do for the user. Each gets ONE card of knobs (AIJobCardView): Best Quality | Lowest Cost, or an engine the user picks, with readiness, speed measured on this Mac, and the ratings below. Which engine runs is AIJobEngineResolver's decision; running it is AIJobRunner's.",
+  "_consumer": "mChatAI+ AIJobCatalog (AIJobs/AIJob.swift)",
+  "version": 1,
+  "engineProfiles": {
+    "_comment": "Ratings for engines the Ollama catalog (harness/ollama-catalog.json) does not cover. Same scale as its taskScores: 0.95 best in class, 0.75 solidly capable, 0.55 workable fallback, 0.30 avoid. Keys are 'foundation' or an AppletProvider raw value.",
+    "foundation": {
+      "displayName": "Apple Intelligence",
+      "detail": "Apple's on-device model, built into macOS",
+      "taskScores": {"simple": 0.6, "analysis": 0.45, "creative": 0.45, "research": 0.35, "planning": 0.35, "coding": 0.2},
+      "_taskScoresNote": "2026-09-29, mail.summary on a real message: the quoted asks were right; the gist was a sentence copied from the email. Hence analysis below a workable fallback."
+    },
+    "mChatAI Cloud": {
+      "displayName": "mChatAI Cloud",
+      "detail": "mChatAI's hosted models, paid in compute tokens",
+      "taskScores": {"simple": 0.8, "analysis": 0.85, "creative": 0.8, "research": 0.8, "planning": 0.8, "coding": 0.8},
+      "_taskScoresNote": "A hosted ladder; the model behind it varies. Rated as a strong general model."
+    }
+  },
+  "jobs": [
+    {
+      "id": "mail.summary",
+      "title": "Email summaries for assistants",
+      "blurb": "The gist and the sender's questions, for the few emails an assistant asks about. The assistant gets the summary, never the email.",
+      "taskCategory": "analysis",
+      "privacy": "local",
+      "_privacy": "Lawrence, 2026-09-29: keep email on this Mac. Cloud engines are listed, locked, with lockedReason. AIJobRunner also refuses a cloud rung for a local job whatever a row says, and MailSafeSummary passes its own local-only allowlist.",
+      "engines": ["foundation", "ollama"],
+      "defaultMode": "lowestCost",
+      "_defaultMode": "Safe on an 8-16 GB Mac. The card recommends Best Quality wherever a better-rated local model is installed.",
+      "reasoning": "minimal",
+      "_reasoning": "A one-line summary needs no long reasoning. A model that thinks is sent think:false (or 'low' where the catalog says it takes levels); measured, qwen3.5 went from 195 s and an empty answer to 10 s and a good one.",
+      "typicalTokens": {"input": 1200, "output": 200},
+      "lockedReason": "Email stays on this Mac",
+      "compare": true,
+      "policy": "content/mail/summary.json"
+    },
+    {
+      "id": "mail.readerSummary",
+      "title": "AI Inbox Summarise button",
+      "blurb": "Summarises the thread you are reading and quotes what is asked of you, when you press Summarise.",
+      "taskCategory": "analysis",
+      "privacy": "any",
+      "engines": ["foundation", "ollama", "cloud"],
+      "cloudProviders": ["mChatAI Cloud"],
+      "defaultMode": "lowestCost",
+      "defaultEngine": "cloud:mChatAI Cloud",
+      "_defaultEngine": "What the button always used before it had a card (MailTriageService, to 2026-09-29). It stays the starting choice so adding the card changed nothing (RULE #4); one click on the card keeps email on this Mac instead.",
+      "reasoning": "minimal",
+      "typicalTokens": {"input": 2000, "output": 250},
+      "compare": true
+    }
+  ]
+}
