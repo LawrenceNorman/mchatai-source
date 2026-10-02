@@ -102,16 +102,23 @@ function checkPhrase(file, genre, lane, p) {
   // Density sanity (drums carry more events per bar than pitched lanes).
   const perBar = p.events.length / p.lengthBars;
   if (lane === 'drums' ? perBar > 48 : perBar > 20) fail(file, `${pid}: ${perBar.toFixed(1)} events/bar is too dense`);
+  // Song part (2026-10-01): which part of a song the beat is for. A fill is always part "fill".
+  if (lane === 'drums' && p.part !== undefined) {
+    if (!DRUM_PARTS.includes(p.part)) fail(file, `${pid}: part must be one of ${DRUM_PARTS.join('|')}`);
+    if ((p.role === 'fill') !== (p.part === 'fill')) fail(file, `${pid}: role fill and part fill go together`);
+  }
   if (lane === 'drums' && p.role !== 'fill') {
     const voices = new Set(p.events.map(e => e.drum));
-    if (!voices.has('kick') && !voices.has('snare') && !voices.has('rim'))
-      fail(file, `${pid}: a groove needs a kick, snare or rim`);
+    if (!voices.has('kick') && !voices.has('snare') && !voices.has('rim') && !voices.has('clap'))
+      fail(file, `${pid}: a groove needs a kick, snare, rim or clap`);
     // Velocity life: a flat drum pattern is a drum machine, not a drummer.
     const vs = p.events.map(e => e.vel);
     if (vs.length > 4 && Math.max(...vs) - Math.min(...vs) < 15)
       fail(file, `${pid}: flat velocities (accent the backbeat, add ghosts)`);
   }
 }
+
+const DRUM_PARTS = ['intro', 'verse', 'pre', 'chorus', 'bridge', 'breakdown', 'outro', 'fill'];
 
 function checkProgression(file, genre, pr) {
   const pid = pr.id || '(no id)';
