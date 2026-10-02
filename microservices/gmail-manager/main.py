@@ -87,6 +87,30 @@ class ReplyEmailInput(BaseModel):
     model_config = {"populate_by_name": True}
 
 
+class SaveToGmailDraftsInput(BaseModel):
+    """Body for POST /emails/save-to-gmail-drafts.
+
+    A new message needs `to` and `subject`; a reply names the message it
+    answers in `reply_to_message_id` and inherits its thread's subject and
+    recipients. Same address rules as /emails/send.
+    """
+    to: Optional[str] = None
+    subject: Optional[str] = None
+    body: str
+    reply_to_message_id: Optional[str] = None
+
+
+class GmailDraftResult(BaseModel):
+    """A message that now sits in the signed-in account's Gmail Drafts folder.
+
+    `draftId` is Gmail's id for the draft — the evidence it was saved. Nothing
+    was sent: the person opens Gmail and sends it from there.
+    """
+    draftId: str
+    messageId: Optional[str] = None
+    threadId: Optional[str] = None
+
+
 class SendResult(BaseModel):
     """What a completed send or reply returns.
 
@@ -274,13 +298,15 @@ async def read_email(message_id: str):
 # methods differ — FastAPI would otherwise route `GET /emails/send` into the
 # catch-all. Any *GET* added under /emails/ must go above that route.
 #
-# Deliberate omission: `gws gmail +send` and `+reply` both take a `--draft`
-# flag and we do NOT expose it. In the verb surface `mail.draft` means "queue
-# an AssistantProposal for a human to approve", not "put a draft in Gmail". A
-# second endpoint called /emails/draft invites wiring the approval gate to the
-# wrong one, and the failure mode there is mail leaving without anyone having
-# approved it. If a real Gmail draft is ever wanted, give it a name that
-# cannot be mistaken for the approval step.
+# Gmail drafts (2026-09-30): `gws gmail +send` and `+reply` take a `--draft`
+# flag, exposed ONLY as POST /emails/save-to-gmail-drafts — a name that cannot
+# be mistaken for the approval step. In the verb surface `mail.draft` means
+# "queue an AssistantProposal for a human to approve", not "put a draft in
+# Gmail", and an endpoint called /emails/draft would invite wiring the gate to
+# the wrong one. Saving a Gmail draft sends nothing: the person opens Gmail and
+# sends it there. mChatAI+ calls it only from a person's click on a waiting
+# email card (Lawrence: "so I could later send the drafts directly from within
+# gmail.com"); no agent verb reaches it.
 
 # Deliberately more generous than the 30s default the read endpoints use. A
 # send is the one call where a timeout is genuinely *ambiguous* — the message
@@ -300,6 +326,13 @@ _REAUTH_MARKERS = (
     "invalid_grant",
     "authentication failed",
     "autherror",
+)
+
+_PROJECT_HINT = (
+    " — not a sign-in problem: gws bills every call to the Google Cloud project its OAuth "
+    "client belongs to, and the signed-in account is not allowed to use that project. Give "
+    "that account the Service Usage Consumer role on the project (Cloud Console, IAM), wait "
+    "a few minutes, then try again."
 )
 
 _REAUTH_HINT = (
@@ -399,7 +432,12 @@ def _gws_error_detail(stdout: str, stderr: str, rc: int) -> str:
     detail = detail[:400]
 
     haystack = " ".join([message, reason, stderr]).lower()
-    if code in (401, 403) or any(marker in haystack for marker in _REAUTH_MARKERS):
+    if "permission to use project" in haystack or "serviceusage" in haystack \
+            or "user_project_denied" in haystack:
+        # Checked FIRST (2026-09-30): this 403 is not about the sign-in's scope,
+        # and the read-only hint below sent the owner to re-consent for nothing.
+        detail += _PROJECT_HINT
+    elif code in (401, 403) or any(marker in haystack for marker in _REAUTH_MARKERS):
         detail += _REAUTH_HINT
     return detail
 
@@ -606,6 +644,73 @@ async def reply_email(payload: ReplyEmailInput) -> SendResult:
     )
 
 
+def _draft_from(payload: Any) -> Optional[Dict[str, Any]]:
+    """The Draft resource gws printed: `{id, message: {id, threadId}}`, possibly
+    one level inside a wrapper key, as `_candidate_objects` allows for sends."""
+    if not isinstance(payload, dict):
+        return None
+    for node in [payload] + [payload.get(k) for k in ("draft", "result", "data", "response")]:
+        if isinstance(node, dict) and isinstance(node.get("id"), str) and node["id"].strip() \
+                and ("message" in node or node is payload):
+            return node
+    return None
+
+
+@router.post("/emails/save-to-gmail-drafts", response_model=GmailDraftResult)
+async def save_to_gmail_drafts(payload: SaveToGmailDraftsInput) -> GmailDraftResult:
+    """Put a message in the signed-in account's Gmail Drafts folder. Sends nothing.
+
+    `gws gmail +send --draft` (or `+reply --draft`) calls Gmail's drafts.create.
+    Same input hygiene as the send endpoints — `_flag` for every value, the
+    address rules, no blank subject or body — because the text still came
+    from an agent's draft, even after a person read it.
+    """
+    body_text = _require_nonempty(payload.body, "body", keep_whitespace=True)
+    reply_to = (payload.reply_to_message_id or "").strip()
+    if reply_to:
+        if any(ch.isspace() for ch in reply_to):
+            raise HTTPException(status_code=422, detail=f"`reply_to_message_id` contains whitespace: {reply_to!r}.")
+        args: List[str] = ["gmail", "+reply", _flag("message-id", reply_to), _flag("body", body_text), "--draft"]
+    else:
+        to = _clean_address_list(payload.to, "to", required=True) or ""
+        subject = _require_nonempty(payload.subject, "subject")
+        args = ["gmail", "+send", _flag("to", to), _flag("subject", subject), _flag("body", body_text), "--draft"]
+
+    try:
+        rc, stdout, stderr = await run_gws_raw_async(args, timeout=SEND_TIMEOUT_SECONDS)
+    except FileNotFoundError:
+        raise HTTPException(status_code=503, detail="gws CLI not installed. Install: brew install gws")
+    except subprocess.TimeoutExpired:
+        raise HTTPException(
+            status_code=504,
+            detail=(f"Saving the draft did not finish within {SEND_TIMEOUT_SECONDS}s. It may already be in "
+                    "Gmail's Drafts folder; look there before trying again. Nothing was sent."),
+        )
+    if rc != 0:
+        raise HTTPException(status_code=500,
+                            detail=f"gws could not save the draft: {_gws_error_detail(stdout, stderr, rc)}")
+    try:
+        parsed: Any = json.loads(stdout) if stdout else None
+    except json.JSONDecodeError:
+        parsed = None
+    if isinstance(parsed, dict) and isinstance(parsed.get("error"), dict):
+        raise HTTPException(status_code=500,
+                            detail=f"gws could not save the draft: {_gws_error_detail(stdout, stderr, rc)}")
+    if isinstance(parsed, dict) and parsed.get("dry_run"):
+        raise HTTPException(status_code=500, detail="gws ran in dry-run mode — no draft was saved.")
+    draft = _draft_from(parsed)
+    if draft is None:
+        raise HTTPException(
+            status_code=500,
+            detail=("gws returned no draft id, so the draft cannot be confirmed — look in Gmail's Drafts "
+                    f"folder before trying again. gws said: {(stdout or stderr or '<no output>')[:300]}"),
+        )
+    message = draft.get("message") if isinstance(draft.get("message"), dict) else {}
+    message_id = message.get("id") if isinstance(message.get("id"), str) else None
+    thread_id = message.get("threadId") if isinstance(message.get("threadId"), str) else None
+    return GmailDraftResult(draftId=draft["id"].strip(), messageId=message_id, threadId=thread_id)
+
+
 # ── Auth Endpoints ──
 
 @router.get("/auth/status", response_model=AuthStatus)
@@ -647,7 +752,10 @@ async def auth_status():
     cred_source = str(parsed.get("credential_source", "none"))
     client_configured = bool(parsed.get("client_config_exists", False))
     authenticated = auth_method != "none" and cred_source != "none"
-    account = parsed.get("account") or parsed.get("user_email")
+    # gws v0.22+ reports the signed-in address as `user` (2026-09-30: `user:
+    # mchataiapp@gmail.com`). Reading only the older keys left `account` null, so
+    # the Mac could not check a card's sending account against the sign-in.
+    account = parsed.get("account") or parsed.get("user_email") or parsed.get("user")
 
     err: Optional[str] = None
     if not authenticated and not client_configured:

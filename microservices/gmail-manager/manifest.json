@@ -4,7 +4,7 @@
   "version": "1.2.0",
   "type": "microservice",
   "runtime": "python3",
-  "description": "Gmail Manager microservice for mChatAIShell — owns Google OAuth lifecycle (auth/login/status/logout) plus email read/search/trash and, behind a separate write-scope consent, send/reply. mChatAI+ delegates here so the sandboxed app never holds Google tokens directly. /emails/send and /emails/reply change the user's mailbox and have no undo: the human-approval gate lives in the calling verb layer, not in this service.",
+  "description": "Gmail Manager microservice for mChatAIShell — owns Google OAuth lifecycle (auth/login/status/logout) plus email read/search/trash and, behind a separate write-scope consent, send/reply. mChatAI+ delegates here so the sandboxed app never holds Google tokens directly. /emails/send and /emails/reply change the user's mailbox and have no undo: the human-approval gate lives in the calling verb layer, not in this service. /emails/save-to-gmail-drafts puts a message in Gmail Drafts and sends nothing; mChatAI+ calls it only from a person's click on a waiting email card.",
   "author": "mchatai-labs",
   "license": "MIT",
   "platforms": ["mchatai-shell"],
@@ -18,6 +18,7 @@
     {"path": "/emails/{message_id}", "method": "GET"},
     {"path": "/emails/trash", "method": "POST"},
     {"path": "/emails/send", "method": "POST"},
-    {"path": "/emails/reply", "method": "POST"}
+    {"path": "/emails/reply", "method": "POST"},
+    {"path": "/emails/save-to-gmail-drafts", "method": "POST"}
   ]
 }

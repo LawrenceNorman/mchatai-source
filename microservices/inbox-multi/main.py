@@ -4,11 +4,20 @@ See MICROSERVICE.md for the architecture rationale (short version: gws is
 single-account, real universal inbox needs N independent credential slots,
 so we bypass gws and talk to Google directly).
 
-READ ONLY, and metadata only. The OAuth scope is gmail.readonly and every
-fetch asks Gmail for `format=metadata` — Subject/From/Date plus Gmail's own
-snippet, never message bodies. Sending lives in a different service with a
-different consent (gmail-manager) so that nothing here can post on the user's
-behalf, however it is called.
+Reads are metadata only: every list fetch asks Gmail for `format=metadata` —
+Subject/From/Date plus Gmail's own snippet; bodies come from the separate
+quarantined body route.
+
+SENDING (2026-09-30). This service used to say sending lived elsewhere "so that
+nothing here can post on the user's behalf, however it is called". That was a
+boundary in code only: `gmail.modify`, which accounts grant for archive and
+trash, already lets Google accept a send. The owner moved send and Gmail drafts
+here — "move send and Gmail Drafts onto AI Inbox's existing sign-in" — because
+the other sign-in (gws) bills every call to the OAuth client's Cloud project,
+and granting every user a role on that project does not ship. See
+`/accounts/{email}/messages/send` and `/accounts/{email}/drafts` below. The
+human-approval gate is NOT here; mChatAI+ calls these only for a card a person
+approved, or a person's click.
 """
 
 import asyncio
@@ -23,6 +32,8 @@ import time
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 from typing import Any, Dict, List, NamedTuple, Optional
+from email.message import EmailMessage
+from email.utils import getaddresses
 from html import unescape as _unescape_html
 from urllib.parse import parse_qs, urlencode, urlparse
 
@@ -216,6 +227,9 @@ class GmailMessage(BaseModel):
     snippet: str = Field(default="")
     labelIds: List[str] = Field(default_factory=list)
     internalDate: Optional[str] = None
+    # Recipients (2026-09-30), so a Sent list can say who it went TO. One more
+    # metadata header on the same request; still no body.
+    to: str = Field(default="")
 
 
 class EmailsResult(BaseModel):
@@ -847,7 +861,7 @@ async def _fetch_messages_for(
             headers=headers,
             params={
                 "format": "metadata",
-                "metadataHeaders": ["Subject", "From", "Date"],
+                "metadataHeaders": ["Subject", "From", "Date", "To"],
             },
             timeout=15,
         )
@@ -868,6 +882,7 @@ async def _fetch_messages_for(
             snippet=_snippet(d),
             labelIds=d.get("labelIds", []) or [],
             internalDate=d.get("internalDate"),
+            to=headers_dict.get("To", ""),
         )
 
     metas = await asyncio.gather(*(_fetch_meta(m["id"]) for m in msg_refs))
@@ -1027,7 +1042,7 @@ async def fetch_one_message(email: str, message_id: str) -> GmailMessage:
             headers={"Authorization": f"Bearer {access_token}"},
             params={
                 "format": "metadata",
-                "metadataHeaders": ["Subject", "From", "Date"],
+                "metadataHeaders": ["Subject", "From", "Date", "To"],
             },
             timeout=15,
         )
@@ -1056,6 +1071,7 @@ async def fetch_one_message(email: str, message_id: str) -> GmailMessage:
         snippet=_snippet(d),
         labelIds=d.get("labelIds", []) or [],
         internalDate=d.get("internalDate"),
+        to=headers_dict.get("To", ""),
     )
 
 
@@ -1382,6 +1398,7 @@ async def fetch_thread(email: str, thread_id: str) -> EmailsResult:
             snippet=_snippet(d),
             labelIds=d.get("labelIds", []) or [],
             internalDate=d.get("internalDate"),
+            to=hd.get("To", ""),
         ))
     # Oldest first — a thread reads top to bottom, unlike an inbox.
     messages.sort(key=lambda m: int(m.internalDate or 0))
@@ -1538,6 +1555,171 @@ async def untrash_messages(email: str, req: ModifyRequest) -> ModifyResult:
         await asyncio.gather(*(_untrash(m) for m in req.message_ids))
 
     return ModifyResult(modified=modified, failed=failed)
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# Send and Gmail drafts (2026-09-30)
+# ══════════════════════════════════════════════════════════════════════════
+#
+# Through the account's own sign-in, so it works for every connected account
+# with no Cloud-project role (the reason this moved off gws — module docstring).
+# Needs `gmail.modify`, the access archive and trash already use.
+#
+# NOT listed in MICROSERVICE.md or manifest.json on purpose: those catalogs are
+# what agents browse, and the approval gate lives in mChatAI+, not here. This
+# service cannot tell who calls it; requiring a caller token on the sidecar is
+# an open owner decision (docs/AI_INBOX_ARCHITECTURE.md, MX.9).
+#
+# Status codes are the contract mChatAI+ relies on to know whether an approval
+# was spent: a 4xx means nothing was sent (Gmail or this service refused the
+# request); a 502/504 means it is UNKNOWN whether Gmail accepted it.
+
+GMAIL_SEND_URL = "https://gmail.googleapis.com/gmail/v1/users/me/messages/send"
+GMAIL_DRAFTS_URL = "https://gmail.googleapis.com/gmail/v1/users/me/drafts"
+OUTGOING_TIMEOUT_SECONDS = 60
+
+
+class OutgoingMail(BaseModel):
+    """A new message (`to` + `subject`) or a reply (`reply_to_message_id`, which
+    takes its recipients, subject and thread from the message it answers)."""
+    to: Optional[str] = None
+    subject: Optional[str] = None
+    body: str
+    reply_to_message_id: Optional[str] = None
+
+
+class OutgoingResult(BaseModel):
+    messageId: Optional[str] = None
+    threadId: Optional[str] = None
+    draftId: Optional[str] = None
+
+
+def _one_line(value: str, field: str) -> str:
+    """Headers are one line. A line break would start a new header (a Bcc, say)."""
+    if any(ch in value for ch in "\r\n") or any(ord(ch) < 32 and ch != "\t" for ch in value):
+        raise HTTPException(status_code=422, detail=f"`{field}` must be one line.")
+    return value
+
+
+def _outgoing_addresses(raw: Optional[str]) -> str:
+    parts = [p.strip() for p in (raw or "").split(",") if p.strip()]
+    if not parts:
+        raise HTTPException(status_code=422, detail="`to` is required for a new message.")
+    bad = [p for p in parts if "@" not in p or p.startswith("-")]
+    if bad:
+        raise HTTPException(status_code=422, detail=f"`to` is not a usable address list: {bad}.")
+    return _one_line(", ".join(parts), "to")
+
+
+async def _compose(email: str, token: str, mail: OutgoingMail) -> tuple:
+    """The RFC 5322 message, base64url-encoded, and the thread it joins (if any)."""
+    body = mail.body or ""
+    if not body.strip():
+        raise HTTPException(status_code=422, detail="`body` must not be empty.")
+    message = EmailMessage()
+    message["From"] = email
+    thread_id: Optional[str] = None
+    reply_to = (mail.reply_to_message_id or "").strip()
+    if reply_to:
+        if any(ch.isspace() for ch in reply_to):
+            raise HTTPException(status_code=422, detail=f"`reply_to_message_id` contains whitespace: {reply_to!r}.")
+        params = [("format", "metadata")] + [("metadataHeaders", h) for h in
+                                             ("Message-ID", "References", "Subject", "From", "Reply-To", "To", "Cc")]
+        async with httpx.AsyncClient() as client:
+            r = await client.get(f"https://gmail.googleapis.com/gmail/v1/users/me/messages/{reply_to}",
+                                 headers={"Authorization": f"Bearer {token}"}, params=params, timeout=20)
+        if r.status_code == 404:
+            raise HTTPException(status_code=422,
+                                detail=f"The message being answered is not in {email}, so the reply cannot join its conversation.")
+        if r.status_code != 200:
+            raise HTTPException(status_code=r.status_code if 400 <= r.status_code < 500 else 502,
+                                detail=f"Could not read the message being answered: {r.text[:200]}")
+        original = r.json()
+        thread_id = original.get("threadId")
+        headers = {h.get("name", "").lower(): h.get("value", "")
+                   for h in (original.get("payload") or {}).get("headers", [])}
+        me = email.lower()
+        sender = headers.get("reply-to") or headers.get("from") or ""
+        if me in sender.lower():
+            # Answering our own last message: it goes to the people we wrote to.
+            recipients = [a for _, a in getaddresses([headers.get("to", ""), headers.get("cc", "")]) if a and a.lower() != me]
+        else:
+            recipients = [a for _, a in getaddresses([sender]) if a]
+        if not recipients:
+            raise HTTPException(status_code=422, detail="The message being answered names no one to reply to.")
+        message["To"] = _one_line(", ".join(recipients), "to")
+        subject = headers.get("subject", "")
+        message["Subject"] = _one_line(subject if subject.lower().startswith("re:") else f"Re: {subject}".strip(), "subject")
+        original_id = headers.get("message-id", "")
+        if original_id:
+            message["In-Reply-To"] = _one_line(original_id, "In-Reply-To")
+            message["References"] = _one_line(f"{headers.get('references', '')} {original_id}".strip(), "References")
+    else:
+        message["To"] = _outgoing_addresses(mail.to)
+        subject = (mail.subject or "").strip()
+        if not subject:
+            raise HTTPException(status_code=422, detail="`subject` is required for a new message.")
+        message["Subject"] = _one_line(subject, "subject")
+    message.set_content(body)
+    raw = base64.urlsafe_b64encode(message.as_bytes()).decode("ascii")
+    return raw, thread_id
+
+
+async def _gmail_write(url: str, token: str, payload: Dict[str, Any], what: str) -> Dict[str, Any]:
+    try:
+        async with httpx.AsyncClient() as client:
+            r = await client.post(url, headers={"Authorization": f"Bearer {token}"}, json=payload,
+                                  timeout=OUTGOING_TIMEOUT_SECONDS)
+    except httpx.TimeoutException:
+        raise HTTPException(status_code=504,
+                            detail=f"Gmail did not answer the {what} within {OUTGOING_TIMEOUT_SECONDS}s. "
+                                   "It is UNKNOWN whether it went through; look in Gmail before trying again.")
+    except httpx.HTTPError as exc:
+        raise HTTPException(status_code=502,
+                            detail=f"The connection to Gmail failed during the {what} ({exc}). "
+                                   "It is UNKNOWN whether it went through; look in Gmail before trying again.")
+    if 400 <= r.status_code < 500:
+        raise HTTPException(status_code=r.status_code,
+                            detail=f"Gmail refused the {what} ({r.status_code}): {r.text[:300]}. Nothing was sent.")
+    if r.status_code >= 500 or r.status_code not in (200, 201):
+        raise HTTPException(status_code=502,
+                            detail=f"Gmail answered the {what} with {r.status_code}. It is UNKNOWN whether it "
+                                   f"went through; look in Gmail before trying again. {r.text[:200]}")
+    return r.json()
+
+
+@router.post("/accounts/{email}/messages/send", response_model=OutgoingResult)
+async def send_message(email: str, mail: OutgoingMail) -> OutgoingResult:
+    """Send from this account. There is no undo. mChatAI+ calls this only for an
+    email card a person approved; this service cannot check that."""
+    token = await _require_modify(email)
+    raw, thread_id = await _compose(email, token, mail)
+    payload: Dict[str, Any] = {"raw": raw}
+    if thread_id:
+        payload["threadId"] = thread_id
+    sent = await _gmail_write(GMAIL_SEND_URL, token, payload, "send")
+    message_id = sent.get("id")
+    if not isinstance(message_id, str) or not message_id:
+        raise HTTPException(status_code=502, detail="Gmail returned no message id, so the send cannot be "
+                                                    "confirmed. Look in Gmail's Sent folder before trying again.")
+    return OutgoingResult(messageId=message_id, threadId=sent.get("threadId"))
+
+
+@router.post("/accounts/{email}/drafts", response_model=OutgoingResult)
+async def save_gmail_draft(email: str, mail: OutgoingMail) -> OutgoingResult:
+    """Put a message in this account's Gmail Drafts. Nothing is sent."""
+    token = await _require_modify(email)
+    raw, thread_id = await _compose(email, token, mail)
+    message: Dict[str, Any] = {"raw": raw}
+    if thread_id:
+        message["threadId"] = thread_id
+    draft = await _gmail_write(GMAIL_DRAFTS_URL, token, {"message": message}, "draft save")
+    draft_id = draft.get("id")
+    if not isinstance(draft_id, str) or not draft_id:
+        raise HTTPException(status_code=502, detail="Gmail returned no draft id, so the draft cannot be "
+                                                    "confirmed. Look in Gmail's Drafts folder before trying again.")
+    inner = draft.get("message") if isinstance(draft.get("message"), dict) else {}
+    return OutgoingResult(draftId=draft_id, messageId=inner.get("id"), threadId=inner.get("threadId"))
 
 
 # ══════════════════════════════════════════════════════════════════════════

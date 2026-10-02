@@ -341,12 +341,50 @@
       "tuiWorkdirFlag": "--add-dir",
       "resumeFlag": "--conversation",
       "models": [
-        "gemini-3.6-flash-high",
-        "gemini-3.5-flash-high",
+        "gemini-3.8-flash-high",
+        "gemini-3.8-flash-low",
         "gemini-3.1-pro-high",
         "gemini-3.1-pro-low"
       ],
-      "notes": "Antigravity agy interactive-only (Gemini free tier; plain-text CLI, no structured protocol). agy needs --add-dir <workdir> to edit the session folder."
+      "notes": "Antigravity (`agy`). Builds before 2026-10-01 read transport tui-only and offer it as a Terminal session only; keep it so they do not offer a Structured mode they cannot drive. Builds with AntigravitySessionDriver apply `structured` field by field. models = what `agy models` lists (agy 1.2.14, 2026-10-01), Gemini only: Claude and GPT-OSS through agy need a separate paid Antigravity login. agy needs --add-dir <workdir> to edit the session folder.",
+      "structured": {
+        "transport": "agy-stream-json",
+        "executable": "agy",
+        "invocationFlags": [
+          "--input-format",
+          "stream-json",
+          "--output-format",
+          "stream-json"
+        ],
+        "workdirFlag": "--add-dir",
+        "addDirFlag": "--add-dir",
+        "modelFlag": "--model",
+        "defaultModel": "gemini-3.8-flash-high",
+        "permissionModes": {
+          "default": "request-review",
+          "acceptEdits": "request-review",
+          "plan": "plan",
+          "bypass": "always-proceed"
+        },
+        "permissionModeArgs": {
+          "default": [],
+          "acceptEdits": [],
+          "plan": [
+            "--mode",
+            "plan"
+          ],
+          "bypass": [
+            "--dangerously-skip-permissions"
+          ]
+        },
+        "permissionModeNotes": {
+          "default": "Antigravity can't stop and ask you in this view, so on default it reads files and answers, but it is not allowed to edit files or run commands. Set this session's permission mode to bypass to let it.",
+          "acceptEdits": "Antigravity can't stop and ask you in this view, so on acceptEdits it reads files and answers, but it is not allowed to edit files or run commands. Set this session's permission mode to bypass to let it.",
+          "plan": "Antigravity is in plan mode: it reads and plans, and changes nothing.",
+          "bypass": "Antigravity is on bypass: it edits files and runs commands without asking."
+        },
+        "notes": "agy headless stream-json (agy >= 1.2; verified 1.2.14, 2026-10-01): one {event:user,message:{content}} line per turn on stdin; init / step_update / result events out. No permission channel: below bypass agy refuses commands and edits to existing files, and reports a NEW-file write as DONE without writing it (measured), so acceptEdits gets no flag (--mode accept-edits changed nothing in tests) and the driver checks writes on disk. No control messages (control_request ends the session, exit 2): Stop is SIGINT, which ends the process; the next message resumes with --conversation. Model and mode are launch-only, so the Workbench restarts the process to change them."
+      }
     }
   },
   "workbench": {
