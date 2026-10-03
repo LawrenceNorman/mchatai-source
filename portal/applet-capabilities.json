@@ -414,6 +414,179 @@
       ]
     },
     {
+      "applet": "storyMaker",
+      "summary": "Long-form stories: chapters, outline, suggestions the author reviews, and the author's edits. CloudKit-synced to iOS. The author's text always wins.",
+      "capabilities": [
+        {
+          "verb": "storymaker.getState",
+          "status": "callable",
+          "description": "Project count and agent suggestions waiting for the author.",
+          "example": {
+            "command": "applet",
+            "applet": "storymaker",
+            "verb": "getState"
+          }
+        },
+        {
+          "verb": "storymaker.listProjects",
+          "status": "callable",
+          "description": "Story projects with chapter and word counts.",
+          "example": {
+            "command": "applet",
+            "applet": "storymaker",
+            "verb": "listProjects"
+          }
+        },
+        {
+          "verb": "storymaker.getProject",
+          "status": "callable",
+          "description": "One project's chapters, and which an agent wrote and the author has edited.",
+          "example": {
+            "command": "applet",
+            "applet": "storymaker",
+            "verb": "getProject",
+            "args": {
+              "project": "Seaborn Collins"
+            }
+          }
+        },
+        {
+          "verb": "storymaker.createProject",
+          "status": "callable",
+          "description": "Create a story project without taking over the author's screen.",
+          "example": {
+            "command": "applet",
+            "applet": "storymaker",
+            "verb": "createProject",
+            "args": {
+              "title": "Seaborn Collins"
+            }
+          }
+        },
+        {
+          "verb": "storymaker.getChapter",
+          "status": "callable",
+          "description": "One chapter's full text.",
+          "example": {
+            "command": "applet",
+            "applet": "storymaker",
+            "verb": "getChapter",
+            "args": {
+              "project": "Seaborn Collins",
+              "chapter": "1"
+            }
+          }
+        },
+        {
+          "verb": "storymaker.createChapter",
+          "status": "callable",
+          "description": "Add a chapter from inline text.",
+          "example": {
+            "command": "applet",
+            "applet": "storymaker",
+            "verb": "createChapter",
+            "args": {
+              "project": "Seaborn Collins",
+              "title": "Georgia to Seattle, 1885",
+              "text": "Seaborn Collins arrived in Seattle in 1885\u2026"
+            }
+          }
+        },
+        {
+          "verb": "storymaker.replaceChapter",
+          "status": "callable",
+          "description": "Rewrite a chapter an agent wrote and nobody has edited; refused otherwise.",
+          "example": {
+            "command": "applet",
+            "applet": "storymaker",
+            "verb": "replaceChapter",
+            "args": {
+              "project": "Seaborn Collins",
+              "chapter": "1",
+              "text": "\u2026",
+              "reason": "tightened after the audit"
+            }
+          }
+        },
+        {
+          "verb": "storymaker.proposeSuggestion",
+          "status": "callable",
+          "description": "Offer a revision the author accepts or rejects in StoryMaker.",
+          "example": {
+            "command": "applet",
+            "applet": "storymaker",
+            "verb": "proposeSuggestion",
+            "args": {
+              "project": "Seaborn Collins",
+              "chapter": "2",
+              "find": "He ran for wreckmaster in 1892 and won.",
+              "replacement": "In 1892 he ran for wreckmaster, the official who cleared timber off the waterfront, and won.",
+              "rationale": "explains the office"
+            }
+          }
+        },
+        {
+          "verb": "storymaker.listSuggestions",
+          "status": "callable",
+          "description": "Suggestions and what the author decided.",
+          "example": {
+            "command": "applet",
+            "applet": "storymaker",
+            "verb": "listSuggestions",
+            "args": {
+              "project": "Seaborn Collins",
+              "status": "rejected"
+            }
+          }
+        },
+        {
+          "verb": "storymaker.getOutline",
+          "status": "callable",
+          "description": "The project's outline.",
+          "example": {
+            "command": "applet",
+            "applet": "storymaker",
+            "verb": "getOutline",
+            "args": {
+              "project": "Seaborn Collins"
+            }
+          }
+        },
+        {
+          "verb": "storymaker.setOutline",
+          "status": "callable",
+          "description": "Set an empty outline, or replace one an agent set and nobody touched.",
+          "example": {
+            "command": "applet",
+            "applet": "storymaker",
+            "verb": "setOutline",
+            "args": {
+              "project": "Seaborn Collins",
+              "chapters": [
+                {
+                  "title": "Georgia to Seattle, 1885",
+                  "summary": "\u2026"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "verb": "storymaker.listEdits",
+          "status": "callable",
+          "description": "What the author changed in agent-written chapters, passage by passage.",
+          "example": {
+            "command": "applet",
+            "applet": "storymaker",
+            "verb": "listEdits",
+            "args": {
+              "project": "Seaborn Collins"
+            }
+          }
+        }
+      ]
+    },
+    {
       "applet": "aiSlides",
       "summary": "Presentation decks. Turn a prompt or a piece of content into slides, edit them in plain English, and export a PDF. Charts can read live rows out of the Ledger.",
       "capabilities": [

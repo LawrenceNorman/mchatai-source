@@ -1,0 +1,79 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "$id": "mchatai-source/history/schemas/sources-index.schema.json",
+ "title": "sources/index.json — every fetched source",
+ "description": "One record per source. A source counts only when its text is saved at `file` (sourcing.md §1). Several sources from one publisher count as ONE independent source.",
+ "type": "array",
+ "items": {
+  "type": "object",
+  "required": [
+   "id",
+   "url",
+   "publisher",
+   "kind",
+   "license"
+  ],
+  "properties": {
+   "id": {
+    "type": "string",
+    "description": "Short stable id used by claims and events, e.g. \"s7\" or \"0007\"."
+   },
+   "url": {
+    "type": "string"
+   },
+   "title": {
+    "type": "string"
+   },
+   "publisher": {
+    "type": "string",
+    "description": "Who published it — the unit of independence (\"HistoryLink\", \"Seattle Times\", \"National Park Service\")."
+   },
+   "kind": {
+    "enum": [
+     "primary",
+     "government",
+     "archive",
+     "encyclopedia",
+     "news",
+     "book",
+     "community",
+     "clue-only"
+    ]
+   },
+   "license": {
+    "enum": [
+     "pd",
+     "cc-by",
+     "facts-only",
+     "clue-only"
+    ],
+    "description": "sourcing.md §5. When in doubt: facts-only."
+   },
+   "date": {
+    "type": "string",
+    "description": "The source's own date (ISO, or a year)."
+   },
+   "file": {
+    "type": "string",
+    "description": "Default sources/<id>.txt."
+   },
+   "ownWords": {
+    "type": "boolean",
+    "description": "The subject's own words: a letter, testimony, an oral history."
+   },
+   "ownWordsSpan": {
+    "description": "Which part is theirs: \"all\" (a letter, an oral history), or {from, to} with their first and last words (a signed article on a newspaper page). Unmarked, only the passages naming them count as words.",
+    "oneOf": [
+     {"const": "all"},
+     {"type": "object", "required": ["from", "to"], "properties": {"from": {"type": "string"}, "to": {"type": "string"}}}
+    ]
+   },
+   "fetchedAt": {
+    "type": "string"
+   },
+   "sha1": {
+    "type": "string"
+   }
+  }
+ }
+}

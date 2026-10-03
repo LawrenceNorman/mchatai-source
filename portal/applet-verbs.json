@@ -2809,6 +2809,382 @@
           }
         }
       }
+    },
+    "storymaker": {
+      "getstate": {
+        "kind": "read",
+        "summary": "How many story projects exist and how many agent suggestions are waiting for the author.",
+        "example": {
+          "command": "applet",
+          "applet": "storymaker",
+          "verb": "getState"
+        }
+      },
+      "listprojects": {
+        "kind": "read",
+        "summary": "Story projects, most recently updated first, with chapter and word counts. Titles and counts only; text comes from getChapter.",
+        "optional": [
+          "limit"
+        ],
+        "example": {
+          "command": "applet",
+          "applet": "storymaker",
+          "verb": "listProjects"
+        },
+        "args": {
+          "limit": {
+            "type": "integer",
+            "description": "How many to list (default 30, max 200)."
+          }
+        }
+      },
+      "getproject": {
+        "kind": "read",
+        "summary": "One project's chapters in order — id, title, words, updatedAt, and whether an agent wrote each one and whether the author has edited it since.",
+        "required": [
+          "project"
+        ],
+        "example": {
+          "command": "applet",
+          "applet": "storymaker",
+          "verb": "getProject",
+          "args": {
+            "project": "Seaborn Collins"
+          }
+        },
+        "args": {
+          "project": {
+            "type": "string",
+            "description": "The project's id or exact title (from listProjects). A miss returns the projects that exist."
+          }
+        }
+      },
+      "createproject": {
+        "kind": "create",
+        "summary": "Create a story project. It appears in StoryMaker's project list; it does not take over what the author is looking at.",
+        "required": [
+          "title"
+        ],
+        "example": {
+          "command": "applet",
+          "applet": "storymaker",
+          "verb": "createProject",
+          "args": {
+            "title": "Seaborn Collins"
+          }
+        },
+        "args": {
+          "title": {
+            "type": "string",
+            "description": "The project's title."
+          }
+        }
+      },
+      "getchapter": {
+        "kind": "read",
+        "summary": "One chapter's full text, with `ifModifiedAt` to echo back to replaceChapter.",
+        "required": [
+          "project",
+          "chapter"
+        ],
+        "example": {
+          "command": "applet",
+          "applet": "storymaker",
+          "verb": "getChapter",
+          "args": {
+            "project": "Seaborn Collins",
+            "chapter": "1"
+          }
+        },
+        "args": {
+          "project": {
+            "type": "string",
+            "description": "The project's id or exact title (from listProjects). A miss returns the projects that exist."
+          },
+          "chapter": {
+            "type": "string",
+            "description": "The chapter's id, exact title, or 1-based position (\"3\" is the third chapter)."
+          }
+        }
+      },
+      "createchapter": {
+        "kind": "create",
+        "summary": "Add a chapter from INLINE text — no file, no path. Records exactly what you wrote, so later edits by the author can be measured.",
+        "required": [
+          "project",
+          "text"
+        ],
+        "optional": [
+          "title",
+          "after"
+        ],
+        "notes": "Appends unless `after` names a chapter. Verified by reading the chapter back out of the store. If StoryMaker is open on this project, the chapter appears there immediately.",
+        "pairedCheck": "applet storymaker getChapter with the returned chapterID",
+        "example": {
+          "command": "applet",
+          "applet": "storymaker",
+          "verb": "createChapter",
+          "args": {
+            "project": "Seaborn Collins",
+            "title": "Georgia to Seattle, 1885",
+            "text": "Seaborn Collins arrived in Seattle in 1885…"
+          }
+        },
+        "args": {
+          "project": {
+            "type": "string",
+            "description": "The project's id or exact title (from listProjects). A miss returns the projects that exist."
+          },
+          "text": {
+            "type": "string",
+            "description": "The whole chapter, plain prose."
+          },
+          "title": {
+            "type": "string",
+            "description": "Chapter title (default \"Chapter N\")."
+          },
+          "after": {
+            "type": "string",
+            "description": "Insert after this chapter (id, exact title or 1-based position)."
+          }
+        }
+      },
+      "replacechapter": {
+        "kind": "modify",
+        "summary": "Rewrite a chapter an AGENT wrote and nobody has edited since. Anything else is refused: the author's text wins — use proposeSuggestion.",
+        "required": [
+          "project",
+          "chapter",
+          "text"
+        ],
+        "optional": [
+          "reason",
+          "ifModifiedAt",
+          "title"
+        ],
+        "notes": "The previous text is kept in the chapter's History and can be restored from StoryMaker. Pass `ifModifiedAt` from getChapter to refuse if the chapter changed after you read it.",
+        "example": {
+          "command": "applet",
+          "applet": "storymaker",
+          "verb": "replaceChapter",
+          "args": {
+            "project": "Seaborn Collins",
+            "chapter": "1",
+            "text": "…",
+            "reason": "tightened after the audit"
+          }
+        },
+        "args": {
+          "project": {
+            "type": "string",
+            "description": "The project's id or exact title (from listProjects). A miss returns the projects that exist."
+          },
+          "chapter": {
+            "type": "string",
+            "description": "The chapter's id, exact title, or 1-based position (\"3\" is the third chapter)."
+          },
+          "text": {
+            "type": "string",
+            "description": "The new chapter text, plain prose."
+          },
+          "reason": {
+            "type": "string",
+            "description": "One line, shown in the chapter's History."
+          },
+          "ifModifiedAt": {
+            "type": "string",
+            "description": "The value getChapter returned; refuses if the chapter changed since."
+          },
+          "title": {
+            "type": "string",
+            "description": "A new title, if it changes."
+          }
+        }
+      },
+      "proposesuggestion": {
+        "kind": "create",
+        "summary": "Offer a revision the author accepts, edits or rejects in StoryMaker (right panel, \"Agent suggestions waiting\"). The way to change any chapter the author has touched.",
+        "required": [
+          "project",
+          "chapter",
+          "replacement"
+        ],
+        "optional": [
+          "find",
+          "start",
+          "end",
+          "wholeChapter",
+          "rationale",
+          "label"
+        ],
+        "notes": "Give exactly one locator: `find` (the exact passage to replace, copied from getChapter; it must occur once), `start`+`end` (character offsets), or `wholeChapter: true`. `replacement` must not be empty: to cut, find the passage with the text around it and propose what remains. To insert, find the paragraph before and repeat it with the new text after it. Before review the app finds the passage again; if the author changed it meanwhile, the suggestion is offered for dismissal only.",
+        "example": {
+          "command": "applet",
+          "applet": "storymaker",
+          "verb": "proposeSuggestion",
+          "args": {
+            "project": "Seaborn Collins",
+            "chapter": "2",
+            "find": "He ran for wreckmaster in 1892 and won.",
+            "replacement": "In 1892 he ran for wreckmaster, the official who cleared timber off the waterfront, and won.",
+            "rationale": "explains the office"
+          }
+        },
+        "args": {
+          "project": {
+            "type": "string",
+            "description": "The project's id or exact title (from listProjects). A miss returns the projects that exist."
+          },
+          "chapter": {
+            "type": "string",
+            "description": "The chapter's id, exact title, or 1-based position (\"3\" is the third chapter)."
+          },
+          "replacement": {
+            "type": "string",
+            "description": "The text you propose."
+          },
+          "find": {
+            "type": "string",
+            "description": "The exact passage to replace; must occur exactly once."
+          },
+          "start": {
+            "type": "integer",
+            "description": "Character offset where the passage starts."
+          },
+          "end": {
+            "type": "integer",
+            "description": "Character offset where it ends (exclusive)."
+          },
+          "wholeChapter": {
+            "type": "boolean",
+            "description": "Replace the whole chapter."
+          },
+          "rationale": {
+            "type": "string",
+            "description": "Why — shown to the author. A string or a list of strings."
+          },
+          "label": {
+            "type": "string",
+            "description": "Short label for the panel (default \"Agent revision\")."
+          }
+        }
+      },
+      "listsuggestions": {
+        "kind": "read",
+        "summary": "Suggestions in a project and what the author decided — pending, accepted or rejected. Agent suggestions only unless `agentOnly: false`.",
+        "required": [
+          "project"
+        ],
+        "optional": [
+          "status",
+          "agentOnly"
+        ],
+        "example": {
+          "command": "applet",
+          "applet": "storymaker",
+          "verb": "listSuggestions",
+          "args": {
+            "project": "Seaborn Collins",
+            "status": "rejected"
+          }
+        },
+        "args": {
+          "project": {
+            "type": "string",
+            "description": "The project's id or exact title (from listProjects). A miss returns the projects that exist."
+          },
+          "status": {
+            "type": "string",
+            "description": "all (default), pending, accepted or rejected."
+          },
+          "agentOnly": {
+            "type": "boolean",
+            "description": "Default true."
+          }
+        }
+      },
+      "getoutline": {
+        "kind": "read",
+        "summary": "The project's outline: chapters with summary, notes and scenes, and whether an agent may still replace it.",
+        "required": [
+          "project"
+        ],
+        "example": {
+          "command": "applet",
+          "applet": "storymaker",
+          "verb": "getOutline",
+          "args": {
+            "project": "Seaborn Collins"
+          }
+        },
+        "args": {
+          "project": {
+            "type": "string",
+            "description": "The project's id or exact title (from listProjects). A miss returns the projects that exist."
+          }
+        }
+      },
+      "setoutline": {
+        "kind": "modify",
+        "summary": "Set the outline — only when it is empty, or is still exactly what an agent last set. An outline the author wrote or edited is refused.",
+        "required": [
+          "project",
+          "chapters"
+        ],
+        "example": {
+          "command": "applet",
+          "applet": "storymaker",
+          "verb": "setOutline",
+          "args": {
+            "project": "Seaborn Collins",
+            "chapters": [
+              {
+                "title": "Georgia to Seattle, 1885",
+                "summary": "…"
+              }
+            ]
+          }
+        },
+        "args": {
+          "project": {
+            "type": "string",
+            "description": "The project's id or exact title (from listProjects). A miss returns the projects that exist."
+          },
+          "chapters": {
+            "type": "array",
+            "description": "[{title, summary?, notes?, scenes?: [{title, goal, conflict, turn, outcome}]}]"
+          }
+        }
+      },
+      "listedits": {
+        "kind": "read",
+        "summary": "What the author changed in agent-written chapters, passage by passage: before, after, and whether it was the author's edit or an agent suggestion they accepted.",
+        "required": [
+          "project"
+        ],
+        "optional": [
+          "chapter"
+        ],
+        "notes": "Each edit has a stable `id`, so a caller that has already learned from an edit can skip it. Fact changes should become corrections; style changes are evidence for the voice — propose a rule to the user, never edit the voice silently.",
+        "example": {
+          "command": "applet",
+          "applet": "storymaker",
+          "verb": "listEdits",
+          "args": {
+            "project": "Seaborn Collins"
+          }
+        },
+        "args": {
+          "project": {
+            "type": "string",
+            "description": "The project's id or exact title (from listProjects). A miss returns the projects that exist."
+          },
+          "chapter": {
+            "type": "string",
+            "description": "The chapter's id, exact title, or 1-based position (\"3\" is the third chapter)."
+          }
+        }
+      }
     }
   }
 }

@@ -1,0 +1,132 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "$id": "mchatai-source/history/schemas/dossier.schema.json",
+ "title": "dossier.json — what the record holds about one person",
+ "description": "Written by the scout; the numbers in `computed` are written ONLY by tools/richness.py, never by hand or by a model.",
+ "type": "object",
+ "required": [
+  "subject",
+  "series",
+  "identityBasis",
+  "events"
+ ],
+ "properties": {
+  "subject": {
+   "type": "string"
+  },
+  "aliases": {
+   "type": "array",
+   "items": {
+    "type": "string"
+   },
+   "description": "Every form of the name the sources use — surname, married name, initials. Used to measure words about the subject."
+  },
+  "slug": {
+   "type": "string"
+  },
+  "series": {
+   "type": "string",
+   "description": "A series id from history/series.json."
+  },
+  "identityBasis": {
+   "type": "string",
+   "description": "How membership of the series is established: self-identification or a reliable biography (voice.md §7)."
+  },
+  "identitySource": {
+   "type": "string",
+   "description": "The source id that supports identityBasis."
+  },
+  "lifespan": {
+   "type": "object",
+   "properties": {
+    "born": {
+     "type": "string"
+    },
+    "died": {
+     "type": "string"
+    }
+   }
+  },
+  "events": {
+   "type": "array",
+   "items": {
+    "type": "object",
+    "required": [
+     "id",
+     "date",
+     "what",
+     "sources"
+    ],
+    "properties": {
+     "id": {
+      "type": "string"
+     },
+     "date": {
+      "type": "string",
+      "description": "At least a year."
+     },
+     "what": {
+      "type": "string"
+     },
+     "lifeStage": {
+      "type": "string",
+      "description": "youth | arrival | work | family | public life | later life | … — distinct stages decide biography vs episode."
+     },
+     "sources": {
+      "type": "array",
+      "items": {
+       "type": "string"
+      }
+     },
+     "evidence": {
+      "type": "string",
+      "description": "A verbatim quote of at least thresholds.minQuoteWords words from one of `sources`, copied from `richness.py mentions`. Checked whenever present; required for the event to count when thresholds.eventEvidenceRequired is true."
+     }
+    }
+   }
+  },
+  "people": {
+   "type": "array",
+   "items": {
+    "type": "object",
+    "properties": {
+     "name": {
+      "type": "string"
+     },
+     "relation": {
+      "type": "string"
+     },
+     "sources": {
+      "type": "array",
+      "items": {
+       "type": "string"
+      }
+     }
+    }
+   }
+  },
+  "deadEnds": {
+   "type": "array",
+   "items": {
+    "type": "object",
+    "properties": {
+     "clue": {
+      "type": "string"
+     },
+     "where": {
+      "type": "string"
+     }
+    }
+   },
+   "description": "Clues that could not be confirmed, and where they came from (sourcing.md §2)."
+  },
+  "communityReview": {
+   "type": "boolean",
+   "description": "Publishing waits for a reader from the community (default true for Indigenous Seattle)."
+  },
+  "computed": {
+   "type": "object",
+   "description": "Written by richness.py dossier: counts, tier, mode, ceilingWords, estimatedChapters, first/lastEventYear, unmet."
+  }
+ }
+}

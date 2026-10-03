@@ -1,0 +1,98 @@
+{
+  "version": 1,
+  "updated": "2026-10-02",
+  "_source_of_truth": "mchatai-source/history/thresholds.json",
+  "_comment": "Every number the History Writer's deterministic tools use. Content, so it is tuned by PR with no rebuild and no prompt change. The tier requirements and sourceRatio are INITIAL calibrations from the Seattle Landmarks corpus, not measurements of long-form stories: the first pilot story measures the real ratio on the chapters the author accepts without edits, and these move to that. Read by tools/_hw.py.",
+  "fetchMinIntervalSeconds": 1.5,
+  "_fetchMinIntervalSeconds": "fetch.py waits at least this long between two requests to the SAME host, across every process on the Mac, so parallel scouts do not get an archive to rate-limit them.",
+  "fetchHostIntervals": {"www.loc.gov": 20, "en.wikipedia.org": 0.5, "wikimedia.org": 0.25},
+  "_fetchHostIntervals": "Stricter spacing for hosts that rate-limit. www.loc.gov (the Chronicling America search) blocked the scouts for over an hour after about ten searches in a burst (2026-10-02); tile.loc.gov, which serves the page text, did not. A host may also be LOOSER than the default: the Wikipedia and Wikimedia APIs serve one request at a time quickly and ask clients only to stay serial, which fame.py does (ranking a thousand names at 1.5 s apart would take 25 minutes).",
+
+  "minQuoteWords": 8,
+  "_minQuoteWords": "Evidence for a claim is a verbatim, contiguous quote of at least this many words from the claimed source's fetched text. Same floor as the landmark writer.",
+  "eventEvidenceRequired": false,
+  "_eventEvidenceRequired": "A dossier event's `evidence` (a verbatim quote of at least minQuoteWords words from one of its sources) is always checked when present, and an event whose quote fails never counts. When true, an event with NO evidence does not count either, so no tier rests on a model's word. False only so the ten Black Seattle dossiers scouted before events carried evidence (2026-10-02) keep their tiers while the pilot runs; turn it on before the next scout, and before scouts run on a cheaper model (design D8).",
+  "verbatimCopyWindowWords": 12,
+  "_verbatimCopyWindowWords": "Prose may not reproduce this many consecutive words from a facts-only (copyrighted, non-commercial or no-derivatives) source outside quotation marks. Quotations of a person's own words are checked against the claims instead.",
+  "eraShareMax": 0.3,
+  "_eraShareMax": "Era context (sourced claims about the time and place, kind 'era') may be at most this share of a chapter's words, so the person stays the subject.",
+  "sourceRatio": 0.6,
+  "_sourceRatio": "A story's ceiling is at most this many words per word of source text about the subject. A guess calibrated on landmark entries; the pilot replaces it.",
+  "wordsPerChapter": 1200,
+  "starvedFraction": 0.35,
+  "starvedMinEvents": 3,
+  "_starved": "No minimum length — but a chapter allotted at least starvedMinEvents dated events that comes in under starvedFraction of its ceiling has abandoned a rich allotment (the v6 lesson: brevity is not a virtue in itself).",
+  "encyclopediaPublishers": [
+    "Wikipedia",
+    "HistoryLink"
+  ],
+  "_encyclopediaPublishers": "Tier A requires sources beyond these, because a story built only from summaries of other work has nothing new to say.",
+  "biographyMinLifeStages": 3,
+  "episodeWindowYears": 10,
+  "episodeWindowShare": 0.6,
+  "_mode": "biography: sourced events across at least biographyMinLifeStages life stages. episode: otherwise, when at least episodeWindowShare of dated events fall inside one episodeWindowYears window. ensemble: otherwise — the person is told through the community the record does hold.",
+  "tiers": [
+    {
+      "id": "A",
+      "label": "book-length",
+      "words": [
+        10000,
+        20000
+      ],
+      "chapters": [
+        8,
+        14
+      ],
+      "requires": {
+        "independentSources": 8,
+        "beyondEncyclopedias": 3,
+        "datedEvents": 25,
+        "lifeStages": 3,
+        "ownWords": 1,
+        "wordsAboutSubject": 17000
+      }
+    },
+    {
+      "id": "B",
+      "label": "novella-length",
+      "words": [
+        4000,
+        8000
+      ],
+      "chapters": [
+        4,
+        7
+      ],
+      "requires": {
+        "independentSources": 4,
+        "beyondEncyclopedias": 0,
+        "datedEvents": 12,
+        "lifeStages": 2,
+        "ownWords": 0,
+        "wordsAboutSubject": 7000
+      }
+    },
+    {
+      "id": "C",
+      "label": "portrait",
+      "words": [
+        1500,
+        3000
+      ],
+      "chapters": [
+        1,
+        2
+      ],
+      "requires": {
+        "independentSources": 2,
+        "beyondEncyclopedias": 0,
+        "datedEvents": 6,
+        "lifeStages": 1,
+        "ownWords": 0,
+        "wordsAboutSubject": 2500
+      }
+    }
+  ],
+  "_tiers": "Checked A, then B, then C; the first whose every requirement is met wins. Below C the person goes on a research list, not into a story.",
+  "_tiersWordsAboutSubject": "wordsAboutSubject floors are each tier's minimum length divided by sourceRatio (10000/0.6, 4000/0.6, 1500/0.6, rounded up), so a tier's ceiling can never fall below its own minimum. Change them together."
+}

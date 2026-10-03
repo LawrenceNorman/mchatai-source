@@ -1,0 +1,74 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "$id": "mchatai-source/history/schemas/chapter.schema.json",
+ "title": "chapters/NN.json — one chapter and its claims",
+ "type": "object",
+ "required": [
+  "chapter",
+  "title",
+  "text",
+  "claims"
+ ],
+ "properties": {
+  "chapter": {
+   "type": "integer"
+  },
+  "title": {
+   "type": "string"
+  },
+  "status": {
+   "enum": [
+    "draft",
+    "gated",
+    "audited",
+    "landed",
+    "blocked"
+   ]
+  },
+  "text": {
+   "type": "string",
+   "description": "Plain prose. No headings, bullets or footnote markers."
+  },
+  "claims": {
+   "type": "array",
+   "items": {
+    "type": "object",
+    "required": [
+     "id",
+     "text",
+     "source",
+     "evidence"
+    ],
+    "properties": {
+     "id": {
+      "type": "string"
+     },
+     "text": {
+      "type": "string",
+      "description": "The assertion as written in the chapter."
+     },
+     "source": {
+      "type": "string",
+      "description": "A source id from sources/index.json."
+     },
+     "evidence": {
+      "type": "string",
+      "description": "A VERBATIM contiguous quote from that source's fetched text, at least thresholds.minQuoteWords words. Copy it exactly."
+     },
+     "kind": {
+      "enum": [
+       "fact",
+       "era",
+       "quote"
+      ],
+      "description": "era: context about the time and place (capped). quote: words the chapter puts in quotation marks."
+     }
+    }
+   }
+  },
+  "storymaker": {
+   "type": "object",
+   "description": "Where it landed: {project, chapterID, landedAt}."
+  }
+ }
+}

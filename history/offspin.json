@@ -1,0 +1,62 @@
+{
+  "version": 1,
+  "updated": "2026-10-02",
+  "_source_of_truth": "mchatai-source/history/offspin.json",
+  "_comment": "Light jobs beside a series: well-known people from a community, ranked by how many readers already know the name, tied back to the places of their lives with a checked quote per tie, and told as short sub-stories. Asked for by the author 2026-10-02: Jimi Hendrix and Quincy Jones both went to Garfield High School, and Jones played on Jackson Street where Ray Charles played; few of those places are designated landmarks, so famous names can bring readers to places no designation recorded. Shallow and cheap on purpose: an encyclopedia article and at most two more sources per person. Steps: OFFSPIN.md. Read by tools/fame.py.",
+
+  "caps": {
+    "people": 10,
+    "_people": "How many people a run tells. The ranking decides who, never the model's sense of fame.",
+    "candidatesToRead": 120,
+    "_candidatesToRead": "fame.py screen reads this many top-ranked articles (plus every seed) looking for an identity statement. In the first Black Seattle screen, 5 of the top 40 qualified, so 120 is the default; raise it with --top when too few qualify. About 30 seconds per 40 articles, cached.",
+    "sourcesPerPerson": 3,
+    "tiesPerPerson": 8,
+    "vignetteWords": [200, 600],
+    "_vignetteWords": "A sub-story's range. Over the ceiling is a hard finding; under the floor a note.",
+    "pageviewMonths": 12
+  },
+
+  "tieKinds": ["born", "lived", "studied", "worked", "performed", "recorded", "worshipped", "met", "honored", "buried"],
+
+  "runs": [
+    {
+      "id": "black-seattle-famous",
+      "series": "black-seattle",
+      "label": "Famous Black Seattleites and their places",
+      "seeds": ["Jimi Hendrix", "Quincy Jones", "Ray Charles"],
+      "_seeds": "Named by the author, 2026-10-02. Seeds are always screened, whatever their rank.",
+      "categories": [
+        "Garfield High School (Seattle) alumni",
+        "Musicians from Seattle",
+        "Jazz musicians from Washington (state)",
+        "Singers from Seattle",
+        "Rappers from Seattle",
+        "Basketball players from Seattle",
+        "Politicians from Seattle",
+        "Writers from Seattle",
+        "Artists from Seattle",
+        "African-American history of Washington (state)"
+      ],
+      "_categories": "Wikipedia categories whose members are ranked. A category says a person has a Seattle connection; it never says who they are. Identity comes only from a statement in the article (identityTerms), and a second reader confirms the statement is about the person.",
+      "identityTerms": ["African American", "African-American", "Afro-American", "Black American", "first Black"],
+      "_identityTerms": "Phrases, not the bare word: \"Black\" alone matched \"Black Hole Sun\", \"Black Sabbath\" and \"Black Diamond\" in the first screen (2026-10-02). Wikipedia rarely states an athlete's race, so some well-known Black Seattleites will not qualify from the article alone; the author can add them as seeds with a source that does.",
+      "localTerms": ["Seattle", "Renton", "Bremerton", "King County"],
+      "placeTerms": ["Jackson Street", "Central District", "Central Area", "Yesler Terrace", "Madison Valley", "Leschi", "Madrona", "Rainier Valley", "Rainier Vista", "Holly Park", "Beacon Hill", "Capitol Hill", "First Hill", "Mount Baker", "Columbia City"],
+      "landmarkPack": "seattle-landmarks",
+      "region": {"anchorLat": 47.6062, "anchorLon": -122.3321, "radiusKm": 40, "locality": "Seattle, WA"}
+    },
+    {
+      "id": "immigrant-seattle-famous",
+      "status": "later",
+      "_status": "Named by the author for later (2026-10-02): Bruce Lee for Immigrant Seattle. Not a series yet; identity for immigrants is a different statement (where they were born, when they came), so the terms below are a start, to be checked against the first screen.",
+      "label": "Famous immigrant Seattleites and their places",
+      "seeds": ["Bruce Lee"],
+      "categories": [],
+      "identityTerms": ["immigrant", "immigrated", "emigrated", "moved to the United States", "born in Hong Kong"],
+      "localTerms": ["Seattle"],
+      "placeTerms": ["Chinatown", "International District", "Nihonmachi", "Japantown", "Pioneer Square", "University District", "Capitol Hill"],
+      "landmarkPack": "seattle-landmarks",
+      "region": {"anchorLat": 47.6062, "anchorLon": -122.3321, "radiusKm": 40, "locality": "Seattle, WA"}
+    }
+  ]
+}

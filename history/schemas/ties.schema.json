@@ -1,0 +1,32 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "$id": "mchatai-source/history/schemas/ties.schema.json",
+ "title": "One famous person's ties to places (OFFSPIN.md step 5). Checked by tools/fame.py check.",
+ "type": "object",
+ "required": ["ties"],
+ "properties": {
+  "ties": {
+   "type": "array",
+   "items": {
+    "type": "object",
+    "required": ["id", "place", "kind", "source", "evidence"],
+    "properties": {
+     "id": {"type": "string"},
+     "place": {"type": "string", "description": "The place's name as the source gives it."},
+     "placeAliases": {"type": "array", "items": {"type": "string"}, "description": "Other names the quote may use for it."},
+     "kind": {"type": "string", "description": "One of offspin.json tieKinds."},
+     "date": {"type": "string", "description": "A year, a span or a decade. Undated ties are a note, not a failure."},
+     "what": {"type": "string", "description": "A short label for the map: 'studied here, 1957-1960'."},
+     "address": {"type": "string"},
+     "landmark": {"type": "string", "description": "The landmark pack id `fame.py places` gave, when the place is one."},
+     "wikipedia": {"type": "string", "description": "The PLACE's own Wikipedia article title, when it has one: its coordinates come from there."},
+     "lat": {"type": "number"},
+     "lon": {"type": "number"},
+     "coordsFrom": {"type": "string", "description": "Where lat/lon came from when given by hand: 'geocode: <address>'."},
+     "source": {"type": "string", "description": "A source id in sources/index.json."},
+     "evidence": {"type": "string", "description": "A verbatim quote of at least thresholds.minQuoteWords words from `source` that NAMES the place (or one of its aliases or its address)."}
+    }
+   }
+  }
+ }
+}

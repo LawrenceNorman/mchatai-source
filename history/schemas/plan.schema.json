@@ -1,0 +1,141 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "$id": "mchatai-source/history/schemas/plan.schema.json",
+ "title": "plan.json — chapters and the person's ledger",
+ "type": "object",
+ "required": [
+  "chapters",
+  "ledger"
+ ],
+ "properties": {
+  "chapters": {
+   "type": "array",
+   "items": {
+    "type": "object",
+    "required": [
+     "n",
+     "title",
+     "events"
+    ],
+    "properties": {
+     "n": {
+      "type": "integer"
+     },
+     "title": {
+      "type": "string",
+      "description": "Concrete — a place, a year, an act (voice.md §12)."
+     },
+     "span": {
+      "type": "object",
+      "properties": {
+       "from": {
+        "type": "string"
+       },
+       "to": {
+        "type": "string"
+       }
+      }
+     },
+     "events": {
+      "type": "array",
+      "items": {
+       "type": "string"
+      },
+      "description": "Dossier event ids this chapter tells. Their share of all allotted events sets the chapter's ceiling."
+     },
+     "ledger": {
+      "type": "array",
+      "items": {
+       "type": "string"
+      },
+      "description": "Ledger row ids that change in this chapter — the prose must show each (voice.md §8)."
+     },
+     "eraRows": {
+      "type": "array",
+      "items": {
+       "type": "string"
+      }
+     },
+     "floorWords": {
+      "type": "integer",
+      "description": "Written by richness.py plan: thresholds.starvedFraction of this chapter's share of plan.targetWords (or of the dossier's ceiling when there is no target). Under it, voice_lint reports the chapter starved."
+     },
+     "ceilingWords": {
+      "type": "integer",
+      "description": "Written by richness.py plan."
+     }
+    }
+   }
+  },
+  "ledger": {
+   "type": "array",
+   "items": {
+    "type": "object",
+    "required": [
+     "id",
+     "entity",
+     "field",
+     "value",
+     "chapter",
+     "evidence"
+    ],
+    "properties": {
+     "id": {
+      "type": "string"
+     },
+     "entity": {
+      "type": "string",
+      "description": "kind:slug, e.g. person:seaborn-collins."
+     },
+     "field": {
+      "type": "string",
+      "description": "A packKey from story/schemas/biography.json, e.g. bio.occupation."
+     },
+     "value": {
+      "type": "string"
+     },
+     "shows": {
+      "type": "array",
+      "items": {
+       "type": "string"
+      },
+      "description": "Phrases any one of which shows the change in the prose; default [value]."
+     },
+     "chapter": {
+      "type": "integer"
+     },
+     "date": {
+      "type": "string"
+     },
+     "evidence": {
+      "type": "object",
+      "required": [
+       "source",
+       "quote"
+      ],
+      "properties": {
+       "source": {
+        "type": "string"
+       },
+       "quote": {
+        "type": "string",
+        "description": "Verbatim, at least thresholds.minQuoteWords words."
+       }
+      }
+     }
+    }
+   }
+  },
+  "targetWords": {
+   "type": "integer",
+   "description": "Optional. The length the planner chooses, no larger than the dossier's ceiling (D2: the ceiling is a maximum, not a quota). It lowers each chapter's starved floor and never its ceiling."
+  },
+  "endNote": {
+   "type": "string",
+   "description": "Why the story stops before the record does, when it does (voice.md §4)."
+  },
+  "computed": {
+   "type": "object"
+  }
+ }
+}

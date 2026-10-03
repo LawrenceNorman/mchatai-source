@@ -1,0 +1,289 @@
+{
+ "version": 1,
+ "lastUpdated": "2026-10-02",
+ "_source_of_truth": true,
+ "packID": "biography",
+ "displayName": "Biography / Narrative history",
+ "_comment": "Columns a REAL person's story needs: the History Writer's ledger (docs/HISTORY_WRITER_ARCHITECTURE.md §2 D3, history/voice.md §8). The LitRPG idea for people who lived: what changes over a life (trade, standing, resources, skills, household, residence, legal status) is TIME-VARYING, so every change is a dated fact edge with its source, and 'what was true of her as of chapter 6' is answerable. Nothing here is ever printed as a stat or a level; the prose shows each change in action. Every value must come from a source: put the source id and verbatim quote in the fact's evidence. Read by StoryMaker's pack catalog (BiblePackCatalog) and applied additively, keyed on packKey. DECODER SAFETY: comment keys at this TOP LEVEL ONLY; every field object is fixed-field.",
+ "_fieldNotes": "promptTier: always = injected every call; whenRelevant = when the entity is retrieved; onDemand = by tool only. isTimeVarying: true routes writes to the fact ledger (dated, sourced, never overwritten). aiVisible: false keeps a column out of prompts entirely.",
+ "entityKinds": [
+  {
+   "kind": "person",
+   "displayName": "People",
+   "iconName": "person.text.rectangle"
+  },
+  {
+   "kind": "institution",
+   "displayName": "Institutions",
+   "iconName": "building.columns"
+  },
+  {
+   "kind": "event",
+   "displayName": "Events",
+   "iconName": "calendar"
+  },
+  {
+   "kind": "era",
+   "displayName": "Era",
+   "iconName": "clock.arrow.circlepath"
+  },
+  {
+   "kind": "source",
+   "displayName": "Sources",
+   "iconName": "doc.text.magnifyingglass"
+  }
+ ],
+ "fields": {
+  "person": [
+   {
+    "packKey": "bio.born",
+    "name": "Born",
+    "kind": "line",
+    "section": "Life",
+    "promptTier": "always",
+    "aiVisible": true,
+    "isTimeVarying": false,
+    "llmHint": "Date and place exactly as the source gives them; write 'c.' only when the source does."
+   },
+   {
+    "packKey": "bio.died",
+    "name": "Died",
+    "kind": "line",
+    "section": "Life",
+    "promptTier": "always",
+    "aiVisible": true,
+    "isTimeVarying": false,
+    "llmHint": "Date and place as the source gives them. Blank if no source says."
+   },
+   {
+    "packKey": "bio.origin",
+    "name": "Came from",
+    "kind": "line",
+    "section": "Life",
+    "promptTier": "whenRelevant",
+    "aiVisible": true,
+    "isTimeVarying": false,
+    "llmHint": "Where they came from before the place the story is set, as the source says it."
+   },
+   {
+    "packKey": "bio.identity",
+    "name": "Identity (as sourced)",
+    "kind": "text",
+    "section": "Life",
+    "promptTier": "whenRelevant",
+    "aiVisible": true,
+    "isTimeVarying": false,
+    "llmHint": "Only what self-identification or a reliable biography establishes, with the source. Never inferred from a name, a photograph or a neighbourhood."
+   },
+   {
+    "packKey": "bio.occupation",
+    "name": "Trade",
+    "kind": "line",
+    "section": "Growth",
+    "promptTier": "whenRelevant",
+    "aiVisible": true,
+    "isTimeVarying": true,
+    "llmHint": "Work as the sources name it, dated. A change of trade is a turning point the prose shows."
+   },
+   {
+    "packKey": "bio.standing",
+    "name": "Standing",
+    "kind": "text",
+    "section": "Growth",
+    "promptTier": "whenRelevant",
+    "aiVisible": true,
+    "isTimeVarying": true,
+    "llmHint": "Offices, memberships, titles and firsts, each dated. Keep titles exactly (Reverend, Doctor, Chief)."
+   },
+   {
+    "packKey": "bio.resources",
+    "name": "Resources",
+    "kind": "text",
+    "section": "Growth",
+    "promptTier": "whenRelevant",
+    "aiVisible": true,
+    "isTimeVarying": true,
+    "llmHint": "Property, a business, money — what they owned or lost, dated, with the figures the source gives."
+   },
+   {
+    "packKey": "bio.skills",
+    "name": "Skills",
+    "kind": "text",
+    "section": "Growth",
+    "promptTier": "whenRelevant",
+    "aiVisible": true,
+    "isTimeVarying": true,
+    "llmHint": "Trades learned, languages, literacy, licences — each when the record first shows it in use."
+   },
+   {
+    "packKey": "bio.household",
+    "name": "Household",
+    "kind": "text",
+    "section": "Growth",
+    "promptTier": "whenRelevant",
+    "aiVisible": true,
+    "isTimeVarying": true,
+    "llmHint": "Marriage, children, boarders, family who joined them — dated. Name no living private person without a public source."
+   },
+   {
+    "packKey": "bio.residence",
+    "name": "Residence",
+    "kind": "line",
+    "section": "Growth",
+    "promptTier": "whenRelevant",
+    "aiVisible": true,
+    "isTimeVarying": true,
+    "llmHint": "Where they lived, dated, as an address or neighbourhood the source gives."
+   },
+   {
+    "packKey": "bio.legalStatus",
+    "name": "Legal status",
+    "kind": "text",
+    "section": "Growth",
+    "promptTier": "whenRelevant",
+    "aiVisible": true,
+    "isTimeVarying": true,
+    "llmHint": "Citizenship, exclusion, incarceration, removal — stated plainly in those words, dated."
+   },
+   {
+    "packKey": "bio.ownWords",
+    "name": "In their own words",
+    "kind": "text",
+    "section": "Sources",
+    "promptTier": "onDemand",
+    "aiVisible": true,
+    "isTimeVarying": false,
+    "llmHint": "Short verbatim passages from their letters, testimony or interviews, each with its source. The only words a story may put in quotation marks."
+   }
+  ],
+  "institution": [
+   {
+    "packKey": "inst.founded",
+    "name": "Founded",
+    "kind": "line",
+    "section": "Record",
+    "promptTier": "whenRelevant",
+    "aiVisible": true,
+    "isTimeVarying": false,
+    "llmHint": "Date and founders as the source gives them."
+   },
+   {
+    "packKey": "inst.ledBy",
+    "name": "Led by",
+    "kind": "link",
+    "section": "Record",
+    "promptTier": "whenRelevant",
+    "aiVisible": true,
+    "isTimeVarying": true,
+    "llmHint": "Who led it, dated.",
+    "targetKind": "person"
+   },
+   {
+    "packKey": "inst.purpose",
+    "name": "What it did",
+    "kind": "text",
+    "section": "Record",
+    "promptTier": "whenRelevant",
+    "aiVisible": true,
+    "isTimeVarying": false,
+    "llmHint": "In its own words where a source records them."
+   }
+  ],
+  "event": [
+   {
+    "packKey": "event.date",
+    "name": "Date",
+    "kind": "line",
+    "section": "Record",
+    "promptTier": "always",
+    "aiVisible": true,
+    "isTimeVarying": false,
+    "llmHint": "As the source gives it."
+   },
+   {
+    "packKey": "event.where",
+    "name": "Where",
+    "kind": "line",
+    "section": "Record",
+    "promptTier": "whenRelevant",
+    "aiVisible": true,
+    "isTimeVarying": false,
+    "llmHint": "The place the source names."
+   },
+   {
+    "packKey": "event.cost",
+    "name": "What it cost",
+    "kind": "text",
+    "section": "Record",
+    "promptTier": "whenRelevant",
+    "aiVisible": true,
+    "isTimeVarying": false,
+    "llmHint": "What it cost the people in it — money, standing, safety — as the sources record it."
+   }
+  ],
+  "era": [
+   {
+    "packKey": "era.place",
+    "name": "Place",
+    "kind": "line",
+    "section": "Context",
+    "promptTier": "whenRelevant",
+    "aiVisible": true,
+    "isTimeVarying": false,
+    "llmHint": "The city, district or street this context is about."
+   },
+   {
+    "packKey": "era.decade",
+    "name": "Decade",
+    "kind": "line",
+    "section": "Context",
+    "promptTier": "whenRelevant",
+    "aiVisible": true,
+    "isTimeVarying": false,
+    "llmHint": "e.g. 1890s."
+   },
+   {
+    "packKey": "era.context",
+    "name": "Context",
+    "kind": "text",
+    "section": "Context",
+    "promptTier": "whenRelevant",
+    "aiVisible": true,
+    "isTimeVarying": false,
+    "llmHint": "Sourced period detail — wages, prices, who held office, what the street looked like. Every sentence a claim; at most 30% of a chapter."
+   }
+  ],
+  "source": [
+   {
+    "packKey": "src.url",
+    "name": "URL",
+    "kind": "link",
+    "section": "Source",
+    "promptTier": "onDemand",
+    "aiVisible": true,
+    "isTimeVarying": false,
+    "llmHint": "Where it was fetched from."
+   },
+   {
+    "packKey": "src.publisher",
+    "name": "Publisher",
+    "kind": "line",
+    "section": "Source",
+    "promptTier": "onDemand",
+    "aiVisible": true,
+    "isTimeVarying": false,
+    "llmHint": "The unit of independence: several items from one publisher count once."
+   },
+   {
+    "packKey": "src.license",
+    "name": "Licence",
+    "kind": "line",
+    "section": "Source",
+    "promptTier": "onDemand",
+    "aiVisible": true,
+    "isTimeVarying": false,
+    "llmHint": "pd, cc-by, facts-only or clue-only (history/sourcing.md §5)."
+   }
+  ]
+ }
+}
