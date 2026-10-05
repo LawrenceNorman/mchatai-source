@@ -55,9 +55,40 @@ def passages(text):
 
 
 WINDOW = 75   # words on each side of a mention that count as "about" the subject
+# Bumped whenever a change here can move a dossier's counts. A dossier computed by an older
+# version still plans, with a note: the second story's tier moved with no source changed,
+# because the counting had changed since its scout (2026-10-04).
+COUNT_VERSION = "2026-10-04"
 
 
-def mention_spans(text, aliases, window=WINDOW):
+def alias_pattern(alias):
+    """An alias as a pattern: its words match across any whitespace (an OCR line break between
+    "John T." and "Gayton" hid the only source for one of his events, 2026-10-04), and its edges
+    are word edges even when it ends in a full stop ("Mr.", "Jr.")."""
+    words_ = [re.escape(w) for w in (alias or "").split()]
+    return r"(?<!\w)" + r"\s+".join(words_) + r"(?!\w)" if words_ else None
+
+
+def alias_matches(text, aliases, not_aliases=()):
+    """(start, end) of every mention of the subject. A match inside one of the dossier's
+    `notAliases` (his sons: "John Gayton Jr.", "James A. Gayton") is somebody else."""
+    blocked = []
+    for na in not_aliases or ():
+        pat = alias_pattern(na)
+        if pat:
+            blocked += [(m.start(), m.end()) for m in re.finditer(pat, text, re.I)]
+    out = []
+    for a in aliases:
+        pat = alias_pattern((a or "").strip())
+        if not pat:
+            continue
+        for m in re.finditer(pat, text, re.I):
+            if not any(bs <= m.start() < be for bs, be in blocked):
+                out.append((m.start(), m.end()))
+    return out
+
+
+def mention_spans(text, aliases, window=WINDOW, not_aliases=()):
     """(tokens, spans): the text's word tokens (regex matches), and [first, last, mentions] token
     ranges within `window` words of a mention of any alias, overlapping or touching ranges merged.
 
@@ -68,12 +99,9 @@ def mention_spans(text, aliases, window=WINDOW):
     toks = list(re.finditer(r"\S+", text))
     starts = [m.start() for m in toks]
     raw = []
-    for a in aliases:
-        a = (a or "").strip()
-        if not a or not toks:
-            continue
-        for m in re.finditer(r"\b" + re.escape(a) + r"\b", text, re.I):
-            i = max(0, bisect.bisect_right(starts, m.start()) - 1)
+    if toks:
+        for start, _ in alias_matches(text, aliases, not_aliases):
+            i = max(0, bisect.bisect_right(starts, start) - 1)
             raw.append((max(0, i - window), min(len(toks) - 1, i + window)))
     spans = []
     for first, last in sorted(raw):
@@ -85,14 +113,14 @@ def mention_spans(text, aliases, window=WINDOW):
     return toks, spans
 
 
-def words_about(text, aliases):
+def words_about(text, aliases, not_aliases=()):
     """Words within WINDOW words of a mention of the subject, overlapping windows merged.
 
     Counted around each MENTION, not by paragraph: a newspaper OCR page arrives as column-length
     blocks, and counting any block that mentions the name counted whole columns of other news
     (John T. Gayton read as 103,000 words, 2026-10-02). A window is the same size whatever the
     source's layout."""
-    _, spans = mention_spans(text, aliases)
+    _, spans = mention_spans(text, aliases, not_aliases=not_aliases)
     return sum(last - first + 1 for first, last, _ in spans)
 
 
@@ -119,7 +147,7 @@ def own_words_count(text, span):
     return None
 
 
-def fresh_words(project, ids, aliases, k=8, threshold=0.5):
+def fresh_words(project, ids, aliases, k=8, threshold=0.5, not_aliases=()):
     """{source id: words in its mention windows that no earlier source already said}.
 
     A passage repeated across sources — a masthead in every issue, a standing byline, a
@@ -143,17 +171,13 @@ def fresh_words(project, ids, aliases, k=8, threshold=0.5):
                     repeat[x] = True
         starts = [m.start() for m in toks]
         marked = [False] * len(w)
-        for a in aliases:
-            a = (a or "").strip()
-            if not a or not toks:
-                continue
-            for m in re.finditer(r"\b" + re.escape(a) + r"\b", text, re.I):
-                i = max(0, bisect.bisect_right(starts, m.start()) - 1)
-                core = hs[max(0, i - k + 1):min(i, len(hs) - 1) + 1]
-                if core and sum(1 for h in core if h in seen) / len(core) >= threshold:
-                    continue                      # boilerplate: this mention's own context was seen before
-                for x in range(max(0, i - WINDOW), min(len(w) - 1, i + WINDOW) + 1):
-                    marked[x] = True
+        for start, _ in (alias_matches(text, aliases, not_aliases) if toks else []):
+            i = max(0, bisect.bisect_right(starts, start) - 1)
+            core = hs[max(0, i - k + 1):min(i, len(hs) - 1) + 1]
+            if core and sum(1 for h in core if h in seen) / len(core) >= threshold:
+                continue                      # boilerplate: this mention's own context was seen before
+            for x in range(max(0, i - WINDOW), min(len(w) - 1, i + WINDOW) + 1):
+                marked[x] = True
         out[sid] = sum(1 for x in range(len(w)) if marked[x] and not repeat[x])
         seen.update(hs)
     return out
@@ -224,6 +248,7 @@ def compute(project):
     if not d.get("subject"):
         return None, [finding("dossier_missing", "hard", "dossier.json is missing or has no `subject`")]
     aliases = list(dict.fromkeys([d["subject"]] + list(d.get("aliases") or [])))
+    not_aliases = list(d.get("notAliases") or [])
     problems = []
     usable = {}          # id -> {publisher, words}
     own = 0
@@ -237,7 +262,7 @@ def compute(project):
             problems.append(finding("source_missing", "hard",
                                     f"source {sid} has no fetched text (sources/{sid}.txt) — it does not count until its bytes are on disk"))
             continue
-        about = words_about(text, aliases)
+        about = words_about(text, aliases, not_aliases)
         own_part = None
         if rec.get("ownWords"):
             own += 1
@@ -251,7 +276,7 @@ def compute(project):
         usable[sid] = {"publisher": (rec.get("publisher") or rec.get("url") or sid).strip(), "words": about,
                        "own": own_part}
 
-    fresh = fresh_words(project, list(usable), aliases)
+    fresh = fresh_words(project, list(usable), aliases, not_aliases=not_aliases)
     for sid in usable:
         # The subject's own words count whole (their marked part); everything else counts only the
         # passages no earlier source already said.
@@ -316,6 +341,7 @@ def compute(project):
 
     computed = {
         "computedAt": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds"),
+        "countVersion": COUNT_VERSION,
         "counts": counts,
         "tier": tier["id"] if tier else None,
         "tierLabel": tier["label"] if tier else "not enough record yet",
@@ -365,6 +391,10 @@ def validate_plan(project, write):
     if not computed.get("ceilingWords"):
         out.append(finding("dossier_not_computed", "hard", "run `richness.py dossier` first — the plan's ceilings come from it"))
         return out
+    if computed.get("countVersion") != COUNT_VERSION:
+        out.append(finding("dossier_counted_by_older_tool", "soft",
+                           f"the dossier was counted by an older richness.py ({computed.get('countVersion') or 'before versions'}, now "
+                           f"{COUNT_VERSION}); run `richness.py dossier` so the ceilings match today's counting"))
     events = {e["id"]: e for e in d.get("events", []) if "id" in e}
     chapters = plan.get("chapters", [])
     if not chapters:
@@ -411,10 +441,26 @@ def validate_plan(project, write):
             share = len(ch.get("events", [])) / allotted
             ch["ceilingWords"] = round(story * share)
             ch["floorWords"] = round(t["starvedFraction"] * (target or story) * share)
+            if target:
+                # The length to aim for. The third story's writers never saw the story's target and
+                # wrote 5,228 words against 3,500 (2026-10-04); the gate notes a chapter well past it.
+                ch["targetWords"] = round(target * share)
+            else:
+                ch.pop("targetWords", None)
         plan["computed"] = {"storyCeilingWords": story, "allottedEvents": allotted,
                             **({"targetWords": target} if target else {}),
                             "computedAt": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds")}
         save_json(project.path("plan.json"), plan)
+    # Every chapter costs a writer and an auditor, about 7M tokens whatever its length: the tier-B
+    # stories planned five chapters of 280-560 words and cost as much as the book-length ones
+    # (2026-10-05). A short chapter is better merged with its neighbour.
+    thin = [ch for ch in chapters if target and allotted and len(chapters) > 2
+            and round(target * len(ch.get("events", [])) / allotted) < t.get("thinChapterWords", 450)]
+    if thin:
+        out.append(finding("chapters_thin", "soft",
+                           f"{len(thin)} chapter(s) aim under {t.get('thinChapterWords', 450)} words "
+                           f"({', '.join(str(ch.get('n')) for ch in thin)}): merge each with a neighbour. Every chapter "
+                           "costs a writer and an auditor whatever its length, and fewer, fuller chapters read better"))
     last = computed.get("lastEventYear")
     ends = [y for y in (year_of((ch.get("span") or {}).get("to")) for ch in chapters) if y is not None]
     if last and ends and max(ends) < last and not plan.get("endNote"):
@@ -427,7 +473,8 @@ def cmd_plan(project):
     problems = validate_plan(project, write=True)
     plan = project.plan
     for ch in plan.get("chapters", []):
-        print(f"  ch{ch.get('n')}: {ch.get('title', '')} — {len(ch.get('events', []))} event(s), ceiling {ch.get('ceilingWords', '?')} words")
+        aim = f", aim for {ch['targetWords']}" if ch.get("targetWords") else ""
+        print(f"  ch{ch.get('n')}: {ch.get('title', '')} — {len(ch.get('events', []))} event(s), ceiling {ch.get('ceilingWords', '?')} words{aim}")
     return report("plan", problems)
 
 
@@ -488,7 +535,7 @@ def cmd_mentions(project, argv):
         if text is None:
             silent.append(f"{sid} (not fetched)")
             continue
-        toks, spans = mention_spans(text, aliases, window)
+        toks, spans = mention_spans(text, aliases, window, not_aliases=(project.dossier or {}).get("notAliases") or [])
         if not spans:
             silent.append(f"{sid} ({len(toks)} words)")
             continue
@@ -496,7 +543,16 @@ def cmd_mentions(project, argv):
         if (rec.get("kind") or "").lower() == "clue-only" or (rec.get("license") or "").lower() == "clue-only":
             notes.append("CLUE ONLY — never cite")
         if rec.get("ownWords"):
-            notes.append("own words — the whole text counts")
+            span = rec.get("ownWordsSpan")
+            if span == "all":
+                notes.append("own words — the whole text counts")
+            elif isinstance(span, dict):
+                notes.append("own words — the marked ownWordsSpan counts")
+            else:
+                # It used to say "the whole text counts" here, which was never true: unmarked, only
+                # these passages count, and the writer set spans believing they would SHRINK the
+                # count (2026-10-04).
+                notes.append("own words, no ownWordsSpan marked — only these passages count; mark the span")
         about = sum(b - a + 1 for a, b, _ in spans)
         header = (f"== {sid} · {rec.get('publisher', '?')} · {str(rec.get('title') or rec.get('url') or '')[:80]}"
                   f" · {len(toks)} words, {sum(n for _, _, n in spans)} mention(s), {about} about"

@@ -43,7 +43,10 @@ exactly as the verb returned it:
 - a message → the mail row's `open` (the full thread, shown to THEM in AI Inbox's
   quarantined reader — you cannot read bodies, they can). For a message that
   matters, `mail.summarize` gives its gist and verbatim asks, made on this Mac by
-  a tool-less local model; newsletters are refused, so it costs nothing
+  a tool-less local model; newsletters are refused, so it costs nothing. If it
+  comes back with `qualityFlags` (e.g. "gist copied from the email"), quote the
+  asks rather than the gist, and you may add one line linking `engine.open` — the
+  card where THEY choose a better model. Never pick a model yourself.
 - an event → the calendar row's `open`
 - a table → the collection's `open` from `ledger.listCollections`
 - a thread → its `open` from `assistant.listAssistants`

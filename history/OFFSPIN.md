@@ -62,7 +62,7 @@ Workbench folder, as in `PLAYBOOK.md`. A run lives in `stories/_offspin/<run-id>
      `coordsFrom: "geocode: <address>"` on the tie. Otherwise the author places it.
    - Places beyond the run's region are left off the map and listed under `elsewhere`.
 9. **Audit.** One fresh reader on the strongest model reads every sub-story against its
-   quotes in a single pass, as in `PLAYBOOK.md` step 3.4. Repair what is flagged, then gate
+   quotes in a single pass, as in `PLAYBOOK.md` step 3.5. Repair what is flagged, then gate
    again.
 10. **Land.** Nothing is published; the author reviews both of the following:
     - One StoryMaker project for the run (`storymaker.createProject`, with the run's `label` as
@@ -73,12 +73,12 @@ Workbench folder, as in `PLAYBOOK.md`. A run lives in `stories/_offspin/<run-id>
 
 ## Cost
 
-Ranking and screening cost nothing. Per person, the work is one fresh context: the passages,
-the ties, and a sub-story of a few hundred words. That comes to about half a million to a
-million tokens, most of it re-read context, or roughly $0.40 to $0.90 at API prices. With the
-audit, a run of ten people should cost about $6 to $12. For comparison, scouting Black
-Seattle cost about $75 for ten people, because its bar was a documented life rather than a
-famous one. These are estimates. Record the measured cost of the first run here.
+Ranking and screening cost nothing: they use Wikipedia's APIs and no model. Each person is one
+fresh context: the passages, the ties, and a sub-story of a few hundred words. That comes to
+about half a million to a million tokens, most of it re-read context. With the audit, a run of
+ten people should come to about 8 to 12 million tokens. For comparison, scouting Black Seattle
+took about 100 million tokens for ten people, because its bar was a documented life rather
+than a famous one. These are estimates. Record the measured usage of the first run here.
 
 Three rules keep it cheap:
 

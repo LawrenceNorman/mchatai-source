@@ -2916,9 +2916,10 @@
         ],
         "optional": [
           "title",
-          "after"
+          "after",
+          "before"
         ],
-        "notes": "Appends unless `after` names a chapter. Verified by reading the chapter back out of the store. If StoryMaker is open on this project, the chapter appears there immediately.",
+        "notes": "Appends unless `after` or `before` names a chapter (`before` is the only way to put a chapter first, e.g. an introduction). Verified by reading the chapter back out of the store. If StoryMaker is open on this project, the chapter appears there immediately.",
         "pairedCheck": "applet storymaker getChapter with the returned chapterID",
         "example": {
           "command": "applet",
@@ -2946,6 +2947,10 @@
           "after": {
             "type": "string",
             "description": "Insert after this chapter (id, exact title or 1-based position)."
+          },
+          "before": {
+            "type": "string",
+            "description": "Insert before this chapter (id, exact title or 1-based position). Not with `after`."
           }
         }
       },
@@ -3131,6 +3136,7 @@
           "project",
           "chapters"
         ],
+        "notes": "Each chapter row may carry `linkedChapterID` (or `chapterID`): the StoryMaker chapter it outlines. Rows are linked only to chapters of this project; an unknown id is reported in `warnings` and that row stays unlinked. `result.linked` counts the linked rows.",
         "example": {
           "command": "applet",
           "applet": "storymaker",

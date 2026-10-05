@@ -55,12 +55,32 @@ _QUOTES = str.maketrans({"‘": "'", "’": "'", "“": '"', "”": '"'})
 
 _INVISIBLE = dict.fromkeys(map(ord, "\u00ad\u200b\u200c\u200d\u2060\ufeff"))
 
+# Windows-1252's quotes and dashes mis-decoded into the C1 control range, as a PDF's text layer can
+# carry them: Sam Smith's oral history reads "weren" + chr(0x92) + "t" (2026-10-04).
+_C1 = {}
+for _c in range(0x80, 0xA0):
+    try:
+        _C1[_c] = bytes([_c]).decode("cp1252")
+    except UnicodeDecodeError:
+        pass
+
+# A printed page's furniture at a page break: the page number and the running head ("PROLOGUE",
+# "CHAPTER 1") land in the middle of sentences in a PDF's text layer.
+_PAGE_FURNITURE = re.compile(r"\f(?:[ \t]*(?:\d{1,4}|[A-Z0-9][A-Z0-9 ,.'’&:;()-]{1,58})[ \t]*(?:\n[ \t]*)+){0,3}")
+
+
+def clean_source_text(text):
+    """A fetched source as a reader reads it: Windows-1252 quotes and dashes restored, and a PDF's
+    page numbers and running heads taken out where a page break falls. Every reader of a source
+    (`Project.source_text`) and `fetch.py` use it, so a quote copied from `mentions` verifies."""
+    return _PAGE_FURNITURE.sub("\n", (text or "").translate(_C1))
+
 
 def norm(text):
     """Comparison form: dashes and curly quotes unified, invisible characters (soft hyphens,
     zero-width spaces) dropped, whitespace collapsed, lowercased. The landmark quote check's
     normalisation plus quote marks — retyping a quote with curly marks changes no word of it."""
-    text = (text or "").translate(_INVISIBLE).translate(_DASHES).translate(_QUOTES)
+    text = (text or "").translate(_C1).translate(_INVISIBLE).translate(_DASHES).translate(_QUOTES)
     return re.sub(r"\s+", " ", text).strip().lower()
 
 
@@ -95,8 +115,17 @@ _NUMBER = re.compile(r"\b\d[\d,]*(?:\.\d+)?\b")
 
 
 def numbers(text):
-    """Every number token: years, counts, money, as written."""
-    return [m.group(0).rstrip(",") for m in _NUMBER.finditer((text or "").translate(_DASHES))]
+    """Every number token: years, counts, money, as written. A comma that is not a thousands
+    separator splits the token: OCR's "May 19,1894" is 19 and 1894, not 191,894."""
+    out = []
+    for m in _NUMBER.finditer((text or "").translate(_DASHES)):
+        tok = m.group(0).rstrip(",")
+        groups = tok.split(",")
+        if len(groups) > 1 and any(len(g.split(".")[0]) != 3 for g in groups[1:]):
+            out.extend(g for g in groups if g)
+        else:
+            out.append(tok)
+    return out
 
 
 _UNITS = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "seven": 7, "eight": 8,
@@ -163,7 +192,7 @@ class Project:
         if not os.path.exists(p):
             return None
         with open(p, encoding="utf-8", errors="replace") as fh:
-            return fh.read()
+            return clean_source_text(fh.read())
 
     def chapter_path(self, n):
         return self.path("chapters", f"{int(n):02d}.json")

@@ -29,7 +29,7 @@ def claim_findings(project, n):
     sources = project.sources
     texts = {}
     out = []
-    for i, c in enumerate(ch.get("claims", []), 1):
+    for i, c in enumerate([c for c in ch.get("claims", []) if not c.get("retired")], 1):
         sid = str(c.get("source", ""))
         label = f"claim {c.get('id', i)}"
         rec = sources.get(sid)
@@ -47,8 +47,20 @@ def claim_findings(project, n):
         ev = c.get("evidence", "")
         if words(ev) < t["minQuoteWords"]:
             out.append(finding("quote_too_short", "hard", f"{label}: evidence under {t['minQuoteWords']} words cannot be verified", c.get("text", "")[:160]))
-        elif norm(ev) not in norm(texts[sid]):
+        elif norm(ev).rstrip(" ,.") not in norm(texts[sid]):
             out.append(finding("quote_unverified", "hard", f"{label}: evidence is not verbatim in source {sid} — copy it exactly, same spelling", ev[:200]))
+    return out
+
+
+def copy_words(text):
+    """Words for the copy check, with the punctuation around them dropped: a comma where the source
+    has a semicolon still copies the source's prose (Sam Smith's chapter 3 copied 24 words of
+    HistoryLink that way, 2026-10-04)."""
+    out = []
+    for w in norm(text).split():
+        w = w.strip(".,;:!?\"'()[]{}-")
+        if w:
+            out.append(w)
     return out
 
 
@@ -56,7 +68,7 @@ def copy_findings(project, n):
     ch = project.chapter(n) or {}
     t = thresholds()
     k = t["verbatimCopyWindowWords"]
-    prose = norm(strip_quoted(ch.get("text", ""))).split()
+    prose = copy_words(strip_quoted(ch.get("text", "")))
     if len(prose) < k:
         return []
     windows = {tuple(prose[i:i + k]): i for i in range(len(prose) - k + 1)}
@@ -67,7 +79,7 @@ def copy_findings(project, n):
         text = project.source_text(sid)
         if not text:
             continue
-        src = norm(text).split()
+        src = copy_words(text)
         for i in range(len(src) - k + 1):
             hit = windows.get(tuple(src[i:i + k]))
             if hit is not None:

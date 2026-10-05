@@ -55,6 +55,13 @@ def is_title(inner):
 OCR_DAMAGE = re.compile(r"\w\.\s+[a-z]{2,}|\b\d+[A-Za-z]+\d+\b|\b[A-Z]?\d+[A-Z]\d*\b")
 
 
+def quote_core(inner):
+    """A quotation's words for matching against evidence. English sets a comma or full stop
+    inside the closing quotation mark whether or not the source had one there, and an
+    ellipsis at either end marks a cut, so neither is part of what must be verbatim."""
+    return re.sub(r"^(?:\.\.\.|…)\s*|[\s,.…]+$", "", norm(inner))
+
+
 def chapter_findings(project, n):
     ch = project.chapter(n)
     if ch is None:
@@ -69,7 +76,7 @@ def chapter_findings(project, n):
     for start, end, inner in quoted_spans(text):
         if words(inner) < 3 or is_title(inner):
             continue                      # a quoted word, a name, or a title — not speech
-        if norm(inner) not in evidence:
+        if quote_core(inner) not in evidence:
             out.append(finding("dialogue_unsourced", "hard",
                                "quoted words that are in no claim's evidence — a quotation must be verbatim from a source",
                                sentence_around(text, start, end)))
@@ -91,6 +98,11 @@ def chapter_findings(project, n):
     ceiling = pc.get("ceilingWords")
     if ceiling and n_words > ceiling:
         out.append(finding("over_ceiling", "hard", f"{n_words} words over this chapter's {ceiling}-word ceiling — cut, do not reword"))
+    aim = pc.get("targetWords")
+    if aim and n_words > t.get("targetOverrun", 1.3) * aim:
+        out.append(finding("over_target", "soft",
+                           f"{n_words} words against this chapter's share of the story's target, {aim} — cut toward it unless "
+                           "the author asked for more (plan.targetWords)"))
     floor = pc.get("floorWords") or (t["starvedFraction"] * ceiling if ceiling else None)
     if floor and len(pc.get("events", [])) >= t["starvedMinEvents"] and n_words < floor:
         out.append(finding("starved", "hard",

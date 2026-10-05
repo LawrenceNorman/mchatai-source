@@ -102,3 +102,20 @@ Checked 2026-10-02. Access methods change, so confirm before you depend on one.
 | Wing Luke Museum, Burke Museum, Duwamish / Suquamish / Muckleshoot sites | web pages and PDFs | community-authored; preferred for Indigenous Seattle; confirm terms |
 | National Register nominations (NPS) | PDFs; check `%PDF` | public domain |
 | Seattle landmark designation reports and nominations | PDFs from seattle.gov | public records |
+
+## 8. Pictures
+
+A picture is a source too: it is fetched, its record kept, and what its caption says is checked
+against its description (`tools/images.py`, rules in `images.json`).
+
+| Licence | May a paid story use it? |
+|---|---|
+| Public domain, PD-US, CC0 | Yes, credited by its archive or author. |
+| CC BY | Yes, with the credit the licence asks for. |
+| CC BY-SA | Yes, with credit. Share-alike binds the picture, never the story beside it. |
+| Any NC or ND licence, fair use, unstated | No. |
+
+Where to look first: the pictures already on the person's Wikipedia article and on related
+articles; a Wikimedia Commons search; the Library of Congress for pre-1930 newspaper pages
+and photographs. A landmark photograph on a city website has no stated licence for reuse:
+link to the landmark's page instead of copying the picture.

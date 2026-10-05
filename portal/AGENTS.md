@@ -134,6 +134,16 @@ pretty JSON and are also saved to `$TUNNEL_OUT_DIR/<requestID>.json`
 (default `/tmp/mchatai-out`). The repo shim instead defaults to
 `/tmp/tunnel-out` and takes `--json`.
 
+**Scheduled jobs (launchd, cron): set `MCHATAI_TRANSPORT=relay`.** The default
+transport writes into the app's sandbox container. A process launchd starts
+gets no prompt for that and is simply refused (bash, python), or, for an agent
+CLI like `claude`, macOS asks "would like to access data from other apps" for
+every new process and the job waits until someone clicks. Relay mode sends each
+command through the mChatAIShell companion on localhost (its token is in
+`~/Library/Application Support/mChatAIShell/config.json`) and never touches the
+container. To run an agent CLI on a schedule without the prompt, have
+mChatAIShell start it (`POST /pty/session`), so it counts as the companion's.
+
 ### The full command surface
 
 `docs/TUNNEL_COMMANDS.md` in the platform repo (`mchatai_macOS/`) documents every

@@ -15,7 +15,7 @@ by PR with no app rebuild.
 | `lint-rules.json` | The voice's phrase rules as data. The 13 rules carried from the landmark lint are byte-identical to it. |
 | `OFFSPIN.md`, `offspin.json` | A light job beside a series: well-known people ranked by Wikipedia pageviews, tied to the places of their lives by checked quotes, told as short sub-stories, with the places as a Ledger table that exports to a map pack. |
 | `schemas/` | The project files: sources index, dossier, plan, chapter, and a famous person's ties. |
-| `tools/` | Deterministic gates, standard-library Python. `gate.py` is the one a writer runs. |
+| `tools/` | Deterministic gates, standard-library Python. `gate.py` is the one a writer runs. `images.py` gathers and checks pictures, `maps.py` draws a map for each landmark a story names, `cite.py book` assembles what lands in StoryMaker, `editor.py` reads the finished book as a whole (free checks, and the gate on a fresh reader's suggestions). |
 | `fixtures/demo-project/` | A FICTIONAL project for the tests: one clean chapter, one with a planted defect per gate. |
 
 The person's ledger uses the `biography` pack in `story/schemas/biography.json`. The

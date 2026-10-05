@@ -15,6 +15,27 @@
       "detail": "mChatAI's hosted models, paid in compute tokens",
       "taskScores": {"simple": 0.8, "analysis": 0.85, "creative": 0.8, "research": 0.8, "planning": 0.8, "coding": 0.8},
       "_taskScoresNote": "A hosted ladder; the model behind it varies. Rated as a strong general model."
+    },
+    "OpenAI": {
+      "displayName": "OpenAI",
+      "detail": "Your OpenAI API key",
+      "taskScores": {"simple": 0.8, "analysis": 0.8, "creative": 0.78, "research": 0.75, "planning": 0.75, "coding": 0.75},
+      "_taskScoresNote": "KN.7 (2026-10-02). Rated for the job's role model where it names one (role-models.json 'summary' = gpt-4o-mini), else the provider default."
+    },
+    "Anthropic": {
+      "displayName": "Anthropic",
+      "detail": "Your Anthropic API key",
+      "taskScores": {"simple": 0.8, "analysis": 0.82, "creative": 0.8, "research": 0.78, "planning": 0.78, "coding": 0.78}
+    },
+    "Google": {
+      "displayName": "Google Gemini",
+      "detail": "Your Google API key",
+      "taskScores": {"simple": 0.78, "analysis": 0.8, "creative": 0.76, "research": 0.76, "planning": 0.74, "coding": 0.72}
+    },
+    "OpenRouter": {
+      "displayName": "OpenRouter",
+      "detail": "Your OpenRouter key",
+      "taskScores": {"simple": 0.7, "analysis": 0.72, "creative": 0.7, "research": 0.7, "planning": 0.68, "coding": 0.68}
     }
   },
   "jobs": [
@@ -42,7 +63,9 @@
       "taskCategory": "analysis",
       "privacy": "any",
       "engines": ["foundation", "ollama", "cloud"],
-      "cloudProviders": ["mChatAI Cloud"],
+      "cloudProviders": ["*"],
+      "_cloudProviders": "KN.7 (2026-10-02): '*' = every cloud this Mac can use, in the AI Harness's routing order. When the engine in use can't serve this account (no credit, bad key, rate limit) the next cloud answers before anything local, and the provider sits out for the cooling period app-wide — the Harness ladder's behavior.",
+      "cloudRole": "summary",
       "defaultMode": "lowestCost",
       "defaultEngine": "cloud:mChatAI Cloud",
       "_defaultEngine": "What the button always used before it had a card (MailTriageService, to 2026-09-29). It stays the starting choice so adding the card changed nothing (RULE #4); one click on the card keeps email on this Mac instead.",
@@ -58,12 +81,40 @@
       "privacy": "any",
       "_privacy": "The evidence is the person's own writing: drafts they edited and email they sent, quoted and forwarded text removed. Best Quality by default: Apple's on-device model returned repeated, rule-shaped content claims (2026-09-30), and the app refuses a reply that drops the guide's first line, repeats a rule, or loses half the current rules. Lowest Cost on the card keeps it on this Mac.",
       "engines": ["foundation", "ollama", "cloud"],
-      "cloudProviders": ["mChatAI Cloud"],
+      "cloudProviders": ["*"],
       "defaultMode": "bestQuality",
       "reasoning": "minimal",
       "typicalTokens": {"input": 4000, "output": 600},
       "compare": true,
       "policy": "content/writing/voice.json"
+    },
+    {
+      "id": "web.summary",
+      "title": "AI Web summaries",
+      "blurb": "Summarises the pages you open in AI Web, and the sites it watches for you on a schedule.",
+      "taskCategory": "analysis",
+      "privacy": "any",
+      "engines": ["foundation", "ollama", "cloud"],
+      "cloudProviders": ["*"],
+      "defaultMode": "lowestCost",
+      "legacyProviderKey": "WebSummarizerSelectedProvider",
+      "_legacyProviderKey": "KN.6 (2026-10-02): until the user chooses on the card, the job follows the provider in this key with that provider's own model — what AI Web's toolbar menu and the scheduled refresh did before (RULE #4). The toolbar menu and the System jobs row are now this card's button.",
+      "reasoning": "minimal",
+      "typicalTokens": {"input": 2500, "output": 300}
+    },
+    {
+      "id": "chat.titles",
+      "title": "Conversation names",
+      "blurb": "Names a new Workbench conversation in a few words, so you and your assistants can find it again.",
+      "taskCategory": "simple",
+      "privacy": "any",
+      "engines": ["foundation", "ollama", "cloud"],
+      "cloudProviders": ["*"],
+      "cloudRole": "summary",
+      "defaultMode": "lowestCost",
+      "_defaultMode": "KN.6 (2026-10-02): Apple's on-device model answers first, as it did (WorkbenchController.generateTitle). What changed is only the fallback: a small local model with thinking off, then the clouds in the Harness's order, instead of the Chat dropdown's Ollama model. The AI Harness's own session titles are NOT this job (AIHarness prefers a cloud there).",
+      "reasoning": "minimal",
+      "typicalTokens": {"input": 300, "output": 12}
     }
   ]
 }

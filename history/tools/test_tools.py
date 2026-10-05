@@ -20,6 +20,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import _hw  # noqa: E402
 import checks  # noqa: E402
+import cite  # noqa: E402
 import gate  # noqa: E402
 import quotes  # noqa: E402
 import richness  # noqa: E402
@@ -74,8 +75,37 @@ class PlantedDefects(FixtureCase):
         self.assertIn("verbatim_copy", self.rules(quotes.copy_findings(self.project, 2)))
         self.assertEqual(self.rules(quotes.copy_findings(self.project, 1)), set())
 
+    def test_a_copy_with_other_punctuation_is_still_a_copy(self):
+        # Sam Smith's chapter 3 copied 24 words of HistoryLink with commas where it had semicolons.
+        src = ("His first proposals included a youth patrol for the police department; a study of hiring "
+               "practices in every city department; and a fund for summer jobs in the Central District.")
+        with open(self.project.path("sources", "s2.txt"), "a", encoding="utf-8") as fh:
+            fh.write("\n\n" + src)
+        rec = self.project.sources["s2"]
+        self.assertEqual((rec.get("license") or "facts-only").lower(), "facts-only")
+        ch = self.project.chapter(1)
+        ch["text"] += ("\n\nHis first proposals included a youth patrol for the police department, a study of hiring "
+                       "practices in every city department, and a fund for summer jobs in the Central District.")
+        _hw.save_json(self.project.chapter_path(1), ch)
+        self.assertIn("verbatim_copy", self.rules(quotes.copy_findings(self.project, 1)))
+
     def test_invented_dialogue_is_caught(self):
         self.assertIn("dialogue_unsourced", self.rules(voice_lint.chapter_findings(self.project, 2)))
+
+    def test_punctuation_at_a_quotations_ends_is_not_a_misquote(self):
+        ch = self.project.chapter(1)
+        quote = "“I have bought the lot on Water Street and mean to build before the rains.”"
+        for written, ok in (("“I have bought the lot on Water Street,” she wrote.", True),
+                            ("“…mean to build before the rains.”", True),
+                            ("“I have bought the lot on Front Street,” she wrote.", False)):
+            ch2 = dict(ch, text=ch["text"].replace(quote, written))
+            _hw.save_json(self.project.chapter_path(1), ch2)
+            found = self.rules(voice_lint.chapter_findings(self.project, 1))
+            self.assertEqual("dialogue_unsourced" not in found, ok, written)
+        # A claim's evidence may end on a comma where the source has a full stop.
+        ch["claims"][2]["evidence"] = "I have bought the lot on Water Street and mean to build before the rains,"
+        _hw.save_json(self.project.chapter_path(1), ch)
+        self.assertNotIn("quote_unverified", self.rules(quotes.claim_findings(self.project, 1)))
 
     def test_ocr_damage_in_a_quotation_is_a_note(self):
         import voice_lint as vl
@@ -103,6 +133,34 @@ class PlantedDefects(FixtureCase):
         _hw.save_json(self.project.chapter_path(1), ch)
         msgs = [f["message"] for f in checks.number_findings(self.project, 1)]
         self.assertFalse(any("'1901'" in m for m in msgs), "s1 is dated 1901-05-02 and is cited")
+
+    def test_a_pdfs_page_furniture_and_cp1252_quotes_do_not_break_a_quote(self):
+        # Sam Smith's oral history: "weren" + chr(0x92) + "t", and "PROLOGUE" mid-sentence at a page break.
+        raw = ("They just weren" + chr(0x92) + "t allowed to vote,\n\n\fPROLOGUE\nthat was it. \f2\n\nCHAPTER 1\n\n"
+               "Teachers were paid poorly. \fCHAPTER 1\nTHE SMITH ELEMENT\n\nI\n\nfreely admit I was spoiled.")
+        clean = _hw.clean_source_text(raw)
+        self.assertNotIn("PROLOGUE", clean)
+        self.assertNotIn("CHAPTER", clean)
+        self.assertIn("weren’t", clean)
+        self.assertIn("i freely admit i was spoiled", _hw.norm(clean), "a drop cap is a word, not a heading")
+        with open(self.project.path("sources", "s3.txt"), "a", encoding="utf-8") as fh:
+            fh.write("\n\n" + raw)
+        ch = self.project.chapter(1)
+        ch["claims"].append({"id": "c9", "text": "They could not vote.", "source": "s3", "kind": "fact",
+                             "evidence": "They just weren't allowed to vote, that was it."})
+        _hw.save_json(self.project.chapter_path(1), ch)
+        self.assertNotIn("quote_unverified", self.rules(quotes.claim_findings(self.project, 1)))
+
+    def test_a_run_on_ocr_date_is_a_day_and_a_year(self):
+        self.assertEqual(_hw.numbers("first issue May 19,1894, price 1,250 or 3,5 and 1,234.50"),
+                         ["19", "1894", "1,250", "3", "5", "1,234.50"])
+        ch = self.project.chapter(1)
+        ch["text"] += " The first issue came out on May 19, 1894."
+        ch["claims"].append({"id": "c8", "text": "The first issue came out on May 19, 1894.", "source": "s1",
+                             "kind": "fact", "evidence": "the first issue appeared May 19,1894"})
+        _hw.save_json(self.project.chapter_path(1), ch)
+        msgs = [f["message"] for f in checks.number_findings(self.project, 1)]
+        self.assertFalse(any("'19'" in m or "'1894'" in m for m in msgs), msgs)
 
     def test_numbers_in_words_are_numbers(self):
         self.assertEqual(_hw.spelled_numbers("at twenty-three, Forty years later, six, four hundred, the fourth"),
@@ -165,6 +223,25 @@ class Structure(FixtureCase):
         for c in self.project.plan["chapters"]:
             self.assertEqual(c["ceilingWords"], before[c["n"]][0], "the ceiling is earned by the dossier, not chosen")
             self.assertLess(c["floorWords"], before[c["n"]][1], "a shorter story owes less per chapter")
+
+    def test_each_chapter_gets_its_share_of_the_target_and_a_note_when_well_past_it(self):
+        import voice_lint
+        plan = self.project.plan
+        plan["targetWords"] = 120
+        _hw.save_json(self.project.path("plan.json"), plan)
+        richness.validate_plan(self.project, write=True)
+        shares = [c.get("targetWords") for c in self.project.plan["chapters"]]
+        self.assertTrue(all(shares) and abs(sum(shares) - 120) <= len(shares), shares)
+        n = self.project.plan["chapters"][0]["n"]
+        rules = {f["rule"]: f for f in voice_lint.chapter_findings(self.project, n)}
+        words = len(self.project.chapter(n)["text"].split())
+        if words > 1.3 * shares[0]:
+            self.assertEqual(rules["over_target"]["severity"], "soft")
+        plan["targetWords"] = None
+        plan.pop("targetWords")
+        _hw.save_json(self.project.path("plan.json"), plan)
+        richness.validate_plan(self.project, write=True)
+        self.assertFalse(any(c.get("targetWords") for c in self.project.plan["chapters"]), "no target, no share")
 
     def test_a_target_above_the_ceiling_is_refused(self):
         plan = self.project.plan
@@ -240,6 +317,21 @@ class Richness(FixtureCase):
         for tier in t["tiers"]:
             self.assertGreaterEqual(t["sourceRatio"] * tier["requires"]["wordsAboutSubject"], tier["words"][0], tier["id"])
         self.assertEqual([x["id"] for x in t["tiers"]], ["A", "B", "C"], "tiers are checked in order")
+
+
+class ThinChapters(FixtureCase):
+    def test_many_short_chapters_are_noted(self):
+        # Each chapter costs a writer and an auditor whatever its length (the tier-B stories, 2026-10-05).
+        plan = _hw.load_json(self.project.path("plan.json"))
+        plan["targetWords"] = 300
+        _hw.save_json(self.project.path("plan.json"), plan)
+        self.assertNotIn("chapters_thin", self.rules(richness.validate_plan(self.project, write=False), hard_only=False),
+                         "two chapters are not 'many'")
+        e = plan["chapters"][0]["events"] + plan["chapters"][1]["events"]
+        plan["chapters"] = [dict(plan["chapters"][0], n=1, events=e[:2]), dict(plan["chapters"][0], n=2, events=e[2:4]),
+                            dict(plan["chapters"][1], n=3, events=e[4:])]
+        _hw.save_json(self.project.path("plan.json"), plan)
+        self.assertIn("chapters_thin", self.rules(richness.validate_plan(self.project, write=False), hard_only=False))
 
 
 class OwnWords(FixtureCase):
@@ -357,6 +449,1045 @@ class Reading(FixtureCase):
         self.assertTrue(headers[0].startswith("== s1 "), headers[0])
         code, out = self.run_mentions("nope")
         self.assertEqual(code, 2, "an unknown source id is refused, not ignored")
+
+
+class Citations(FixtureCase):
+    """Notes and Sources rendered from the claims (voice.md v2, 2026-10-03)."""
+
+    def test_sentences_respect_abbreviations_and_initials(self):
+        p = "Mrs. Fixture spoke first. H. R. Fixture listened. Then they left for St. Louis."
+        self.assertEqual([p[a:b] for a, b in cite.sentences(p)],
+                         ["Mrs. Fixture spoke first.", "H. R. Fixture listened.", "Then they left for St. Louis."])
+
+    def test_a_name_suffix_before_a_capital_ends_the_sentence(self):
+        p = ("In 1903 their son was named Horace Jr. The family called him Horace Jr. until he left. "
+             "The parade on Martin Luther King Jr. Day passed the house. It was built by the Puget Sound Co. Seattle grew.")
+        self.assertEqual([p[a:b] for a, b in cite.sentences(p)],
+                         ["In 1903 their son was named Horace Jr.", "The family called him Horace Jr. until he left.",
+                          "The parade on Martin Luther King Jr. Day passed the house.",
+                          "It was built by the Puget Sound Co.", "Seattle grew."])
+        self.assertEqual(cite.key_phrase("Their son was named Horace Jr. The family called him that."),
+                         "Their son was named Horace Jr")
+
+    def test_notes_follow_their_sentences_and_runs_share_one(self):
+        text, notes, problems = cite.chapter_notes(self.project, 1)
+        self.assertEqual(problems, [])
+        self.assertIn("in 1890.¹", text)
+        self.assertIn("twenty boarders.²", text, "the letter and the mill both cite s3: one note after the run")
+        self.assertNotIn("sister:²", text)
+        self.assertIn("dollars.³", text)
+        self.assertEqual(len(notes), 3)
+        self.assertTrue(notes[1].startswith("2. ") and "Letter" in notes[1], notes)
+
+    def test_stripping_the_notes_gives_back_the_gated_prose(self):
+        landed, _ = cite.landed_text(self.project, 1)
+        self.assertIn("\n\nNotes\n\n1. ", landed)
+        flat = lambda t: " ".join(t.split())
+        self.assertEqual(flat(cite.strip_notes(landed)), flat(self.project.chapter(1)["text"]))
+
+    def test_an_anchor_must_name_exactly_one_sentence(self):
+        ch = self.project.chapter(1)
+        ch["claims"][0]["anchor"] = "a sentence that is not in the chapter at all"
+        ch["claims"][1]["anchor"] = "Water Street"            # in two sentences
+        _hw.save_json(self.project.chapter_path(1), ch)
+        hard = [f["message"] for f in cite.anchor_findings(self.project, 1) if f["severity"] == "hard"]
+        self.assertEqual(len(hard), 2, hard)
+        self.assertIn("anchor_unresolved", self.rules(gate.chapter_findings(self.project, 1)))
+
+    def test_a_missing_anchor_is_a_note_for_the_gate_and_a_refusal_for_the_book(self):
+        ch = self.project.chapter(1)
+        ch["claims"][0].pop("anchor")
+        _hw.save_json(self.project.chapter_path(1), ch)
+        self.assertIn("claim_unanchored", self.rules(cite.anchor_findings(self.project, 1), hard_only=False))
+        self.assertNotIn("claim_unanchored", self.rules(cite.anchor_findings(self.project, 1)))
+        self.assertIn("claim_unanchored", self.rules(cite.check_findings(self.project, [1])), "the book refuses it")
+
+    def test_anchors_write_only_the_certain_ones(self):
+        ch = self.project.chapter(1)
+        for c in ch["claims"]:
+            c.pop("anchor")
+        _hw.save_json(self.project.chapter_path(1), ch)
+        import contextlib
+        import io
+        with contextlib.redirect_stdout(io.StringIO()):
+            cite.cmd_anchors(self.project, [1], write=True)
+        sents = cite.flat_sentences(self.project.chapter(1)["text"])
+        for c in self.project.chapter(1)["claims"]:
+            if c.get("anchor"):
+                self.assertEqual(len(cite.resolve(c["anchor"], sents)), 1, c["id"])
+
+    def test_newspaper_pages_cite_the_page_a_reader_can_open(self):
+        rec = {"id": "x", "title": "The Seattle Republican, 1905-12-22, page 1", "publisher": "The Seattle Republican",
+               "kind": "primary", "date": "1905-12-22",
+               "url": "https://tile.loc.gov/text-services/word-coordinates-service?segment=/service/ndnp/wa/batch_wa_alder_ver01/data/sn84025811/00211100515/1905122201/1266.xml&format=alto_xml&full_text=1"}
+        paper, date, page, url = cite.newspaper_page(rec)
+        self.assertEqual((paper, date, page), ("The Seattle Republican", "1905-12-22", 1))
+        self.assertEqual(url, "https://chroniclingamerica.loc.gov/lccn/sn84025811/1905-12-22/ed-1/seq-1/")
+        self.assertEqual(cite.short_cite(rec), "The Seattle Republican, 22 December 1905, p. 1")
+
+    def test_notes_are_short_and_never_ambiguous(self):
+        nom = {"title": "Cayton House Nomination, 518 14th Avenue East", "publisher": "City of Harbor Town",
+               "cite": {"author": "Ann B. Fixture", "date": "2021-01-22"}, "url": "u"}
+        self.assertEqual(cite.short_cite(nom), "Fixture, “Cayton House Nomination, 518 14th Avenue East”",
+                         "an author's surname stands for the work; the Sources list has the rest")
+        a = {"title": "Report", "publisher": "City", "date": "1990", "url": "u1"}
+        b = {"title": "Report", "publisher": "City", "date": "2001", "url": "u2"}
+        forms = cite.note_forms({"a": a, "b": b}, ["a", "b"])
+        self.assertNotEqual(forms["a"], forms["b"], "two sources must never read the same in a note")
+
+    def test_web_titles_lose_their_site_names(self):
+        self.assertEqual(cite.clean_title("Cayton, Susie Sumner Revels | Encyclopedia.com", "Encyclopedia.com"),
+                         "Cayton, Susie Sumner Revels")
+        self.assertEqual(cite.clean_title('Susie Revels Cayton:\n  "The Part She Played"\n - \n Seattle Civil Rights and Labor History Project',
+                                          "Seattle Civil Rights and Labor History Project"),
+                         "Susie Revels Cayton: ‘The Part She Played’")
+
+    def test_the_story_needs_an_introduction_and_it_has_a_length(self):
+        self.assertIn("intro_missing", self.rules(gate.story_findings(self.project)))
+        intro = dict(self.project.chapter(1), chapter=0, title="Introduction")
+        _hw.save_json(self.project.chapter_path(0), intro)
+        real = gate.thresholds
+        try:
+            gate.thresholds = lambda: dict(real(), introWords=[5, 20])
+            self.assertIn("over_ceiling", self.rules(gate.intro_findings(self.project)))
+            gate.thresholds = lambda: dict(real(), introWords=[5, 600])
+            self.assertEqual(self.rules(gate.intro_findings(self.project)), set())
+        finally:
+            gate.thresholds = real
+        self.assertNotIn("intro_missing", self.rules(gate.story_findings(self.project)))
+
+    def test_the_book_lands_in_order_and_round_trips(self):
+        import contextlib
+        import io
+        _hw.save_json(self.project.chapter_path(0), dict(self.project.chapter(1), chapter=0, title="Introduction"))
+        ch2 = self.project.chapter(2)
+        for c in ch2["claims"]:
+            c["anchor"] = " ".join(cite.flat_sentences(ch2["text"])[0][2].split()[:6])
+        _hw.save_json(self.project.chapter_path(2), ch2)
+        with contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(cite.cmd_book(self.project), 1, "a claim citing a source that does not exist is refused")
+        ch2["claims"] = [c for c in ch2["claims"] if c["source"] in self.project.sources]   # the planted defect
+        _hw.save_json(self.project.chapter_path(2), ch2)
+        with contextlib.redirect_stdout(io.StringIO()):
+            code = cite.cmd_book(self.project)
+        self.assertEqual(code, 0)
+        m = _hw.load_json(self.project.path("book", "manifest.json"))
+        self.assertEqual([c["n"] for c in m["chapters"]], [0, 1, 2])
+        self.assertTrue(all(c["stripsToGatedText"] for c in m["chapters"]))
+        with open(self.project.path("book", "sources.txt")) as fh:
+            self.assertTrue(fh.read().startswith("Sources"))
+
+
+class AppendixNotes(FixtureCase):
+    """The default style since the author's second review (2026-10-03): clean chapters, one Notes
+    appendix keyed by paragraph, numbered Sources, each source once."""
+
+    def test_one_note_per_paragraph_with_unique_numbered_sources(self):
+        notes = cite.notes_appendix(self.project, [1])
+        lines = [l for l in notes.splitlines() if l.startswith("“")]
+        self.assertEqual(len(lines), 2, "chapter 1 has two paragraphs, both cited")
+        self.assertTrue(lines[0].startswith("“Edith Fixture came to Harbor Town from Ohio"), lines[0])
+        nums = cite.source_numbers(self.project, [1])
+        self.assertEqual(sorted(nums.values()), list(range(1, len(nums) + 1)), "numbered 1..n, no gaps")
+        self.assertEqual(nums["s1"], 1, "numbered in the order the story first cites them")
+        for line in lines:
+            refs = [int(x) for x in line.split(": ")[1].rstrip(".").split(", ")]
+            self.assertEqual(len(refs), len(set(refs)), "a source appears once in a note")
+
+    def test_sources_list_each_source_once_with_its_link(self):
+        text = cite.numbered_sources(self.project, [1])
+        entries = [l for l in text.splitlines() if re.match(r"\d+\. ", l)]
+        self.assertEqual(len(entries), len(cite.source_numbers(self.project, [1])))
+        self.assertTrue(all("http" in e for e in entries), entries)
+
+    def test_keys_end_on_a_word_that_carries_meaning(self):
+        self.assertEqual(cite.key_phrase("In 1900 a second line appeared on the masthead of the paper."),
+                         "In 1900 a second line appeared")
+        self.assertEqual(cite.key_phrase('On 3 June 1900 her short story "Sally the Egg-Woman" appeared.'),
+                         "On 3 June 1900 her short story", "a key never splits a quotation")
+        self.assertEqual(cite.key_phrase('She published a piece called "Black Baby Dolls" warning of harm.'),
+                         "She published a piece called ‘Black Baby Dolls’", "a whole quotation may stay")
+        self.assertEqual(cite.key_phrase("In 1909 Booker T. Washington came to Seattle for the exposition."),
+                         "In 1909 Booker T. Washington came to Seattle", "an initial is not a sentence end")
+
+    def test_the_appendix_book_lands_clean_chapters(self):
+        import contextlib
+        import io
+        self.assertEqual(cite.notes_style(), "appendix", "the default style")
+        ch2 = self.project.chapter(2)                      # the planted-defect chapter, made citable
+        ch2["claims"] = [c for c in ch2["claims"] if c["source"] in self.project.sources]
+        for c in ch2["claims"]:
+            c["anchor"] = " ".join(cite.flat_sentences(ch2["text"])[0][2].split()[:6])
+        _hw.save_json(self.project.chapter_path(2), ch2)
+        with contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(cite.cmd_book(self.project), 0)
+        m = _hw.load_json(self.project.path("book", "manifest.json"))
+        self.assertEqual([a["title"] for a in m["appendices"]], ["Notes", "Sources"])
+        with open(self.project.path("book", "01.txt")) as fh:
+            landed = fh.read()
+        self.assertFalse(cite.MARK.search(landed), "no note numbers in the prose")
+        # Clean: the gated prose exactly, under the book's title (the first page carries it).
+        self.assertEqual(landed, cite.title_block(self.project) + "\n\n" + self.project.chapter(1)["text"])
+
+
+class Pictures(FixtureCase):
+    """Pictures gathered while researching (images.json, voice.md §14, 2026-10-03)."""
+
+    def add_picture(self, **over):
+        import images
+        os.makedirs(self.project.path("images"), exist_ok=True)
+        with open(self.project.path("images", "img1.description.txt"), "w") as fh:
+            fh.write("The boarding house on Water Street in Harbor Town, photographed about 1895 by the Fixture studio.\n")
+        rec = {"id": "img1", "title": "File:Fixture boarding house.jpg", "url": "https://upload.wikimedia.org/x/Fixture_(house).jpg",
+               "pageUrl": "https://commons.wikimedia.org/wiki/File:Fixture_boarding_house.jpg", "license": "Public domain",
+               "artist": "Fixture studio", "caption": "The boarding house on Water Street, about 1895",
+               "evidence": "The boarding house on Water Street in Harbor Town, photographed about 1895",
+               "evidenceSource": "description", "chapter": 1, "after": "That year she opened her boarding house"}
+        rec.update(over)
+        _hw.save_json(self.project.path("images", "index.json"), [rec])
+        return images
+
+    def test_searches_add_to_the_candidates_instead_of_replacing_them(self):
+        import images
+        images.merge_candidates(self.project, [{"title": "File:A.jpg", "allowed": True}])
+        held = images.merge_candidates(self.project, [{"title": "File:B.jpg", "allowed": False},
+                                                      {"title": "File:A.jpg", "allowed": True, "note": "newer"}])
+        self.assertEqual([r["title"] for r in held], ["File:A.jpg", "File:B.jpg"])
+        self.assertEqual(held[0].get("note"), "newer", "a title found again takes the newer record")
+
+    def test_licences_a_paid_story_may_use(self):
+        import images
+        for ok in ("Public domain", "PD-US", "CC0", "CC BY 4.0", "CC BY-SA 4.0"):
+            self.assertTrue(images.licence_verdict(ok)[0], ok)
+        for bad in ("CC BY-NC-SA 4.0", "CC BY-ND 2.0", "CC BY-NC 3.0", "Fair use", "", "All rights reserved"):
+            self.assertFalse(images.licence_verdict(bad)[0], bad)
+
+    def test_a_placed_picture_is_checked_like_a_claim(self):
+        images = self.add_picture()
+        self.assertEqual([f["rule"] for f in images.image_findings(self.project) if f["severity"] == "hard"], [])
+        self.add_picture(evidence="The boarding house on Water Street, photographed in 1902 by a stranger")
+        self.assertIn("image_caption_unverified", {f["rule"] for f in images.image_findings(self.project)})
+        self.add_picture(after="Water Street")      # in both paragraphs
+        self.assertIn("image_unplaced", {f["rule"] for f in images.image_findings(self.project)})
+        self.add_picture(license="CC BY-NC 4.0")
+        self.assertIn("image_licence", {f["rule"] for f in images.image_findings(self.project)})
+        self.add_picture(caption="A remarkable boarding house on Water Street")
+        self.assertTrue(any(f["rule"].startswith("image_caption_") for f in images.image_findings(self.project)))
+
+    def test_a_picture_from_a_host_the_reader_will_not_fetch_is_refused(self):
+        # 2026-10-04: Commons began serving scaled copies from thumb.wikimedia.org, a host the
+        # Read view did not list, and four of six pictures in the pilot showed as links.
+        images = self.add_picture(url="https://thumb.wikimedia.org/wikipedia/commons/thumb/x/Fixture.jpg/1280px-Fixture.jpg")
+        self.assertNotIn("image_host_unlisted", {f["rule"] for f in images.image_findings(self.project)})
+        for url in ("https://example.org/house.jpg", "http://upload.wikimedia.org/x/Fixture.jpg"):
+            self.add_picture(url=url)
+            self.assertIn("image_host_unlisted", {f["rule"] for f in images.image_findings(self.project)}, url)
+
+    def test_the_book_shows_the_picture_after_its_paragraph_and_still_round_trips(self):
+        import contextlib
+        import io
+        self.add_picture()
+        ch2 = self.project.chapter(2)
+        ch2["claims"] = [c for c in ch2["claims"] if c["source"] in self.project.sources]
+        for c in ch2["claims"]:
+            c["anchor"] = " ".join(cite.flat_sentences(ch2["text"])[0][2].split()[:6])
+        _hw.save_json(self.project.chapter_path(2), ch2)
+        with contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(cite.cmd_book(self.project), 0)
+        with open(self.project.path("book", "01.txt")) as fh:
+            landed = fh.read()
+        paras = landed.split("\n\n")
+        self.assertTrue(paras[-1].startswith("![The boarding house on Water Street, about 1895. Fixture studio, Public domain.]("), paras[-1])
+        self.assertIn("Fixture_%28house%29.jpg", paras[-1], "parentheses in the URL cannot end the Markdown link")
+        self.assertEqual(" ".join(cite.strip_additions(landed).split()), " ".join(self.project.chapter(1)["text"].split()))
+        with open(self.project.path("book", "sources.txt")) as fh:
+            self.assertIn("\nPictures\n", fh.read())
+
+    def test_an_ordinal_in_a_landmark_name_matches_as_a_numeral_or_a_word(self):
+        # The pack files it as "1st African Methodist Episcopal Church"; the second story wrote it out.
+        name = r"[\s\-–]+".join(cite.word_pattern(w) for w in "1st African Methodist Episcopal Church".split())
+        rx = re.compile(r"\b(?:" + name + r")(?![\w-])", re.I)
+        self.assertTrue(rx.search("It became First African Methodist Episcopal Church, the oldest"))
+        self.assertTrue(rx.search("the 1st African Methodist Episcopal Church"))
+        addr = re.compile(r"\b(?:" + cite.address_pattern("1522 14th Ave") + r")(?![\w-])", re.I)
+        self.assertTrue(addr.search("the parsonage at 1522 Fourteenth Avenue"))
+        self.assertFalse(addr.search("at 1522 15th Ave"))
+        self.assertEqual([cite.ordinal_word(n) for n in (1, 12, 21, 40)], ["first", "twelfth", "twenty-first", "fortieth"])
+
+    def test_the_book_names_a_landmark_the_way_its_prose_does(self):
+        place = {"id": "SL-0094", "name": "1st African Methodist Episcopal Church", "address": "1522 14th Ave"}
+        self.assertEqual(cite.name_as_written(place, "First African Methodist Episcopal Church"),
+                         "First African Methodist Episcopal Church")
+        self.assertEqual(cite.name_as_written(place, "1522 Fourteenth Avenue"), place["name"],
+                         "an address mention keeps the pack's name")
+
+    def test_landmark_addresses_match_their_spellings_and_link_once(self):
+        rx = re.compile(r"\b(?:" + cite.address_pattern("518 14th Ave E") + r")(?![\w-])", re.I)
+        for spelled in ("518 14th Avenue East", "518 14th Ave. E.", "518 14th Ave E"):
+            self.assertTrue(rx.search(f"the house at {spelled}, sold"), spelled)
+        self.assertFalse(rx.search("the house at 5180 14th Avenue East"))
+        self.assertIsNone(cite.address_pattern("Volunteer Park"), "only street addresses")
+        place = {"id": "FX-1", "name": "Fixture House", "address": "518 14th Ave E"}
+        pats = [("FX-1", place, rx)]
+        used = {}
+        out = cite.link_landmarks("At 518 14th Avenue East she lived. 518 14th Avenue East again.", used, pats)
+        self.assertEqual(out.count("](https://mchatai.com/seattle-landmarks/#/l/FX-1)"), 1, "first mention only")
+        self.assertIn("FX-1", used)
+
+
+
+class PictureRemoval(FixtureCase):
+    def test_a_placed_picture_comes_out_whole(self):
+        os.makedirs(self.project.path("images"), exist_ok=True)
+        for name, data in (("img1.jpg", b"jpg"), ("img1.description.txt", b"desc")):
+            with open(self.project.path("images", name), "wb") as fh:
+                fh.write(data)
+        _hw.save_json(self.project.path("images", "index.json"),
+                      [{"id": "img1", "title": "File:X.jpg", "file": "images/img1.jpg", "chapter": 1},
+                       {"id": "img2", "title": "File:Y.jpg", "file": "", "chapter": 2}])
+        import contextlib
+        import io
+        import images
+        with contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(images.cmd_remove(self.project, "img1"), 0)
+            self.assertEqual(images.cmd_remove(self.project, "img9"), 2)
+        self.assertEqual([r["id"] for r in images.index(self.project)], ["img2"])
+        self.assertFalse(os.path.exists(self.project.path("images", "img1.jpg")))
+        self.assertFalse(os.path.exists(self.project.path("images", "img1.description.txt")))
+
+
+class Maps(FixtureCase):
+    """A small street map for each landmark a story names, linked to its page (maps.py, 2026-10-04)."""
+
+    def setUp(self):
+        super().setUp()
+        import maps
+        self.maps = maps
+        self.place = {"id": "FX-1", "name": "Fixture Boarding House", "address": "12 Water St",
+                      "neighborhood": "Harbor Town", "lat": 47.6237, "lon": -122.3143}
+        rx = re.compile(r"\bWater Street(?![\w-])", re.I)
+        self.real = (cite.landmark_patterns, maps.places)
+        cite.landmark_patterns = lambda: [("FX-1", self.place, rx)]
+        maps.places = lambda: {"FX-1": self.place}
+
+        def enc(pts):                      # [(lat, lon)] in the page's delta encoding
+            la, lo = round(pts[0][0] * 1e5), round(pts[0][1] * 1e5)
+            g = [la, lo]
+            for lat, lon in pts[1:]:
+                a, b = round(lat * 1e5), round(lon * 1e5)
+                g += [a - la, b - lo]
+                la, lo = a, b
+            return g
+        geo = {"b": [], "hoods": [],
+               "streets": [{"c": 1, "n": "Water Street", "g": enc([(47.6237, -122.330), (47.6237, -122.300)])},
+                           {"c": 2, "n": "Fourteenth Avenue", "g": enc([(47.615, -122.3143), (47.632, -122.3143)])}],
+               "water": [{"c": 0, "g": enc([(47.619, -122.325), (47.619, -122.320), (47.617, -122.320), (47.617, -122.325)])}]}
+        self.basemap = os.path.join(self.tmp, "geo.json")
+        _hw.save_json(self.basemap, geo)
+
+    def tearDown(self):
+        cite.landmark_patterns, self.maps.places = self.real
+        super().tearDown()
+
+    def render(self):
+        import contextlib
+        import io
+        with contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(self.maps.cmd_render(self.project, [], self.basemap), 0)
+
+    def test_a_named_landmark_gets_a_map_that_carries_its_credit(self):
+        import xml.dom.minidom
+        self.render()
+        rows = self.maps.index(self.project)
+        self.assertEqual([r["id"] for r in rows], ["FX-1"])
+        self.assertEqual(rows[0]["url"], "https://mchatai.com/seattle-landmarks/#/l/FX-1")
+        with open(self.project.path(rows[0]["file"])) as fh:
+            svg = fh.read()
+        xml.dom.minidom.parseString(svg)                 # well formed, so AppKit and browsers draw it
+        self.assertIn('width="640" height="240"', svg)
+        self.assertIn("© OpenStreetMap contributors", svg, "the basemap's licence travels with the map")
+        self.assertIn(">Water Street</text>", svg, "streets are named as on the landmark's page")
+        self.assertIn('r="12"', svg, "the ring that marks the place")
+
+    def test_the_book_puts_the_map_after_the_paragraph_that_first_names_the_place(self):
+        import contextlib
+        import io
+        self.render()
+        ch2 = self.project.chapter(2)
+        ch2["claims"] = [c for c in ch2["claims"] if c["source"] in self.project.sources]
+        for c in ch2["claims"]:
+            c["anchor"] = " ".join(cite.flat_sentences(ch2["text"])[0][2].split()[:6])
+        _hw.save_json(self.project.chapter_path(2), ch2)
+        with contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(cite.cmd_book(self.project), 0)
+        with open(self.project.path("book", "01.txt")) as fh:
+            landed = fh.read()
+        paras = cite.TITLE_BLOCK.sub("", landed).split("\n\n")     # the first page also carries the title
+        self.assertTrue(paras[1].startswith("[![Fixture Boarding House, 12 Water St, Harbor Town. "
+                                            "Click the map for its page in Seattle Landmarks."), paras[1])
+        self.assertIn("](file://", paras[1])
+        self.assertTrue(paras[1].endswith("](https://mchatai.com/seattle-landmarks/#/l/FX-1)"), paras[1])
+        self.assertEqual(landed.count("[!["), 1, "one map per landmark, however often it is named")
+        with open(self.project.path("book", "02.txt")) as fh:
+            self.assertNotIn("[![", fh.read(), "the map goes where the place is written about")
+        self.assertEqual(" ".join(cite.strip_additions(landed).split()), " ".join(self.project.chapter(1)["text"].split()))
+        with open(self.project.path("book", "sources.txt")) as fh:
+            self.assertIn("Maps: Streets and water © OpenStreetMap contributors (ODbL), from the basemap of Seattle Landmarks.", fh.read())
+        self.assertEqual(_hw.load_json(self.project.path("book", "manifest.json"))["maps"], ["FX-1"])
+
+    def test_an_address_names_a_landmark_only_beside_its_name(self):
+        # Horace Cayton's 1917 cafeteria at 815 Second Avenue is not the bank built there later.
+        place = {"id": "FX-2", "name": "Harbor Savings Bank", "address": "815 2nd Ave"}
+        m = cite.LandmarkMatcher(place, None, cite.address_pattern(place["address"]))
+        text = ("In 1917 he sued the owner of the cafeteria at 815 Second Avenue.\n\n"
+                "Years later Harbor Savings put up its bank at 815 2nd Avenue.")
+        self.assertEqual([h.group(0) for h in m.finditer(text)], ["815 2nd Avenue"])
+        self.assertEqual([h.group(0) for h in m.unconfirmed(text)], ["815 Second Avenue"])
+        named = cite.LandmarkMatcher(place, r"Harbor\s+Savings\s+Bank", cite.address_pattern(place["address"]))
+        self.assertTrue(named.search("He kept his money in the Harbor Savings Bank."), "a name needs no help")
+        cite.landmark_patterns = lambda: [("FX-2", place, m)]
+        ch = self.project.chapter(1)
+        ch["text"] += "\n\nIn 1917 she ate at the cafeteria at 815 Second Avenue."
+        _hw.save_json(self.project.chapter_path(1), ch)
+        self.assertIn("landmark_address_unconfirmed", self.rules(cite.check_findings(self.project, [1]), hard_only=False))
+        self.assertNotIn("](https://", cite.link_landmarks(ch["text"].split("\n\n")[-1], {}, cite.landmark_patterns()))
+
+    def test_a_landmark_name_keeps_its_capitals(self):
+        # Seattle has a landmark called "Black Property"; William Grose was "the first Black property owner".
+        place = {"id": "FX-3", "name": "Black Property", "address": "1319 12th Ave S"}
+        m = cite.LandmarkMatcher(place, r"[\s\-–]+".join(cite.cased_word_pattern(w) for w in place["name"].split()),
+                                 cite.address_pattern(place["address"]))
+        self.assertIsNone(m.search("Grose was the first Black property owner in the district."))
+        self.assertTrue(m.search("They restored the Black Property in 1990."))
+        self.assertTrue(m.search("It stands at 1319 12th avenue south, near the Black family's garden."))
+
+    def test_a_full_render_drops_maps_the_story_no_longer_names(self):
+        self.render()
+        drawn = self.project.path(self.maps.index(self.project)[0]["file"])
+        self.assertTrue(os.path.exists(drawn))
+        for n in cite.book_numbers(self.project):
+            ch = self.project.chapter(n)
+            if ch:
+                ch["text"] = ch["text"].replace("Water Street", "the waterfront")
+                _hw.save_json(self.project.chapter_path(n), ch)
+        self.render()
+        self.assertEqual(self.maps.index(self.project), [])
+        self.assertFalse(os.path.exists(drawn))
+
+
+
+class TitleBlock(FixtureCase):
+    """The book names who it is about before anything else (2026-10-04: "in the introduction there
+    is no title in it so it takes a little bit to understand who we are talking about")."""
+
+    def book(self):
+        import contextlib
+        import io
+        ch2 = self.project.chapter(2)
+        ch2["claims"] = [c for c in ch2["claims"] if c["source"] in self.project.sources]
+        for c in ch2["claims"]:
+            c["anchor"] = " ".join(cite.flat_sentences(ch2["text"])[0][2].split()[:6])
+        _hw.save_json(self.project.chapter_path(2), ch2)
+        with contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(cite.cmd_book(self.project), 0)
+        return [open(self.project.path("book", f"{n:02d}.txt")).read() for n in (1, 2)]
+
+    def test_the_first_page_opens_with_the_name_and_years(self):
+        first, second = self.book()
+        # The fixture's series is not in series.json, so the line carries the years alone.
+        self.assertTrue(first.startswith("# Edith Fixture\n\n*1870–1934*\n\n"), first[:80])
+        self.assertFalse(second.startswith("#"), "only the first page carries the title")
+        self.assertEqual(" ".join(cite.strip_additions(first).split()), " ".join(self.project.chapter(1)["text"].split()),
+                         "the title is apparatus: the landed page still strips back to the gated prose")
+        self.assertEqual(_hw.load_json(self.project.path("book", "manifest.json"))["title"], "Edith Fixture")
+
+    def test_the_series_is_named_when_series_json_knows_it(self):
+        meta = _hw.load_json(self.project.path("project.json"))
+        meta["series"] = "black-seattle"
+        _hw.save_json(self.project.path("project.json"), meta)
+        self.assertEqual(cite.title_block(self.project), "# Edith Fixture\n\n*1870–1934 · Black Seattle*")
+
+
+
+class BookEditor(FixtureCase):
+    """The book read once as a whole, and a fresh reader's suggestions gated before the author sees
+    them (editor.py, 2026-10-04: "an overall editor … to look at consistency and overall flow and tone")."""
+
+    def land_book(self):
+        import contextlib
+        import io
+        ch2 = self.project.chapter(2)
+        ch2["claims"] = [c for c in ch2["claims"] if c["source"] in self.project.sources]
+        for c in ch2["claims"]:
+            c["anchor"] = " ".join(cite.flat_sentences(ch2["text"])[0][2].split()[:6])
+        _hw.save_json(self.project.chapter_path(2), ch2)
+        with contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(cite.cmd_book(self.project), 0)
+
+    def add_to_chapter_2(self, sentence):
+        ch2 = self.project.chapter(2)
+        ch2["text"] += " " + sentence
+        _hw.save_json(self.project.chapter_path(2), ch2)
+
+    def test_what_a_reader_meets_twice_and_numbers_that_conflict(self):
+        import editor
+        self.add_to_chapter_2("Edith Fixture came to Harbor Town from Ohio in 1891.")
+        found = {f["rule"]: f for f in editor.check_findings(self.project)}
+        self.assertIn("edith fixture came to harbor town from ohio in", found["told_twice"]["message"])
+        self.assertIn("A reader meets them one after the other", found["told_twice"]["message"])
+        self.assertIn("(1890 against 1891)", found["numbers_disagree"]["message"])
+
+    def test_one_more_detail_is_not_a_disagreement(self):
+        import editor
+        self.add_to_chapter_2("In 1890, aged 24, Edith Fixture came to Harbor Town from Ohio.")
+        self.assertNotIn("numbers_disagree", {f["rule"] for f in editor.check_findings(self.project)})
+
+    def test_a_specific_the_chapters_own_evidence_quotes_is_not_new(self):
+        import contextlib
+        import io
+        import editor
+        self.land_book()
+        ch1 = self.project.chapter(1)
+        ch1["claims"][0]["evidence"] = ch1["claims"][0].get("evidence", "") + " the lot at 12 Water Street"
+        _hw.save_json(self.project.chapter_path(1), ch1)
+        self.assertEqual(editor.new_specifics("the lot at 12 Water Street", ch1["text"]), ["12"])
+        evidence = " ".join(c.get("evidence", "") for c in ch1["claims"])
+        self.assertEqual(editor.new_specifics("the lot at 12 Water Street", ch1["text"] + " " + evidence), [])
+
+    def test_a_chapter_out_of_scale_and_a_drifting_voice(self):
+        import editor
+        k = editor.cfg()
+        short, long_ = "She wrote it down. " * 30, ("She wrote it down in the long ledger that she kept on the "
+                                                   "shelf by the stove in the kitchen of the house. ") * 60
+        chapters = [{"n": 1, "title": "One", "prose": short}, {"n": 2, "title": "Two", "prose": short},
+                    {"n": 3, "title": "Three", "prose": long_}]
+        self.assertEqual([f["rule"] for f in editor.balance_findings(chapters, k)], ["chapter_out_of_scale"])
+        self.assertIn("Three", editor.balance_findings(chapters, k)[0]["message"])
+        self.assertEqual([f["rule"] for f in editor.drift_findings(chapters, k)], ["voice_drift"])
+
+    def test_suggestions_change_words_never_facts(self):
+        import contextlib
+        import io
+        import editor
+        self.land_book()
+        mill = "The men at the mill told her that a woman could not keep a house of twenty boarders."
+        notes = [
+            {"chapter": 1, "kind": "clarity", "quote": mill, "note": "Tighter.",
+             "replacement": "The men at the mill told her a woman could not keep a house of twenty boarders."},
+            {"chapter": 1, "kind": "consistency", "quote": "That year she opened her boarding house on Water Street.",
+             "replacement": "In 1894 she opened her boarding house on Water Street.", "note": "Date it."},
+            {"chapter": 1, "kind": "tone", "note": "Smoother.",
+             "quote": "she wrote to her sister: “I have bought the lot on Water Street and mean to build before the rains.”",
+             "replacement": "she wrote to her sister that she had bought the lot on Water Street and meant to build before the rains."},
+            {"chapter": 1, "kind": "flow", "quote": "She sailed to Alaska.", "replacement": "She sailed.", "note": "Cut."},
+            {"chapter": 1, "kind": "clarity", "quote": "The men at the mill told her", "note": "Name him.",
+             "replacement": "John Smith at the mill told her"},
+            {"chapter": 1, "kind": "tone", "quote": "It cost four hundred dollars.", "note": "Lift it.",
+             "replacement": "It cost a remarkable four hundred dollars."},
+            {"chapter": 1, "kind": "flow", "quote": "That year she opened her boarding house on Water Street.",
+             "note": "The reader has to look back to know which year."},
+            {"chapter": 9, "kind": "flow", "quote": "x", "replacement": "y", "note": "z"},
+            {"chapter": 1, "kind": "praise", "quote": mill, "replacement": "A line.", "note": "z"},
+        ]
+        _hw.save_json(self.project.path("editor", "notes.json"), notes)
+        with contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(editor.cmd_verify(self.project), 0)
+        kept = _hw.load_json(self.project.path("editor", "suggestions.json"))
+        self.assertEqual([s["index"] for s in kept], [0])
+        self.assertEqual((kept[0]["find"], kept[0]["label"]), (mill, "Editor: clarity"))
+        self.assertEqual([n["index"] for n in _hw.load_json(self.project.path("editor", "letter.json"))], [6])
+        why = {d["index"]: d["reason"] for d in _hw.load_json(self.project.path("editor", "dropped.json"))}
+        self.assertIn("adds 1894", why[1])
+        self.assertIn("neither the chapter nor its sources' quotes", why[1])
+        self.assertIn("alters quoted words", why[2])
+        self.assertIn("not in the chapter as landed", why[3])
+        self.assertIn("adds John, Smith", why[4])
+        self.assertIn("fails praise_label", why[5])
+        self.assertIn("not in the book", why[7])
+        self.assertIn("kind must be", why[8])
+
+
+
+class AdoptReview(FixtureCase):
+    """After the author's review their text becomes the story's, and the notes follow it
+    (cite.py adopt, 2026-10-04: "the Notes need rebuilding before the book is final")."""
+
+    def land_book(self):
+        import contextlib
+        import io
+        ch2 = self.project.chapter(2)
+        ch2["claims"] = [c for c in ch2["claims"] if c["source"] in self.project.sources]
+        for c in ch2["claims"]:
+            c["anchor"] = " ".join(cite.flat_sentences(ch2["text"])[0][2].split()[:6])
+        _hw.save_json(self.project.chapter_path(2), ch2)
+        with contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(cite.cmd_book(self.project), 0)
+        with open(self.project.path("book", "01.txt")) as fh:
+            return fh.read()
+
+    def review(self, text):
+        os.makedirs(self.project.path("review"), exist_ok=True)
+        with open(self.project.path("review", "01.txt"), "w") as fh:
+            fh.write(text)
+
+    def adopt(self):
+        import contextlib
+        import io
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            code = cite.cmd_adopt(self.project)
+        return code, out.getvalue()
+
+    def test_an_accepted_edit_becomes_the_text_and_the_book_rebuilds(self):
+        import contextlib
+        import io
+        landed = self.land_book()
+        before = self.project.chapter(1)["text"]
+        self.review(landed.replace("That year she opened her boarding house", "That year she opened a boarding house"))
+        code, out = self.adopt()
+        self.assertEqual(code, 0, out)
+        ch = self.project.chapter(1)
+        self.assertIn("That year she opened a boarding house", ch["text"])
+        self.assertNotIn("# Edith Fixture", ch["text"], "the title is apparatus, not the author's prose")
+        self.assertEqual(ch["revisions"][-1]["before"], before.strip())
+        self.assertEqual(cite.anchor_findings(self.project, 1), [], "every anchor still points at one sentence")
+        with contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(cite.cmd_book(self.project), 0)
+
+    def test_a_cut_fact_leaves_its_claim_to_settle_and_retiring_it_lands(self):
+        import contextlib
+        import io
+        landed = self.land_book()
+        self.review(landed.replace(" It cost four hundred dollars.", ""))
+        code, out = self.adopt()
+        self.assertEqual(code, 1, "a claim whose sentence is gone must be settled")
+        self.assertIn("to settle", out)
+        ch = self.project.chapter(1)
+        for c in ch["claims"]:
+            if c.get("anchor") is None:
+                c["retired"] = "cut by the author"
+        _hw.save_json(self.project.chapter_path(1), ch)
+        with contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(cite.cmd_book(self.project), 0, "with the claim retired the book lands again")
+
+    def test_a_number_the_author_adds_is_a_question_never_a_fix(self):
+        landed = self.land_book()
+        self.review(landed.replace("It cost four hundred dollars.", "It cost four hundred dollars, and she had 31 boarders by 1896."))
+        code, out = self.adopt()
+        self.assertIn("? number_unsourced", out)
+        self.assertIn("31 boarders", self.project.chapter(1)["text"], "the author's text is kept as they wrote it")
+
+    def test_an_unchanged_chapter_is_left_alone(self):
+        landed = self.land_book()
+        self.review(landed)
+        code, out = self.adopt()
+        self.assertEqual(code, 0)
+        self.assertIn("chapter 1: unchanged", out)
+        self.assertNotIn("revisions", self.project.chapter(1))
+
+
+
+class MentionMatching(FixtureCase):
+    """Who counts as the subject (2026-10-04, the second story's run: an OCR line break hid a
+    source, and his sons were counted as him)."""
+
+    def test_an_alias_matches_across_an_ocr_line_break(self):
+        text = "the Rainier Club, with John T.\nGayton as steward and Will Taylor as head waiter"
+        self.assertEqual(len(richness.alias_matches(text, ["John T. Gayton"])), 1)
+
+    def test_an_alias_ending_in_a_full_stop_matches(self):
+        self.assertEqual(len(richness.alias_matches("the club and J. T. Gayton Jr. sang", ["Gayton Jr."])), 1)
+        self.assertEqual(richness.alias_matches("Gaytonville", ["Gayton"]), [], "a word edge, not part of a longer word")
+
+    def test_his_sons_are_not_him(self):
+        text = "John Gayton Jr. sang a tenor solo. Later John Gayton spoke for the club."
+        found = richness.alias_matches(text, ["John Gayton"], ["John Gayton Jr."])
+        self.assertEqual(len(found), 1)
+        self.assertTrue(text[found[0][0]:].startswith("John Gayton spoke"))
+
+    def test_a_dossier_counted_by_an_older_tool_is_noted(self):
+        d = self.project.dossier
+        d["computed"]["countVersion"] = "2026-10-02"
+        _hw.save_json(self.project.path("dossier.json"), d)
+        self.assertIn("dossier_counted_by_older_tool", {f["rule"] for f in richness.validate_plan(self.project, write=False)})
+
+
+
+FAKE_SHIM = """#!/usr/bin/env python3
+import json, os, sys, uuid
+path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fake-storymaker.json")
+st = json.load(open(path)) if os.path.exists(path) else {"chapters": [], "edited": []}
+req = json.loads(sys.argv[2])
+verb, a = req["verb"], req.get("args", {})
+def out(status="ok", result=None, error=None):
+    json.dump(st, open(path, "w"))
+    print(json.dumps({"status": status, "result": result or {}, "error": error}))
+    sys.exit(0)
+find = lambda cid: next((c for c in st["chapters"] if c["id"] == cid), None)
+if verb == "getProject":
+    out(result={"chapters": [{"id": c["id"], "title": c["title"]} for c in st["chapters"]]})
+if verb == "getChapter":
+    c = find(a.get("chapterID"))
+    out(result={"text": c["text"]}) if c else out("error", error="no chapter")
+if verb == "createChapter":
+    c = {"id": str(uuid.uuid4()).upper(), "title": a["title"], "text": a["text"]}
+    ids = [x["id"] for x in st["chapters"]]
+    st["chapters"].insert(ids.index(a["before"]), c) if a.get("before") in ids else st["chapters"].append(c)
+    out(result={"chapterID": c["id"]})
+if verb == "getOutline":
+    out(result={"chapters": st.get("outline", [])})
+if verb == "setOutline":
+    if st.get("outlineEdited"):
+        out("error", error="the author edited the outline")
+    st["outline"] = a["chapters"]
+    out(result={"chapters": len(a["chapters"]), "linked": sum(1 for r in a["chapters"] if r.get("linkedChapterID"))})
+if verb == "proposeSuggestion":
+    st.setdefault("suggestions", []).append({"chapterID": a.get("chapter"), "label": a.get("label", ""),
+                                             "replacementPreview": a["replacement"][:60], "status": "pending"})
+    out()
+if verb == "listSuggestions":
+    out(result={"suggestions": st.get("suggestions", [])})
+if verb == "replaceChapter":
+    if a["chapter"] in st["edited"]:
+        out("error", error="the author edited this chapter")
+    find(a["chapter"])["text"] = a["text"]
+    out()
+out("error", error="unknown verb " + verb)
+"""
+
+
+def built_book_and_fake_storymaker(case):
+    """The fixture's book built, and a fake StoryMaker shim beside it (LandBook, SeriesBook)."""
+    import contextlib
+    import io
+    shim = os.path.join(case.tmp, "mchatai")
+    with open(shim, "w") as fh:
+        fh.write(FAKE_SHIM)
+    os.chmod(shim, 0o755)
+    case.state = os.path.join(case.tmp, "fake-storymaker.json")
+    meta = _hw.load_json(case.project.path("project.json"))
+    meta["storymakerProject"] = "P1"
+    _hw.save_json(case.project.path("project.json"), meta)
+    ch2 = case.project.chapter(2)
+    ch2["claims"] = [c for c in ch2["claims"] if c["source"] in case.project.sources]
+    for c in ch2["claims"]:
+        c["anchor"] = " ".join(cite.flat_sentences(ch2["text"])[0][2].split()[:6])
+    _hw.save_json(case.project.chapter_path(2), ch2)
+    with contextlib.redirect_stdout(io.StringIO()):
+        case.assertEqual(cite.cmd_book(case.project), 0)
+
+
+class LandBook(FixtureCase):
+    """cite.py land: the book goes into StoryMaker without passing through a model (2026-10-04:
+    the second story pasted 5,235 words as shell arguments, and apostrophes broke the quoting)."""
+
+    def setUp(self):
+        super().setUp()
+        built_book_and_fake_storymaker(self)
+
+    def land(self):
+        import contextlib
+        import io
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            code = cite.cmd_land(self.project)
+        return code, out.getvalue()
+
+    def test_an_empty_project_gets_every_chapter_in_order_and_reads_back(self):
+        code, out = self.land()
+        self.assertEqual(code, 0, out)
+        held = _hw.load_json(self.state)["chapters"]
+        self.assertEqual([c["title"] for c in held][-2:], ["Notes", "Sources"])
+        with open(self.project.path("book", "01.txt")) as fh:
+            self.assertEqual(held[0]["text"].strip(), fh.read().strip())
+        meta = _hw.load_json(self.project.path("project.json"))
+        self.assertTrue(meta.get("notesChapterID") and meta.get("sourcesChapterID"))
+        self.assertEqual(self.project.chapter(1)["storymaker"]["chapterID"], held[0]["id"])
+        outline = _hw.load_json(self.state)["outline"]
+        self.assertEqual([r["linkedChapterID"] for r in outline], [c["id"] for c in held], "every row linked to its chapter, in order")
+        self.assertIn("outline: set, 4 rows, 4 linked", out)
+        code, out = self.land()
+        self.assertEqual(code, 0)
+        self.assertEqual(out.count(": unchanged"), 4, out)
+
+    def test_landing_keeps_the_outline_summaries_a_plan_never_stored(self):
+        # Horace Cayton's plan held no summaries, and landing blanked his outline (2026-10-05).
+        plan = _hw.load_json(self.project.path("plan.json"))
+        for c in plan["chapters"]:
+            c.pop("summary", None)
+        _hw.save_json(self.project.path("plan.json"), plan)
+        st = _hw.load_json(self.state) if os.path.exists(self.state) else {"chapters": [], "edited": []}
+        st["outline"] = [{"title": c["title"], "summary": f"What happens in {c['title']}.", "linkedChapterID": ""}
+                         for c in plan["chapters"]]
+        _hw.save_json(self.state, st)
+        code, out = self.land()
+        self.assertEqual(code, 0, out)
+        rows = {r["title"]: r for r in _hw.load_json(self.state)["outline"]}
+        for c in plan["chapters"]:
+            title = (self.project.chapter(c["n"]) or {}).get("title") or c["title"]
+            self.assertEqual(rows[title]["summary"], f"What happens in {c['title']}.", title)
+        intro = [r for r in rows.values() if r["title"] == "Introduction"]
+        if intro:
+            self.assertNotIn("he or she", intro[0]["summary"])
+
+    def test_the_outline_command_sets_the_plans_summaries_with_no_shell(self):
+        import contextlib
+        import io
+        plan = _hw.load_json(self.project.path("plan.json"))
+        plan["chapters"][0]["summary"] = "She buys the lot on Water Street, and the mill's men doubt her."
+        for c in plan["chapters"][1:]:
+            c.pop("summary", None)
+        _hw.save_json(self.project.path("plan.json"), plan)
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            self.assertEqual(cite.cmd_outline(self.project), 0)
+        rows = _hw.load_json(self.state)["outline"]
+        self.assertEqual(rows[0]["summary"], "She buys the lot on Water Street, and the mill's men doubt her.")
+        self.assertEqual(len(rows), len(plan["chapters"]))
+        self.assertIn("no `summary` for chapter(s)", out.getvalue())
+
+    def test_the_editors_suggestions_land_once(self):
+        import contextlib
+        import io
+        import editor
+        os.makedirs(self.project.path("editor"), exist_ok=True)
+        _hw.save_json(self.project.path("editor", "suggestions.json"), [
+            {"chapter": 1, "chapterID": "C1", "find": "Edith Fixture came to Harbor Town", "label": "Editor: flow",
+             "replacement": "In 1890 Edith Fixture came to Harbor Town, from Ohio, and stayed.", "rationale": ["why"]},
+            {"chapter": 2, "chapterID": "C2", "find": "That year she opened", "label": "Editor: clarity",
+             "replacement": "That year she opened her boarding house; it's on Water Street.", "rationale": ["why"]}])
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            self.assertEqual(editor.cmd_land(self.project), 0)
+            self.assertEqual(editor.cmd_land(self.project), 0)
+        self.assertIn("land: 2 sent, 0 already in StoryMaker, 0 not sent; 2 waiting", out.getvalue())
+        self.assertIn("land: 0 sent, 2 already in StoryMaker, 0 not sent; 2 waiting", out.getvalue())
+
+    def test_a_part_landed_by_hand_is_found_by_title_not_duplicated(self):
+        _hw.save_json(self.state, {"chapters": [{"id": "HAND-NOTES", "title": "Notes", "text": "old notes"}], "edited": []})
+        code, out = self.land()
+        self.assertEqual(code, 0, out)
+        titles = [c["title"] for c in _hw.load_json(self.state)["chapters"]]
+        self.assertEqual(titles.count("Notes"), 1, titles)
+        self.assertEqual(_hw.load_json(self.project.path("project.json"))["notesChapterID"], "HAND-NOTES")
+        self.assertIn("Notes: replaced", out)
+
+    def test_a_chapter_the_author_edited_is_never_replaced(self):
+        self.land()
+        st = _hw.load_json(self.state)
+        st["edited"] = [st["chapters"][0]["id"]]
+        st["chapters"][0]["text"] = "The author's own version."
+        _hw.save_json(self.state, st)
+        code, out = self.land()
+        self.assertEqual(code, 1)
+        self.assertIn("REFUSED", out)
+        self.assertIn("proposeSuggestion", out)
+        self.assertEqual(_hw.load_json(self.state)["chapters"][0]["text"], "The author's own version.")
+
+    def test_a_chapter_with_quotes_and_apostrophes_lands_exactly(self):
+        ch1 = self.project.chapter(1)
+        self.assertIn("“", ch1["text"], "the fixture's chapter 1 carries a curly-quoted letter")
+        code, out = self.land()
+        self.assertEqual(code, 0, out)
+        with open(self.project.path("book", "01.txt")) as fh:
+            self.assertEqual(_hw.load_json(self.state)["chapters"][0]["text"].strip(), fh.read().strip())
+
+
+class SeriesBook(FixtureCase):
+    """series_book.py: a series' landed stories as one book, read back from StoryMaker so the
+    author's text wins, in the order the subjects arrived (2026-10-05, "Black Seattle").
+    Borrows LandBook's fixture (a built book and a fake StoryMaker) without rerunning its tests."""
+
+    land = LandBook.land
+
+    ENTRY = {"id": "fixture", "title": "Fixture Lives", "book": {
+        "title": "Fixture Lives", "intro": "Test lives.",
+        "parts": [{"title": "Early", "from": 1800, "to": 1899}, {"title": "Later", "from": 1900}],
+        "companion": {"title": "Guide", "url": "https://example.org/guide/"}}}
+
+    def setUp(self):
+        super().setUp()
+        built_book_and_fake_storymaker(self)
+        import series_book
+        self.sb = series_book
+        self._entry = series_book.series_entry
+        series_book.series_entry = lambda sid: (self.ENTRY if sid == "fixture" else None, "Seattle")
+        self.out = os.path.join(self.tmp, "web")
+
+    def tearDown(self):
+        self.sb.series_entry = self._entry
+        super().tearDown()
+
+    def build(self, publish=False, files=False):
+        import contextlib
+        import io
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            code = self.sb.cmd_build(self.tmp, "fixture", self.out, use_files=files, publish=publish)
+        return code, buf.getvalue()
+
+    def data(self):
+        page = read(os.path.join(self.out, "index.html"))
+        raw = re.search(r'<script id="data" type="application/json">(.*?)</script>', page, re.S).group(1)
+        return json.loads(raw.replace("<\\/", "</"))
+
+    def test_the_book_is_read_back_from_storymaker_so_the_authors_edit_wins(self):
+        code, out = self.land()
+        self.assertEqual(code, 0, out)
+        st = _hw.load_json(self.state)
+        st["chapters"][0]["text"] += "\n\nA paragraph the author added in StoryMaker."
+        _hw.save_json(self.state, st)
+        code, out = self.build()
+        self.assertEqual(code, 0, out)
+        story = self.data()["stories"]["edith-fixture"]
+        self.assertIn("A paragraph the author added in StoryMaker.", story["chapters"][0]["html"])
+        self.assertTrue(story["draft"])
+
+    def test_publishing_waits_for_the_authors_and_the_communitys_review(self):
+        self.assertEqual(self.land()[0], 0)
+        code, out = self.build(publish=True)
+        self.assertEqual(code, 0, out)
+        self.assertEqual(self.data()["order"], [], "an unreviewed story must not be published")
+        self.assertIn("held", out)
+        meta = _hw.load_json(self.project.path("project.json"))
+        meta["review"] = {"author": "2026-10-05", "community": {"reader": "a reader", "date": "2026-10-05"}}
+        _hw.save_json(self.project.path("project.json"), meta)
+        code, out = self.build(publish=True)
+        self.assertEqual(code, 0, out)
+        self.assertEqual(self.data()["order"], ["edith-fixture"])
+        self.assertFalse(self.data()["stories"]["edith-fixture"]["draft"])
+
+    def test_a_picture_the_hosted_page_cannot_show_refuses_a_published_book(self):
+        meta = _hw.load_json(self.project.path("project.json"))
+        meta["review"] = {"author": "2026-10-05", "community": {"reader": "a reader", "date": "2026-10-05"}}
+        _hw.save_json(self.project.path("project.json"), meta)
+        with open(self.project.path("book", "01.txt"), "a", encoding="utf-8") as fh:
+            fh.write("\n\n![A picture with no record. Someone, Public domain.](https://example.org/x.jpg)\n")
+        code, out = self.build(publish=True, files=True)
+        self.assertEqual(code, 1, out)
+        self.assertIn("no local copy of the picture", out)
+        code, out = self.build(files=True)
+        self.assertEqual(code, 0, "a draft for the author still builds, and says so")
+        self.assertIn("problem:", out)
+
+    def test_a_folder_the_tool_did_not_make_is_never_emptied(self):
+        os.makedirs(os.path.join(self.out, "resources"))
+        with open(os.path.join(self.out, "resources", "keep.txt"), "w") as fh:
+            fh.write("someone else's")
+        code, out = self.build(files=True)
+        self.assertEqual(code, 2, out)
+        self.assertTrue(os.path.exists(os.path.join(self.out, "resources", "keep.txt")))
+
+    def test_render_pictures_landmarks_and_each_paragraphs_sources(self):
+        ctx = {"picture": lambda url, alt: "resources/img/x.jpg"}
+        md = ("The house at [518 14th Avenue East](https://mchatai.com/seattle-landmarks/#/l/SL-0648) stood.\n\n"
+              "![A house. Someone, Public domain.](https://example.org/a.jpg)\n\n"
+              "[![A map.](file:///tmp/m.svg)](https://mchatai.com/seattle-landmarks/#/l/SL-0284)\n\n"
+              "He came to Seattle in 1859 or soon after.")
+        html_ = self.sb.render(md, ctx, [("He came to Seattle in 1859", [3, 12])], "w")
+        self.assertIn('class="lm" data-l="SL-0648"', html_)
+        self.assertIn('<figure><img src="resources/img/x.jpg"', html_)
+        self.assertIn('data-l="SL-0284"', html_)
+        self.assertNotIn('class="lm" data-l="SL-0284"', html_, "a linked map is a picture, not a pinned phrase")
+        self.assertIn('<a href="#/p/w/sources/3">3</a>,<a href="#/p/w/sources/12">12</a>', html_)
+        self.assertEqual(ctx["places"], ["SL-0648", "SL-0284"])
+        self.assertNotIn("javascript:", self.sb.render("Click [here](javascript:alert(1)).", {"picture": str}))
+        self.assertIn('href="https://en.wikipedia.org/wiki/William_Grose_(pioneer)"',
+                      self.sb.render("See [it](https://en.wikipedia.org/wiki/William_Grose_(pioneer)).", {"picture": str}))
+
+    def test_years_portraits_and_first_sentences(self):
+        self.assertEqual(self.sb.span("The Rainier Club, 1889 to 1904"), ("The Rainier Club", 1889, 1904))
+        self.assertEqual(self.sb.span("Pioneer Square, 1859-1882"), ("Pioneer Square", 1859, 1882))
+        self.assertEqual(self.sb.span("The 1909 election"), ("The 1909 election", None, None))
+        names = ["Powell Barnett", "Powell S. Barnett"]
+        self.assertTrue(self.sb.is_portrait("Powell Barnett, about 1950.", names))
+        self.assertTrue(self.sb.is_portrait("Seattle City Councilmember Powell Barnett, June 1960", names))
+        self.assertFalse(self.sb.is_portrait("Powell Barnett (second from left) shown the plans", names))
+        self.assertFalse(self.sb.is_portrait("Powell Barnett Park, in Leschi.", names))
+        self.assertFalse(self.sb.is_portrait("Carver Barnett, his grandson, 2001.", names))
+        self.assertEqual(self.sb.first_sentence("In 1947 she began teaching at Frank B. Cooper School. Then more."),
+                         "In 1947 she began teaching at Frank B. Cooper School.")
+
+    def test_arrival_is_the_earliest_arrival_that_names_the_place(self):
+        d = _hw.load_json(self.project.path("dossier.json"))
+        d["events"] = [{"id": "a", "date": "1885", "what": "Moved to Kansas.", "lifeStage": "arrival"},
+                       {"id": "b", "date": "1890", "what": "Arrived in Seattle.", "lifeStage": "arrival"},
+                       {"id": "c", "date": "1870", "what": "Born.", "lifeStage": "birth"}]
+        _hw.save_json(self.project.path("dossier.json"), d)
+        self.assertEqual(self.sb.arrival(self.project, "Seattle")[0], 1890)
+        d["events"] = [e for e in d["events"] if e["id"] == "a"]
+        _hw.save_json(self.project.path("dossier.json"), d)
+        self.assertEqual(self.sb.arrival(self.project, "Seattle")[0], 1885)
+
+
+class Survey(unittest.TestCase):
+    """survey.py: the long list's pure parts. Leads, not members (2026-10-05)."""
+
+    def setUp(self):
+        import survey
+        self.sv = survey
+
+    def test_life_dates_read_every_form_the_encyclopedias_use(self):
+        self.assertEqual(self.sv.life_dates("1883-1971"), (1883, 1971, False))
+        self.assertEqual(self.sv.life_dates("b. 1946"), (1946, None, True))
+        self.assertEqual(self.sv.life_dates("1986-  "), (1986, None, True))
+        self.assertEqual(self.sv.life_dates("1812-?"), (1812, None, False))
+        self.assertEqual(self.sv.life_dates("1835?-1860?"), (1835, 1860, False))
+
+    def test_one_person_under_two_spellings_is_one_row(self):
+        rows = [
+            {"name": "Norman B. Rice", "born": 1943, "died": None, "living": True, "summary": "a",
+             "source": {"site": "HistoryLink", "url": "u1", "title": "Rice, Norman B. (b. 1943)"}},
+            {"name": "Norm Rice", "born": 1943, "died": None, "living": True, "summary": "b",
+             "source": {"site": "BlackPast", "url": "u2", "title": "Norm Rice (1943-  )"}},
+            {"name": "Emanuel Lopes", "born": 1812, "died": 1895, "living": False,
+             "source": {"site": "BlackPast", "url": "u3", "title": "Emanuel Lopes (1812-1895)"}},
+            {"name": "Manuel Lopes", "born": 1812, "died": None, "living": False,
+             "source": {"site": "HistoryLink", "url": "u4", "title": "Lopes, Manuel (1812-?)"}},
+            {"name": "Horace Roscoe Cayton Sr.", "born": 1859, "died": 1940, "living": False,
+             "source": {"site": "HistoryLink", "url": "u5", "title": "x"}},
+            {"name": "Horace R. Cayton Jr.", "born": 1903, "died": 1970, "living": False,
+             "source": {"site": "HistoryLink", "url": "u6", "title": "y"}},
+        ]
+        people = self.sv.merge(rows)
+        self.assertEqual(len(people), 4, [p["names"] for p in people])
+        lopes = next(p for p in people if "Manuel Lopes" in p["names"])
+        self.assertEqual(lopes["died"], 1895)
+
+    def test_a_son_or_grandson_with_the_same_name_is_not_our_story(self):
+        tmp = tempfile.mkdtemp(prefix="hw-survey-")
+        try:
+            root = os.path.join(tmp, "john-t-gayton")
+            os.makedirs(os.path.join(root, "book"))
+            _hw.save_json(os.path.join(root, "project.json"), {"slug": "john-t-gayton", "subject": "John Thomas Gayton"})
+            _hw.save_json(os.path.join(root, "dossier.json"), {"subject": "John Thomas Gayton",
+                          "aliases": ["John T. Gayton"], "lifespan": {"born": "", "died": "1954"}})
+            _hw.save_json(os.path.join(root, "book", "manifest.json"), {"chapters": []})
+            people = [{"name": n, "names": [n], "born": b} for n, b in
+                      (("John T. Gayton", 1866), ("John Jacob Gayton", 1899), ("John Cyrus Gayton", 1931))]
+            self.sv.status_of(people, tmp, [])
+            self.assertEqual([p.get("status") for p in people], ["written", None, None])
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
+
+    def test_a_nickname_merges_only_with_the_same_birth_year(self):
+        row = lambda n, b: {"name": n, "born": b, "died": None, "living": False,
+                            "source": {"site": "x", "url": n, "title": n}}
+        self.assertEqual(len(self.sv.merge([row("Sam Smith", 1922), row("Samuel J. Smith", 1922)])), 1)
+        self.assertEqual(len(self.sv.merge([row("Sam Smith", 1922), row("Samuel Smith", 1950)])), 2)
+
+    def test_notable_from_is_a_role_or_arrival_in_the_place_never_a_birth(self):
+        text = ("Bruce Harrell was born in Seattle in 1958. He graduated from Garfield High School in 1976. "
+                "In 2007 he was elected to the Seattle City Council. He became mayor of Seattle in 2022.")
+        self.assertEqual(self.sv.notable_from(text, 1958, ["Seattle"])[0], 2007)
+        self.assertEqual(self.sv.notable_from("Lopes arrived in Seattle in 1852 and opened a barbershop.", 1812,
+                                              ["Seattle"])[0], 1852)
+        self.assertIsNone(self.sv.notable_from("She was born in Seattle in 1957.", 1957, ["Seattle"]))
+
+    def test_fields_come_from_the_summary(self):
+        self.assertEqual(self.sv.field_of("a jazz pianist and bandleader"), "music")
+        self.assertEqual(self.sv.field_of("the first Black mayor of Seattle"), "government & law")
+        self.assertEqual(self.sv.field_of("pastor of Mount Zion Baptist Church"), "faith")
 
 
 class Fetching(FixtureCase):

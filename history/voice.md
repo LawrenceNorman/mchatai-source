@@ -1,7 +1,7 @@
 ---
 id: history-story-voice
-version: 1
-updated: 2026-10-02
+version: 4
+updated: 2026-10-03
 appliesTo: long-form narrative-nonfiction history stories written by the History Writer
 derivedFrom: the Seattle Landmarks narration rules, version 8
 enforcedBy: history/lint-rules.json + history/tools/gate.py
@@ -57,7 +57,9 @@ different instructions; this file asks only for the first. See §3.
 
 ## 3. Never narrate the record
 
-**The reader does not know a document exists, and must never find out.**
+**In the prose, the reader never meets a document.** The Notes and Sources at the end of the
+story carry the sourcing, and `tools/cite.py` renders both from the claims when the story
+lands. The sentences carry the story.
 
 Never write, in any phrasing: "the record does not say", "the report is silent", "nothing more
 is known", "the file", "it names no", "the report says", "according to the nomination", "in the
@@ -176,16 +178,95 @@ like you were reciting, rewrite it.
 
 - Past tense for history. Plain English. Short sentences when in doubt.
 - Chapter titles are concrete (a place, a year, an act), never a pun or a theme.
-- No headings inside a chapter, no bullet lists, no footnote markers in the prose. Citations
-  are claims beside the text, not apparatus inside it.
+- No headings inside a chapter, no bullet lists, and no footnote markers in the prose you
+  write. Give every claim an `anchor`: a few words, copied exactly, of the sentence it
+  supports. `cite.py` keys each note to the paragraph its anchors fall in. The reader finds
+  the notes in one appendix at the end, and a narration reads the prose unchanged.
+  [claim_unanchored, anchor_unresolved]
 - Quotation is short. Never reproduce a passage from a facts-only (copyrighted) source outside
   quotation marks. [verbatim_copy] Public-domain sources may be quoted at length, and rarely
   should be.
 - No stage directions to the reader ("imagine you", "as you can see"). [stage_direction]
 
+## 13. The introduction
+
+Every story opens with a short introduction, written after the chapters, when the whole life
+is known. It is `chapters/00.json`, gated like a chapter (`gate.py intro`), 200 to 600 words.
+
+- **Introduce a stranger.** Write for a reader who has never heard her name. In a few concrete
+  sentences, say who she was, where and when she lived, and what she did that the chapters
+  will show.
+- **Open on a specific true thing,** as §5 asks of a chapter: a date, a place, an act, an
+  object. Never open on a theme, a thesis or a verdict.
+- **Show why her life is worth a story** by what she did, never by praise. No "remarkable",
+  "pioneering", "trailblazing", "unsung" or "forgotten". [praise_label]
+- **Never summarise the chapters one by one,** and never tell the reader what they will feel.
+- Every fact is a claim with evidence and an anchor, exactly as in a chapter. The voice rules
+  all hold, including §3: no document, archive or "record" in the prose.
+- **The book's title stands above it**: her name, then her years and the series. It is added
+  when the story lands (`cite.py book`), never written into the prose, so the opening can stay
+  a specific true thing and the reader still knows at once whom the book is about.
+
+## 14. Pictures
+
+A story carries pictures the way a good history book does: a few, real, and each one earning
+its place beside the paragraph it belongs to. They are gathered while researching, not hunted
+for afterwards (`tools/images.py`, `images.json`).
+
+- **Only real photographs, documents and maps** from open archives. Never a generated or
+  "illustrative" picture of a real person, place or scene: that is invention in another
+  medium.
+- **The caption is a fact.** Say what the picture shows, and when, in plain words, checked
+  against the picture's own description or a story source like any claim. No praise and no
+  mood. [praise_label, image_caption_unverified]
+- **Every picture is credited**, with a licence a paid story may use: public domain, CC0,
+  CC BY or CC BY-SA. Never non-commercial or no-derivatives. [image_licence, image_uncredited]
+- **At most three to a chapter.** Place each one after the paragraph it illustrates, never
+  before the first paragraph.
+
+When a chapter names a designated landmark, the landed text links its first mention to the
+landmark's page on the public Seattle Landmarks site. The prose itself carries no link.
+
+Each landmark the story names also gets **one map**: a small street map drawn from the
+landmark site's own basemap (`tools/maps.py`), the same picture a reader finds at the bottom
+of the landmark's page. It goes after the paragraph that first names the landmark, in the
+chapter that names it most, and clicking it opens the landmark's page. Its caption names the
+place and credits OpenStreetMap, whose licence requires it. A map is apparatus, like a note,
+and it does not count against a chapter's three pictures.
+
 ---
 
 ## Change log
+
+**v4.2 — 2026-10-04.** Lawrence: "in the introduction there is no title in it so it takes a
+little bit to understand who we are talking about". The first page now carries the title (§13).
+
+**v4.1 — 2026-10-04.** Lawrence: "include perhaps clickable map locations mini-map-screen-snippets
+in these documents so that the reader can orientation and then quickly be brought into the
+mchatai.com/seattle-landmarks". One map per named landmark (§14), drawn by `tools/maps.py`.
+A picture must come from a host the Read view loads (`image_host_unlisted`): four of the
+pilot's six showed as links because Commons now serves scaled copies from thumb.wikimedia.org.
+
+**v4 — 2026-10-03.** Lawrence: "It makes more sense to compile the images as we are gathering
+this info … so I can get a better sense of the content before publishing to the web", and
+"include links to the mchatai.com/seattle-landmarks POI for the 'Susie Cayton' as well as
+photos." §14 added. StoryMaker's Read view now draws a chapter's pictures, and its links work.
+
+**v3 — 2026-10-03.** Lawrence, reading v2's per-sentence notes: "there are a lot of sources
+but we should make sure they are unique or something so they don't overwhelm the little bit
+of text they support … or perhaps we just put all of the citations in an appendix at the end."
+The notes moved to one appendix, the usual form for narrative history. The chapters land as
+clean prose, each paragraph gets one note keyed by its opening words, and each source appears
+once in a numbered Sources list with its link. Superscripts remain available as
+`citations.json` `notesStyle: "inline"`.
+
+**v2 — 2026-10-03.** Lawrence, reviewing the first pilot (Susie Revels Cayton): "This is a
+good start but seems like we need an introduction and references and citations." Added §13,
+the introduction. §3 and §12 now separate the prose from the apparatus. The prose stays free
+of documents and markers, and `tools/cite.py` renders numbered notes and a Sources list from
+the claims' anchors when the story lands. v1 had kept citations entirely out of the reader's
+view, a rule carried over from narrated landmark entries; a book needs them.
+
 
 **v1 — 2026-10-02.** Derived from the Seattle Landmarks narration rules at version 8. Those
 rules began when a lint found a defect in 37.5% of the shipped entries; by the time the rules

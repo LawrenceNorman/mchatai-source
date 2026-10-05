@@ -20,6 +20,12 @@
 #
 # Env: TUNNEL_DIR (override the app's command directory)
 #      TUNNEL_OUT_DIR (where full responses are saved; default /tmp/mchatai-out)
+#      MCHATAI_TRANSPORT  file (default) or relay. Relay sends each command
+#        through the mChatAIShell companion on localhost and never touches the
+#        app's container. Use it for anything launchd or cron starts: macOS
+#        asks before such a process reads another app's data, the grant is tied
+#        to the exact binary (a CLI update asks again), and an unattended job
+#        waits on that prompt until someone clicks.
 #
 # Exit codes: 0 a response came back (check its "status" field), 1 otherwise.
 
@@ -29,6 +35,11 @@ CONTAINER="$HOME/Library/Containers/com.sevenhillsstudio.mChatAImac/Data/Library
 TUNNEL_DIR="${TUNNEL_DIR:-$CONTAINER/DebugTunnel}"
 OUT_DIR="${TUNNEL_OUT_DIR:-/tmp/mchatai-out}"
 CACHE="$CONTAINER/source-cache/mchatai-source"
+TRANSPORT="${MCHATAI_TRANSPORT:-file}"
+SHELL_CONFIG="$HOME/Library/Application Support/mChatAIShell/config.json"
+# Shared with every relay client on this Mac (scripts use the same path), so
+# calls from different processes take turns while the relay has one slot.
+RELAY_LOCK="/tmp/mchatai-relay.lock"
 
 die() { printf 'mchatai: %s\n' "$1" >&2; exit 1; }
 
@@ -42,11 +53,28 @@ json_escape() {
 
 new_rid() { printf 'mc-%s-%s' "$(date +%s)" "$RANDOM"; }
 
+# Surface any produced files as clickable file:// links. Terminal.app and
+# iTerm2 both make these openable, so you never have to go hunting in the
+# sandbox container for what a run just made.
+show_artifacts() {
+  grep -q '"artifactURLs"' "$1" 2>/dev/null || return 0
+  # Foundation writes JSON with escaped slashes (file:\/\/\/...), so match
+  # loosely and unescape rather than looking for a literal "file://".
+  local links
+  links=$(sed -n '/"artifactURLs"/,/\]/p' "$1" | grep -o 'file:[^"]*' | sed 's|\\/|/|g')
+  if [ -n "$links" ]; then
+    printf '\nFiles produced:\n' >&2
+    printf '  %s\n' $links >&2
+    printf '\nOpen them:  mchatai open\n' >&2
+  fi
+}
+
 # send <json-payload> <wait-seconds> — writes to the inbox, prints the response.
 send() {
   local payload=$1 wait_s=${2:-30} rid
   rid=$(printf '%s' "$payload" | sed -n 's/.*"requestID"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
   [ -n "$rid" ] || die "internal: payload has no requestID"
+  [ "$TRANSPORT" = relay ] && { send_relay "$payload" "$wait_s" "$rid"; return; }
 
   [ -e "$TUNNEL_DIR/ready" ] || die "mChatAI+ is not listening. Run: mchatai doctor"
   mkdir -p "$TUNNEL_DIR/inbox" "$TUNNEL_DIR/responses" "$OUT_DIR" 2>/dev/null
@@ -60,25 +88,80 @@ send() {
       sleep 0.2                      # let the writer finish
       cp "$resp" "$OUT_DIR/$rid.json" 2>/dev/null
       cat "$resp"
-      # Surface any produced files as clickable file:// links. Terminal.app and
-      # iTerm2 both make these openable, so you never have to go hunting in the
-      # sandbox container for what a run just made.
-      if grep -q '"artifactURLs"' "$resp" 2>/dev/null; then
-        # Foundation writes JSON with escaped slashes (file:\/\/\/...), so match
-        # loosely and unescape rather than looking for a literal "file://".
-        local links
-        links=$(sed -n '/"artifactURLs"/,/\]/p' "$resp" | grep -o 'file:[^"]*' | sed 's|\\/|/|g')
-        if [ -n "$links" ]; then
-          printf '\nFiles produced:\n' >&2
-          printf '  %s\n' $links >&2
-          printf '\nOpen them:  mchatai open\n' >&2
-        fi
-      fi
+      show_artifacts "$resp"
       return 0
     fi
     sleep 1; waited=$((waited + 1))
   done
   die "no response after ${wait_s}s. The app may be busy; try a longer --wait."
+}
+
+# ---------------------------------------------------------------- relay
+
+relay_token() { sed -n 's/.*"token"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$SHELL_CONFIG" 2>/dev/null | head -1; }
+relay_base() {
+  local port
+  port=$(sed -n 's/.*"port"[[:space:]]*:[[:space:]]*\([0-9][0-9]*\).*/\1/p' "$SHELL_CONFIG" 2>/dev/null | head -1)
+  printf 'http://127.0.0.1:%s' "${port:-8765}"
+}
+
+# An older mChatAIShell relays through ONE request/response file pair, so two
+# calls at once can swap replies. Take turns unless it says it keeps them apart.
+relay_lock() {
+  local deadline=$(( $(date +%s) + $1 )) holder
+  until mkdir "$RELAY_LOCK" 2>/dev/null; do
+    holder=$(cat "$RELAY_LOCK/pid" 2>/dev/null)
+    if { [ -n "$holder" ] && ! kill -0 "$holder" 2>/dev/null; } \
+       || [ -n "$(find "$RELAY_LOCK" -maxdepth 0 -mmin +30 2>/dev/null)" ]; then
+      rm -rf "$RELAY_LOCK"; continue        # its owner is gone
+    fi
+    [ "$(date +%s)" -lt "$deadline" ] || return 1
+    sleep 0.3
+  done
+  printf '%s' $$ > "$RELAY_LOCK/pid"
+  trap 'rm -rf "$RELAY_LOCK"' EXIT
+}
+
+# send_relay <json-payload> <wait-seconds> <rid> — same reply as send().
+send_relay() {
+  local payload=$1 wait_s=$2 rid=$3 token base body out code
+  token=$(relay_token)
+  [ -n "$token" ] || die "relay: no mChatAIShell token in $SHELL_CONFIG. Open mChatAIShell once."
+  base=$(relay_base)
+  # The companion waits as long as the command's "timeout" says (default 120 s).
+  case "$payload" in
+    *'"timeout"'*) body=$payload ;;
+    *) body="${payload%\}},\"timeout\":$wait_s}" ;;
+  esac
+  if ! curl -s -m 3 -H "Authorization: Bearer $token" "$base/ios-tunnel/status" 2>/dev/null \
+       | grep -q '"perRequestFiles"[[:space:]]*:[[:space:]]*true'; then
+    relay_lock 900 || die "relay: another call has held the relay for 15 minutes"
+  fi
+  mkdir -p "$OUT_DIR" 2>/dev/null
+  out="$OUT_DIR/$rid.json"
+  code=$(curl -s -o "$out" -w '%{http_code}' -m $((wait_s + 15)) -X POST \
+           -H "Authorization: Bearer $token" -H 'Content-Type: application/json' \
+           --data-binary "$body" "$base/ios-tunnel/execute")
+  case $? in
+    0)  ;;
+    28) die "no response after ${wait_s}s. The app may be busy; try a longer --wait." ;;
+    *)  die "relay: mChatAIShell is not answering at $base. Open it from the menu bar." ;;
+  esac
+  [ "$code" = 200 ] || die "relay: HTTP $code from mChatAIShell: $(head -c 300 "$out")"
+  # The companion's own wait ran out: same outcome as the file tunnel's.
+  grep -q '"Tunnel response timeout after' "$out" \
+    && die "no response after ${wait_s}s. The app may be busy; try a longer --wait."
+  cat "$out"
+  show_artifacts "$out"
+}
+
+# relay_ready — is the app answering through the companion? Prints the status.
+relay_ready() {
+  local token
+  token=$(relay_token)
+  [ -n "$token" ] || return 1
+  curl -s -m 3 -H "Authorization: Bearer $token" "$(relay_base)/ios-tunnel/status" 2>/dev/null \
+    | grep '"isReady"[[:space:]]*:[[:space:]]*true'
 }
 
 # ---------------------------------------------------------------- doctor
@@ -93,7 +176,16 @@ doctor() {
     printf '  [FIX]  mChatAI+ is not running — open the app\n'; ok=0
   fi
 
-  if [ -e "$TUNNEL_DIR/ready" ]; then
+  if [ "$TRANSPORT" = relay ]; then
+    # Relay mode never looks inside the app's container; that is its point.
+    if relay_ready >/dev/null; then
+      printf '  [ok]   app is listening, through mChatAIShell (relay)\n'
+    else
+      printf '  [FIX]  no answer through mChatAIShell. Open mChatAIShell from the\n'
+      printf '         menu bar and make sure mChatAI+ is running.\n'
+      ok=0
+    fi
+  elif [ -e "$TUNNEL_DIR/ready" ]; then
     printf '  [ok]   app is listening for commands\n'
   else
     printf '  [FIX]  app is not listening.\n'
@@ -104,7 +196,9 @@ doctor() {
     ok=0
   fi
 
-  if [ -d "$CACHE/portal" ]; then
+  if [ "$TRANSPORT" = relay ]; then
+    :
+  elif [ -d "$CACHE/portal" ]; then
     printf '  [ok]   portal content is installed\n'
   else
     printf '  [FIX]  portal content missing — open mChatAI+ and let it sync,\n'
@@ -183,7 +277,10 @@ case $cmd in
     /usr/bin/open "$target" ;;
 
   ready)
-    if [ -e "$TUNNEL_DIR/ready" ]; then echo "ready: $TUNNEL_DIR"; else
+    if [ "$TRANSPORT" = relay ]; then
+      relay_ready >/dev/null && echo "ready: through mChatAIShell ($(relay_base))" \
+        || die "not listening through mChatAIShell. Run: MCHATAI_TRANSPORT=relay mchatai doctor"
+    elif [ -e "$TUNNEL_DIR/ready" ]; then echo "ready: $TUNNEL_DIR"; else
       die "not listening. Run: mchatai doctor"; fi ;;
 
   manifest)

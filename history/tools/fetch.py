@@ -42,7 +42,7 @@ import urllib.request
 from html.parser import HTMLParser
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from _hw import Project, load_json, save_json, words  # noqa: E402
+from _hw import Project, clean_source_text, load_json, save_json, words  # noqa: E402
 
 KINDS = ["primary", "government", "archive", "encyclopedia", "news", "book", "community", "clue-only"]
 LICENSES = ["pd", "cc-by", "facts-only", "clue-only"]
@@ -186,6 +186,7 @@ def record(project, args, text, raw_bytes, raw_ext, extra):
                       "Read it through AI Web (aiweb.openPage, then aiweb.getCurrentPage) and pipe the "
                       "reply into `fetch.py text`.")
     os.makedirs(project.path("sources"), exist_ok=True)
+    text = clean_source_text(text)
     with open(project.path("sources", f"{sid}.txt"), "w", encoding="utf-8") as fh:
         fh.write(text)
     if raw_bytes is not None:
