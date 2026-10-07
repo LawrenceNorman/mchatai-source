@@ -125,6 +125,11 @@ The series exist to tell lives the standard histories skipped. That raises the b
   photograph, an address or a neighbourhood. A false inclusion is worse than a false exclusion.
 - **Their own names.** Use a community's own naming for itself and its people, and a person's
   own name (birth and married names when the record gives both).
+- **One name rule for everyone.** After the first full mention the subject goes by their
+  surname, a woman exactly as a man: "Cayton", never "Susie". When someone else in the story
+  shares the surname, name THEM differently ("Horace", "Horace Cayton"), never the subject.
+  Lawrence, 2026-10-06: Susie Revels Cayton's book called her "Susie" where every man in the
+  series is his surname. [first_name_for_subject]
 - **Keep titles and distinctions.** Reverend, Doctor, Chief, Captain; the first, the only, the
   longest-serving. Those are usually why the person is in the record at all. Cut a building
   detail before you cut a title.
@@ -187,6 +192,13 @@ like you were reciting, rewrite it.
   quotation marks. [verbatim_copy] Public-domain sources may be quoted at length, and rarely
   should be.
 - No stage directions to the reader ("imagine you", "as you can see"). [stage_direction]
+- **Name the person at the start of every paragraph**, never a pronoun: "Grose became steward
+  on the Constitution", not "He became steward". A reader takes "he" for the last man named,
+  and a paragraph is often entered fresh: after a picture, from a link, in a narration. Inside
+  a paragraph a pronoun is fine once the name is given, until someone else it could mean is
+  named; then use the names again ("Stevens stood five feet three, more than a foot shorter than
+  Grose"). Lawrence, 2026-10-06: after Isaac Stevens's paragraph and portrait, "He came to
+  Seattle" read as Stevens. [pronoun_opens_paragraph]
 
 ## 13. The introduction
 

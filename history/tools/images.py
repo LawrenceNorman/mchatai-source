@@ -190,11 +190,33 @@ def index(project):
     return load_json(project.path("images", "index.json"), []) or []
 
 
+UNKNOWN_AUTHOR = re.compile(r"^(?:unknown(?:\s+(?:author|photographer|artist))?[\s,;.]*)+$", re.I)
+
+
+UNKNOWN_PHRASE = re.compile(r"\bunknown\s+(?:author|photographer|artist)\b", re.I)
+
+
+def credit_name(who):
+    """The artist as a caption should name them. Commons' HTML can repeat a name ("Unknown author
+    Unknown author" in six captions, 2026-10-05): a name said twice is said once, and an unknown
+    author beside a real credit ("Unknown author Unknown author , reprinted by Asahel Curtis")
+    leaves only the real one ("Reprinted by Asahel Curtis")."""
+    words = (who or "").split()
+    half = len(words) // 2
+    if words and len(words) % 2 == 0 and words[:half] == words[half:]:
+        words = words[:half]
+    name = " ".join(words)
+    if UNKNOWN_PHRASE.search(name) and not UNKNOWN_AUTHOR.match(name):
+        name = re.sub(r"\s+", " ", UNKNOWN_PHRASE.sub(" ", name)).strip(" ,;.")
+        name = name[:1].upper() + name[1:]
+    return name
+
+
 def credit_line(rec):
-    """'Joe Mabel, CC BY-SA 4.0' / 'Public domain'."""
-    who = (rec.get("creditOverride") or rec.get("artist") or "").strip()
+    """'Joe Mabel, CC BY-SA 4.0' / 'Public domain'. An unknown author is left out."""
+    who = credit_name((rec.get("creditOverride") or rec.get("artist") or "").strip())
     lic = (rec.get("license") or "").strip()
-    if who and who.lower() not in ("unknown author", "unknown authorunknown author", "unknown"):
+    if who and not UNKNOWN_AUTHOR.match(who):
         return f"{who}, {lic}" if lic else who
     return lic
 

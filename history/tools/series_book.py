@@ -6,8 +6,10 @@ companion book for the place's landmark guide (2026-10-05, "Black Seattle"): a c
 in parts by era, each story's chapters as pages, its notes and sources, a timeline of every
 chapter, and the guide's landmarks each story names, linked both ways.
 
-  series_book.py build <stories-dir> <series-id> <out-dir> [--files] [--publish]
+  series_book.py build <stories-dir> <series-id> <out-dir> [--files] [--publish | --review]
   series_book.py order <stories-dir> <series-id>        the stories in book order, and why
+  series_book.py status <stories-dir> <series-id>       what is left to review: each story's waiting
+                                                        suggestions (from StoryMaker) and sign-offs
 
 The text is the author's. Each chapter is read from StoryMaker through ./mchatai, so what they
 changed there is what the book shows; a chapter they added is in it, one they deleted is not.
@@ -25,6 +27,10 @@ for the author to read. --publish leaves a story out until project.json records 
 review (`review.author`), and the community reader's (`review.community`) when
 dossier.communityReview is true; it also refuses a story with editor suggestions still waiting
 in StoryMaker, and any picture the page could not show once hosted.
+
+--review builds the copy community readers are sent: only stories the author has signed off,
+with nothing waiting, every page marked as a review copy, kept out of search engines, and
+never linked from the landmark guide (its places.json says published: false).
 
 Writes <out-dir>/index.html, <out-dir>/resources/ (pictures, maps) and
 <out-dir>/resources/places.json (each landmark id, the stories and chapters that name it: what
@@ -49,13 +55,23 @@ READING_WPM = 230
 PICTURE_BOX = (1100, 1300)       # fits a 40rem column at twice its width; a tall document stays legible
 PORTRAIT_BOX = (480, 600)
 JPEG_QUALITY = 72
+# A hosted page (mchatai.com) is deployed as TEXT: MiniAppDeploySkill skips binary files, and caps
+# a deploy at 200 files, 2 MB each and 16 MB in all. So for --publish and --review each picture
+# also goes out as a data: URI in its own resources/pic/*.txt, fetched when the reader nears it
+# (the hosted CSP allows data: images). Smaller than the local copies, to fit the cap.
+HOSTED_BOX = (880, 1040)
+HOSTED_QUALITY = 60
+HOSTED_CAPS = {"files": 200, "fileBytes": 2_097_152, "totalBytes": 16_777_216}
 YEAR = re.compile(r"\b(1[6-9]\d\d|20\d\d)\b")
 SPAN = re.compile(r"(?:,\s*|\s+)(1[6-9]\d\d|20\d\d)(?:(?:\s*[-–]\s*|\s+to\s+)(1[6-9]\d\d|20\d\d))?\s*$")
 # A link target may hold one level of parentheses: Wikipedia's "William_Grose_(pioneer)".
 TARGET = r"((?:[^()\s]|\([^()\s]*\))+)"
-INLINE = re.compile(r"(!?)\[([^\]]*)\]\(" + TARGET + r"\)")
-LINKED_IMAGE = re.compile(r"^\[!\[([^\]]*)\]\(" + TARGET + r"\)\]\(" + TARGET + r"\)$")
-IMAGE = re.compile(r"^!\[([^\]]*)\]\(" + TARGET + r"\)$")
+# A picture may carry a size word as its Markdown title, set in StoryMaker: ![caption](url "small").
+TITLE = r'(?:\s+"([^"]*)")?'
+INLINE = re.compile(r"(!?)\[([^\]]*)\]\(" + TARGET + TITLE + r"\)")
+LINKED_IMAGE = re.compile(r"^\[!\[([^\]]*)\]\(" + TARGET + TITLE + r"\)\]\(" + TARGET + r"\)$")
+IMAGE = re.compile(r"^!\[([^\]]*)\]\(" + TARGET + TITLE + r"\)$")
+SIZES = ("small", "medium", "large", "full")
 NOTE = re.compile(r"^[“\"](.+?)[”\"]\s*:\s*([\d,\s]+)\.?\s*$")
 SOURCE = re.compile(r"^(\d+)\.\s+(.*)$")
 BARE_URL = re.compile(r"https?://[^\s<]+")
@@ -71,8 +87,8 @@ def esc(s):
 
 def plain(md):
     """Markdown → the words a reader sees: links keep their text, pictures and marks go."""
-    md = re.sub(r"!\[[^\]]*\]\(" + TARGET + r"\)", "", md)
-    md = re.sub(r"\[([^\]]*)\]\(" + TARGET + r"\)", r"\1", md)
+    md = re.sub(r"!\[[^\]]*\]\(" + TARGET + TITLE + r"\)", "", md)
+    md = re.sub(r"\[([^\]]*)\]\(" + TARGET + TITLE + r"\)", r"\1", md)
     return re.sub(r"[*_`#>]", "", md).strip()
 
 
@@ -117,12 +133,12 @@ def inline(text, ctx=None):
     out, pos = [], 0
     for m in INLINE.finditer(text):
         out.append(emphasis(esc(text[pos:m.start()])))
-        bang, label, url = m.groups()
+        bang, label, url, _title = m.groups()
         if not safe_url(url):
             out.append(emphasis(esc(label)))       # the words stay; an address like javascript: does not
         elif bang:
             src = ctx["picture"](url, label) if ctx else url
-            out.append(f'<img src="{esc(src)}" alt="{esc(label)}" loading="lazy">')
+            out.append(img_tag(src, label))
         else:
             out.append(f'<a href="{esc(url)}"{link_attrs(url, ctx)}>{emphasis(esc(label))}</a>')
         pos = m.end()
@@ -130,16 +146,24 @@ def inline(text, ctx=None):
     return "".join(out)
 
 
-def figure(alt, src, href, ctx):
+def img_tag(src, alt):
+    """A copied picture is named by data-src and filled in by the page, so a hosted copy can load
+    it from its text form; a remote one (a draft's) keeps its src."""
+    attr = "data-src" if src.startswith("resources/") else "src"
+    return f'<img {attr}="{esc(src)}" alt="{esc(alt)}" loading="lazy">'
+
+
+def figure(alt, src, href, ctx, size=None):
     if not safe_url(src):
         return f"<p>{inline(alt)}</p>"
     if href and not safe_url(href):
         href = None
     shown = ctx["picture"](src, alt) if ctx else src
-    img = f'<img src="{esc(shown)}" alt="{esc(alt)}" loading="lazy">'
+    img = img_tag(shown, alt)
     if href:
         img = f'<a href="{esc(href)}"{link_attrs(href, ctx, words=False)}>{img}</a>'
-    return f'<figure>{img}<figcaption>{inline(alt)}</figcaption></figure>'
+    cls = f' class="size-{size}"' if size in SIZES else ""
+    return f'<figure{cls}>{img}<figcaption>{inline(alt)}</figcaption></figure>'
 
 
 def markers(nums, slug):
@@ -156,11 +180,11 @@ def render(md, ctx=None, notes=None, slug=""):
         one = " ".join(b.split("\n"))
         m = LINKED_IMAGE.match(one)
         if m:
-            out.append(figure(m.group(1), m.group(2), m.group(3), ctx))
+            out.append(figure(m.group(1), m.group(2), m.group(4), ctx, (m.group(3) or "").lower()))
             continue
         m = IMAGE.match(one)
         if m:
-            out.append(figure(m.group(1), m.group(2), None, ctx))
+            out.append(figure(m.group(1), m.group(2), None, ctx, (m.group(3) or "").lower()))
             continue
         if one.startswith("#"):
             level = min(len(one) - len(one.lstrip("#")) + 1, 4)
@@ -405,7 +429,7 @@ def dims(path):
     return (int(w.group(1)), int(h.group(1))) if w and h else (None, None)
 
 
-def shrink(src, dst, box):
+def shrink(src, dst, box, quality=JPEG_QUALITY):
     """A copy that fits the box, re-encoded for a reader on a phone, with macOS sips when it is
     there (the tools are standard library only); elsewhere an exact copy. Never enlarged: sips
     scales a small picture UP to a -Z or --resampleWidth size (checked 2026-10-05)."""
@@ -421,10 +445,55 @@ def shrink(src, dst, box):
             args += ["--resampleHeightWidth", str(max(1, round(h * scale))), str(max(1, round(w * scale)))]
             resized = True
     if os.path.splitext(dst)[1].lower() in (".jpg", ".jpeg"):
-        args += ["-s", "formatOptions", str(JPEG_QUALITY)]
+        args += ["-s", "formatOptions", str(quality)]
     r = subprocess.run(args + [src, "--out", dst], capture_output=True, text=True)
     if r.returncode != 0 or not os.path.isfile(dst) or (not resized and os.path.getsize(dst) >= os.path.getsize(src)):
         shutil.copyfile(src, dst)
+
+
+def hosted_pictures(out, rels, problems):
+    """Each copied picture as a data: URI text file; {picture path: text path}."""
+    import base64
+    import tempfile
+    mime = {".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png", ".gif": "image/gif",
+            ".webp": "image/webp"}
+    os.makedirs(os.path.join(out, "resources", "pic"), exist_ok=True)
+    pics = {}
+    for rel in sorted(rels):
+        src = os.path.join(out, rel)
+        ext = os.path.splitext(rel)[1].lower()
+        if not os.path.isfile(src) or ext not in mime:
+            problems.append(f"a picture the hosted page cannot carry: {rel}")
+            continue
+        with tempfile.TemporaryDirectory() as tmp:
+            small = os.path.join(tmp, "p" + ext)
+            shrink(src, small, HOSTED_BOX, HOSTED_QUALITY)
+            with open(small, "rb") as fh:
+                uri = f"data:{mime[ext]};base64," + base64.b64encode(fh.read()).decode("ascii")
+        name = "resources/pic/" + hashlib.sha1(rel.encode()).hexdigest()[:16] + ".txt"
+        with open(os.path.join(out, name), "w", encoding="ascii") as fh:
+            fh.write(uri)
+        pics[rel] = name
+    return pics
+
+
+def hosted_caps(out):
+    """What the deploy would refuse or drop: the text files under resources/ against its caps."""
+    files, total, over = 0, 0, []
+    for root, _, names in os.walk(os.path.join(out, "resources")):
+        if os.sep + "img" in root:                       # binaries: the deploy skips them anyway
+            continue
+        for n in names:
+            size = os.path.getsize(os.path.join(root, n))
+            files += 1
+            total += size
+            if size > HOSTED_CAPS["fileBytes"]:
+                over.append(f"{os.path.relpath(os.path.join(root, n), out)} is {size:,} bytes")
+    if files > HOSTED_CAPS["files"]:
+        over.append(f"{files} files (the deploy takes {HOSTED_CAPS['files']})")
+    if total > HOSTED_CAPS["totalBytes"]:
+        over.append(f"{total:,} bytes in all (the deploy takes {HOSTED_CAPS['totalBytes']:,})")
+    return files, total, over
 
 
 def build_story(project, shim, use_files, out, place, problems, pool):
@@ -503,13 +572,14 @@ def build_story(project, shim, use_files, out, place, problems, pool):
     }
 
 
-def publishable(story):
-    """Why a story may not be published yet ([] when it may)."""
+def publishable(story, community=True):
+    """Why a story may not be published yet ([] when it may). `community=False` asks only what a
+    review copy needs: the author's sign-off, with nothing waiting."""
     why = []
     rv = story["review"]
     if not rv.get("author"):
         why.append("the author signs it off (review.author in project.json)")
-    if rv.get("needsCommunity") and not rv.get("community"):
+    if community and rv.get("needsCommunity") and not rv.get("community"):
         why.append("a reader from the community has read it (review.community in project.json)")
     if story.get("pendingSuggestions"):
         n = story["pendingSuggestions"]
@@ -578,7 +648,41 @@ def cmd_order(stories_dir, series_id):
     return 0
 
 
-def cmd_build(stories_dir, series_id, out, use_files=False, publish=False):
+def cmd_status(stories_dir, series_id):
+    """One line per landed story: suggestions waiting in StoryMaker, parts the author edited, and
+    the sign-offs project.json records. "Is everything reviewed?" without opening each project
+    (Lawrence, 2026-10-05: "there is no global way of knowing if all of the review items have
+    been completed")."""
+    projects = landed_projects(stories_dir, series_id)
+    if not projects:
+        print(f"no landed stories of {series_id!r} under {stories_dir}")
+        return 2
+    shim = find_shim(projects[0])
+    waiting_total = 0
+    for project in projects:
+        meta = load_json(project.path("project.json"), {}) or {}
+        name = meta.get("subject") or meta.get("name") or os.path.basename(project.root)
+        waiting = edited = parts = "?"
+        if shim and meta.get("storymakerProject"):
+            got = storymaker(shim, "getProject", projectID=meta["storymakerProject"])
+            res = got.get("result") or {}
+            if got.get("status") == "ok":
+                waiting = res.get("pendingAgentSuggestions") or 0
+                chapters = res.get("chapters", [])
+                edited, parts = sum(1 for c in chapters if c.get("authorEdited")), len(chapters)
+                waiting_total += waiting
+        rv = meta.get("review") or {}
+        needs = bool((project.dossier or {}).get("communityReview"))
+        signs = [f"author {rv['author']}" if rv.get("author") else "author: not yet"]
+        if needs:
+            signs.append(f"community {rv['community'].get('date', '')}".strip() if isinstance(rv.get("community"), dict)
+                         else "community reader: not yet")
+        print(f"{name:<30} {str(waiting):>3} waiting   edited {edited}/{parts}   " + " · ".join(signs))
+    print("\nnothing waiting in StoryMaker" if waiting_total == 0 else f"\n{waiting_total} suggestion(s) waiting in all")
+    return 0
+
+
+def cmd_build(stories_dir, series_id, out, use_files=False, publish=False, review=False):
     entry, place = series_entry(series_id)
     if not entry or not entry.get("book"):
         print(f"series.json has no `book` block for {series_id!r}")
@@ -604,8 +708,8 @@ def cmd_build(stories_dir, series_id, out, use_files=False, publish=False):
         story = build_story(project, shim, use_files, out, place, problems, pool)
         if story is None:
             continue
-        why = publishable(story)
-        if publish and why:
+        why = publishable(story, community=not review)
+        if (publish or review) and why:
             held.append((story["name"], why))
             continue
         story["draft"] = bool(why)
@@ -629,11 +733,17 @@ def cmd_build(stories_dir, series_id, out, use_files=False, publish=False):
                 if ref not in places[lid]["refs"]:
                     places[lid]["refs"].append(ref)
     generated = datetime.date.today().isoformat()
+    pics = {}
+    if publish or review:
+        used = set(pool.values()) | {s["portrait"] for s in stories if s.get("portrait")}
+        pics = hosted_pictures(out, used, problems)
     data = {
+        "pics": pics,
         "book": {"title": book.get("title") or entry.get("title"), "subtitle": book.get("subtitle", ""),
                  "place": place,
                  "intro": book.get("intro", ""), "companion": book.get("companion") or {},
-                 "canonical": book.get("canonical", ""), "generated": generated, "publish": publish},
+                 "canonical": book.get("canonical", "") if publish else "", "generated": generated,
+                 "publish": publish, "reviewCopy": review},
         "parts": [p for p in parts if p["stories"]],
         "stories": {s["slug"]: {k: v for k, v in s.items() if k not in ("review", "arrivedWhy", "origin", "born")}
                     for s in stories},
@@ -653,6 +763,10 @@ def cmd_build(stories_dir, series_id, out, use_files=False, publish=False):
                   fh, ensure_ascii=False, indent=1)
     with open(os.path.join(out, "index.html"), "w", encoding="utf-8") as fh:
         fh.write(page(data))
+    if publish or review:
+        files, total, over = hosted_caps(out)
+        print(f"hosted copy: {files} text files, {total:,} bytes ({len(pics)} pictures as text)")
+        problems += [f"over the deploy's cap: {o}" for o in over]
     print(f"{len(stories)} stories, {sum(len(s['chapters']) for s in stories)} chapters, "
           f"{sum(s['words'] for s in stories):,} words, {len(places)} landmarks → {out}")
     for s in stories:
@@ -668,8 +782,8 @@ def cmd_build(stories_dir, series_id, out, use_files=False, publish=False):
         print(f"  held   {name}: {'; '.join(why)}")
     for p in problems:
         print(f"  problem: {p}")
-    if publish and problems:
-        print("refused: a published book cannot carry these problems")
+    if (publish or review) and problems:
+        print("refused: a published book or a review copy cannot carry these problems")
         return 1
     return 0
 
@@ -759,12 +873,23 @@ h1{font:600 clamp(30px,5vw,44px)/1.1 var(--serif);margin:0;letter-spacing:-.01em
 .story header{margin-bottom:26px}
 .draft{margin:16px 0 0;padding:9px 12px;border-radius:8px;background:var(--draft);font-size:13.5px;color:var(--ink)}
 .draft ul{margin:4px 0 0;padding-left:1.2em}
+.review{max-width:40rem;margin:0 auto 22px;padding:10px 14px;border-radius:10px;background:var(--accent-soft);font-size:14px;line-height:1.5}
 .prose{font:19px/1.68 var(--serif)}
 .prose p{margin:0 0 1.05em}
 .prose h2,.prose h3{font:600 22px/1.3 var(--serif);margin:1.6em 0 .6em}
 .prose blockquote{margin:1.2em 0;padding:0 0 0 1em;border-left:3px solid var(--line);color:var(--muted)}
 .prose figure{margin:1.6em 0}
-.prose figure img{display:block;max-width:100%;height:auto;margin:0 auto;border-radius:6px;background:var(--panel)}
+.prose figure img{display:block;max-width:100%;max-height:min(70vh,520px);width:auto;height:auto;margin:0 auto;border-radius:6px;background:var(--panel)}
+/* The author's size (StoryMaker's Picture size, the image's Markdown title): a share of the column
+   whatever the picture's own resolution, then no taller than that size allows; the same rule as
+   StoryMaker's reader, so the book shows what the author set. */
+.prose figure[class^="size-"] img{height:auto;object-fit:contain}
+.prose figure.size-small img{width:35%;max-height:260px}
+.prose figure.size-medium img{width:55%;max-height:420px}
+.prose figure.size-large img{width:80%;max-height:640px}
+.prose figure.size-full img{width:100%;max-height:860px}
+.story header.lead{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 22px;align-items:end}
+.story header.lead .hero{grid-row:1/span 4;grid-column:2;width:150px;height:184px;object-fit:cover;object-position:center 22%;border-radius:12px;background:var(--accent-soft)}
 .prose figcaption{margin-top:8px;font:13.5px/1.45 var(--sans);color:var(--muted)}
 .prose figcaption a{color:inherit}
 .prose a.lm{text-decoration:none;border-bottom:1px dotted var(--accent);color:var(--ink)}
@@ -817,6 +942,7 @@ footer{max-width:62rem;margin:0 auto;padding:22px 16px 40px;color:var(--muted);f
 footer p{margin:0 0 6px;max-width:44rem}
 @media (max-width:560px){
   .prose{font-size:18px}
+  .story header.lead .hero{width:96px;height:118px}
   .person{grid-template-columns:72px 1fr;gap:12px}
   .ph,.mono{width:72px;height:88px}
   .tl li.row a{grid-template-columns:5.6em 1fr}
@@ -842,6 +968,9 @@ const COMP = B.companion || {};
 const compHref = id => (COMP.url || "") + (id ? "#/l/" + id : "");
 
 el("brand").textContent = B.title;
+const REVIEW_NOTE = B.reviewCopy
+  ? `<p class="review"><b>Review copy.</b> These stories are shared for review before they are published. If you see an error, or know a source that belongs here, please tell the person who sent you this link.</p>`
+  : "";
 document.title = B.title;
 function nav(cur){
   const items = [["#/","Contents","home"],["#/timeline","Timeline","timeline"],["#/places","Places","places"]];
@@ -854,7 +983,7 @@ el("foot").innerHTML = `<p>Every story here is told from the public record. Each
 
 function partOf(slug){ return D.parts.findIndex(p => p.stories.includes(slug)); }
 function portrait(s){
-  if (s.portrait) return `<img class="ph" src="${esc(s.portrait)}" alt="" loading="lazy">`;
+  if (s.portrait) return `<img class="ph" data-src="${esc(s.portrait)}" alt="" loading="lazy">`;
   const ini = s.name.replace(/["“”]/g,"").split(/\s+/).filter(w => /^[A-Z]/.test(w));
   return `<div class="mono" aria-hidden="true">${esc((ini[0]||"")[0] || "")}${esc((ini[ini.length-1]||"")[0] || "")}</div>`;
 }
@@ -901,7 +1030,8 @@ function person(slug){
   nav("");
   const i = partOf(slug), L = partLabel(i);
   const toc = s.chapters.map((c, n) => `<li><a href="${chapLink(slug, n+1)}">${esc(c.name || c.title)}${c.start ? `<span>${c.start}${c.end && c.end !== c.start ? "–" + c.end : ""}</span>` : ""}</a></li>`).join("");
-  return `<article class="story"><header>
+  return `<article class="story"><header${s.portrait ? ' class="lead"' : ""}>
+    ${s.portrait ? `<img class="hero" data-src="${esc(s.portrait)}" alt="${esc(s.name)}">` : ""}
     <p class="kicker"><a href="#/">${esc(B.title)}</a>${L.t ? ` · ${esc(L.n ? L.n + ": " : "")}${esc(L.t)}` : ""}</p>
     <h1>${esc(s.name)}</h1>
     <p class="years">${esc(s.years)}${s.arrived ? `${s.years ? " · " : ""}arrived in ${esc(B.place || "the city")} ${s.arrived}` : ""}</p>
@@ -1010,7 +1140,8 @@ function route(){
     else if (/^\d+$/.test(sub)) html = +sub === 0 ? person(slug) : chapter(slug, +sub);
     else html = notFound();
   } else html = notFound();
-  el("view").innerHTML = html;
+  el("view").innerHTML = REVIEW_NOTE + html;
+  pictures(el("view"));
   const s = parts[0] === "p" ? S[parts[1]] : null;
   document.title = s ? `${s.name} · ${B.title}` : B.title;
   if (hit){
@@ -1019,6 +1150,21 @@ function route(){
   }
   window.scrollTo(0, 0);
 }
+// A copied picture: from its text form on a hosted copy (the deploy carries no binary files),
+// else the file beside the page. Loaded when it comes near the screen.
+const PICS = D.pics || {};
+const fill = img => {
+  const src = img.getAttribute("data-src"); img.removeAttribute("data-src");
+  const pic = PICS[src];
+  if (!pic){ img.src = src; return; }
+  fetch(pic).then(r => r.ok ? r.text() : Promise.reject(r.status)).then(uri => { img.src = uri; })
+    .catch(() => { img.src = src; });
+};
+const near = "IntersectionObserver" in window
+  ? new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting){ near.unobserve(e.target); fill(e.target); } }),
+                             {rootMargin: "800px 0px"})
+  : null;
+function pictures(root){ root.querySelectorAll("img[data-src]").forEach(img => near ? near.observe(img) : fill(img)); }
 window.addEventListener("hashchange", route);
 route();
 </script>
@@ -1030,8 +1176,14 @@ route();
 def main(argv):
     if len(argv) >= 4 and argv[1] == "order":
         return cmd_order(argv[2], argv[3])
+    if len(argv) >= 4 and argv[1] == "status":
+        return cmd_status(argv[2], argv[3])
     if len(argv) >= 5 and argv[1] == "build":
-        return cmd_build(argv[2], argv[3], argv[4], use_files="--files" in argv, publish="--publish" in argv)
+        if "--publish" in argv and "--review" in argv:
+            print("--publish or --review, not both")
+            return 2
+        return cmd_build(argv[2], argv[3], argv[4], use_files="--files" in argv, publish="--publish" in argv,
+                         review="--review" in argv)
     print(__doc__)
     return 2
 

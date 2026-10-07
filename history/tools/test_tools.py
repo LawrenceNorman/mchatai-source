@@ -736,6 +736,60 @@ class Pictures(FixtureCase):
 
 
 
+class ParagraphOpenings(unittest.TestCase):
+    """A paragraph opens with the person's name, never a pronoun (Lawrence, 2026-10-06: after Isaac
+    Stevens's paragraph and portrait, "He came to Seattle" read as Stevens)."""
+
+    def rules(self, text):
+        return [f["rule"] for f in voice_lint.phrase_findings(text) if f["rule"] == "pronoun_opens_paragraph"]
+
+    def test_a_paragraph_opening_on_a_pronoun_is_caught(self):
+        self.assertEqual(len(self.rules("Stevens urged him to settle.\n\nHe came to Seattle in 1859.\n\n"
+                                        "His restaurant was called Our House.\n\nShe taught for nine years.")), 3)
+
+    def test_a_named_opening_and_a_pronoun_inside_pass(self):
+        self.assertEqual(self.rules("Grose came to Seattle in 1859, and he found work as a cook.\n\n"
+                                    "Seattle was then a village of 300 people. \"He was kind,\" Moran wrote."), [])
+
+
+class OneNameRule(unittest.TestCase):
+    """The subject goes by their surname, a woman exactly as a man (Lawrence, 2026-10-06: Susie
+    Revels Cayton's book called her "Susie")."""
+
+    def test_the_first_name_alone_is_noted_and_the_full_name_and_quotes_are_not(self):
+        text = ('Susie wrote short stories. Susie Revels Cayton edited the paper. Cayton taught. '
+                '"Susie," her mother said. Susie\'s house stood on Fourteenth Avenue.')
+        found = voice_lint.first_name_findings(text, "Susie Sumner Revels Cayton")
+        self.assertEqual(len(found), 2)
+        self.assertTrue(all(f["severity"] == "soft" for f in found))
+
+    def test_a_one_word_subject_has_no_first_name_to_check(self):
+        self.assertEqual(voice_lint.first_name_findings("York went west.", "York"), [])
+
+
+class PictureCredits(unittest.TestCase):
+    """A caption credits the artist once, and leaves an unknown one out (2026-10-05: six captions
+    read "Unknown author Unknown author, Public domain.")."""
+
+    def test_an_unknown_author_is_left_out_however_it_is_repeated(self):
+        import images
+        for who in ("Unknown author Unknown author", "Unknown author", "unknown", "Unknown photographer"):
+            self.assertEqual(images.credit_line({"artist": who, "license": "Public domain"}), "Public domain", who)
+
+    def test_an_unknown_author_beside_a_real_credit_leaves_the_real_one(self):
+        import images
+        self.assertEqual(images.credit_line({"artist": "Unknown author Unknown author , reprinted by Asahel Curtis",
+                                             "license": "Public domain"}),
+                         "Reprinted by Asahel Curtis, Public domain")
+
+    def test_a_name_said_twice_is_said_once(self):
+        import images
+        self.assertEqual(images.credit_line({"artist": "Joe Mabel Joe Mabel", "license": "CC BY-SA 4.0"}),
+                         "Joe Mabel, CC BY-SA 4.0")
+        self.assertEqual(images.credit_line({"artist": "A. Roe Anderson", "license": "Public domain"}),
+                         "A. Roe Anderson, Public domain")
+
+
 class PictureRemoval(FixtureCase):
     def test_a_placed_picture_comes_out_whole(self):
         os.makedirs(self.project.path("images"), exist_ok=True)
@@ -1318,12 +1372,12 @@ class SeriesBook(FixtureCase):
         self.sb.series_entry = self._entry
         super().tearDown()
 
-    def build(self, publish=False, files=False):
+    def build(self, publish=False, files=False, review=False):
         import contextlib
         import io
         buf = io.StringIO()
         with contextlib.redirect_stdout(buf):
-            code = self.sb.cmd_build(self.tmp, "fixture", self.out, use_files=files, publish=publish)
+            code = self.sb.cmd_build(self.tmp, "fixture", self.out, use_files=files, publish=publish, review=review)
         return code, buf.getvalue()
 
     def data(self):
@@ -1357,6 +1411,23 @@ class SeriesBook(FixtureCase):
         self.assertEqual(self.data()["order"], ["edith-fixture"])
         self.assertFalse(self.data()["stories"]["edith-fixture"]["draft"])
 
+    def test_a_review_copy_needs_only_the_authors_sign_off(self):
+        self.assertEqual(self.land()[0], 0)
+        code, out = self.build(review=True)
+        self.assertEqual(self.data()["order"], [], "an unsigned story is not sent to reviewers")
+        meta = _hw.load_json(self.project.path("project.json"))
+        meta["review"] = {"author": "2026-10-05"}
+        _hw.save_json(self.project.path("project.json"), meta)
+        code, out = self.build(review=True)
+        self.assertEqual(code, 0, out)
+        data = self.data()
+        self.assertEqual(data["order"], ["edith-fixture"])
+        self.assertTrue(data["book"]["reviewCopy"])
+        self.assertEqual(data["book"]["canonical"], "")
+        self.assertIn('content="noindex"', read(os.path.join(self.out, "index.html")))
+        places = _hw.load_json(os.path.join(self.out, "resources", "places.json"))
+        self.assertFalse(places["published"], "the landmark guide never links a review copy")
+
     def test_a_picture_the_hosted_page_cannot_show_refuses_a_published_book(self):
         meta = _hw.load_json(self.project.path("project.json"))
         meta["review"] = {"author": "2026-10-05", "community": {"reader": "a reader", "date": "2026-10-05"}}
@@ -1386,7 +1457,8 @@ class SeriesBook(FixtureCase):
               "He came to Seattle in 1859 or soon after.")
         html_ = self.sb.render(md, ctx, [("He came to Seattle in 1859", [3, 12])], "w")
         self.assertIn('class="lm" data-l="SL-0648"', html_)
-        self.assertIn('<figure><img src="resources/img/x.jpg"', html_)
+        self.assertIn('<figure><img data-src="resources/img/x.jpg"', html_,
+                      "a copied picture is filled in by the page: from text on a hosted copy")
         self.assertIn('data-l="SL-0284"', html_)
         self.assertNotIn('class="lm" data-l="SL-0284"', html_, "a linked map is a picture, not a pinned phrase")
         self.assertIn('<a href="#/p/w/sources/3">3</a>,<a href="#/p/w/sources/12">12</a>', html_)
@@ -1394,6 +1466,14 @@ class SeriesBook(FixtureCase):
         self.assertNotIn("javascript:", self.sb.render("Click [here](javascript:alert(1)).", {"picture": str}))
         self.assertIn('href="https://en.wikipedia.org/wiki/William_Grose_(pioneer)"',
                       self.sb.render("See [it](https://en.wikipedia.org/wiki/William_Grose_(pioneer)).", {"picture": str}))
+
+    def test_a_size_word_sizes_the_figure_and_never_shows_as_text(self):
+        html_ = self.sb.render('![Moran. Public domain.](https://x.org/m.jpg "small")\n\nPlain [link](https://x.org "a title").',
+                               {"picture": lambda url, alt: "resources/img/m.jpg"})
+        self.assertIn('<figure class="size-small">', html_)
+        self.assertNotIn("small", self.sb.plain('![a](https://x.org/a.jpg "small") words'))
+        self.assertEqual(self.sb.render("![x](https://x.org/x.jpg \"huge\")", {"picture": lambda u, a: u}).count("size-"), 0,
+                         "only the four size words are sizes")
 
     def test_years_portraits_and_first_sentences(self):
         self.assertEqual(self.sb.span("The Rainier Club, 1889 to 1904"), ("The Rainier Club", 1889, 1904))

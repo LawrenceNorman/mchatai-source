@@ -1,165 +1,173 @@
 {
- "version": 1,
- "updated": "2026-10-02",
- "_source_of_truth": "mchatai-source/history/lint-rules.json",
- "_comment": "The phrase-level half of the History Writer's voice gate, as DATA. tools/voice_lint.py reads this file; the structural checks (unsourced quotations, era share, ceilings, the starved floor, unsourced numbers, unshown growth) live in the tools because they need the chapter's claims and plan. Rules marked origin landmark-v8 are copied byte-for-byte from the Seattle Landmarks tone lint at narration-voice v8, so a parity run over that corpus must agree rule for rule. Severity 'soft' is reported as a style note and never blocks. Add a rule by PR: id, section (in voice.md), severity, pattern (Python re, matched case-insensitively), why. Patterns run on the chapter text with quotation-marked spans removed — quotations are checked separately, against the claims.",
- "rules": [
-  {
-   "id": "narrates_record",
-   "landmarkSection": "§2",
-   "severity": "hard",
-   "origin": "landmark-v8",
-   "pattern": "\\b(the (record|report|file|paperwork|ordinance|nomination|document)s?\\b[^.]{0,40}\\b(does not|doesn'?t|is silent|says nothing|names no|gives no|offers no|tells us|holds|is only|is just)|(names|gives|offers|lists) no (architect|builder|name|person|member|date)|is only paperwork|an ordinance is paperwork|the people are missing|we (do not|don'?t) know|nothing (more |else )?is known|no (further|other) record|says nothing (more |else )?about|beyond (this|that),? the (record|report)|past (this|that),? the (record|report)|what the paperwork)",
-   "why": "narrates the source record instead of the place",
-   "section": "§3"
-  },
-  {
-   "id": "report_as_character",
-   "landmarkSection": "§2/§5",
-   "severity": "hard",
-   "origin": "landmark-v8",
-   "pattern": "\\b((the )?(city'?s own |city |board'?s |landmarks? preservation board'?s )?(report|ordinance|nomination|designation|paperwork|file)\\b\\s*,?\\s*(it )?(says|said|calls|called|notes|noted|reads|describes|described|singles|troubled|claims|admits|concedes|adds)|the Board'?s findings|in (its|their|his|her) own words|it is said in the (report|record))",
-   "why": "makes the source document a character in the story",
-   "section": "§3"
-  },
-  {
-   "id": "doc_testifies",
-   "landmarkSection": "§2",
-   "severity": "hard",
-   "origin": "landmark-v8",
-   "pattern": "\\b(?:the\\s+)?(?:city'?s\\s+own\\s+)?(?:report|reports|record|records|file|files|paperwork|papers|nomination|nomination\\s+form|ordinance|designation\\s+report|landmark\\s+report|field\\s+records)\\b(?:\\s+itself)?(?:\\s+(?:never|only|also|simply|merely|just|then|again|barely|hardly))?\\s+(?:say|says|said|give|gives|gave|record|records|recorded|name|names|named|note|notes|noted|call|calls|called|put|puts|list|lists|listed|tell|tells|told|mention|mentions|describe|describes|offer|offers|show|shows|state|states|guess|guesses|guessed|hold|holds|contain|contains|keep|keeps|kept|suppose|supposes|supposed|assume|assumes|speculate|speculates|judge|judges|judged|rate|rates|rated|praise|praises|dismiss|dismisses|find|finds|found|deem|deems|deemed|suggest|suggests|believe|believes|think|thinks|conclude|concludes|is\\s+silent|are\\s+silent)\\b",
-   "why": "a source document is doing the telling — take the fact, drop the document",
-   "section": "§3"
-  },
-  {
-   "id": "doc_as_subject",
-   "landmarkSection": "§2",
-   "severity": "hard",
-   "origin": "landmark-v8",
-   "pattern": "(\\bthat is the whole of the (record|report|file)|\\ball the record (keeps|holds|has)|\\bthe record (keeps|holds|has) of|\\baccording to the (report|record|nomination|ordinance)|\\bnothing (else|more) (is known|about (them|him|her|it))|\\blittle else is (currently )?known|\\bwhoever wrote it\\b|\\bby the time the nomination was written)",
-   "why": "the prose turns to the document rather than the place",
-   "section": "§3"
-  },
-  {
-   "id": "impersonal_absence",
-   "landmarkSection": "§2",
-   "severity": "hard",
-   "origin": "landmark-v8",
-   "pattern": "(\\bit is (not known|unknown|unclear|uncertain)\\b|\\bnot known (whether|if|how|why|when|who)\\b|\\bnothing (else|more|further)?\\s*(could be|has been|have been|was|is|are)\\s*(found|known|recorded|established|determined|traced|identified)\\b|\\babout whom nothing\\b|\\bof whom nothing\\b|\\bcould not be (found|determined|established|identified|traced|confirmed)\\b|\\bmakes? no mention\\b|\\bno mention (of|is made)\\b|\\bin the words of the (record|report|nomination|ordinance)\\b|\\b(report|record|nomination|ordinance)'?s?\\s+(list of sources|bibliography|sources?\\s+(include|includes|list))\\b|\\blist of sources\\b|\\b(remains?|stays) unknown\\b|\\bhas not been (found|identified|established)\\b)",
-   "why": "narrates an absence with the subject deleted — say nothing instead",
-   "section": "§3"
-  },
-  {
-   "id": "research_metaphor",
-   "landmarkSection": "§2/§1",
-   "severity": "hard",
-   "origin": "landmark-v8",
-   "pattern": "(leaves? a (much |somewhat )?(longer|better|fuller|fainter|thinner|shorter) trail|\\bthe (paper )?trail (goes|runs|ends|is) \\w+|\\bdisappears? from the (record|documents|paperwork)|\\bno obituary has been found|\\bhas been found\\b[^.]{0,20}$|\\bwe can(not)? follow|\\bfollow(s|ing)? (him|her|them) (through|into) the|\\bapparently paid for|\\bseems? to have been the)",
-   "why": "narrates the research rather than the place",
-   "section": "§3"
-  },
-  {
-   "id": "flourish",
-   "landmarkSection": "§8",
-   "severity": "hard",
-   "origin": "landmark-v8",
-   "pattern": "((?:^|(?<=[.!?]\\s))Not \\w[^.!?]{0,60}[:;] that\\b|(?:^|(?<=[.!?]\\s))Not one like it\\b|(?:^|(?<=[.!?]\\s))Here is\\b|(?:^|(?<=[.!?]\\s))That is the whole\\b)",
-   "why": "a rhetorical construction — write plain declarative sentences",
-   "section": "§11"
-  },
-  {
-   "id": "period_source_cited",
-   "landmarkSection": "§2 (soft)",
-   "severity": "soft",
-   "origin": "landmark-v8",
-   "pattern": "\\b(?:the\\s+)?(?:\\d{4}\\s+)?(?:city\\s+|polk\\s+|business\\s+)?(?:director(?:y|ies)|trade\\s+paper|census|city\\s+register)\\b\\s+(?:say|says|said|give|gives|gave|record|records|name|names|named|note|notes|call|calls|called|put|puts|list|lists|listed|show|shows|has|had)\\b",
-   "why": "a period source is cited by name — prefer the plain fact with its date",
-   "section": "§3 (soft)"
-  },
-  {
-   "id": "criteria_boilerplate",
-   "landmarkSection": "§4",
-   "severity": "hard",
-   "origin": "landmark-v8",
-   "pattern": "(significant character,? interest or value|distinguishing characteristics of an architectural|established and familiar visual feature|elements of design,? detail,? materials or craftsmanship|represents? a significant innovation|associated with the life of a person significant|criteri(a|on)\\b[^.]{0,60}\\b(cited|satisfied|met|approved|listed|named)|\\b(cited|satisfied|met|invoked)\\b[^.]{0,40}\\bcriteri|significant relationship to the (city|city's)|spatial relationships|distinctive historical identity|designated under (section|ordinance)|LPB[- ]?\\d+)",
-   "why": "the statutory designation criteria, quoted or reworded — identical in every report",
-   "section": "§6"
-  },
-  {
-   "id": "controls_boilerplate",
-   "landmarkSection": "§4",
-   "severity": "hard",
-   "origin": "landmark-v8",
-   "pattern": "(features? to be preserved|what cannot change|shall be preserved|the exterior of the building and its site|particular features of the landmark|what (the )?(designation|landmark status|ordinance) (protects|covers|preserves)|the designation (protects|covers|preserves|applies to)|(protect|preserv)\\w*[^.]{0,30}\\bthe entire exterior|entire exteriors? (of|and)|features (identified|named|specified) for preservation)",
-   "why": "the controlled-features list, quoted or reworded — identical in every report",
-   "section": "§6"
-  },
-  {
-   "id": "legal_description",
-   "landmarkSection": "§4",
-   "severity": "hard",
-   "origin": "landmark-v8",
-   "pattern": "(\\bLots?\\s+\\d|\\bBl(oc)?k\\.?\\s+\\d|\\bBlk\\b|\\bplats?\\b|Denny'?s\\s+(First|1st)\\s+Add|Seattle\\s+Tidelands|\\bShort\\s+Subdivision\\b|\\bParcel\\s+[A-Z0-9]\\b|\\beasement\\b|\\bquarter\\s+section\\b)",
-   "why": "a surveyor's legal description — lot and block numbers are bookkeeping, not something anyone standing on the sidewalk can see or use",
-   "section": "§6"
-  },
-  {
-   "id": "source_framing",
-   "landmarkSection": "§5",
-   "severity": "hard",
-   "origin": "landmark-v8",
-   "pattern": "\\b((?:report|record|nomination|ordinance|paperwork)s?\\s+is\\s+(?:blunt|candid|frank|clear|explicit|unsparing|matter-of-fact|careful)|blunt about it|worth hearing|honest problem|singles? out for praise|to (its|their) credit|in the same (sentence|breath)|then,? in the same|damns? with|grudging|the one feature it)",
-   "why": "stages the source's framing for effect instead of taking the fact",
-   "section": "§6"
-  },
-  {
-   "id": "stage_direction",
-   "landmarkSection": "§8",
-   "severity": "hard",
-   "origin": "landmark-v8",
-   "pattern": "\\b(welcome to|as you can see|take a moment|look up at|turn (left|right|around)|walk (north|south|east|west)|in front of you (is|stands)|imagine (you|for a moment))\\b",
-   "why": "stage direction — the writer does not know where the listener is standing",
-   "section": "§12"
-  },
-  {
-   "id": "speculation",
-   "section": "§2",
-   "severity": "hard",
-   "origin": "history-v1",
-   "pattern": "\\b(must have (been|felt|thought|known|wondered|seemed|looked)|surely|no doubt (he|she|they|it)|doubtless|one can (only )?imagine|it is easy to imagine|we can (only )?imagine|perhaps (he|she|they) (felt|thought|wondered|knew|feared|hoped)|(he|she|they) may well have)\\b",
-   "why": "speculation dressed as narration — say what the record shows, or say nothing"
-  },
-  {
-   "id": "interior_unsourced",
-   "section": "§2 (soft)",
-   "severity": "soft",
-   "origin": "history-v1",
-   "pattern": "\\b(he|she|they)\\s+(thought|wondered|felt|feared|hoped|dreamed|longed|worried|believed)\\b",
-   "why": "an inner life — fine only when a claim carries the source that records it (a letter, testimony, an interview)"
-  },
-  {
-   "id": "present_tense_now",
-   "section": "§4",
-   "severity": "hard",
-   "origin": "history-v1",
-   "pattern": "\\b(currently|nowadays|these days|at present|to this day|today'?s?)\\b",
-   "why": "\"now\" rots the day it is written — tell later events as dated past events"
-  },
-  {
-   "id": "status_box",
-   "section": "§8",
-   "severity": "hard",
-   "origin": "history-v1",
-   "pattern": "(\\blevel(l?ed)? up\\b|\\bgained a level\\b|\\bexperience points\\b|\\bXP\\b|\\bstat(s)? (boost|points?)\\b|\\[\\s*(level|lvl|str|int|con|dex)\\b)",
-   "why": "growth is shown in what the person does, never printed as a level or a stat"
-  },
-  {
-   "id": "praise_label",
-   "section": "§13",
-   "severity": "hard",
-   "origin": "history-v2",
-   "pattern": "\\b(remarkable|extraordinary|pioneering|trail-?blaz(?:er|ers|ing)|unsung|legendary|inspiring|forgotten (?:heroine|hero|woman|women|man|men|figure|figures|pioneer|pioneers))\\b",
-   "why": "praise tells the reader what to think; show what she did and let it stand"
-  }
- ]
+  "version": 1,
+  "updated": "2026-10-06",
+  "_source_of_truth": "mchatai-source/history/lint-rules.json",
+  "_comment": "The phrase-level half of the History Writer's voice gate, as DATA. tools/voice_lint.py reads this file; the structural checks (unsourced quotations, era share, ceilings, the starved floor, unsourced numbers, unshown growth) live in the tools because they need the chapter's claims and plan. Rules marked origin landmark-v8 are copied byte-for-byte from the Seattle Landmarks tone lint at narration-voice v8, so a parity run over that corpus must agree rule for rule. Severity 'soft' is reported as a style note and never blocks. Add a rule by PR: id, section (in voice.md), severity, pattern (Python re, matched case-insensitively), why. Patterns run on the chapter text with quotation-marked spans removed — quotations are checked separately, against the claims.",
+  "rules": [
+    {
+      "id": "narrates_record",
+      "landmarkSection": "§2",
+      "severity": "hard",
+      "origin": "landmark-v8",
+      "pattern": "\\b(the (record|report|file|paperwork|ordinance|nomination|document)s?\\b[^.]{0,40}\\b(does not|doesn'?t|is silent|says nothing|names no|gives no|offers no|tells us|holds|is only|is just)|(names|gives|offers|lists) no (architect|builder|name|person|member|date)|is only paperwork|an ordinance is paperwork|the people are missing|we (do not|don'?t) know|nothing (more |else )?is known|no (further|other) record|says nothing (more |else )?about|beyond (this|that),? the (record|report)|past (this|that),? the (record|report)|what the paperwork)",
+      "why": "narrates the source record instead of the place",
+      "section": "§3"
+    },
+    {
+      "id": "report_as_character",
+      "landmarkSection": "§2/§5",
+      "severity": "hard",
+      "origin": "landmark-v8",
+      "pattern": "\\b((the )?(city'?s own |city |board'?s |landmarks? preservation board'?s )?(report|ordinance|nomination|designation|paperwork|file)\\b\\s*,?\\s*(it )?(says|said|calls|called|notes|noted|reads|describes|described|singles|troubled|claims|admits|concedes|adds)|the Board'?s findings|in (its|their|his|her) own words|it is said in the (report|record))",
+      "why": "makes the source document a character in the story",
+      "section": "§3"
+    },
+    {
+      "id": "doc_testifies",
+      "landmarkSection": "§2",
+      "severity": "hard",
+      "origin": "landmark-v8",
+      "pattern": "\\b(?:the\\s+)?(?:city'?s\\s+own\\s+)?(?:report|reports|record|records|file|files|paperwork|papers|nomination|nomination\\s+form|ordinance|designation\\s+report|landmark\\s+report|field\\s+records)\\b(?:\\s+itself)?(?:\\s+(?:never|only|also|simply|merely|just|then|again|barely|hardly))?\\s+(?:say|says|said|give|gives|gave|record|records|recorded|name|names|named|note|notes|noted|call|calls|called|put|puts|list|lists|listed|tell|tells|told|mention|mentions|describe|describes|offer|offers|show|shows|state|states|guess|guesses|guessed|hold|holds|contain|contains|keep|keeps|kept|suppose|supposes|supposed|assume|assumes|speculate|speculates|judge|judges|judged|rate|rates|rated|praise|praises|dismiss|dismisses|find|finds|found|deem|deems|deemed|suggest|suggests|believe|believes|think|thinks|conclude|concludes|is\\s+silent|are\\s+silent)\\b",
+      "why": "a source document is doing the telling — take the fact, drop the document",
+      "section": "§3"
+    },
+    {
+      "id": "doc_as_subject",
+      "landmarkSection": "§2",
+      "severity": "hard",
+      "origin": "landmark-v8",
+      "pattern": "(\\bthat is the whole of the (record|report|file)|\\ball the record (keeps|holds|has)|\\bthe record (keeps|holds|has) of|\\baccording to the (report|record|nomination|ordinance)|\\bnothing (else|more) (is known|about (them|him|her|it))|\\blittle else is (currently )?known|\\bwhoever wrote it\\b|\\bby the time the nomination was written)",
+      "why": "the prose turns to the document rather than the place",
+      "section": "§3"
+    },
+    {
+      "id": "impersonal_absence",
+      "landmarkSection": "§2",
+      "severity": "hard",
+      "origin": "landmark-v8",
+      "pattern": "(\\bit is (not known|unknown|unclear|uncertain)\\b|\\bnot known (whether|if|how|why|when|who)\\b|\\bnothing (else|more|further)?\\s*(could be|has been|have been|was|is|are)\\s*(found|known|recorded|established|determined|traced|identified)\\b|\\babout whom nothing\\b|\\bof whom nothing\\b|\\bcould not be (found|determined|established|identified|traced|confirmed)\\b|\\bmakes? no mention\\b|\\bno mention (of|is made)\\b|\\bin the words of the (record|report|nomination|ordinance)\\b|\\b(report|record|nomination|ordinance)'?s?\\s+(list of sources|bibliography|sources?\\s+(include|includes|list))\\b|\\blist of sources\\b|\\b(remains?|stays) unknown\\b|\\bhas not been (found|identified|established)\\b)",
+      "why": "narrates an absence with the subject deleted — say nothing instead",
+      "section": "§3"
+    },
+    {
+      "id": "research_metaphor",
+      "landmarkSection": "§2/§1",
+      "severity": "hard",
+      "origin": "landmark-v8",
+      "pattern": "(leaves? a (much |somewhat )?(longer|better|fuller|fainter|thinner|shorter) trail|\\bthe (paper )?trail (goes|runs|ends|is) \\w+|\\bdisappears? from the (record|documents|paperwork)|\\bno obituary has been found|\\bhas been found\\b[^.]{0,20}$|\\bwe can(not)? follow|\\bfollow(s|ing)? (him|her|them) (through|into) the|\\bapparently paid for|\\bseems? to have been the)",
+      "why": "narrates the research rather than the place",
+      "section": "§3"
+    },
+    {
+      "id": "flourish",
+      "landmarkSection": "§8",
+      "severity": "hard",
+      "origin": "landmark-v8",
+      "pattern": "((?:^|(?<=[.!?]\\s))Not \\w[^.!?]{0,60}[:;] that\\b|(?:^|(?<=[.!?]\\s))Not one like it\\b|(?:^|(?<=[.!?]\\s))Here is\\b|(?:^|(?<=[.!?]\\s))That is the whole\\b)",
+      "why": "a rhetorical construction — write plain declarative sentences",
+      "section": "§11"
+    },
+    {
+      "id": "period_source_cited",
+      "landmarkSection": "§2 (soft)",
+      "severity": "soft",
+      "origin": "landmark-v8",
+      "pattern": "\\b(?:the\\s+)?(?:\\d{4}\\s+)?(?:city\\s+|polk\\s+|business\\s+)?(?:director(?:y|ies)|trade\\s+paper|census|city\\s+register)\\b\\s+(?:say|says|said|give|gives|gave|record|records|name|names|named|note|notes|call|calls|called|put|puts|list|lists|listed|show|shows|has|had)\\b",
+      "why": "a period source is cited by name — prefer the plain fact with its date",
+      "section": "§3 (soft)"
+    },
+    {
+      "id": "criteria_boilerplate",
+      "landmarkSection": "§4",
+      "severity": "hard",
+      "origin": "landmark-v8",
+      "pattern": "(significant character,? interest or value|distinguishing characteristics of an architectural|established and familiar visual feature|elements of design,? detail,? materials or craftsmanship|represents? a significant innovation|associated with the life of a person significant|criteri(a|on)\\b[^.]{0,60}\\b(cited|satisfied|met|approved|listed|named)|\\b(cited|satisfied|met|invoked)\\b[^.]{0,40}\\bcriteri|significant relationship to the (city|city's)|spatial relationships|distinctive historical identity|designated under (section|ordinance)|LPB[- ]?\\d+)",
+      "why": "the statutory designation criteria, quoted or reworded — identical in every report",
+      "section": "§6"
+    },
+    {
+      "id": "controls_boilerplate",
+      "landmarkSection": "§4",
+      "severity": "hard",
+      "origin": "landmark-v8",
+      "pattern": "(features? to be preserved|what cannot change|shall be preserved|the exterior of the building and its site|particular features of the landmark|what (the )?(designation|landmark status|ordinance) (protects|covers|preserves)|the designation (protects|covers|preserves|applies to)|(protect|preserv)\\w*[^.]{0,30}\\bthe entire exterior|entire exteriors? (of|and)|features (identified|named|specified) for preservation)",
+      "why": "the controlled-features list, quoted or reworded — identical in every report",
+      "section": "§6"
+    },
+    {
+      "id": "legal_description",
+      "landmarkSection": "§4",
+      "severity": "hard",
+      "origin": "landmark-v8",
+      "pattern": "(\\bLots?\\s+\\d|\\bBl(oc)?k\\.?\\s+\\d|\\bBlk\\b|\\bplats?\\b|Denny'?s\\s+(First|1st)\\s+Add|Seattle\\s+Tidelands|\\bShort\\s+Subdivision\\b|\\bParcel\\s+[A-Z0-9]\\b|\\beasement\\b|\\bquarter\\s+section\\b)",
+      "why": "a surveyor's legal description — lot and block numbers are bookkeeping, not something anyone standing on the sidewalk can see or use",
+      "section": "§6"
+    },
+    {
+      "id": "source_framing",
+      "landmarkSection": "§5",
+      "severity": "hard",
+      "origin": "landmark-v8",
+      "pattern": "\\b((?:report|record|nomination|ordinance|paperwork)s?\\s+is\\s+(?:blunt|candid|frank|clear|explicit|unsparing|matter-of-fact|careful)|blunt about it|worth hearing|honest problem|singles? out for praise|to (its|their) credit|in the same (sentence|breath)|then,? in the same|damns? with|grudging|the one feature it)",
+      "why": "stages the source's framing for effect instead of taking the fact",
+      "section": "§6"
+    },
+    {
+      "id": "stage_direction",
+      "landmarkSection": "§8",
+      "severity": "hard",
+      "origin": "landmark-v8",
+      "pattern": "\\b(welcome to|as you can see|take a moment|look up at|turn (left|right|around)|walk (north|south|east|west)|in front of you (is|stands)|imagine (you|for a moment))\\b",
+      "why": "stage direction — the writer does not know where the listener is standing",
+      "section": "§12"
+    },
+    {
+      "id": "speculation",
+      "section": "§2",
+      "severity": "hard",
+      "origin": "history-v1",
+      "pattern": "\\b(must have (been|felt|thought|known|wondered|seemed|looked)|surely|no doubt (he|she|they|it)|doubtless|one can (only )?imagine|it is easy to imagine|we can (only )?imagine|perhaps (he|she|they) (felt|thought|wondered|knew|feared|hoped)|(he|she|they) may well have)\\b",
+      "why": "speculation dressed as narration — say what the record shows, or say nothing"
+    },
+    {
+      "id": "interior_unsourced",
+      "section": "§2 (soft)",
+      "severity": "soft",
+      "origin": "history-v1",
+      "pattern": "\\b(he|she|they)\\s+(thought|wondered|felt|feared|hoped|dreamed|longed|worried|believed)\\b",
+      "why": "an inner life — fine only when a claim carries the source that records it (a letter, testimony, an interview)"
+    },
+    {
+      "id": "present_tense_now",
+      "section": "§4",
+      "severity": "hard",
+      "origin": "history-v1",
+      "pattern": "\\b(currently|nowadays|these days|at present|to this day|today'?s?)\\b",
+      "why": "\"now\" rots the day it is written — tell later events as dated past events"
+    },
+    {
+      "id": "status_box",
+      "section": "§8",
+      "severity": "hard",
+      "origin": "history-v1",
+      "pattern": "(\\blevel(l?ed)? up\\b|\\bgained a level\\b|\\bexperience points\\b|\\bXP\\b|\\bstat(s)? (boost|points?)\\b|\\[\\s*(level|lvl|str|int|con|dex)\\b)",
+      "why": "growth is shown in what the person does, never printed as a level or a stat"
+    },
+    {
+      "id": "praise_label",
+      "section": "§13",
+      "severity": "hard",
+      "origin": "history-v2",
+      "pattern": "\\b(remarkable|extraordinary|pioneering|trail-?blaz(?:er|ers|ing)|unsung|legendary|inspiring|forgotten (?:heroine|hero|woman|women|man|men|figure|figures|pioneer|pioneers))\\b",
+      "why": "praise tells the reader what to think; show what she did and let it stand"
+    },
+    {
+      "id": "pronoun_opens_paragraph",
+      "section": "§12",
+      "severity": "hard",
+      "origin": "history",
+      "pattern": "(?m)^[ \\t]*(he|she|his|her|him|hers|they|their|them)\\b",
+      "why": "Open a paragraph with the person's name, never a pronoun. A reader takes \"he\" for the last man named, and a paragraph is often entered fresh (after a picture, from a link, in a narration). Lawrence, 2026-10-06, on William Grose: after Isaac Stevens's paragraph and portrait, \"He came to Seattle\" read as Stevens."
+    }
+  ]
 }

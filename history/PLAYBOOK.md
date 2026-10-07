@@ -264,7 +264,18 @@ landmark guide, in the order the subjects arrived (2026-10-05, "Black Seattle").
    (`community` only when `dossier.communityReview` is true). `build … --publish` leaves out a
    story without them, or with editor suggestions still waiting in StoryMaker, and refuses any
    picture a hosted page could not show (a hosted page loads images only from its own site).
-5. The book's `resources/places.json` lists the landmarks its stories name. The landmark guide
+   `series_book.py status stories <series>` answers "is everything reviewed?" in seconds: each
+   story's suggestions still waiting in StoryMaker, the parts the author edited, and the
+   sign-offs recorded.
+5. **A review copy for community readers:** `build … --review` takes the stories the author has
+   signed off (nothing waiting), marks every page as a review copy, keeps it out of search
+   engines, and never offers it to the landmark guide. Deploy it with the landmark pipeline's
+   `deploy_web.sh <out-dir>` (settings in `<dataset>/client.json` `deploy`). A hosted page is
+   deployed as TEXT (binary files are skipped; 200 files, 2 MB each, 16 MB in all), so a hosted
+   build writes each picture as a data: URI under `resources/pic/`, which the page loads as the
+   reader nears it. Never fetch the address before its first deploy: the CDN keeps that 404 for
+   ten minutes.
+6. The book's `resources/places.json` lists the landmarks its stories name. The landmark guide
    links back only to a PUBLISHED book, through its `client.json` `companions` entry. Deploy the
    book first, then rebuild and deploy the guide, so no link arrives before its page.
 

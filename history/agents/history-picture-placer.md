@@ -17,6 +17,10 @@ audited and gated. You change no prose and no claims.
    A caption says only what the picture's own description supports. Prefer the person, then the
    places and events your chapter tells. Check `images.py list` first: never a second view of
    something another chapter already shows (Thelma Dewitty's book had three of one school, 2026-10-05).
+   **In the introduction, the subject's own portrait comes first**, after the opening paragraph and
+   before any picture of anyone else. A reader must know whose story this is before meeting the
+   people in it: William Grose's book opened on a full-width Robert Moran with Grose's small
+   photograph below it (2026-10-05).
 4. Run `python3 history/tools/images.py check stories/<slug>` until it exits 0. To take a picture
    back out, `python3 history/tools/images.py remove stories/<slug> <id>`, never by deleting files.
    If nothing fits your chapter, place nothing: an empty chapter is better than a wrong picture.

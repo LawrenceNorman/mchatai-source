@@ -62,6 +62,50 @@ def quote_core(inner):
     return re.sub(r"^(?:\.\.\.|…)\s*|[\s,.…]+$", "", norm(inner))
 
 
+HONORIFICS = {"mr", "mrs", "ms", "miss", "dr", "rev", "reverend", "judge", "mayor", "councilman", "councilmember",
+              "council", "representative", "state", "senator", "governor", "editor", "brother", "sister", "mother",
+              "father", "captain", "big"}
+
+
+def subject_first_names(subject, aliases=()):
+    """The first names the record gives the subject: "Samuel" and "Sam", "Susie", "William" and "Bill"."""
+    parts = subject.replace('"', " ").replace("“", " ").replace("”", " ").split()
+    if len(parts) < 2:
+        return set()
+    surname = parts[-1].lower()
+    names = {parts[0]}
+    for alias in aliases or ():
+        words = str(alias).replace(",", " ").split()
+        if len(words) >= 2 and words[-1].lower().strip(".") == surname:
+            head = words[0].strip(".")
+            if "." in head or head.isupper():          # initials ("H.R. Cayton") are not a first name
+                continue
+            if head.lower() not in HONORIFICS and head[:1].isupper() and len(head) > 2:
+                names.add(head)
+    return names
+
+
+def first_name_findings(text, subject, aliases=()):
+    """The subject's first name used alone, outside quotations and link targets: "Susie" where the
+    series names every man by his surname. Followed by another capitalised word it is someone
+    else's full name ("John Jacob Gayton", "Samuel B. McKinney") or a son's ("Horace Jr."), and is
+    left alone. Soft: two people of one surname in a passage may have a reason, which the writer
+    states."""
+    names = subject_first_names(subject, aliases)
+    if not names:
+        return []
+    surname = subject.replace('"', " ").split()[-1]
+    scan = strip_quoted(text)
+    # Link and picture targets are addresses, not prose: blank them, keeping every position.
+    scan = re.sub(r"\]\([^)]*\)", lambda m: " " * len(m.group(0)), scan)
+    rx = re.compile(r"\b(" + "|".join(map(re.escape, sorted(names, key=len, reverse=True))) + r")\b(?!\s+[A-Z])")
+    return [finding("first_name_for_subject", "soft",
+                    f"{m.group(1)!r} alone: the subject goes by their surname ({surname!r}) after the first full mention, "
+                    "a woman exactly as a man; name a family member who shares the surname differently",
+                    sentence_around(text, m.start(), m.end()))
+            for m in rx.finditer(scan)]
+
+
 def chapter_findings(project, n):
     ch = project.chapter(n)
     if ch is None:
@@ -85,6 +129,10 @@ def chapter_findings(project, n):
                                "this quotation carries OCR damage (a word broken by a stray full stop, or letters inside a "
                                "number) — quote a clean span, or tell it in your own words",
                                sentence_around(text, start, end)))
+
+    # §7 — the subject goes by their surname, a woman exactly as a man (2026-10-06).
+    dossier = project.dossier or {}
+    out += first_name_findings(text, dossier.get("subject") or "", dossier.get("aliases") or ())
 
     n_words = words(text)
     # §9 — era context, capped.

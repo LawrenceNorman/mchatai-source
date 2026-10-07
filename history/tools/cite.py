@@ -1303,7 +1303,7 @@ def cmd_land(project, dry=False):
 FACT_RULES = {"number_unsourced", "quote_unverified", "quote_too_short", "verbatim_copy", "dialogue_unsourced",
               "correction_failed", "ocr_in_quote"}
 LENGTH_RULES = {"over_ceiling", "under_floor", "starved", "growth_unshown", "growth_none"}
-PICTURE = re.compile(r"!\[[^\]\n]*\]\(([^)\s]+)\)")
+PICTURE = re.compile(r"!\[[^\]\n]*\]\(([^)\s]+)(?:\s+\"[^\"]*\")?\)")   # a size word may follow: ![c](url "small")
 
 
 def cmd_adopt(project):
