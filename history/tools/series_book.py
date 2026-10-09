@@ -4,7 +4,8 @@
 The History Writer lands each story in StoryMaker on its own. This gathers a series into a
 companion book for the place's landmark guide (2026-10-05, "Black Seattle"): a contents page
 in parts by era, each story's chapters as pages, its notes and sources, a timeline of every
-chapter, and the guide's landmarks each story names, linked both ways.
+chapter, the guide's landmarks each story names, linked both ways, and a map of the places
+the chapters name (book_map.py: landmarks, addresses, corners, parks and cemeteries).
 
   series_book.py build <stories-dir> <series-id> <out-dir> [--files] [--publish | --review]
   series_book.py order <stories-dir> <series-id>        the stories in book order, and why
@@ -20,7 +21,9 @@ images only from its own site; a picture with no record in images/index.json is 
 Order: each story is placed by the year its subject arrived in the place: the dossier's
 earliest `arrival` event that names the place, else its earliest `arrival`, else its first
 event. The series' `book` block in series.json holds the title, the introduction, the parts
-(year ranges, so a new story files itself) and the companion guide.
+(year ranges, so a new story files itself) and the companion guide. A year before the first
+part's start files into the first part (a life that began before the book's span), and a part
+may say where its people arrived (`arrivedIn`, "on Puget Sound") when it is not the series' place.
 
 Publishing (PLAYBOOK §6): without --publish every landed story is built, each marked as a draft,
 for the author to read. --publish leaves a story out until project.json records the author's
@@ -50,6 +53,7 @@ import urllib.parse
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from _hw import HISTORY, Project, load_json  # noqa: E402
 from cite import find_shim, sentences, storymaker  # noqa: E402
+import book_map  # noqa: E402
 
 READING_WPM = 230
 PICTURE_BOX = (1100, 1300)       # fits a 40rem column at twice its width; a tall document stays legible
@@ -422,6 +426,20 @@ class Assets:
         self.copied.append((rec, rel))
         return rel
 
+    def portrait(self, rid):
+        """(record, published path) for a picture recorded only as the story's portrait
+        (images.py portrait), or None when it has no local copy."""
+        rec = next((r for r in load_json(self.project.path("images", "index.json"), []) or []
+                    if r.get("id") == rid), None)
+        src = self.project.path(rec["file"]) if rec and rec.get("file") else None
+        if not src or not os.path.isfile(src):
+            self.problems.append(f"{self.slug}: the portrait {rid} has no local copy (images.py portrait records one)")
+            return None
+        rel = f"resources/img/{self.slug}/{rid}{os.path.splitext(src)[1].lower() or '.jpg'}"
+        os.makedirs(os.path.dirname(os.path.join(self.out, rel)), exist_ok=True)
+        shutil.copyfile(src, os.path.join(self.out, rel))
+        return rec, rel
+
 
 def dims(path):
     out = subprocess.run(["sips", "-g", "pixelWidth", "-g", "pixelHeight", path], capture_output=True, text=True).stdout
@@ -429,14 +447,28 @@ def dims(path):
     return (int(w.group(1)), int(h.group(1))) if w and h else (None, None)
 
 
-def shrink(src, dst, box, quality=JPEG_QUALITY):
+def shrink(src, dst, box, quality=JPEG_QUALITY, crop=None):
     """A copy that fits the box, re-encoded for a reader on a phone, with macOS sips when it is
     there (the tools are standard library only); elsewhere an exact copy. Never enlarged: sips
-    scales a small picture UP to a -Z or --resampleWidth size (checked 2026-10-05)."""
+    scales a small picture UP to a -Z or --resampleWidth size (checked 2026-10-05). `crop` is
+    [left, top, width, height] as fractions of the picture: one person out of a group photograph."""
     os.makedirs(os.path.dirname(dst), exist_ok=True)
     if not shutil.which("sips"):
         shutil.copyfile(src, dst)
         return
+    if crop:
+        w, h = dims(src)
+        if w and h:
+            cut = dst + ".crop" + (os.path.splitext(src)[1] or ".jpg")
+            r = subprocess.run(["sips", "--cropToHeightWidth", str(max(1, round(crop[3] * h))),
+                                str(max(1, round(crop[2] * w))), "--cropOffset", str(round(crop[1] * h)),
+                                str(round(crop[0] * w)), src, "--out", cut], capture_output=True, text=True)
+            if r.returncode == 0 and os.path.isfile(cut):
+                try:
+                    shrink(cut, dst, box, quality)
+                finally:
+                    os.remove(cut)
+                return
     w, h = dims(src)
     args, resized = ["sips"], False
     if w and h:
@@ -496,9 +528,11 @@ def hosted_caps(out):
     return files, total, over
 
 
-def build_story(project, shim, use_files, out, place, problems, pool):
+def build_story(project, shim, use_files, out, place, problems, pool, lens=None):
     meta = load_json(project.path("project.json"), {}) or {}
     dossier = project.dossier or {}
+    life = dossier.get("lifespan") or {}
+    born, died = year_of(life.get("born")), year_of(life.get("died"))
     slug = meta.get("slug") or os.path.basename(project.root)
     parts, origin, extra = story_parts(project, shim, use_files)
     if parts is None:
@@ -519,7 +553,7 @@ def build_story(project, shim, use_files, out, place, problems, pool):
             rows = notes_sections[i][1]          # a chapter the author renamed: the same place in order
         return rows or []
 
-    intro, chapters, years, words_total, places = None, [], "", 0, {}
+    intro, chapters, years, words_total, places, map_places = None, [], "", 0, {}, []
     for i, p in enumerate(body):
         text = p["text"]
         if p["kind"] == "intro":
@@ -539,20 +573,33 @@ def build_story(project, shim, use_files, out, place, problems, pool):
         n = 0 if row is intro else len(chapters)
         for lid in dict.fromkeys(ctx["places"]):
             places.setdefault(lid, []).append(n)
+        # Every place the chapter's words name, for the map (the author's text, as the page shows it).
+        map_places += [(n, x) for x in book_map.chapter_places(plain(text), place, lens, born, died)]
     sources = next((parse_sources(p["text"]) for p in parts if p["kind"] == "sources"), [])
     subject = meta.get("subject") or meta.get("name") or dossier.get("subject") or slug
-    # The author's pick (project.json "portrait": an image id, or null for none), else the first
-    # picture in the story whose caption names the subject as its subject.
+    # The author's pick (project.json "portrait": an image id, {"image": id, "crop": [left, top,
+    # width, height]}, or null for none), else the first picture in the story whose caption names
+    # the subject as its subject. A picture recorded only as the portrait (images.py portrait) is
+    # in no chapter: it is copied here, and the story's first page carries its credit.
+    pick, crop = meta.get("portrait"), None
+    if isinstance(pick, dict):
+        pick, crop = pick.get("image"), pick.get("crop")
     if "portrait" in meta:
-        portrait = next((rel for rec, rel in assets.copied if rec.get("id") == meta["portrait"]), None)
+        hit = next(((rec, rel) for rec, rel in assets.copied if rec.get("id") == pick), None)
+        if hit is None and pick:
+            hit = assets.portrait(pick)
     else:
         names = portrait_names(subject, dossier)
-        portrait = next((rel for rec, rel in assets.copied if is_portrait(rec.get("caption"), names)), None)
+        hit = next(((rec, rel) for rec, rel in assets.copied if is_portrait(rec.get("caption"), names)), None)
+    prec, portrait = hit if hit else (None, None)
+    portrait_credit, portrait_permission = "", False
     if portrait:
+        from images import credit_line
         small = portrait.rsplit(".", 1)[0] + "-portrait." + portrait.rsplit(".", 1)[1]
-        shrink(os.path.join(out, portrait), os.path.join(out, small), PORTRAIT_BOX)
+        shrink(os.path.join(out, portrait), os.path.join(out, small), PORTRAIT_BOX, crop=crop)
         portrait = small
-    life = dossier.get("lifespan") or {}
+        portrait_credit = credit_line(prec) + (", cropped" if crop else "")
+    portrait_permission = bool(prec and (prec.get("permission") or {}).get("holder"))
     if not years:
         b, d = year_of(life.get("born")), year_of(life.get("died"))
         years = f"{b or ''}–{d or ''}".strip("–") if (b or d) else ""
@@ -561,10 +608,11 @@ def build_story(project, shim, use_files, out, place, problems, pool):
     return {
         "slug": slug, "name": subject, "years": years, "arrived": arrived, "arrivedWhy": why,
         "born": year_of(life.get("born")),
-        "summary": (intro or {}).get("summary", ""), "portrait": portrait,
+        "summary": (intro or {}).get("summary", ""), "portrait": portrait, "portraitCredit": portrait_credit,
+        "portraitPermission": portrait_permission,
         "intro": intro, "chapters": chapters,
         "notes": render_notes(notes_sections, slug), "sources": render_sources(sources), "sourceCount": len(sources),
-        "places": places, "words": words_total, "minutes": max(1, round(words_total / READING_WPM)),
+        "places": places, "mapPlaces": map_places, "mapPictures": list(assets.copied), "words": words_total, "minutes": max(1, round(words_total / READING_WPM)),
         "origin": origin, "edited": sum(1 for p in parts if p["edited"]),
         "pendingSuggestions": extra.get("pendingSuggestions", 0),
         "review": {"author": review.get("author"), "community": review.get("community"),
@@ -613,6 +661,11 @@ def part_for(year, parts):
         lo, hi = p.get("from"), p.get("to")
         if year is not None and (lo is None or year >= lo) and (hi is None or year <= hi):
             return i
+    # Before the first part: the first part. The Bush family settled on Puget Sound in 1845, and a
+    # dossier with no arrival event dates its story from a birth year, which fell into the LAST
+    # part (2026-10-08).
+    if year is not None and parts and parts[0].get("from") is not None and year < parts[0]["from"]:
+        return 0
     return len(parts) - 1 if parts else 0
 
 
@@ -705,7 +758,7 @@ def cmd_build(stories_dir, series_id, out, use_files=False, publish=False, revie
     os.makedirs(os.path.join(out, "resources"), exist_ok=True)
     problems, stories, held, pool = [], [], [], {}
     for project in projects:
-        story = build_story(project, shim, use_files, out, place, problems, pool)
+        story = build_story(project, shim, use_files, out, place, problems, pool, entry.get("survey") or {})
         if story is None:
             continue
         why = publishable(story, community=not review)
@@ -721,7 +774,12 @@ def cmd_build(stories_dir, series_id, out, use_files=False, publish=False, revie
     if not parts:
         parts = [{"title": "", "from": None, "to": None, "stories": []}]
     for s in stories:
-        parts[part_for(s["arrived"], parts_cfg)]["stories"].append(s["slug"])
+        i = part_for(s["arrived"], parts_cfg)
+        parts[i]["stories"].append(s["slug"])
+        # Where this part's people arrived, when it is not the series' place: the Bushes arrived
+        # "on Puget Sound" in 1845, six years before Seattle began.
+        if i < len(parts_cfg) and parts_cfg[i].get("arrivedIn"):
+            s["arrivedIn"] = parts_cfg[i]["arrivedIn"]
     names = companion_names(book)
     places = {}
     for s in stories:
@@ -732,11 +790,31 @@ def cmd_build(stories_dir, series_id, out, use_files=False, publish=False, revie
                 ref = [s["slug"], n]
                 if ref not in places[lid]["refs"]:
                     places[lid]["refs"].append(ref)
+    notes = []
+    # Pictures used by the holders' permission, non-commercially (images.json `permission`): only in a
+    # book that says it is non-commercial, and always listed, so a paid edition knows what to clear.
+    by_permission = [s["name"] for s in stories if s.get("portraitPermission")]
+    if by_permission and not book.get("nonCommercial"):
+        problems.append("portraits used by permission (non-commercial) in a book not marked nonCommercial: "
+                        + ", ".join(by_permission))
+    elif by_permission:
+        notes.append(f"{len(by_permission)} portrait(s) used by permission, non-commercially: {', '.join(by_permission)}")
+    the_map = book_map.build(stories, projects[0], out, notes)
+    place_photos = the_map.pop("_photosUsed", []) if the_map else []
     generated = datetime.date.today().isoformat()
     pics = {}
     if publish or review:
-        used = set(pool.values()) | {s["portrait"] for s in stories if s.get("portrait")}
+        # Only what the copy shows: the pictures of the stories it carries (a held story's were copied
+        # while it was built, and counted against the deploy's cap, 2026-10-09), their portraits, and
+        # the map's pictures of places.
+        used = ({rel for s in stories for _, rel in s.get("mapPictures") or []}
+                | {s["portrait"] for s in stories if s.get("portrait")} | set(place_photos))
         pics = hosted_pictures(out, used, problems)
+        # A hosted page shows its pictures from their text copies, so the binary copies leave the folder:
+        # the deploy is text only, and its security scan refused a JPEG whose bytes happened to read as
+        # text with a script-like pattern in them (2026-10-09, resources/places/SL-0094-guide.jpg).
+        for sub in ("img", "places"):
+            shutil.rmtree(os.path.join(out, "resources", sub), ignore_errors=True)
     data = {
         "pics": pics,
         "book": {"title": book.get("title") or entry.get("title"), "subtitle": book.get("subtitle", ""),
@@ -745,10 +823,13 @@ def cmd_build(stories_dir, series_id, out, use_files=False, publish=False, revie
                  "canonical": book.get("canonical", "") if publish else "", "generated": generated,
                  "publish": publish, "reviewCopy": review},
         "parts": [p for p in parts if p["stories"]],
-        "stories": {s["slug"]: {k: v for k, v in s.items() if k not in ("review", "arrivedWhy", "origin", "born")}
+        "stories": {s["slug"]: {k: v for k, v in s.items()
+                                if k not in ("review", "arrivedWhy", "origin", "born", "mapPlaces", "mapPictures",
+                                             "portraitPermission")}
                     for s in stories},
         "order": [s["slug"] for s in stories],
         "places": places,
+        "map": the_map,
     }
     base = (book.get("canonical") or "").rstrip("/") + "/" if book.get("canonical") else ""
     index = {lid: {"name": p["name"], "stories": [
@@ -769,6 +850,11 @@ def cmd_build(stories_dir, series_id, out, use_files=False, publish=False, revie
         problems += [f"over the deploy's cap: {o}" for o in over]
     print(f"{len(stories)} stories, {sum(len(s['chapters']) for s in stories)} chapters, "
           f"{sum(s['words'] for s in stories):,} words, {len(places)} landmarks → {out}")
+    if the_map:
+        print(f"map: {len(the_map['pins'])} places pinned ({sum(1 for p in the_map['pins'] if p.get('p'))} with pictures), "
+              f"{len(the_map['unplaced'])} listed without a pin")
+    for n in notes:
+        print(f"  note: {n}")
     for s in stories:
         flag = "draft" if s["draft"] else "ready"
         extra = []
@@ -919,6 +1005,47 @@ sup.src a:hover{color:var(--accent)}
 .pager b{display:block;margin-top:3px;font:600 16px/1.3 var(--serif)}
 .pager .nx{text-align:right;grid-column:2}
 .side{margin-top:30px}
+.pmap{margin:18px 0 8px}
+.pmap .chips{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px}
+@media (max-width:560px){.pmap .chips{flex-wrap:nowrap;overflow-x:auto;margin:0 -16px 10px;padding:0 16px 2px;scrollbar-width:none}.pmap .chips::-webkit-scrollbar{display:none}.pmap .chip{flex:0 0 auto}}
+.chip{font:13px/1.2 var(--sans);padding:7px 11px;border-radius:999px;border:1px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer}
+.chip[aria-pressed=true]{background:var(--accent);border-color:var(--accent);color:#fff}
+:root[data-theme=dark] .chip[aria-pressed=true]{color:#0e161c}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]) .chip[aria-pressed=true]{color:#0e161c}}
+.pmap .yrs{margin:0 0 10px;font:14px/1.4 var(--sans);color:var(--muted);display:flex;gap:8px 16px;flex-wrap:wrap}
+.pmap .yrs input{width:5.6em;margin-left:6px;padding:5px 7px;border:1px solid var(--line);border-radius:7px;background:var(--panel);color:var(--ink);font:14px var(--sans)}
+.mstage{display:grid;gap:12px}
+@media (min-width:900px){.mstage{grid-template-columns:minmax(0,1.6fr) minmax(280px,1fr);align-items:start}.mpop{max-height:450px;overflow:auto;margin:0}}
+.mwrap{position:relative;height:450px;border-radius:12px;overflow:hidden;border:1px solid var(--line);background:#12181a}
+@media (max-width:560px){.mwrap{height:340px}}
+.mpop .ph{display:block;width:100%;height:200px;object-fit:cover;border-radius:9px;background:var(--accent-soft);margin:12px 0 0}
+.mpop .thumbs{display:flex;gap:6px;margin:6px 0 0}
+.mpop .thumbs button{padding:0;border:2px solid transparent;border-radius:7px;background:none;cursor:pointer}
+.mpop .thumbs button[aria-pressed=true]{border-color:var(--accent)}
+.mpop .thumbs img{display:block;width:58px;height:44px;object-fit:cover;border-radius:5px}
+.mpop .phcap{margin:5px 0 0;font:12.5px/1.45 var(--sans);color:var(--muted)}
+.mpop .back{margin:10px 0 0;font:13px var(--sans)}.mpop .back a{color:var(--accent)}
+.mpop .plist{list-style:none;margin:6px 0 0;padding:0}
+.mpop .plist button{display:block;width:100%;text-align:left;padding:8px 0;border:0;border-top:1px solid var(--line);background:none;color:var(--ink);font:15px/1.4 var(--serif);cursor:pointer}
+.mpop .plist button:hover{color:var(--accent)}.mpop .plist small{display:block;font:12px var(--sans);color:var(--muted)}
+.mpop .lead{margin:12px 0 0;font:13px/1.5 var(--sans);color:var(--muted)}
+.mwrap canvas{display:block;width:100%;height:100%;touch-action:none;cursor:grab}
+.mwrap .zoom{position:absolute;right:10px;top:10px;display:flex;flex-direction:column;gap:6px}
+.mwrap .zoom button{min-width:38px;height:38px;padding:0 9px;border-radius:9px;border:1px solid #2a3239;background:rgba(24,29,34,.92);color:#e7e5df;font:15px/1 var(--sans);cursor:pointer}
+.mhint,.mnote{margin:8px 0 0;font:13px/1.55 var(--sans);color:var(--muted);max-width:46rem}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin:0 5px 0 0}
+.dot.lm{background:#e0b25a}.dot.pl{background:#5cb8d6;margin-left:4px}
+.mpop{margin:12px 0 0;padding:2px 16px 12px;border:1px solid var(--line);border-radius:12px;background:var(--panel)}
+.mpop section+section{border-top:2px solid var(--line);margin-top:8px}
+.mpop h3{margin:12px 0 0;font:600 18px/1.3 var(--serif)}
+.mpop .basis{margin:3px 0 6px;font:13px/1.5 var(--sans);color:var(--muted)}
+.mpop ol{list-style:none;margin:0;padding:0}
+.mpop li{padding:8px 0;border-top:1px solid var(--line);font:15.5px/1.5 var(--serif)}
+.mpop q{font-style:italic;color:var(--muted)}
+.mpop .go{margin:6px 0 4px;font:14px var(--sans)}
+.sec{margin:30px 0 4px;font:600 22px/1.2 var(--serif)}
+.unpl{margin:22px 0 0}.unpl summary{cursor:pointer;font:600 15px/1.4 var(--sans);color:var(--accent)}
+.pcredit{grid-column:1;margin:8px 0 0;font:12px/1.45 var(--sans);color:var(--muted)}
 .places{list-style:none;margin:0;padding:0}
 .places li{padding:12px 0;border-bottom:1px solid var(--line)}
 .places h3{margin:0;font:600 18px/1.3 var(--serif)}
@@ -1034,8 +1161,9 @@ function person(slug){
     ${s.portrait ? `<img class="hero" data-src="${esc(s.portrait)}" alt="${esc(s.name)}">` : ""}
     <p class="kicker"><a href="#/">${esc(B.title)}</a>${L.t ? ` · ${esc(L.n ? L.n + ": " : "")}${esc(L.t)}` : ""}</p>
     <h1>${esc(s.name)}</h1>
-    <p class="years">${esc(s.years)}${s.arrived ? `${s.years ? " · " : ""}arrived in ${esc(B.place || "the city")} ${s.arrived}` : ""}</p>
+    <p class="years">${esc(s.years)}${s.arrived ? `${s.years ? " · " : ""}arrived ${esc(s.arrivedIn || "in " + (B.place || "the city"))} ${s.arrived}` : ""}</p>
     ${draftNote(s)}
+    ${s.portrait && s.portraitCredit ? `<p class="pcredit">Portrait: ${esc(s.portraitCredit)}</p>` : ""}
   </header>
   <div class="prose">${s.intro ? s.intro.html : ""}</div>
   <nav class="toc" aria-label="Chapters"><h2>Chapters</h2><ol>${toc}</ol>
@@ -1045,6 +1173,8 @@ function person(slug){
   </article>`;
 }
 function placesLine(s){
+  const pins = D.map ? (D.map.pins || []).filter(p => p.r.some(r => r[0] === s.slug)).length : 0;
+  if (pins) return ` · <a href="#/places/${s.slug}">${pins} ${pins === 1 ? "place" : "places"} on the map</a>`;
   const n = Object.keys(s.places).length;
   return n ? ` · <a href="#/places/${s.slug}">${n} ${n === 1 ? "place" : "places"} in ${esc(COMP.title || "the guide")}</a>` : "";
 }
@@ -1105,6 +1235,371 @@ function timeline(){
   return h + `</ol>`;
 }
 
+// ── The places map (book_map.py, 2026-10-08) ─────────────────────────────────
+// The places these chapters name, on the landmark guide's own street map, drawn the way the guide
+// draws it (build_web_html.py `draw`): a canvas, no tiles, the basemap fetched once from beside the page.
+const MAP = D.map || null;
+let GEO = null, GEOWAIT = null, WATER = [], STREETS = [], HOODS = [], SPOTS = [];
+let MV = {cx: 0, cy: 0, s: 60000}, MSEL = null, MHOT = [], MWHO = null, MY = [null, null];
+function mercY(lat){ const p = lat * Math.PI / 180; return Math.log(Math.tan(Math.PI / 4 + p / 2)); }
+function mercX(lon){ return lon * Math.PI / 180; }
+function unpack(g){
+  const out = []; let la = g[0], lo = g[1];
+  out.push([mercX(lo / 1e5), mercY(la / 1e5)]);
+  for (let i = 2; i < g.length; i += 2){ la += g[i]; lo += g[i + 1]; out.push([mercX(lo / 1e5), mercY(la / 1e5)]); }
+  return out;
+}
+function bbox(o){
+  let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9;
+  o.pts.forEach(q => { if (q[0] < x0) x0 = q[0]; if (q[0] > x1) x1 = q[0]; if (q[1] < y0) y0 = q[1]; if (q[1] > y1) y1 = q[1]; });
+  o.bb = [x0, y0, x1, y1]; return o;
+}
+function prepGeo(){
+  WATER = (GEO.water || []).map(w => bbox({cl: w.c || 0, pts: unpack(w.g)}));
+  STREETS = (GEO.streets || []).map(t => bbox({cl: t.c, n: t.n || "", pts: unpack(t.g)}));
+  // The guide's own names: the City's Mann, Minor and Atlantic are one label, the Central District.
+  const RN = MAP.hoods || {}, merged = {};
+  HOODS = [];
+  (GEO.hoods || []).forEach(h => {
+    const own = Object.prototype.hasOwnProperty.call(RN, h.n), n = own ? RN[h.n] : h.n;
+    const ring = (h.r && h.r[0] || []).map(c => [mercX(c[0]), mercY(c[1])]);
+    if (own && merged[n]){ merged[n].ring = merged[n].ring.concat(ring); return; }
+    const o = {n, ring}; if (own) merged[n] = o; HOODS.push(o);
+  });
+}
+function drawMap(cv){
+  const r = cv.getBoundingClientRect(), d = Math.min(window.devicePixelRatio || 1, 2.5);
+  const W = Math.max(1, Math.round(r.width * d)), H = Math.max(1, Math.round(r.height * d));
+  if (cv.width !== W || cv.height !== H){ cv.width = W; cv.height = H; }
+  const ctx = cv.getContext("2d");
+  ctx.setTransform(d, 0, 0, d, 0, 0);
+  const w = r.width, h = r.height;
+  ctx.fillStyle = "#12181a"; ctx.fillRect(0, 0, w, h);
+  const s = MV.s, cx = MV.cx, cy = MV.cy, hw = w / 2, hh = h / 2;
+  const X = x => (x - cx) * s + hw, Y = y => hh - (y - cy) * s;
+  const vx0 = cx - (hw + 40) / s, vx1 = cx + (hw + 40) / s, vy0 = cy - (hh + 40) / s, vy1 = cy + (hh + 40) / s;
+  const near = b => !(b[2] < vx0 || b[0] > vx1 || b[3] < vy0 || b[1] > vy1);
+  if (!GEO){
+    ctx.fillStyle = "#5b6f7c"; ctx.font = "12px system-ui,sans-serif"; ctx.textAlign = "center";
+    ctx.fillText("Loading the street map…", w / 2, 22);
+  } else {
+    ctx.fillStyle = "#1a3d4b";
+    WATER.forEach(o => {
+      if (o.cl === 1 || o.pts.length < 3 || !near(o.bb)) return;
+      ctx.beginPath(); o.pts.forEach((q, i) => i ? ctx.lineTo(X(q[0]), Y(q[1])) : ctx.moveTo(X(q[0]), Y(q[1])));
+      ctx.closePath(); ctx.fill();
+    });
+    ctx.strokeStyle = "#1a3d4b"; ctx.lineWidth = Math.min(9, 2.2 + s / 420000);
+    ctx.lineCap = "round"; ctx.lineJoin = "round"; ctx.beginPath();
+    WATER.forEach(o => {
+      if (o.cl !== 1 || !near(o.bb)) return;
+      o.pts.forEach((q, i) => i ? ctx.lineTo(X(q[0]), Y(q[1])) : ctx.moveTo(X(q[0]), Y(q[1])));
+    });
+    ctx.stroke();
+    if (s < 620000 && w > 420){
+      ctx.font = "500 11px system-ui,-apple-system,sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      const used = [];
+      HOODS.forEach(o => {
+        if (!o.ring.length) return;
+        let ax = 0, ay = 0; o.ring.forEach(q => { ax += q[0]; ay += q[1]; });
+        const hx = X(ax / o.ring.length), hy = Y(ay / o.ring.length);
+        if (hx < 40 || hx > w - 40 || hy < 14 || hy > h - 14) return;
+        const spread = w < 700 ? 110 : 70;
+        if (used.some(u => Math.abs(u[0] - hx) < spread && Math.abs(u[1] - hy) < 18)) return;
+        used.push([hx, hy]);
+        ctx.strokeStyle = "rgba(18,24,26,.85)"; ctx.lineWidth = 3; ctx.lineJoin = "round"; ctx.strokeText(o.n, hx, hy);
+        ctx.fillStyle = "rgba(150,165,158,.6)"; ctx.fillText(o.n, hx, hy);
+      });
+    }
+    [3, 2, 1].forEach(cl => {
+      if (cl === 3 && s < 620000) return;
+      if (cl === 2 && s < 190000) return;
+      ctx.strokeStyle = cl === 1 ? "#616b65" : (cl === 2 ? "#4a544f" : "#333c39");
+      ctx.lineWidth = cl === 1 ? Math.min(5, 1.1 + s / 620000) : (cl === 2 ? Math.min(3.2, .85 + s / 900000) : Math.min(2.2, .55 + s / 1400000));
+      ctx.lineCap = "round"; ctx.lineJoin = "round"; ctx.beginPath();
+      for (const t of STREETS){
+        if (t.cl !== cl || !near(t.bb)) continue;
+        const q = t.pts; ctx.moveTo(X(q[0][0]), Y(q[0][1]));
+        for (let j = 1; j < q.length; j++) ctx.lineTo(X(q[j][0]), Y(q[j][1]));
+      }
+      ctx.stroke();
+    });
+    if (s > 260000){
+      ctx.font = "500 10.5px system-ui,-apple-system,sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      const lu = [], seen = {}; let cap = 0;
+      const taken = (x, y, ww) => lu.some(u => Math.abs(u[0] - x) < (u[2] + ww) / 2 + 14 && Math.abs(u[1] - y) < 15);
+      for (let i = 0; i < STREETS.length && cap < 40; i++){
+        const t = STREETS[i];
+        if (!t.n || !near(t.bb)) continue;
+        if (t.cl === 3 && s < 1000000) continue;
+        if (t.cl === 2 && s < 380000) continue;
+        if (seen[t.n] > 1) continue;
+        const q = t.pts; let best = -1, bl = 0;
+        for (let j = 0; j < q.length - 1; j++){
+          const ax2 = X(q[j][0]), ay2 = Y(q[j][1]), bx2 = X(q[j + 1][0]), by2 = Y(q[j + 1][1]);
+          if ((ax2 < 0 && bx2 < 0) || (ax2 > w && bx2 > w) || (ay2 < 0 && by2 < 0) || (ay2 > h && by2 > h)) continue;
+          const L = Math.hypot(bx2 - ax2, by2 - ay2); if (L > bl){ bl = L; best = j; }
+        }
+        if (best < 0 || bl < 58) continue;
+        const px1 = X(q[best][0]), py1 = Y(q[best][1]), px2 = X(q[best + 1][0]), py2 = Y(q[best + 1][1]);
+        const mx = (px1 + px2) / 2, my = (py1 + py2) / 2;
+        if (mx < 24 || mx > w - 24 || my < 14 || my > h - 14) continue;
+        const tw = ctx.measureText(t.n).width;
+        if (tw > bl - 10 || taken(mx, my, tw)) continue;
+        let ang = Math.atan2(py2 - py1, px2 - px1);
+        if (ang > Math.PI / 2) ang -= Math.PI; if (ang < -Math.PI / 2) ang += Math.PI;
+        ctx.save(); ctx.translate(mx, my); ctx.rotate(ang);
+        ctx.strokeStyle = "rgba(18,24,26,.9)"; ctx.lineWidth = 3; ctx.lineJoin = "round"; ctx.strokeText(t.n, 0, 0);
+        ctx.fillStyle = "#97a09a"; ctx.fillText(t.n, 0, 0); ctx.restore();
+        lu.push([mx, my, tw]); seen[t.n] = (seen[t.n] || 0) + 1; cap++;
+      }
+    }
+  }
+  const hot = [], dim = [];
+  SPOTS.forEach((q, i) => {
+    const x = X(mercX(q.x)), y = Y(mercY(q.y));
+    if (x < -20 || x > w + 20 || y < -20 || y > h + 20) return;
+    (spotOn(q) ? hot : dim).push([x, y, i]);
+  });
+  ctx.fillStyle = "rgba(150,165,158,.3)";
+  dim.forEach(o => { ctx.beginPath(); ctx.arc(o[0], o[1], 2.4, 0, 6.284); ctx.fill(); });
+  hot.forEach(o => {
+    const q = SPOTS[o[2]], sel = MSEL === o[2], lm = q.places.some(p => p.k === "landmark"), rr = sel ? 7 : (lm ? 5 : 4.2);
+    ctx.beginPath(); ctx.arc(o[0], o[1], rr, 0, 6.284);
+    ctx.fillStyle = sel ? "#d98a70" : (lm ? "#e0b25a" : "#5cb8d6"); ctx.fill();
+    ctx.lineWidth = sel ? 2.4 : 1.6; ctx.strokeStyle = "rgba(18,24,26,.85)"; ctx.stroke();
+    if (sel){
+      ctx.beginPath(); ctx.arc(o[0], o[1], 12, 0, 6.284); ctx.strokeStyle = "#d98a70"; ctx.lineWidth = 1.6;
+      ctx.globalAlpha = .55; ctx.stroke(); ctx.globalAlpha = 1;
+    }
+  });
+  ctx.font = "10px system-ui,-apple-system,sans-serif"; ctx.textAlign = "right"; ctx.textBaseline = "bottom";
+  ctx.fillStyle = "rgba(150,165,158,.8)"; ctx.fillText(MAP.credit || "© OpenStreetMap contributors", w - 8, h - 6);
+  MHOT = hot;
+}
+// Places a few metres apart are one pin (an address and the landmark that stands at it).
+function makeSpots(){
+  SPOTS = [];
+  ((MAP && MAP.pins) || []).forEach(p => {
+    const s = SPOTS.find(q => Math.abs(q.y - p.y) < 0.00025 && Math.abs(q.x - p.x) < 0.00035);
+    if (s) s.places.push(p); else SPOTS.push({y: p.y, x: p.x, places: [p]});
+  });
+}
+// A reference's years: the year its sentence gives, else its chapter's span (the story's, for the introduction).
+function spanOf(slug, n){
+  const s = S[slug]; if (!s) return [null, null];
+  if (n){ const c = s.chapters[n - 1] || {}; return [c.start || null, c.end || c.start || null]; }
+  const m = String(s.years || "").match(/(\d{4})\D+(\d{4})/); return m ? [+m[1], +m[2]] : [null, null];
+}
+function refOn(r){
+  if (MWHO && r[0] !== MWHO) return false;
+  if (MY[0] == null) return true;
+  const [a, b] = r[2] ? [r[2], r[2]] : spanOf(r[0], r[1]);
+  return a != null && a <= MY[1] && (b || a) >= MY[0];
+}
+const placeOn = p => p.r.some(refOn);
+const spotOn = q => q.places.some(placeOn);
+function mapYears(){
+  let lo = 9999, hi = 0;
+  ((MAP && MAP.pins) || []).forEach(p => p.r.forEach(r => {
+    const [a, b] = r[2] ? [r[2], r[2]] : spanOf(r[0], r[1]);
+    if (a){ lo = Math.min(lo, a); hi = Math.max(hi, b || a); }
+  }));
+  return lo <= hi ? [lo, hi] : [1850, new Date().getFullYear()];
+}
+function mapPaint(){ const cv = el("mcv"); if (cv) drawMap(cv); }
+function clampS(v){ return Math.max(20000, Math.min(9000000, v)); }
+function mapFit(){
+  const cv = el("mcv"); if (!cv) return;
+  const r = cv.getBoundingClientRect(), on = SPOTS.filter(spotOn), use = on.length ? on : SPOTS;
+  if (!use.length || r.width < 2){ mapPaint(); return; }
+  const xs = use.map(p => mercX(p.x)), ys = use.map(p => mercY(p.y));
+  const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
+  const sc = Math.min((r.width - 60) / Math.max(x1 - x0, 1e-6), (r.height - 60) / Math.max(y1 - y0, 1e-6));
+  MV = {cx: (x0 + x1) / 2, cy: (y0 + y1) / 2, s: clampS(Math.min(sc, 2400000))};
+  mapPaint();
+}
+function mapZoom(f, clx, cly){
+  const cv = el("mcv"); if (!cv) return;
+  const r = cv.getBoundingClientRect();
+  const px = clx == null ? 0 : clx - r.left - r.width / 2, py = cly == null ? 0 : cly - r.top - r.height / 2;
+  const s0 = MV.s, s1 = clampS(s0 / f);
+  MV.cx = MV.cx + px / s0 - px / s1; MV.cy = MV.cy - py / s0 + py / s1; MV.s = s1;
+  mapPaint();
+}
+function wireMap(cv){
+  if (cv.dataset.wired) return; cv.dataset.wired = "1";
+  const pts = new Map(); let last = null, moved = false;
+  cv.addEventListener("pointerdown", e => {
+    cv.setPointerCapture(e.pointerId); pts.set(e.pointerId, {x: e.clientX, y: e.clientY});
+    last = {a: [...pts.values()], v: Object.assign({}, MV)}; moved = false;
+  });
+  cv.addEventListener("pointermove", e => {
+    if (!pts.has(e.pointerId) || !last) return;
+    pts.set(e.pointerId, {x: e.clientX, y: e.clientY});
+    const a = [...pts.values()];
+    if (a.length === 1 && last.a.length === 1){
+      const dx = a[0].x - last.a[0].x, dy = a[0].y - last.a[0].y;
+      if (Math.abs(dx) + Math.abs(dy) > 4) moved = true;
+      MV.cx = last.v.cx - dx / last.v.s; MV.cy = last.v.cy + dy / last.v.s; MV.s = last.v.s; mapPaint();
+    } else if (a.length >= 2 && last.a.length >= 2){
+      moved = true;
+      const d0 = Math.hypot(last.a[0].x - last.a[1].x, last.a[0].y - last.a[1].y) || 1;
+      const d1 = Math.hypot(a[0].x - a[1].x, a[0].y - a[1].y) || 1;
+      MV.cx = last.v.cx; MV.cy = last.v.cy; MV.s = clampS(last.v.s * (d1 / d0)); mapPaint();
+    }
+  });
+  ["pointerup", "pointercancel", "pointerleave"].forEach(t => cv.addEventListener(t, e => {
+    pts.delete(e.pointerId); last = {a: [...pts.values()], v: Object.assign({}, MV)};
+  }));
+  cv.addEventListener("wheel", e => { e.preventDefault(); mapZoom(e.deltaY > 0 ? 1.18 : 1 / 1.18, e.clientX, e.clientY); },
+                      {passive: false});
+  cv.addEventListener("click", e => {
+    if (moved) return;
+    const r = cv.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
+    let best = null, bd = 22 * 22;
+    MHOT.forEach(o => { const dd = (o[0] - x) ** 2 + (o[1] - y) ** 2; if (dd < bd){ bd = dd; best = o[2]; } });
+    MSEL = best; if (best == null) mapList(); else mapPop(best); mapPaint();
+  });
+}
+function mapPop(i){
+  const box = el("mpop"); if (!box) return;
+  if (i == null){ mapList(); return; }
+  const guide = esc(COMP.title || "the guide");
+  const basis = p => p.k === "landmark" ? `A designated landmark, at its point in ${guide}.`
+    : p.k === "corner" ? "Where the two streets cross today."
+    : p.k === "address" ? "Where this address is today. Some streets have been renamed since, so trust the chapter over the pin."
+    : "Where OpenStreetMap places it today.";
+  // A landmark first. An address that only repeats the landmark's sentences is named under it, not told twice.
+  const here = SPOTS[i].places.filter(placeOn).slice().sort((a, b) => (b.k === "landmark") - (a.k === "landmark"));
+  const told = new Set(), aka = [];
+  const keyOf = r => r[0] + "/" + r[1] + "/" + r[3];
+  const parts = here.map((p, j) => {
+    const refs = p.r.filter(refOn).filter(r => !told.has(keyOf(r))).sort((a, b) => (a[2] || 9999) - (b[2] || 9999));
+    if (j && !refs.length){ aka.push(p.n); return ""; }
+    refs.forEach(r => told.add(keyOf(r)));
+    const items = refs.map(r => `<li><b>${esc(S[r[0]].name)}</b>${r[2] ? ` · ${r[2]}` : ""}${r[3] ? `<br><q>${esc(r[3])}</q>` : ""}
+        <br><a href="${chapLink(r[0], r[1])}">${esc(chapName(S[r[0]], r[1]) || "Read")} →</a></li>`).join("");
+    const lot = p.lot ? `<p class="basis">${p.lot.corner ? "A building at this corner today" : "On this lot today"}: ${p.lot.name
+      ? (p.lot.landmark ? (COMP.url ? `<a href="${esc(compHref(p.lot.landmark))}" target="_blank" rel="noopener">${esc(p.lot.name)}</a>` : esc(p.lot.name)) + ", a designated landmark"
+                       : esc(p.lot.name) + ", built " + p.lot.yearBuilt)
+      : "a building built in " + p.lot.yearBuilt} (<a href="${esc(p.lot.page)}" target="_blank" rel="noopener">King County Assessor</a>).</p>` : "";
+    return `<section><h3>${esc(p.n)}</h3><p class="basis">${basis(p)}__AKA${j}__</p>${lot}<ol>${items}</ol>${p.l && COMP.url
+      ? `<p class="go"><a href="${esc(compHref(p.l))}" target="_blank" rel="noopener">Open in ${guide} ↗</a></p>` : ""}</section>`;
+  });
+  // Pictures of the place, as it was or is: the stories' own, then free photographs (book_map.py).
+  const seen = new Set(), photos = [];
+  here.forEach(p => (p.p || []).forEach(ph => { if (!seen.has(ph.src)){ seen.add(ph.src); photos.push(ph); } }));
+  MPHOTOS = photos;
+  box.innerHTML = (photos.length ? photoBlock(0) : "")
+    + parts.join("").replace("__AKA0__", aka.length ? ` The chapters also give it as ${aka.map(esc).join(" and ")}.` : "").replace(/__AKA\d+__/g, "")
+    + `<p class="back"><a href="#" data-back="1">← Every place on the map</a></p>`;
+  box.scrollTop = 0;                     // a place opens at its pictures, not where the list was scrolled
+  pictures(box);
+  if (!window.matchMedia("(min-width:900px)").matches) box.scrollIntoView({block: "nearest", behavior: "smooth"});
+}
+let MPHOTOS = [];
+function photoBlock(k){
+  const ph = MPHOTOS[k];
+  const thumbs = MPHOTOS.length > 1 ? `<div class="thumbs">${MPHOTOS.map((p, j) =>
+    `<button type="button" data-ph="${j}" aria-pressed="${j === k}" aria-label="Picture ${j + 1}"><img data-src="${esc(p.src)}" alt=""></button>`).join("")}</div>` : "";
+  return `<div class="phbox"><img class="ph" data-src="${esc(ph.src)}" alt="${esc(ph.cap)}">${thumbs}
+    <p class="phcap">${esc(ph.cap)}${ph.credit ? ` · ${ph.href ? `<a href="${esc(ph.href)}" target="_blank" rel="noopener">${esc(ph.credit)}</a>` : esc(ph.credit)}` : ""}</p></div>`;
+}
+// With nothing chosen, the card lists the places shown, so a pin is never the only way in.
+function mapList(){
+  const box = el("mpop"); if (!box) return;
+  const rows = SPOTS.map((q, i) => ({q, i})).filter(o => spotOn(o.q))
+    .sort((a, b) => a.q.places[0].n.localeCompare(b.q.places[0].n));
+  box.innerHTML = `<p class="lead">Tap a pin, or a place here.</p><ul class="plist">${rows.map(o => {
+    const p = o.q.places.find(x => x.k === "landmark") || o.q.places[0];
+    const who = [...new Set(o.q.places.flatMap(x => x.r.filter(refOn).map(r => S[r[0]].name)))];
+    return `<li><button type="button" data-i="${o.i}">${esc(p.n)}<small>${esc(who.join(", "))}${o.q.places.some(x => (x.p || []).length) ? " · pictures" : ""}</small></button></li>`;
+  }).join("")}</ul>`;
+  box.scrollTop = 0;
+}
+function mapCardClick(e){
+  const pick = e.target.closest("[data-i]"), ph = e.target.closest("[data-ph]"), back = e.target.closest("[data-back]");
+  if (pick){
+    MSEL = +pick.dataset.i; const q = SPOTS[MSEL];
+    MV.cx = mercX(q.x); MV.cy = mercY(q.y); MV.s = Math.max(MV.s, 700000);
+    mapPop(MSEL); mapPaint();
+  } else if (ph){
+    const k = +ph.dataset.ph, block = el("mpop").querySelector(".phbox");
+    if (block){ block.outerHTML = photoBlock(k); pictures(el("mpop")); }
+  } else if (back){
+    e.preventDefault(); MSEL = null; mapList(); mapPaint();
+  }
+}
+function mapHint(){
+  const h = el("mhint"); if (!h) return;
+  const on = SPOTS.filter(spotOn).length;
+  h.textContent = on === SPOTS.length ? `${SPOTS.length} places on the map.` : `${on} of ${SPOTS.length} places shown.`;
+}
+function mapSection(only){
+  if (!MAP || !(MAP.pins || []).length) return "";
+  const who = ORDER.filter(k => MAP.pins.some(p => p.r.some(r => r[0] === k)));
+  const [y0, y1] = mapYears();
+  const chips = [`<button type="button" class="chip" data-who="" aria-pressed="${!only}">Everyone</button>`]
+    .concat(who.map(k => `<button type="button" class="chip" data-who="${esc(k)}" aria-pressed="${only === k}">${esc(S[k].name)}</button>`)).join("");
+  return `<section class="pmap" aria-label="Map of the places these chapters name">
+    <div class="chips" role="group" aria-label="Whose places">${chips}</div>
+    <p class="yrs"><label>From <input id="my0" type="number" inputmode="numeric" min="${y0}" max="${y1}" value="${y0}"></label><label>to <input id="my1" type="number" inputmode="numeric" min="${y0}" max="${y1}" value="${y1}"></label></p>
+    <div class="mstage"><div class="mwrap"><canvas id="mcv" role="img" aria-label="Street map with a pin for each place"></canvas>
+      <div class="zoom"><button type="button" id="mzin" aria-label="Zoom in">+</button><button type="button" id="mzout" aria-label="Zoom out">−</button><button type="button" id="mzfit">Fit</button></div></div>
+    <div class="mpop" id="mpop" aria-live="polite"></div></div>
+    <p class="mhint" id="mhint"></p>
+    <p class="mnote"><span class="dot lm"></span>Designated landmarks, at their points in ${esc(COMP.title || "the guide")}. <span class="dot pl"></span>Street addresses, street corners, parks and cemeteries, where they are today. Tap a pin for the people and the chapters. Places without a reliable point are listed further down.</p>
+  </section>`;
+}
+function mapStart(only, focus){
+  const cv = el("mcv"); if (!cv || !MAP) return;
+  if (!SPOTS.length) makeSpots();
+  MWHO = only || null; MY = [null, null]; MSEL = null;
+  wireMap(cv);
+  el("mzin").onclick = () => mapZoom(1 / 1.5);
+  el("mzout").onclick = () => mapZoom(1.5);
+  el("mzfit").onclick = mapFit;
+  document.querySelectorAll(".pmap .chip").forEach(b => b.onclick = () => {
+    MWHO = b.dataset.who || null;
+    document.querySelectorAll(".pmap .chip").forEach(c => c.setAttribute("aria-pressed", String(c === b)));
+    MSEL = null; mapList(); mapHint(); mapFit();
+  });
+  const years = () => {
+    const [lo, hi] = mapYears();
+    let a = parseInt(el("my0").value, 10), b = parseInt(el("my1").value, 10);
+    if (isNaN(a)) a = lo; if (isNaN(b)) b = hi; if (a > b) [a, b] = [b, a];
+    MY = (a <= lo && b >= hi) ? [null, null] : [a, b];
+    if (MSEL == null || !spotOn(SPOTS[MSEL])){ MSEL = null; mapList(); }
+    mapHint(); mapPaint();
+  };
+  el("my0").onchange = years; el("my1").onchange = years;
+  const row = document.querySelector(".pmap .chips"), pressed = row && row.querySelector('[aria-pressed="true"]');
+  if (row && pressed && row.scrollWidth > row.clientWidth) row.scrollLeft = pressed.offsetLeft - 16;   // a phone's one row
+  el("mpop").onclick = mapCardClick;
+  mapList();
+  if (focus){ const i = SPOTS.findIndex(q => q.places.some(p => p.l === focus)); if (i >= 0){ MSEL = i; mapPop(i); } }
+  mapHint(); mapFit();
+  if (MSEL != null){ const q = SPOTS[MSEL]; MV = {cx: mercX(q.x), cy: mercY(q.y), s: 1200000}; mapPaint(); }
+  loadGeo();
+}
+function loadGeo(){
+  if (GEO){ mapPaint(); return; }
+  if (!GEOWAIT) GEOWAIT = fetch(MAP.basemap).then(r => r.ok ? r.json() : Promise.reject(r.status))
+    .then(g => { GEO = g; prepGeo(); mapPaint(); })
+    .catch(() => { GEOWAIT = null; const h = el("mhint"); if (h) h.textContent = "The street map could not load. The pins and the lists below still work."; });
+}
+window.addEventListener("resize", () => { if (el("mcv")) mapPaint(); });
+function unplacedList(only){
+  const rows = ((MAP && MAP.unplaced) || []).filter(p => !only || p.r.some(r => r[0] === only));
+  if (!rows.length) return "";
+  const why = w => esc(String(w || "").replace(/\s*\([^)]*\)\s*$/, ""));
+  const refs = p => [...new Map(p.r.filter(r => !only || r[0] === only).map(r => [r[0] + "/" + r[1], r])).values()]
+    .map(r => `<a href="${chapLink(r[0], r[1])}">${esc(S[r[0]].name)}: ${esc(chapName(S[r[0]], r[1]))}</a>`).join("<br>");
+  return `<details class="unpl"><summary>${rows.length} more ${rows.length === 1 ? "place" : "places"} the chapters name, not on the map</summary>
+    <ul class="places">${rows.map(p => `<li><h3>${esc(p.n)}</h3><p>${why(p.why)}</p><p class="refs">${refs(p)}</p></li>`).join("")}</ul></details>`;
+}
+
 function places(only, focus){
   nav("places");
   const ids = Object.keys(D.places).filter(id => !only || D.places[id].refs.some(r => r[0] === only))
@@ -1112,8 +1607,13 @@ function places(only, focus){
   const who = only && S[only] ? S[only].name : "";
   let h = `<header class="story" style="max-width:none"><p class="kicker">${esc(B.title)}${who ? ` · <a href="#/p/${only}">${esc(who)}</a>` : ""}</p>
     <h1>${focus && D.places[focus] ? esc(D.places[focus].name) : "Places"}</h1>
-    <p class="lede-s">${focus ? "The chapters that name this place." : `Landmarks ${who ? "in " + esc(who) + "'s story" : "named in these stories"}, each with its page in ${esc(COMP.title || "the landmark guide")}.`}</p></header>
-    <ul class="places">`;
+    <p class="lede-s">${focus ? "The chapters that name this place." : MAP && (MAP.pins || []).length
+      ? `Where these lives happened: the landmarks, addresses and street corners the chapters name${who ? " in " + esc(who) + "'s story" : ""}. Choose a person or a span of years, and tap a pin.`
+      : `Landmarks ${who ? "in " + esc(who) + "'s story" : "named in these stories"}, each with its page in ${esc(COMP.title || "the landmark guide")}.`}</p></header>`;
+  h += mapSection(only);
+  if (!focus && ids.length && MAP && (MAP.pins || []).length)
+    h += `<h2 class="sec">Landmarks ${who ? "in " + esc(who) + "'s story" : "in these stories"}</h2>`;
+  h += `<ul class="places">`;
   (focus ? [focus].filter(id => D.places[id]) : ids).forEach(id => {
     const p = D.places[id];
     const refs = p.refs.map(([k, n]) => `<a href="${chapLink(k, n)}">${esc(S[k].name)}: ${esc(chapName(S[k], n))}</a>`).join("<br>");
@@ -1121,7 +1621,8 @@ function places(only, focus){
       ${COMP.url ? `<p><a href="${esc(compHref(id))}" target="_blank" rel="noopener">Open in ${esc(COMP.title || "the guide")} ↗</a></p>` : ""}</li>`;
   });
   if (focus && !D.places[focus]) h += `<li><p>None of these stories names that place yet.</p></li>`;
-  return h + `</ul>`;
+  h += `</ul>`;
+  return focus ? h : h + unplacedList(only);
 }
 
 function notFound(){ nav(""); return `<p>That page is not in this book. <a href="#/">Back to the contents</a>.</p>`; }
@@ -1142,6 +1643,7 @@ function route(){
   } else html = notFound();
   el("view").innerHTML = REVIEW_NOTE + html;
   pictures(el("view"));
+  if (parts[0] === "places" || parts[0] === "l") mapStart(parts[0] === "places" ? (parts[1] || null) : null, parts[0] === "l" ? parts[1] : null);
   const s = parts[0] === "p" ? S[parts[1]] : null;
   document.title = s ? `${s.name} · ${B.title}` : B.title;
   if (hit){

@@ -1347,6 +1347,205 @@ class LandBook(FixtureCase):
             self.assertEqual(_hw.load_json(self.state)["chapters"][0]["text"].strip(), fh.read().strip())
 
 
+def tiny_png(path, w, h):
+    """A plain w×h PNG, written with the standard library."""
+    import struct
+    import zlib
+    raw = b"".join(b"\x00" + bytes([200, 120, 40]) * w for _ in range(h))
+
+    def chunk(kind, data):
+        return struct.pack(">I", len(data)) + kind + data + struct.pack(">I", zlib.crc32(kind + data) & 0xffffffff)
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "wb") as fh:
+        fh.write(b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", w, h, 8, 2, 0, 0, 0))
+                 + chunk(b"IDAT", zlib.compress(raw)) + chunk(b"IEND", b""))
+
+
+class Portraits(FixtureCase):
+    """images.py portrait: a story's portrait that is never placed in a chapter, so it reaches a
+    story the author has already edited (2026-10-08, "we need photos for everyone")."""
+
+    def test_a_portrait_only_picture_is_checked_but_never_placed(self):
+        import images
+        os.makedirs(self.project.path("images"), exist_ok=True)
+        with open(self.project.path("images", "img1.description.txt"), "w") as fh:
+            fh.write("Edith Fixture at her door in 1902, photographed by the Fixture Archive.\n")
+        _hw.save_json(self.project.path("images", "index.json"), [{
+            "id": "img1", "title": "File:Edith Fixture.jpg", "url": "https://upload.wikimedia.org/edith.jpg",
+            "license": "CC BY 2.0", "artist": "Fixture Archive", "caption": "Edith Fixture in 1902.",
+            "evidence": "Edith Fixture at her door in 1902", "evidenceSource": "description",
+            "chapter": -1, "after": "", "portraitOnly": True}])
+        rules = {f["rule"] for f in images.image_findings(self.project)}
+        self.assertFalse(rules & {"image_chapter_missing", "image_unplaced"}, rules)
+        self.assertEqual(cite.chapter_images(self.project, 1), {})          # never in the text
+
+    def test_a_public_domain_portrait_must_be_old_enough_and_backed_by_a_source(self):
+        import images
+        args = dict(url="https://archive.example/plate.jpg", page="https://archive.example/book", credit="A Book (1926)",
+                    caption="Edith Fixture, 1926.", evidence="Edith Fixture at her door in 1902", evidence_source="s1",
+                    crop=None)
+        with self.assertRaises(images.Refused):               # 95 years have not passed
+            images.cmd_portrait_pd(self.project, published="1990", **args)
+        with self.assertRaises(images.Refused):               # the page must be a fetched source
+            images.cmd_portrait_pd(self.project, published="1926", **dict(args, evidence_source="no-such-source"))
+
+    def test_a_picture_used_by_permission_carries_its_grant(self):
+        import images
+        rec = {"license": images.PERMISSION, "permission": {"holder": "Courtesy MOHAI", "scope": "non-commercial",
+                                                             "statedBy": "the author", "date": "2026-10-09"}}
+        self.assertTrue(images.permission_ok(rec))
+        self.assertFalse(images.permission_ok({"license": images.PERMISSION}))      # no grant recorded: refused
+        self.assertFalse(images.licence_verdict(images.PERMISSION)[0])              # never passes as an open licence
+
+    def test_a_crop_must_lie_inside_the_picture(self):
+        import images
+        self.assertEqual(images.parse_crop("0.2,0.1,0.3,0.6"), [0.2, 0.1, 0.3, 0.6])
+        for bad in ("0.8,0,0.3,0.5", "0,0,0,1", "a,b", "0.1,0.1,0.2"):
+            with self.assertRaises(images.Refused):
+                images.parse_crop(bad)
+
+
+class BookMap(unittest.TestCase):
+    """book_map.py: the places a book's chapters name, pinned where the record allows (2026-10-08,
+    "a places POI map that relates to each person")."""
+
+    def setUp(self):
+        import book_map
+        self.bm = book_map
+
+    @staticmethod
+    def enc(pts):
+        la, lo = round(pts[0][0] * 1e5), round(pts[0][1] * 1e5)
+        g = [la, lo]
+        for lat, lon in pts[1:]:
+            a, b = round(lat * 1e5), round(lon * 1e5)
+            g += [a - la, b - lo]
+            la, lo = a, b
+        return g
+
+    def streets(self, *lines):
+        return self.bm.Streets({"streets": [{"c": 2, "n": n, "g": self.enc(pts)} for n, pts in lines]})
+
+    def corner_map(self):
+        return self.streets(("29th Ave E", [(47.615, -122.295), (47.625, -122.295)]),
+                            ("E John St", [(47.6195, -122.30), (47.6195, -122.29)]))
+
+    def test_a_corner_is_where_the_two_streets_cross_on_todays_map(self):
+        at, why = self.bm.corner(self.corner_map(), "29th Avenue and John Street")
+        self.assertIsNone(why)
+        self.assertAlmostEqual(at[0], 47.6195, places=3)
+        self.assertAlmostEqual(at[1], -122.295, places=3)
+        self.assertIsNone(self.bm.corner(self.corner_map(), "29th Avenue and Pine Street")[0])
+
+    def test_two_streets_that_meet_in_two_places_get_no_pin(self):
+        st = self.streets(("Main St", [(47.60, -122.40), (47.60, -122.30)]),
+                          ("Lake Ave", [(47.59, -122.39), (47.61, -122.39)]),
+                          ("Lake Ave", [(47.59, -122.31), (47.61, -122.31)]))
+        at, why = self.bm.corner(st, "Lake Avenue and Main Street")
+        self.assertIsNone(at)
+        self.assertIn("2 places", why)
+
+    def test_an_address_needs_its_number_its_street_and_its_quarter_in_the_city(self):
+        row = lambda n, road, lat=47.611, lon=-122.33: {"lat": lat, "lon": lon, "number": n, "road": road}  # noqa: E731
+        self.assertIsNotNone(self.bm.decide("1223 Seventh Avenue", [row("1223", "7th Avenue")])[0])
+        # Queen Anne's 7th Avenue West is another street: the quarter is part of a Seattle address.
+        self.assertIsNone(self.bm.decide("1223 Seventh Avenue", [row("1223", "7th Avenue West", 47.63, -122.367)])[0])
+        self.assertIsNone(self.bm.decide("1223 Seventh Avenue", [row("1225", "7th Avenue")])[0])
+        self.assertIsNone(self.bm.decide("1223 Seventh Avenue", [row("1223", "7th Avenue", 47.25, -122.44)])[0])
+        two = [row("410", "22nd Avenue"), row("410", "22nd Avenue", 47.64, -122.30)]
+        self.assertIn("more than one", self.bm.decide("410 22nd Avenue", two)[1])
+        self.assertEqual(self.bm.query_form("1223 Seventh Avenue"), "1223 7th Avenue")
+
+    def test_the_map_pins_what_the_record_places_and_lists_the_rest(self):
+        said = lambda name, kind, **kw: dict({"name": name, "kind": kind, "s": f"They were at {name}.", "year": 1902}, **kw)  # noqa: E731
+        story = {"slug": "edith", "mapPlaces": [
+            (1, said("Fixture House", "landmark", landmark="FX-1")),
+            (1, said("29th Avenue and John Street", "corner")),
+            (2, said("1223 Seventh Avenue", "address")),
+            (2, said("Seward Park", "named")),
+            (3, said("Madison Street", "street")),
+            (3, said("Denny Hotel", "named")),
+            (3, said("214 Columbia Street", "address"))]}
+        cache = {"1223 seventh avenue": {"rows": [{"lat": 47.611, "lon": -122.33, "number": "1223", "road": "7th Avenue"}]},
+                 "name:seward park": {"rows": [{"lat": 47.555, "lon": -122.251, "name": "Seward Park", "type": "park"}]}}
+        data = self.bm.map_data([story], {"FX-1": {"name": "Fixture House", "lat": 47.6237, "lon": -122.3143}},
+                                self.corner_map(), cache)
+        self.assertEqual(sorted(p["n"] for p in data["pins"]),
+                         ["1223 Seventh Avenue", "29th Avenue and John Street", "Fixture House", "Seward Park"])
+        why = {p["n"]: p["why"] for p in data["unplaced"]}
+        self.assertIn("a street", why["Madison Street"])
+        self.assertIn("may have moved or gone", why["Denny Hotel"])     # an old building's name is never guessed at
+        self.assertIn("not looked up yet", why["214 Columbia Street"])
+        house = next(p for p in data["pins"] if p["l"] == "FX-1")
+        self.assertEqual(house["r"], [["edith", 1, 1902, "They were at Fixture House."]])
+
+    def test_a_photo_is_of_the_place_only_when_its_title_opens_with_it_and_names_it(self):
+        row = lambda n, k="named": {"name": n, "kind": k, "landmark": ""}  # noqa: E731
+        ok = lambda r, title: self.bm.leads_with(r, title) and self.bm.names_place(r, title)  # noqa: E731
+        self.assertTrue(ok(row("Mount Pleasant Cemetery"), "Seattle - Mount Pleasant Cemetery - Typographical Union"))
+        self.assertTrue(ok(row("Mount Zion Baptist Church", "landmark"), "Mt. Zion Baptist Church, 1950"))
+        self.assertTrue(ok(row("Washington Athletic Club", "landmark"), "Washington Athletic Club, southwest corner of 6th Ave"))
+        # Something AT the place, or near it, is not a picture of it.
+        self.assertFalse(ok(row("Lake View Cemetery"), "William F. Burris grave, Lake View Cemetery, Seattle"))
+        self.assertFalse(ok(row("Seward Park"), "Lake Washington Villas, a residence near Seward Park"))
+        self.assertFalse(ok(row("Garfield High School", "landmark"), "Medgar Evers Pool, circa 1973"))
+
+    def test_an_address_is_named_by_its_number_and_its_street(self):
+        row = {"name": "1729 24th Avenue", "kind": "address", "landmark": ""}
+        self.assertTrue(self.bm.names_place(row, "The house at 1729 24th Avenue, about 1920"))
+        self.assertFalse(self.bm.names_place(row, "24th Avenue looking north"))
+        self.assertFalse(self.bm.names_place(row, "1729 25th Avenue"))
+
+    def test_only_an_image_is_kept_as_a_picture_of_a_place(self):
+        self.assertTrue(self.bm.is_image(b"\xff\xd8\xff\xe0" + b"\0" * 20))
+        self.assertTrue(self.bm.is_image(b"\x89PNG\r\n\x1a\n" + b"\0" * 20))
+        # A site that turns a script away answers with a web page (seattle.gov, 2026-10-09).
+        self.assertFalse(self.bm.is_image(b'<html xmlns="http://www.w3.org/1999/xhtml"><script src="x.js">'))
+
+    def test_an_addresss_cross_street_is_the_one_that_meets_it_there(self):
+        st = self.streets(("2nd Ave", [(47.600, -122.334), (47.608, -122.334)]),
+                          ("Columbia St", [(47.6038, -122.340), (47.6038, -122.330)]),
+                          ("9th Ave", [(47.600, -122.320), (47.608, -122.320)]))
+        cross = self.bm.cross_streets(st, {"name": "214 Columbia Street", "kind": "address"}, 47.6038, -122.3336)
+        self.assertEqual(cross, [["second"]])      # Second Avenue, never the distant Ninth, never Columbia itself
+
+    def test_the_lot_today_is_read_from_the_assessors_page(self):
+        self.assertEqual(self.bm.parse_lot("Site Address 720 2ND AVE 98104 Property Name FOSTER &amp; MARSHALL BUILDING "
+                                           "Jurisdiction SEATTLE Year Built 1921"),
+                         {"yearBuilt": 1921, "name": "Foster & Marshall Building", "site": "720 2Nd Ave"})
+        self.assertEqual(self.bm.parse_lot("<td>Property Name</td><td></td><td>Jurisdiction</td> Year Built 1977")["name"], "")
+
+    def test_a_lot_that_holds_a_landmark_is_named_as_the_guide_names_it(self):
+        landmarks = {"SL-0094": {"name": "1st African Methodist Episcopal Church", "address": "1522 14th Ave"}}
+        # The Assessor writes the quarter the guide leaves off.
+        self.assertEqual(self.bm.landmark_of_lot({"site": "1522 14Th Ave E"}, landmarks), "SL-0094")
+        self.assertIsNone(self.bm.landmark_of_lot({"site": "1524 14Th Ave E"}, landmarks))
+        # A lot of several buildings is dated by its oldest.
+        self.assertEqual(self.bm.parse_lot("Year Built 1988 … Year Built 1912 Property Name X Jurisdiction")["yearBuilt"], 1912)
+
+    def test_a_commons_file_name_reads_as_a_caption(self):
+        self.assertEqual(self.bm.tidy_title("File:Mount Zion Baptist Church2 HRHP100002407 King County, WA.jpg"),
+                         "Mount Zion Baptist Church")
+        self.assertEqual(self.bm.tidy_title("File:Seattle - Garfield High School, circa 1965 (50019290713).jpg"),
+                         "Garfield High School, circa 1965")
+
+    def test_a_storys_own_picture_of_a_place_goes_on_its_pin(self):
+        pictures = [({"caption": "The Cayton family on the porch of their home at 518 14th Avenue East, 1904.",
+                      "license": "Public domain", "pageUrl": "https://commons.example/porch"}, "resources/img/a/img4.jpg"),
+                    ({"caption": "Downtown Seattle from the water, 1910.", "license": "Public domain"}, "resources/img/a/img5.jpg")]
+        landmarks = {"FX-9": {"name": "Cayton Revels House", "address": "518 14th Ave E"}}
+        got = self.bm.story_photos({"name": "Cayton Revels House", "kind": "landmark", "landmark": "FX-9"}, landmarks, pictures)
+        self.assertEqual([p["src"] for p in got], ["resources/img/a/img4.jpg"])   # by the landmark's address
+        self.assertEqual(got[0]["credit"], "Public domain")
+
+    def test_a_chapter_gives_its_addresses_and_corners_with_their_sentences(self):
+        text = ("In 1902 they bought a house at 1729 24th Avenue.\n\n"
+                "She taught music at the corner of 23rd Avenue and Olive Street until 1910.")
+        got = {(p["kind"], p["name"]): p for p in self.bm.chapter_places(text, "Seattle")}
+        self.assertEqual(got[("address", "1729 24th Avenue")]["year"], 1902)
+        self.assertIn("Olive Street", got[("corner", "23rd Avenue and Olive Street")]["s"])
+
+
 class SeriesBook(FixtureCase):
     """series_book.py: a series' landed stories as one book, read back from StoryMaker so the
     author's text wins, in the order the subjects arrived (2026-10-05, "Black Seattle").
@@ -1367,8 +1566,13 @@ class SeriesBook(FixtureCase):
         self._entry = series_book.series_entry
         series_book.series_entry = lambda sid: (self.ENTRY if sid == "fixture" else None, "Seattle")
         self.out = os.path.join(self.tmp, "web")
+        import maps
+        self._basemap = maps.basemap
+        maps.basemap = lambda project, source=None: ({"streets": [], "water": [], "hoods": []}, "fixture")
 
     def tearDown(self):
+        import maps
+        maps.basemap = self._basemap
         self.sb.series_entry = self._entry
         super().tearDown()
 
@@ -1384,6 +1588,47 @@ class SeriesBook(FixtureCase):
         page = read(os.path.join(self.out, "index.html"))
         raw = re.search(r'<script id="data" type="application/json">(.*?)</script>', page, re.S).group(1)
         return json.loads(raw.replace("<\\/", "</"))
+
+    def test_a_portrait_only_picture_is_the_storys_portrait_cropped_and_credited(self):
+        if not shutil.which("sips"):
+            self.skipTest("the crop uses macOS sips")
+        code, out = self.land()
+        self.assertEqual(code, 0, out)
+        tiny_png(os.path.join(self.root, "images", "img9.png"), 200, 100)
+        rows = _hw.load_json(os.path.join(self.root, "images", "index.json"), []) or []
+        rows.append({"id": "img9", "title": "File:Edith Fixture.png", "url": "https://upload.wikimedia.org/edith.png",
+                     "license": "CC BY 2.0", "artist": "Fixture Archive", "caption": "Edith Fixture in 1902.",
+                     "evidence": "Edith Fixture at her door in 1902", "evidenceSource": "description",
+                     "chapter": -1, "after": "", "portraitOnly": True, "file": "images/img9.png"})
+        _hw.save_json(os.path.join(self.root, "images", "index.json"), rows)
+        meta = _hw.load_json(os.path.join(self.root, "project.json"))
+        meta["portrait"] = {"image": "img9", "crop": [0.5, 0, 0.5, 1]}     # the right half: a square
+        _hw.save_json(os.path.join(self.root, "project.json"), meta)
+        code, out = self.build(files=True)
+        self.assertEqual(code, 0, out)
+        story = self.data()["stories"]["edith-fixture"]
+        self.assertTrue(story["portrait"].endswith("-portrait.png"), story["portrait"])
+        self.assertEqual(story["portraitCredit"], "Fixture Archive, CC BY 2.0, cropped")
+        self.assertEqual(self.sb.dims(os.path.join(self.out, story["portrait"])), (100, 100))
+        self.assertNotIn("img9", read(os.path.join(self.out, "index.html")).split('"chapters"')[1][:4000])
+
+    def test_the_book_maps_the_places_its_chapters_name_and_keeps_the_guides_file(self):
+        code, out = self.land()
+        self.assertEqual(code, 0, out)
+        st = _hw.load_json(self.state)
+        st["chapters"][0]["text"] += "\n\nIn 1902 she lived at 1729 24th Avenue."
+        _hw.save_json(self.state, st)
+        code, out = self.build()
+        self.assertEqual(code, 0, out)
+        data = self.data()
+        self.assertEqual(data["map"]["basemap"], "resources/basemap.json")
+        self.assertTrue(os.path.isfile(os.path.join(self.out, "resources", "basemap.json")))
+        spot = next(p for p in data["map"]["unplaced"] if p["n"] == "1729 24th Avenue")
+        self.assertIn("not looked up yet", spot["why"])            # a build never asks the network
+        self.assertEqual(spot["r"][0][:3], ["edith-fixture", 1, 1902])
+        self.assertNotIn("mapPlaces", data["stories"]["edith-fixture"])
+        guide = _hw.load_json(os.path.join(self.out, "resources", "places.json"))
+        self.assertEqual(sorted(guide), ["book", "generated", "places", "published", "url"])   # what the guide reads
 
     def test_the_book_is_read_back_from_storymaker_so_the_authors_edit_wins(self):
         code, out = self.land()
@@ -1410,6 +1655,22 @@ class SeriesBook(FixtureCase):
         self.assertEqual(code, 0, out)
         self.assertEqual(self.data()["order"], ["edith-fixture"])
         self.assertFalse(self.data()["stories"]["edith-fixture"]["draft"])
+
+    def test_a_held_storys_pictures_are_not_carried_by_a_review_copy(self):
+        if not shutil.which("sips"):
+            self.skipTest("the hosted pictures use macOS sips")
+        self.assertEqual(self.land()[0], 0)
+        tiny_png(os.path.join(self.root, "images", "img9.png"), 40, 30)
+        rows = _hw.load_json(os.path.join(self.root, "images", "index.json"), []) or []
+        rows.append({"id": "img9", "title": "File:Door.png", "url": "https://upload.wikimedia.org/door.png", "license": "PD",
+                     "caption": "A door.", "chapter": 1, "file": "images/img9.png"})
+        _hw.save_json(os.path.join(self.root, "images", "index.json"), rows)
+        st = _hw.load_json(self.state)
+        st["chapters"][0]["text"] += "\n\n![A door.](https://upload.wikimedia.org/door.png)"
+        _hw.save_json(self.state, st)
+        code, out = self.build(review=True)                  # unsigned: the story is held
+        self.assertEqual(self.data()["order"], [])
+        self.assertEqual(self.data()["pics"], {}, "a held story's pictures count against the deploy's cap")
 
     def test_a_review_copy_needs_only_the_authors_sign_off(self):
         self.assertEqual(self.land()[0], 0)
@@ -1467,6 +1728,30 @@ class SeriesBook(FixtureCase):
         self.assertIn('href="https://en.wikipedia.org/wiki/William_Grose_(pioneer)"',
                       self.sb.render("See [it](https://en.wikipedia.org/wiki/William_Grose_(pioneer)).", {"picture": str}))
 
+    def test_a_part_says_where_its_people_arrived_and_takes_the_years_before_it(self):
+        # The Bush family settled on Puget Sound in 1845, six years before Seattle began; the
+        # author opened a part for them (2026-10-08). A dossier with no arrival event dates its
+        # story from a birth year, which used to fall into the LAST part.
+        parts = [{"title": "North of the Columbia", "from": 1844, "to": 1850, "arrivedIn": "on Puget Sound"},
+                 {"title": "The settler town", "from": 1851, "to": 1888}, {"title": "Later", "from": 1889}]
+        self.assertEqual(self.sb.part_for(1832, parts), 0, "a year before every part files into the first")
+        self.assertEqual(self.sb.part_for(1845, parts), 0)
+        self.assertEqual(self.sb.part_for(1859, parts), 1)
+        self.assertEqual(self.sb.part_for(None, parts), 2, "no year at all still goes last")
+        year, _ = self.sb.arrival(self.project, "Seattle")
+        default = self.ENTRY
+        try:
+            type(self).ENTRY = json.loads(json.dumps(default))
+            self.ENTRY["book"]["parts"] = [{"title": "First", "from": year, "to": year, "arrivedIn": "on Puget Sound"},
+                                           {"title": "After", "from": year + 1}]
+            code, out = self.build(files=True)
+            self.assertEqual(code, 0, out)
+            self.assertEqual(self.data()["stories"]["edith-fixture"]["arrivedIn"], "on Puget Sound")
+        finally:
+            type(self).ENTRY = default
+        code, out = self.build(files=True)
+        self.assertNotIn("arrivedIn", self.data()["stories"]["edith-fixture"], "a part that names no place adds nothing")
+
     def test_a_size_word_sizes_the_figure_and_never_shows_as_text(self):
         html_ = self.sb.render('![Moran. Public domain.](https://x.org/m.jpg "small")\n\nPlain [link](https://x.org "a title").',
                                {"picture": lambda url, alt: "resources/img/m.jpg"})
@@ -1507,6 +1792,46 @@ class Survey(unittest.TestCase):
         import survey
         self.sv = survey
 
+    def test_the_place_lens_tells_a_life_here_from_a_visit(self):
+        # Lawrence, 2026-10-08: "people who lived and worked in Seattle (not just people who passed
+        # through) and the significant places that they lived and worked."
+        lens = self.sv.place_lens(["Edith Fixture came to Seattle in 1902. She opened a barbershop at 1520 Jackson "
+                                   "Street. In 1912 she moved to Fixtureville, Oregon. She opened a bank at 40 Main Street."],
+                                  ["Seattle"], born=1880, died=1950)
+        self.assertEqual(self.sv.life_of(lens), "lived and worked")
+        self.assertEqual(lens["from"], 1902)
+        names = [x["name"] for x in lens["places"]]
+        self.assertIn("1520 Jackson Street", names)
+        self.assertNotIn("40 Main Street", names, "after the move away, the places are not Seattle's")
+        visit = self.sv.place_lens(["Della Visitor performed in Seattle in 1950 on a national tour."], ["Seattle"])
+        self.assertEqual(self.sv.life_of(visit), "passed through")
+        chief = self.sv.place_lens(["Bush befriended Chief Seattle and lived among the Nisqually."], ["Seattle"])
+        self.assertEqual(self.sv.life_of(chief), "", "the chief is not the city")
+        org = self.sv.place_lens(["In Seattle she founded the Fixture Charity Club and taught at the Fixture School."], ["Seattle"])
+        self.assertEqual([x["name"] for x in org["places"]], ["Fixture School"], "a club she founded is an organisation, a school she taught AT a place")
+
+    def test_the_landmark_guide_names_its_black_residents_and_takes_the_authors_seeds(self):
+        text = ("Richard and Mildred Fixture met at the plant in 1962. He was a Black engineer from Mississippi. "
+                "The Fixtures ran their company out of unit 9 and lived in the next apartment. Matthew Hudson, a Black teacher, "
+                "was vice president. "
+                "The building faces the Black Ball Line dock.")
+        found, _ = self.sv.guide_people(text)
+        self.assertEqual(set(found), {"Matthew Hudson"}, "a couple named together leaves 'He' unresolved; a line is not a person")
+        rows = self.sv.guide_rows({"id": "SL-9999", "name": "Fixture Hall", "text": text}, lambda lid: "https://x.org/#/l/" + lid,
+                                  ["Richard Fixture"])
+        richard = next(r for r in rows if r["name"] == "Richard Fixture")
+        self.assertEqual(self.sv.life_of(richard["lens"]), "lived and worked",
+                         "'a Black engineer from Mississippi' says where he came from; it does not take him away from the landmark")
+        self.assertEqual(richard["lens"]["places"][0]["landmark"], "SL-9999")
+        self.assertEqual(richard["source"]["site"], "Seattle Landmarks")
+
+    def test_a_guide_spelling_joins_the_story_it_names(self):
+        stories = os.path.join(tempfile.mkdtemp(), "stories")
+        os.makedirs(os.path.join(stories, "william-grose"))
+        with open(os.path.join(stories, "william-grose", "dossier.json"), "w") as fh:
+            json.dump({"subject": "William Grose", "aliases": ["William Gross", "Grose"]}, fh)
+        self.assertEqual(self.sv.canonical_names(stories), {"william gross": "William Grose"})
+
     def test_life_dates_read_every_form_the_encyclopedias_use(self):
         self.assertEqual(self.sv.life_dates("1883-1971"), (1883, 1971, False))
         self.assertEqual(self.sv.life_dates("b. 1946"), (1946, None, True))
@@ -1528,9 +1853,13 @@ class Survey(unittest.TestCase):
              "source": {"site": "HistoryLink", "url": "u5", "title": "x"}},
             {"name": "Horace R. Cayton Jr.", "born": 1903, "died": 1970, "living": False,
              "source": {"site": "HistoryLink", "url": "u6", "title": "y"}},
+            {"name": "Zoe Dusanne", "born": 1884, "died": 1972, "living": False,
+             "source": {"site": "HistoryLink", "url": "u7", "title": "Dusanne, Zoe (1884-1972)"}},
+            {"name": "Zoë Dusanne", "born": 1884, "died": 1972, "living": False,
+             "source": {"site": "BlackPast", "url": "u8", "title": "Zoë Dusanne (1884-1972)"}},
         ]
         people = self.sv.merge(rows)
-        self.assertEqual(len(people), 4, [p["names"] for p in people])
+        self.assertEqual(len(people), 5, [p["names"] for p in people])
         lopes = next(p for p in people if "Manuel Lopes" in p["names"])
         self.assertEqual(lopes["died"], 1895)
 
@@ -1616,6 +1945,47 @@ class Fetching(FixtureCase):
             self.assertNotIn("s21", self.project.sources)
         finally:
             sys.stdin = old
+
+    def test_plain_text_is_kept_whole_not_read_as_a_page(self):
+        # archive.org serves a book's OCR as text/plain; read as HTML, a stray "<" in it swallowed
+        # 70% of a volume (the George Bush scout, 2026-10-08).
+        import email.message
+        import fetch
+        import urllib.request
+        ocr = ("Bush settled on the prairie. " * 40) + "the sum <ere was paid " + ("The claim was confirmed at last. " * 40)
+        self.assertTrue(fetch.is_plain_text("text/plain; charset=utf-8", "https://archive.org/download/x/x_djvu.txt", ocr))
+        self.assertTrue(fetch.is_plain_text("", "https://archive.org/stream/x/x_djvu.txt", ocr))
+        self.assertFalse(fetch.is_plain_text("text/plain", "https://x.org/a.txt", "<!DOCTYPE html><html><body>x</body></html>"))
+        self.assertFalse(fetch.is_plain_text("text/html", "https://x.org/a", ocr))
+
+        class Resp:
+            def __init__(self):
+                self.headers = email.message.Message()
+                self.headers["Content-Type"] = "text/plain; charset=utf-8"
+
+            def read(self, n=-1):
+                return ocr.encode()
+
+            def geturl(self):
+                return "https://archive.org/download/x/x_djvu.txt"
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *a):
+                return False
+
+        real = urllib.request.urlopen
+        urllib.request.urlopen = lambda req, timeout=None: Resp()
+        try:
+            rc = fetch.main(["fetch.py", "fetch", self.root, "https://archive.org/download/x/x_djvu.txt",
+                             "--publisher", "Archive", "--kind", "book", "--license", "pd", "--id", "s30"])
+        finally:
+            urllib.request.urlopen = real
+        self.assertEqual(rc, 0)
+        self.assertTrue(read(self.project.path("sources", "s30.txt")).rstrip().endswith("The claim was confirmed at last."),
+                        "every word after the stray '<' is kept")
+        self.assertTrue(os.path.exists(self.project.path("sources", "s30.raw.txt")))
 
     def test_json_reply_yields_its_document_text(self):
         import fetch

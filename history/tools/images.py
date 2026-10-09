@@ -10,6 +10,25 @@
                   [--evidence-source description|<source id>] [--credit "…"]
                          record it in images/index.json, save its description (the caption's
                          default source) and a copy of the picture
+  images.py portrait <project> <id | "File:Name.jpg"> [--crop x,y,w,h]
+                  [--caption "…" --evidence "…" [--evidence-source …] [--credit "…"]]
+                         the story's portrait, on the book's cards and the story's first page: a
+                         picture already placed (its id), or a Commons file shown only as the
+                         portrait, never in a chapter, its caption checked like any picture's.
+                         --crop takes one person out of a group photograph: fractions of the
+                         picture, left, top, width, height. Recorded in project.json "portrait".
+  images.py portrait <project> pd --url <image> --page <page> --published YYYY --credit "…"
+                  --caption "…" --evidence "…" --evidence-source <source id> [--crop x,y,w,h]
+                         a public-domain picture from outside Commons as the portrait: a book plate
+                         or a newspaper cut published in the United States more than 95 years ago.
+                         Its caption's evidence is a fetched source of the story, the page that
+                         prints it (a 1926 autobiography's frontispiece, 2026-10-09).
+  images.py portrait <project> permission --url <image> --page <item page> --describe-url <url>
+                  --holder "Courtesy …" --caption "…" --evidence "…" [--date …] [--crop x,y,w,h]
+                         a picture the author has permission to use, non-commercially, as the
+                         portrait: its caption's evidence is the holder's own page about it. Its
+                         licence reads "Used with permission (non-commercial)"; a paid edition must
+                         clear each such picture again (images.json `permission`).
   images.py check <project>   licences, credits, captions checked against their sources,
                               placements that resolve to one paragraph, the voice's phrase rules
   images.py list  <project>   what is placed where
@@ -221,7 +240,7 @@ def credit_line(rec):
     return lic
 
 
-def cmd_add(project, title, caption, evidence, evidence_source, chapter, after, credit):
+def cmd_add(project, title, caption, evidence, evidence_source, chapter, after, credit, portrait_only=False):
     cands = {r["title"]: r for r in load_json(project.path("images", "candidates.json"), []) or []}
     rec = cands.get(title) or file_info([title]).get(title)
     if not rec:
@@ -253,9 +272,167 @@ def cmd_add(project, title, caption, evidence, evidence_source, chapter, after, 
                  "id": rid, "caption": caption.strip(), "evidence": evidence.strip(),
                  "evidenceSource": evidence_source or "description", "chapter": int(chapter),
                  "after": after.strip(), "file": local, "creditOverride": credit or "",
+                 **({"portraitOnly": True} if portrait_only else {}),
                  "addedAt": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds")})
     save_json(project.path("images", "index.json"), rows)
-    print(f"{rid}  {rec['title']}  → chapter {chapter}, after “{after[:50]}”  ({credit_line(rows[-1])})")
+    where = "the story's portrait only" if portrait_only else f"chapter {chapter}, after “{after[:50]}”"
+    print(f"{rid}  {rec['title']}  → {where}  ({credit_line(rows[-1])})")
+    return 0
+
+
+def parse_crop(text):
+    """'0.2,0.1,0.3,0.6' → [0.2, 0.1, 0.3, 0.6]: left, top, width, height, as fractions inside the picture."""
+    try:
+        box = [float(v) for v in text.split(",")]
+    except ValueError:
+        box = []
+    if (len(box) != 4 or min(box) < 0 or min(box[2:]) <= 0
+            or box[0] + box[2] > 1.0001 or box[1] + box[3] > 1.0001):
+        raise Refused("--crop is left,top,width,height as fractions of the picture, inside it (0.2,0.1,0.3,0.6)")
+    return box
+
+
+PERMISSION = "Used with permission (non-commercial)"
+
+
+def permission_ok(rec):
+    """A picture the author has permission to use (2026-10-09: "I have gotten permission to use the
+    photos of these folks for non-commercial purposes"): it carries the grant itself, and the book
+    must say it is non-commercial. A paid edition must clear each one again."""
+    p = rec.get("permission") or {}
+    return rec.get("license") == PERMISSION and all(p.get(k) for k in ("holder", "scope", "statedBy", "date"))
+
+
+def page_text(url):
+    """The words of the holder's own page about a picture (HTML or JSON), for its caption's evidence."""
+    host = urllib.parse.urlparse(url).hostname or ""
+    fetch.throttle(host, fetch.host_interval(host))
+    req = urllib.request.Request(url, headers={"User-Agent": API_UA})
+    with urllib.request.urlopen(req, timeout=60) as resp:
+        raw = resp.read(4_000_000).decode("utf-8", "replace")
+    try:
+        data = json.loads(raw)
+        lines = []
+
+        def walk(v, key=""):
+            if isinstance(v, dict):
+                for k, x in v.items():
+                    walk(x, k)
+            elif isinstance(v, list):
+                for x in v:
+                    walk(x, key)
+            elif isinstance(v, str) and v.strip():
+                lines.append(f"{key}: {plain(v)}" if key else plain(v))
+        walk(data)
+        return "\n".join(lines)
+    except ValueError:
+        raw = re.sub(r"(?is)<(script|style)\b.*?</\1>", " ", raw)
+        raw = re.sub(r"(?is)<img\b[^>]*\balt=\"([^\"]*)\"[^>]*>", r" \1 ", raw)   # a picture's alt text is its caption
+        raw = re.sub(r"(?is)<a\b[^>]*\btitle=\"([^\"]*)\"[^>]*>", lambda m: " " + html.unescape(m.group(1)) + " ", raw)  # HistoryLink: caption + credit
+        return re.sub(r"\s+", " ", plain(raw)).strip()
+
+
+def cmd_portrait_permission(project, url, page, describe_url, holder, caption, evidence, date, crop):
+    """A picture used by permission, recorded only as the portrait. Its caption's evidence is the
+    holder's own page about it (--describe-url, fetched and kept as the picture's description)."""
+    if not all((url, page, describe_url, holder, caption, evidence)):
+        raise Refused("permission needs --url, --page, --describe-url, --holder, --caption and --evidence")
+    box = parse_crop(crop) if crop else None
+    desc = page_text(describe_url)
+    if words(evidence) < config().get("minCaptionEvidenceWords", 6) or norm(evidence) not in norm(desc):
+        raise Refused("--evidence must be words copied from the holder's page (--describe-url)")
+    rows = index(project)
+    nums = [int(m.group(1)) for r in rows for m in [re.fullmatch(r"img(\d+)", r.get("id", ""))] if m]
+    rid = f"img{(max(nums) + 1) if nums else 1}"
+    os.makedirs(project.path("images"), exist_ok=True)
+    with open(project.path("images", f"{rid}.description.txt"), "w", encoding="utf-8") as fh:
+        fh.write(f"{describe_url}\n{desc}\n")
+    local = f"images/{rid}{os.path.splitext(urllib.parse.urlparse(url).path)[1].lower() or '.jpg'}"
+    if local.endswith((".php", ".aspx", ".json")) or "." not in os.path.basename(local):
+        local = f"images/{rid}.jpg"
+    host = urllib.parse.urlparse(url).hostname or ""
+    fetch.throttle(host, fetch.host_interval(host))
+    req = urllib.request.Request(url, headers={"User-Agent": API_UA})
+    with urllib.request.urlopen(req, timeout=60) as resp:
+        data = resp.read(16_000_000)
+    with open(project.path(local), "wb") as fh:
+        fh.write(data)
+    rows.append({"id": rid, "title": f"Permission: {page}", "url": url, "pageUrl": page, "license": PERMISSION,
+                 "permission": {"holder": holder.strip(), "scope": "non-commercial", "statedBy": "the author",
+                                "date": datetime.date.today().isoformat(),
+                                "note": "the author: \"I have gotten permission to use the photos of these folks for non-commercial purposes\""},
+                 "artist": "", "date": date or "", "caption": caption.strip(), "evidence": evidence.strip(),
+                 "evidenceSource": "description", "chapter": -1, "after": "", "file": local,
+                 "creditOverride": holder.strip(), "portraitOnly": True,
+                 "addedAt": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds")})
+    save_json(project.path("images", "index.json"), rows)
+    meta = load_json(project.path("project.json"), {}) or {}
+    meta["portrait"] = {"image": rid, "crop": box} if box else rid
+    save_json(project.path("project.json"), meta)
+    print(f"portrait: {rid} (by permission)" + (f", cropped to {box}" if box else "") + f"  ({credit_line(rows[-1])})")
+    return 0
+
+
+def cmd_portrait_pd(project, url, page, published, credit, caption, evidence, evidence_source, crop):
+    """A public-domain picture from outside Commons, recorded only as the portrait. Public domain
+    by date: published in the United States more than 95 years ago (a 1926 book entered it in
+    2022). Its caption is checked like any picture's, against a source the story has fetched, so
+    the page that prints the picture must be one of the story's sources."""
+    if not all((url, page, published, credit, caption, evidence, evidence_source)):
+        raise Refused("pd needs --url, --page, --published, --credit, --caption, --evidence and --evidence-source")
+    try:
+        year = int(published)
+    except ValueError:
+        raise Refused(f"--published {published!r}: a year")
+    if year + 95 >= datetime.date.today().year:
+        raise Refused(f"published {year}: not yet public domain in the United States")
+    if project.source_text(evidence_source) is None:
+        raise Refused(f"{evidence_source}: not a fetched source of this story")
+    box = parse_crop(crop) if crop else None
+    rows = index(project)
+    nums = [int(m.group(1)) for r in rows for m in [re.fullmatch(r"img(\d+)", r.get("id", ""))] if m]
+    rid = f"img{(max(nums) + 1) if nums else 1}"
+    os.makedirs(project.path("images"), exist_ok=True)
+    local = f"images/{rid}{os.path.splitext(urllib.parse.urlparse(url).path)[1] or '.jpg'}"
+    host = urllib.parse.urlparse(url).hostname or ""
+    fetch.throttle(host, fetch.host_interval(host))
+    req = urllib.request.Request(url, headers={"User-Agent": API_UA})
+    with urllib.request.urlopen(req, timeout=60) as resp:
+        data = resp.read(16_000_000)
+    with open(project.path(local), "wb") as fh:
+        fh.write(data)
+    rows.append({"id": rid, "title": f"Public domain ({year}): {page}", "url": url, "pageUrl": page,
+                 "license": "Public domain", "artist": "", "date": str(year), "caption": caption.strip(),
+                 "evidence": evidence.strip(), "evidenceSource": evidence_source, "chapter": -1, "after": "",
+                 "file": local, "creditOverride": credit.strip(), "portraitOnly": True,
+                 "publicDomainBasis": f"published in the United States in {year}",
+                 "addedAt": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds")})
+    save_json(project.path("images", "index.json"), rows)
+    meta = load_json(project.path("project.json"), {}) or {}
+    meta["portrait"] = {"image": rid, "crop": box} if box else rid
+    save_json(project.path("project.json"), meta)
+    print(f"portrait: {rid} (public domain, {year})" + (f", cropped to {box}" if box else "") + f"  ({credit_line(rows[-1])})")
+    return 0
+
+
+def cmd_portrait(project, ident, caption, evidence, evidence_source, crop, credit):
+    """The story's portrait (2026-10-08, the author: "we need photos for everyone if we can get
+    them"). A picture already placed in a chapter, by id, or a Commons file recorded only as the
+    portrait: the book shows it on its cards and the story's first page and never in a chapter,
+    so a portrait reaches a story the author has already edited without touching their text."""
+    box = parse_crop(crop) if crop else None
+    hit = next((r for r in index(project) if r.get("id") == ident), None)
+    if hit is None:
+        if not ident.startswith("File:"):
+            raise Refused(f"{ident}: neither a picture's id (images.py list) nor a Commons File: name")
+        if not (caption and evidence):
+            raise Refused("a new portrait needs --caption and --evidence, checked like any picture's")
+        cmd_add(project, ident, caption, evidence, evidence_source, -1, "", credit, portrait_only=True)
+        hit = index(project)[-1]
+    meta = load_json(project.path("project.json"), {}) or {}
+    meta["portrait"] = {"image": hit["id"], "crop": box} if box else hit["id"]
+    save_json(project.path("project.json"), meta)
+    print(f"portrait: {hit['id']}" + (f", cropped to {box}" if box else "") + f"  ({credit_line(hit)})")
     return 0
 
 
@@ -283,12 +460,13 @@ def image_findings(project):
     for rec in index(project):
         label = rec.get("id", "?")
         url = urllib.parse.urlparse(rec.get("url", ""))
-        if hosts is not None and (url.scheme != "https" or (url.hostname or "").lower() not in hosts):
+        # A portrait only is never in StoryMaker's text, so its host need not be one the Read view shows.
+        if hosts is not None and not rec.get("portraitOnly") and (url.scheme != "https" or (url.hostname or "").lower() not in hosts):
             out.append(finding("image_host_unlisted", "hard",
                                f"{label}: {url.hostname or rec.get('url')!r} is not an https host in content/markdown-images.json, "
                                "so StoryMaker's Read view shows a link instead of the picture. Use a copy from a listed "
                                "host, or add the host to that file by PR"))
-        ok, why = licence_verdict(rec.get("license"))
+        ok, why = (True, "") if permission_ok(rec) else licence_verdict(rec.get("license"))
         if not ok:
             out.append(finding("image_licence", "hard", f"{label}: {why}"))
         if cfg.get("creditRequired", True) and not credit_line(rec):
@@ -304,12 +482,15 @@ def image_findings(project):
             out.append(finding("image_caption_unverified", "hard",
                                f"{label}: the caption's evidence is not a verbatim quote of {floor}+ words from {rec.get('evidenceSource')}", ev[:120]))
         n = rec.get("chapter")
-        if project.chapter(n) is None:
+        if rec.get("portraitOnly"):
+            pass                                # the story's portrait: shown on its first page, never in a chapter
+        elif project.chapter(n) is None:
             out.append(finding("image_chapter_missing", "hard", f"{label}: chapter {n} does not exist"))
         elif paragraph_index(project, n, rec.get("after", "")) is None:
             out.append(finding("image_unplaced", "hard",
                                f"{label}: `after` must be words copied from exactly one paragraph of chapter {n}"))
-        per[n] = per.get(n, 0) + 1
+        if not rec.get("portraitOnly"):
+            per[n] = per.get(n, 0) + 1
         for f in voice_lint.phrase_findings(cap):
             if f["severity"] == "hard":
                 out.append(finding("image_caption_" + f["rule"], "hard", f"{label}: caption — {f['message']}", cap[:120]))
@@ -370,6 +551,17 @@ def main(argv):
                 return 2
             return cmd_add(Project(argv[2]), argv[3], need["--caption"], need["--evidence"],
                            flag(argv, "--evidence-source"), need["--chapter"], need["--after"], flag(argv, "--credit"))
+        if len(argv) >= 4 and argv[1] == "portrait" and argv[3] == "permission":
+            return cmd_portrait_permission(Project(argv[2]), flag(argv, "--url"), flag(argv, "--page"),
+                                           flag(argv, "--describe-url"), flag(argv, "--holder"), flag(argv, "--caption"),
+                                           flag(argv, "--evidence"), flag(argv, "--date"), flag(argv, "--crop"))
+        if len(argv) >= 4 and argv[1] == "portrait" and argv[3] == "pd":
+            return cmd_portrait_pd(Project(argv[2]), flag(argv, "--url"), flag(argv, "--page"), flag(argv, "--published"),
+                                   flag(argv, "--credit"), flag(argv, "--caption"), flag(argv, "--evidence"),
+                                   flag(argv, "--evidence-source"), flag(argv, "--crop"))
+        if len(argv) >= 4 and argv[1] == "portrait":
+            return cmd_portrait(Project(argv[2]), argv[3], flag(argv, "--caption"), flag(argv, "--evidence"),
+                                flag(argv, "--evidence-source"), flag(argv, "--crop"), flag(argv, "--credit"))
         if len(argv) >= 3 and argv[1] == "check":
             return report("images", image_findings(Project(argv[2])))
         if len(argv) >= 3 and argv[1] == "list":

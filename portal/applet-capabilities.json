@@ -1261,6 +1261,161 @@
         }
       ],
       "notes": "Setup is a four-rung ladder \u2014 shell connected, gws CLI installed, OAuth client present, at least one account authorized \u2014 and only the FIRST unsatisfied rung is worth telling the user about. Most machines that have run this app fail on the last rung alone, so 'set up Gmail' is the wrong sentence and a named rung with its own remedy is the right one. Phase MC: the read verbs stopped returning empty successes while a rung is open. They now fail with the blocker and the remedy attached as result.setup, and mail.connect performs the rung that can be performed."
+    },
+    {
+      "applet": "aiVidRecorder",
+      "summary": "Video Recorder projects, edited after capture. Import a video or a demo draft folder as an editable project, narrate it (an Apple voice is free; a paid voice needs maxCharacters), lay a music bed and turn it down over a range, caption it from the narration or transcript, cut silences and fillers, and export an MP4. fromDeck makes a narrated presentation project from an AI Slides deck (or a brief), its slides timed to the voice. It never records the screen: capture stays a person pressing Record.",
+      "capabilities": [
+        {
+          "verb": "aividrecorder.getState",
+          "status": "callable",
+          "description": "Project count and the newest projects; with `id`, one project's cuts, music, narration voices and captions (from the open editor when the user has that project open).",
+          "example": {
+            "command": "applet",
+            "applet": "aividrecorder",
+            "verb": "getState"
+          }
+        },
+        {
+          "verb": "aividrecorder.listProjects",
+          "status": "callable",
+          "description": "Projects newest first, filterable by `query`.",
+          "example": {
+            "command": "applet",
+            "applet": "aividrecorder",
+            "verb": "listProjects",
+            "args": {
+              "query": "demo"
+            }
+          }
+        },
+        {
+          "verb": "aividrecorder.importVideo",
+          "status": "callable",
+          "description": "A video file, or a demo draft folder (recording + narration + captions.srt), becomes a project. A draft arrives EDITABLE: warmup cut, narration lines with their own takes, captions as one track. The path must be readable by the sandboxed app.",
+          "example": {
+            "command": "applet",
+            "applet": "aividrecorder",
+            "verb": "importVideo",
+            "args": {
+              "path": "~/Movies/demo.mp4"
+            }
+          }
+        },
+        {
+          "verb": "aividrecorder.place",
+          "status": "callable",
+          "description": "The standard cross-applet ingest; the same as importVideo.",
+          "example": {
+            "command": "applet",
+            "applet": "aividrecorder",
+            "verb": "place",
+            "args": {
+              "path": "~/Movies/demo.mp4"
+            }
+          }
+        },
+        {
+          "verb": "aividrecorder.narrate",
+          "status": "callable",
+          "description": "A voice-over: re-voices the transcript (each line where it was said) or reads `script`; with a narration already there, renders a new voice beside the old one. Paid providers require maxCharacters and are refused above it, before anything is sent.",
+          "example": {
+            "command": "applet",
+            "applet": "aividrecorder",
+            "verb": "narrate",
+            "args": {
+              "id": "<project id>",
+              "provider": "apple"
+            }
+          }
+        },
+        {
+          "verb": "aividrecorder.attachMusic",
+          "status": "callable",
+          "description": "A music bed (a LoopStar assetID or a file) under the whole video, and/or its level over a range (spanStart/spanEnd in original time, spanGainDB relative to the bed).",
+          "example": {
+            "command": "applet",
+            "applet": "aividrecorder",
+            "verb": "attachMusic",
+            "args": {
+              "id": "<project id>",
+              "assetID": "music-b2133c",
+              "gainDB": -14,
+              "spanStart": 90.0,
+              "spanEnd": 93.0,
+              "spanGainDB": -12
+            }
+          }
+        },
+        {
+          "verb": "aividrecorder.setCaptions",
+          "status": "callable",
+          "description": "Burned-in captions as one editable track: generate from the narration or transcript, or clear / show / hide.",
+          "example": {
+            "command": "applet",
+            "applet": "aividrecorder",
+            "verb": "setCaptions",
+            "args": {
+              "id": "<project id>",
+              "source": "narration"
+            }
+          }
+        },
+        {
+          "verb": "aividrecorder.autoEdit",
+          "status": "callable",
+          "description": "Cut silences and filler words (the editor's Auto-clean). Transcribes on-device first when there is no transcript.",
+          "example": {
+            "command": "applet",
+            "applet": "aividrecorder",
+            "verb": "autoEdit",
+            "args": {
+              "id": "<project id>"
+            }
+          }
+        },
+        {
+          "verb": "aividrecorder.fromDeck",
+          "status": "callable",
+          "description": "A presentation project from an AI Slides deck, or from a `brief` AI Slides composes first: the pages as stills, the speaker notes read by the free draft voice with each slide timed to its lines, captions, an optional LoopStar bed. Print later with narrate (onyx + maxCharacters); the slides re-time to the new voice.",
+          "example": {
+            "command": "applet",
+            "applet": "aividrecorder",
+            "verb": "fromDeck",
+            "args": {
+              "brief": "A four-slide explainer on keeping a home herb garden alive through winter",
+              "slides": 4
+            }
+          }
+        },
+        {
+          "verb": "aividrecorder.updateFromDeck",
+          "status": "callable",
+          "description": "A project made by fromDeck reads its deck again: stills redrawn, slides added or removed, lines re-made from the notes. Unchanged lines keep their audio; changed ones wait for narrate.",
+          "example": {
+            "command": "applet",
+            "applet": "aividrecorder",
+            "verb": "updateFromDeck",
+            "args": {
+              "id": "<project id>"
+            }
+          }
+        },
+        {
+          "verb": "aividrecorder.export",
+          "status": "callable",
+          "description": "Render the edit to an MP4 in the project's exports folder (cuts, music, narration, captions baked in). Nothing is posted.",
+          "example": {
+            "command": "applet",
+            "applet": "aividrecorder",
+            "verb": "export",
+            "args": {
+              "id": "<project id>",
+              "preset": "original"
+            }
+          }
+        }
+      ]
     }
   ]
 }

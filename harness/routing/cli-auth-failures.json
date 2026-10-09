@@ -49,5 +49,34 @@
       "guidance": "The Gemini CLI's credentials have expired on this Mac. This is its own login, separate from your mChatAI+ account.",
       "afterAction": "A terminal opens here and starts re-authentication. Finish it in the browser, then resume the conversation."
     }
+  },
+  "_usageLimits": "Roadmap 10w (2026-10-09). Each backend's 'you have used up your plan' wording. Signed in, but no turn runs until the limit resets, and the `command -v` capability probe cannot see it. mChatAI+ CLIBackendHealth records a failed turn that matches, and the next NEW assistant thread starts on another CLI until a turn there succeeds or the cooldown (assistants/session-policy.json backendFailureCooldownHours) passes. Matching is case-insensitive substring, scoped per backend. No baked fallback: a missing key means only quota/credit/401/403/429 wording (LLMFailureKind) is caught.",
+  "usageLimits": {
+    "claude": {
+      "match": [
+        "usage limit reached",
+        "you've hit your limit",
+        "you have hit your limit",
+        "5-hour limit reached",
+        "weekly limit reached",
+        "limit reached ∙ resets",
+        "limit reached · resets"
+      ]
+    },
+    "codex": {
+      "match": [
+        "you've hit your usage limit",
+        "you have hit your usage limit",
+        "usage limit has been reached"
+      ]
+    },
+    "gemini": {
+      "match": [
+        "quota exceeded",
+        "resource_exhausted",
+        "daily limit",
+        "usage limit reached"
+      ]
+    }
   }
 }

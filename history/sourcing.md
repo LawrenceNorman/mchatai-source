@@ -87,7 +87,7 @@ surname, a photograph, an address, a neighbourhood or a congregation's later ide
 never evidence of a person's identity. Every inclusion is re-checked by a second reader whose
 job is to refute it.
 
-## 7. Where to look in Seattle
+## 7. Where to look in Seattle and Washington
 
 Checked 2026-10-02. Access methods change, so confirm before you depend on one.
 
@@ -98,8 +98,13 @@ Checked 2026-10-02. Access methods change, so confirm before you depend on one.
 | Seattle Municipal Archives | CollectiveAccess portal and finding aids | city records |
 | Seattle Civil Rights and Labor History Project (UW) | web pages, video oral histories | UW copyright; oral histories are the person's own words |
 | HistoryLink | web essays with numbered sources | CC BY-NC-ND 3.0 (facts only) |
-| Densho, BlackPast, Washington Digital Newspapers | refuse scripted fetching; read through AI Web | confirm terms per item |
+| Densho, Washington Digital Newspapers | refuse scripted fetching; read through AI Web | confirm terms per item |
+| BlackPast | direct `fetch.py fetch` works; a guessed address 404s, so find the real one with `fetch.py get "https://www.blackpast.org/wp-json/wp/v2/search?search=<name>"` (2026-10-08) | facts only |
 | Wing Luke Museum, Burke Museum, Duwamish / Suquamish / Muckleshoot sites | web pages and PDFs | community-authored; preferred for Indigenous Seattle; confirm terms |
+| Washington State Library's legislative scans on archive.org (`walaw-*`) | House, Senate and Council journals, session laws and manuals from 1854, full OCR text. Find ids with `fetch.py get "https://archive.org/advancedsearch.php?q=identifier%3Awalaw-*+AND+year%3A%5B1889+TO+1891%5D&fl%5B%5D=identifier&rows=40&output=json"`; the text file is often `<year>_djvu.txt` (list them at `archive.org/metadata/<id>/files`). `walaw-session-laws-1889` is the 1889–90 regular session; `-1890` is the September 1890 special session (2026-10-08) | public domain |
+| Books on archive.org (Bancroft, Meeker, Snowden, Bagley …) | `fetch.py fetch` the `_djvu.txt` (kept whole as plain text since 2026-10-08; before that a stray `<` in the OCR lost most of a book). Full-text search returns snippets even for lending-only books: `fetch.py get "https://archive.org/services/search/beta/page_production/?service_backend=fts&user_query=%22<phrase>%22&hits_per_page=20"`. Snippets are finding aids, never sources | per item; pre-1930 US books are public domain |
+| Congressional reports (the Serial Set, Library of Congress) | the PDFs extract letter-spaced ("G E O R G E"); save each page's OCR instead, `tile.loc.gov/text-services/word-coordinates-service?segment=…&format=alto_xml&full_text=1`, listed in the item JSON at `www.loc.gov/item/<id>/?fo=json` (2026-10-08) | public domain |
+| Washington Secretary of State (sos.wa.gov) | refuses scripts (403), and its old blog host is gone. Find archived copies with the Wayback index, `https://web.archive.org/cdx/search/cdx?url=<host/path>*&filter=original:.*<word>.*&collapse=urlkey`, then fetch `https://web.archive.org/web/<timestamp>id_/<url>` (2026-10-08) | state records |
 | National Register nominations (NPS) | PDFs; check `%PDF` | public domain |
 | Seattle landmark designation reports and nominations | PDFs from seattle.gov | public records |
 

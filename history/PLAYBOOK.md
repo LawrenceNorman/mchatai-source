@@ -39,7 +39,11 @@ whose numbers say how long, and what shape, that story can be.
    `python3 history/tools/survey.py run <series> <dir>` (no model; leads from the encyclopedias
    that cover the community person by person, each with dates, a line about them, how strongly
    their entry ties them to the place, and pageviews), then `survey.py show <dir>` for the list
-   by era. The author picks where to look; a lead is never a member until step 4.
+   by era. The author picks where to look; a lead is never a member until step 4. Each lead
+   also says where the entry puts their life (`life`: lived and worked, lived, worked, born
+   here, passed through, named only, with its sentences) and the places it has them at
+   (`places`, landmarks first). `--guide <narrated pack>` adds the people the landmark guide's
+   narrations call Black, and `survey.seeds` the author's own; both are leads from our writing.
    **The history line:** a life is history once the part of it the story tells is at least
    `historyLineYears` past (30 for Black Seattle, the author's call on 2026-10-05, after
    landmark practice). A sitting officeholder is not history yet; a mayor of the 1990s may be.
@@ -79,6 +83,10 @@ whose numbers say how long, and what shape, that story can be.
 4. **Identity re-check.** For every candidate you would include, a second pass with fresh
    eyes tries to REFUTE series membership from the sources. Drop anyone it cannot be
    established for.
+   **Threads.** When the series has `threads` (questions that run across stories, such as
+   "Land through neighbours"), a scout whose candidate a thread names looks for what bears on
+   its question, for and against, and records it as dated events with evidence or as dead
+   ends. A thread is never a conclusion: a story says only what its dossier shows.
 5. Write the scout report for the author with `aiwrite.createDoc`: one row per candidate with
    name, why them, tier, mode, ceiling words, independent sources, dated events, own words,
    dead ends, and whether community review applies. Recommend five.
@@ -252,7 +260,11 @@ landmark guide, in the order the subjects arrived (2026-10-05, "Black Seattle").
 
 1. The series' `book` block in `series.json`: the title, a short introduction, the parts (year
    ranges; a story files itself into the part its arrival year falls in, and an empty part is
-   not shown) and the companion guide.
+   not shown) and the companion guide. A year before the first part files into the first part.
+   A part whose people arrived somewhere other than the series' place says where
+   (`"arrivedIn": "on Puget Sound"`: the Bush family settled there in 1845, before Seattle
+   began); its stories' pages say that instead of "arrived in Seattle". Give every dossier an
+   `arrival` event, or its story is placed by its first year, which is usually a birth.
 2. `python3 history/tools/series_book.py order stories <series>` prints the order and why: each
    story's earliest `arrival` event naming the place, from its dossier.
 3. `python3 history/tools/series_book.py build stories <series> <out-dir>` reads every chapter
@@ -278,6 +290,32 @@ landmark guide, in the order the subjects arrived (2026-10-05, "Black Seattle").
 6. The book's `resources/places.json` lists the landmarks its stories name. The landmark guide
    links back only to a PUBLISHED book, through its `client.json` `companions` entry. Deploy the
    book first, then rebuild and deploy the guide, so no link arrives before its page.
+7. **The places map** (`book_map.py`, 2026-10-08, the author's "a places POI map that relates to
+   each person"): the Places page is a street map of the places the chapters name, drawn the
+   way the landmark guide draws its own, with a chip for each person and a span of years.
+   - A landmark sits at the guide's point.
+   - A street corner sits where the two streets cross on the guide's basemap.
+   - A street address, park or cemetery sits where OpenStreetMap's geocoder puts it today.
+   Look those up once before building:
+   `python3 history/tools/book_map.py geocode stories <series>`. It sends one request a second
+   and keeps the answers in `stories/.cache/geocode.json`. A build never touches the network:
+   a place not looked up yet is listed, not pinned.
+   - An address must match its number, its street and its quarter. 1223 Seventh Avenue is
+     downtown; 1223 7th Avenue West is on Queen Anne.
+   - A named building or a street gets no pin: an old name may belong to a building that moved
+     or is gone.
+   Each pin also carries pictures of the place, as it was or is. The stories' own pictures
+   whose checked captions name it (its name or address) come first. Then come free Commons
+   photographs, from `python3 history/tools/book_map.py photos stories <series>`, which looks
+   them up once and keeps small copies in `stories/.cache/place-photos/`. A photograph counts
+   only when its title opens with the place's name: "William F. Burris grave, Lake View
+   Cemetery" is a grave, not the cemetery. An address needs its number and street. Each pin
+   has at most two pictures, older first. Tapping a pin opens its card beside the map (below
+   it on a phone): pictures, the place, then who was there.
+   `book_map.py list stories <series>` prints every place with its pin, or the reason it has
+   none. The map's area labels follow the guide's (`images.json` `maps.hoodNames`: Mann, Minor
+   and Atlantic read as the Central District). The basemap goes beside the page as
+   `resources/basemap.json`, 1.4 MB of a hosted copy's 16 MB.
 
 The contents page shows a portrait only when a picture's caption names the subject as its
 subject: its first clause is the subject's name, after at most a title ("Seattle City

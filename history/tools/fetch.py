@@ -322,6 +322,17 @@ def cmd_get(args):
 META_REFRESH = re.compile(r"<meta[^>]+http-equiv=[\x27\x22]?refresh[\x27\x22]?[^>]*content=[\x27\x22]?\s*\d+\s*;\s*url=([^\x27\x22>]+)", re.I)
 
 
+def is_plain_text(ctype, url, body):
+    """A plain-text document (an archive.org `_djvu.txt`, a transcript), to be kept as it came.
+    Read as HTML, a stray "<" in a book's OCR swallowed the rest of it: 42,975 of 156,743 words
+    (the George Bush scout, 2026-10-08)."""
+    head = body.lstrip()[:2000].lower()
+    if head.startswith(("<!doctype", "<html", "<?xml")) or "<html" in head or "<body" in head:
+        return False
+    path = urllib.parse.urlparse(url or "").path.lower()
+    return "text/plain" in (ctype or "").lower() or path.endswith(".txt")
+
+
 def meta_refresh_target(body, base):
     """The page a meta-refresh stub forwards to, or None. Old site addresses often survive only as
     these stubs (UW's civil-rights project: every .htm forwards to a .shtml)."""
@@ -384,6 +395,8 @@ def cmd_fetch(project, args, hops=0):
     if is_challenge(body):
         raise Refused(f"{host} answered with a bot check or rate-limit page, not the document. Wait and retry "
                       "one page at a time, or read it through AI Web (aiweb.openPage, then aiweb.getCurrentPage)")
+    if is_plain_text(ctype, final or args.url, body) and body.lstrip()[:1] not in ("{", "["):
+        return record(project, args, body.replace("\r\n", "\n").replace("\r", "\n"), raw, ".txt", extra)
     if "json" in ctype.lower() or body.lstrip()[:1] in ("{", "["):
         text = json_text(body)
         if text is None:

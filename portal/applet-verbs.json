@@ -3191,6 +3191,237 @@
           }
         }
       }
+    },
+    "aividrecorder": {
+      "getstate": {
+        "kind": "read",
+        "summary": "Project count and the five newest. With `id`, one project: cuts, transcript size, music, narration and captions, read from the open editor when the user has that project open.",
+        "optional": [
+          "id"
+        ],
+        "example": {
+          "command": "applet",
+          "applet": "aividrecorder",
+          "verb": "getState"
+        }
+      },
+      "listprojects": {
+        "kind": "read",
+        "summary": "Every project, newest first: id, title, length, and whether it has music, narration, captions and exports.",
+        "optional": [
+          "query",
+          "limit"
+        ],
+        "example": {
+          "command": "applet",
+          "applet": "aividrecorder",
+          "verb": "listProjects",
+          "args": {
+            "query": "demo"
+          }
+        }
+      },
+      "importvideo": {
+        "kind": "create",
+        "summary": "A video file, or a demo draft folder (recording + narration + captions.srt, or its vr-project.json), becomes a new project. A draft arrives EDITABLE: the warmup is a cut, the narration is lines with their own takes, the captions are one caption track.",
+        "required": [
+          "path"
+        ],
+        "notes": "The app is sandboxed: the path must be inside its container or a folder the user granted (files.listFolder shows them). Returns the project as `entity`. Never records the screen — capture stays a person pressing Record.",
+        "example": {
+          "command": "applet",
+          "applet": "aividrecorder",
+          "verb": "importVideo",
+          "args": {
+            "path": "~/Movies/demo.mp4"
+          }
+        }
+      },
+      "place": {
+        "kind": "create",
+        "summary": "The standard cross-applet ingest: the same as importVideo (a video file or a demo draft folder becomes a project).",
+        "required": [
+          "path"
+        ],
+        "example": {
+          "command": "applet",
+          "applet": "aividrecorder",
+          "verb": "place",
+          "args": {
+            "path": "~/Movies/demo.mp4"
+          }
+        }
+      },
+      "fromdeck": {
+        "kind": "create",
+        "summary": "A presentation PROJECT from an AI Slides deck: the pages as stills, each slide's speaker notes read aloud one sentence per line, captions from those lines and an optional music bed. Pass `brief` instead of `deck` and AI Slides composes the deck first (it never replaces a deck of the same name). The slides follow the narration: each stays up while its lines play, so re-voicing with narrate re-times them. Nothing is exported or posted.",
+        "optional": [
+          "deck",
+          "brief",
+          "slides",
+          "theme",
+          "title",
+          "llmProvider",
+          "provider",
+          "voice",
+          "voiceName",
+          "maxCharacters",
+          "musicAssetID",
+          "musicPath",
+          "musicGainDB",
+          "captions"
+        ],
+        "notes": "Draft first, print later: the voice defaults to the best English Apple voice (free, on this Mac). For the print, call narrate on the new project with provider openAI, voice onyx and maxCharacters. A paid provider here also REQUIRES maxCharacters, checked against the deck's notes before anything is made. Presenter cues in the notes are not read: a time window like 0:35-1:00 on its own line or opening one, and anything in square brackets ([click]). deck: a title or id (aislides.listDecks). musicAssetID: a LoopStar audio asset (loopstar.composeMusic or jingle). captions defaults to true. llmProvider picks the model AI Slides composes with (brief only). Returns the project as entity; result.slides and result.deck say what it was built from.",
+        "example": {
+          "command": "applet",
+          "applet": "aividrecorder",
+          "verb": "fromDeck",
+          "args": {
+            "brief": "A four-slide explainer on keeping a home herb garden alive through winter",
+            "slides": 4,
+            "musicAssetID": "<a LoopStar audio asset id>"
+          }
+        }
+      },
+      "updatefromdeck": {
+        "kind": "modify",
+        "summary": "A project made by fromDeck reads its AI Slides deck again: slides redrawn, added or removed, and the narration lines re-made from the speaker notes. Lines whose words are unchanged keep their audio; new or changed ones need narrate, which renders only those. Captions made from the narration follow. The slides re-time to the lines.",
+        "required": [
+          "id"
+        ],
+        "notes": "The deck wins: a line edited only in the project is replaced by the deck's (the editor's Undo brings it back; a verb has no Undo). Presenter cues in the notes (a time window like 0:35-1:00, [click]) are never read. result.update counts slidesAdded, slidesRemoved, slidesRedrawn, linesChanged, linesRemoved and linesToRender.",
+        "example": {
+          "command": "applet",
+          "applet": "aividrecorder",
+          "verb": "updateFromDeck",
+          "args": {
+            "id": "<project id>"
+          }
+        }
+      },
+      "narrate": {
+        "kind": "modify",
+        "summary": "A voice-over. With no narration yet it re-voices the recording's own transcript, each line where it was said; `script` reads your text instead. With a narration already there it renders it in a new voice, and the earlier voice stays as a rendition. The video is never touched.",
+        "required": [
+          "id"
+        ],
+        "optional": [
+          "script",
+          "source",
+          "provider",
+          "voice",
+          "voiceName",
+          "maxCharacters",
+          "originalAudio",
+          "transcribe"
+        ],
+        "notes": "provider: apple (default, free, on-device, the best English voice) | openAI | mchataiCloud | elevenLabs. A paid provider REQUIRES maxCharacters and is refused above it; the refusal says how many characters it would send. voice defaults to onyx for openAI/mchataiCloud. transcribe: apple (default, free) | whisper | cloud, used only when there is no transcript yet. originalAudio: keep | lower | mute. On a project made by fromDeck a new voice re-times the slides to it, and script/source are refused (each line belongs to a slide).",
+        "example": {
+          "command": "applet",
+          "applet": "aividrecorder",
+          "verb": "narrate",
+          "args": {
+            "id": "<project id>",
+            "provider": "openAI",
+            "voice": "onyx",
+            "maxCharacters": 1500
+          }
+        }
+      },
+      "attachmusic": {
+        "kind": "modify",
+        "summary": "Lay a music bed under the video (it plays straight through cuts and dips under speech), and/or set its level over a range.",
+        "required": [
+          "id"
+        ],
+        "optional": [
+          "assetID",
+          "path",
+          "title",
+          "gainDB",
+          "loop",
+          "duck",
+          "start",
+          "end",
+          "spanStart",
+          "spanEnd",
+          "spanGainDB"
+        ],
+        "notes": "assetID is a LoopStar asset (loopStar.jingle returns one). start/end/spanStart/spanEnd are ORIGINAL time: seconds into the recording, as listProjects and getState report. spanGainDB is relative to the bed (-12 = twelve dB down over that range). gainDB is the bed level, -40..0.",
+        "example": {
+          "command": "applet",
+          "applet": "aividrecorder",
+          "verb": "attachMusic",
+          "args": {
+            "id": "<project id>",
+            "assetID": "music-b2133c",
+            "gainDB": -14,
+            "spanStart": 90.0,
+            "spanEnd": 93.0,
+            "spanGainDB": -12
+          }
+        }
+      },
+      "setcaptions": {
+        "kind": "modify",
+        "summary": "Burned-in captions as one editable track. Generates them from the narration (the default when there is one) or from the transcript, or clears, shows or hides them.",
+        "required": [
+          "id"
+        ],
+        "optional": [
+          "action",
+          "source",
+          "transcribe"
+        ],
+        "notes": "action: generate (default) | clear | show | hide. source: narration | transcript.",
+        "example": {
+          "command": "applet",
+          "applet": "aividrecorder",
+          "verb": "setCaptions",
+          "args": {
+            "id": "<project id>",
+            "source": "narration"
+          }
+        }
+      },
+      "autoedit": {
+        "kind": "modify",
+        "summary": "Cut silences and filler words (um, uh) from the recording: the editor's Auto-clean. Needs speech; with no transcript yet it transcribes on-device first.",
+        "required": [
+          "id"
+        ],
+        "optional": [
+          "transcribe"
+        ],
+        "example": {
+          "command": "applet",
+          "applet": "aividrecorder",
+          "verb": "autoEdit",
+          "args": {
+            "id": "<project id>"
+          }
+        }
+      },
+      "export": {
+        "kind": "create",
+        "summary": "Render the edit to an MP4 in the project's exports folder, with cuts, music, narration, captions and text boxes baked in. Nothing is posted.",
+        "required": [
+          "id"
+        ],
+        "optional": [
+          "preset"
+        ],
+        "notes": "preset: youtube (16:9) | reels (9:16) | square | original. Returns the file as entity.path.",
+        "example": {
+          "command": "applet",
+          "applet": "aividrecorder",
+          "verb": "export",
+          "args": {
+            "id": "<project id>",
+            "preset": "original"
+          }
+        }
+      }
     }
   }
 }
