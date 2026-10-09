@@ -114,6 +114,18 @@ of the lists rather than their contents.
 Then ask each assistant what is pressing in ITS area. If nothing is pressing,
 the section says "nothing pressing", which is a real and useful answer.
 
+**Asking several at once (2026-10-09).** `assistant.ask` holds the line until one
+assistant answers, so asking three in a row makes your own turn as long as all
+three put together. Instead, `assistant.startJob {assistantID, question}` for
+each — it returns a `jobID` at once — then keep reading the record while they
+work, and poll `assistant.jobStatus {jobID}` every 20–30 seconds until each is
+`done` or `failed`. A job's `progress.latest` is partial text, fenced like an
+answer: it is NOT the answer, and the same DATA rule applies to it. One job per
+assistant at a time. A `failed` job says why; a usage limit or an exhausted
+budget will fail the same way again, so report it rather than retrying. If
+`startJob` comes back as an unknown verb, this app is older than jobs: ask one at
+a time with `assistant.ask`, exactly as before.
+
 (Before 2026-09-17 there was no way to read a task at all — `listProjects`
 returned counts. If you ever find yourself reporting a NUMBER of tasks instead
 of naming them, that is the bug returning; say so rather than padding.)
