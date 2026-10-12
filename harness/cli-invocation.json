@@ -311,6 +311,7 @@
         "assistant:history-writer": { "CLAUDE_CODE_AUTO_COMPACT_WINDOW": "500000" }
       },
       "_envByPurpose": "Phase CW.3 (owner agreed 2026-10-11): environment for a structured spawn by what the session is for. 'assistant:<id>' wins over 'assistant' for that assistant's threads; 'default' is every other session. CLAUDE_CODE_AUTO_COMPACT_WINDOW must be a PLAIN integer between 100000 and 1000000 (docs: '500k' reads as 500 and clamps to the minimum). Assistant threads compact at 200k because their continuity lives in memory and every message carries its own context; History Writer threads are project work (long dossiers, long chapters), so they keep the coding window. Applies at the next spawn or resume; running processes keep their env.",
+      "compactWindowEnvKey": "CLAUDE_CODE_AUTO_COMPACT_WINDOW",
       "settingsFlag": "--settings",
       "autoMemoryDirectoryKey": "autoMemoryDirectory",
       "_autoMemoryDirectoryKey": "Phase CW.3: an Assistant thread's CLI is started with --settings '{\"autoMemoryDirectory\": \"<container>/Assistant/CLIMemory/<scope>\"}' so its auto-memory (salary and start-date rules, form answers...) belongs to the ASSISTANT, not the workdir; Claude Code keys it per project folder and a fresh thread is a new folder. Before the first such spawn the thread's old ~/.claude/projects/<workdir>/memory notes are copied in (never overwriting).",
