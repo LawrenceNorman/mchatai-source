@@ -27,6 +27,8 @@ assistants/<id>/
 | `tools` | Verb grants — `"aiweb.getCurrentPage"`, `"ledger.*"`, or `"*"`. **`null` means unrestricted.** |
 | `budgetUSDPerDay` | Advisory ceiling. `null` for none. |
 | `backend` | Preferred CLI. Falls back to whatever is available. |
+| `pattern` | Phase AP.1. One choice per axis — `trigger`, `state` (+ `records`: the Ledger collections it owns), `continuity`, `qualityControl`, `freshness`. Vocabulary and the traps each prevents: [PATTERNS.md](PATTERNS.md). `scripts/lint_assistant_manifests.py` (preflight) fails a blank axis unless a `_why…` key says why. |
+| `context` | Phase AP.1. Overrides of [context-policy.json](context-policy.json) for this assistant only, same shape: `{"situational": {"maxTopical": 4}}` changes one knob and keeps the rest. |
 
 ## Two things worth getting right
 

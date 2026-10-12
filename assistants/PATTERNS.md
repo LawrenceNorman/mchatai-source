@@ -27,9 +27,9 @@ per-domain architectures, and neither does this file.
 
 1. For a new assistant, choose one option on every axis below. Write `none` where
    that is the choice; never leave an axis unsaid.
-2. Today the choices live in `assistant.json` (`cadence`, `tools`, `budgetUSDPerDay`,
-   `relayTimeoutSeconds`, `access`) and in `CONTEXT.md` prose. Phase AP.1 adds the
-   missing axes as manifest fields, with defaults equal to today's behaviour.
+2. Write the choices in `assistant.json`: the `pattern` block (AP.1) for the axes
+   below, plus `cadence`, `tools`, `budgetUSDPerDay`, `relayTimeoutSeconds` and
+   `access`. A known gap goes in a `_why…` key, so it stays visible instead of blank.
 3. If no option fits, that is a new **force**. Add the option here and to the
    platform once (skeleton code, reviewed), with a lint rule for its trap. Never
    build it as a one-off inside one assistant.
@@ -162,17 +162,19 @@ What the mapping shows:
 - **Freshness is declared nowhere**, though news and the coordinator both publish
   recurring output.
 
-## Lint rules (AP.2)
+## Lint rules (AP.2, `mchatai_macOS/scripts/lint_assistant_manifests.py`, in preflight)
 
-Each rule names the trap it prevents. A manifest that breaks one fails `preflight.sh`
-unless it carries a `_why` key explaining the exception.
+Each rule names the trap it prevents. A manifest that breaks one fails `preflight.sh`;
+the named `_why…` key turns the failure into a printed warning, so a known gap is
+documented rather than hidden.
 
-1. Every axis is declared (an explicit `none` counts).
-2. `records` in the state shape names a collection.
-3. A `schedule` trigger with `artifacts` output declares freshness.
-4. A wildcard grant on an applet that has a sending verb needs a `_why` key.
-5. A rule in `CONTEXT.md` that says "always" or "never" about output names its checker
-   (quality control), or is marked advisory.
+1. Every axis is declared (an explicit `none` counts), from the vocabulary above.
+2. `records` in the state shape names a collection — or `_whyRecordsUnnamed`.
+3. A `schedule` trigger with `artifacts` output declares a seen-ledger — or `_whyFreshness`.
+4. `tools: null` needs `_whyToolsAreUnrestricted`; a wildcard grant on an applet with a
+   dangerous verb (portal/capabilities.json) needs a `_why…` key naming that applet.
+5. Not yet automated: a rule in `CONTEXT.md` that says "always" or "never" about output
+   should name its checker (quality control) or be marked advisory.
 
 ## Adding an option
 
