@@ -1,0 +1,59 @@
+{
+  "_comment": "Phase CW (mchatai_macOS docs/ASSISTANT_CONTEXT_ARCHITECTURE.md). What an Assistant thread is told is PULLED for each message, not pushed for the thread. L0 'standing' = the standing rules (memory kinds below), one line each, capped, ranked by the thread's topic, plus a census of what is on record. L1 'situational' = chosen for THIS message by AssistantContextRetriever: records the message NAMES, memories that MATCH it (IDF-weighted term overlap, optionally lifted by an on-device sentence-embedding cosine), and the details of standing rules it touches. Records are never pushed by resemblance: an entity kind (person/place) or a member of a SERIES (seriesMinMembers or more memories opening with the same phrase, e.g. 'Applied to ...') enters context only when its name is in the message or the recent turns. Every number is clamped in Swift; the binary carries _fallback_only copies. Preview any prompt at $0 with the tunnel command diagAssistantContext.",
+  "standing": {
+    "kinds": ["preference", "constraint", "feedback"],
+    "maxItems": 24,
+    "maxTokens": 1500
+  },
+  "situational": {
+    "maxTokens": 2500,
+    "standingFloor": 0.25,
+    "topicalFloor": 0.35,
+    "handleMatchFloor": 0.1,
+    "_handleMatchFloor": "An item whose HANDLE contains a term of the message is about that facet and qualifies at this lower coverage. Without it a five-part request leaves any one facet a fifth of the mass and the floors drop, e.g., the writing-voice rules from 'draft an email to the recruiter about the Compass role'.",
+    "_floors": "Coverage = the share of the message's IDF mass an item matches, a term in the item's handle counting double one found only in its detail. Below its pool's floor an item is never considered. Standing-rule DETAILS have the lower floor: cheap to include, costly to miss (the writing-voice rules when drafting an email).",
+    "relativeToTop": 0.5,
+    "maxStandingDetails": 3,
+    "maxTopical": 6,
+    "maxNamedRecords": 6,
+    "nameMaxHandles": 3,
+    "_nameMaxHandles": "A capitalized word that does not open a sentence ('check Indeed too') NAMES a memory when at most this many memory handles contain it, and a named memory is pulled like a named record. 'Seattle', in twenty handles, names nothing.",
+    "_pools": "Three pools selected separately so one strong facet cannot starve another: named records, standing-rule details, ongoing work. Within a pool an item must score at least relativeToTop x the pool's best, and the pool is capped. Ranking uses BM25 length normalisation (bm25K1, bm25B) so a memory ABOUT the subject outranks one that mentions it in a long detail.",
+    "bm25K1": 1.2,
+    "bm25B": 0.75,
+    "recentUserTurns": 3,
+    "shortMessageTerms": 3,
+    "keywordWeight": 0.6,
+    "semanticWeight": 0,
+    "semanticFloor": 0.35,
+    "_semanticWeight": "OFF (2026-10-11). Measured on the owner's memories: Apple's on-device sentence embedding put an exact paraphrase of 'go and apply' at cosine 0.317, a relevant answer rule at 0.171 and an unrelated one at 0.161 - too compressed to select on, and embedding ~100 memories took 5.5 s on first use. Set above 0 to re-enable once a better embedder is measured; it can only add recall, never cancel a keyword match.",
+    "maxLineChars": 280,
+    "kindWeight": {
+      "priority": 1.2,
+      "interest": 1.0,
+      "project": 1.0,
+      "preference": 1.0,
+      "constraint": 1.0,
+      "feedback": 1.0,
+      "person": 1.0,
+      "place": 1.0,
+      "other": 0.8
+    },
+    "halfLifeDays": {
+      "priority": 14,
+      "interest": 60,
+      "project": 30,
+      "preference": 180,
+      "constraint": 180,
+      "feedback": 120,
+      "person": 90,
+      "place": 180,
+      "other": 30
+    },
+    "_halfLifeDays": "Recency is a TIE-BREAK, never a gate: an item's score is relevance x kind weight x (0.5 + 0.5 * 0.5^(ageDays/halfLife)). The relevance threshold is applied to relevance alone, so an old item that matches is still pulled and a fresh one that does not is not."
+  },
+  "records": {
+    "entityKinds": ["person", "place"],
+    "seriesMinMembers": 3
+  }
+}

@@ -2,6 +2,11 @@
 
 One directory per assistant. Adding one is a PR — no rebuild, no App Store review.
 
+**Designing a new assistant? Read [PATTERNS.md](PATTERNS.md) first.** Every assistant is
+one choice per axis (trigger, state shape, context policy, continuity, authority,
+quality control, freshness, identity, cost); the trap is leaving an axis blank.
+What each turn is told is set by [context-policy.json](context-policy.json).
+
 ```
 assistants/<id>/
   assistant.json    required — identity and configuration

@@ -1,0 +1,58 @@
+{
+  "_doc": "LoopStar music-video looks (iOS, Phase VFX 2026-10-10). Each look maps the music LoopStar already knows (kicks, snares, bars, song sections, chords) to effects on the filmed video. The app knows only the effect kinds; every amount, timing and section word lives here, so a look ships without a rebuild. Missing fields are off. Times are milliseconds. punch.kick/snare = extra zoom on each hit; pushIn.perBar/max = slow zoom into a section; impact = a hit on sections whose label contains one of `sections` (whole words, any case); flash = exposure flash on hits, capped by maxPerSecond (the app never allows more than 3/s, WCAG 2.3.1); rgbSplit.pixels at 1080 px wide; grade.warmth in Kelvin (+ warmer); text toggles the title card (project name, first 2 s), section callouts, the chord pill and the BPM/key badge. Bundled fallback: mchatai/mChatAI/mChatAI/LoopStar/Resources/loopstar_video_looks_fallback.json (keep equal; a test checks).",
+  "version": 1,
+  "looks": [
+    {
+      "id": "plain",
+      "name": "Plain",
+      "blurb": "The video as you filmed it."
+    },
+    {
+      "id": "hype",
+      "name": "Hype",
+      "blurb": "Punch-ins on the beat, a hit on the chorus or drop, bold callouts.",
+      "punch": { "kick": 0.06, "snare": 0.03, "decayMs": 150 },
+      "pushIn": { "perBar": 0.004, "max": 0.05 },
+      "impact": { "sections": ["chorus", "drop", "hook", "climax"], "zoom": 0.16, "decayMs": 450, "shake": 0.012 },
+      "flash": { "on": "kick", "amount": 0.3, "decayMs": 110, "maxPerSecond": 3, "sections": ["chorus", "drop", "hook", "climax"] },
+      "grade": { "saturation": 1.22, "contrast": 1.1, "vignette": 0.8, "bloom": 0.2 },
+      "text": { "title": true, "callouts": true, "chords": true, "badge": true, "accent": "#FF4F8B" }
+    },
+    {
+      "id": "chill",
+      "name": "Chill",
+      "blurb": "Warm and soft, a gentle drift in, a little breath on the kick.",
+      "punch": { "kick": 0.018, "decayMs": 280 },
+      "pushIn": { "perBar": 0.003, "max": 0.06 },
+      "grade": { "saturation": 0.9, "contrast": 0.94, "brightness": 0.02, "warmth": 900, "vignette": 0.7, "bloom": 0.35 },
+      "text": { "title": true, "callouts": true, "chords": true, "accent": "#F2B880" }
+    },
+    {
+      "id": "glitch",
+      "name": "Glitch",
+      "blurb": "Colour splits on the snare, hard punches, neon grade.",
+      "punch": { "kick": 0.05, "snare": 0.02, "decayMs": 120 },
+      "rgbSplit": { "on": "snare", "pixels": 16, "decayMs": 140 },
+      "flash": { "on": "snare", "amount": 0.18, "decayMs": 90, "maxPerSecond": 2 },
+      "grade": { "saturation": 1.35, "contrast": 1.2, "warmth": -600, "vignette": 0.6, "bloom": 0.15 },
+      "text": { "callouts": true, "badge": true, "accent": "#3DE0FF" }
+    },
+    {
+      "id": "cinematic",
+      "name": "Cinematic",
+      "blurb": "A slow push, a big swell into the chorus, film colour.",
+      "pushIn": { "perBar": 0.006, "max": 0.1 },
+      "impact": { "sections": ["chorus", "drop", "hook", "bridge", "climax"], "zoom": 0.1, "decayMs": 900 },
+      "grade": { "saturation": 0.85, "contrast": 1.14, "brightness": -0.02, "warmth": -350, "vignette": 1.3 },
+      "text": { "title": true, "callouts": true, "accent": "#E8D8B0" }
+    },
+    {
+      "id": "mono",
+      "name": "B&W",
+      "blurb": "Black and white with a kick in the frame.",
+      "punch": { "kick": 0.035, "decayMs": 170 },
+      "grade": { "contrast": 1.22, "vignette": 1.0, "mono": true },
+      "text": { "title": true, "callouts": true, "accent": "#FFFFFF" }
+    }
+  ]
+}

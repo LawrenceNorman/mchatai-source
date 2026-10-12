@@ -29,6 +29,13 @@
                          portrait: its caption's evidence is the holder's own page about it. Its
                          licence reads "Used with permission (non-commercial)"; a paid edition must
                          clear each such picture again (images.json `permission`).
+  images.py open <project> [<id>]   the story opens with its portrait: the portrait becomes the
+                         introduction's first picture, in images/index.json, book/00.txt and
+                         StoryMaker (a chapter the author has edited gets it as a suggestion). The
+                         author's rule, 2026-10-11: every history opens with its subject's portrait.
+  images.py follow <project>  after the author's review (cite.py adopt): each placed picture's `after`
+                         follows the author's text, review/NN.txt, to the paragraph it now sits
+                         under; a picture the author took out is listed, never removed
   images.py check <project>   licences, credits, captions checked against their sources,
                               placements that resolve to one paragraph, the voice's phrase rules
   images.py list  <project>   what is placed where
@@ -452,6 +459,173 @@ def paragraph_index(project, n, after):
     return hits[0] if len(hits) == 1 else None
 
 
+def placed_at(project, rec):
+    """The paragraph of its chapter a placed picture follows: -1 for an opening picture (`at:
+    "start"`, the story's portrait at the top of its introduction), else the one paragraph that
+    holds `after`, or None."""
+    if rec.get("at") == "start":
+        return -1 if project.chapter(rec.get("chapter")) is not None else None
+    return paragraph_index(project, rec.get("chapter"), rec.get("after", ""))
+
+
+def portrait_pick(project):
+    meta = load_json(project.path("project.json"), {}) or {}
+    pick = meta.get("portrait")
+    return (pick.get("image") if isinstance(pick, dict) else pick), meta
+
+
+def portrait_findings(project):
+    """Every history opens with its subject's portrait (the author, 2026-10-11, the third time he
+    asked): one is set, and a picture of it opens the introduction. Only the author may say that no
+    photograph of the person exists (project.json portraitNone {why, confirmedBy})."""
+    pick, meta = portrait_pick(project)
+    if not pick:
+        none = meta.get("portraitNone") or {}
+        if none.get("why") and none.get("confirmedBy"):
+            return []
+        return [finding("portrait_missing", "hard",
+                        "the story has no portrait. Find one (images.py find; a free licence, public domain by date, or "
+                        "the author's permission for a non-commercial book: images.py portrait … permission), set it, then "
+                        "images.py open. Only the author can record that no photograph exists (project.json portraitNone)")]
+    rows = index(project)
+    rec = next((r for r in rows if r.get("id") == pick), None)
+    if rec is None:
+        return [finding("portrait_missing", "hard", f"project.json's portrait {pick} has no record in images/index.json")]
+    # In the introduction: images.py open puts it at the top; an older story's portrait may sit after
+    # the introduction's first paragraph (Stokes, Horace Cayton, Grose), and that still opens the book.
+    if not any(r.get("url") == rec.get("url") and str(r.get("chapter")) == "0" for r in rows):
+        return [finding("portrait_not_opening", "hard",
+                        f"the portrait ({pick}) does not open the introduction: run images.py open {project.root}")]
+    return []
+
+
+def cmd_open(project, pick=None):
+    """The story's portrait as the first picture of its introduction (see the usage)."""
+    import shutil
+    import cite
+    chosen, meta = portrait_pick(project)
+    pick = pick or chosen
+    if not pick:
+        raise Refused("no portrait is set: images.py portrait first")
+    rows = index(project)
+    rec = next((r for r in rows if r.get("id") == pick), None)
+    if rec is None:
+        raise Refused(f"{pick} is not in images/index.json")
+    opening = next((r for r in rows if r.get("url") == rec.get("url") and str(r.get("chapter")) == "0"), None)
+    if opening is None:
+        if rec.get("portraitOnly") or int(rec.get("chapter", -1)) < 0:
+            opening = rec                        # the portrait only: it moves into the introduction
+            opening.pop("portraitOnly", None)
+        else:                                    # already placed in a chapter: the introduction gets its own entry
+            used = {r.get("id") for r in rows}
+            k = 1
+            while f"img{k}" in used:
+                k += 1
+            opening = dict(rec, id=f"img{k}")
+            desc = project.path("images", f"{pick}.description.txt")
+            if os.path.exists(desc):
+                shutil.copyfile(desc, project.path("images", f"img{k}.description.txt"))
+            rows.append(opening)
+        opening.update({"chapter": 0, "at": "start", "after": ""})
+        save_json(project.path("images", "index.json"), rows)
+    if "portrait" not in meta:                   # a portrait the build found by its caption: now recorded
+        meta["portrait"] = pick
+        save_json(project.path("project.json"), meta)
+    line = cite.image_markdown(opening)
+    bare = urllib.parse.unquote((opening.get("url") or "").split("?")[0])
+
+    def with_picture(text):
+        if bare and bare in urllib.parse.unquote(text):
+            return None                          # already there
+        m = cite.TITLE_BLOCK.match(text)
+        head, rest = (text[:m.end()], text[m.end():]) if m else ("", text.lstrip())
+        return head + line + "\n\n" + rest
+    book = project.path("book", "00.txt")
+    if os.path.exists(book):
+        with open(book, encoding="utf-8") as fh:
+            new = with_picture(fh.read())
+        if new is not None:
+            with open(book, "w", encoding="utf-8") as fh:
+                fh.write(new)
+    shim = cite.find_shim(project)
+    pid = meta.get("storymakerProject")
+    man = load_json(project.path("book", "manifest.json"), {}) or {}
+    cid = meta.get("introChapterID") or next(((c.get("storymaker") or {}).get("chapterID")
+                                             for c in man.get("chapters", []) if c.get("n") == 0), None)
+    if not (shim and pid and cid):
+        print(f"{pick}: opens the introduction in images/index.json and book/00.txt; not landed in StoryMaker yet")
+        return 0
+    got = cite.storymaker(shim, "getChapter", projectID=pid, chapterID=cid)
+    text = (got.get("result") or {}).get("text")
+    if got.get("status") != "ok" or text is None:
+        raise Refused(f"StoryMaker getChapter: {got.get('error')}")
+    new = with_picture(text)
+    if new is None:
+        print(f"{pick}: already opens the introduction in StoryMaker")
+        return 0
+    r = cite.storymaker(shim, "replaceChapter", project=pid, chapter=cid, text=new,
+                        reason="images.py open: the story opens with its portrait")
+    if r.get("status") == "ok":
+        print(f"{pick}: now opens the introduction in StoryMaker")
+        return 0
+    # The author's chapter: a suggestion he accepts, placed after the name-and-years lines.
+    m = cite.TITLE_BLOCK.match(text)
+    years = re.search(r"(?m)^\*[^*\n]+\*[ \t]*$", text[:m.end()]) if m else None
+    first = re.split(r"\n\s*\n", text[m.end():].strip() if m else text.strip())[0]
+    find = years.group(0) if years else first
+    replacement = (find + "\n\n" + line) if years else (line + "\n\n" + first)
+    s2 = cite.storymaker(shim, "proposeSuggestion", project=pid, chapter=cid, find=find, replacement=replacement,
+                         label="Portrait", rationale="Every history opens with its subject's portrait (the author's rule, 2026-10-11).")
+    if s2.get("status") != "ok":
+        raise Refused(f"StoryMaker refused both the edit and the suggestion: {(s2.get('error') or '')[:200]}")
+    print(f"{pick}: the introduction is the author's: proposed as a suggestion in StoryMaker")
+    return 0
+
+
+def cmd_follow(project):
+    """Re-anchor placed pictures to the author's reviewed text (see the usage)."""
+    import cite
+    rows = index(project)
+    moved, gone, kept = 0, [], 0
+    for rec in rows:
+        n = rec.get("chapter")
+        if rec.get("portraitOnly") or n is None or int(n) < 0 or rec.get("at") == "start":
+            continue
+        review = project.path("review", f"{int(n):02d}.txt")
+        if not os.path.exists(review):
+            continue
+        if placed_at(project, rec) is not None:
+            kept += 1
+            continue
+        with open(review, encoding="utf-8") as fh:
+            blocks = [b.strip() for b in re.split(r"\n\s*\n", fh.read()) if b.strip()]
+        bare = urllib.parse.unquote((rec.get("url") or "").split("?")[0])
+        at = next((i for i, b in enumerate(blocks) if b.startswith(("![", "[![")) and bare and bare in urllib.parse.unquote(b)), None)
+        if at is None:
+            gone.append(rec.get("id"))
+            continue
+        before = next((cite.strip_additions(b).strip() for b in reversed(blocks[:at])
+                       if not b.startswith(("![", "[![", "#")) and not re.fullmatch(r"\*[^*]+\*", b)
+                       and cite.strip_additions(b).strip()), None)
+        if before is None:
+            rec.update({"at": "start", "after": ""})
+            moved += 1
+            continue
+        sents = cite.flat_sentences(before)
+        cand = [x for _, _, x in sents][-1] if sents else before
+        rec["after"] = cand
+        if placed_at(project, rec) is None:      # not one paragraph's words: take the whole paragraph
+            rec["after"] = before
+        if placed_at(project, rec) is None:
+            gone.append(rec.get("id") + " (its paragraph changed beyond matching)")
+            continue
+        moved += 1
+    save_json(project.path("images", "index.json"), rows)
+    print(f"follow: {moved} picture(s) re-anchored, {kept} unchanged"
+          + (f"; not in the author's text: {', '.join(gone)}" if gone else ""))
+    return 1 if gone else 0
+
+
 def image_findings(project):
     cfg = config()
     floor = cfg.get("minCaptionEvidenceWords", 6)
@@ -486,7 +660,7 @@ def image_findings(project):
             pass                                # the story's portrait: shown on its first page, never in a chapter
         elif project.chapter(n) is None:
             out.append(finding("image_chapter_missing", "hard", f"{label}: chapter {n} does not exist"))
-        elif paragraph_index(project, n, rec.get("after", "")) is None:
+        elif placed_at(project, rec) is None:
             out.append(finding("image_unplaced", "hard",
                                f"{label}: `after` must be words copied from exactly one paragraph of chapter {n}"))
         if not rec.get("portraitOnly"):
@@ -564,6 +738,10 @@ def main(argv):
                                 flag(argv, "--evidence-source"), flag(argv, "--crop"), flag(argv, "--credit"))
         if len(argv) >= 3 and argv[1] == "check":
             return report("images", image_findings(Project(argv[2])))
+        if len(argv) >= 3 and argv[1] == "follow":
+            return cmd_follow(Project(argv[2]))
+        if len(argv) >= 3 and argv[1] == "open":
+            return cmd_open(Project(argv[2]), argv[3] if len(argv) > 3 and not argv[3].startswith("--") else None)
         if len(argv) >= 3 and argv[1] == "list":
             return cmd_list(Project(argv[2]))
         if len(argv) >= 4 and argv[1] == "remove":

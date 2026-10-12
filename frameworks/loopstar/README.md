@@ -11,6 +11,14 @@ bar-quantized launching, scenes, and transitions at a fixed per-pack BPM.
 > [`docs/MUSICAL_IDIOM_LIBRARY.md`](docs/MUSICAL_IDIOM_LIBRARY.md), with the
 > per-genre idiom source-books in [`docs/idiom-research/`](docs/idiom-research/).
 
+> **Music-video looks (iPhone LoopStar).** `video/looks.json` holds the looks offered after
+> filming a music video: Plain, Hype, Chill, Glitch, Cinematic and B&W today. Each maps what
+> LoopStar knows about the song to effects on the picture. The kicks and snares punch in, a
+> section's bars push in slowly, and named sections such as "chorus" or "drop" hit. Each look
+> also sets a colour grade and section, chord and BPM text. Add or retune a look here, with no
+> app rebuild. The app clamps every value and never flashes more than 3 times a second. Keep the
+> iOS bundled copy (`loopstar_video_looks_fallback.json`) equal; a unit test checks it.
+
 ## Multi-pack layout
 
 - `packs.json` — the pack index: `{id, name, bpm, manifest, genre, family}` per

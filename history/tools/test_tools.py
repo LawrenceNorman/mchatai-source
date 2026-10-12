@@ -1576,12 +1576,13 @@ class SeriesBook(FixtureCase):
         self.sb.series_entry = self._entry
         super().tearDown()
 
-    def build(self, publish=False, files=False, review=False):
+    def build(self, publish=False, files=False, review=False, drafts=False):
         import contextlib
         import io
         buf = io.StringIO()
         with contextlib.redirect_stdout(buf):
-            code = self.sb.cmd_build(self.tmp, "fixture", self.out, use_files=files, publish=publish, review=review)
+            code = self.sb.cmd_build(self.tmp, "fixture", self.out, use_files=files, publish=publish, review=review,
+                                     drafts=drafts)
         return code, buf.getvalue()
 
     def data(self):
@@ -1611,6 +1612,139 @@ class SeriesBook(FixtureCase):
         self.assertEqual(story["portraitCredit"], "Fixture Archive, CC BY 2.0, cropped")
         self.assertEqual(self.sb.dims(os.path.join(self.out, story["portrait"])), (100, 100))
         self.assertNotIn("img9", read(os.path.join(self.out, "index.html")).split('"chapters"')[1][:4000])
+
+    def intro_id(self):
+        man = _hw.load_json(self.project.path("book", "manifest.json"))
+        return next(c["storymaker"]["chapterID"] for c in man["chapters"] if c.get("n") == 0)
+
+    def add_intro(self):
+        """The fixture lands chapters only; a real story opens with an introduction (voice.md §13)."""
+        body = "Edith Fixture opened a reading room on Water Street in 1901."
+        text = "# Edith Fixture\n\n*1870–1950 · Fixture*\n\n" + body
+        st = _hw.load_json(self.state)
+        st["chapters"].insert(0, {"id": "INTRO", "title": "Introduction", "text": text})
+        _hw.save_json(self.state, st)
+        man = _hw.load_json(self.project.path("book", "manifest.json"))
+        man["chapters"].insert(0, {"n": 0, "title": "Introduction", "file": "book/00.txt",
+                                   "storymaker": {"project": "P1", "chapterID": "INTRO"}})
+        _hw.save_json(self.project.path("book", "manifest.json"), man)
+        with open(self.project.path("book", "00.txt"), "w", encoding="utf-8") as fh:
+            fh.write(text)
+        _hw.save_json(self.project.path("chapters", "00.json"), {"n": 0, "title": "Introduction", "text": body,
+                                                                  "status": "gated", "claims": []})
+
+    def portrait_only(self):
+        """A picture recorded only as the story's portrait, as images.py portrait leaves it."""
+        tiny_png(os.path.join(self.root, "images", "img9.png"), 60, 80)
+        rows = _hw.load_json(os.path.join(self.root, "images", "index.json"), []) or []
+        rows.append({"id": "img9", "title": "File:Edith Fixture.png", "url": "https://upload.wikimedia.org/edith.png",
+                     "license": "CC BY 2.0", "artist": "Fixture Archive", "caption": "Edith Fixture in 1902.",
+                     "evidence": "Edith Fixture at her door in 1902", "evidenceSource": "description",
+                     "chapter": -1, "after": "", "portraitOnly": True, "file": "images/img9.png"})
+        _hw.save_json(os.path.join(self.root, "images", "index.json"), rows)
+        meta = _hw.load_json(os.path.join(self.root, "project.json"))
+        meta["portrait"] = {"image": "img9"}
+        _hw.save_json(os.path.join(self.root, "project.json"), meta)
+
+    def test_every_history_opens_with_its_portrait_and_the_gate_says_so(self):
+        import contextlib
+        import io
+        import images as im
+        code, out = self.land()
+        self.assertEqual(code, 0, out)
+        self.add_intro()
+        self.assertEqual([f["rule"] for f in im.portrait_findings(self.project)], ["portrait_missing"])
+        meta = _hw.load_json(os.path.join(self.root, "project.json"))
+        meta["portraitNone"] = {"why": "no photograph of her is known", "confirmedBy": "the author"}
+        _hw.save_json(os.path.join(self.root, "project.json"), meta)
+        self.assertEqual(im.portrait_findings(self.project), [], "only the author may say no photograph exists")
+        del meta["portraitNone"]
+        _hw.save_json(os.path.join(self.root, "project.json"), meta)
+        self.portrait_only()
+        self.assertEqual([f["rule"] for f in im.portrait_findings(self.project)], ["portrait_not_opening"])
+        with contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(im.cmd_open(self.project), 0)
+        self.assertEqual(im.portrait_findings(self.project), [])
+        intro = next(c for c in _hw.load_json(self.state)["chapters"] if c["id"] == self.intro_id())["text"]
+        head = intro.split("\n\n")
+        self.assertTrue(head[0].startswith("# ") and head[1].startswith("*"), intro[:120])
+        self.assertTrue(head[2].startswith("![Edith Fixture in 1902. Fixture Archive, CC BY 2.0.]"), head[2])
+        self.assertIn("![Edith Fixture in 1902.", read(self.project.path("book", "00.txt")).split("\n\n")[2])
+        with contextlib.redirect_stdout(io.StringIO()):
+            im.cmd_open(self.project)                     # once only
+        intro2 = next(c for c in _hw.load_json(self.state)["chapters"] if c["id"] == self.intro_id())["text"]
+        self.assertEqual(intro2.count("edith.png"), 1)
+        self.assertEqual(cite.with_pictures_and_links(self.project, 0, "First words.\n\nMore.", {}).split("\n\n")[0][:2], "![")
+        code, out = self.build()                          # the page shows it once, in its header
+        self.assertEqual(code, 0, out)
+        story = self.data()["stories"]["edith-fixture"]
+        self.assertTrue(story["portrait"].endswith("-portrait.png"))
+        self.assertNotIn("edith", story["intro"]["html"])
+
+    def test_an_introduction_the_author_edited_gets_the_portrait_as_a_suggestion(self):
+        import contextlib
+        import io
+        import images as im
+        self.assertEqual(self.land()[0], 0)
+        self.add_intro()
+        self.portrait_only()
+        st = _hw.load_json(self.state)
+        st["edited"].append(self.intro_id())
+        _hw.save_json(self.state, st)
+        with contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(im.cmd_open(self.project), 0)
+        st = _hw.load_json(self.state)
+        self.assertEqual([x["label"] for x in st.get("suggestions", [])], ["Portrait"])
+        intro = next(c for c in st["chapters"] if c["id"] == self.intro_id())["text"]
+        self.assertNotIn("edith.png", intro, "the author's text is never replaced")
+
+    def test_settle_puts_a_claim_on_a_numbered_sentence_or_retires_it(self):
+        import contextlib
+        import io
+        self.assertEqual(self.land()[0], 0)
+        ch = _hw.load_json(self.project.chapter_path(1))
+        live = [c for c in ch["claims"] if c.get("anchor")]
+        a, b = live[0], live[1]
+        a["anchor"], b["anchor"] = None, None
+        _hw.save_json(self.project.chapter_path(1), ch)
+        todo = cite.unanchored(self.project)["1"]
+        self.assertEqual({c["id"] for c in todo["claims"]} >= {a["id"], b["id"]}, True)
+        path = os.path.join(self.tmp, "decisions.json")
+        _hw.save_json(path, [{"chapter": 1, "claim": a["id"], "sentence": 0},
+                             {"chapter": 1, "claim": b["id"], "retired": "cut by the author"},
+                             {"chapter": 1, "claim": "nope", "sentence": 0}])
+        with contextlib.redirect_stdout(io.StringIO()) as out:
+            code = cite.cmd_settle(self.project, path)
+        self.assertEqual(code, 1, "a refused decision is reported")
+        self.assertIn("no claim 'nope'", out.getvalue())
+        ch = _hw.load_json(self.project.chapter_path(1))
+        got = {c["id"]: c for c in ch["claims"]}
+        sents = cite.flat_sentences(ch["text"])
+        self.assertEqual(cite.resolve(got[a["id"]]["anchor"], sents), [0])
+        self.assertEqual(got[b["id"]]["retired"], "cut by the author")
+
+    def test_follow_moves_a_picture_to_the_paragraph_it_sits_under_in_the_authors_text(self):
+        import contextlib
+        import io
+        import images as im
+        self.assertEqual(self.land()[0], 0)
+        ch = _hw.load_json(self.project.chapter_path(1))
+        paras = [p for p in ch["text"].split("\n\n") if p.strip()]
+        tiny_png(os.path.join(self.root, "images", "img9.png"), 40, 30)
+        rows = _hw.load_json(os.path.join(self.root, "images", "index.json"), []) or []
+        rows.append({"id": "img9", "title": "File:Door.png", "url": "https://upload.wikimedia.org/door.png", "license": "PD",
+                     "caption": "A door.", "chapter": 1, "after": paras[0][:40], "file": "images/img9.png"})
+        _hw.save_json(os.path.join(self.root, "images", "index.json"), rows)
+        edited = "The author rewrote this opening paragraph entirely."
+        ch["text"] = "\n\n".join([edited] + paras[1:])            # what cite.py adopt leaves
+        _hw.save_json(self.project.chapter_path(1), ch)
+        os.makedirs(self.project.path("review"), exist_ok=True)
+        with open(self.project.path("review", "01.txt"), "w", encoding="utf-8") as fh:
+            fh.write("\n\n".join([edited, "![A door.](https://upload.wikimedia.org/door.png)"] + paras[1:]))
+        with contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(im.cmd_follow(self.project), 0)
+        rec = next(r for r in im.index(self.project) if r["id"] == "img9")
+        self.assertEqual(im.placed_at(self.project, rec), 0)
 
     def test_the_book_maps_the_places_its_chapters_name_and_keeps_the_guides_file(self):
         code, out = self.land()
@@ -1671,6 +1805,71 @@ class SeriesBook(FixtureCase):
         code, out = self.build(review=True)                  # unsigned: the story is held
         self.assertEqual(self.data()["order"], [])
         self.assertEqual(self.data()["pics"], {}, "a held story's pictures count against the deploy's cap")
+
+    def test_a_review_copy_with_drafts_carries_the_unsigned_story_and_bundles_its_pictures(self):
+        if not shutil.which("sips"):
+            self.skipTest("the hosted pictures use macOS sips")
+        self.assertEqual(self.land()[0], 0)
+        tiny_png(os.path.join(self.root, "images", "img9.png"), 40, 30)
+        rows = _hw.load_json(os.path.join(self.root, "images", "index.json"), []) or []
+        rows.append({"id": "img9", "title": "File:Door.png", "url": "https://upload.wikimedia.org/door.png", "license": "PD",
+                     "caption": "A door.", "chapter": 1, "file": "images/img9.png"})
+        _hw.save_json(os.path.join(self.root, "images", "index.json"), rows)
+        st = _hw.load_json(self.state)
+        st["chapters"][0]["text"] += "\n\n![A door.](https://upload.wikimedia.org/door.png)"
+        _hw.save_json(self.state, st)
+        code, out = self.build(review=True, drafts=True)
+        self.assertEqual(code, 0, out)
+        data = self.data()
+        self.assertEqual(data["order"], ["edith-fixture"])
+        story = data["stories"]["edith-fixture"]
+        self.assertTrue(story["draft"])
+        self.assertEqual(story["draftWhy"], ["the author signs it off"], "readers see what it waits on, not where")
+        (rel, (bundle, key)), = data["pics"].items()
+        self.assertEqual(bundle, "resources/pic/edith-fixture.json")
+        uri = _hw.load_json(os.path.join(self.out, bundle))[key]
+        self.assertRegex(uri, r"^data:image/(png|avif);base64,")
+        self.assertFalse(os.path.isdir(os.path.join(self.out, "resources", "img")), "the deploy carries text only")
+
+    def test_a_black_and_white_picture_goes_out_as_an_rgb_avif_that_chromium_decodes(self):
+        if not shutil.which("sips"):
+            self.skipTest("the hosted pictures use macOS sips")
+        import random
+        import struct
+        import zlib
+        random.seed(7)
+        w, h = 240, 180                              # noise, so the AVIF comes out smaller than the PNG
+        raw = b"".join(b"\x00" + bytes(random.randrange(256) for _ in range(w)) for _ in range(h))
+        def chunk(kind, data):
+            return struct.pack(">I", len(data)) + kind + data + struct.pack(">I", zlib.crc32(kind + data) & 0xFFFFFFFF)
+        path = os.path.join(self.out, "gray.png")
+        os.makedirs(self.out, exist_ok=True)
+        with open(path, "wb") as fh:                 # colour type 0: one gray channel
+            fh.write(b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", w, h, 8, 0, 0, 0, 0))
+                     + chunk(b"IDAT", zlib.compress(raw)) + chunk(b"IEND", b""))
+        with tempfile.TemporaryDirectory() as tmp:
+            mime, data = self.sb.hosted_bytes(path, ".png", tmp)
+            if mime != "image/avif":
+                self.skipTest("this Mac's sips writes no AVIF")
+            out = os.path.join(tmp, "x.avif")
+            with open(out, "wb") as fh:
+                fh.write(data)
+            space = subprocess.run(["sips", "-g", "space", out], capture_output=True, text=True).stdout
+        self.assertIn("RGB", space)
+
+    def test_a_bundle_splits_before_the_deploys_size_for_a_file(self):
+        if not shutil.which("sips"):
+            self.skipTest("the hosted pictures use macOS sips")
+        os.makedirs(os.path.join(self.out, "resources", "img"), exist_ok=True)
+        for n in ("a", "b"):
+            tiny_png(os.path.join(self.out, "resources", "img", n + ".png"), 30, 20)
+        keep, self.sb.BUNDLE_BYTES = self.sb.BUNDLE_BYTES, 10
+        try:
+            pics = self.sb.hosted_pictures(self.out, [("someone", {"resources/img/a.png", "resources/img/b.png"})], [])
+        finally:
+            self.sb.BUNDLE_BYTES = keep
+        self.assertEqual(sorted(b for b, _ in pics.values()),
+                         ["resources/pic/someone-1.json", "resources/pic/someone-2.json"])
 
     def test_a_review_copy_needs_only_the_authors_sign_off(self):
         self.assertEqual(self.land()[0], 0)
@@ -1783,6 +1982,18 @@ class SeriesBook(FixtureCase):
         d["events"] = [e for e in d["events"] if e["id"] == "a"]
         _hw.save_json(self.project.path("dossier.json"), d)
         self.assertEqual(self.sb.arrival(self.project, "Seattle")[0], 1885)
+
+    def test_someone_born_in_the_place_arrived_at_birth(self):
+        d = _hw.load_json(self.project.path("dossier.json"))
+        d["lifespan"] = {"born": "1921-03-08"}
+        d["events"] = [{"id": "e1", "date": "1921-03-08", "what": "Born in Seattle to a pioneer family.", "lifeStage": "youth"},
+                       {"id": "e30", "date": "1944", "what": "Came back to Seattle from Washington, D.C.", "lifeStage": "arrival"},
+                       {"id": "e2", "date": "1930", "what": "A Seattle school.", "lifeStage": "youth"}]
+        _hw.save_json(self.project.path("dossier.json"), d)
+        self.assertEqual(self.sb.arrival(self.project, "Seattle"), (1921, "born in Seattle (e1)"))
+        d["events"][0]["what"] = "Born in Washington, D.C."      # born elsewhere: the arrival stands
+        _hw.save_json(self.project.path("dossier.json"), d)
+        self.assertEqual(self.sb.arrival(self.project, "Seattle")[0], 1944)
 
 
 class Survey(unittest.TestCase):

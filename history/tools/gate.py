@@ -19,6 +19,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import checks  # noqa: E402
 import cite  # noqa: E402
+import images  # noqa: E402
 import quotes  # noqa: E402
 import richness  # noqa: E402
 import voice_lint  # noqa: E402
@@ -68,6 +69,8 @@ def story_findings(project):
         hard = [f for f in chapter_findings(project, n) if f["severity"] == "hard"]
         if hard:
             out.append(finding("chapter_not_clean", "hard", f"chapter {n} has {len(hard)} violation(s) — run gate.py chapter {project.root} {n}"))
+    # The author's rule (2026-10-11, the third time he asked): every history opens with its subject's portrait.
+    out += images.portrait_findings(project)
     # voice.md §4 — the story may not end before the record does.
     out += [f for f in richness.validate_plan(project, write=False) if f["rule"] == "story_end_before_record"]
     return out

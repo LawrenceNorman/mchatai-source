@@ -32,12 +32,17 @@ some photos of the place to come up so we can see the place as it was or is"):
     book_map.py geocode <stories-dir> <series-id> [--files]   look up addresses not yet in the cache
     book_map.py photos <stories-dir> <series-id> [--files]    look up Commons photographs of each place
     book_map.py list <stories-dir> <series-id> [--files]      every place: its pin, or why it has none
+    book_map.py cards <stories-dir> <series-id>               each lot's 1937–72 Assessor record card in the
+                                                              Washington State Digital Archives, and the ones to
+                                                              download (its reCAPTCHA needs a person)
+    book_map.py card-photos <stories-dir> <series-id> <dir>   the downloaded card PDFs → each lot's picture as it was
 """
 import datetime
 import json
 import math
 import os
 import re
+import subprocess
 import sys
 import time
 import urllib.parse
@@ -487,8 +492,19 @@ def attach_photos(data, landmarks, pictures, stories_dir, out):
             photos.append({"src": rel, "cap": ("The street nearby: " if p.get("near") else "") + p.get("caption", ""),
                            "credit": credit, "href": p.get("pageUrl") or ""})
         lot = (cache.get(pin_key(row)) or {}).get("lot")
+        card_src = os.path.join(stories_dir, ".cache", "place-photos", (lot or {}).get("cardPhoto") or "")
+        if lot and lot.get("cardPhoto") and os.path.isfile(card_src):
+            rel = f"resources/places/{lot['cardPhoto']}"            # as it was: first among the lot's pictures
+            os.makedirs(os.path.join(out, "resources", "places"), exist_ok=True)
+            shutil.copyfile(card_src, os.path.join(out, rel))
+            note = (lot.get("card") or {}).get("notes")
+            photos.insert(1 if guide else 0,
+                          {"src": rel, "credit": CARD_CREDIT, "href": (lot.get("card") or {}).get("url", ""),
+                           "cap": "This lot's King County Assessor record card, 1937–1972" + (f" ({note})" if note else "")})
         if lot:
-            pin["lot"] = {k: v for k, v in lot.items() if k not in ("photo", "photoAsked")}
+            pin["lot"] = {k: v for k, v in lot.items() if k not in ("photo", "photoAsked", "cardPhoto")}
+            if lot.get("card"):
+                pin["lot"]["card"] = {"url": lot["card"].get("url", ""), "notes": lot["card"].get("notes", "")}
             src = os.path.join(stories_dir, ".cache", "place-photos", lot.get("photo") or "")
             if lot.get("photo") and os.path.isfile(src):
                 rel = f"resources/places/{lot['photo']}"
@@ -859,6 +875,119 @@ def guide_photo(row, folder):
     return {"file": name, "credit": credit, "caption": place.get("name") or row["name"], "pageUrl": link}
 
 
+# ── the 1937–72 record cards ────────────────────────────────────────────────
+
+ARCHIVES = "https://digitalarchives.wa.gov"
+CARD_CREDIT = "King County Assessor, Real Property Record Cards, 1937–1972, Washington State Archives, Digital Archives"
+
+
+def record_card(pin):
+    """A lot's King County Assessor record card (1937–1972) in the Washington State Digital Archives:
+    {url, notes, file, scan} or None. Searching is open; the scan itself downloads only through the
+    archive's reCAPTCHA, so a person fetches the PDF in a browser and `card-photos` takes it from there."""
+    import http.cookiejar
+    op = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(http.cookiejar.CookieJar()))
+    op.addheaders = [("User-Agent", maps.UA)]
+    want = f"{pin[:6]}-{pin[6:]}"
+    try:
+        op.open(f"{ARCHIVES}/Collections/TitleInfo/854", timeout=40).read()
+        body = urllib.parse.urlencode({"TitleID": 854, "RecordSeriesID": 12, "SearchType": "DetailedSearch",
+                                       "ParcelNumber": want, "StreetNumber": "", "StreetName": "", "Keywords": "",
+                                       "FormerBuildingNumber": "", "FormerStreetName": "", "FormerAddress": "",
+                                       "Notes": ""}).encode()
+        headers = {"X-Requested-With": "XMLHttpRequest", "Referer": f"{ARCHIVES}/Collections/TitleInfo/854",
+                   "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8"}
+        rid = json.loads(op.open(urllib.request.Request(f"{ARCHIVES}/Collections/Search", data=body, headers=headers),
+                                 timeout=40).read()).get("Redirect")      # each search in a session has its own id
+        time.sleep(1.0)
+        page = op.open(urllib.request.Request(f"{ARCHIVES}/Search/ResultsTable/?id={rid}&sortColumn=&direction=ASC&pageSize=50&page=1",
+                                              headers={"X-Requested-With": "XMLHttpRequest",
+                                                       "Referer": f"{ARCHIVES}/Search/Results/{rid}"}), timeout=40).read().decode("utf-8", "replace")
+        recs = sorted(set(re.findall(r"/Record/View/([0-9A-F]{32})", page)))
+        if want not in page or not recs:
+            return None
+        url = f"{ARCHIVES}/Record/View/{recs[0]}"
+        time.sleep(1.0)
+        text = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", op.open(url, timeout=40).read().decode("utf-8", "replace")))
+    except (OSError, ValueError) as e:
+        print(f"    the record card was not looked up ({type(e).__name__})")
+        return None
+    field = lambda name: (re.search(re.escape(name) + r":\s*(.*?)\s+(?:[A-Z][A-Za-z ]{2,24}:|$)", text) or [None, ""])[1].strip()  # noqa: E731
+    import html as _html
+    return {"url": url, "notes": _html.unescape(field("Notes")), "file": field("Image File Name"),
+            "scan": "Image Available" in page}
+
+
+def cmd_cards(stories_dir, series_id, use_files):
+    """Find each lot's record card, and list the ones to download (a person, in a browser)."""
+    path = photo_cache_path(stories_dir)
+    cache = load_json(path, {}) or {}
+    todo = []
+    for k, v in cache.items():
+        lot = (v or {}).get("lot") if isinstance(v, dict) else None
+        if not lot or not lot.get("parcel"):
+            continue
+        if "card" not in lot:
+            lot["card"] = record_card(lot["parcel"])
+            time.sleep(1.0)
+        card = lot.get("card")
+        if card and card.get("scan") and not lot.get("cardPhoto"):
+            todo.append((v.get("place", k), card))
+    save_json(path, cache)
+    print(f"{len(todo)} record card(s) to download. Open each, choose Download (PDF), save it to one folder, then run")
+    print(f"  book_map.py card-photos {stories_dir} {series_id} <that folder>")
+    for place, card in todo:
+        print(f"  {place}: {card['url']}  ({card.get('file')}.pdf)")
+    return 0
+
+
+def card_image(pdf, out_jpg):
+    """The record card's first page as a picture (pdftoppm; macOS sips otherwise)."""
+    import shutil as _sh
+    base = out_jpg[:-4]
+    if _sh.which("pdftoppm"):
+        r = subprocess.run(["pdftoppm", "-jpeg", "-r", "110", "-f", "1", "-l", "1", "-singlefile", pdf, base],
+                           capture_output=True, text=True)
+        if r.returncode == 0 and os.path.isfile(base + ".jpg"):
+            return True
+    r = subprocess.run(["sips", "-s", "format", "jpeg", pdf, "--out", out_jpg], capture_output=True, text=True)
+    return r.returncode == 0 and os.path.isfile(out_jpg)
+
+
+def cmd_card_photos(stories_dir, series_id, folder):
+    """Each downloaded record card (a PDF named for its file or its parcel) becomes its lot's picture
+    as it was: the card's first page, credited as the Washington State Archives asks."""
+    import glob as _glob
+    path = photo_cache_path(stories_dir)
+    cache = load_json(path, {}) or {}
+    photos_dir = os.path.join(stories_dir, ".cache", "place-photos")
+    pdfs = _glob.glob(os.path.join(os.path.expanduser(folder), "*.pdf"))
+    done = 0
+    for k, v in cache.items():
+        lot = (v or {}).get("lot") if isinstance(v, dict) else None
+        card = (lot or {}).get("card")
+        if not card:
+            continue
+        keys = [x for x in (card.get("file"), lot["parcel"], f"{lot['parcel'][:6]}-{lot['parcel'][6:]}") if x]
+        pdf = next((p for p in pdfs if any(key in os.path.basename(p) for key in keys)), None)
+        if not pdf:
+            continue
+        name = f"card-{lot['parcel']}.jpg"
+        tmp = os.path.join(photos_dir, name + ".page.jpg")
+        if not card_image(pdf, tmp):
+            print(f"  {v.get('place')}: the PDF could not be drawn")
+            continue
+        import series_book as sb
+        sb.shrink(tmp, os.path.join(photos_dir, name), (720, 900), 66)
+        os.remove(tmp)
+        lot["cardPhoto"] = name
+        done += 1
+        print(f"  {v.get('place')}: {os.path.basename(pdf)} → {name}")
+    save_json(path, cache)
+    print(f"{done} record card(s) taken in")
+    return 0
+
+
 def cmd_list(stories_dir, series_id, use_files):
     found, projects = book_places(stories_dir, series_id, use_files)
     if not projects:
@@ -880,6 +1009,10 @@ def main(argv):
     use_files = "--files" in argv
     if len(args) == 3 and args[0] == "geocode":
         return cmd_geocode(args[1], args[2], use_files)
+    if len(args) == 3 and args[0] == "cards":
+        return cmd_cards(args[1], args[2], use_files)
+    if len(args) == 4 and args[0] == "card-photos":
+        return cmd_card_photos(args[1], args[2], args[3])
     if len(args) == 3 and args[0] == "photos":
         return cmd_photos(args[1], args[2], use_files)
     if len(args) == 3 and args[0] == "list":

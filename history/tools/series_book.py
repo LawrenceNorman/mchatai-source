@@ -7,7 +7,7 @@ in parts by era, each story's chapters as pages, its notes and sources, a timeli
 chapter, the guide's landmarks each story names, linked both ways, and a map of the places
 the chapters name (book_map.py: landmarks, addresses, corners, parks and cemeteries).
 
-  series_book.py build <stories-dir> <series-id> <out-dir> [--files] [--publish | --review]
+  series_book.py build <stories-dir> <series-id> <out-dir> [--files] [--publish | --review [--drafts]]
   series_book.py order <stories-dir> <series-id>        the stories in book order, and why
   series_book.py status <stories-dir> <series-id>       what is left to review: each story's waiting
                                                         suggestions (from StoryMaker) and sign-offs
@@ -33,7 +33,9 @@ in StoryMaker, and any picture the page could not show once hosted.
 
 --review builds the copy community readers are sent: only stories the author has signed off,
 with nothing waiting, every page marked as a review copy, kept out of search engines, and
-never linked from the landmark guide (its places.json says published: false).
+never linked from the landmark guide (its places.json says published: false). With --drafts it
+also carries the stories still waiting for the author, each marked as a draft with what it
+waits on: the author's "update it with our latest" (2026-10-09), to read new stories there.
 
 Writes <out-dir>/index.html, <out-dir>/resources/ (pictures, maps) and
 <out-dir>/resources/places.json (each landmark id, the stories and chapters that name it: what
@@ -61,10 +63,21 @@ PORTRAIT_BOX = (480, 600)
 JPEG_QUALITY = 72
 # A hosted page (mchatai.com) is deployed as TEXT: MiniAppDeploySkill skips binary files, and caps
 # a deploy at 200 files, 2 MB each and 16 MB in all. So for --publish and --review each picture
-# also goes out as a data: URI in its own resources/pic/*.txt, fetched when the reader nears it
-# (the hosted CSP allows data: images). Smaller than the local copies, to fit the cap.
-HOSTED_BOX = (880, 1040)
+# also goes out as a data: URI in a bundle, resources/pic/<story>.json, fetched when the reader
+# nears one of its pictures (the hosted CSP allows data: images). Smaller than the local copies.
+HOSTED_BOX = (820, 980)          # 880×1040 until 2026-10-10, when 17 stories reached 13.9 of the 16 MB
 HOSTED_QUALITY = 60
+# AVIF where sips writes it (macOS 13 on): about half a JPEG's bytes for the same picture (2026-10-09:
+# the review copy's 103 pictures, 12.2 MB as JPEG text). Every current browser shows it: Safari 16.4,
+# Chrome 85, Firefox 93, Edge 121.
+HOSTED_AVIF_QUALITY = 40        # 45 until 2026-10-10 (same reason); newspaper type stays legible at 40
+# Matched to sRGB first: sips writes a black-and-white picture as a one-channel AVIF, which Chromium
+# will not decode (2026-10-09: three portraits blank in Chromium 145; the same pictures in RGB show).
+SRGB = "/System/Library/ColorSync/Profiles/sRGB Profile.icc"
+# The pictures travel in bundles: one per story (its pictures and portrait) and one for the map's
+# pictures of places, each split before the deploy's 2 MB a file. Fifteen stories carry over 200
+# pictures, and the deploy takes 200 files.
+BUNDLE_BYTES = 1_800_000
 HOSTED_CAPS = {"files": 200, "fileBytes": 2_097_152, "totalBytes": 16_777_216}
 YEAR = re.compile(r"\b(1[6-9]\d\d|20\d\d)\b")
 SPAN = re.compile(r"(?:,\s*|\s+)(1[6-9]\d\d|20\d\d)(?:(?:\s*[-–]\s*|\s+to\s+)(1[6-9]\d\d|20\d\d))?\s*$")
@@ -188,6 +201,10 @@ def render(md, ctx=None, notes=None, slug=""):
             continue
         m = IMAGE.match(one)
         if m:
+            if ctx and ctx.get("skip") and urllib.parse.unquote(m.group(2)).split("?")[0] == \
+                    urllib.parse.unquote(ctx["skip"]).split("?")[0]:
+                ctx["skip"] = None                # the portrait, shown in the page's header instead
+                continue
             out.append(figure(m.group(1), m.group(2), None, ctx, (m.group(3) or "").lower()))
             continue
         if one.startswith("#"):
@@ -298,6 +315,13 @@ def arrival(project, place):
     events = [e for e in d.get("events", []) if year_of(e.get("date"))]
     arrivals = sorted((e for e in events if e.get("lifeStage") == "arrival"), key=lambda e: year_of(e["date"]))
     here = [e for e in arrivals if place and place.lower() in (e.get("what") or "").lower()]
+    # Born in the place: an event of the birth year that names it. Marjorie Pitter King, born in Seattle in
+    # 1921, had been filed under 1944, her return from the Pentagon (2026-10-11).
+    born = year_of((d.get("lifespan") or {}).get("born"))
+    birth = [e for e in events if born and year_of(e.get("date")) == born and place
+             and place.lower() in (e.get("what") or "").lower()]
+    if birth and (not here or born < year_of(here[0]["date"])):
+        return born, f"born in {place} ({birth[0].get('id')})"
     for pick, why in ((here, f"earliest arrival event naming {place}"), (arrivals, "earliest arrival event")):
         if pick:
             return year_of(pick[0]["date"]), f"{why} ({pick[0].get('id')})"
@@ -476,36 +500,77 @@ def shrink(src, dst, box, quality=JPEG_QUALITY, crop=None):
         if scale < 1:
             args += ["--resampleHeightWidth", str(max(1, round(h * scale))), str(max(1, round(w * scale)))]
             resized = True
-    if os.path.splitext(dst)[1].lower() in (".jpg", ".jpeg"):
+    ext = os.path.splitext(dst)[1].lower()
+    if ext in (".jpg", ".jpeg"):
         args += ["-s", "formatOptions", str(quality)]
+    elif ext == ".avif":
+        args += ["-s", "format", "avif", "-s", "formatOptions", str(quality), "--matchTo", SRGB]
     r = subprocess.run(args + [src, "--out", dst], capture_output=True, text=True)
     if r.returncode != 0 or not os.path.isfile(dst) or (not resized and os.path.getsize(dst) >= os.path.getsize(src)):
         shutil.copyfile(src, dst)
 
 
-def hosted_pictures(out, rels, problems):
-    """Each copied picture as a data: URI text file; {picture path: text path}."""
+MIME = {".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png", ".gif": "image/gif",
+        ".webp": "image/webp"}
+
+
+def hosted_bytes(src, ext, tmp):
+    """(mime, bytes) of a picture as a hosted copy carries it: AVIF when sips wrote one and it came
+    out smaller, else the page's own format, shrunk. A GIF that moves keeps its frames."""
+    small = os.path.join(tmp, "p" + ext)
+    shrink(src, small, HOSTED_BOX, HOSTED_QUALITY)
+    with open(small, "rb") as fh:
+        best = (MIME[ext], fh.read())
+    if ext == ".gif" and best[1].count(b"\x21\xf9\x04") > 1:      # one control block per frame
+        return best
+    if not os.path.isfile(SRGB):
+        return best
+    avif = os.path.join(tmp, "p.avif")
+    shrink(src, avif, HOSTED_BOX, HOSTED_AVIF_QUALITY)
+    if os.path.isfile(avif):
+        with open(avif, "rb") as fh:
+            data = fh.read()
+        # shrink copies the original when sips fails, so the bytes must really be AVIF
+        if data[4:12] in (b"ftypavif", b"ftypavis") and len(data) < len(best[1]):
+            best = ("image/avif", data)
+    return best
+
+
+def hosted_pictures(out, groups, problems):
+    """The copied pictures as data: URIs in text bundles, resources/pic/<group>.json, one per group
+    ((name, picture paths): a story's, the map's), split before BUNDLE_BYTES; a picture two groups
+    share goes in the first. {picture path: [bundle path, key]}."""
     import base64
     import tempfile
-    mime = {".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png", ".gif": "image/gif",
-            ".webp": "image/webp"}
     os.makedirs(os.path.join(out, "resources", "pic"), exist_ok=True)
-    pics = {}
-    for rel in sorted(rels):
-        src = os.path.join(out, rel)
-        ext = os.path.splitext(rel)[1].lower()
-        if not os.path.isfile(src) or ext not in mime:
-            problems.append(f"a picture the hosted page cannot carry: {rel}")
-            continue
-        with tempfile.TemporaryDirectory() as tmp:
-            small = os.path.join(tmp, "p" + ext)
-            shrink(src, small, HOSTED_BOX, HOSTED_QUALITY)
-            with open(small, "rb") as fh:
-                uri = f"data:{mime[ext]};base64," + base64.b64encode(fh.read()).decode("ascii")
-        name = "resources/pic/" + hashlib.sha1(rel.encode()).hexdigest()[:16] + ".txt"
-        with open(os.path.join(out, name), "w", encoding="ascii") as fh:
-            fh.write(uri)
-        pics[rel] = name
+    pics, done = {}, set()
+    for group, rels in groups:
+        bundles, cur, size = [], {}, 0
+        for rel in sorted(rels):
+            if rel in done:
+                continue
+            done.add(rel)
+            src = os.path.join(out, rel)
+            ext = os.path.splitext(rel)[1].lower()
+            if not os.path.isfile(src) or ext not in MIME:
+                problems.append(f"a picture the hosted page cannot carry: {rel}")
+                continue
+            with tempfile.TemporaryDirectory() as tmp:
+                mime, raw = hosted_bytes(src, ext, tmp)
+            uri = f"data:{mime};base64," + base64.b64encode(raw).decode("ascii")
+            if cur and size + len(uri) > BUNDLE_BYTES:
+                bundles.append(cur)
+                cur, size = {}, 0
+            cur[hashlib.sha1(rel.encode()).hexdigest()[:16]] = (rel, uri)
+            size += len(uri) + 24
+        if cur:
+            bundles.append(cur)
+        for i, bundle in enumerate(bundles, 1):
+            name = f"resources/pic/{group}" + (f"-{i}" if len(bundles) > 1 else "") + ".json"
+            with open(os.path.join(out, name), "w", encoding="ascii") as fh:
+                json.dump({key: uri for key, (_, uri) in bundle.items()}, fh, separators=(",", ":"))
+            for key, (rel, _) in bundle.items():
+                pics[rel] = [name, key]
     return pics
 
 
@@ -553,11 +618,17 @@ def build_story(project, shim, use_files, out, place, problems, pool, lens=None)
             rows = notes_sections[i][1]          # a chapter the author renamed: the same place in order
         return rows or []
 
+    # The portrait opens the introduction in StoryMaker (images.py open). The page shows it beside the
+    # story's title already, so the introduction's copy of it is not drawn a second time.
+    from images import index as image_index, portrait_pick
+    pick0 = portrait_pick(project)[0]
+    prow = next((r for r in image_index(project) if r.get("id") == pick0), None) if pick0 else None
     intro, chapters, years, words_total, places, map_places = None, [], "", 0, {}, []
     for i, p in enumerate(body):
         text = p["text"]
         if p["kind"] == "intro":
             text, years = split_title_block(text)
+        ctx["skip"] = (prow or {}).get("url") if p["kind"] == "intro" else None
         ctx["places"] = []
         rendered = render(text, ctx, notes_for(i, "Introduction" if p["kind"] == "intro" else p["title"]), slug)
         w = count_words(text)
@@ -599,7 +670,8 @@ def build_story(project, shim, use_files, out, place, problems, pool, lens=None)
         shrink(os.path.join(out, portrait), os.path.join(out, small), PORTRAIT_BOX, crop=crop)
         portrait = small
         portrait_credit = credit_line(prec) + (", cropped" if crop else "")
-    portrait_permission = bool(prec and (prec.get("permission") or {}).get("holder"))
+    portrait_permission = bool(prec and (prec.get("permission") or {}).get("holder")) or any(
+        (rec.get("permission") or {}).get("holder") for rec, _ in assets.copied)   # pictures used by permission too
     if not years:
         b, d = year_of(life.get("born")), year_of(life.get("died"))
         years = f"{b or ''}–{d or ''}".strip("–") if (b or d) else ""
@@ -607,6 +679,7 @@ def build_story(project, shim, use_files, out, place, problems, pool, lens=None)
     review = meta.get("review") or {}
     return {
         "slug": slug, "name": subject, "years": years, "arrived": arrived, "arrivedWhy": why,
+        "bornHere": why.startswith("born in"),
         "born": year_of(life.get("born")),
         "summary": (intro or {}).get("summary", ""), "portrait": portrait, "portraitCredit": portrait_credit,
         "portraitPermission": portrait_permission,
@@ -735,7 +808,7 @@ def cmd_status(stories_dir, series_id):
     return 0
 
 
-def cmd_build(stories_dir, series_id, out, use_files=False, publish=False, review=False):
+def cmd_build(stories_dir, series_id, out, use_files=False, publish=False, review=False, drafts=False):
     entry, place = series_entry(series_id)
     if not entry or not entry.get("book"):
         print(f"series.json has no `book` block for {series_id!r}")
@@ -761,12 +834,14 @@ def cmd_build(stories_dir, series_id, out, use_files=False, publish=False, revie
         story = build_story(project, shim, use_files, out, place, problems, pool, entry.get("survey") or {})
         if story is None:
             continue
-        why = publishable(story, community=not review)
-        if (publish or review) and why:
+        # The author may publish on his own review (book.communityReviewWaived, 2026-10-11).
+        why = publishable(story, community=not review and not book.get("communityReviewWaived"))
+        if (publish or review) and why and not (review and drafts):
             held.append((story["name"], why))
             continue
         story["draft"] = bool(why)
-        story["draftWhy"] = why
+        # A review copy's readers need what it waits on, not where that is recorded.
+        story["draftWhy"] = [re.sub(r"\s*\([^)]*\)", "", w) for w in why] if review else why
         stories.append(story)
     stories.sort(key=order_key)
     parts_cfg = book.get("parts", [])
@@ -795,21 +870,21 @@ def cmd_build(stories_dir, series_id, out, use_files=False, publish=False, revie
     # book that says it is non-commercial, and always listed, so a paid edition knows what to clear.
     by_permission = [s["name"] for s in stories if s.get("portraitPermission")]
     if by_permission and not book.get("nonCommercial"):
-        problems.append("portraits used by permission (non-commercial) in a book not marked nonCommercial: "
+        problems.append("pictures used by permission (non-commercial) in a book not marked nonCommercial: "
                         + ", ".join(by_permission))
     elif by_permission:
-        notes.append(f"{len(by_permission)} portrait(s) used by permission, non-commercially: {', '.join(by_permission)}")
+        notes.append(f"{len(by_permission)} stories with pictures used by permission, non-commercially: {', '.join(by_permission)}")
     the_map = book_map.build(stories, projects[0], out, notes)
     place_photos = the_map.pop("_photosUsed", []) if the_map else []
     generated = datetime.date.today().isoformat()
     pics = {}
     if publish or review:
-        # Only what the copy shows: the pictures of the stories it carries (a held story's were copied
-        # while it was built, and counted against the deploy's cap, 2026-10-09), their portraits, and
-        # the map's pictures of places.
-        used = ({rel for s in stories for _, rel in s.get("mapPictures") or []}
-                | {s["portrait"] for s in stories if s.get("portrait")} | set(place_photos))
-        pics = hosted_pictures(out, used, problems)
+        # Only what the copy shows, a bundle per story (its pictures and portrait) and one for the map's
+        # pictures of places: a held story's pictures were copied while it was built, and counted
+        # against the deploy's cap (2026-10-09).
+        groups = [(s["slug"], {rel for _, rel in s.get("mapPictures") or []}
+                   | ({s["portrait"]} if s.get("portrait") else set())) for s in stories]
+        pics = hosted_pictures(out, groups + [("places", set(place_photos))], problems)
         # A hosted page shows its pictures from their text copies, so the binary copies leave the folder:
         # the deploy is text only, and its security scan refused a JPEG whose bytes happened to read as
         # text with a script-like pattern in them (2026-10-09, resources/places/SL-0094-guide.jpg).
@@ -1144,7 +1219,7 @@ function home(){
     h += `<section class="part"><h2>${L.n ? `<span class="pn">${L.n}</span>` : ""}${esc(L.t)}${L.y ? `<span class="yrs">${L.y}</span>` : ""}</h2>
       <ol class="people">${p.stories.map(k => { const s = S[k]; return `<li><a class="person" href="#/p/${k}">${portrait(s)}<div>
         <h3>${esc(s.name)}</h3>
-        <p class="when">${s.arrived ? `Arrived ${s.arrived}` : ""}${s.arrived && s.years ? " · " : ""}${esc(s.years)}</p>
+        <p class="when">${s.bornHere ? `Born in ${esc(B.place || "the city")}` : s.arrived ? `Arrived ${s.arrived}` : ""}${s.arrived && s.years ? " · " : ""}${esc(s.years)}</p>
         ${s.summary ? `<p class="sum">${esc(s.summary)}</p>` : ""}
         <p class="len">${s.chapters.length} chapters · ${s.minutes} min${s.draft ? " · draft" : ""}</p>
       </div></a></li>`; }).join("")}</ol></section>`;
@@ -1161,7 +1236,7 @@ function person(slug){
     ${s.portrait ? `<img class="hero" data-src="${esc(s.portrait)}" alt="${esc(s.name)}">` : ""}
     <p class="kicker"><a href="#/">${esc(B.title)}</a>${L.t ? ` · ${esc(L.n ? L.n + ": " : "")}${esc(L.t)}` : ""}</p>
     <h1>${esc(s.name)}</h1>
-    <p class="years">${esc(s.years)}${s.arrived ? `${s.years ? " · " : ""}arrived ${esc(s.arrivedIn || "in " + (B.place || "the city"))} ${s.arrived}` : ""}</p>
+    <p class="years">${esc(s.years)}${s.bornHere ? `${s.years ? " · " : ""}born in ${esc(B.place || "the city")}` : s.arrived ? `${s.years ? " · " : ""}arrived ${esc(s.arrivedIn || "in " + (B.place || "the city"))} ${s.arrived}` : ""}</p>
     ${draftNote(s)}
     ${s.portrait && s.portraitCredit ? `<p class="pcredit">Portrait: ${esc(s.portraitCredit)}</p>` : ""}
   </header>
@@ -1483,7 +1558,8 @@ function mapPop(i){
     const lot = p.lot ? `<p class="basis">${p.lot.corner ? "A building at this corner today" : "On this lot today"}: ${p.lot.name
       ? (p.lot.landmark ? (COMP.url ? `<a href="${esc(compHref(p.lot.landmark))}" target="_blank" rel="noopener">${esc(p.lot.name)}</a>` : esc(p.lot.name)) + ", a designated landmark"
                        : esc(p.lot.name) + ", built " + p.lot.yearBuilt)
-      : "a building built in " + p.lot.yearBuilt} (<a href="${esc(p.lot.page)}" target="_blank" rel="noopener">King County Assessor</a>).</p>` : "";
+      : "a building built in " + p.lot.yearBuilt} (<a href="${esc(p.lot.page)}" target="_blank" rel="noopener">King County Assessor</a>).${p.lot.card && p.lot.card.url
+      ? ` Its 1937–72 <a href="${esc(p.lot.card.url)}" target="_blank" rel="noopener">record card</a> is in the Washington State Archives.` : ""}</p>` : "";
     return `<section><h3>${esc(p.n)}</h3><p class="basis">${basis(p)}__AKA${j}__</p>${lot}<ol>${items}</ol>${p.l && COMP.url
       ? `<p class="go"><a href="${esc(compHref(p.l))}" target="_blank" rel="noopener">Open in ${guide} ↗</a></p>` : ""}</section>`;
   });
@@ -1655,12 +1731,15 @@ function route(){
 // A copied picture: from its text form on a hosted copy (the deploy carries no binary files),
 // else the file beside the page. Loaded when it comes near the screen.
 const PICS = D.pics || {};
+const BUNDLES = {};
+const bundle = f => BUNDLES[f] || (BUNDLES[f] = fetch(f).then(r => r.ok ? r.json() : Promise.reject(r.status)));
 const fill = img => {
   const src = img.getAttribute("data-src"); img.removeAttribute("data-src");
   const pic = PICS[src];
   if (!pic){ img.src = src; return; }
-  fetch(pic).then(r => r.ok ? r.text() : Promise.reject(r.status)).then(uri => { img.src = uri; })
-    .catch(() => { img.src = src; });
+  (Array.isArray(pic) ? bundle(pic[0]).then(b => b[pic[1]] || Promise.reject(404))
+                      : fetch(pic).then(r => r.ok ? r.text() : Promise.reject(r.status)))
+    .then(uri => { img.src = uri; }).catch(() => { img.src = src; });
 };
 const near = "IntersectionObserver" in window
   ? new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting){ near.unobserve(e.target); fill(e.target); } }),
@@ -1684,8 +1763,11 @@ def main(argv):
         if "--publish" in argv and "--review" in argv:
             print("--publish or --review, not both")
             return 2
+        if "--drafts" in argv and "--review" not in argv:
+            print("--drafts goes with --review: a published book carries no drafts")
+            return 2
         return cmd_build(argv[2], argv[3], argv[4], use_files="--files" in argv, publish="--publish" in argv,
-                         review="--review" in argv)
+                         review="--review" in argv, drafts="--drafts" in argv)
     print(__doc__)
     return 2
 

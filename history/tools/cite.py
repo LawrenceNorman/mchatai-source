@@ -37,6 +37,12 @@ written and a narration reads it aloud unchanged.
   cite.py adopt   <project>                after the author's review: review/NN.txt (each chapter
                                            as they left it) becomes the story's text; anchors
                                            follow it, and what cannot is listed to settle
+  cite.py unanchored <project>             what adopt left to settle, as JSON: per chapter its
+                                           numbered sentences and each unanchored claim
+  cite.py settle  <project> <file.json>    settle them: [{"chapter", "claim", "sentence": i}] puts
+                                           the claim's note on sentence i (by number, so no anchor
+                                           is mistyped); {"chapter", "claim", "retired": "cut by the
+                                           author"} when the author cut its fact
 
 A claim's `anchor` is a few verbatim words of the sentence it supports. Where a note goes is
 data, never a guess at render time: a citation on the wrong sentence is worse than none.
@@ -698,7 +704,7 @@ def chapter_images(project, n):
     for rec in im.index(project):
         if int(rec.get("chapter", -1)) != int(n):
             continue
-        pi = im.paragraph_index(project, n, rec.get("after", ""))
+        pi = im.placed_at(project, rec)          # -1: the opening picture, before the first paragraph
         if pi is not None:
             out.setdefault(pi, []).append(image_markdown(rec))
     return out
@@ -937,7 +943,7 @@ def with_pictures_and_links(project, n, body, used, maps_here=(), placed=None):
     maps = map_records(project)
     pats = {lid: rx for lid, _, rx in landmark_patterns()} if maps_here else {}
     waiting = [lid for lid in maps_here if lid in maps and lid in pats]
-    out = []
+    out = list(pics.get(-1, []))              # the story's portrait opens its introduction (2026-10-11)
     for i, p in enumerate(paras):
         out.append(link_landmarks(p, used))
         out.extend(pics.get(i, []))
@@ -1306,6 +1312,59 @@ LENGTH_RULES = {"over_ceiling", "under_floor", "starved", "growth_unshown", "gro
 PICTURE = re.compile(r"!\[[^\]\n]*\]\(([^)\s]+)(?:\s+\"[^\"]*\")?\)")   # a size word may follow: ![c](url "small")
 
 
+def unanchored(project):
+    """{chapter: {"sentences": [...], "claims": [{id, text, evidence, guess, score}]}} for every
+    chapter with a live claim whose anchor resolves to no single sentence."""
+    out = {}
+    for n in project.chapter_numbers():
+        ch = project.chapter(n) or {}
+        sents = flat_sentences(ch.get("text", ""))
+        todo = []
+        for c in live_claims(ch):
+            if c.get("anchor") and len(resolve(c["anchor"], sents)) == 1:
+                continue
+            i, score, _ = propose(c, sents)
+            todo.append({"id": c.get("id"), "text": c.get("text", ""), "evidence": c.get("evidence", ""),
+                         "guess": i, "score": round(score, 2)})
+        if todo:
+            out[str(n)] = {"sentences": [x for _, _, x in sents], "claims": todo}
+    return out
+
+
+def cmd_settle(project, path):
+    """Apply decisions for what adopt left: a sentence number becomes the claim's anchor (the
+    shortest unique opening of that sentence); a `retired` reason retires it. Each decision is
+    checked; one that does not hold is reported and skipped."""
+    decisions = load_json(path, []) or []
+    by_n, done, bad = {}, 0, []
+    for d in decisions:
+        n = int(d.get("chapter"))
+        ch = by_n.get(n) or project.chapter(n)
+        if ch is None:
+            bad.append(f"chapter {n} does not exist"); continue
+        by_n[n] = ch
+        sents = flat_sentences(ch.get("text", ""))
+        claim = next((c for c in ch.get("claims", []) if c.get("id") == d.get("claim")), None)
+        if claim is None:
+            bad.append(f"chapter {n}: no claim {d.get('claim')!r}"); continue
+        if (d.get("retired") or "").strip():
+            claim["retired"] = d["retired"].strip()
+            claim["anchor"] = None
+        elif isinstance(d.get("sentence"), int) and 0 <= d["sentence"] < len(sents):
+            claim["anchor"] = anchor_for(d["sentence"], sents)
+            claim.pop("retired", None)
+        else:
+            bad.append(f"chapter {n} {d.get('claim')}: needs a sentence number 0–{len(sents) - 1} or a `retired` reason"); continue
+        done += 1
+    for n, ch in by_n.items():
+        save_json(project.chapter_path(n), ch)
+    left = sum(len(v["claims"]) for v in unanchored(project).values())
+    print(f"settle: {done} applied, {len(bad)} refused; {left} claim(s) still unanchored")
+    for b in bad:
+        print("  refused:", b)
+    return 1 if bad or left else 0
+
+
 def cmd_adopt(project):
     """The author's reviewed text becomes the story's text, and the apparatus follows it.
 
@@ -1410,6 +1469,11 @@ def main(argv):
         return cmd_book(project)
     if cmd == "adopt":
         return cmd_adopt(project)
+    if cmd == "unanchored":
+        print(json.dumps(unanchored(project), ensure_ascii=False, indent=1))
+        return 0
+    if cmd == "settle" and len(argv) >= 4:
+        return cmd_settle(project, argv[3])
     if cmd == "land":
         return cmd_land(project, dry="--dry" in argv)
     if cmd == "outline":

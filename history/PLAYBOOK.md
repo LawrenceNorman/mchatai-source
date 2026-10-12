@@ -177,11 +177,16 @@ After the author reviews:
 5. **Rebuild the apparatus over their text.** Save each chapter as they left it
    (`storymaker.getChapter`, its `text`) to `stories/<slug>/review/NN.txt`, then run
    `python3 history/tools/cite.py adopt stories/<slug>`. Their prose becomes the story's text,
-   and the anchors follow it. Settle every claim it lists: set its `anchor`, or set
-   `"retired": "cut by the author"` when they cut the fact. A question it raises (a number with
-   no source, a quotation that changed) goes to the author. Never change their text. Then run
-   `cite.py book` and land only `book/notes.txt` and `book/sources.txt`, with
-   `storymaker.replaceChapter`. The chapters are theirs now.
+   and the anchors follow it. Settle every claim it lists: `cite.py unanchored` prints each one
+   beside its chapter's numbered sentences, and `cite.py settle stories/<slug> <decisions.json>`
+   applies `{"chapter", "claim", "sentence": i}` (the note goes on sentence i) or `"retired":
+   "cut by the author"` when they cut the fact. Never put a note on a sentence that does not
+   state its fact. Then `python3 history/tools/images.py follow stories/<slug>` moves each
+   picture's `after` to the paragraph it now sits under in their text. A question adopt raises
+   (a number with no source, a quotation that changed) goes to the author. Never change their
+   text. Then run `cite.py book` and land only `book/notes.txt` and `book/sources.txt`, with
+   `storymaker.replaceChapter`. The chapters are theirs now. On 2026-10-11 the first 20
+   stories needed this once: 337 claims, 7 pictures.
 
 ## 5. Finish the story
 
@@ -196,7 +201,20 @@ After the author reviews:
    sentence its note will follow. Fix any that are wrong. A chapter written before anchors
    existed gets them from `cite.py anchors stories/<slug> --write`, which sets only the
    certain ones and lists the rest for you.
-4. **The book.** First draw the maps: `python3 history/tools/maps.py render stories/<slug>`
+4. **The portrait, then the book.** Every history opens with its subject's portrait (the author's
+   rule, 2026-10-11, the third time he asked). Find one with `images.py find` and the archives the
+   series knows (for Black Seattle: UW Libraries Digital Collections, MOHAI's Seattle P-I
+   collection, the Black Heritage Society, BlackPast, HistoryLink). Check by eye that it is the
+   person, and crop to them alone: a wrong face is worse than none. Set it with `images.py
+   portrait`: a free licence first, then public domain by date (`pd`), then the author's
+   non-commercial permission (`permission`, only in a book whose `series.json` `book.nonCommercial`
+   is true; for Black Seattle it covers everyone in the book, in the introduction and in the
+   chapters). Then `python3 history/tools/images.py open stories/<slug>` makes it the
+   introduction's first picture, under the name and years, in `book/` and in StoryMaker (an
+   introduction the author has edited gets it as a suggestion). `gate.py story` refuses a story
+   with no portrait, or one that does not open the introduction. Only the author can record that
+   no photograph of the person exists: `project.json` `portraitNone` {why, confirmedBy}.
+   Then the book. First draw the maps: `python3 history/tools/maps.py render stories/<slug>`
    draws one small street map for each designated landmark the story names, from the Seattle
    Landmarks site's own basemap (the same picture as the landmark page's map, credited to
    OpenStreetMap). Then `python3 history/tools/cite.py book stories/<slug>` writes `book/`: the book's
@@ -216,7 +234,8 @@ After the author reviews:
    - the outline is set to the book's parts, each row linked to its chapter. If the author has
      edited the outline, it is left alone and reported.
 5. Run `python3 history/tools/gate.py story stories/<slug>`. Every planned chapter and the
-   introduction are written and clean, and the story does not end before the record does.
+   introduction are written and clean, the portrait opens the introduction, and the story does
+   not end before the record does.
 6. **The book editor**: the last read before the author's, by a fresh reader who wrote none of
    it (the `history-editor` subagent, or a new thread). Read the book as a reader will: `book/manifest.json`, then every file it
    lists, in order. Run `python3 history/tools/editor.py check stories/<slug>` for what the
@@ -284,9 +303,11 @@ landmark guide, in the order the subjects arrived (2026-10-05, "Black Seattle").
    engines, and never offers it to the landmark guide. Deploy it with the landmark pipeline's
    `deploy_web.sh <out-dir>` (settings in `<dataset>/client.json` `deploy`). A hosted page is
    deployed as TEXT (binary files are skipped; 200 files, 2 MB each, 16 MB in all), so a hosted
-   build writes each picture as a data: URI under `resources/pic/`, which the page loads as the
-   reader nears it. Never fetch the address before its first deploy: the CDN keeps that 404 for
-   ten minutes.
+   build writes each picture as a data: URI (AVIF where sips writes it: about half a JPEG's
+   bytes) in a bundle, `resources/pic/<story>.json` and `places.json`, which the page loads as
+   the reader nears one of its pictures. `--review --drafts` also carries the stories still
+   waiting for the author, each marked as a draft with what it waits on. Never fetch the address
+   before its first deploy: the CDN keeps that 404 for ten minutes.
 6. The book's `resources/places.json` lists the landmarks its stories name. The landmark guide
    links back only to a PUBLISHED book, through its `client.json` `companions` entry. Deploy the
    book first, then rebuild and deploy the guide, so no link arrives before its page.
@@ -317,7 +338,8 @@ landmark guide, in the order the subjects arrived (2026-10-05, "Black Seattle").
    and Atlantic read as the Central District). The basemap goes beside the page as
    `resources/basemap.json`, 1.4 MB of a hosted copy's 16 MB.
 
-The contents page shows a portrait only when a picture's caption names the subject as its
+The finish stage always sets `project.json` `portrait` (step 4 above). Without one, the contents
+page shows a portrait only when a picture's caption names the subject as its
 subject: its first clause is the subject's name, after at most a title ("Seattle City
 Councilmember Sam Smith, June 1990"). Otherwise it shows initials. `"portrait": "<image id>"`
 (or `null`) in `project.json` overrides. On an identity series a wrong face is worse than none:
