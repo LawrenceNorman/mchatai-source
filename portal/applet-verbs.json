@@ -74,6 +74,70 @@
           }
         }
       },
+      "openLoop": {
+        "kind": "create",
+        "summary": "Record something that is WAITING — on the person (an answer only they have, a sign-in, a click) or on someone else (a reply). It appears under 'Waiting on you' in their Assistant pane with Done / Snooze / Dismiss / Open, so it never has to be restated in a reply.",
+        "required": [
+          "title"
+        ],
+        "optional": [
+          "key",
+          "waitingOn",
+          "link",
+          "note",
+          "wakeOn"
+        ],
+        "notes": "Phase CW.4. Title it '<who or what>: <what is needed>' so a message naming it pulls it back. waitingOn: you (default) | others. link: where to act (job page, AI Write draft, sign-in page). Same key (default: from the title) updates the open loop; a loop the person marked done or dismissed stays closed and is refused — open a new key only if something genuinely new is waiting. Scoped to the calling thread's assistant. Covered by an assistant.remember grant.",
+        "example": {
+          "command": "applet",
+          "applet": "assistant",
+          "verb": "openLoop",
+          "args": {
+            "title": "Keeper Security: your compensation expectation",
+            "link": "https://www.linkedin.com/jobs/view/4474406956/",
+            "waitingOn": "you",
+            "note": "Easy Apply is filled up to the compensation question."
+          }
+        }
+      },
+      "closeLoop": {
+        "kind": "update",
+        "summary": "Close an open loop: done, dismissed, or snoozed until a date. Closed loops are never shown again.",
+        "required": [
+          "key"
+        ],
+        "optional": [
+          "status",
+          "until",
+          "days",
+          "note"
+        ],
+        "notes": "Phase CW.4. key or id from openLoop/listLoops. status: done (default) | dismissed | snoozed; snoozed needs until (yyyy-MM-dd) or days. Covered by an assistant.remember grant.",
+        "example": {
+          "command": "applet",
+          "applet": "assistant",
+          "verb": "closeLoop",
+          "args": {
+            "key": "keeper-security-your-compensation-expectation",
+            "status": "done"
+          }
+        }
+      },
+      "listLoops": {
+        "kind": "read",
+        "summary": "List this assistant's OPEN loops (what waits on the person or on others), newest first. Closed and dismissed loops are filtered out before you see them.",
+        "optional": [
+          "waitingOn",
+          "includeClosed",
+          "assistant"
+        ],
+        "notes": "Phase CW.4. assistant: 'all' lists every assistant's open loops (what a coordinator reports from). The person already sees these in the Assistant pane; report what changed, not the whole list. Covered by an assistant.getContext grant.",
+        "example": {
+          "command": "applet",
+          "applet": "assistant",
+          "verb": "listLoops"
+        }
+      },
       "listgoals": {
         "kind": "read",
         "summary": "List the user's explicit active goals in priority order so research or Workbench work can stay relevant.",
@@ -1254,9 +1318,10 @@
         ],
         "optional": [
           "limit",
-          "offset"
+          "offset",
+          "match"
         ],
-        "notes": "Field NAMES are the keys. Page with offset/nextOffset.",
+        "notes": "Field NAMES are the keys. Page with offset/nextOffset. `match` returns only the rows with a cell containing that text (case- and accent-insensitive) — look one record up by name (\"Serko\") instead of reading the whole table. Select cells come back as their option names.",
         "example": {
           "command": "applet",
           "applet": "ledger",

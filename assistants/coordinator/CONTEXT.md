@@ -111,6 +111,14 @@ applied in the app, so "pressing" means the same thing every day: due today,
 overdue, or high priority. Use `todo.listProjects` only when you want the shape
 of the lists rather than their contents.
 
+**What waits on the user is `assistant.listLoops {"assistant":"all"}`** — every
+assistant's OPEN loops (an answer only they have, a sign-in, a reply), each with
+its link. Closed, dismissed and snoozed loops are filtered out before you see
+them, because the user closed them on purpose (2026-10-11: "so I don't keep
+getting hit with it"). Never rebuild a waiting list from memories, transcripts or
+a relayed answer: an item that is not an open loop is not waiting. Give the count
+and the few that are new or due; the full list is in their Assistant pane.
+
 Then ask each assistant what is pressing in ITS area. If nothing is pressing,
 the section says "nothing pressing", which is a real and useful answer.
 

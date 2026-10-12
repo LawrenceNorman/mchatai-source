@@ -63,6 +63,25 @@ Most assistants use more than one. Say which, and name the collection for `recor
 turn carried every application. A record belongs in a collection and is looked up
 by name; a memory is a fact that changes how the assistant behaves.
 
+How the platform holds the line (CW.4): list the collections in `pattern.records`
+and the rows are scored as records (a row enters a message's context only when the
+message names it; L0 carries one census line per collection). List the memory
+openings that are really rows in `pattern.recordLeads`
+(`{"applied to": "Job Applications"}`): `assistant.remember` refuses such a memory
+and points at the collection, and the distiller skips it, so the series cannot grow
+back. Look one row up with `ledger.getRows {"collection": …, "match": "<name>"}`.
+
+**Open loops** are the records every assistant has: one row per thing waiting on the
+person (an answer only they have, a sign-in) or on someone else (a promised reply),
+with a link. `assistant.openLoop` / `closeLoop` / `listLoops`; the person sees them
+under "Waiting on you" in the Assistant pane with Done / Snooze / Dismiss / Open, and
+a closed loop is filtered out before any model reads the list again.
+
+**Trap:** waiting items kept as prose. A status report that re-derives "what is
+waiting on you" from memory and transcripts lists the same items every time,
+because nothing records that one was dealt with (Lawrence, 2026-10-11: "so I don't
+keep getting hit with it").
+
 ### 3. Context policy: what each turn is told
 
 The platform's answer is in `mchatai_macOS/docs/ASSISTANT_CONTEXT_ARCHITECTURE.md`
@@ -144,7 +163,7 @@ for them on every turn.
 |---|---|---|---|---|---|---|
 | `personal` | conversation, schedule (daily), relay | memories | thread-per-topic by design; in practice threads run for weeks | unrestricted (`tools` null) | human (approval cards) | — |
 | `coordinator` | schedule (daily), calls others by relay | artifacts (Daily Update), memories | — | enumerated | — | — |
-| `job-search` | conversation, schedule (daily), relay | memories, **records undeclared** ("your tracker") | — | enumerated; `mail.send` withheld | human (approval before submit) | — |
+| `job-search` | conversation, schedule (daily), relay | memories, records (Job Applications, Potential Jobs; `recordLeads` since CW.4) | thread-per-topic | enumerated; `mail.send` withheld | human (approval before submit) | — |
 | `news` | schedule (daily), relay | artifacts, evidence (sources) | — | enumerated | evidence (cite sources) | seen-ledger designed, not declared |
 | `history-writer` | conversation (manual), premium | evidence (dossier), artifacts (StoryMaker), records (Ledger) | project | enumerated + free tier | evidence (quote per claim) + deterministic (tone lint) | — |
 | `litrpg` | conversation (manual) | records (Ledger rows for rules), artifacts | — | enumerated | — | — |
@@ -155,8 +174,8 @@ for them on every turn.
 What the mapping shows:
 
 - **State shape is the most important blank.** `workout` and `litrpg` already say
-  "rows in Ledger" in prose; `job-search` says "your tracker" and never says what it
-  is. That is exactly where it went wrong.
+  "rows in Ledger" in prose; `job-search` said "your tracker" and never said what it
+  was. That is exactly where it went wrong (fixed in CW.4: Job Applications).
 - **Continuity is undeclared everywhere.** Every thread defaults to long-lived, which
   is right for a companion and wrong for scheduled runs.
 - **Freshness is declared nowhere**, though news and the coordinator both publish
