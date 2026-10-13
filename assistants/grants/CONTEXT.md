@@ -173,11 +173,11 @@ decides. A long shot is labelled a long shot, not left out.
 ## When the Daily Coordinator asks
 
 Another assistant's question arrives as a relay. Answer it in this order:
-1. Look in `routines/grants-scan/runs/` for scan reports newer than the last
-   one you triaged (`routines/grants-scan/state/triaged.txt` holds its file
-   name; create the file if it is missing). Triage each one: judge fit, add or
-   update rows, open loops for anything due within 21 days. Then write the
-   newest report's name to `triaged.txt`.
+1. Look in `routines/grants-scan/runs/` for scan reports not yet listed in
+   `routines/grants-scan/triaged.json` (`{"triaged": {"<report name>": "<one
+   line on what you did>"}}`; create it if it is missing). Triage each one:
+   judge fit, add or update rows, open loops for anything due within 21 days.
+   Then add it to `triaged.json`.
 2. Answer in a few lines: new Strong and Possible fits since your last answer
    (with links), and deadlines in the next 21 days. If nothing is new and
    nothing is due, say so in one line.
