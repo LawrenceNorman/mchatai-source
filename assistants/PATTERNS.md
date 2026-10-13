@@ -155,7 +155,7 @@ deterministic check (axis 6).
 mostly decided by axes 3 and 4. A thread that carries 900k tokens of context pays
 for them on every turn.
 
-## The nine assistants, mapped
+## The assistants, mapped
 
 "—" means not declared anywhere: the gaps AP.1 closes.
 
@@ -170,6 +170,7 @@ for them on every turn.
 | `workout` | conversation, schedule (daily), relay | records (Ledger, one row per session), memories | — | enumerated | — | — |
 | `music` | conversation (manual) | artifacts (LoopStar, audio library) | — | enumerated | — | — |
 | `marketing` | schedule (weekly) | artifacts (posts, drafts), memories | — | unrestricted (documented why) | human (approval cards) + cold readers | — |
+| `grants` | conversation, schedule (weekly scan routine), relay | memories, records (Funding Opportunities, Funding Applications), artifacts (drafts), evidence (funder quotes) | thread-per-topic | enumerated; `mail.send` withheld | human + evidence + deterministic (scan.py conflict filter) | seen-ledger (scan.py state + Ledger Key) |
 
 What the mapping shows:
 

@@ -1,0 +1,86 @@
+{
+  "version": 1,
+  "lastUpdated": "2026-10-13",
+  "_source_of_truth": true,
+  "_comment": "Where the Grants & Contracts assistant looks (assistants/grants). PUBLIC content: no person's data belongs here; a person's keywords, regions and conflict rules live in their own grants-profile.json on their Mac (see profile.example.json). tools/scan.py reads `apis` (official machine feeds), watches `pages` whose regions intersect the profile's, and lists `emailAlerts` the person signs up for once (the assistant then reads those alerts with mail.search). A source enters this file only if it is an official funder or buyer page or an official API. Bid aggregators whose terms forbid automated reading go under emailAlerts, never pages. Regions: us = national (federal, national foundations, AI companies); us-wa = Washington State; us-wa-king, us-wa-pierce = counties; us-or, us-id = Oregon, Idaho. Add a region's sources by PR; add one person's extra pages in their profile's extraPages.",
+
+  "apis": {
+    "grantsgov": {
+      "url": "https://api.grants.gov/v1/api/search2",
+      "auth": "none",
+      "tos": "Public federal API, no key. Verified 2026-10-13.",
+      "rows": 100,
+      "maxKeywordQueries": 12,
+      "agencyQueries": [
+        {"agencies": "NEH"},
+        {"agencies": "IMLS"},
+        {"agencies": "NEA"},
+        {"agencies": "DOI-NPS"},
+        {"agencies": "HHS-ACL", "keyword": "small business innovation research"},
+        {"agencies": "NSF", "keyword": "small business"}
+      ],
+      "_whyAgencyQueries": "Every posted or forecast opportunity from the cultural agencies (NEH, IMLS, NEA, NPS), plus the two SBIR programs a solo technologist can apply to directly (ACL/NIDILRR and NSF). Agency-wide NSF and HHS-ACL queries return 100+ unrelated science programs, so those two are narrowed by keyword. Keyword queries from the person's profile cover every other agency.",
+      "skipAgencyPrefixes": ["DOS-"],
+      "_whySkipDOS": "Grants.gov keyword search is fuzzy; 'tour' and 'heritage' pull in U.S. embassy programs (DOS-EGY, DOS-ESP, ...) that fund organisations abroad. A profile can add more prefixes under exclude.agencyPrefixes."
+    },
+    "federalRegister": {
+      "url": "https://www.federalregister.gov/api/v1/documents.json",
+      "auth": "none",
+      "tos": "Public federal API, no key. Verified 2026-10-13.",
+      "lookbackDays": 120,
+      "queries": [
+        {"agency": "legal-services-corporation", "term": "Technology Initiative"},
+        {"agency": "legal-services-corporation", "term": "grant funds"}
+      ],
+      "_whyFederalRegister": "Legal Services Corporation grant notices (Technology Initiative Grants, the legal-aid technology money) are published in the Federal Register, not on Grants.gov. The CY2026 notice was 2026-03618 (Feb 24, 2026)."
+    },
+    "samgov": {
+      "url": "https://api.sam.gov/opportunities/v2/search",
+      "auth": "api_key",
+      "keyEnv": "SAM_API_KEY",
+      "lookbackDays": 30,
+      "maxKeywordQueries": 8,
+      "tos": "Official federal contracting API; free public key from SAM.gov Account Details. postedFrom/postedTo are required and may span at most one year. Skipped when SAM_API_KEY is not set."
+    }
+  },
+
+  "pages": [
+    {"id": "nsf-seedfund", "name": "NSF SBIR/STTR (America's Seed Fund) solicitations", "funder": "National Science Foundation", "url": "https://seedfund.nsf.gov/solicitations/", "regions": ["us"], "kinds": ["grant"], "who": "US small businesses; a one-person firm qualifies if the PI is primarily employed there. A Project Pitch invitation comes first.", "why": "NSF SBIR solicitations are not on Grants.gov."},
+    {"id": "lsntap-rfps", "name": "LSNTAP legal aid jobs and RFPs", "funder": "Legal Services National Technology Assistance Project", "url": "https://www.lsntap.org/jobs-rfps", "regions": ["us"], "kinds": ["contract"], "who": "Vendors to legal aid organisations", "why": "Main posting hub for legal-aid technology RFPs; no RSS."},
+    {"id": "nthp-action-fund", "name": "National Trust: African American Cultural Heritage Action Fund grants", "funder": "National Trust for Historic Preservation", "url": "https://savingplaces.org/action-fund-grants", "regions": ["us"], "kinds": ["grant", "vendor-lead"], "who": "Nonprofits and public agencies; individuals and for-profits only as the paid vendor", "why": "Programming and interpretation grants up to $50k fund documentation, mapping and interpretive programs."},
+    {"id": "mellon-humanities-in-place", "name": "Mellon Foundation: Humanities in Place", "funder": "Andrew W. Mellon Foundation", "url": "https://www.mellon.org/grant-programs/humanities-in-place", "regions": ["us"], "kinds": ["grant", "vendor-lead"], "who": "Nonprofits by inquiry", "why": "Place-based public humanities; rolling inquiries."},
+    {"id": "pressforward-funding", "name": "Press Forward funding opportunities", "funder": "Press Forward", "url": "https://pressforward.news/funding-opportunities", "regions": ["us"], "kinds": ["grant"], "who": "Varies by call; past calls funded for-profit local news outlets and allowed for-profit service providers in nonprofit-led groups", "why": "The largest pooled fund for local news."},
+    {"id": "claude-startups", "name": "Claude for Startups", "funder": "Anthropic", "url": "https://claude.com/programs/startups", "regions": ["us"], "kinds": ["credits"], "who": "Startups, including bootstrapped", "why": "API credits and partner discounts; rolling."},
+    {"id": "claude-corps-host", "name": "Claude Corps: nonprofit hosts", "funder": "Anthropic", "url": "https://www.anthropic.com/claude-corps/host", "regions": ["us"], "kinds": ["vendor-lead"], "who": "Nonprofits host fellows and receive an implementation grant", "why": "Host nonprofits receive implementation money and may hire outside help."},
+    {"id": "anthropic-economic-futures", "name": "Anthropic Economic Futures program", "funder": "Anthropic", "url": "https://anthropic.com/economic-futures/program", "regions": ["us"], "kinds": ["grant"], "who": "Researchers and organisations studying AI's economic effects", "why": "Research grants and API credits."},
+    {"id": "creative-capital-award", "name": "Creative Capital Award", "funder": "Creative Capital", "url": "https://creative-capital.org/award/award-application/", "regions": ["us"], "kinds": ["grant"], "who": "Individual artists, including technology and digital work", "why": "Direct to individuals; cycle opens periodically."},
+
+    {"id": "artisttrust-fellowship", "name": "Artist Trust Fellowship", "funder": "Artist Trust", "url": "https://artisttrust.org/fellowship-guidelines/", "regions": ["us-wa"], "kinds": ["grant"], "who": "Washington individual artists, including creative nonfiction, podcasts, immersive audio and web-based art", "why": "Unrestricted $10k awards direct to individuals."},
+    {"id": "artisttrust-gap", "name": "Artist Trust GAP grants", "funder": "Artist Trust", "url": "https://artisttrust.org/gap-guidelines", "regions": ["us-wa"], "kinds": ["grant"], "who": "Washington individual artists", "why": "Small project grants direct to individuals."},
+    {"id": "artswa-grants", "name": "ArtsWA grants", "funder": "Washington State Arts Commission", "url": "https://www.arts.wa.gov/grants/", "regions": ["us-wa"], "kinds": ["grant", "roster"], "who": "Mostly organisations; the Public Artist Roster takes individuals", "why": "State arts money and rosters."},
+    {"id": "humanities-wa-grants", "name": "Humanities Washington grants", "funder": "Humanities Washington", "url": "https://www.humanities.org/programs/grants-and-sponsorships/", "regions": ["us-wa"], "kinds": ["grant"], "who": "Organisations; fellows programme for individuals", "why": "Paused after the 2025 NEH cuts; watch for revival."},
+    {"id": "wsl-digital-heritage", "name": "Washington State Library: Washington Digital Heritage grants", "funder": "Washington State Library", "url": "https://washstatelib.libguides.com/wdh", "regions": ["us-wa"], "kinds": ["grant", "vendor-lead"], "who": "Washington libraries; vendors are paid inside awards", "why": "Up to $15k for digitisation; a vendor lead for document AI."},
+    {"id": "wa-des-itps", "name": "WA DES IT Professional Services contracts", "funder": "Washington State Department of Enterprise Services", "url": "https://des.wa.gov/purchase/how-use-statewide-contracts/it-professional-services-contracts", "regions": ["us-wa"], "kinds": ["contract"], "who": "IT vendors; new statewide AI and IT Consulting contracts are being written", "why": "Watch for the AI and IT Consulting solicitations."},
+
+    {"id": "4culture-grants", "name": "4Culture grants and artist calls", "funder": "4Culture (King County)", "url": "https://www.4culture.org/grants-artist-calls/", "regions": ["us-wa-king"], "kinds": ["grant", "contract"], "who": "King County individuals and organisations, by programme", "why": "Heritage, Arts and Preservation Projects accept individuals."},
+    {"id": "4culture-other-listings", "name": "4Culture other listings", "funder": "4Culture (King County)", "url": "https://www.4culture.org/grants-artist-calls/other-listings/", "regions": ["us-wa-king"], "kinds": ["contract", "grant"], "who": "Varies", "why": "Third-party calls and RFQs that 4Culture relays."},
+    {"id": "port-seattle-tmsp", "name": "Port of Seattle Tourism Marketing Support Program", "funder": "Port of Seattle", "url": "https://www.portseattle.org/programs/tourism-marketing-support-program", "regions": ["us-wa-king"], "kinds": ["grant", "vendor-lead"], "who": "Nonprofits and governments; vendors paid inside awards", "why": "Up to $20k with match; the awardee list is a lead list."},
+    {"id": "tacoma-heritage-grant", "name": "City of Tacoma heritage grant", "funder": "City of Tacoma", "url": "https://cityoftacoma.org/heritagegrant", "regions": ["us-wa-pierce"], "kinds": ["grant"], "who": "See the guidelines", "why": "Local heritage money outside Seattle."},
+
+    {"id": "oregon-heritage-grants", "name": "Oregon Heritage grants", "funder": "Oregon Parks and Recreation Department", "url": "https://www.oregon.gov/oprd/OH/Pages/grants.aspx", "regions": ["us-or"], "kinds": ["grant", "vendor-lead"], "who": "Oregon nonprofits, tribes, universities and local governments", "why": "Heritage Grant $3k–$20k; vendors paid inside awards."},
+    {"id": "idaho-humanities-major", "name": "Idaho Humanities Council major grants", "funder": "Idaho Humanities Council", "url": "https://idahohumanities.org/majorgrants/", "regions": ["us-id"], "kinds": ["grant", "vendor-lead"], "who": "Idaho nonprofits and agencies", "why": "Small public humanities grants."}
+  ],
+
+  "emailAlerts": [
+    {"id": "samgov-saved-search", "name": "SAM.gov saved searches", "url": "https://sam.gov/", "regions": ["us"], "kind": "contract", "how": "Create saved searches by NAICS (541511, 541512, 541519, 541690, 519290, 711510) and keywords; SAM.gov emails new matches."},
+    {"id": "demandstar", "name": "DemandStar", "url": "https://network.demandstar.com/terms-of-use/", "regions": ["us"], "kind": "contract", "how": "One agency is free; alerts by email.", "tos": "Terms forbid robots and scraping: email alerts only, never page reads."},
+    {"id": "bidnet-direct", "name": "BidNet Direct (free tier)", "url": "https://www.bidnetdirect.com/", "regions": ["us"], "kind": "contract", "how": "Free regional purchasing-group alerts by email."},
+    {"id": "opengov-procurement", "name": "OpenGov Procurement portals", "url": "https://procurement.opengov.com/", "regions": ["us"], "kind": "contract", "how": "Follow each agency's portal; new projects arrive by email."},
+    {"id": "highergov", "name": "HigherGov (paid)", "url": "https://highergov.com/pricing/", "regions": ["us"], "kind": "contract", "how": "Saved searches with email alerts and an API; from about $500 a year. Optional."},
+    {"id": "wa-webs", "name": "Washington WEBS bid notices", "url": "https://pr-webs-vendor.des.wa.gov/", "regions": ["us-wa"], "kind": "contract", "how": "Register as a vendor and pick commodity codes; state agencies and many local governments email bids to matching vendors."},
+    {"id": "mrsc-rosters", "name": "MRSC Rosters (WA local government consultant roster)", "url": "https://mrscrosters.org/businesses/pricing/", "regions": ["us-wa"], "kind": "roster", "how": "Join the consultant roster (2026: $125/yr owner-operator); agencies contact roster members directly."},
+    {"id": "king-county-supplier-portal", "name": "King County supplier portal", "url": "https://kingcounty.gov/en/dept/executive-services/about-king-county/business-operations/finance-business-operations/procurement-payables/supplier-portal", "regions": ["us-wa-king"], "kind": "contract", "how": "Register; solicitations by email."},
+    {"id": "port-seattle-vendorconnect", "name": "Port of Seattle VendorConnect", "url": "https://hosting.portseattle.org/sops/#/Dashboard", "regions": ["us-wa-king"], "kind": "contract", "how": "Register; solicitations by email."},
+    {"id": "4culture-newsletter", "name": "4Culture newsletter", "url": "https://www.4culture.org/", "regions": ["us-wa-king"], "kind": "grant", "how": "Announces when each grant round opens."}
+  ]
+}
