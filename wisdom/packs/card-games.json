@@ -1,6 +1,6 @@
 {
   "packID": "card-games",
-  "version": 9,
+  "version": 10,
   "displayName": "Card Game Guidelines",
   "description": "Quality rules for poker, blackjack, solitaire, and other card games.",
   "categories": [
@@ -701,7 +701,22 @@
         "GOOD (iteration): bump proportionally at each breakpoint — base 56→66, `@media(max-width:620px)` 44→54 — then confirm 5×54+gaps ≤ 390px",
         "GOOD (layout): `.community{display:flex;gap:6px;justify-content:center;flex-wrap:nowrap}` for the board; hole cards in a separate `.seat` area; nothing absolutely-positioned on top of the board on mobile"
       ]
+    },
+    {
+      "id": "cg-phone-table-fit",
+      "rule": "Every card table MUST fit a 375-430pt phone screen in EVERY phase (deal, pass/discard, play, scoring): nothing past either edge and no page scroll. (1) Size cards from the viewport with ONE CSS variable and use it for every card-sized thing: cards, empty slots, placeholders, column min-widths, fan offsets. e.g. `--cw: min(60px, calc((100vw - padding - gaps) / columns))`. A breakpoint that shrinks `.card` but leaves one other fixed width behind still overflows. (2) On a phone, opponents seated left and right hold their cards as a VERTICAL stack; a horizontal fan in a side seat forces that column wide. (3) Your own hand of 8+ cards goes in rows of full-size cards (about 7 per row), never one overlapped row with thin tap strips. (4) Action buttons (Pass, Discard, Deal, Go) get their own strip below your hand, padded by env(safe-area-inset-bottom); never absolute-position them over the hand. (5) Side panels (a pegboard, a score column) become a strip across the top on phones. (6) Fit the page to the screen height (`html,body{height:100%}`, the table flexes) so a swipe on the table never scrolls the page. (7) Never give the hand container and the cards inside it the same class; scope container rules by id or a child combinator.",
+      "why": "2026-10-13 phone survey of the live Hub (each game rendered in the iOS Hub player at 402pt and 375pt, driven through a full hand). Klondike shrank cards to 44px at <=520px but kept `.tableau-col{min-width:60px}`, so seven columns needed 456px on a 402pt iPhone and the outer columns were cut off. Hearts put 12-card horizontal fans in its West/East grid columns (`min-width:180px`), laying the table out 552px wide: East's hand and New Game were off-screen and the page panned sideways, and its Pass 3 Cards button sat on top of the hand. Cribbage kept a 50px pegboard column whose 121-hole track ran past the bottom of the screen, and on a 375pt phone your own hand fell below the fold during pegging. Hearts also gave the hand container and every card the class `hand`, so a rule written for the container moved every card.",
+      "severity": "important",
+      "appliesTo": "card-games",
+      "examples": [
+        "GOOD: `:root{--cw:min(60px,calc((100vw - 48px) / 7));--ch:calc(var(--cw) * 1.4)}` then `.card,.card-slot,.tableau-empty{width:var(--cw);height:var(--ch)} .tableau-col{min-width:var(--cw)}`: seven columns fit every phone",
+        "GOOD (four seats, phone): `.seat-west .hand-back,.seat-east .hand-back{flex-direction:column}` with each back `margin-top:-37px`",
+        "GOOD (13-card hand, phone): `#hand-you{display:flex;flex-wrap:wrap;gap:4px;max-width:calc(7 * var(--hc) + 24px)}` with `--hc:min(52px,calc((100vw - 36px) / 7))`",
+        "GOOD (pegboard, phone): turn the vertical 121-hole track into a two-line strip across the top: `.peg-track{flex-direction:row;flex-wrap:wrap} .peg-row{width:calc(100% / 61)}`",
+        "WRONG: `@media(max-width:520px){.card{width:44px}}` while `.tableau-col{min-width:60px}` stays",
+        "WRONG: `.controls{position:absolute;bottom:60px}` above a hand that sits at the bottom of the table"
+      ]
     }
   ],
-  "_last_updated": "2026-07-01"
+  "_last_updated": "2026-10-13"
 }

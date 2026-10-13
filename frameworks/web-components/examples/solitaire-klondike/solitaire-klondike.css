@@ -1,4 +1,11 @@
 * { box-sizing: border-box; }
+/* One card size for every card-sized thing, taken from the screen width so seven
+   columns always fit: shell padding 20px + six 4px gaps. 50px on any screen wide
+   enough; narrower phones get proportionally smaller cards. */
+:root {
+  --sol-card-w: min(50px, calc((100vw - 44px) / 7));
+  --sol-card-h: calc(var(--sol-card-w) * 1.4);
+}
 html, body { margin: 0; padding: 0; }
 body {
   background: #14532d;
@@ -38,8 +45,8 @@ body {
 .foundations { display: flex; gap: 6px; }
 
 .card-slot {
-  width: 50px;
-  height: 70px;
+  width: var(--sol-card-w);
+  height: var(--sol-card-h);
   border-radius: 6px;
   background: rgba(0,0,0,0.18);
   display: flex;
@@ -49,8 +56,8 @@ body {
   position: relative;
 }
 .card {
-  width: 50px;
-  height: 70px;
+  width: var(--sol-card-w);
+  height: var(--sol-card-h);
   border-radius: 6px;
   display: flex;
   flex-direction: column;
@@ -75,8 +82,8 @@ body {
 .card .suit { font-size: 16px; line-height: 1; }
 
 .card-empty {
-  width: 50px;
-  height: 70px;
+  width: var(--sol-card-w);
+  height: var(--sol-card-h);
   border-radius: 6px;
   border: 1px dashed rgba(255,255,255,0.25);
   display: flex;
@@ -140,7 +147,6 @@ body {
 .solitaire-message.is-hidden { display: none; }
 
 @media (max-width: 380px) {
-  .card-slot, .card, .card-empty { width: 42px; height: 60px; }
   .card .rank { font-size: 12px; }
   .card .suit { font-size: 14px; }
 }
