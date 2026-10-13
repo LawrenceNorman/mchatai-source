@@ -28,7 +28,8 @@ may say where its people arrived (`arrivedIn`, "on Puget Sound") when it is not 
 Publishing (PLAYBOOK §6): without --publish every landed story is built, each marked as a draft,
 for the author to read. --publish leaves a story out until project.json records the author's
 review (`review.author`), and the community reader's (`review.community`) when
-dossier.communityReview is true; it also refuses a story with editor suggestions still waiting
+dossier.communityReview is true (unless the series' book records the author's waiver,
+`communityReviewWaived`, as Black Seattle's does from 2026-10-11); it also refuses a story with editor suggestions still waiting
 in StoryMaker, and any picture the page could not show once hosted.
 
 --review builds the copy community readers are sent: only stories the author has signed off,
