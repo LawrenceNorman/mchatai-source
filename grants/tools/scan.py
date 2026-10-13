@@ -259,9 +259,19 @@ def standing(it: dict) -> bool:
 
 # ---------------------------------------------------------------- pages
 
+def ignorable(patterns: list[str]):
+    """A predicate for lines that change without meaning anything (footer timestamps)."""
+    rx = [re.compile(p, re.I) for p in patterns if p]
+    return lambda line: any(r.search(line) for r in rx)
+
+
 def watch_pages(pages: list[dict], profile: dict, state_dir: Path, errors: list,
-                fetch=None) -> tuple[list[dict], list[dict], list[dict]]:
-    """Returns (changed, baselined, skipped). `fetch` is injectable for the selftest."""
+                fetch=None, ignore: list[str] | None = None) -> tuple[list[dict], list[dict], list[dict]]:
+    """Returns (changed, baselined, skipped). `fetch` is injectable for the selftest.
+
+    Lines matching `ignore` (sources.json pageIgnoreLines, plus a page's own ignoreLines)
+    never count as a change. The comparison re-filters the SAVED lines too, so adding a
+    pattern never reports a one-off change for the lines it removes."""
     fetch = fetch or (lambda url: http(url).decode("utf-8", "replace"))
     rules = profile.get("exclude", {})
     kws = [k.lower() for k in profile.get("keywords", [])]
@@ -273,8 +283,9 @@ def watch_pages(pages: list[dict], profile: dict, state_dir: Path, errors: list,
         if why:
             skipped.append({**pg, "reason": why})
             continue
+        skip_line = ignorable((ignore or []) + pg.get("ignoreLines", []))
         try:
-            lines = page_lines(fetch(pg["url"]))
+            lines = [ln for ln in page_lines(fetch(pg["url"])) if not skip_line(ln)]
         except Exception as e:  # noqa: BLE001
             errors.append(f"page {pg['id']}: {e}")
             continue
@@ -283,10 +294,11 @@ def watch_pages(pages: list[dict], profile: dict, state_dir: Path, errors: list,
         prev = load_json(sfile, None)
         sfile.write_text(json.dumps({"hash": digest, "read": today().isoformat(),
                                      "url": pg["url"], "lines": lines[:3000]}))
+        prev_lines = [ln for ln in (prev or {}).get("lines", []) if not skip_line(ln)]
         if prev is None:
             baselined.append(pg)
-        elif prev.get("hash") != digest:
-            old = set(prev.get("lines", []))
+        elif prev_lines != lines[:3000]:
+            old = set(prev_lines)
             added = [ln for ln in lines if ln not in old]
             notes = []
             for ln in added[:MAX_ADDED_LINES]:
@@ -433,7 +445,8 @@ def scan(args) -> dict:
     pages += profile.get("extraPages", [])
     changed_pages, baselined, skipped = ([], [], [])
     if want("pages"):
-        changed_pages, baselined, skipped = watch_pages(pages[: args.max_pages], profile, state, errors)
+        changed_pages, baselined, skipped = watch_pages(pages[: args.max_pages], profile, state, errors,
+                                                        ignore=catalog.get("pageIgnoreLines", []))
 
     alerts = [a for a in catalog.get("emailAlerts", []) if regions & set(a.get("regions", []))]
     seen_file.write_text(json.dumps(seen, indent=1, sort_keys=True))
@@ -517,6 +530,11 @@ def selftest() -> int:
         check("excluded line flagged", any("EXCLUDED" in f for f in added.get("Landmark nomination support", [])))
         ch, base, sk = watch_pages(pages, prof, st, [], fetch=lambda u: v2)
         check("unchanged page quiet", not ch and not base)
+        v3 = v2 + "<p>Last Updated: Oct 13, 2026 1:15 PM</p>"
+        ch, base, sk = watch_pages(pages, prof, st, [], fetch=lambda u: v3, ignore=["^last updated:"])
+        check("footer timestamp ignored", not ch)
+        ch, base, sk = watch_pages(pages, prof, st, [], fetch=lambda u: v2, ignore=["^last updated:"])
+        check("re-filtered saved lines stay quiet", not ch)
 
         md = render_md({"date": "2026-01-01", "counts": {"new": 1, "changed": 0, "pagesChanged": 0,
                         "excluded": 0, "unchanged": 0}, "new": [item("a", soon)], "changed": [],

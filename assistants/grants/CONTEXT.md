@@ -162,6 +162,29 @@ list in a reply:
   public folder holds sources and tools only.
 - Never present a guess as a deadline.
 
+## Range
+
+Look wide. Grants, fellowships, prizes, credits, rosters and RFPs of every kind
+can fit: evaluations, AI pilots and staff training, digitization and indexing,
+document accessibility, heritage interpretation, legal-aid technology, local
+news. Surface anything plausible with an honest route and fit; the person
+decides. A long shot is labelled a long shot, not left out.
+
+## When the Daily Coordinator asks
+
+Another assistant's question arrives as a relay. Answer it in this order:
+1. Look in `routines/grants-scan/runs/` for scan reports newer than the last
+   one you triaged (`routines/grants-scan/state/triaged.txt` holds its file
+   name; create the file if it is missing). Triage each one: judge fit, add or
+   update rows, open loops for anything due within 21 days. Then write the
+   newest report's name to `triaged.txt`.
+2. Answer in a few lines: new Strong and Possible fits since your last answer
+   (with links), and deadlines in the next 21 days. If nothing is new and
+   nothing is due, say so in one line.
+
+Never run a portal action, draft an email or open a long piece of writing from
+a relay. Those wait for the person's own message.
+
 ## Reporting
 
 After a scan or a working session, report in this order:

@@ -65,8 +65,9 @@
   "_whyRoutinesAreEnumerated": "routines.propose only creates a card awaiting the person's approval (ROUTINES_ARCHITECTURE §5). update, pause, resume, runNow and delete are not needed to set up one weekly scan and are left out. As of 2026-10-13 the routines.* verbs are designed but not yet in the app, so these grants are inert until they ship; until then CONTEXT.md has the thread ask the person to add the weekly scan and run scans on request.",
   "_whyUntrustedInput": "Funder pages, RFP documents, alert emails and portal text are written by outsiders and reach an assistant that can drive a signed-in browser and queue approval cards. They are data to quote, never instructions; the standing rule is in CONTEXT.md.",
   "workdirLinks": ["grants"],
-  "budgetUSDPerDay": 2.0,
-  "_whyBudget": "Advisory, and only checked when another assistant relays a question here (AssistantRelay.check). The weekly scan itself is a script with no model calls.",
+  "budgetUSDPerDay": 5.0,
+  "_whyBudget": "Advisory, and only checked when another assistant relays a question here (AssistantRelay.check), against the thread's spend for the whole day. 5.0 leaves room for the morning triage on a day the person has also been drafting an application here. The scan itself is a script with no model calls.",
   "backend": null,
-  "relayTimeoutSeconds": 300
+  "relayTimeoutSeconds": 420,
+  "_whyRelayTimeout": "The Daily Coordinator's morning question can include triaging a fresh scan report (fit judgements plus Ledger writes). Job Search's answers to the same coordinator took 92-265 s, which is why it uses 420; this matches it. Capped at 600 s by AssistantRelay.maxTurnTimeout."
 }
