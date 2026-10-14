@@ -106,6 +106,14 @@ If your Goal does NOT match the native-macOS signals above, continue to the HTML
 
 2. **ONLY IF your Goal explicitly matches one of the genres below by name or obvious description**, read the matching asset pack. Otherwise skip this section entirely and build from scratch.
 
+### First-person shooters (Doom-like, retro or boomer shooters, "Call of Duty / Halo type" games, soldiers or space marines against aliens or demons)
+Build these on the vendored **retro-fps engine** (Woof! with Freedoom art, in WebAssembly). Weapons, monsters, doors, keys, the HUD, music, sound and touch controls are all provided; you write only the levels, as text. Do NOT hand-roll a raycaster or a three.js scene for them, and do NOT use the arcade-shooter assets below.
+- `/Users/lawrencenorman/mystuff/src/mchatai_platform/mchatai-source/frameworks/retro-fps/CONTEXT.md` — the page shape, the level format, zone and thing options. Read it first.
+- `/Users/lawrencenorman/mystuff/src/mchatai_platform/mchatai-source/frameworks/retro-fps/examples/outpost-alpha/index.html` — a complete two-level game. Model yours on it, with new levels designed for the user's theme.
+- Your `index.html` loads `./libs/rfps.js` and `./libs/rfps-data.js` (added at install; never create them) and calls `RetroFPS.start({ title })`. Give the game an original name, never a trademarked title.
+- If a starter `index.html` for another genre was placed in your working directory (a Space Invaders file, for example), REPLACE it entirely: its "EXTEND this file" note does not apply to a first-person shooter.
+- Before finishing, check the levels: `node /Users/lawrencenorman/mystuff/src/mchatai_platform/mchatai-source/frameworks/retro-fps/tools/rfps-check.js index.html`
+
 ### Arcade shooters (Space Invaders, Galaga, Asteroids, etc.)
 - `/Users/lawrencenorman/mystuff/src/mchatai_platform/mchatai-source/assets/packs/arcade-retro.json` — CSS + sprite grids
 - `/Users/lawrencenorman/mystuff/src/mchatai_platform/mchatai-source/assets/packs/mandatory-starters/arcade-shooter-starter.js` — copy-paste renderSprite() + all sprite constants
