@@ -1,0 +1,3101 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 32986e9..cb84fce 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -118,9 +118,26 @@ check_c_source_compiles(
+ set(CMAKE_FIND_FRAMEWORK NEVER)
+ 
+ # Library requirements.
+-find_package(SDL3 3.4.0 REQUIRED)
+-find_package(SDL3_net REQUIRED)
+-find_package(OpenAL REQUIRED)
++if(EMSCRIPTEN)
++    # Browser build: SDL3 comes from Emscripten's port, OpenAL from its Web
++    # Audio implementation, and networking is stubbed (src/nw_web.c).
++    add_library(SDL3::SDL3 INTERFACE IMPORTED)
++    target_compile_options(SDL3::SDL3 INTERFACE "--use-port=sdl3")
++    target_link_options(SDL3::SDL3 INTERFACE "--use-port=sdl3")
++    add_library(SDL3_net::SDL3_net INTERFACE IMPORTED)
++    add_library(OpenAL::OpenAL INTERFACE IMPORTED)
++    # OpenAL Soft's public headers (web/AL) declare the extension constants and
++    # function-pointer types Woof compiles against; Emscripten's own headers
++    # stop at core OpenAL 1.1. Extensions are looked up at run time and come
++    # back absent, which Woof already handles.
++    target_include_directories(OpenAL::OpenAL INTERFACE "${CMAKE_SOURCE_DIR}/web/AL")
++    target_link_options(OpenAL::OpenAL INTERFACE "-lopenal")
++    set(OPENAL_VERSION_STRING "1.1")
++else()
++    find_package(SDL3 3.4.0 REQUIRED)
++    find_package(SDL3_net REQUIRED)
++    find_package(OpenAL REQUIRED)
++endif()
+ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+     find_package(ALSA REQUIRED)
+ endif()
+@@ -223,6 +240,8 @@ add_subdirectory(opl)
+ add_subdirectory(textscreen)
+ add_subdirectory(third-party)
+ add_subdirectory(src)
+-add_subdirectory(setup)
+-add_subdirectory(man)
+-add_subdirectory(cmake/packaging)
++if(NOT EMSCRIPTEN)
++    add_subdirectory(setup)
++    add_subdirectory(man)
++    add_subdirectory(cmake/packaging)
++endif()
+diff --git a/src/CMakeLists.txt b/src/CMakeLists.txt
+index b5e1455..b67d474 100644
+--- a/src/CMakeLists.txt
++++ b/src/CMakeLists.txt
+@@ -202,11 +202,35 @@ set(WOOF_SOURCES
+     z_zone.c               z_zone.h
+ )
+ 
++if(EMSCRIPTEN)
++    list(REMOVE_ITEM WOOF_SOURCES nw_sdl.c)
++    list(APPEND WOOF_SOURCES nw_web.c)
++endif()
++
+ # Standard target definition
+ add_executable(woof ${WOOF_SOURCES})
+ target_woof_settings(woof)
+ target_include_directories(woof PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/../")
+ 
++if(EMSCRIPTEN)
++    # The page hands over the wasm bytes and the WAD files itself (preRun +
++    # FS.writeFile), so nothing is fetched: installed mini-apps run on file://.
++    target_link_options(woof PRIVATE
++        "-sMODULARIZE=1"
++        "-sEXPORT_NAME=createWoof"
++        "-sENVIRONMENT=web"
++        "-sALLOW_MEMORY_GROWTH=1"
++        "-sINITIAL_MEMORY=67108864"
++        "-sSTACK_SIZE=4194304"
++        "-sDYNAMIC_EXECUTION=0"
++        "-sFORCE_FILESYSTEM=1"
++        "-sEXPORTED_RUNTIME_METHODS=FS,callMain"
++        # Without wasmBinary listed here a release build ignores the bytes the
++        # page supplies and fetches woof.wasm, which fails on file://.
++        "-sINCOMING_MODULE_JS_API=canvas,wasmBinary,arguments,preRun,postRun,print,printErr,onRuntimeInitialized,onAbort,locateFile"
++    )
++endif()
++
+ if(WIN32)
+     # Stamp out and compile resource file on Windows.
+     configure_file(resource.rc.in "${CMAKE_CURRENT_BINARY_DIR}/resource.rc")
+@@ -306,6 +330,7 @@ if(WOOF_STRICT)
+ endif()
+ 
+ # Setup tool
++if(NOT EMSCRIPTEN)
+ set(SETUP_SOURCES
+     d_iwad.c                d_iwad.h
+     i_exit.c                i_exit.h
+@@ -346,6 +371,7 @@ target_link_libraries(
+ if(MSVC)
+     target_link_options(woof-setup PRIVATE "/MANIFEST:NO")
+ endif()
++endif()
+ 
+ # Base file
+ add_dependencies(woof woof-base)
+@@ -375,6 +401,6 @@ if(WIN32)
+     else()
+         install(TARGETS woof woof-setup RUNTIME DESTINATION .)
+     endif()
+-else()
++elseif(NOT EMSCRIPTEN)
+     install(TARGETS woof woof-setup RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+ endif()
+diff --git a/src/d_main.c b/src/d_main.c
+index 6398ce4..4806994 100644
+--- a/src/d_main.c
++++ b/src/d_main.c
+@@ -33,6 +33,11 @@
+ #include <stdlib.h>
+ #include <string.h>
+ 
++#ifdef __EMSCRIPTEN__
++#include <emscripten.h>
++#include "i_oalstream.h"
++#endif
++
+ #include "am_map.h"
+ #include "config.h"
+ #include "d_demoloop.h"
+@@ -259,6 +264,12 @@ void D_Display (void)
+ 
+   wipe = false;
+ 
++#ifdef __EMSCRIPTEN__
++  // A wipe runs its own frame loop until it finishes, and a browser page
++  // cannot present frames from inside one. Change state without a wipe.
++  wipegamestate = gamestate;
++#endif
++
+   // save the current screen if about to wipe
+   if (gamestate != wipegamestate)
+     {
+@@ -1519,6 +1530,17 @@ void D_SetSavegameDirectory(void)
+ 
+ #undef SET_DIR
+ 
++#ifdef __EMSCRIPTEN__
++static void D_WebFrame(void)
++{
++  I_StartFrame();
++  TryRunTics();
++  if (screenvisible)
++    D_Display();
++  I_OAL_PumpStream();
++}
++#endif
++
+ //
+ // D_DoomMain
+ //
+@@ -2418,6 +2440,12 @@ void D_DoomMain(void)
+ 
+   D_StartGameLoop();
+ 
++#ifdef __EMSCRIPTEN__
++  // The browser owns the loop: one iteration per animation frame. TryRunTics
++  // only waits for a tic when the framerate is capped, so keep it uncapped.
++  uncapped = true;
++  emscripten_set_main_loop(D_WebFrame, 0, 1);
++#else
+   for (;;)
+     {
+       // frame syncronous IO operations
+@@ -2429,6 +2457,7 @@ void D_DoomMain(void)
+       if (screenvisible)
+         D_Display();
+     }
++#endif
+ }
+ 
+ void D_BindMiscVariables(void)
+diff --git a/src/decl_states.c b/src/decl_states.c
+index bdd01b6..21c6151 100644
+--- a/src/decl_states.c
++++ b/src/decl_states.c
+@@ -77,108 +77,108 @@ static action_t actions[] = {
+     {"A_BFGsound",        {.p3 = A_BFGsound}               },
+     {"A_FireBFG",         {.p3 = A_FireBFG}                },
+ #endif
+-    {"A_BFGSpray",        {.p1 = A_BFGSpray}               },
+-    {"A_Explode",         {.p1 = A_Explode}                },
+-    {"A_Pain",            {.p1 = A_Pain}                   },
+-    {"A_PlayerScream",    {.p1 = A_PlayerScream}           },
+-    {"A_Fall",            {.p1 = A_Fall}                   },
+-    {"A_XScream",         {.p1 = A_XScream}                },
+-    {"A_Look",            {.p1 = A_Look}                   },
+-    {"A_Chase",           {.p1 = A_Chase}                  },
+-    {"A_FaceTarget",      {.p1 = A_FaceTarget}             },
+-    {"A_PosAttack",       {.p1 = A_PosAttack}              },
+-    {"A_Scream",          {.p1 = A_Scream}                 },
+-    {"A_SPosAttack",      {.p1 = A_SPosAttack}             },
+-    {"A_VileChase",       {.p1 = A_VileChase}              },
+-    {"A_VileStart",       {.p1 = A_VileStart}              },
+-    {"A_VileTarget",      {.p1 = A_VileTarget}             },
+-    {"A_VileAttack",      {.p1 = A_VileAttack}             },
+-    {"A_StartFire",       {.p1 = A_StartFire}              },
+-    {"A_Fire",            {.p1 = A_Fire}                   },
+-    {"A_FireCrackle",     {.p1 = A_FireCrackle}            },
+-    {"A_Tracer",          {.p1 = A_Tracer}                 },
+-    {"A_SkelWhoosh",      {.p1 = A_SkelWhoosh}             },
+-    {"A_SkelFist",        {.p1 = A_SkelFist}               },
+-    {"A_SkelMissile",     {.p1 = A_SkelMissile}            },
+-    {"A_FatRaise",        {.p1 = A_FatRaise}               },
+-    {"A_FatAttack1",      {.p1 = A_FatAttack1}             },
+-    {"A_FatAttack2",      {.p1 = A_FatAttack2}             },
+-    {"A_FatAttack3",      {.p1 = A_FatAttack3}             },
+-    {"A_BossDeath",       {.p1 = A_BossDeath}              },
+-    {"A_CPosAttack",      {.p1 = A_CPosAttack}             },
+-    {"A_CPosRefire",      {.p1 = A_CPosRefire}             },
+-    {"A_TroopAttack",     {.p1 = A_TroopAttack}            },
+-    {"A_SargAttack",      {.p1 = A_SargAttack}             },
+-    {"A_HeadAttack",      {.p1 = A_HeadAttack}             },
+-    {"A_BruisAttack",     {.p1 = A_BruisAttack}            },
+-    {"A_SkullAttack",     {.p1 = A_SkullAttack}            },
+-    {"A_Metal",           {.p1 = A_Metal}                  },
+-    {"A_SpidRefire",      {.p1 = A_SpidRefire}             },
+-    {"A_BabyMetal",       {.p1 = A_BabyMetal}              },
+-    {"A_BspiAttack",      {.p1 = A_BspiAttack}             },
+-    {"A_Hoof",            {.p1 = A_Hoof}                   },
+-    {"A_CyberAttack",     {.p1 = A_CyberAttack}            },
+-    {"A_PainAttack",      {.p1 = A_PainAttack}             },
+-    {"A_PainDie",         {.p1 = A_PainDie}                },
+-    {"A_KeenDie",         {.p1 = A_KeenDie}                },
+-    {"A_BrainPain",       {.p1 = A_BrainPain}              },
+-    {"A_BrainScream",     {.p1 = A_BrainScream}            },
+-    {"A_BrainDie",        {.p1 = A_BrainDie}               },
+-    {"A_BrainAwake",      {.p1 = A_BrainAwake}             },
+-    {"A_BrainSpit",       {.p1 = A_BrainSpit}              },
+-    {"A_SpawnSound",      {.p1 = A_SpawnSound}             },
+-    {"A_SpawnFly",        {.p1 = A_SpawnFly}               },
+-    {"A_BrainExplode",    {.p1 = A_BrainExplode}           },
++    {"A_BFGSpray",        {.p3 = A_BFGSpray}               },
++    {"A_Explode",         {.p3 = A_Explode}                },
++    {"A_Pain",            {.p3 = A_Pain}                   },
++    {"A_PlayerScream",    {.p3 = A_PlayerScream}           },
++    {"A_Fall",            {.p3 = A_Fall}                   },
++    {"A_XScream",         {.p3 = A_XScream}                },
++    {"A_Look",            {.p3 = A_Look}                   },
++    {"A_Chase",           {.p3 = A_Chase}                  },
++    {"A_FaceTarget",      {.p3 = A_FaceTarget}             },
++    {"A_PosAttack",       {.p3 = A_PosAttack}              },
++    {"A_Scream",          {.p3 = A_Scream}                 },
++    {"A_SPosAttack",      {.p3 = A_SPosAttack}             },
++    {"A_VileChase",       {.p3 = A_VileChase}              },
++    {"A_VileStart",       {.p3 = A_VileStart}              },
++    {"A_VileTarget",      {.p3 = A_VileTarget}             },
++    {"A_VileAttack",      {.p3 = A_VileAttack}             },
++    {"A_StartFire",       {.p3 = A_StartFire}              },
++    {"A_Fire",            {.p3 = A_Fire}                   },
++    {"A_FireCrackle",     {.p3 = A_FireCrackle}            },
++    {"A_Tracer",          {.p3 = A_Tracer}                 },
++    {"A_SkelWhoosh",      {.p3 = A_SkelWhoosh}             },
++    {"A_SkelFist",        {.p3 = A_SkelFist}               },
++    {"A_SkelMissile",     {.p3 = A_SkelMissile}            },
++    {"A_FatRaise",        {.p3 = A_FatRaise}               },
++    {"A_FatAttack1",      {.p3 = A_FatAttack1}             },
++    {"A_FatAttack2",      {.p3 = A_FatAttack2}             },
++    {"A_FatAttack3",      {.p3 = A_FatAttack3}             },
++    {"A_BossDeath",       {.p3 = A_BossDeath}              },
++    {"A_CPosAttack",      {.p3 = A_CPosAttack}             },
++    {"A_CPosRefire",      {.p3 = A_CPosRefire}             },
++    {"A_TroopAttack",     {.p3 = A_TroopAttack}            },
++    {"A_SargAttack",      {.p3 = A_SargAttack}             },
++    {"A_HeadAttack",      {.p3 = A_HeadAttack}             },
++    {"A_BruisAttack",     {.p3 = A_BruisAttack}            },
++    {"A_SkullAttack",     {.p3 = A_SkullAttack}            },
++    {"A_Metal",           {.p3 = A_Metal}                  },
++    {"A_SpidRefire",      {.p3 = A_SpidRefire}             },
++    {"A_BabyMetal",       {.p3 = A_BabyMetal}              },
++    {"A_BspiAttack",      {.p3 = A_BspiAttack}             },
++    {"A_Hoof",            {.p3 = A_Hoof}                   },
++    {"A_CyberAttack",     {.p3 = A_CyberAttack}            },
++    {"A_PainAttack",      {.p3 = A_PainAttack}             },
++    {"A_PainDie",         {.p3 = A_PainDie}                },
++    {"A_KeenDie",         {.p3 = A_KeenDie}                },
++    {"A_BrainPain",       {.p3 = A_BrainPain}              },
++    {"A_BrainScream",     {.p3 = A_BrainScream}            },
++    {"A_BrainDie",        {.p3 = A_BrainDie}               },
++    {"A_BrainAwake",      {.p3 = A_BrainAwake}             },
++    {"A_BrainSpit",       {.p3 = A_BrainSpit}              },
++    {"A_SpawnSound",      {.p3 = A_SpawnSound}             },
++    {"A_SpawnFly",        {.p3 = A_SpawnFly}               },
++    {"A_BrainExplode",    {.p3 = A_BrainExplode}           },
+ 
+     // MBF
+ 
+-    {"A_Detonate", {.p1 = A_Detonate}, .type = func_mbf},
++    {"A_Detonate", {.p3 = A_Detonate}, .type = func_mbf},
+ 
+-    {"A_Mushroom", {.p1 = A_Mushroom}, .type = func_mbf,
++    {"A_Mushroom", {.p3 = A_Mushroom}, .type = func_mbf,
+       // (angle, speed)
+      .argcount = 2, .misc1 = {arg_fixed}, .misc2 = {arg_fixed}
+     },
+ 
+-    {"A_Die", {.p1 = A_Die}, .type = func_mbf},
++    {"A_Die", {.p3 = A_Die}, .type = func_mbf},
+ 
+-    {"A_Spawn", {.p1 = A_Spawn}, .type = func_mbf,
++    {"A_Spawn", {.p3 = A_Spawn}, .type = func_mbf,
+       // (thing, z_pos)
+      .argcount = 2, .misc1 = {arg_thing}, .misc2 = {arg_fixed}
+     },
+ 
+-    {"A_Turn", {.p1 = A_Turn}, .type = func_mbf,
++    {"A_Turn", {.p3 = A_Turn}, .type = func_mbf,
+       // (deg)
+      .argcount = 1, .misc1 = {arg_int}
+     },
+ 
+-    {"A_Face", {.p1 = A_Face}, .type = func_mbf,
++    {"A_Face", {.p3 = A_Face}, .type = func_mbf,
+       // (deg)
+      .argcount = 1, .misc1 = {arg_int}
+     },
+ 
+-    {"A_Scratch", {.p1 = A_Scratch}, .type = func_mbf,
++    {"A_Scratch", {.p3 = A_Scratch}, .type = func_mbf,
+       // (damage, sound)
+      .argcount = 2, .misc1 = {arg_int}, .misc2 = {arg_sound}
+     },
+ 
+-    {"A_PlaySound", {.p1 = A_PlaySound}, .type = func_mbf,
++    {"A_PlaySound", {.p3 = A_PlaySound}, .type = func_mbf,
+       // (sound, fullvolume)
+      .argcount = 2, .misc1 = {arg_sound}, .misc2 = {arg_int}
+     },
+ 
+-    {"A_RandomJump", {.p1 = A_RandomJump}, .type = func_mbf,
++    {"A_RandomJump", {.p3 = A_RandomJump}, .type = func_mbf,
+      // (state, probabilty (0-255))
+      .argcount = 2, .misc1 = {arg_state}, .misc2 = {arg_int}
+     },
+ 
+-    {"A_LineEffect", {.p1 = A_LineEffect}, .type = func_mbf,
++    {"A_LineEffect", {.p3 = A_LineEffect}, .type = func_mbf,
+      // (boomspecial, tag)
+      .argcount = 2, .misc1 = {arg_int}, .misc2 = {arg_int}
+     },
+ 
+-    {"A_BetaSkullAttack", {.p1 = A_BetaSkullAttack}, .type = func_mbf},
++    {"A_BetaSkullAttack", {.p3 = A_BetaSkullAttack}, .type = func_mbf},
+ 
+-    {"A_Stop", {.p1 = A_Stop}, .type = func_mbf},
++    {"A_Stop", {.p3 = A_Stop}, .type = func_mbf},
+ 
+ #if 0 // weapons TODO
+     {"A_FireOldBFG", {.p3 = A_FireOldBFG}},
+@@ -186,89 +186,89 @@ static action_t actions[] = {
+ 
+     // MBF21
+ 
+-    {"A_SpawnObject", {.p1 = A_SpawnObject}, .type = func_mbf21,
++    {"A_SpawnObject", {.p3 = A_SpawnObject}, .type = func_mbf21,
+      // (thing, angle, x_ofs, y_ofs, z_ofs, x_vel, y_vel, z_vel)
+      .argcount = 8, .args = {{arg_thing}, {arg_fixed}, {arg_fixed}, {arg_fixed},
+                           {arg_fixed}, {arg_fixed}, {arg_fixed}, {arg_fixed}}
+     },
+ 
+-    {"A_MonsterProjectile", {.p1 = A_MonsterProjectile}, .type = func_mbf21,
++    {"A_MonsterProjectile", {.p3 = A_MonsterProjectile}, .type = func_mbf21,
+       // (thing, angle, pitch, hoffset, voffset)
+      .argcount = 5, .args= {{arg_thing}, {arg_fixed}, {arg_fixed}, {arg_fixed},
+                          {arg_fixed}}
+     },
+ 
+-    {"A_MonsterBulletAttack", {.p1 = A_MonsterBulletAttack}, .type = func_mbf21,
++    {"A_MonsterBulletAttack", {.p3 = A_MonsterBulletAttack}, .type = func_mbf21,
+      // (hspread, vspread, numbullets, damagebase, damagedice)
+      .argcount = 5, .args = {{arg_fixed}, {arg_fixed}, {arg_int, 1},
+                           {arg_int, 3}, {arg_int, 5}}
+     },
+ 
+-    {"A_MonsterMeleeAttack", {.p1 = A_MonsterMeleeAttack}, .type = func_mbf21,
++    {"A_MonsterMeleeAttack", {.p3 = A_MonsterMeleeAttack}, .type = func_mbf21,
+      // (damagebase, damagedice, sound, range)
+      .argcount = 4, .args = {{arg_int, 3}, {arg_int, 8}, {arg_sound}, {arg_fixed}}
+     },
+ 
+-    {"A_RadiusDamage", {.p1 = A_RadiusDamage}, .type = func_mbf21,
++    {"A_RadiusDamage", {.p3 = A_RadiusDamage}, .type = func_mbf21,
+       // (damage, radius)
+      .argcount = 2, .args = {{arg_int}, {arg_int}}
+     },
+ 
+-    {"A_NoiseAlert", {.p1 = A_NoiseAlert}, .type = func_mbf21},
++    {"A_NoiseAlert", {.p3 = A_NoiseAlert}, .type = func_mbf21},
+ 
+-    {"A_HealChase", {.p1 = A_HealChase}, .type = func_mbf21,
++    {"A_HealChase", {.p3 = A_HealChase}, .type = func_mbf21,
+       // (state, sound)
+      .argcount = 2, .args = {{arg_state}, {arg_sound}}
+     },
+ 
+-    {"A_SeekTracer", {.p1 = A_SeekTracer}, .type = func_mbf21,
++    {"A_SeekTracer", {.p3 = A_SeekTracer}, .type = func_mbf21,
+       // (threshold, maxturnangle)
+      .argcount = 2, .args = {{arg_fixed}, {arg_fixed}}
+     },
+ 
+-    {"A_FindTracer", {.p1 = A_FindTracer}, .type = func_mbf21,
++    {"A_FindTracer", {.p3 = A_FindTracer}, .type = func_mbf21,
+       // (fov, rangeblocks)
+      .argcount = 2, .args = {{arg_fixed}, {arg_int, 10}}
+     },
+ 
+-    {"A_ClearTracer", {.p1 = A_ClearTracer}, .type = func_mbf21},
++    {"A_ClearTracer", {.p3 = A_ClearTracer}, .type = func_mbf21},
+ 
+-    {"A_JumpIfHealthBelow", {.p1 = A_JumpIfHealthBelow}, .type = func_mbf21,
++    {"A_JumpIfHealthBelow", {.p3 = A_JumpIfHealthBelow}, .type = func_mbf21,
+       // (state, health)
+      .argcount = 2, .args = {{arg_state}, {arg_int}}
+     },
+ 
+-    {"A_JumpIfTargetInSight", {.p1 = A_JumpIfTargetInSight}, .type = func_mbf21,
++    {"A_JumpIfTargetInSight", {.p3 = A_JumpIfTargetInSight}, .type = func_mbf21,
+       // (state, fov)
+      .argcount = 2, .args = {{arg_state}, {arg_fixed}}
+     },
+ 
+-    {"A_JumpIfTargetCloser", {.p1 = A_JumpIfTargetCloser}, .type = func_mbf21,
++    {"A_JumpIfTargetCloser", {.p3 = A_JumpIfTargetCloser}, .type = func_mbf21,
+       // (state, distance)
+      .argcount = 2, .args = {{arg_state}, {arg_fixed}}
+     },
+ 
+-    {"A_JumpIfTracerInSight", {.p1 = A_JumpIfTracerInSight}, .type = func_mbf21,
++    {"A_JumpIfTracerInSight", {.p3 = A_JumpIfTracerInSight}, .type = func_mbf21,
+       // (state, fov)
+      .argcount = 2, .args = {{arg_state}, {arg_fixed}}
+     },
+ 
+-    {"A_JumpIfTracerCloser", {.p1 = A_JumpIfTracerCloser}, .type = func_mbf21,
++    {"A_JumpIfTracerCloser", {.p3 = A_JumpIfTracerCloser}, .type = func_mbf21,
+       // (state, distance)
+      .argcount = 2, .args = {{arg_state}, {arg_fixed}}
+     },
+ 
+-    {"A_JumpIfFlagsSet", {.p1 = A_JumpIfFlagsSet}, .type = func_mbf21,
++    {"A_JumpIfFlagsSet", {.p3 = A_JumpIfFlagsSet}, .type = func_mbf21,
+       // (state, flags)
+      .argcount = 2, .args = {{arg_state}, {arg_flags}}
+     },
+ 
+-    {"A_AddFlags", {.p1 = A_AddFlags}, .type = func_mbf21,
++    {"A_AddFlags", {.p3 = A_AddFlags}, .type = func_mbf21,
+       // (flags)
+      .argcount = 1, .args = {{arg_flags}}
+     },
+ 
+-    {"A_RemoveFlags", {.p1 = A_RemoveFlags}, .type = func_mbf21,
++    {"A_RemoveFlags", {.p3 = A_RemoveFlags}, .type = func_mbf21,
+       // (flags)
+      .argcount = 1, .args = {{arg_flags}}
+     },
+diff --git a/src/deh_bex_pointers.c b/src/deh_bex_pointers.c
+index c09d511..e613ad3 100644
+--- a/src/deh_bex_pointers.c
++++ b/src/deh_bex_pointers.c
+@@ -64,91 +64,91 @@ static const bex_codepointer_t bex_pointer_table[] =
+     {"FirePlasma",          {.p3 = A_FirePlasma}             },
+     {"BFGsound",            {.p3 = A_BFGsound}               },
+     {"FireBFG",             {.p3 = A_FireBFG}                },
+-    {"BFGSpray",            {.p1 = A_BFGSpray}               },
+-    {"Explode",             {.p1 = A_Explode}                },
+-    {"Pain",                {.p1 = A_Pain}                   },
+-    {"PlayerScream",        {.p1 = A_PlayerScream}           },
+-    {"Fall",                {.p1 = A_Fall}                   },
+-    {"XScream",             {.p1 = A_XScream}                },
+-    {"Look",                {.p1 = A_Look}                   },
+-    {"Chase",               {.p1 = A_Chase}                  },
+-    {"FaceTarget",          {.p1 = A_FaceTarget}             },
+-    {"PosAttack",           {.p1 = A_PosAttack}              },
+-    {"Scream",              {.p1 = A_Scream}                 },
+-    {"SPosAttack",          {.p1 = A_SPosAttack}             },
+-    {"VileChase",           {.p1 = A_VileChase}              },
+-    {"VileStart",           {.p1 = A_VileStart}              },
+-    {"VileTarget",          {.p1 = A_VileTarget}             },
+-    {"VileAttack",          {.p1 = A_VileAttack}             },
+-    {"StartFire",           {.p1 = A_StartFire}              },
+-    {"Fire",                {.p1 = A_Fire}                   },
+-    {"FireCrackle",         {.p1 = A_FireCrackle}            },
+-    {"Tracer",              {.p1 = A_Tracer}                 },
+-    {"SkelWhoosh",          {.p1 = A_SkelWhoosh}             },
+-    {"SkelFist",            {.p1 = A_SkelFist}               },
+-    {"SkelMissile",         {.p1 = A_SkelMissile}            },
+-    {"FatRaise",            {.p1 = A_FatRaise}               },
+-    {"FatAttack1",          {.p1 = A_FatAttack1}             },
+-    {"FatAttack2",          {.p1 = A_FatAttack2}             },
+-    {"FatAttack3",          {.p1 = A_FatAttack3}             },
+-    {"BossDeath",           {.p1 = A_BossDeath}              },
+-    {"CPosAttack",          {.p1 = A_CPosAttack}             },
+-    {"CPosRefire",          {.p1 = A_CPosRefire}             },
+-    {"TroopAttack",         {.p1 = A_TroopAttack}            },
+-    {"SargAttack",          {.p1 = A_SargAttack}             },
+-    {"HeadAttack",          {.p1 = A_HeadAttack}             },
+-    {"BruisAttack",         {.p1 = A_BruisAttack}            },
+-    {"SkullAttack",         {.p1 = A_SkullAttack}            },
+-    {"Metal",               {.p1 = A_Metal}                  },
+-    {"SpidRefire",          {.p1 = A_SpidRefire}             },
+-    {"BabyMetal",           {.p1 = A_BabyMetal}              },
+-    {"BspiAttack",          {.p1 = A_BspiAttack}             },
+-    {"Hoof",                {.p1 = A_Hoof}                   },
+-    {"CyberAttack",         {.p1 = A_CyberAttack}            },
+-    {"PainAttack",          {.p1 = A_PainAttack}             },
+-    {"PainDie",             {.p1 = A_PainDie}                },
+-    {"KeenDie",             {.p1 = A_KeenDie}                },
+-    {"BrainPain",           {.p1 = A_BrainPain}              },
+-    {"BrainScream",         {.p1 = A_BrainScream}            },
+-    {"BrainDie",            {.p1 = A_BrainDie}               },
+-    {"BrainAwake",          {.p1 = A_BrainAwake}             },
+-    {"BrainSpit",           {.p1 = A_BrainSpit}              },
+-    {"SpawnSound",          {.p1 = A_SpawnSound}             },
+-    {"SpawnFly",            {.p1 = A_SpawnFly}               },
+-    {"BrainExplode",        {.p1 = A_BrainExplode}           },
++    {"BFGSpray",            {.p3 = A_BFGSpray}               },
++    {"Explode",             {.p3 = A_Explode}                },
++    {"Pain",                {.p3 = A_Pain}                   },
++    {"PlayerScream",        {.p3 = A_PlayerScream}           },
++    {"Fall",                {.p3 = A_Fall}                   },
++    {"XScream",             {.p3 = A_XScream}                },
++    {"Look",                {.p3 = A_Look}                   },
++    {"Chase",               {.p3 = A_Chase}                  },
++    {"FaceTarget",          {.p3 = A_FaceTarget}             },
++    {"PosAttack",           {.p3 = A_PosAttack}              },
++    {"Scream",              {.p3 = A_Scream}                 },
++    {"SPosAttack",          {.p3 = A_SPosAttack}             },
++    {"VileChase",           {.p3 = A_VileChase}              },
++    {"VileStart",           {.p3 = A_VileStart}              },
++    {"VileTarget",          {.p3 = A_VileTarget}             },
++    {"VileAttack",          {.p3 = A_VileAttack}             },
++    {"StartFire",           {.p3 = A_StartFire}              },
++    {"Fire",                {.p3 = A_Fire}                   },
++    {"FireCrackle",         {.p3 = A_FireCrackle}            },
++    {"Tracer",              {.p3 = A_Tracer}                 },
++    {"SkelWhoosh",          {.p3 = A_SkelWhoosh}             },
++    {"SkelFist",            {.p3 = A_SkelFist}               },
++    {"SkelMissile",         {.p3 = A_SkelMissile}            },
++    {"FatRaise",            {.p3 = A_FatRaise}               },
++    {"FatAttack1",          {.p3 = A_FatAttack1}             },
++    {"FatAttack2",          {.p3 = A_FatAttack2}             },
++    {"FatAttack3",          {.p3 = A_FatAttack3}             },
++    {"BossDeath",           {.p3 = A_BossDeath}              },
++    {"CPosAttack",          {.p3 = A_CPosAttack}             },
++    {"CPosRefire",          {.p3 = A_CPosRefire}             },
++    {"TroopAttack",         {.p3 = A_TroopAttack}            },
++    {"SargAttack",          {.p3 = A_SargAttack}             },
++    {"HeadAttack",          {.p3 = A_HeadAttack}             },
++    {"BruisAttack",         {.p3 = A_BruisAttack}            },
++    {"SkullAttack",         {.p3 = A_SkullAttack}            },
++    {"Metal",               {.p3 = A_Metal}                  },
++    {"SpidRefire",          {.p3 = A_SpidRefire}             },
++    {"BabyMetal",           {.p3 = A_BabyMetal}              },
++    {"BspiAttack",          {.p3 = A_BspiAttack}             },
++    {"Hoof",                {.p3 = A_Hoof}                   },
++    {"CyberAttack",         {.p3 = A_CyberAttack}            },
++    {"PainAttack",          {.p3 = A_PainAttack}             },
++    {"PainDie",             {.p3 = A_PainDie}                },
++    {"KeenDie",             {.p3 = A_KeenDie}                },
++    {"BrainPain",           {.p3 = A_BrainPain}              },
++    {"BrainScream",         {.p3 = A_BrainScream}            },
++    {"BrainDie",            {.p3 = A_BrainDie}               },
++    {"BrainAwake",          {.p3 = A_BrainAwake}             },
++    {"BrainSpit",           {.p3 = A_BrainSpit}              },
++    {"SpawnSound",          {.p3 = A_SpawnSound}             },
++    {"SpawnFly",            {.p3 = A_SpawnFly}               },
++    {"BrainExplode",        {.p3 = A_BrainExplode}           },
+     // MBF
+-    {"Detonate",            {.p1 = A_Detonate}               },
+-    {"Mushroom",            {.p1 = A_Mushroom}               },
+-    {"Die",                 {.p1 = A_Die}                    },
+-    {"Spawn",               {.p1 = A_Spawn}                  },
+-    {"Turn",                {.p1 = A_Turn}                   },
+-    {"Face",                {.p1 = A_Face}                   },
+-    {"Scratch",             {.p1 = A_Scratch}                },
+-    {"PlaySound",           {.p1 = A_PlaySound}              },
+-    {"RandomJump",          {.p1 = A_RandomJump}             },
+-    {"LineEffect",          {.p1 = A_LineEffect}             },
++    {"Detonate",            {.p3 = A_Detonate}               },
++    {"Mushroom",            {.p3 = A_Mushroom}               },
++    {"Die",                 {.p3 = A_Die}                    },
++    {"Spawn",               {.p3 = A_Spawn}                  },
++    {"Turn",                {.p3 = A_Turn}                   },
++    {"Face",                {.p3 = A_Face}                   },
++    {"Scratch",             {.p3 = A_Scratch}                },
++    {"PlaySound",           {.p3 = A_PlaySound}              },
++    {"RandomJump",          {.p3 = A_RandomJump}             },
++    {"LineEffect",          {.p3 = A_LineEffect}             },
+     {"FireOldBFG",          {.p3 = A_FireOldBFG}             },
+-    {"BetaSkullAttack",     {.p1 = A_BetaSkullAttack}        },
+-    {"Stop",                {.p1 = A_Stop}                   },
++    {"BetaSkullAttack",     {.p3 = A_BetaSkullAttack}        },
++    {"Stop",                {.p3 = A_Stop}                   },
+     // MBF21
+-    {"SpawnObject",         {.p1 = A_SpawnObject},         8 },
+-    {"MonsterProjectile",   {.p1 = A_MonsterProjectile},   5 },
+-    {"MonsterBulletAttack", {.p1 = A_MonsterBulletAttack}, 5, { 0, 0, 1, 3, 5 } },
+-    {"MonsterMeleeAttack",  {.p1 = A_MonsterMeleeAttack},  4, { 3, 8, 0, 0 } },
+-    {"RadiusDamage",        {.p1 = A_RadiusDamage},        2 },
+-    {"NoiseAlert",          {.p1 = A_NoiseAlert},          0 },
+-    {"HealChase",           {.p1 = A_HealChase},           2 },
+-    {"SeekTracer",          {.p1 = A_SeekTracer},          2 },
+-    {"FindTracer",          {.p1 = A_FindTracer},          2, { 0, 10 } },
+-    {"ClearTracer",         {.p1 = A_ClearTracer},         0 },
+-    {"JumpIfHealthBelow",   {.p1 = A_JumpIfHealthBelow},   2 },
+-    {"JumpIfTargetInSight", {.p1 = A_JumpIfTargetInSight}, 2 },
+-    {"JumpIfTargetCloser",  {.p1 = A_JumpIfTargetCloser},  2 },
+-    {"JumpIfTracerInSight", {.p1 = A_JumpIfTracerInSight}, 2 },
+-    {"JumpIfTracerCloser",  {.p1 = A_JumpIfTracerCloser},  2 },
+-    {"JumpIfFlagsSet",      {.p1 = A_JumpIfFlagsSet},      3 },
+-    {"AddFlags",            {.p1 = A_AddFlags},            2 },
+-    {"RemoveFlags",         {.p1 = A_RemoveFlags},         2 },
++    {"SpawnObject",         {.p3 = A_SpawnObject},         8 },
++    {"MonsterProjectile",   {.p3 = A_MonsterProjectile},   5 },
++    {"MonsterBulletAttack", {.p3 = A_MonsterBulletAttack}, 5, { 0, 0, 1, 3, 5 } },
++    {"MonsterMeleeAttack",  {.p3 = A_MonsterMeleeAttack},  4, { 3, 8, 0, 0 } },
++    {"RadiusDamage",        {.p3 = A_RadiusDamage},        2 },
++    {"NoiseAlert",          {.p3 = A_NoiseAlert},          0 },
++    {"HealChase",           {.p3 = A_HealChase},           2 },
++    {"SeekTracer",          {.p3 = A_SeekTracer},          2 },
++    {"FindTracer",          {.p3 = A_FindTracer},          2, { 0, 10 } },
++    {"ClearTracer",         {.p3 = A_ClearTracer},         0 },
++    {"JumpIfHealthBelow",   {.p3 = A_JumpIfHealthBelow},   2 },
++    {"JumpIfTargetInSight", {.p3 = A_JumpIfTargetInSight}, 2 },
++    {"JumpIfTargetCloser",  {.p3 = A_JumpIfTargetCloser},  2 },
++    {"JumpIfTracerInSight", {.p3 = A_JumpIfTracerInSight}, 2 },
++    {"JumpIfTracerCloser",  {.p3 = A_JumpIfTracerCloser},  2 },
++    {"JumpIfFlagsSet",      {.p3 = A_JumpIfFlagsSet},      3 },
++    {"AddFlags",            {.p3 = A_AddFlags},            2 },
++    {"RemoveFlags",         {.p3 = A_RemoveFlags},         2 },
+     {"WeaponProjectile",    {.p3 = A_WeaponProjectile},    5 },
+     {"WeaponBulletAttack",  {.p3 = A_WeaponBulletAttack},  5, { 0, 0, 1, 5, 3 } },
+     {"WeaponMeleeAttack",   {.p3 = A_WeaponMeleeAttack},   5, { 2, 10, 1 * FRACUNIT, 0, 0 } },
+@@ -180,14 +180,14 @@ typedef struct
+ } translate_args_t;
+ 
+ static translate_args_t translate_states[] = {
+-    { {.p1 = A_RandomJump },          arg_misc1 },
+-    { {.p1 = A_HealChase },           arg_1 },
+-    { {.p1 = A_JumpIfHealthBelow },   arg_1 },
+-    { {.p1 = A_JumpIfTargetInSight }, arg_1 },
+-    { {.p1 = A_JumpIfTargetCloser },  arg_1 },
+-    { {.p1 = A_JumpIfTracerInSight }, arg_1 },
+-    { {.p1 = A_JumpIfTracerCloser },  arg_1 },
+-    { {.p1 = A_JumpIfFlagsSet },      arg_1 },
++    { {.p3 = A_RandomJump },          arg_misc1 },
++    { {.p3 = A_HealChase },           arg_1 },
++    { {.p3 = A_JumpIfHealthBelow },   arg_1 },
++    { {.p3 = A_JumpIfTargetInSight }, arg_1 },
++    { {.p3 = A_JumpIfTargetCloser },  arg_1 },
++    { {.p3 = A_JumpIfTracerInSight }, arg_1 },
++    { {.p3 = A_JumpIfTracerCloser },  arg_1 },
++    { {.p3 = A_JumpIfFlagsSet },      arg_1 },
+     { {.p3 = A_WeaponJump },          arg_1 },
+     { {.p3 = A_CheckAmmo },           arg_1 },
+     { {.p3 = A_RefireTo },            arg_1 },
+@@ -195,16 +195,16 @@ static translate_args_t translate_states[] = {
+ };
+ 
+ static translate_args_t translate_things[] = {
+-    { {.p1 = A_Spawn},              arg_misc1_inc },
+-    { {.p1 = A_SpawnObject},        arg_1_inc },
+-    { {.p1 = A_MonsterProjectile},  arg_1_inc },
++    { {.p3 = A_Spawn},              arg_misc1_inc },
++    { {.p3 = A_SpawnObject},        arg_1_inc },
++    { {.p3 = A_MonsterProjectile},  arg_1_inc },
+     { {.p3 = A_WeaponProjectile},   arg_1_inc },
+ };
+ 
+ static translate_args_t translate_sounds[] = {
+-    { {.p1 = A_PlaySound},          arg_misc1},
+-    { {.p1 = A_MonsterMeleeAttack}, arg_3 },
+-    { {.p1 = A_HealChase},          arg_2 },
++    { {.p3 = A_PlaySound},          arg_misc1},
++    { {.p3 = A_MonsterMeleeAttack}, arg_3 },
++    { {.p3 = A_HealChase},          arg_2 },
+     { {.p3 = A_WeaponMeleeAttack},  arg_4 },
+     { {.p3 = A_WeaponSound},        arg_1 },
+ };
+diff --git a/src/i_oalmusic.c b/src/i_oalmusic.c
+index 7c133be..2049f9a 100644
+--- a/src/i_oalmusic.c
++++ b/src/i_oalmusic.c
+@@ -375,7 +375,13 @@ boolean I_OAL_InitStream(void)
+     alGenBuffers(NUM_BUFFERS, player.buffers);
+     alGenSources(1, &player.source);
+ 
++#ifdef __EMSCRIPTEN__
++    // The web OpenAL follows the 1.1 spec and rejects AL_MAX_GAIN above 1;
++    // the rejected call would leave an error that fails StartPlayer later.
++    alSourcef(player.source, AL_MAX_GAIN, 1.0f);
++#else
+     alSourcef(player.source, AL_MAX_GAIN, 10.0f);
++#endif
+ 
+     // Set parameters so mono sources play out the front-center speaker and
+     // won't distance attenuate.
+@@ -512,6 +518,12 @@ static void I_OAL_PlaySong(void *handle, boolean looping)
+ 
+     player.looping = looping;
+ 
++#ifdef __EMSCRIPTEN__
++    // With no player thread, queue the first buffers before playing: the web
++    // OpenAL refuses to play a source whose queue is empty.
++    StartPlayer();
++#endif
++
+     if (!player.paused)
+     {
+         alSourcePlay(player.source);
+@@ -523,8 +535,21 @@ static void I_OAL_PlaySong(void *handle, boolean looping)
+     }
+ 
+     SDL_SetAtomicInt(&player_thread_running, 1);
++#ifndef __EMSCRIPTEN__
+     player_thread_handle = SDL_CreateThread(PlayerThread, NULL, NULL);
++#endif
++}
++
++#ifdef __EMSCRIPTEN__
++void I_OAL_PumpStream(void)
++{
++    if (music_initialized && SDL_GetAtomicInt(&player_thread_running)
++        && !UpdatePlayer())
++    {
++        SDL_SetAtomicInt(&player_thread_running, 0);
++    }
+ }
++#endif
+ 
+ static void I_OAL_StopSong(void *handle)
+ {
+@@ -536,7 +561,9 @@ static void I_OAL_StopSong(void *handle)
+     alSourceStop(player.source);
+ 
+     SDL_SetAtomicInt(&player_thread_running, 0);
++#ifndef __EMSCRIPTEN__
+     SDL_WaitThread(player_thread_handle, NULL);
++#endif
+ 
+     if (alGetError() != AL_NO_ERROR)
+     {
+diff --git a/src/i_oalsound.c b/src/i_oalsound.c
+index cd56810..ecb192b 100644
+--- a/src/i_oalsound.c
++++ b/src/i_oalsound.c
+@@ -252,7 +252,13 @@ void I_OAL_ResetSource2D(int channel)
+     alSourcef(oal->sources[channel], AL_ROLLOFF_FACTOR, 0.0f);
+     alSourcei(oal->sources[channel], AL_SOURCE_RELATIVE, AL_TRUE);
+     alSourcei(oal->sources[channel], AL_REFERENCE_DISTANCE, 0);
++#ifdef __EMSCRIPTEN__
++    // A Web Audio PannerNode throws on maxDistance <= 0. With rolloff at 0
++    // the distance has no audible effect, so any positive value will do.
++    alSourcei(oal->sources[channel], AL_MAX_DISTANCE, 1);
++#else
+     alSourcei(oal->sources[channel], AL_MAX_DISTANCE, 0);
++#endif
+ }
+ 
+ void I_OAL_ResetSource3D(int channel, boolean point_source,
+diff --git a/src/i_oalstream.h b/src/i_oalstream.h
+index b994829..e6d4dcb 100644
+--- a/src/i_oalstream.h
++++ b/src/i_oalstream.h
+@@ -46,4 +46,9 @@ boolean I_OAL_InitStream(void);
+ 
+ void I_OAL_ShutdownStream(void);
+ 
++#ifdef __EMSCRIPTEN__
++// No threads in the browser build: the main loop refills the stream instead.
++void I_OAL_PumpStream(void);
++#endif
++
+ #endif
+diff --git a/src/i_video.c b/src/i_video.c
+index 051f4b9..5dbcd30 100644
+--- a/src/i_video.c
++++ b/src/i_video.c
+@@ -1485,6 +1485,14 @@ static void InitGraphicsMode(void)
+ 
+     AdjustWindowSize();
+ 
++#ifdef __EMSCRIPTEN__
++    // SDL otherwise picks its software renderer, which presents through a 2D
++    // canvas and scales every frame on the CPU. WebGL scales on the GPU,
++    // which matters on high-density phone screens. Software stays as the
++    // fallback for browsers with WebGL turned off.
++    SDL_SetHint(SDL_HINT_RENDER_DRIVER, "opengles2,software");
++#endif
++
+     // [FG] create rendering window
+ 
+     char *title = M_StringJoin(gamedescription, " - ", PROJECT_STRING);
+diff --git a/src/info.c b/src/info.c
+index 341e552..afe3f94 100644
+--- a/src/info.c
++++ b/src/info.c
+@@ -238,7 +238,7 @@ state_t original_states[NUMSTATES] = {
+   {SPR_BFS1,1|FF_FULLBRIGHT,4,{NULL},S_BFGSHOT},  // S_BFGSHOT2
+   {SPR_BFE1,0|FF_FULLBRIGHT,8,{NULL},S_BFGLAND2}, // S_BFGLAND
+   {SPR_BFE1,1|FF_FULLBRIGHT,8,{NULL},S_BFGLAND3}, // S_BFGLAND2
+-  {SPR_BFE1,2|FF_FULLBRIGHT,8,{.p1 = A_BFGSpray},S_BFGLAND4}, // S_BFGLAND3
++  {SPR_BFE1,2|FF_FULLBRIGHT,8,{.p3 = A_BFGSpray},S_BFGLAND4}, // S_BFGLAND3
+   {SPR_BFE1,3|FF_FULLBRIGHT,8,{NULL},S_BFGLAND5}, // S_BFGLAND4
+   {SPR_BFE1,4|FF_FULLBRIGHT,8,{NULL},S_BFGLAND6}, // S_BFGLAND5
+   {SPR_BFE1,5|FF_FULLBRIGHT,8,{NULL},S_NULL}, // S_BFGLAND6
+@@ -246,7 +246,7 @@ state_t original_states[NUMSTATES] = {
+   {SPR_BFE2,1|FF_FULLBRIGHT,8,{NULL},S_BFGEXP3},  // S_BFGEXP2
+   {SPR_BFE2,2|FF_FULLBRIGHT,8,{NULL},S_BFGEXP4},  // S_BFGEXP3
+   {SPR_BFE2,3|FF_FULLBRIGHT,8,{NULL},S_NULL}, // S_BFGEXP4
+-  {SPR_MISL,1|FF_FULLBRIGHT,8,{.p1 = A_Explode},S_EXPLODE2},  // S_EXPLODE1
++  {SPR_MISL,1|FF_FULLBRIGHT,8,{.p3 = A_Explode},S_EXPLODE2},  // S_EXPLODE1
+   {SPR_MISL,2|FF_FULLBRIGHT,6,{NULL},S_EXPLODE3}, // S_EXPLODE2
+   {SPR_MISL,3|FF_FULLBRIGHT,4,{NULL},S_NULL}, // S_EXPLODE3
+   {SPR_TFOG,0|FF_FULLBRIGHT,6,{NULL},S_TFOG01}, // S_TFOG
+@@ -276,46 +276,46 @@ state_t original_states[NUMSTATES] = {
+   {SPR_PLAY,4,12,{NULL},S_PLAY},  // S_PLAY_ATK1
+   {SPR_PLAY,5|FF_FULLBRIGHT,6,{NULL},S_PLAY_ATK1},  // S_PLAY_ATK2
+   {SPR_PLAY,6,4,{NULL},S_PLAY_PAIN2}, // S_PLAY_PAIN
+-  {SPR_PLAY,6,4,{.p1 = A_Pain},S_PLAY}, // S_PLAY_PAIN2
++  {SPR_PLAY,6,4,{.p3 = A_Pain},S_PLAY}, // S_PLAY_PAIN2
+   {SPR_PLAY,7,10,{NULL},S_PLAY_DIE2}, // S_PLAY_DIE1
+-  {SPR_PLAY,8,10,{.p1 = A_PlayerScream},S_PLAY_DIE3}, // S_PLAY_DIE2
+-  {SPR_PLAY,9,10,{.p1 = A_Fall},S_PLAY_DIE4}, // S_PLAY_DIE3
++  {SPR_PLAY,8,10,{.p3 = A_PlayerScream},S_PLAY_DIE3}, // S_PLAY_DIE2
++  {SPR_PLAY,9,10,{.p3 = A_Fall},S_PLAY_DIE4}, // S_PLAY_DIE3
+   {SPR_PLAY,10,10,{NULL},S_PLAY_DIE5},  // S_PLAY_DIE4
+   {SPR_PLAY,11,10,{NULL},S_PLAY_DIE6},  // S_PLAY_DIE5
+   {SPR_PLAY,12,10,{NULL},S_PLAY_DIE7},  // S_PLAY_DIE6
+   {SPR_PLAY,13,-1,{NULL},S_NULL}, // S_PLAY_DIE7
+   {SPR_PLAY,14,5,{NULL},S_PLAY_XDIE2},  // S_PLAY_XDIE1
+-  {SPR_PLAY,15,5,{.p1 = A_XScream},S_PLAY_XDIE3}, // S_PLAY_XDIE2
+-  {SPR_PLAY,16,5,{.p1 = A_Fall},S_PLAY_XDIE4},  // S_PLAY_XDIE3
++  {SPR_PLAY,15,5,{.p3 = A_XScream},S_PLAY_XDIE3}, // S_PLAY_XDIE2
++  {SPR_PLAY,16,5,{.p3 = A_Fall},S_PLAY_XDIE4},  // S_PLAY_XDIE3
+   {SPR_PLAY,17,5,{NULL},S_PLAY_XDIE5},  // S_PLAY_XDIE4
+   {SPR_PLAY,18,5,{NULL},S_PLAY_XDIE6},  // S_PLAY_XDIE5
+   {SPR_PLAY,19,5,{NULL},S_PLAY_XDIE7},  // S_PLAY_XDIE6
+   {SPR_PLAY,20,5,{NULL},S_PLAY_XDIE8},  // S_PLAY_XDIE7
+   {SPR_PLAY,21,5,{NULL},S_PLAY_XDIE9},  // S_PLAY_XDIE8
+   {SPR_PLAY,22,-1,{NULL},S_NULL}, // S_PLAY_XDIE9
+-  {SPR_POSS,0,10,{.p1 = A_Look},S_POSS_STND2},  // S_POSS_STND
+-  {SPR_POSS,1,10,{.p1 = A_Look},S_POSS_STND}, // S_POSS_STND2
+-  {SPR_POSS,0,4,{.p1 = A_Chase},S_POSS_RUN2}, // S_POSS_RUN1
+-  {SPR_POSS,0,4,{.p1 = A_Chase},S_POSS_RUN3}, // S_POSS_RUN2
+-  {SPR_POSS,1,4,{.p1 = A_Chase},S_POSS_RUN4}, // S_POSS_RUN3
+-  {SPR_POSS,1,4,{.p1 = A_Chase},S_POSS_RUN5}, // S_POSS_RUN4
+-  {SPR_POSS,2,4,{.p1 = A_Chase},S_POSS_RUN6}, // S_POSS_RUN5
+-  {SPR_POSS,2,4,{.p1 = A_Chase},S_POSS_RUN7}, // S_POSS_RUN6
+-  {SPR_POSS,3,4,{.p1 = A_Chase},S_POSS_RUN8}, // S_POSS_RUN7
+-  {SPR_POSS,3,4,{.p1 = A_Chase},S_POSS_RUN1}, // S_POSS_RUN8
+-  {SPR_POSS,4,10,{.p1 = A_FaceTarget},S_POSS_ATK2}, // S_POSS_ATK1
+-  {SPR_POSS,5,8,{.p1 = A_PosAttack},S_POSS_ATK3}, // S_POSS_ATK2
++  {SPR_POSS,0,10,{.p3 = A_Look},S_POSS_STND2},  // S_POSS_STND
++  {SPR_POSS,1,10,{.p3 = A_Look},S_POSS_STND}, // S_POSS_STND2
++  {SPR_POSS,0,4,{.p3 = A_Chase},S_POSS_RUN2}, // S_POSS_RUN1
++  {SPR_POSS,0,4,{.p3 = A_Chase},S_POSS_RUN3}, // S_POSS_RUN2
++  {SPR_POSS,1,4,{.p3 = A_Chase},S_POSS_RUN4}, // S_POSS_RUN3
++  {SPR_POSS,1,4,{.p3 = A_Chase},S_POSS_RUN5}, // S_POSS_RUN4
++  {SPR_POSS,2,4,{.p3 = A_Chase},S_POSS_RUN6}, // S_POSS_RUN5
++  {SPR_POSS,2,4,{.p3 = A_Chase},S_POSS_RUN7}, // S_POSS_RUN6
++  {SPR_POSS,3,4,{.p3 = A_Chase},S_POSS_RUN8}, // S_POSS_RUN7
++  {SPR_POSS,3,4,{.p3 = A_Chase},S_POSS_RUN1}, // S_POSS_RUN8
++  {SPR_POSS,4,10,{.p3 = A_FaceTarget},S_POSS_ATK2}, // S_POSS_ATK1
++  {SPR_POSS,5,8,{.p3 = A_PosAttack},S_POSS_ATK3}, // S_POSS_ATK2
+   {SPR_POSS,4,8,{NULL},S_POSS_RUN1},  // S_POSS_ATK3
+   {SPR_POSS,6,3,{NULL},S_POSS_PAIN2}, // S_POSS_PAIN
+-  {SPR_POSS,6,3,{.p1 = A_Pain},S_POSS_RUN1},  // S_POSS_PAIN2
++  {SPR_POSS,6,3,{.p3 = A_Pain},S_POSS_RUN1},  // S_POSS_PAIN2
+   {SPR_POSS,7,5,{NULL},S_POSS_DIE2},  // S_POSS_DIE1
+-  {SPR_POSS,8,5,{.p1 = A_Scream},S_POSS_DIE3},  // S_POSS_DIE2
+-  {SPR_POSS,9,5,{.p1 = A_Fall},S_POSS_DIE4},  // S_POSS_DIE3
++  {SPR_POSS,8,5,{.p3 = A_Scream},S_POSS_DIE3},  // S_POSS_DIE2
++  {SPR_POSS,9,5,{.p3 = A_Fall},S_POSS_DIE4},  // S_POSS_DIE3
+   {SPR_POSS,10,5,{NULL},S_POSS_DIE5}, // S_POSS_DIE4
+   {SPR_POSS,11,-1,{NULL},S_NULL}, // S_POSS_DIE5
+   {SPR_POSS,12,5,{NULL},S_POSS_XDIE2},  // S_POSS_XDIE1
+-  {SPR_POSS,13,5,{.p1 = A_XScream},S_POSS_XDIE3}, // S_POSS_XDIE2
+-  {SPR_POSS,14,5,{.p1 = A_Fall},S_POSS_XDIE4},  // S_POSS_XDIE3
++  {SPR_POSS,13,5,{.p3 = A_XScream},S_POSS_XDIE3}, // S_POSS_XDIE2
++  {SPR_POSS,14,5,{.p3 = A_Fall},S_POSS_XDIE4},  // S_POSS_XDIE3
+   {SPR_POSS,15,5,{NULL},S_POSS_XDIE5},  // S_POSS_XDIE4
+   {SPR_POSS,16,5,{NULL},S_POSS_XDIE6},  // S_POSS_XDIE5
+   {SPR_POSS,17,5,{NULL},S_POSS_XDIE7},  // S_POSS_XDIE6
+@@ -326,29 +326,29 @@ state_t original_states[NUMSTATES] = {
+   {SPR_POSS,9,5,{NULL},S_POSS_RAISE3},  // S_POSS_RAISE2
+   {SPR_POSS,8,5,{NULL},S_POSS_RAISE4},  // S_POSS_RAISE3
+   {SPR_POSS,7,5,{NULL},S_POSS_RUN1},  // S_POSS_RAISE4
+-  {SPR_SPOS,0,10,{.p1 = A_Look},S_SPOS_STND2},  // S_SPOS_STND
+-  {SPR_SPOS,1,10,{.p1 = A_Look},S_SPOS_STND}, // S_SPOS_STND2
+-  {SPR_SPOS,0,3,{.p1 = A_Chase},S_SPOS_RUN2}, // S_SPOS_RUN1
+-  {SPR_SPOS,0,3,{.p1 = A_Chase},S_SPOS_RUN3}, // S_SPOS_RUN2
+-  {SPR_SPOS,1,3,{.p1 = A_Chase},S_SPOS_RUN4}, // S_SPOS_RUN3
+-  {SPR_SPOS,1,3,{.p1 = A_Chase},S_SPOS_RUN5}, // S_SPOS_RUN4
+-  {SPR_SPOS,2,3,{.p1 = A_Chase},S_SPOS_RUN6}, // S_SPOS_RUN5
+-  {SPR_SPOS,2,3,{.p1 = A_Chase},S_SPOS_RUN7}, // S_SPOS_RUN6
+-  {SPR_SPOS,3,3,{.p1 = A_Chase},S_SPOS_RUN8}, // S_SPOS_RUN7
+-  {SPR_SPOS,3,3,{.p1 = A_Chase},S_SPOS_RUN1}, // S_SPOS_RUN8
+-  {SPR_SPOS,4,10,{.p1 = A_FaceTarget},S_SPOS_ATK2}, // S_SPOS_ATK1
+-  {SPR_SPOS,5|FF_FULLBRIGHT,10,{.p1 = A_SPosAttack},S_SPOS_ATK3}, // S_SPOS_ATK2
++  {SPR_SPOS,0,10,{.p3 = A_Look},S_SPOS_STND2},  // S_SPOS_STND
++  {SPR_SPOS,1,10,{.p3 = A_Look},S_SPOS_STND}, // S_SPOS_STND2
++  {SPR_SPOS,0,3,{.p3 = A_Chase},S_SPOS_RUN2}, // S_SPOS_RUN1
++  {SPR_SPOS,0,3,{.p3 = A_Chase},S_SPOS_RUN3}, // S_SPOS_RUN2
++  {SPR_SPOS,1,3,{.p3 = A_Chase},S_SPOS_RUN4}, // S_SPOS_RUN3
++  {SPR_SPOS,1,3,{.p3 = A_Chase},S_SPOS_RUN5}, // S_SPOS_RUN4
++  {SPR_SPOS,2,3,{.p3 = A_Chase},S_SPOS_RUN6}, // S_SPOS_RUN5
++  {SPR_SPOS,2,3,{.p3 = A_Chase},S_SPOS_RUN7}, // S_SPOS_RUN6
++  {SPR_SPOS,3,3,{.p3 = A_Chase},S_SPOS_RUN8}, // S_SPOS_RUN7
++  {SPR_SPOS,3,3,{.p3 = A_Chase},S_SPOS_RUN1}, // S_SPOS_RUN8
++  {SPR_SPOS,4,10,{.p3 = A_FaceTarget},S_SPOS_ATK2}, // S_SPOS_ATK1
++  {SPR_SPOS,5|FF_FULLBRIGHT,10,{.p3 = A_SPosAttack},S_SPOS_ATK3}, // S_SPOS_ATK2
+   {SPR_SPOS,4,10,{NULL},S_SPOS_RUN1}, // S_SPOS_ATK3
+   {SPR_SPOS,6,3,{NULL},S_SPOS_PAIN2}, // S_SPOS_PAIN
+-  {SPR_SPOS,6,3,{.p1 = A_Pain},S_SPOS_RUN1},  // S_SPOS_PAIN2
++  {SPR_SPOS,6,3,{.p3 = A_Pain},S_SPOS_RUN1},  // S_SPOS_PAIN2
+   {SPR_SPOS,7,5,{NULL},S_SPOS_DIE2},  // S_SPOS_DIE1
+-  {SPR_SPOS,8,5,{.p1 = A_Scream},S_SPOS_DIE3},  // S_SPOS_DIE2
+-  {SPR_SPOS,9,5,{.p1 = A_Fall},S_SPOS_DIE4},  // S_SPOS_DIE3
++  {SPR_SPOS,8,5,{.p3 = A_Scream},S_SPOS_DIE3},  // S_SPOS_DIE2
++  {SPR_SPOS,9,5,{.p3 = A_Fall},S_SPOS_DIE4},  // S_SPOS_DIE3
+   {SPR_SPOS,10,5,{NULL},S_SPOS_DIE5}, // S_SPOS_DIE4
+   {SPR_SPOS,11,-1,{NULL},S_NULL}, // S_SPOS_DIE5
+   {SPR_SPOS,12,5,{NULL},S_SPOS_XDIE2},  // S_SPOS_XDIE1
+-  {SPR_SPOS,13,5,{.p1 = A_XScream},S_SPOS_XDIE3}, // S_SPOS_XDIE2
+-  {SPR_SPOS,14,5,{.p1 = A_Fall},S_SPOS_XDIE4},  // S_SPOS_XDIE3
++  {SPR_SPOS,13,5,{.p3 = A_XScream},S_SPOS_XDIE3}, // S_SPOS_XDIE2
++  {SPR_SPOS,14,5,{.p3 = A_Fall},S_SPOS_XDIE4},  // S_SPOS_XDIE3
+   {SPR_SPOS,15,5,{NULL},S_SPOS_XDIE5},  // S_SPOS_XDIE4
+   {SPR_SPOS,16,5,{NULL},S_SPOS_XDIE6},  // S_SPOS_XDIE5
+   {SPR_SPOS,17,5,{NULL},S_SPOS_XDIE7},  // S_SPOS_XDIE6
+@@ -360,39 +360,39 @@ state_t original_states[NUMSTATES] = {
+   {SPR_SPOS,9,5,{NULL},S_SPOS_RAISE4},  // S_SPOS_RAISE3
+   {SPR_SPOS,8,5,{NULL},S_SPOS_RAISE5},  // S_SPOS_RAISE4
+   {SPR_SPOS,7,5,{NULL},S_SPOS_RUN1},  // S_SPOS_RAISE5
+-  {SPR_VILE,0,10,{.p1 = A_Look},S_VILE_STND2},  // S_VILE_STND
+-  {SPR_VILE,1,10,{.p1 = A_Look},S_VILE_STND}, // S_VILE_STND2
+-  {SPR_VILE,0,2,{.p1 = A_VileChase},S_VILE_RUN2}, // S_VILE_RUN1
+-  {SPR_VILE,0,2,{.p1 = A_VileChase},S_VILE_RUN3}, // S_VILE_RUN2
+-  {SPR_VILE,1,2,{.p1 = A_VileChase},S_VILE_RUN4}, // S_VILE_RUN3
+-  {SPR_VILE,1,2,{.p1 = A_VileChase},S_VILE_RUN5}, // S_VILE_RUN4
+-  {SPR_VILE,2,2,{.p1 = A_VileChase},S_VILE_RUN6}, // S_VILE_RUN5
+-  {SPR_VILE,2,2,{.p1 = A_VileChase},S_VILE_RUN7}, // S_VILE_RUN6
+-  {SPR_VILE,3,2,{.p1 = A_VileChase},S_VILE_RUN8}, // S_VILE_RUN7
+-  {SPR_VILE,3,2,{.p1 = A_VileChase},S_VILE_RUN9}, // S_VILE_RUN8
+-  {SPR_VILE,4,2,{.p1 = A_VileChase},S_VILE_RUN10},  // S_VILE_RUN9
+-  {SPR_VILE,4,2,{.p1 = A_VileChase},S_VILE_RUN11},  // S_VILE_RUN10
+-  {SPR_VILE,5,2,{.p1 = A_VileChase},S_VILE_RUN12},  // S_VILE_RUN11
+-  {SPR_VILE,5,2,{.p1 = A_VileChase},S_VILE_RUN1}, // S_VILE_RUN12
+-  {SPR_VILE,6|FF_FULLBRIGHT,0,{.p1 = A_VileStart},S_VILE_ATK2}, // S_VILE_ATK1
+-  {SPR_VILE,6|FF_FULLBRIGHT,10,{.p1 = A_FaceTarget},S_VILE_ATK3}, // S_VILE_ATK2
+-  {SPR_VILE,7|FF_FULLBRIGHT,8,{.p1 = A_VileTarget},S_VILE_ATK4},  // S_VILE_ATK3
+-  {SPR_VILE,8|FF_FULLBRIGHT,8,{.p1 = A_FaceTarget},S_VILE_ATK5},  // S_VILE_ATK4
+-  {SPR_VILE,9|FF_FULLBRIGHT,8,{.p1 = A_FaceTarget},S_VILE_ATK6},  // S_VILE_ATK5
+-  {SPR_VILE,10|FF_FULLBRIGHT,8,{.p1 = A_FaceTarget},S_VILE_ATK7},  // S_VILE_ATK6
+-  {SPR_VILE,11|FF_FULLBRIGHT,8,{.p1 = A_FaceTarget},S_VILE_ATK8},  // S_VILE_ATK7
+-  {SPR_VILE,12|FF_FULLBRIGHT,8,{.p1 = A_FaceTarget},S_VILE_ATK9},  // S_VILE_ATK8
+-  {SPR_VILE,13|FF_FULLBRIGHT,8,{.p1 = A_FaceTarget},S_VILE_ATK10}, // S_VILE_ATK9
+-  {SPR_VILE,14|FF_FULLBRIGHT,8,{.p1 = A_VileAttack},S_VILE_ATK11}, // S_VILE_ATK10
++  {SPR_VILE,0,10,{.p3 = A_Look},S_VILE_STND2},  // S_VILE_STND
++  {SPR_VILE,1,10,{.p3 = A_Look},S_VILE_STND}, // S_VILE_STND2
++  {SPR_VILE,0,2,{.p3 = A_VileChase},S_VILE_RUN2}, // S_VILE_RUN1
++  {SPR_VILE,0,2,{.p3 = A_VileChase},S_VILE_RUN3}, // S_VILE_RUN2
++  {SPR_VILE,1,2,{.p3 = A_VileChase},S_VILE_RUN4}, // S_VILE_RUN3
++  {SPR_VILE,1,2,{.p3 = A_VileChase},S_VILE_RUN5}, // S_VILE_RUN4
++  {SPR_VILE,2,2,{.p3 = A_VileChase},S_VILE_RUN6}, // S_VILE_RUN5
++  {SPR_VILE,2,2,{.p3 = A_VileChase},S_VILE_RUN7}, // S_VILE_RUN6
++  {SPR_VILE,3,2,{.p3 = A_VileChase},S_VILE_RUN8}, // S_VILE_RUN7
++  {SPR_VILE,3,2,{.p3 = A_VileChase},S_VILE_RUN9}, // S_VILE_RUN8
++  {SPR_VILE,4,2,{.p3 = A_VileChase},S_VILE_RUN10},  // S_VILE_RUN9
++  {SPR_VILE,4,2,{.p3 = A_VileChase},S_VILE_RUN11},  // S_VILE_RUN10
++  {SPR_VILE,5,2,{.p3 = A_VileChase},S_VILE_RUN12},  // S_VILE_RUN11
++  {SPR_VILE,5,2,{.p3 = A_VileChase},S_VILE_RUN1}, // S_VILE_RUN12
++  {SPR_VILE,6|FF_FULLBRIGHT,0,{.p3 = A_VileStart},S_VILE_ATK2}, // S_VILE_ATK1
++  {SPR_VILE,6|FF_FULLBRIGHT,10,{.p3 = A_FaceTarget},S_VILE_ATK3}, // S_VILE_ATK2
++  {SPR_VILE,7|FF_FULLBRIGHT,8,{.p3 = A_VileTarget},S_VILE_ATK4},  // S_VILE_ATK3
++  {SPR_VILE,8|FF_FULLBRIGHT,8,{.p3 = A_FaceTarget},S_VILE_ATK5},  // S_VILE_ATK4
++  {SPR_VILE,9|FF_FULLBRIGHT,8,{.p3 = A_FaceTarget},S_VILE_ATK6},  // S_VILE_ATK5
++  {SPR_VILE,10|FF_FULLBRIGHT,8,{.p3 = A_FaceTarget},S_VILE_ATK7},  // S_VILE_ATK6
++  {SPR_VILE,11|FF_FULLBRIGHT,8,{.p3 = A_FaceTarget},S_VILE_ATK8},  // S_VILE_ATK7
++  {SPR_VILE,12|FF_FULLBRIGHT,8,{.p3 = A_FaceTarget},S_VILE_ATK9},  // S_VILE_ATK8
++  {SPR_VILE,13|FF_FULLBRIGHT,8,{.p3 = A_FaceTarget},S_VILE_ATK10}, // S_VILE_ATK9
++  {SPR_VILE,14|FF_FULLBRIGHT,8,{.p3 = A_VileAttack},S_VILE_ATK11}, // S_VILE_ATK10
+   {SPR_VILE,15|FF_FULLBRIGHT,20,{NULL},S_VILE_RUN1}, // S_VILE_ATK11
+   {SPR_VILE,26|FF_FULLBRIGHT,10,{NULL},S_VILE_HEAL2},  // S_VILE_HEAL1
+   {SPR_VILE,27|FF_FULLBRIGHT,10,{NULL},S_VILE_HEAL3},  // S_VILE_HEAL2
+   {SPR_VILE,28|FF_FULLBRIGHT,10,{NULL},S_VILE_RUN1}, // S_VILE_HEAL3
+   {SPR_VILE,16,5,{NULL},S_VILE_PAIN2},  // S_VILE_PAIN
+-  {SPR_VILE,16,5,{.p1 = A_Pain},S_VILE_RUN1}, // S_VILE_PAIN2
++  {SPR_VILE,16,5,{.p3 = A_Pain},S_VILE_RUN1}, // S_VILE_PAIN2
+   {SPR_VILE,16,7,{NULL},S_VILE_DIE2}, // S_VILE_DIE1
+-  {SPR_VILE,17,7,{.p1 = A_Scream},S_VILE_DIE3},  // S_VILE_DIE2
+-  {SPR_VILE,18,7,{.p1 = A_Fall},S_VILE_DIE4}, // S_VILE_DIE3
++  {SPR_VILE,17,7,{.p3 = A_Scream},S_VILE_DIE3},  // S_VILE_DIE2
++  {SPR_VILE,18,7,{.p3 = A_Fall},S_VILE_DIE4}, // S_VILE_DIE3
+   {SPR_VILE,19,7,{NULL},S_VILE_DIE5}, // S_VILE_DIE4
+   {SPR_VILE,20,7,{NULL},S_VILE_DIE6}, // S_VILE_DIE5
+   {SPR_VILE,21,7,{NULL},S_VILE_DIE7}, // S_VILE_DIE6
+@@ -400,74 +400,74 @@ state_t original_states[NUMSTATES] = {
+   {SPR_VILE,23,5,{NULL},S_VILE_DIE9}, // S_VILE_DIE8
+   {SPR_VILE,24,5,{NULL},S_VILE_DIE10},  // S_VILE_DIE9
+   {SPR_VILE,25,-1,{NULL},S_NULL}, // S_VILE_DIE10
+-  {SPR_FIRE,0|FF_FULLBRIGHT,2,{.p1 = A_StartFire},S_FIRE2}, // S_FIRE1
+-  {SPR_FIRE,1|FF_FULLBRIGHT,2,{.p1 = A_Fire},S_FIRE3},  // S_FIRE2
+-  {SPR_FIRE,0|FF_FULLBRIGHT,2,{.p1 = A_Fire},S_FIRE4},  // S_FIRE3
+-  {SPR_FIRE,1|FF_FULLBRIGHT,2,{.p1 = A_Fire},S_FIRE5},  // S_FIRE4
+-  {SPR_FIRE,2|FF_FULLBRIGHT,2,{.p1 = A_FireCrackle},S_FIRE6}, // S_FIRE5
+-  {SPR_FIRE,1|FF_FULLBRIGHT,2,{.p1 = A_Fire},S_FIRE7},  // S_FIRE6
+-  {SPR_FIRE,2|FF_FULLBRIGHT,2,{.p1 = A_Fire},S_FIRE8},  // S_FIRE7
+-  {SPR_FIRE,1|FF_FULLBRIGHT,2,{.p1 = A_Fire},S_FIRE9},  // S_FIRE8
+-  {SPR_FIRE,2|FF_FULLBRIGHT,2,{.p1 = A_Fire},S_FIRE10}, // S_FIRE9
+-  {SPR_FIRE,3|FF_FULLBRIGHT,2,{.p1 = A_Fire},S_FIRE11}, // S_FIRE10
+-  {SPR_FIRE,2|FF_FULLBRIGHT,2,{.p1 = A_Fire},S_FIRE12}, // S_FIRE11
+-  {SPR_FIRE,3|FF_FULLBRIGHT,2,{.p1 = A_Fire},S_FIRE13}, // S_FIRE12
+-  {SPR_FIRE,2|FF_FULLBRIGHT,2,{.p1 = A_Fire},S_FIRE14}, // S_FIRE13
+-  {SPR_FIRE,3|FF_FULLBRIGHT,2,{.p1 = A_Fire},S_FIRE15}, // S_FIRE14
+-  {SPR_FIRE,4|FF_FULLBRIGHT,2,{.p1 = A_Fire},S_FIRE16}, // S_FIRE15
+-  {SPR_FIRE,3|FF_FULLBRIGHT,2,{.p1 = A_Fire},S_FIRE17}, // S_FIRE16
+-  {SPR_FIRE,4|FF_FULLBRIGHT,2,{.p1 = A_Fire},S_FIRE18}, // S_FIRE17
+-  {SPR_FIRE,3|FF_FULLBRIGHT,2,{.p1 = A_Fire},S_FIRE19}, // S_FIRE18
+-  {SPR_FIRE,4|FF_FULLBRIGHT,2,{.p1 = A_FireCrackle},S_FIRE20},  // S_FIRE19
+-  {SPR_FIRE,5|FF_FULLBRIGHT,2,{.p1 = A_Fire},S_FIRE21}, // S_FIRE20
+-  {SPR_FIRE,4|FF_FULLBRIGHT,2,{.p1 = A_Fire},S_FIRE22}, // S_FIRE21
+-  {SPR_FIRE,5|FF_FULLBRIGHT,2,{.p1 = A_Fire},S_FIRE23}, // S_FIRE22
+-  {SPR_FIRE,4|FF_FULLBRIGHT,2,{.p1 = A_Fire},S_FIRE24}, // S_FIRE23
+-  {SPR_FIRE,5|FF_FULLBRIGHT,2,{.p1 = A_Fire},S_FIRE25}, // S_FIRE24
+-  {SPR_FIRE,6|FF_FULLBRIGHT,2,{.p1 = A_Fire},S_FIRE26}, // S_FIRE25
+-  {SPR_FIRE,7|FF_FULLBRIGHT,2,{.p1 = A_Fire},S_FIRE27}, // S_FIRE26
+-  {SPR_FIRE,6|FF_FULLBRIGHT,2,{.p1 = A_Fire},S_FIRE28}, // S_FIRE27
+-  {SPR_FIRE,7|FF_FULLBRIGHT,2,{.p1 = A_Fire},S_FIRE29}, // S_FIRE28
+-  {SPR_FIRE,6|FF_FULLBRIGHT,2,{.p1 = A_Fire},S_FIRE30}, // S_FIRE29
+-  {SPR_FIRE,7|FF_FULLBRIGHT,2,{.p1 = A_Fire},S_NULL}, // S_FIRE30
++  {SPR_FIRE,0|FF_FULLBRIGHT,2,{.p3 = A_StartFire},S_FIRE2}, // S_FIRE1
++  {SPR_FIRE,1|FF_FULLBRIGHT,2,{.p3 = A_Fire},S_FIRE3},  // S_FIRE2
++  {SPR_FIRE,0|FF_FULLBRIGHT,2,{.p3 = A_Fire},S_FIRE4},  // S_FIRE3
++  {SPR_FIRE,1|FF_FULLBRIGHT,2,{.p3 = A_Fire},S_FIRE5},  // S_FIRE4
++  {SPR_FIRE,2|FF_FULLBRIGHT,2,{.p3 = A_FireCrackle},S_FIRE6}, // S_FIRE5
++  {SPR_FIRE,1|FF_FULLBRIGHT,2,{.p3 = A_Fire},S_FIRE7},  // S_FIRE6
++  {SPR_FIRE,2|FF_FULLBRIGHT,2,{.p3 = A_Fire},S_FIRE8},  // S_FIRE7
++  {SPR_FIRE,1|FF_FULLBRIGHT,2,{.p3 = A_Fire},S_FIRE9},  // S_FIRE8
++  {SPR_FIRE,2|FF_FULLBRIGHT,2,{.p3 = A_Fire},S_FIRE10}, // S_FIRE9
++  {SPR_FIRE,3|FF_FULLBRIGHT,2,{.p3 = A_Fire},S_FIRE11}, // S_FIRE10
++  {SPR_FIRE,2|FF_FULLBRIGHT,2,{.p3 = A_Fire},S_FIRE12}, // S_FIRE11
++  {SPR_FIRE,3|FF_FULLBRIGHT,2,{.p3 = A_Fire},S_FIRE13}, // S_FIRE12
++  {SPR_FIRE,2|FF_FULLBRIGHT,2,{.p3 = A_Fire},S_FIRE14}, // S_FIRE13
++  {SPR_FIRE,3|FF_FULLBRIGHT,2,{.p3 = A_Fire},S_FIRE15}, // S_FIRE14
++  {SPR_FIRE,4|FF_FULLBRIGHT,2,{.p3 = A_Fire},S_FIRE16}, // S_FIRE15
++  {SPR_FIRE,3|FF_FULLBRIGHT,2,{.p3 = A_Fire},S_FIRE17}, // S_FIRE16
++  {SPR_FIRE,4|FF_FULLBRIGHT,2,{.p3 = A_Fire},S_FIRE18}, // S_FIRE17
++  {SPR_FIRE,3|FF_FULLBRIGHT,2,{.p3 = A_Fire},S_FIRE19}, // S_FIRE18
++  {SPR_FIRE,4|FF_FULLBRIGHT,2,{.p3 = A_FireCrackle},S_FIRE20},  // S_FIRE19
++  {SPR_FIRE,5|FF_FULLBRIGHT,2,{.p3 = A_Fire},S_FIRE21}, // S_FIRE20
++  {SPR_FIRE,4|FF_FULLBRIGHT,2,{.p3 = A_Fire},S_FIRE22}, // S_FIRE21
++  {SPR_FIRE,5|FF_FULLBRIGHT,2,{.p3 = A_Fire},S_FIRE23}, // S_FIRE22
++  {SPR_FIRE,4|FF_FULLBRIGHT,2,{.p3 = A_Fire},S_FIRE24}, // S_FIRE23
++  {SPR_FIRE,5|FF_FULLBRIGHT,2,{.p3 = A_Fire},S_FIRE25}, // S_FIRE24
++  {SPR_FIRE,6|FF_FULLBRIGHT,2,{.p3 = A_Fire},S_FIRE26}, // S_FIRE25
++  {SPR_FIRE,7|FF_FULLBRIGHT,2,{.p3 = A_Fire},S_FIRE27}, // S_FIRE26
++  {SPR_FIRE,6|FF_FULLBRIGHT,2,{.p3 = A_Fire},S_FIRE28}, // S_FIRE27
++  {SPR_FIRE,7|FF_FULLBRIGHT,2,{.p3 = A_Fire},S_FIRE29}, // S_FIRE28
++  {SPR_FIRE,6|FF_FULLBRIGHT,2,{.p3 = A_Fire},S_FIRE30}, // S_FIRE29
++  {SPR_FIRE,7|FF_FULLBRIGHT,2,{.p3 = A_Fire},S_NULL}, // S_FIRE30
+   {SPR_PUFF,1,4,{NULL},S_SMOKE2}, // S_SMOKE1
+   {SPR_PUFF,2,4,{NULL},S_SMOKE3}, // S_SMOKE2
+   {SPR_PUFF,1,4,{NULL},S_SMOKE4}, // S_SMOKE3
+   {SPR_PUFF,2,4,{NULL},S_SMOKE5}, // S_SMOKE4
+   {SPR_PUFF,3,4,{NULL},S_NULL}, // S_SMOKE5
+-  {SPR_FATB,0|FF_FULLBRIGHT,2,{.p1 = A_Tracer},S_TRACER2},  // S_TRACER
+-  {SPR_FATB,1|FF_FULLBRIGHT,2,{.p1 = A_Tracer},S_TRACER}, // S_TRACER2
++  {SPR_FATB,0|FF_FULLBRIGHT,2,{.p3 = A_Tracer},S_TRACER2},  // S_TRACER
++  {SPR_FATB,1|FF_FULLBRIGHT,2,{.p3 = A_Tracer},S_TRACER}, // S_TRACER2
+   {SPR_FBXP,0|FF_FULLBRIGHT,8,{NULL},S_TRACEEXP2},  // S_TRACEEXP1
+   {SPR_FBXP,1|FF_FULLBRIGHT,6,{NULL},S_TRACEEXP3},  // S_TRACEEXP2
+   {SPR_FBXP,2|FF_FULLBRIGHT,4,{NULL},S_NULL}, // S_TRACEEXP3
+-  {SPR_SKEL,0,10,{.p1 = A_Look},S_SKEL_STND2},  // S_SKEL_STND
+-  {SPR_SKEL,1,10,{.p1 = A_Look},S_SKEL_STND}, // S_SKEL_STND2
+-  {SPR_SKEL,0,2,{.p1 = A_Chase},S_SKEL_RUN2}, // S_SKEL_RUN1
+-  {SPR_SKEL,0,2,{.p1 = A_Chase},S_SKEL_RUN3}, // S_SKEL_RUN2
+-  {SPR_SKEL,1,2,{.p1 = A_Chase},S_SKEL_RUN4}, // S_SKEL_RUN3
+-  {SPR_SKEL,1,2,{.p1 = A_Chase},S_SKEL_RUN5}, // S_SKEL_RUN4
+-  {SPR_SKEL,2,2,{.p1 = A_Chase},S_SKEL_RUN6}, // S_SKEL_RUN5
+-  {SPR_SKEL,2,2,{.p1 = A_Chase},S_SKEL_RUN7}, // S_SKEL_RUN6
+-  {SPR_SKEL,3,2,{.p1 = A_Chase},S_SKEL_RUN8}, // S_SKEL_RUN7
+-  {SPR_SKEL,3,2,{.p1 = A_Chase},S_SKEL_RUN9}, // S_SKEL_RUN8
+-  {SPR_SKEL,4,2,{.p1 = A_Chase},S_SKEL_RUN10},  // S_SKEL_RUN9
+-  {SPR_SKEL,4,2,{.p1 = A_Chase},S_SKEL_RUN11},  // S_SKEL_RUN10
+-  {SPR_SKEL,5,2,{.p1 = A_Chase},S_SKEL_RUN12},  // S_SKEL_RUN11
+-  {SPR_SKEL,5,2,{.p1 = A_Chase},S_SKEL_RUN1}, // S_SKEL_RUN12
+-  {SPR_SKEL,6,0,{.p1 = A_FaceTarget},S_SKEL_FIST2}, // S_SKEL_FIST1
+-  {SPR_SKEL,6,6,{.p1 = A_SkelWhoosh},S_SKEL_FIST3}, // S_SKEL_FIST2
+-  {SPR_SKEL,7,6,{.p1 = A_FaceTarget},S_SKEL_FIST4}, // S_SKEL_FIST3
+-  {SPR_SKEL,8,6,{.p1 = A_SkelFist},S_SKEL_RUN1},  // S_SKEL_FIST4
+-  {SPR_SKEL,9|FF_FULLBRIGHT,0,{.p1 = A_FaceTarget},S_SKEL_MISS2}, // S_SKEL_MISS1
+-  {SPR_SKEL,9|FF_FULLBRIGHT,10,{.p1 = A_FaceTarget},S_SKEL_MISS3},  // S_SKEL_MISS2
+-  {SPR_SKEL,10,10,{.p1 = A_SkelMissile},S_SKEL_MISS4},  // S_SKEL_MISS3
+-  {SPR_SKEL,10,10,{.p1 = A_FaceTarget},S_SKEL_RUN1},  // S_SKEL_MISS4
++  {SPR_SKEL,0,10,{.p3 = A_Look},S_SKEL_STND2},  // S_SKEL_STND
++  {SPR_SKEL,1,10,{.p3 = A_Look},S_SKEL_STND}, // S_SKEL_STND2
++  {SPR_SKEL,0,2,{.p3 = A_Chase},S_SKEL_RUN2}, // S_SKEL_RUN1
++  {SPR_SKEL,0,2,{.p3 = A_Chase},S_SKEL_RUN3}, // S_SKEL_RUN2
++  {SPR_SKEL,1,2,{.p3 = A_Chase},S_SKEL_RUN4}, // S_SKEL_RUN3
++  {SPR_SKEL,1,2,{.p3 = A_Chase},S_SKEL_RUN5}, // S_SKEL_RUN4
++  {SPR_SKEL,2,2,{.p3 = A_Chase},S_SKEL_RUN6}, // S_SKEL_RUN5
++  {SPR_SKEL,2,2,{.p3 = A_Chase},S_SKEL_RUN7}, // S_SKEL_RUN6
++  {SPR_SKEL,3,2,{.p3 = A_Chase},S_SKEL_RUN8}, // S_SKEL_RUN7
++  {SPR_SKEL,3,2,{.p3 = A_Chase},S_SKEL_RUN9}, // S_SKEL_RUN8
++  {SPR_SKEL,4,2,{.p3 = A_Chase},S_SKEL_RUN10},  // S_SKEL_RUN9
++  {SPR_SKEL,4,2,{.p3 = A_Chase},S_SKEL_RUN11},  // S_SKEL_RUN10
++  {SPR_SKEL,5,2,{.p3 = A_Chase},S_SKEL_RUN12},  // S_SKEL_RUN11
++  {SPR_SKEL,5,2,{.p3 = A_Chase},S_SKEL_RUN1}, // S_SKEL_RUN12
++  {SPR_SKEL,6,0,{.p3 = A_FaceTarget},S_SKEL_FIST2}, // S_SKEL_FIST1
++  {SPR_SKEL,6,6,{.p3 = A_SkelWhoosh},S_SKEL_FIST3}, // S_SKEL_FIST2
++  {SPR_SKEL,7,6,{.p3 = A_FaceTarget},S_SKEL_FIST4}, // S_SKEL_FIST3
++  {SPR_SKEL,8,6,{.p3 = A_SkelFist},S_SKEL_RUN1},  // S_SKEL_FIST4
++  {SPR_SKEL,9|FF_FULLBRIGHT,0,{.p3 = A_FaceTarget},S_SKEL_MISS2}, // S_SKEL_MISS1
++  {SPR_SKEL,9|FF_FULLBRIGHT,10,{.p3 = A_FaceTarget},S_SKEL_MISS3},  // S_SKEL_MISS2
++  {SPR_SKEL,10,10,{.p3 = A_SkelMissile},S_SKEL_MISS4},  // S_SKEL_MISS3
++  {SPR_SKEL,10,10,{.p3 = A_FaceTarget},S_SKEL_RUN1},  // S_SKEL_MISS4
+   {SPR_SKEL,11,5,{NULL},S_SKEL_PAIN2},  // S_SKEL_PAIN
+-  {SPR_SKEL,11,5,{.p1 = A_Pain},S_SKEL_RUN1}, // S_SKEL_PAIN2
++  {SPR_SKEL,11,5,{.p3 = A_Pain},S_SKEL_RUN1}, // S_SKEL_PAIN2
+   {SPR_SKEL,11,7,{NULL},S_SKEL_DIE2}, // S_SKEL_DIE1
+   {SPR_SKEL,12,7,{NULL},S_SKEL_DIE3}, // S_SKEL_DIE2
+-  {SPR_SKEL,13,7,{.p1 = A_Scream},S_SKEL_DIE4}, // S_SKEL_DIE3
+-  {SPR_SKEL,14,7,{.p1 = A_Fall},S_SKEL_DIE5}, // S_SKEL_DIE4
++  {SPR_SKEL,13,7,{.p3 = A_Scream},S_SKEL_DIE4}, // S_SKEL_DIE3
++  {SPR_SKEL,14,7,{.p3 = A_Fall},S_SKEL_DIE5}, // S_SKEL_DIE4
+   {SPR_SKEL,15,7,{NULL},S_SKEL_DIE6}, // S_SKEL_DIE5
+   {SPR_SKEL,16,-1,{NULL},S_NULL}, // S_SKEL_DIE6
+   {SPR_SKEL,16,5,{NULL},S_SKEL_RAISE2}, // S_SKEL_RAISE1
+@@ -481,42 +481,42 @@ state_t original_states[NUMSTATES] = {
+   {SPR_MISL,1|FF_FULLBRIGHT,8,{NULL},S_FATSHOTX2},  // S_FATSHOTX1
+   {SPR_MISL,2|FF_FULLBRIGHT,6,{NULL},S_FATSHOTX3},  // S_FATSHOTX2
+   {SPR_MISL,3|FF_FULLBRIGHT,4,{NULL},S_NULL}, // S_FATSHOTX3
+-  {SPR_FATT,0,15,{.p1 = A_Look},S_FATT_STND2},  // S_FATT_STND
+-  {SPR_FATT,1,15,{.p1 = A_Look},S_FATT_STND}, // S_FATT_STND2
+-  {SPR_FATT,0,4,{.p1 = A_Chase},S_FATT_RUN2}, // S_FATT_RUN1
+-  {SPR_FATT,0,4,{.p1 = A_Chase},S_FATT_RUN3}, // S_FATT_RUN2
+-  {SPR_FATT,1,4,{.p1 = A_Chase},S_FATT_RUN4}, // S_FATT_RUN3
+-  {SPR_FATT,1,4,{.p1 = A_Chase},S_FATT_RUN5}, // S_FATT_RUN4
+-  {SPR_FATT,2,4,{.p1 = A_Chase},S_FATT_RUN6}, // S_FATT_RUN5
+-  {SPR_FATT,2,4,{.p1 = A_Chase},S_FATT_RUN7}, // S_FATT_RUN6
+-  {SPR_FATT,3,4,{.p1 = A_Chase},S_FATT_RUN8}, // S_FATT_RUN7
+-  {SPR_FATT,3,4,{.p1 = A_Chase},S_FATT_RUN9}, // S_FATT_RUN8
+-  {SPR_FATT,4,4,{.p1 = A_Chase},S_FATT_RUN10},  // S_FATT_RUN9
+-  {SPR_FATT,4,4,{.p1 = A_Chase},S_FATT_RUN11},  // S_FATT_RUN10
+-  {SPR_FATT,5,4,{.p1 = A_Chase},S_FATT_RUN12},  // S_FATT_RUN11
+-  {SPR_FATT,5,4,{.p1 = A_Chase},S_FATT_RUN1}, // S_FATT_RUN12
+-  {SPR_FATT,6,20,{.p1 = A_FatRaise},S_FATT_ATK2}, // S_FATT_ATK1
+-  {SPR_FATT,7|FF_FULLBRIGHT,10,{.p1 = A_FatAttack1},S_FATT_ATK3}, // S_FATT_ATK2
+-  {SPR_FATT,8,5,{.p1 = A_FaceTarget},S_FATT_ATK4},  // S_FATT_ATK3
+-  {SPR_FATT,6,5,{.p1 = A_FaceTarget},S_FATT_ATK5},  // S_FATT_ATK4
+-  {SPR_FATT,7|FF_FULLBRIGHT,10,{.p1 = A_FatAttack2},S_FATT_ATK6}, // S_FATT_ATK5
+-  {SPR_FATT,8,5,{.p1 = A_FaceTarget},S_FATT_ATK7},  // S_FATT_ATK6
+-  {SPR_FATT,6,5,{.p1 = A_FaceTarget},S_FATT_ATK8},  // S_FATT_ATK7
+-  {SPR_FATT,7|FF_FULLBRIGHT,10,{.p1 = A_FatAttack3},S_FATT_ATK9}, // S_FATT_ATK8
+-  {SPR_FATT,8,5,{.p1 = A_FaceTarget},S_FATT_ATK10}, // S_FATT_ATK9
+-  {SPR_FATT,6,5,{.p1 = A_FaceTarget},S_FATT_RUN1},  // S_FATT_ATK10
++  {SPR_FATT,0,15,{.p3 = A_Look},S_FATT_STND2},  // S_FATT_STND
++  {SPR_FATT,1,15,{.p3 = A_Look},S_FATT_STND}, // S_FATT_STND2
++  {SPR_FATT,0,4,{.p3 = A_Chase},S_FATT_RUN2}, // S_FATT_RUN1
++  {SPR_FATT,0,4,{.p3 = A_Chase},S_FATT_RUN3}, // S_FATT_RUN2
++  {SPR_FATT,1,4,{.p3 = A_Chase},S_FATT_RUN4}, // S_FATT_RUN3
++  {SPR_FATT,1,4,{.p3 = A_Chase},S_FATT_RUN5}, // S_FATT_RUN4
++  {SPR_FATT,2,4,{.p3 = A_Chase},S_FATT_RUN6}, // S_FATT_RUN5
++  {SPR_FATT,2,4,{.p3 = A_Chase},S_FATT_RUN7}, // S_FATT_RUN6
++  {SPR_FATT,3,4,{.p3 = A_Chase},S_FATT_RUN8}, // S_FATT_RUN7
++  {SPR_FATT,3,4,{.p3 = A_Chase},S_FATT_RUN9}, // S_FATT_RUN8
++  {SPR_FATT,4,4,{.p3 = A_Chase},S_FATT_RUN10},  // S_FATT_RUN9
++  {SPR_FATT,4,4,{.p3 = A_Chase},S_FATT_RUN11},  // S_FATT_RUN10
++  {SPR_FATT,5,4,{.p3 = A_Chase},S_FATT_RUN12},  // S_FATT_RUN11
++  {SPR_FATT,5,4,{.p3 = A_Chase},S_FATT_RUN1}, // S_FATT_RUN12
++  {SPR_FATT,6,20,{.p3 = A_FatRaise},S_FATT_ATK2}, // S_FATT_ATK1
++  {SPR_FATT,7|FF_FULLBRIGHT,10,{.p3 = A_FatAttack1},S_FATT_ATK3}, // S_FATT_ATK2
++  {SPR_FATT,8,5,{.p3 = A_FaceTarget},S_FATT_ATK4},  // S_FATT_ATK3
++  {SPR_FATT,6,5,{.p3 = A_FaceTarget},S_FATT_ATK5},  // S_FATT_ATK4
++  {SPR_FATT,7|FF_FULLBRIGHT,10,{.p3 = A_FatAttack2},S_FATT_ATK6}, // S_FATT_ATK5
++  {SPR_FATT,8,5,{.p3 = A_FaceTarget},S_FATT_ATK7},  // S_FATT_ATK6
++  {SPR_FATT,6,5,{.p3 = A_FaceTarget},S_FATT_ATK8},  // S_FATT_ATK7
++  {SPR_FATT,7|FF_FULLBRIGHT,10,{.p3 = A_FatAttack3},S_FATT_ATK9}, // S_FATT_ATK8
++  {SPR_FATT,8,5,{.p3 = A_FaceTarget},S_FATT_ATK10}, // S_FATT_ATK9
++  {SPR_FATT,6,5,{.p3 = A_FaceTarget},S_FATT_RUN1},  // S_FATT_ATK10
+   {SPR_FATT,9,3,{NULL},S_FATT_PAIN2}, // S_FATT_PAIN
+-  {SPR_FATT,9,3,{.p1 = A_Pain},S_FATT_RUN1},  // S_FATT_PAIN2
++  {SPR_FATT,9,3,{.p3 = A_Pain},S_FATT_RUN1},  // S_FATT_PAIN2
+   {SPR_FATT,10,6,{NULL},S_FATT_DIE2}, // S_FATT_DIE1
+-  {SPR_FATT,11,6,{.p1 = A_Scream},S_FATT_DIE3}, // S_FATT_DIE2
+-  {SPR_FATT,12,6,{.p1 = A_Fall},S_FATT_DIE4}, // S_FATT_DIE3
++  {SPR_FATT,11,6,{.p3 = A_Scream},S_FATT_DIE3}, // S_FATT_DIE2
++  {SPR_FATT,12,6,{.p3 = A_Fall},S_FATT_DIE4}, // S_FATT_DIE3
+   {SPR_FATT,13,6,{NULL},S_FATT_DIE5}, // S_FATT_DIE4
+   {SPR_FATT,14,6,{NULL},S_FATT_DIE6}, // S_FATT_DIE5
+   {SPR_FATT,15,6,{NULL},S_FATT_DIE7}, // S_FATT_DIE6
+   {SPR_FATT,16,6,{NULL},S_FATT_DIE8}, // S_FATT_DIE7
+   {SPR_FATT,17,6,{NULL},S_FATT_DIE9}, // S_FATT_DIE8
+   {SPR_FATT,18,6,{NULL},S_FATT_DIE10},  // S_FATT_DIE9
+-  {SPR_FATT,19,-1,{.p1 = A_BossDeath},S_NULL},  // S_FATT_DIE10
++  {SPR_FATT,19,-1,{.p3 = A_BossDeath},S_NULL},  // S_FATT_DIE10
+   {SPR_FATT,17,5,{NULL},S_FATT_RAISE2}, // S_FATT_RAISE1
+   {SPR_FATT,16,5,{NULL},S_FATT_RAISE3}, // S_FATT_RAISE2
+   {SPR_FATT,15,5,{NULL},S_FATT_RAISE4}, // S_FATT_RAISE3
+@@ -525,32 +525,32 @@ state_t original_states[NUMSTATES] = {
+   {SPR_FATT,12,5,{NULL},S_FATT_RAISE7}, // S_FATT_RAISE6
+   {SPR_FATT,11,5,{NULL},S_FATT_RAISE8}, // S_FATT_RAISE7
+   {SPR_FATT,10,5,{NULL},S_FATT_RUN1}, // S_FATT_RAISE8
+-  {SPR_CPOS,0,10,{.p1 = A_Look},S_CPOS_STND2},  // S_CPOS_STND
+-  {SPR_CPOS,1,10,{.p1 = A_Look},S_CPOS_STND}, // S_CPOS_STND2
+-  {SPR_CPOS,0,3,{.p1 = A_Chase},S_CPOS_RUN2}, // S_CPOS_RUN1
+-  {SPR_CPOS,0,3,{.p1 = A_Chase},S_CPOS_RUN3}, // S_CPOS_RUN2
+-  {SPR_CPOS,1,3,{.p1 = A_Chase},S_CPOS_RUN4}, // S_CPOS_RUN3
+-  {SPR_CPOS,1,3,{.p1 = A_Chase},S_CPOS_RUN5}, // S_CPOS_RUN4
+-  {SPR_CPOS,2,3,{.p1 = A_Chase},S_CPOS_RUN6}, // S_CPOS_RUN5
+-  {SPR_CPOS,2,3,{.p1 = A_Chase},S_CPOS_RUN7}, // S_CPOS_RUN6
+-  {SPR_CPOS,3,3,{.p1 = A_Chase},S_CPOS_RUN8}, // S_CPOS_RUN7
+-  {SPR_CPOS,3,3,{.p1 = A_Chase},S_CPOS_RUN1}, // S_CPOS_RUN8
+-  {SPR_CPOS,4,10,{.p1 = A_FaceTarget},S_CPOS_ATK2}, // S_CPOS_ATK1
+-  {SPR_CPOS,5|FF_FULLBRIGHT,4,{.p1 = A_CPosAttack},S_CPOS_ATK3},  // S_CPOS_ATK2
+-  {SPR_CPOS,4|FF_FULLBRIGHT,4,{.p1 = A_CPosAttack},S_CPOS_ATK4},  // S_CPOS_ATK3
+-  {SPR_CPOS,5,1,{.p1 = A_CPosRefire},S_CPOS_ATK2},  // S_CPOS_ATK4
++  {SPR_CPOS,0,10,{.p3 = A_Look},S_CPOS_STND2},  // S_CPOS_STND
++  {SPR_CPOS,1,10,{.p3 = A_Look},S_CPOS_STND}, // S_CPOS_STND2
++  {SPR_CPOS,0,3,{.p3 = A_Chase},S_CPOS_RUN2}, // S_CPOS_RUN1
++  {SPR_CPOS,0,3,{.p3 = A_Chase},S_CPOS_RUN3}, // S_CPOS_RUN2
++  {SPR_CPOS,1,3,{.p3 = A_Chase},S_CPOS_RUN4}, // S_CPOS_RUN3
++  {SPR_CPOS,1,3,{.p3 = A_Chase},S_CPOS_RUN5}, // S_CPOS_RUN4
++  {SPR_CPOS,2,3,{.p3 = A_Chase},S_CPOS_RUN6}, // S_CPOS_RUN5
++  {SPR_CPOS,2,3,{.p3 = A_Chase},S_CPOS_RUN7}, // S_CPOS_RUN6
++  {SPR_CPOS,3,3,{.p3 = A_Chase},S_CPOS_RUN8}, // S_CPOS_RUN7
++  {SPR_CPOS,3,3,{.p3 = A_Chase},S_CPOS_RUN1}, // S_CPOS_RUN8
++  {SPR_CPOS,4,10,{.p3 = A_FaceTarget},S_CPOS_ATK2}, // S_CPOS_ATK1
++  {SPR_CPOS,5|FF_FULLBRIGHT,4,{.p3 = A_CPosAttack},S_CPOS_ATK3},  // S_CPOS_ATK2
++  {SPR_CPOS,4|FF_FULLBRIGHT,4,{.p3 = A_CPosAttack},S_CPOS_ATK4},  // S_CPOS_ATK3
++  {SPR_CPOS,5,1,{.p3 = A_CPosRefire},S_CPOS_ATK2},  // S_CPOS_ATK4
+   {SPR_CPOS,6,3,{NULL},S_CPOS_PAIN2}, // S_CPOS_PAIN
+-  {SPR_CPOS,6,3,{.p1 = A_Pain},S_CPOS_RUN1},  // S_CPOS_PAIN2
++  {SPR_CPOS,6,3,{.p3 = A_Pain},S_CPOS_RUN1},  // S_CPOS_PAIN2
+   {SPR_CPOS,7,5,{NULL},S_CPOS_DIE2},  // S_CPOS_DIE1
+-  {SPR_CPOS,8,5,{.p1 = A_Scream},S_CPOS_DIE3},  // S_CPOS_DIE2
+-  {SPR_CPOS,9,5,{.p1 = A_Fall},S_CPOS_DIE4},  // S_CPOS_DIE3
++  {SPR_CPOS,8,5,{.p3 = A_Scream},S_CPOS_DIE3},  // S_CPOS_DIE2
++  {SPR_CPOS,9,5,{.p3 = A_Fall},S_CPOS_DIE4},  // S_CPOS_DIE3
+   {SPR_CPOS,10,5,{NULL},S_CPOS_DIE5}, // S_CPOS_DIE4
+   {SPR_CPOS,11,5,{NULL},S_CPOS_DIE6}, // S_CPOS_DIE5
+   {SPR_CPOS,12,5,{NULL},S_CPOS_DIE7}, // S_CPOS_DIE6
+   {SPR_CPOS,13,-1,{NULL},S_NULL}, // S_CPOS_DIE7
+   {SPR_CPOS,14,5,{NULL},S_CPOS_XDIE2},  // S_CPOS_XDIE1
+-  {SPR_CPOS,15,5,{.p1 = A_XScream},S_CPOS_XDIE3}, // S_CPOS_XDIE2
+-  {SPR_CPOS,16,5,{.p1 = A_Fall},S_CPOS_XDIE4},  // S_CPOS_XDIE3
++  {SPR_CPOS,15,5,{.p3 = A_XScream},S_CPOS_XDIE3}, // S_CPOS_XDIE2
++  {SPR_CPOS,16,5,{.p3 = A_Fall},S_CPOS_XDIE4},  // S_CPOS_XDIE3
+   {SPR_CPOS,17,5,{NULL},S_CPOS_XDIE5},  // S_CPOS_XDIE4
+   {SPR_CPOS,18,5,{NULL},S_CPOS_XDIE6},  // S_CPOS_XDIE5
+   {SPR_CPOS,19,-1,{NULL},S_NULL}, // S_CPOS_XDIE6
+@@ -561,30 +561,30 @@ state_t original_states[NUMSTATES] = {
+   {SPR_CPOS,9,5,{NULL},S_CPOS_RAISE6},  // S_CPOS_RAISE5
+   {SPR_CPOS,8,5,{NULL},S_CPOS_RAISE7},  // S_CPOS_RAISE6
+   {SPR_CPOS,7,5,{NULL},S_CPOS_RUN1},  // S_CPOS_RAISE7
+-  {SPR_TROO,0,10,{.p1 = A_Look},S_TROO_STND2},  // S_TROO_STND
+-  {SPR_TROO,1,10,{.p1 = A_Look},S_TROO_STND}, // S_TROO_STND2
+-  {SPR_TROO,0,3,{.p1 = A_Chase},S_TROO_RUN2}, // S_TROO_RUN1
+-  {SPR_TROO,0,3,{.p1 = A_Chase},S_TROO_RUN3}, // S_TROO_RUN2
+-  {SPR_TROO,1,3,{.p1 = A_Chase},S_TROO_RUN4}, // S_TROO_RUN3
+-  {SPR_TROO,1,3,{.p1 = A_Chase},S_TROO_RUN5}, // S_TROO_RUN4
+-  {SPR_TROO,2,3,{.p1 = A_Chase},S_TROO_RUN6}, // S_TROO_RUN5
+-  {SPR_TROO,2,3,{.p1 = A_Chase},S_TROO_RUN7}, // S_TROO_RUN6
+-  {SPR_TROO,3,3,{.p1 = A_Chase},S_TROO_RUN8}, // S_TROO_RUN7
+-  {SPR_TROO,3,3,{.p1 = A_Chase},S_TROO_RUN1}, // S_TROO_RUN8
+-  {SPR_TROO,4,8,{.p1 = A_FaceTarget},S_TROO_ATK2},  // S_TROO_ATK1
+-  {SPR_TROO,5,8,{.p1 = A_FaceTarget},S_TROO_ATK3},  // S_TROO_ATK2
+-  {SPR_TROO,6,6,{.p1 = A_TroopAttack},S_TROO_RUN1}, // S_TROO_ATK3
++  {SPR_TROO,0,10,{.p3 = A_Look},S_TROO_STND2},  // S_TROO_STND
++  {SPR_TROO,1,10,{.p3 = A_Look},S_TROO_STND}, // S_TROO_STND2
++  {SPR_TROO,0,3,{.p3 = A_Chase},S_TROO_RUN2}, // S_TROO_RUN1
++  {SPR_TROO,0,3,{.p3 = A_Chase},S_TROO_RUN3}, // S_TROO_RUN2
++  {SPR_TROO,1,3,{.p3 = A_Chase},S_TROO_RUN4}, // S_TROO_RUN3
++  {SPR_TROO,1,3,{.p3 = A_Chase},S_TROO_RUN5}, // S_TROO_RUN4
++  {SPR_TROO,2,3,{.p3 = A_Chase},S_TROO_RUN6}, // S_TROO_RUN5
++  {SPR_TROO,2,3,{.p3 = A_Chase},S_TROO_RUN7}, // S_TROO_RUN6
++  {SPR_TROO,3,3,{.p3 = A_Chase},S_TROO_RUN8}, // S_TROO_RUN7
++  {SPR_TROO,3,3,{.p3 = A_Chase},S_TROO_RUN1}, // S_TROO_RUN8
++  {SPR_TROO,4,8,{.p3 = A_FaceTarget},S_TROO_ATK2},  // S_TROO_ATK1
++  {SPR_TROO,5,8,{.p3 = A_FaceTarget},S_TROO_ATK3},  // S_TROO_ATK2
++  {SPR_TROO,6,6,{.p3 = A_TroopAttack},S_TROO_RUN1}, // S_TROO_ATK3
+   {SPR_TROO,7,2,{NULL},S_TROO_PAIN2}, // S_TROO_PAIN
+-  {SPR_TROO,7,2,{.p1 = A_Pain},S_TROO_RUN1},  // S_TROO_PAIN2
++  {SPR_TROO,7,2,{.p3 = A_Pain},S_TROO_RUN1},  // S_TROO_PAIN2
+   {SPR_TROO,8,8,{NULL},S_TROO_DIE2},  // S_TROO_DIE1
+-  {SPR_TROO,9,8,{.p1 = A_Scream},S_TROO_DIE3},  // S_TROO_DIE2
++  {SPR_TROO,9,8,{.p3 = A_Scream},S_TROO_DIE3},  // S_TROO_DIE2
+   {SPR_TROO,10,6,{NULL},S_TROO_DIE4}, // S_TROO_DIE3
+-  {SPR_TROO,11,6,{.p1 = A_Fall},S_TROO_DIE5}, // S_TROO_DIE4
++  {SPR_TROO,11,6,{.p3 = A_Fall},S_TROO_DIE5}, // S_TROO_DIE4
+   {SPR_TROO,12,-1,{NULL},S_NULL}, // S_TROO_DIE5
+   {SPR_TROO,13,5,{NULL},S_TROO_XDIE2},  // S_TROO_XDIE1
+-  {SPR_TROO,14,5,{.p1 = A_XScream},S_TROO_XDIE3}, // S_TROO_XDIE2
++  {SPR_TROO,14,5,{.p3 = A_XScream},S_TROO_XDIE3}, // S_TROO_XDIE2
+   {SPR_TROO,15,5,{NULL},S_TROO_XDIE4},  // S_TROO_XDIE3
+-  {SPR_TROO,16,5,{.p1 = A_Fall},S_TROO_XDIE5},  // S_TROO_XDIE4
++  {SPR_TROO,16,5,{.p3 = A_Fall},S_TROO_XDIE5},  // S_TROO_XDIE4
+   {SPR_TROO,17,5,{NULL},S_TROO_XDIE6},  // S_TROO_XDIE5
+   {SPR_TROO,18,5,{NULL},S_TROO_XDIE7},  // S_TROO_XDIE6
+   {SPR_TROO,19,5,{NULL},S_TROO_XDIE8},  // S_TROO_XDIE7
+@@ -594,25 +594,25 @@ state_t original_states[NUMSTATES] = {
+   {SPR_TROO,10,6,{NULL},S_TROO_RAISE4}, // S_TROO_RAISE3
+   {SPR_TROO,9,6,{NULL},S_TROO_RAISE5},  // S_TROO_RAISE4
+   {SPR_TROO,8,6,{NULL},S_TROO_RUN1},  // S_TROO_RAISE5
+-  {SPR_SARG,0,10,{.p1 = A_Look},S_SARG_STND2},  // S_SARG_STND
+-  {SPR_SARG,1,10,{.p1 = A_Look},S_SARG_STND}, // S_SARG_STND2
+-  {SPR_SARG,0,2,{.p1 = A_Chase},S_SARG_RUN2}, // S_SARG_RUN1
+-  {SPR_SARG,0,2,{.p1 = A_Chase},S_SARG_RUN3}, // S_SARG_RUN2
+-  {SPR_SARG,1,2,{.p1 = A_Chase},S_SARG_RUN4}, // S_SARG_RUN3
+-  {SPR_SARG,1,2,{.p1 = A_Chase},S_SARG_RUN5}, // S_SARG_RUN4
+-  {SPR_SARG,2,2,{.p1 = A_Chase},S_SARG_RUN6}, // S_SARG_RUN5
+-  {SPR_SARG,2,2,{.p1 = A_Chase},S_SARG_RUN7}, // S_SARG_RUN6
+-  {SPR_SARG,3,2,{.p1 = A_Chase},S_SARG_RUN8}, // S_SARG_RUN7
+-  {SPR_SARG,3,2,{.p1 = A_Chase},S_SARG_RUN1}, // S_SARG_RUN8
+-  {SPR_SARG,4,8,{.p1 = A_FaceTarget},S_SARG_ATK2},  // S_SARG_ATK1
+-  {SPR_SARG,5,8,{.p1 = A_FaceTarget},S_SARG_ATK3},  // S_SARG_ATK2
+-  {SPR_SARG,6,8,{.p1 = A_SargAttack},S_SARG_RUN1},  // S_SARG_ATK3
++  {SPR_SARG,0,10,{.p3 = A_Look},S_SARG_STND2},  // S_SARG_STND
++  {SPR_SARG,1,10,{.p3 = A_Look},S_SARG_STND}, // S_SARG_STND2
++  {SPR_SARG,0,2,{.p3 = A_Chase},S_SARG_RUN2}, // S_SARG_RUN1
++  {SPR_SARG,0,2,{.p3 = A_Chase},S_SARG_RUN3}, // S_SARG_RUN2
++  {SPR_SARG,1,2,{.p3 = A_Chase},S_SARG_RUN4}, // S_SARG_RUN3
++  {SPR_SARG,1,2,{.p3 = A_Chase},S_SARG_RUN5}, // S_SARG_RUN4
++  {SPR_SARG,2,2,{.p3 = A_Chase},S_SARG_RUN6}, // S_SARG_RUN5
++  {SPR_SARG,2,2,{.p3 = A_Chase},S_SARG_RUN7}, // S_SARG_RUN6
++  {SPR_SARG,3,2,{.p3 = A_Chase},S_SARG_RUN8}, // S_SARG_RUN7
++  {SPR_SARG,3,2,{.p3 = A_Chase},S_SARG_RUN1}, // S_SARG_RUN8
++  {SPR_SARG,4,8,{.p3 = A_FaceTarget},S_SARG_ATK2},  // S_SARG_ATK1
++  {SPR_SARG,5,8,{.p3 = A_FaceTarget},S_SARG_ATK3},  // S_SARG_ATK2
++  {SPR_SARG,6,8,{.p3 = A_SargAttack},S_SARG_RUN1},  // S_SARG_ATK3
+   {SPR_SARG,7,2,{NULL},S_SARG_PAIN2}, // S_SARG_PAIN
+-  {SPR_SARG,7,2,{.p1 = A_Pain},S_SARG_RUN1},  // S_SARG_PAIN2
++  {SPR_SARG,7,2,{.p3 = A_Pain},S_SARG_RUN1},  // S_SARG_PAIN2
+   {SPR_SARG,8,8,{NULL},S_SARG_DIE2},  // S_SARG_DIE1
+-  {SPR_SARG,9,8,{.p1 = A_Scream},S_SARG_DIE3},  // S_SARG_DIE2
++  {SPR_SARG,9,8,{.p3 = A_Scream},S_SARG_DIE3},  // S_SARG_DIE2
+   {SPR_SARG,10,4,{NULL},S_SARG_DIE4}, // S_SARG_DIE3
+-  {SPR_SARG,11,4,{.p1 = A_Fall},S_SARG_DIE5}, // S_SARG_DIE4
++  {SPR_SARG,11,4,{.p3 = A_Fall},S_SARG_DIE5}, // S_SARG_DIE4
+   {SPR_SARG,12,4,{NULL},S_SARG_DIE6}, // S_SARG_DIE5
+   {SPR_SARG,13,-1,{NULL},S_NULL}, // S_SARG_DIE6
+   {SPR_SARG,13,5,{NULL},S_SARG_RAISE2}, // S_SARG_RAISE1
+@@ -621,19 +621,19 @@ state_t original_states[NUMSTATES] = {
+   {SPR_SARG,10,5,{NULL},S_SARG_RAISE5}, // S_SARG_RAISE4
+   {SPR_SARG,9,5,{NULL},S_SARG_RAISE6},  // S_SARG_RAISE5
+   {SPR_SARG,8,5,{NULL},S_SARG_RUN1},  // S_SARG_RAISE6
+-  {SPR_HEAD,0,10,{.p1 = A_Look},S_HEAD_STND}, // S_HEAD_STND
+-  {SPR_HEAD,0,3,{.p1 = A_Chase},S_HEAD_RUN1}, // S_HEAD_RUN1
+-  {SPR_HEAD,1,5,{.p1 = A_FaceTarget},S_HEAD_ATK2},  // S_HEAD_ATK1
+-  {SPR_HEAD,2,5,{.p1 = A_FaceTarget},S_HEAD_ATK3},  // S_HEAD_ATK2
+-  {SPR_HEAD,3|FF_FULLBRIGHT,5,{.p1 = A_HeadAttack},S_HEAD_RUN1},  // S_HEAD_ATK3
++  {SPR_HEAD,0,10,{.p3 = A_Look},S_HEAD_STND}, // S_HEAD_STND
++  {SPR_HEAD,0,3,{.p3 = A_Chase},S_HEAD_RUN1}, // S_HEAD_RUN1
++  {SPR_HEAD,1,5,{.p3 = A_FaceTarget},S_HEAD_ATK2},  // S_HEAD_ATK1
++  {SPR_HEAD,2,5,{.p3 = A_FaceTarget},S_HEAD_ATK3},  // S_HEAD_ATK2
++  {SPR_HEAD,3|FF_FULLBRIGHT,5,{.p3 = A_HeadAttack},S_HEAD_RUN1},  // S_HEAD_ATK3
+   {SPR_HEAD,4,3,{NULL},S_HEAD_PAIN2}, // S_HEAD_PAIN
+-  {SPR_HEAD,4,3,{.p1 = A_Pain},S_HEAD_PAIN3}, // S_HEAD_PAIN2
++  {SPR_HEAD,4,3,{.p3 = A_Pain},S_HEAD_PAIN3}, // S_HEAD_PAIN2
+   {SPR_HEAD,5,6,{NULL},S_HEAD_RUN1},  // S_HEAD_PAIN3
+   {SPR_HEAD,6,8,{NULL},S_HEAD_DIE2},  // S_HEAD_DIE1
+-  {SPR_HEAD,7,8,{.p1 = A_Scream},S_HEAD_DIE3},  // S_HEAD_DIE2
++  {SPR_HEAD,7,8,{.p3 = A_Scream},S_HEAD_DIE3},  // S_HEAD_DIE2
+   {SPR_HEAD,8,8,{NULL},S_HEAD_DIE4},  // S_HEAD_DIE3
+   {SPR_HEAD,9,8,{NULL},S_HEAD_DIE5},  // S_HEAD_DIE4
+-  {SPR_HEAD,10,8,{.p1 = A_Fall},S_HEAD_DIE6}, // S_HEAD_DIE5
++  {SPR_HEAD,10,8,{.p3 = A_Fall},S_HEAD_DIE6}, // S_HEAD_DIE5
+   {SPR_HEAD,11,-1,{NULL},S_NULL}, // S_HEAD_DIE6
+   {SPR_HEAD,11,8,{NULL},S_HEAD_RAISE2}, // S_HEAD_RAISE1
+   {SPR_HEAD,10,8,{NULL},S_HEAD_RAISE3}, // S_HEAD_RAISE2
+@@ -646,28 +646,28 @@ state_t original_states[NUMSTATES] = {
+   {SPR_BAL7,2|FF_FULLBRIGHT,6,{NULL},S_BRBALLX2}, // S_BRBALLX1
+   {SPR_BAL7,3|FF_FULLBRIGHT,6,{NULL},S_BRBALLX3}, // S_BRBALLX2
+   {SPR_BAL7,4|FF_FULLBRIGHT,6,{NULL},S_NULL}, // S_BRBALLX3
+-  {SPR_BOSS,0,10,{.p1 = A_Look},S_BOSS_STND2},  // S_BOSS_STND
+-  {SPR_BOSS,1,10,{.p1 = A_Look},S_BOSS_STND}, // S_BOSS_STND2
+-  {SPR_BOSS,0,3,{.p1 = A_Chase},S_BOSS_RUN2}, // S_BOSS_RUN1
+-  {SPR_BOSS,0,3,{.p1 = A_Chase},S_BOSS_RUN3}, // S_BOSS_RUN2
+-  {SPR_BOSS,1,3,{.p1 = A_Chase},S_BOSS_RUN4}, // S_BOSS_RUN3
+-  {SPR_BOSS,1,3,{.p1 = A_Chase},S_BOSS_RUN5}, // S_BOSS_RUN4
+-  {SPR_BOSS,2,3,{.p1 = A_Chase},S_BOSS_RUN6}, // S_BOSS_RUN5
+-  {SPR_BOSS,2,3,{.p1 = A_Chase},S_BOSS_RUN7}, // S_BOSS_RUN6
+-  {SPR_BOSS,3,3,{.p1 = A_Chase},S_BOSS_RUN8}, // S_BOSS_RUN7
+-  {SPR_BOSS,3,3,{.p1 = A_Chase},S_BOSS_RUN1}, // S_BOSS_RUN8
+-  {SPR_BOSS,4,8,{.p1 = A_FaceTarget},S_BOSS_ATK2},  // S_BOSS_ATK1
+-  {SPR_BOSS,5,8,{.p1 = A_FaceTarget},S_BOSS_ATK3},  // S_BOSS_ATK2
+-  {SPR_BOSS,6,8,{.p1 = A_BruisAttack},S_BOSS_RUN1}, // S_BOSS_ATK3
++  {SPR_BOSS,0,10,{.p3 = A_Look},S_BOSS_STND2},  // S_BOSS_STND
++  {SPR_BOSS,1,10,{.p3 = A_Look},S_BOSS_STND}, // S_BOSS_STND2
++  {SPR_BOSS,0,3,{.p3 = A_Chase},S_BOSS_RUN2}, // S_BOSS_RUN1
++  {SPR_BOSS,0,3,{.p3 = A_Chase},S_BOSS_RUN3}, // S_BOSS_RUN2
++  {SPR_BOSS,1,3,{.p3 = A_Chase},S_BOSS_RUN4}, // S_BOSS_RUN3
++  {SPR_BOSS,1,3,{.p3 = A_Chase},S_BOSS_RUN5}, // S_BOSS_RUN4
++  {SPR_BOSS,2,3,{.p3 = A_Chase},S_BOSS_RUN6}, // S_BOSS_RUN5
++  {SPR_BOSS,2,3,{.p3 = A_Chase},S_BOSS_RUN7}, // S_BOSS_RUN6
++  {SPR_BOSS,3,3,{.p3 = A_Chase},S_BOSS_RUN8}, // S_BOSS_RUN7
++  {SPR_BOSS,3,3,{.p3 = A_Chase},S_BOSS_RUN1}, // S_BOSS_RUN8
++  {SPR_BOSS,4,8,{.p3 = A_FaceTarget},S_BOSS_ATK2},  // S_BOSS_ATK1
++  {SPR_BOSS,5,8,{.p3 = A_FaceTarget},S_BOSS_ATK3},  // S_BOSS_ATK2
++  {SPR_BOSS,6,8,{.p3 = A_BruisAttack},S_BOSS_RUN1}, // S_BOSS_ATK3
+   {SPR_BOSS,7,2,{NULL},S_BOSS_PAIN2}, // S_BOSS_PAIN
+-  {SPR_BOSS,7,2,{.p1 = A_Pain},S_BOSS_RUN1},  // S_BOSS_PAIN2
++  {SPR_BOSS,7,2,{.p3 = A_Pain},S_BOSS_RUN1},  // S_BOSS_PAIN2
+   {SPR_BOSS,8,8,{NULL},S_BOSS_DIE2},  // S_BOSS_DIE1
+-  {SPR_BOSS,9,8,{.p1 = A_Scream},S_BOSS_DIE3},  // S_BOSS_DIE2
++  {SPR_BOSS,9,8,{.p3 = A_Scream},S_BOSS_DIE3},  // S_BOSS_DIE2
+   {SPR_BOSS,10,8,{NULL},S_BOSS_DIE4}, // S_BOSS_DIE3
+-  {SPR_BOSS,11,8,{.p1 = A_Fall},S_BOSS_DIE5}, // S_BOSS_DIE4
++  {SPR_BOSS,11,8,{.p3 = A_Fall},S_BOSS_DIE5}, // S_BOSS_DIE4
+   {SPR_BOSS,12,8,{NULL},S_BOSS_DIE6}, // S_BOSS_DIE5
+   {SPR_BOSS,13,8,{NULL},S_BOSS_DIE7}, // S_BOSS_DIE6
+-  {SPR_BOSS,14,-1,{.p1 = A_BossDeath},S_NULL},  // S_BOSS_DIE7
++  {SPR_BOSS,14,-1,{.p3 = A_BossDeath},S_NULL},  // S_BOSS_DIE7
+   {SPR_BOSS,14,8,{NULL},S_BOSS_RAISE2}, // S_BOSS_RAISE1
+   {SPR_BOSS,13,8,{NULL},S_BOSS_RAISE3}, // S_BOSS_RAISE2
+   {SPR_BOSS,12,8,{NULL},S_BOSS_RAISE4}, // S_BOSS_RAISE3
+@@ -675,25 +675,25 @@ state_t original_states[NUMSTATES] = {
+   {SPR_BOSS,10,8,{NULL},S_BOSS_RAISE6}, // S_BOSS_RAISE5
+   {SPR_BOSS,9,8,{NULL},S_BOSS_RAISE7},  // S_BOSS_RAISE6
+   {SPR_BOSS,8,8,{NULL},S_BOSS_RUN1},  // S_BOSS_RAISE7
+-  {SPR_BOS2,0,10,{.p1 = A_Look},S_BOS2_STND2},  // S_BOS2_STND
+-  {SPR_BOS2,1,10,{.p1 = A_Look},S_BOS2_STND}, // S_BOS2_STND2
+-  {SPR_BOS2,0,3,{.p1 = A_Chase},S_BOS2_RUN2}, // S_BOS2_RUN1
+-  {SPR_BOS2,0,3,{.p1 = A_Chase},S_BOS2_RUN3}, // S_BOS2_RUN2
+-  {SPR_BOS2,1,3,{.p1 = A_Chase},S_BOS2_RUN4}, // S_BOS2_RUN3
+-  {SPR_BOS2,1,3,{.p1 = A_Chase},S_BOS2_RUN5}, // S_BOS2_RUN4
+-  {SPR_BOS2,2,3,{.p1 = A_Chase},S_BOS2_RUN6}, // S_BOS2_RUN5
+-  {SPR_BOS2,2,3,{.p1 = A_Chase},S_BOS2_RUN7}, // S_BOS2_RUN6
+-  {SPR_BOS2,3,3,{.p1 = A_Chase},S_BOS2_RUN8}, // S_BOS2_RUN7
+-  {SPR_BOS2,3,3,{.p1 = A_Chase},S_BOS2_RUN1}, // S_BOS2_RUN8
+-  {SPR_BOS2,4,8,{.p1 = A_FaceTarget},S_BOS2_ATK2},  // S_BOS2_ATK1
+-  {SPR_BOS2,5,8,{.p1 = A_FaceTarget},S_BOS2_ATK3},  // S_BOS2_ATK2
+-  {SPR_BOS2,6,8,{.p1 = A_BruisAttack},S_BOS2_RUN1}, // S_BOS2_ATK3
++  {SPR_BOS2,0,10,{.p3 = A_Look},S_BOS2_STND2},  // S_BOS2_STND
++  {SPR_BOS2,1,10,{.p3 = A_Look},S_BOS2_STND}, // S_BOS2_STND2
++  {SPR_BOS2,0,3,{.p3 = A_Chase},S_BOS2_RUN2}, // S_BOS2_RUN1
++  {SPR_BOS2,0,3,{.p3 = A_Chase},S_BOS2_RUN3}, // S_BOS2_RUN2
++  {SPR_BOS2,1,3,{.p3 = A_Chase},S_BOS2_RUN4}, // S_BOS2_RUN3
++  {SPR_BOS2,1,3,{.p3 = A_Chase},S_BOS2_RUN5}, // S_BOS2_RUN4
++  {SPR_BOS2,2,3,{.p3 = A_Chase},S_BOS2_RUN6}, // S_BOS2_RUN5
++  {SPR_BOS2,2,3,{.p3 = A_Chase},S_BOS2_RUN7}, // S_BOS2_RUN6
++  {SPR_BOS2,3,3,{.p3 = A_Chase},S_BOS2_RUN8}, // S_BOS2_RUN7
++  {SPR_BOS2,3,3,{.p3 = A_Chase},S_BOS2_RUN1}, // S_BOS2_RUN8
++  {SPR_BOS2,4,8,{.p3 = A_FaceTarget},S_BOS2_ATK2},  // S_BOS2_ATK1
++  {SPR_BOS2,5,8,{.p3 = A_FaceTarget},S_BOS2_ATK3},  // S_BOS2_ATK2
++  {SPR_BOS2,6,8,{.p3 = A_BruisAttack},S_BOS2_RUN1}, // S_BOS2_ATK3
+   {SPR_BOS2,7,2,{NULL},S_BOS2_PAIN2}, // S_BOS2_PAIN
+-  {SPR_BOS2,7,2,{.p1 = A_Pain},S_BOS2_RUN1},  // S_BOS2_PAIN2
++  {SPR_BOS2,7,2,{.p3 = A_Pain},S_BOS2_RUN1},  // S_BOS2_PAIN2
+   {SPR_BOS2,8,8,{NULL},S_BOS2_DIE2},  // S_BOS2_DIE1
+-  {SPR_BOS2,9,8,{.p1 = A_Scream},S_BOS2_DIE3},  // S_BOS2_DIE2
++  {SPR_BOS2,9,8,{.p3 = A_Scream},S_BOS2_DIE3},  // S_BOS2_DIE2
+   {SPR_BOS2,10,8,{NULL},S_BOS2_DIE4}, // S_BOS2_DIE3
+-  {SPR_BOS2,11,8,{.p1 = A_Fall},S_BOS2_DIE5}, // S_BOS2_DIE4
++  {SPR_BOS2,11,8,{.p3 = A_Fall},S_BOS2_DIE5}, // S_BOS2_DIE4
+   {SPR_BOS2,12,8,{NULL},S_BOS2_DIE6}, // S_BOS2_DIE5
+   {SPR_BOS2,13,8,{NULL},S_BOS2_DIE7}, // S_BOS2_DIE6
+   {SPR_BOS2,14,-1,{NULL},S_NULL}, // S_BOS2_DIE7
+@@ -704,44 +704,44 @@ state_t original_states[NUMSTATES] = {
+   {SPR_BOS2,10,8,{NULL},S_BOS2_RAISE6}, // S_BOS2_RAISE5
+   {SPR_BOS2,9,8,{NULL},S_BOS2_RAISE7},  // S_BOS2_RAISE6
+   {SPR_BOS2,8,8,{NULL},S_BOS2_RUN1},  // S_BOS2_RAISE7
+-  {SPR_SKUL,0|FF_FULLBRIGHT,10,{.p1 = A_Look},S_SKULL_STND2}, // S_SKULL_STND
+-  {SPR_SKUL,1|FF_FULLBRIGHT,10,{.p1 = A_Look},S_SKULL_STND},  // S_SKULL_STND2
+-  {SPR_SKUL,0|FF_FULLBRIGHT,6,{.p1 = A_Chase},S_SKULL_RUN2},  // S_SKULL_RUN1
+-  {SPR_SKUL,1|FF_FULLBRIGHT,6,{.p1 = A_Chase},S_SKULL_RUN1},  // S_SKULL_RUN2
+-  {SPR_SKUL,2|FF_FULLBRIGHT,10,{.p1 = A_FaceTarget},S_SKULL_ATK2},  // S_SKULL_ATK1
+-  {SPR_SKUL,3|FF_FULLBRIGHT,4,{.p1 = A_SkullAttack},S_SKULL_ATK3},  // S_SKULL_ATK2
++  {SPR_SKUL,0|FF_FULLBRIGHT,10,{.p3 = A_Look},S_SKULL_STND2}, // S_SKULL_STND
++  {SPR_SKUL,1|FF_FULLBRIGHT,10,{.p3 = A_Look},S_SKULL_STND},  // S_SKULL_STND2
++  {SPR_SKUL,0|FF_FULLBRIGHT,6,{.p3 = A_Chase},S_SKULL_RUN2},  // S_SKULL_RUN1
++  {SPR_SKUL,1|FF_FULLBRIGHT,6,{.p3 = A_Chase},S_SKULL_RUN1},  // S_SKULL_RUN2
++  {SPR_SKUL,2|FF_FULLBRIGHT,10,{.p3 = A_FaceTarget},S_SKULL_ATK2},  // S_SKULL_ATK1
++  {SPR_SKUL,3|FF_FULLBRIGHT,4,{.p3 = A_SkullAttack},S_SKULL_ATK3},  // S_SKULL_ATK2
+   {SPR_SKUL,2|FF_FULLBRIGHT,4,{NULL},S_SKULL_ATK4}, // S_SKULL_ATK3
+   {SPR_SKUL,3|FF_FULLBRIGHT,4,{NULL},S_SKULL_ATK3}, // S_SKULL_ATK4
+   {SPR_SKUL,4|FF_FULLBRIGHT,3,{NULL},S_SKULL_PAIN2},  // S_SKULL_PAIN
+-  {SPR_SKUL,4|FF_FULLBRIGHT,3,{.p1 = A_Pain},S_SKULL_RUN1}, // S_SKULL_PAIN2
++  {SPR_SKUL,4|FF_FULLBRIGHT,3,{.p3 = A_Pain},S_SKULL_RUN1}, // S_SKULL_PAIN2
+   {SPR_SKUL,5|FF_FULLBRIGHT,6,{NULL},S_SKULL_DIE2}, // S_SKULL_DIE1
+-  {SPR_SKUL,6|FF_FULLBRIGHT,6,{.p1 = A_Scream},S_SKULL_DIE3}, // S_SKULL_DIE2
++  {SPR_SKUL,6|FF_FULLBRIGHT,6,{.p3 = A_Scream},S_SKULL_DIE3}, // S_SKULL_DIE2
+   {SPR_SKUL,7|FF_FULLBRIGHT,6,{NULL},S_SKULL_DIE4}, // S_SKULL_DIE3
+-  {SPR_SKUL,8|FF_FULLBRIGHT,6,{.p1 = A_Fall},S_SKULL_DIE5}, // S_SKULL_DIE4
++  {SPR_SKUL,8|FF_FULLBRIGHT,6,{.p3 = A_Fall},S_SKULL_DIE5}, // S_SKULL_DIE4
+   {SPR_SKUL,9,6,{NULL},S_SKULL_DIE6}, // S_SKULL_DIE5
+   {SPR_SKUL,10,6,{NULL},S_NULL},  // S_SKULL_DIE6
+-  {SPR_SPID,0,10,{.p1 = A_Look},S_SPID_STND2},  // S_SPID_STND
+-  {SPR_SPID,1,10,{.p1 = A_Look},S_SPID_STND}, // S_SPID_STND2
+-  {SPR_SPID,0,3,{.p1 = A_Metal},S_SPID_RUN2}, // S_SPID_RUN1
+-  {SPR_SPID,0,3,{.p1 = A_Chase},S_SPID_RUN3}, // S_SPID_RUN2
+-  {SPR_SPID,1,3,{.p1 = A_Chase},S_SPID_RUN4}, // S_SPID_RUN3
+-  {SPR_SPID,1,3,{.p1 = A_Chase},S_SPID_RUN5}, // S_SPID_RUN4
+-  {SPR_SPID,2,3,{.p1 = A_Metal},S_SPID_RUN6}, // S_SPID_RUN5
+-  {SPR_SPID,2,3,{.p1 = A_Chase},S_SPID_RUN7}, // S_SPID_RUN6
+-  {SPR_SPID,3,3,{.p1 = A_Chase},S_SPID_RUN8}, // S_SPID_RUN7
+-  {SPR_SPID,3,3,{.p1 = A_Chase},S_SPID_RUN9}, // S_SPID_RUN8
+-  {SPR_SPID,4,3,{.p1 = A_Metal},S_SPID_RUN10},  // S_SPID_RUN9
+-  {SPR_SPID,4,3,{.p1 = A_Chase},S_SPID_RUN11},  // S_SPID_RUN10
+-  {SPR_SPID,5,3,{.p1 = A_Chase},S_SPID_RUN12},  // S_SPID_RUN11
+-  {SPR_SPID,5,3,{.p1 = A_Chase},S_SPID_RUN1}, // S_SPID_RUN12
+-  {SPR_SPID,0|FF_FULLBRIGHT,20,{.p1 = A_FaceTarget},S_SPID_ATK2}, // S_SPID_ATK1
+-  {SPR_SPID,6|FF_FULLBRIGHT,4,{.p1 = A_SPosAttack},S_SPID_ATK3},  // S_SPID_ATK2
+-  {SPR_SPID,7|FF_FULLBRIGHT,4,{.p1 = A_SPosAttack},S_SPID_ATK4},  // S_SPID_ATK3
+-  {SPR_SPID,7|FF_FULLBRIGHT,1,{.p1 = A_SpidRefire},S_SPID_ATK2},  // S_SPID_ATK4
++  {SPR_SPID,0,10,{.p3 = A_Look},S_SPID_STND2},  // S_SPID_STND
++  {SPR_SPID,1,10,{.p3 = A_Look},S_SPID_STND}, // S_SPID_STND2
++  {SPR_SPID,0,3,{.p3 = A_Metal},S_SPID_RUN2}, // S_SPID_RUN1
++  {SPR_SPID,0,3,{.p3 = A_Chase},S_SPID_RUN3}, // S_SPID_RUN2
++  {SPR_SPID,1,3,{.p3 = A_Chase},S_SPID_RUN4}, // S_SPID_RUN3
++  {SPR_SPID,1,3,{.p3 = A_Chase},S_SPID_RUN5}, // S_SPID_RUN4
++  {SPR_SPID,2,3,{.p3 = A_Metal},S_SPID_RUN6}, // S_SPID_RUN5
++  {SPR_SPID,2,3,{.p3 = A_Chase},S_SPID_RUN7}, // S_SPID_RUN6
++  {SPR_SPID,3,3,{.p3 = A_Chase},S_SPID_RUN8}, // S_SPID_RUN7
++  {SPR_SPID,3,3,{.p3 = A_Chase},S_SPID_RUN9}, // S_SPID_RUN8
++  {SPR_SPID,4,3,{.p3 = A_Metal},S_SPID_RUN10},  // S_SPID_RUN9
++  {SPR_SPID,4,3,{.p3 = A_Chase},S_SPID_RUN11},  // S_SPID_RUN10
++  {SPR_SPID,5,3,{.p3 = A_Chase},S_SPID_RUN12},  // S_SPID_RUN11
++  {SPR_SPID,5,3,{.p3 = A_Chase},S_SPID_RUN1}, // S_SPID_RUN12
++  {SPR_SPID,0|FF_FULLBRIGHT,20,{.p3 = A_FaceTarget},S_SPID_ATK2}, // S_SPID_ATK1
++  {SPR_SPID,6|FF_FULLBRIGHT,4,{.p3 = A_SPosAttack},S_SPID_ATK3},  // S_SPID_ATK2
++  {SPR_SPID,7|FF_FULLBRIGHT,4,{.p3 = A_SPosAttack},S_SPID_ATK4},  // S_SPID_ATK3
++  {SPR_SPID,7|FF_FULLBRIGHT,1,{.p3 = A_SpidRefire},S_SPID_ATK2},  // S_SPID_ATK4
+   {SPR_SPID,8,3,{NULL},S_SPID_PAIN2}, // S_SPID_PAIN
+-  {SPR_SPID,8,3,{.p1 = A_Pain},S_SPID_RUN1},  // S_SPID_PAIN2
+-  {SPR_SPID,9,20,{.p1 = A_Scream},S_SPID_DIE2}, // S_SPID_DIE1
+-  {SPR_SPID,10,10,{.p1 = A_Fall},S_SPID_DIE3},  // S_SPID_DIE2
++  {SPR_SPID,8,3,{.p3 = A_Pain},S_SPID_RUN1},  // S_SPID_PAIN2
++  {SPR_SPID,9,20,{.p3 = A_Scream},S_SPID_DIE2}, // S_SPID_DIE1
++  {SPR_SPID,10,10,{.p3 = A_Fall},S_SPID_DIE3},  // S_SPID_DIE2
+   {SPR_SPID,11,10,{NULL},S_SPID_DIE4},  // S_SPID_DIE3
+   {SPR_SPID,12,10,{NULL},S_SPID_DIE5},  // S_SPID_DIE4
+   {SPR_SPID,13,10,{NULL},S_SPID_DIE6},  // S_SPID_DIE5
+@@ -750,35 +750,35 @@ state_t original_states[NUMSTATES] = {
+   {SPR_SPID,16,10,{NULL},S_SPID_DIE9},  // S_SPID_DIE8
+   {SPR_SPID,17,10,{NULL},S_SPID_DIE10}, // S_SPID_DIE9
+   {SPR_SPID,18,30,{NULL},S_SPID_DIE11}, // S_SPID_DIE10
+-  {SPR_SPID,18,-1,{.p1 = A_BossDeath},S_NULL},  // S_SPID_DIE11
+-  {SPR_BSPI,0,10,{.p1 = A_Look},S_BSPI_STND2},  // S_BSPI_STND
+-  {SPR_BSPI,1,10,{.p1 = A_Look},S_BSPI_STND}, // S_BSPI_STND2
++  {SPR_SPID,18,-1,{.p3 = A_BossDeath},S_NULL},  // S_SPID_DIE11
++  {SPR_BSPI,0,10,{.p3 = A_Look},S_BSPI_STND2},  // S_BSPI_STND
++  {SPR_BSPI,1,10,{.p3 = A_Look},S_BSPI_STND}, // S_BSPI_STND2
+   {SPR_BSPI,0,20,{NULL},S_BSPI_RUN1}, // S_BSPI_SIGHT
+-  {SPR_BSPI,0,3,{.p1 = A_BabyMetal},S_BSPI_RUN2}, // S_BSPI_RUN1
+-  {SPR_BSPI,0,3,{.p1 = A_Chase},S_BSPI_RUN3}, // S_BSPI_RUN2
+-  {SPR_BSPI,1,3,{.p1 = A_Chase},S_BSPI_RUN4}, // S_BSPI_RUN3
+-  {SPR_BSPI,1,3,{.p1 = A_Chase},S_BSPI_RUN5}, // S_BSPI_RUN4
+-  {SPR_BSPI,2,3,{.p1 = A_Chase},S_BSPI_RUN6}, // S_BSPI_RUN5
+-  {SPR_BSPI,2,3,{.p1 = A_Chase},S_BSPI_RUN7}, // S_BSPI_RUN6
+-  {SPR_BSPI,3,3,{.p1 = A_BabyMetal},S_BSPI_RUN8}, // S_BSPI_RUN7
+-  {SPR_BSPI,3,3,{.p1 = A_Chase},S_BSPI_RUN9}, // S_BSPI_RUN8
+-  {SPR_BSPI,4,3,{.p1 = A_Chase},S_BSPI_RUN10},  // S_BSPI_RUN9
+-  {SPR_BSPI,4,3,{.p1 = A_Chase},S_BSPI_RUN11},  // S_BSPI_RUN10
+-  {SPR_BSPI,5,3,{.p1 = A_Chase},S_BSPI_RUN12},  // S_BSPI_RUN11
+-  {SPR_BSPI,5,3,{.p1 = A_Chase},S_BSPI_RUN1}, // S_BSPI_RUN12
+-  {SPR_BSPI,0|FF_FULLBRIGHT,20,{.p1 = A_FaceTarget},S_BSPI_ATK2}, // S_BSPI_ATK1
+-  {SPR_BSPI,6|FF_FULLBRIGHT,4,{.p1 = A_BspiAttack},S_BSPI_ATK3},  // S_BSPI_ATK2
++  {SPR_BSPI,0,3,{.p3 = A_BabyMetal},S_BSPI_RUN2}, // S_BSPI_RUN1
++  {SPR_BSPI,0,3,{.p3 = A_Chase},S_BSPI_RUN3}, // S_BSPI_RUN2
++  {SPR_BSPI,1,3,{.p3 = A_Chase},S_BSPI_RUN4}, // S_BSPI_RUN3
++  {SPR_BSPI,1,3,{.p3 = A_Chase},S_BSPI_RUN5}, // S_BSPI_RUN4
++  {SPR_BSPI,2,3,{.p3 = A_Chase},S_BSPI_RUN6}, // S_BSPI_RUN5
++  {SPR_BSPI,2,3,{.p3 = A_Chase},S_BSPI_RUN7}, // S_BSPI_RUN6
++  {SPR_BSPI,3,3,{.p3 = A_BabyMetal},S_BSPI_RUN8}, // S_BSPI_RUN7
++  {SPR_BSPI,3,3,{.p3 = A_Chase},S_BSPI_RUN9}, // S_BSPI_RUN8
++  {SPR_BSPI,4,3,{.p3 = A_Chase},S_BSPI_RUN10},  // S_BSPI_RUN9
++  {SPR_BSPI,4,3,{.p3 = A_Chase},S_BSPI_RUN11},  // S_BSPI_RUN10
++  {SPR_BSPI,5,3,{.p3 = A_Chase},S_BSPI_RUN12},  // S_BSPI_RUN11
++  {SPR_BSPI,5,3,{.p3 = A_Chase},S_BSPI_RUN1}, // S_BSPI_RUN12
++  {SPR_BSPI,0|FF_FULLBRIGHT,20,{.p3 = A_FaceTarget},S_BSPI_ATK2}, // S_BSPI_ATK1
++  {SPR_BSPI,6|FF_FULLBRIGHT,4,{.p3 = A_BspiAttack},S_BSPI_ATK3},  // S_BSPI_ATK2
+   {SPR_BSPI,7|FF_FULLBRIGHT,4,{NULL},S_BSPI_ATK4},  // S_BSPI_ATK3
+-  {SPR_BSPI,7|FF_FULLBRIGHT,1,{.p1 = A_SpidRefire},S_BSPI_ATK2},  // S_BSPI_ATK4
++  {SPR_BSPI,7|FF_FULLBRIGHT,1,{.p3 = A_SpidRefire},S_BSPI_ATK2},  // S_BSPI_ATK4
+   {SPR_BSPI,8,3,{NULL},S_BSPI_PAIN2}, // S_BSPI_PAIN
+-  {SPR_BSPI,8,3,{.p1 = A_Pain},S_BSPI_RUN1},  // S_BSPI_PAIN2
+-  {SPR_BSPI,9,20,{.p1 = A_Scream},S_BSPI_DIE2}, // S_BSPI_DIE1
+-  {SPR_BSPI,10,7,{.p1 = A_Fall},S_BSPI_DIE3}, // S_BSPI_DIE2
++  {SPR_BSPI,8,3,{.p3 = A_Pain},S_BSPI_RUN1},  // S_BSPI_PAIN2
++  {SPR_BSPI,9,20,{.p3 = A_Scream},S_BSPI_DIE2}, // S_BSPI_DIE1
++  {SPR_BSPI,10,7,{.p3 = A_Fall},S_BSPI_DIE3}, // S_BSPI_DIE2
+   {SPR_BSPI,11,7,{NULL},S_BSPI_DIE4}, // S_BSPI_DIE3
+   {SPR_BSPI,12,7,{NULL},S_BSPI_DIE5}, // S_BSPI_DIE4
+   {SPR_BSPI,13,7,{NULL},S_BSPI_DIE6}, // S_BSPI_DIE5
+   {SPR_BSPI,14,7,{NULL},S_BSPI_DIE7}, // S_BSPI_DIE6
+-  {SPR_BSPI,15,-1,{.p1 = A_BossDeath},S_NULL},  // S_BSPI_DIE7
++  {SPR_BSPI,15,-1,{.p3 = A_BossDeath},S_NULL},  // S_BSPI_DIE7
+   {SPR_BSPI,15,5,{NULL},S_BSPI_RAISE2}, // S_BSPI_RAISE1
+   {SPR_BSPI,14,5,{NULL},S_BSPI_RAISE3}, // S_BSPI_RAISE2
+   {SPR_BSPI,13,5,{NULL},S_BSPI_RAISE4}, // S_BSPI_RAISE3
+@@ -793,51 +793,51 @@ state_t original_states[NUMSTATES] = {
+   {SPR_APBX,2|FF_FULLBRIGHT,5,{NULL},S_ARACH_PLEX4},  // S_ARACH_PLEX3
+   {SPR_APBX,3|FF_FULLBRIGHT,5,{NULL},S_ARACH_PLEX5},  // S_ARACH_PLEX4
+   {SPR_APBX,4|FF_FULLBRIGHT,5,{NULL},S_NULL}, // S_ARACH_PLEX5
+-  {SPR_CYBR,0,10,{.p1 = A_Look},S_CYBER_STND2}, // S_CYBER_STND
+-  {SPR_CYBR,1,10,{.p1 = A_Look},S_CYBER_STND},  // S_CYBER_STND2
+-  {SPR_CYBR,0,3,{.p1 = A_Hoof},S_CYBER_RUN2}, // S_CYBER_RUN1
+-  {SPR_CYBR,0,3,{.p1 = A_Chase},S_CYBER_RUN3},  // S_CYBER_RUN2
+-  {SPR_CYBR,1,3,{.p1 = A_Chase},S_CYBER_RUN4},  // S_CYBER_RUN3
+-  {SPR_CYBR,1,3,{.p1 = A_Chase},S_CYBER_RUN5},  // S_CYBER_RUN4
+-  {SPR_CYBR,2,3,{.p1 = A_Chase},S_CYBER_RUN6},  // S_CYBER_RUN5
+-  {SPR_CYBR,2,3,{.p1 = A_Chase},S_CYBER_RUN7},  // S_CYBER_RUN6
+-  {SPR_CYBR,3,3,{.p1 = A_Metal},S_CYBER_RUN8},  // S_CYBER_RUN7
+-  {SPR_CYBR,3,3,{.p1 = A_Chase},S_CYBER_RUN1},  // S_CYBER_RUN8
+-  {SPR_CYBR,4,6,{.p1 = A_FaceTarget},S_CYBER_ATK2}, // S_CYBER_ATK1
+-  {SPR_CYBR,5,12,{.p1 = A_CyberAttack},S_CYBER_ATK3}, // S_CYBER_ATK2
+-  {SPR_CYBR,4,12,{.p1 = A_FaceTarget},S_CYBER_ATK4},  // S_CYBER_ATK3
+-  {SPR_CYBR,5,12,{.p1 = A_CyberAttack},S_CYBER_ATK5}, // S_CYBER_ATK4
+-  {SPR_CYBR,4,12,{.p1 = A_FaceTarget},S_CYBER_ATK6},  // S_CYBER_ATK5
+-  {SPR_CYBR,5,12,{.p1 = A_CyberAttack},S_CYBER_RUN1}, // S_CYBER_ATK6
+-  {SPR_CYBR,6,10,{.p1 = A_Pain},S_CYBER_RUN1},  // S_CYBER_PAIN
++  {SPR_CYBR,0,10,{.p3 = A_Look},S_CYBER_STND2}, // S_CYBER_STND
++  {SPR_CYBR,1,10,{.p3 = A_Look},S_CYBER_STND},  // S_CYBER_STND2
++  {SPR_CYBR,0,3,{.p3 = A_Hoof},S_CYBER_RUN2}, // S_CYBER_RUN1
++  {SPR_CYBR,0,3,{.p3 = A_Chase},S_CYBER_RUN3},  // S_CYBER_RUN2
++  {SPR_CYBR,1,3,{.p3 = A_Chase},S_CYBER_RUN4},  // S_CYBER_RUN3
++  {SPR_CYBR,1,3,{.p3 = A_Chase},S_CYBER_RUN5},  // S_CYBER_RUN4
++  {SPR_CYBR,2,3,{.p3 = A_Chase},S_CYBER_RUN6},  // S_CYBER_RUN5
++  {SPR_CYBR,2,3,{.p3 = A_Chase},S_CYBER_RUN7},  // S_CYBER_RUN6
++  {SPR_CYBR,3,3,{.p3 = A_Metal},S_CYBER_RUN8},  // S_CYBER_RUN7
++  {SPR_CYBR,3,3,{.p3 = A_Chase},S_CYBER_RUN1},  // S_CYBER_RUN8
++  {SPR_CYBR,4,6,{.p3 = A_FaceTarget},S_CYBER_ATK2}, // S_CYBER_ATK1
++  {SPR_CYBR,5,12,{.p3 = A_CyberAttack},S_CYBER_ATK3}, // S_CYBER_ATK2
++  {SPR_CYBR,4,12,{.p3 = A_FaceTarget},S_CYBER_ATK4},  // S_CYBER_ATK3
++  {SPR_CYBR,5,12,{.p3 = A_CyberAttack},S_CYBER_ATK5}, // S_CYBER_ATK4
++  {SPR_CYBR,4,12,{.p3 = A_FaceTarget},S_CYBER_ATK6},  // S_CYBER_ATK5
++  {SPR_CYBR,5,12,{.p3 = A_CyberAttack},S_CYBER_RUN1}, // S_CYBER_ATK6
++  {SPR_CYBR,6,10,{.p3 = A_Pain},S_CYBER_RUN1},  // S_CYBER_PAIN
+   {SPR_CYBR,7,10,{NULL},S_CYBER_DIE2},  // S_CYBER_DIE1
+-  {SPR_CYBR,8,10,{.p1 = A_Scream},S_CYBER_DIE3},  // S_CYBER_DIE2
++  {SPR_CYBR,8,10,{.p3 = A_Scream},S_CYBER_DIE3},  // S_CYBER_DIE2
+   {SPR_CYBR,9,10,{NULL},S_CYBER_DIE4},  // S_CYBER_DIE3
+   {SPR_CYBR,10,10,{NULL},S_CYBER_DIE5}, // S_CYBER_DIE4
+   {SPR_CYBR,11,10,{NULL},S_CYBER_DIE6}, // S_CYBER_DIE5
+-  {SPR_CYBR,12,10,{.p1 = A_Fall},S_CYBER_DIE7}, // S_CYBER_DIE6
++  {SPR_CYBR,12,10,{.p3 = A_Fall},S_CYBER_DIE7}, // S_CYBER_DIE6
+   {SPR_CYBR,13,10,{NULL},S_CYBER_DIE8}, // S_CYBER_DIE7
+   {SPR_CYBR,14,10,{NULL},S_CYBER_DIE9}, // S_CYBER_DIE8
+   {SPR_CYBR,15,30,{NULL},S_CYBER_DIE10},  // S_CYBER_DIE9
+-  {SPR_CYBR,15,-1,{.p1 = A_BossDeath},S_NULL},  // S_CYBER_DIE10
+-  {SPR_PAIN,0,10,{.p1 = A_Look},S_PAIN_STND}, // S_PAIN_STND
+-  {SPR_PAIN,0,3,{.p1 = A_Chase},S_PAIN_RUN2}, // S_PAIN_RUN1
+-  {SPR_PAIN,0,3,{.p1 = A_Chase},S_PAIN_RUN3}, // S_PAIN_RUN2
+-  {SPR_PAIN,1,3,{.p1 = A_Chase},S_PAIN_RUN4}, // S_PAIN_RUN3
+-  {SPR_PAIN,1,3,{.p1 = A_Chase},S_PAIN_RUN5}, // S_PAIN_RUN4
+-  {SPR_PAIN,2,3,{.p1 = A_Chase},S_PAIN_RUN6}, // S_PAIN_RUN5
+-  {SPR_PAIN,2,3,{.p1 = A_Chase},S_PAIN_RUN1}, // S_PAIN_RUN6
+-  {SPR_PAIN,3,5,{.p1 = A_FaceTarget},S_PAIN_ATK2},  // S_PAIN_ATK1
+-  {SPR_PAIN,4,5,{.p1 = A_FaceTarget},S_PAIN_ATK3},  // S_PAIN_ATK2
+-  {SPR_PAIN,5|FF_FULLBRIGHT,5,{.p1 = A_FaceTarget},S_PAIN_ATK4},  // S_PAIN_ATK3
+-  {SPR_PAIN,5|FF_FULLBRIGHT,0,{.p1 = A_PainAttack},S_PAIN_RUN1},  // S_PAIN_ATK4
++  {SPR_CYBR,15,-1,{.p3 = A_BossDeath},S_NULL},  // S_CYBER_DIE10
++  {SPR_PAIN,0,10,{.p3 = A_Look},S_PAIN_STND}, // S_PAIN_STND
++  {SPR_PAIN,0,3,{.p3 = A_Chase},S_PAIN_RUN2}, // S_PAIN_RUN1
++  {SPR_PAIN,0,3,{.p3 = A_Chase},S_PAIN_RUN3}, // S_PAIN_RUN2
++  {SPR_PAIN,1,3,{.p3 = A_Chase},S_PAIN_RUN4}, // S_PAIN_RUN3
++  {SPR_PAIN,1,3,{.p3 = A_Chase},S_PAIN_RUN5}, // S_PAIN_RUN4
++  {SPR_PAIN,2,3,{.p3 = A_Chase},S_PAIN_RUN6}, // S_PAIN_RUN5
++  {SPR_PAIN,2,3,{.p3 = A_Chase},S_PAIN_RUN1}, // S_PAIN_RUN6
++  {SPR_PAIN,3,5,{.p3 = A_FaceTarget},S_PAIN_ATK2},  // S_PAIN_ATK1
++  {SPR_PAIN,4,5,{.p3 = A_FaceTarget},S_PAIN_ATK3},  // S_PAIN_ATK2
++  {SPR_PAIN,5|FF_FULLBRIGHT,5,{.p3 = A_FaceTarget},S_PAIN_ATK4},  // S_PAIN_ATK3
++  {SPR_PAIN,5|FF_FULLBRIGHT,0,{.p3 = A_PainAttack},S_PAIN_RUN1},  // S_PAIN_ATK4
+   {SPR_PAIN,6,6,{NULL},S_PAIN_PAIN2}, // S_PAIN_PAIN
+-  {SPR_PAIN,6,6,{.p1 = A_Pain},S_PAIN_RUN1},  // S_PAIN_PAIN2
++  {SPR_PAIN,6,6,{.p3 = A_Pain},S_PAIN_RUN1},  // S_PAIN_PAIN2
+   {SPR_PAIN,7|FF_FULLBRIGHT,8,{NULL},S_PAIN_DIE2},  // S_PAIN_DIE1
+-  {SPR_PAIN,8|FF_FULLBRIGHT,8,{.p1 = A_Scream},S_PAIN_DIE3},  // S_PAIN_DIE2
++  {SPR_PAIN,8|FF_FULLBRIGHT,8,{.p3 = A_Scream},S_PAIN_DIE3},  // S_PAIN_DIE2
+   {SPR_PAIN,9|FF_FULLBRIGHT,8,{NULL},S_PAIN_DIE4},  // S_PAIN_DIE3
+   {SPR_PAIN,10|FF_FULLBRIGHT,8,{NULL},S_PAIN_DIE5},  // S_PAIN_DIE4
+-  {SPR_PAIN,11|FF_FULLBRIGHT,8,{.p1 = A_PainDie},S_PAIN_DIE6}, // S_PAIN_DIE5
++  {SPR_PAIN,11|FF_FULLBRIGHT,8,{.p3 = A_PainDie},S_PAIN_DIE6}, // S_PAIN_DIE5
+   {SPR_PAIN,12|FF_FULLBRIGHT,8,{NULL},S_NULL}, // S_PAIN_DIE6
+   {SPR_PAIN,12,8,{NULL},S_PAIN_RAISE2}, // S_PAIN_RAISE1
+   {SPR_PAIN,11,8,{NULL},S_PAIN_RAISE3}, // S_PAIN_RAISE2
+@@ -845,32 +845,32 @@ state_t original_states[NUMSTATES] = {
+   {SPR_PAIN,9,8,{NULL},S_PAIN_RAISE5},  // S_PAIN_RAISE4
+   {SPR_PAIN,8,8,{NULL},S_PAIN_RAISE6},  // S_PAIN_RAISE5
+   {SPR_PAIN,7,8,{NULL},S_PAIN_RUN1},  // S_PAIN_RAISE6
+-  {SPR_SSWV,0,10,{.p1 = A_Look},S_SSWV_STND2},  // S_SSWV_STND
+-  {SPR_SSWV,1,10,{.p1 = A_Look},S_SSWV_STND}, // S_SSWV_STND2
+-  {SPR_SSWV,0,3,{.p1 = A_Chase},S_SSWV_RUN2}, // S_SSWV_RUN1
+-  {SPR_SSWV,0,3,{.p1 = A_Chase},S_SSWV_RUN3}, // S_SSWV_RUN2
+-  {SPR_SSWV,1,3,{.p1 = A_Chase},S_SSWV_RUN4}, // S_SSWV_RUN3
+-  {SPR_SSWV,1,3,{.p1 = A_Chase},S_SSWV_RUN5}, // S_SSWV_RUN4
+-  {SPR_SSWV,2,3,{.p1 = A_Chase},S_SSWV_RUN6}, // S_SSWV_RUN5
+-  {SPR_SSWV,2,3,{.p1 = A_Chase},S_SSWV_RUN7}, // S_SSWV_RUN6
+-  {SPR_SSWV,3,3,{.p1 = A_Chase},S_SSWV_RUN8}, // S_SSWV_RUN7
+-  {SPR_SSWV,3,3,{.p1 = A_Chase},S_SSWV_RUN1}, // S_SSWV_RUN8
+-  {SPR_SSWV,4,10,{.p1 = A_FaceTarget},S_SSWV_ATK2}, // S_SSWV_ATK1
+-  {SPR_SSWV,5,10,{.p1 = A_FaceTarget},S_SSWV_ATK3}, // S_SSWV_ATK2
+-  {SPR_SSWV,6|FF_FULLBRIGHT,4,{.p1 = A_CPosAttack},S_SSWV_ATK4},  // S_SSWV_ATK3
+-  {SPR_SSWV,5,6,{.p1 = A_FaceTarget},S_SSWV_ATK5},  // S_SSWV_ATK4
+-  {SPR_SSWV,6|FF_FULLBRIGHT,4,{.p1 = A_CPosAttack},S_SSWV_ATK6},  // S_SSWV_ATK5
+-  {SPR_SSWV,5,1,{.p1 = A_CPosRefire},S_SSWV_ATK2},  // S_SSWV_ATK6
++  {SPR_SSWV,0,10,{.p3 = A_Look},S_SSWV_STND2},  // S_SSWV_STND
++  {SPR_SSWV,1,10,{.p3 = A_Look},S_SSWV_STND}, // S_SSWV_STND2
++  {SPR_SSWV,0,3,{.p3 = A_Chase},S_SSWV_RUN2}, // S_SSWV_RUN1
++  {SPR_SSWV,0,3,{.p3 = A_Chase},S_SSWV_RUN3}, // S_SSWV_RUN2
++  {SPR_SSWV,1,3,{.p3 = A_Chase},S_SSWV_RUN4}, // S_SSWV_RUN3
++  {SPR_SSWV,1,3,{.p3 = A_Chase},S_SSWV_RUN5}, // S_SSWV_RUN4
++  {SPR_SSWV,2,3,{.p3 = A_Chase},S_SSWV_RUN6}, // S_SSWV_RUN5
++  {SPR_SSWV,2,3,{.p3 = A_Chase},S_SSWV_RUN7}, // S_SSWV_RUN6
++  {SPR_SSWV,3,3,{.p3 = A_Chase},S_SSWV_RUN8}, // S_SSWV_RUN7
++  {SPR_SSWV,3,3,{.p3 = A_Chase},S_SSWV_RUN1}, // S_SSWV_RUN8
++  {SPR_SSWV,4,10,{.p3 = A_FaceTarget},S_SSWV_ATK2}, // S_SSWV_ATK1
++  {SPR_SSWV,5,10,{.p3 = A_FaceTarget},S_SSWV_ATK3}, // S_SSWV_ATK2
++  {SPR_SSWV,6|FF_FULLBRIGHT,4,{.p3 = A_CPosAttack},S_SSWV_ATK4},  // S_SSWV_ATK3
++  {SPR_SSWV,5,6,{.p3 = A_FaceTarget},S_SSWV_ATK5},  // S_SSWV_ATK4
++  {SPR_SSWV,6|FF_FULLBRIGHT,4,{.p3 = A_CPosAttack},S_SSWV_ATK6},  // S_SSWV_ATK5
++  {SPR_SSWV,5,1,{.p3 = A_CPosRefire},S_SSWV_ATK2},  // S_SSWV_ATK6
+   {SPR_SSWV,7,3,{NULL},S_SSWV_PAIN2}, // S_SSWV_PAIN
+-  {SPR_SSWV,7,3,{.p1 = A_Pain},S_SSWV_RUN1},  // S_SSWV_PAIN2
++  {SPR_SSWV,7,3,{.p3 = A_Pain},S_SSWV_RUN1},  // S_SSWV_PAIN2
+   {SPR_SSWV,8,5,{NULL},S_SSWV_DIE2},  // S_SSWV_DIE1
+-  {SPR_SSWV,9,5,{.p1 = A_Scream},S_SSWV_DIE3},  // S_SSWV_DIE2
+-  {SPR_SSWV,10,5,{.p1 = A_Fall},S_SSWV_DIE4}, // S_SSWV_DIE3
++  {SPR_SSWV,9,5,{.p3 = A_Scream},S_SSWV_DIE3},  // S_SSWV_DIE2
++  {SPR_SSWV,10,5,{.p3 = A_Fall},S_SSWV_DIE4}, // S_SSWV_DIE3
+   {SPR_SSWV,11,5,{NULL},S_SSWV_DIE5}, // S_SSWV_DIE4
+   {SPR_SSWV,12,-1,{NULL},S_NULL}, // S_SSWV_DIE5
+   {SPR_SSWV,13,5,{NULL},S_SSWV_XDIE2},  // S_SSWV_XDIE1
+-  {SPR_SSWV,14,5,{.p1 = A_XScream},S_SSWV_XDIE3}, // S_SSWV_XDIE2
+-  {SPR_SSWV,15,5,{.p1 = A_Fall},S_SSWV_XDIE4},  // S_SSWV_XDIE3
++  {SPR_SSWV,14,5,{.p3 = A_XScream},S_SSWV_XDIE3}, // S_SSWV_XDIE2
++  {SPR_SSWV,15,5,{.p3 = A_Fall},S_SSWV_XDIE4},  // S_SSWV_XDIE3
+   {SPR_SSWV,16,5,{NULL},S_SSWV_XDIE5},  // S_SSWV_XDIE4
+   {SPR_SSWV,17,5,{NULL},S_SSWV_XDIE6},  // S_SSWV_XDIE5
+   {SPR_SSWV,18,5,{NULL},S_SSWV_XDIE7},  // S_SSWV_XDIE6
+@@ -885,7 +885,7 @@ state_t original_states[NUMSTATES] = {
+   {SPR_KEEN,0,-1,{NULL},S_KEENSTND},  // S_KEENSTND
+   {SPR_KEEN,0,6,{NULL},S_COMMKEEN2},  // S_COMMKEEN
+   {SPR_KEEN,1,6,{NULL},S_COMMKEEN3},  // S_COMMKEEN2
+-  {SPR_KEEN,2,6,{.p1 = A_Scream},S_COMMKEEN4},  // S_COMMKEEN3
++  {SPR_KEEN,2,6,{.p3 = A_Scream},S_COMMKEEN4},  // S_COMMKEEN3
+   {SPR_KEEN,3,6,{NULL},S_COMMKEEN5},  // S_COMMKEEN4
+   {SPR_KEEN,4,6,{NULL},S_COMMKEEN6},  // S_COMMKEEN5
+   {SPR_KEEN,5,6,{NULL},S_COMMKEEN7},  // S_COMMKEEN6
+@@ -893,34 +893,34 @@ state_t original_states[NUMSTATES] = {
+   {SPR_KEEN,7,6,{NULL},S_COMMKEEN9},  // S_COMMKEEN8
+   {SPR_KEEN,8,6,{NULL},S_COMMKEEN10}, // S_COMMKEEN9
+   {SPR_KEEN,9,6,{NULL},S_COMMKEEN11}, // S_COMMKEEN10
+-  {SPR_KEEN,10,6,{.p1 = A_KeenDie},S_COMMKEEN12},// S_COMMKEEN11
++  {SPR_KEEN,10,6,{.p3 = A_KeenDie},S_COMMKEEN12},// S_COMMKEEN11
+   {SPR_KEEN,11,-1,{NULL},S_NULL},   // S_COMMKEEN12
+   {SPR_KEEN,12,4,{NULL},S_KEENPAIN2}, // S_KEENPAIN
+-  {SPR_KEEN,12,8,{.p1 = A_Pain},S_KEENSTND},  // S_KEENPAIN2
++  {SPR_KEEN,12,8,{.p3 = A_Pain},S_KEENSTND},  // S_KEENPAIN2
+   {SPR_BBRN,0,-1,{NULL},S_NULL},    // S_BRAIN
+-  {SPR_BBRN,1,36,{.p1 = A_BrainPain},S_BRAIN},  // S_BRAIN_PAIN
+-  {SPR_BBRN,0,100,{.p1 = A_BrainScream},S_BRAIN_DIE2},  // S_BRAIN_DIE1
++  {SPR_BBRN,1,36,{.p3 = A_BrainPain},S_BRAIN},  // S_BRAIN_PAIN
++  {SPR_BBRN,0,100,{.p3 = A_BrainScream},S_BRAIN_DIE2},  // S_BRAIN_DIE1
+   {SPR_BBRN,0,10,{NULL},S_BRAIN_DIE3},  // S_BRAIN_DIE2
+   {SPR_BBRN,0,10,{NULL},S_BRAIN_DIE4},  // S_BRAIN_DIE3
+-  {SPR_BBRN,0,-1,{.p1 = A_BrainDie},S_NULL},  // S_BRAIN_DIE4
+-  {SPR_SSWV,0,10,{.p1 = A_Look},S_BRAINEYE},  // S_BRAINEYE
+-  {SPR_SSWV,0,181,{.p1 = A_BrainAwake},S_BRAINEYE1},  // S_BRAINEYESEE
+-  {SPR_SSWV,0,150,{.p1 = A_BrainSpit},S_BRAINEYE1}, // S_BRAINEYE1
+-  {SPR_BOSF,0|FF_FULLBRIGHT,3,{.p1 = A_SpawnSound},S_SPAWN2}, // S_SPAWN1
+-  {SPR_BOSF,1|FF_FULLBRIGHT,3,{.p1 = A_SpawnFly},S_SPAWN3}, // S_SPAWN2
+-  {SPR_BOSF,2|FF_FULLBRIGHT,3,{.p1 = A_SpawnFly},S_SPAWN4}, // S_SPAWN3
+-  {SPR_BOSF,3|FF_FULLBRIGHT,3,{.p1 = A_SpawnFly},S_SPAWN1}, // S_SPAWN4
+-  {SPR_FIRE,0|FF_FULLBRIGHT,4,{.p1 = A_Fire},S_SPAWNFIRE2}, // S_SPAWNFIRE1
+-  {SPR_FIRE,1|FF_FULLBRIGHT,4,{.p1 = A_Fire},S_SPAWNFIRE3}, // S_SPAWNFIRE2
+-  {SPR_FIRE,2|FF_FULLBRIGHT,4,{.p1 = A_Fire},S_SPAWNFIRE4}, // S_SPAWNFIRE3
+-  {SPR_FIRE,3|FF_FULLBRIGHT,4,{.p1 = A_Fire},S_SPAWNFIRE5}, // S_SPAWNFIRE4
+-  {SPR_FIRE,4|FF_FULLBRIGHT,4,{.p1 = A_Fire},S_SPAWNFIRE6}, // S_SPAWNFIRE5
+-  {SPR_FIRE,5|FF_FULLBRIGHT,4,{.p1 = A_Fire},S_SPAWNFIRE7}, // S_SPAWNFIRE6
+-  {SPR_FIRE,6|FF_FULLBRIGHT,4,{.p1 = A_Fire},S_SPAWNFIRE8}, // S_SPAWNFIRE7
+-  {SPR_FIRE,7|FF_FULLBRIGHT,4,{.p1 = A_Fire},S_NULL},   // S_SPAWNFIRE8
++  {SPR_BBRN,0,-1,{.p3 = A_BrainDie},S_NULL},  // S_BRAIN_DIE4
++  {SPR_SSWV,0,10,{.p3 = A_Look},S_BRAINEYE},  // S_BRAINEYE
++  {SPR_SSWV,0,181,{.p3 = A_BrainAwake},S_BRAINEYE1},  // S_BRAINEYESEE
++  {SPR_SSWV,0,150,{.p3 = A_BrainSpit},S_BRAINEYE1}, // S_BRAINEYE1
++  {SPR_BOSF,0|FF_FULLBRIGHT,3,{.p3 = A_SpawnSound},S_SPAWN2}, // S_SPAWN1
++  {SPR_BOSF,1|FF_FULLBRIGHT,3,{.p3 = A_SpawnFly},S_SPAWN3}, // S_SPAWN2
++  {SPR_BOSF,2|FF_FULLBRIGHT,3,{.p3 = A_SpawnFly},S_SPAWN4}, // S_SPAWN3
++  {SPR_BOSF,3|FF_FULLBRIGHT,3,{.p3 = A_SpawnFly},S_SPAWN1}, // S_SPAWN4
++  {SPR_FIRE,0|FF_FULLBRIGHT,4,{.p3 = A_Fire},S_SPAWNFIRE2}, // S_SPAWNFIRE1
++  {SPR_FIRE,1|FF_FULLBRIGHT,4,{.p3 = A_Fire},S_SPAWNFIRE3}, // S_SPAWNFIRE2
++  {SPR_FIRE,2|FF_FULLBRIGHT,4,{.p3 = A_Fire},S_SPAWNFIRE4}, // S_SPAWNFIRE3
++  {SPR_FIRE,3|FF_FULLBRIGHT,4,{.p3 = A_Fire},S_SPAWNFIRE5}, // S_SPAWNFIRE4
++  {SPR_FIRE,4|FF_FULLBRIGHT,4,{.p3 = A_Fire},S_SPAWNFIRE6}, // S_SPAWNFIRE5
++  {SPR_FIRE,5|FF_FULLBRIGHT,4,{.p3 = A_Fire},S_SPAWNFIRE7}, // S_SPAWNFIRE6
++  {SPR_FIRE,6|FF_FULLBRIGHT,4,{.p3 = A_Fire},S_SPAWNFIRE8}, // S_SPAWNFIRE7
++  {SPR_FIRE,7|FF_FULLBRIGHT,4,{.p3 = A_Fire},S_NULL},   // S_SPAWNFIRE8
+   {SPR_MISL,1|FF_FULLBRIGHT,10,{NULL},S_BRAINEXPLODE2}, // S_BRAINEXPLODE1
+   {SPR_MISL,2|FF_FULLBRIGHT,10,{NULL},S_BRAINEXPLODE3}, // S_BRAINEXPLODE2
+-  {SPR_MISL,3|FF_FULLBRIGHT,10,{.p1 = A_BrainExplode},S_NULL},  // S_BRAINEXPLODE3
++  {SPR_MISL,3|FF_FULLBRIGHT,10,{.p3 = A_BrainExplode},S_NULL},  // S_BRAINEXPLODE3
+   {SPR_ARM1,0,6,{NULL},S_ARM1A},  // S_ARM1
+   {SPR_ARM1,1|FF_FULLBRIGHT,7,{NULL},S_ARM1}, // S_ARM1A
+   {SPR_ARM2,0,6,{NULL},S_ARM2A},  // S_ARM2
+@@ -928,9 +928,9 @@ state_t original_states[NUMSTATES] = {
+   {SPR_BAR1,0,6,{NULL},S_BAR2}, // S_BAR1
+   {SPR_BAR1,1,6,{NULL},S_BAR1}, // S_BAR2
+   {SPR_BEXP,0|FF_FULLBRIGHT,5,{NULL},S_BEXP2},  // S_BEXP
+-  {SPR_BEXP,1|FF_FULLBRIGHT,5,{.p1 = A_Scream},S_BEXP3},  // S_BEXP2
++  {SPR_BEXP,1|FF_FULLBRIGHT,5,{.p3 = A_Scream},S_BEXP3},  // S_BEXP2
+   {SPR_BEXP,2|FF_FULLBRIGHT,5,{NULL},S_BEXP4},  // S_BEXP3
+-  {SPR_BEXP,3|FF_FULLBRIGHT,10,{.p1 = A_Explode},S_BEXP5},  // S_BEXP4
++  {SPR_BEXP,3|FF_FULLBRIGHT,10,{.p3 = A_Explode},S_BEXP5},  // S_BEXP4
+   {SPR_BEXP,4|FF_FULLBRIGHT,10,{NULL},S_NULL},  // S_BEXP5
+   {SPR_FCAN,0|FF_FULLBRIGHT,4,{NULL},S_BBAR2},  // S_BBAR1
+   {SPR_FCAN,1|FF_FULLBRIGHT,4,{NULL},S_BBAR3},  // S_BBAR2
+@@ -1090,33 +1090,33 @@ state_t original_states[NUMSTATES] = {
+   {SPR_TNT1,0,-1,{NULL},S_TNT1},          // S_TNT1    // phares 3/8/98
+ 
+   // killough 8/9/98: grenade
+-  {SPR_MISL,0|FF_FULLBRIGHT,1000,{.p1 = A_Die},S_GRENADE},      // S_GRENADE
++  {SPR_MISL,0|FF_FULLBRIGHT,1000,{.p3 = A_Die},S_GRENADE},      // S_GRENADE
+ 
+   // killough 8/10/98: variable damage explosion
+-  {SPR_MISL,1|FF_FULLBRIGHT,4,{.p1 = A_Scream},S_DETONATE2},    // S_DETONATE
+-  {SPR_MISL,2|FF_FULLBRIGHT,6,{.p1 = A_Detonate},S_DETONATE3},  // S_DETONATE2
++  {SPR_MISL,1|FF_FULLBRIGHT,4,{.p3 = A_Scream},S_DETONATE2},    // S_DETONATE
++  {SPR_MISL,2|FF_FULLBRIGHT,6,{.p3 = A_Detonate},S_DETONATE3},  // S_DETONATE2
+   {SPR_MISL,3|FF_FULLBRIGHT,10,{NULL},S_NULL},            // S_DETONATE3
+ 
+   // killough 7/19/98: Marine's best friend :)
+-  {SPR_DOGS,0,10,{.p1 = A_Look},S_DOGS_STND2},  // S_DOGS_STND
+-  {SPR_DOGS,1,10,{.p1 = A_Look},S_DOGS_STND}, // S_DOGS_STND2
+-  {SPR_DOGS,0,2,{.p1 = A_Chase},S_DOGS_RUN2}, // S_DOGS_RUN1
+-  {SPR_DOGS,0,2,{.p1 = A_Chase},S_DOGS_RUN3}, // S_DOGS_RUN2
+-  {SPR_DOGS,1,2,{.p1 = A_Chase},S_DOGS_RUN4}, // S_DOGS_RUN3
+-  {SPR_DOGS,1,2,{.p1 = A_Chase},S_DOGS_RUN5}, // S_DOGS_RUN4
+-  {SPR_DOGS,2,2,{.p1 = A_Chase},S_DOGS_RUN6}, // S_DOGS_RUN5
+-  {SPR_DOGS,2,2,{.p1 = A_Chase},S_DOGS_RUN7}, // S_DOGS_RUN6
+-  {SPR_DOGS,3,2,{.p1 = A_Chase},S_DOGS_RUN8}, // S_DOGS_RUN7
+-  {SPR_DOGS,3,2,{.p1 = A_Chase},S_DOGS_RUN1}, // S_DOGS_RUN8
+-  {SPR_DOGS,4,8,{.p1 = A_FaceTarget},S_DOGS_ATK2},  // S_DOGS_ATK1
+-  {SPR_DOGS,5,8,{.p1 = A_FaceTarget},S_DOGS_ATK3},  // S_DOGS_ATK2
+-  {SPR_DOGS,6,8,{.p1 = A_SargAttack},S_DOGS_RUN1},  // S_DOGS_ATK3
++  {SPR_DOGS,0,10,{.p3 = A_Look},S_DOGS_STND2},  // S_DOGS_STND
++  {SPR_DOGS,1,10,{.p3 = A_Look},S_DOGS_STND}, // S_DOGS_STND2
++  {SPR_DOGS,0,2,{.p3 = A_Chase},S_DOGS_RUN2}, // S_DOGS_RUN1
++  {SPR_DOGS,0,2,{.p3 = A_Chase},S_DOGS_RUN3}, // S_DOGS_RUN2
++  {SPR_DOGS,1,2,{.p3 = A_Chase},S_DOGS_RUN4}, // S_DOGS_RUN3
++  {SPR_DOGS,1,2,{.p3 = A_Chase},S_DOGS_RUN5}, // S_DOGS_RUN4
++  {SPR_DOGS,2,2,{.p3 = A_Chase},S_DOGS_RUN6}, // S_DOGS_RUN5
++  {SPR_DOGS,2,2,{.p3 = A_Chase},S_DOGS_RUN7}, // S_DOGS_RUN6
++  {SPR_DOGS,3,2,{.p3 = A_Chase},S_DOGS_RUN8}, // S_DOGS_RUN7
++  {SPR_DOGS,3,2,{.p3 = A_Chase},S_DOGS_RUN1}, // S_DOGS_RUN8
++  {SPR_DOGS,4,8,{.p3 = A_FaceTarget},S_DOGS_ATK2},  // S_DOGS_ATK1
++  {SPR_DOGS,5,8,{.p3 = A_FaceTarget},S_DOGS_ATK3},  // S_DOGS_ATK2
++  {SPR_DOGS,6,8,{.p3 = A_SargAttack},S_DOGS_RUN1},  // S_DOGS_ATK3
+   {SPR_DOGS,7,2,{NULL},S_DOGS_PAIN2}, // S_DOGS_PAIN
+-  {SPR_DOGS,7,2,{.p1 = A_Pain},S_DOGS_RUN1},  // S_DOGS_PAIN2
++  {SPR_DOGS,7,2,{.p3 = A_Pain},S_DOGS_RUN1},  // S_DOGS_PAIN2
+   {SPR_DOGS,8,8,{NULL},S_DOGS_DIE2},  // S_DOGS_DIE1
+-  {SPR_DOGS,9,8,{.p1 = A_Scream},S_DOGS_DIE3},  // S_DOGS_DIE2
++  {SPR_DOGS,9,8,{.p3 = A_Scream},S_DOGS_DIE3},  // S_DOGS_DIE2
+   {SPR_DOGS,10,4,{NULL},S_DOGS_DIE4}, // S_DOGS_DIE3
+-  {SPR_DOGS,11,4,{.p1 = A_Fall},S_DOGS_DIE5}, // S_DOGS_DIE4
++  {SPR_DOGS,11,4,{.p3 = A_Fall},S_DOGS_DIE5}, // S_DOGS_DIE4
+   {SPR_DOGS,12,4,{NULL},S_DOGS_DIE6}, // S_DOGS_DIE5
+   {SPR_DOGS,13,-1,{NULL},S_NULL}, // S_DOGS_DIE6
+   {SPR_DOGS,13,5,{NULL},S_DOGS_RAISE2}, // S_DOGS_RAISE1
+@@ -1171,22 +1171,22 @@ state_t original_states[NUMSTATES] = {
+   // This is an approximation, but I'm sure it can be improved.
+ 
+   // spawnstate
+-  {SPR_SKUL,0,10,{.p1 = A_Look},S_BSKUL_STND},  // S_BSKUL_STND
++  {SPR_SKUL,0,10,{.p3 = A_Look},S_BSKUL_STND},  // S_BSKUL_STND
+ 
+   // chasestate
+-  {SPR_SKUL,1,5,{.p1 = A_Chase},S_BSKUL_RUN2},  // S_BSKUL_RUN1
+-  {SPR_SKUL,2,5,{.p1 = A_Chase},S_BSKUL_RUN3},  // S_BSKUL_RUN2
+-  {SPR_SKUL,3,5,{.p1 = A_Chase},S_BSKUL_RUN4},  // S_BSKUL_RUN3
+-  {SPR_SKUL,0,5,{.p1 = A_Chase},S_BSKUL_RUN1},  // S_BSKUL_RUN4
++  {SPR_SKUL,1,5,{.p3 = A_Chase},S_BSKUL_RUN2},  // S_BSKUL_RUN1
++  {SPR_SKUL,2,5,{.p3 = A_Chase},S_BSKUL_RUN3},  // S_BSKUL_RUN2
++  {SPR_SKUL,3,5,{.p3 = A_Chase},S_BSKUL_RUN4},  // S_BSKUL_RUN3
++  {SPR_SKUL,0,5,{.p3 = A_Chase},S_BSKUL_RUN1},  // S_BSKUL_RUN4
+ 
+   // missilestate
+-  {SPR_SKUL,4,4,{.p1 = A_FaceTarget},S_BSKUL_ATK2},     // S_BSKUL_ATK1
+-  {SPR_SKUL,5,5,{.p1 = A_BetaSkullAttack},S_BSKUL_ATK3}, // S_BSKUL_ATK2
++  {SPR_SKUL,4,4,{.p3 = A_FaceTarget},S_BSKUL_ATK2},     // S_BSKUL_ATK1
++  {SPR_SKUL,5,5,{.p3 = A_BetaSkullAttack},S_BSKUL_ATK3}, // S_BSKUL_ATK2
+   {SPR_SKUL,5,4,{NULL},S_BSKUL_RUN1},              // S_BSKUL_ATK3
+ 
+   // painstate
+   {SPR_SKUL,6,4,{NULL},S_BSKUL_PAIN2},     // S_BSKUL_PAIN1
+-  {SPR_SKUL,7,2,{.p1 = A_Pain},S_BSKUL_RUN1},   // S_BSKUL_PAIN2
++  {SPR_SKUL,7,2,{.p3 = A_Pain},S_BSKUL_RUN1},   // S_BSKUL_PAIN2
+   {SPR_SKUL,8,4,{NULL},S_BSKUL_RUN1},      // S_BSKUL_PAIN3
+ 
+   // deathstate
+@@ -1194,13 +1194,13 @@ state_t original_states[NUMSTATES] = {
+   {SPR_SKUL,10,5,{NULL},S_BSKUL_DIE3},     // S_BSKUL_DIE2
+   {SPR_SKUL,11,5,{NULL},S_BSKUL_DIE4},     // S_BSKUL_DIE3
+   {SPR_SKUL,12,5,{NULL},S_BSKUL_DIE5},     // S_BSKUL_DIE4
+-  {SPR_SKUL,13,5,{.p1 = A_Scream},S_BSKUL_DIE6}, // S_BSKUL_DIE5
++  {SPR_SKUL,13,5,{.p3 = A_Scream},S_BSKUL_DIE6}, // S_BSKUL_DIE5
+   {SPR_SKUL,14,5,{NULL},S_BSKUL_DIE7},     // S_BSKUL_DIE6
+-  {SPR_SKUL,15,5,{.p1 = A_Fall},S_BSKUL_DIE8},   // S_BSKUL_DIE7
+-  {SPR_SKUL,16,5,{.p1 = A_Stop},S_BSKUL_DIE8},   // S_BSKUL_DIE8
++  {SPR_SKUL,15,5,{.p3 = A_Fall},S_BSKUL_DIE8},   // S_BSKUL_DIE7
++  {SPR_SKUL,16,5,{.p3 = A_Stop},S_BSKUL_DIE8},   // S_BSKUL_DIE8
+ 
+   // killough 10/98: mushroom effect
+-  {SPR_MISL,1|FF_FULLBRIGHT,8,{.p1 = A_Mushroom},S_EXPLODE2},  // S_MUSHROOM
++  {SPR_MISL,1|FF_FULLBRIGHT,8,{.p3 = A_Mushroom},S_EXPLODE2},  // S_MUSHROOM
+ };
+ 
+ // ********************************************************************
+diff --git a/src/m_cheat.c b/src/m_cheat.c
+index 334383c..c3829c1 100644
+--- a/src/m_cheat.c
++++ b/src/m_cheat.c
+@@ -799,7 +799,7 @@ static void cheat_massacre(void)    // jff 2/01/98 kill all monsters
+ 	    }
+ 	  if (((mobj_t *) currentthinker)->type == MT_PAIN)
+ 	    {
+-	      A_PainDie((mobj_t *) currentthinker);    // killough 2/8/98
++	      A_PainDie((mobj_t *) currentthinker, NULL, NULL);    // killough 2/8/98
+ 	      P_SetMobjState((mobj_t *) currentthinker, S_PAIN_DIE6);
+ 	    }
+ 	}
+diff --git a/src/nw_web.c b/src/nw_web.c
+new file mode 100644
+index 0000000..4f54ec9
+--- /dev/null
++++ b/src/nw_web.c
+@@ -0,0 +1,35 @@
++//
++// Web (Emscripten) build: single-player only. Stands in for nw_sdl.c, which
++// needs SDL3_net and UDP sockets that a browser page cannot open.
++//
++
++#include "nw_sdl.h"
++
++static boolean NW_Web_InitClient(void) { return false; }
++static boolean NW_Web_InitServer(void) { return false; }
++static void NW_Web_SendPacket(nw_addr_t *addr, nw_packet_t *packet) {}
++static boolean NW_Web_RecvPacket(nw_addr_t **addr, nw_packet_t **packet) { return false; }
++
++static void NW_Web_AddrToString(nw_addr_t *addr, char *buffer, int buffer_len)
++{
++    if (buffer_len > 0)
++    {
++        buffer[0] = '\0';
++    }
++}
++
++static void NW_Web_FreeAddress(nw_addr_t *addr) {}
++static nw_addr_t *NW_Web_ResolveAddress(const char *addr) { return NULL; }
++static void NW_Web_Shutdown(void) {}
++
++nw_module_t nw_sdl_module =
++{
++    NW_Web_InitClient,
++    NW_Web_InitServer,
++    NW_Web_SendPacket,
++    NW_Web_RecvPacket,
++    NW_Web_AddrToString,
++    NW_Web_FreeAddress,
++    NW_Web_ResolveAddress,
++    NW_Web_Shutdown,
++};
+diff --git a/src/p_action.h b/src/p_action.h
+index c494ea8..c91801d 100644
+--- a/src/p_action.h
++++ b/src/p_action.h
+@@ -52,95 +52,95 @@ void A_Saw(struct mobj_s *, struct player_s *, struct pspdef_s *);
+ void A_FirePlasma(struct mobj_s *, struct player_s *, struct pspdef_s *);
+ void A_BFGsound(struct mobj_s *, struct player_s *, struct pspdef_s *);
+ void A_FireBFG(struct mobj_s *, struct player_s *, struct pspdef_s *);
+-void A_BFGSpray(struct mobj_s *);
+-void A_Explode(struct mobj_s *);
+-void A_Pain(struct mobj_s *);
+-void A_PlayerScream(struct mobj_s *);
+-void A_Fall(struct mobj_s *);
+-void A_XScream(struct mobj_s *);
+-void A_Look(struct mobj_s *);
+-void A_Chase(struct mobj_s *);
+-void A_FaceTarget(struct mobj_s *);
+-void A_PosAttack(struct mobj_s *);
+-void A_Scream(struct mobj_s *);
+-void A_SPosAttack(struct mobj_s *);
+-void A_VileChase(struct mobj_s *);
+-void A_VileStart(struct mobj_s *);
+-void A_VileTarget(struct mobj_s *);
+-void A_VileAttack(struct mobj_s *);
+-void A_StartFire(struct mobj_s *);
+-void A_Fire(struct mobj_s *);
+-void A_FireCrackle(struct mobj_s *);
+-void A_Tracer(struct mobj_s *);
+-void A_SkelWhoosh(struct mobj_s *);
+-void A_SkelFist(struct mobj_s *);
+-void A_SkelMissile(struct mobj_s *);
+-void A_FatRaise(struct mobj_s *);
+-void A_FatAttack1(struct mobj_s *);
+-void A_FatAttack2(struct mobj_s *);
+-void A_FatAttack3(struct mobj_s *);
+-void A_BossDeath(struct mobj_s *);
+-void A_CPosAttack(struct mobj_s *);
+-void A_CPosRefire(struct mobj_s *);
+-void A_TroopAttack(struct mobj_s *);
+-void A_SargAttack(struct mobj_s *);
+-void A_HeadAttack(struct mobj_s *);
+-void A_BruisAttack(struct mobj_s *);
+-void A_SkullAttack(struct mobj_s *);
+-void A_Metal(struct mobj_s *);
+-void A_SpidRefire(struct mobj_s *);
+-void A_BabyMetal(struct mobj_s *);
+-void A_BspiAttack(struct mobj_s *);
+-void A_Hoof(struct mobj_s *);
+-void A_CyberAttack(struct mobj_s *);
+-void A_PainAttack(struct mobj_s *);
+-void A_PainDie(struct mobj_s *);
+-void A_KeenDie(struct mobj_s *);
+-void A_BrainPain(struct mobj_s *);
+-void A_BrainScream(struct mobj_s *);
+-void A_BrainDie(struct mobj_s *);
+-void A_BrainAwake(struct mobj_s *);
+-void A_BrainSpit(struct mobj_s *);
+-void A_SpawnSound(struct mobj_s *);
+-void A_SpawnFly(struct mobj_s *);
+-void A_BrainExplode(struct mobj_s *);
+-void A_Detonate(struct mobj_s *);    // killough 8/9/98
+-void A_Mushroom(struct mobj_s *); // killough 10/98
+-void A_Die(struct mobj_s *);      // killough 11/98
+-void A_Spawn(struct mobj_s *);       // killough 11/98
+-void A_Turn(struct mobj_s *);        // killough 11/98
+-void A_Face(struct mobj_s *);        // killough 11/98
+-void A_Scratch(struct mobj_s *);     // killough 11/98
+-void A_PlaySound(struct mobj_s *);   // killough 11/98
+-void A_RandomJump(struct mobj_s *);  // killough 11/98
+-void A_LineEffect(struct mobj_s *);  // killough 11/98
++void A_BFGSpray(struct mobj_s *, struct player_s *, struct pspdef_s *);
++void A_Explode(struct mobj_s *, struct player_s *, struct pspdef_s *);
++void A_Pain(struct mobj_s *, struct player_s *, struct pspdef_s *);
++void A_PlayerScream(struct mobj_s *, struct player_s *, struct pspdef_s *);
++void A_Fall(struct mobj_s *, struct player_s *, struct pspdef_s *);
++void A_XScream(struct mobj_s *, struct player_s *, struct pspdef_s *);
++void A_Look(struct mobj_s *, struct player_s *, struct pspdef_s *);
++void A_Chase(struct mobj_s *, struct player_s *, struct pspdef_s *);
++void A_FaceTarget(struct mobj_s *, struct player_s *, struct pspdef_s *);
++void A_PosAttack(struct mobj_s *, struct player_s *, struct pspdef_s *);
++void A_Scream(struct mobj_s *, struct player_s *, struct pspdef_s *);
++void A_SPosAttack(struct mobj_s *, struct player_s *, struct pspdef_s *);
++void A_VileChase(struct mobj_s *, struct player_s *, struct pspdef_s *);
++void A_VileStart(struct mobj_s *, struct player_s *, struct pspdef_s *);
++void A_VileTarget(struct mobj_s *, struct player_s *, struct pspdef_s *);
++void A_VileAttack(struct mobj_s *, struct player_s *, struct pspdef_s *);
++void A_StartFire(struct mobj_s *, struct player_s *, struct pspdef_s *);
++void A_Fire(struct mobj_s *, struct player_s *, struct pspdef_s *);
++void A_FireCrackle(struct mobj_s *, struct player_s *, struct pspdef_s *);
++void A_Tracer(struct mobj_s *, struct player_s *, struct pspdef_s *);
++void A_SkelWhoosh(struct mobj_s *, struct player_s *, struct pspdef_s *);
++void A_SkelFist(struct mobj_s *, struct player_s *, struct pspdef_s *);
++void A_SkelMissile(struct mobj_s *, struct player_s *, struct pspdef_s *);
++void A_FatRaise(struct mobj_s *, struct player_s *, struct pspdef_s *);
++void A_FatAttack1(struct mobj_s *, struct player_s *, struct pspdef_s *);
++void A_FatAttack2(struct mobj_s *, struct player_s *, struct pspdef_s *);
++void A_FatAttack3(struct mobj_s *, struct player_s *, struct pspdef_s *);
++void A_BossDeath(struct mobj_s *, struct player_s *, struct pspdef_s *);
++void A_CPosAttack(struct mobj_s *, struct player_s *, struct pspdef_s *);
++void A_CPosRefire(struct mobj_s *, struct player_s *, struct pspdef_s *);
++void A_TroopAttack(struct mobj_s *, struct player_s *, struct pspdef_s *);
++void A_SargAttack(struct mobj_s *, struct player_s *, struct pspdef_s *);
++void A_HeadAttack(struct mobj_s *, struct player_s *, struct pspdef_s *);
++void A_BruisAttack(struct mobj_s *, struct player_s *, struct pspdef_s *);
++void A_SkullAttack(struct mobj_s *, struct player_s *, struct pspdef_s *);
++void A_Metal(struct mobj_s *, struct player_s *, struct pspdef_s *);
++void A_SpidRefire(struct mobj_s *, struct player_s *, struct pspdef_s *);
++void A_BabyMetal(struct mobj_s *, struct player_s *, struct pspdef_s *);
++void A_BspiAttack(struct mobj_s *, struct player_s *, struct pspdef_s *);
++void A_Hoof(struct mobj_s *, struct player_s *, struct pspdef_s *);
++void A_CyberAttack(struct mobj_s *, struct player_s *, struct pspdef_s *);
++void A_PainAttack(struct mobj_s *, struct player_s *, struct pspdef_s *);
++void A_PainDie(struct mobj_s *, struct player_s *, struct pspdef_s *);
++void A_KeenDie(struct mobj_s *, struct player_s *, struct pspdef_s *);
++void A_BrainPain(struct mobj_s *, struct player_s *, struct pspdef_s *);
++void A_BrainScream(struct mobj_s *, struct player_s *, struct pspdef_s *);
++void A_BrainDie(struct mobj_s *, struct player_s *, struct pspdef_s *);
++void A_BrainAwake(struct mobj_s *, struct player_s *, struct pspdef_s *);
++void A_BrainSpit(struct mobj_s *, struct player_s *, struct pspdef_s *);
++void A_SpawnSound(struct mobj_s *, struct player_s *, struct pspdef_s *);
++void A_SpawnFly(struct mobj_s *, struct player_s *, struct pspdef_s *);
++void A_BrainExplode(struct mobj_s *, struct player_s *, struct pspdef_s *);
++void A_Detonate(struct mobj_s *, struct player_s *, struct pspdef_s *);    // killough 8/9/98
++void A_Mushroom(struct mobj_s *, struct player_s *, struct pspdef_s *); // killough 10/98
++void A_Die(struct mobj_s *, struct player_s *, struct pspdef_s *);      // killough 11/98
++void A_Spawn(struct mobj_s *, struct player_s *, struct pspdef_s *);       // killough 11/98
++void A_Turn(struct mobj_s *, struct player_s *, struct pspdef_s *);        // killough 11/98
++void A_Face(struct mobj_s *, struct player_s *, struct pspdef_s *);        // killough 11/98
++void A_Scratch(struct mobj_s *, struct player_s *, struct pspdef_s *);     // killough 11/98
++void A_PlaySound(struct mobj_s *, struct player_s *, struct pspdef_s *);   // killough 11/98
++void A_RandomJump(struct mobj_s *, struct player_s *, struct pspdef_s *);  // killough 11/98
++void A_LineEffect(struct mobj_s *, struct player_s *, struct pspdef_s *);  // killough 11/98
+ 
+ // killough 7/19/98: classic BFG firing function
+ void A_FireOldBFG(struct mobj_s *, struct player_s *, struct pspdef_s *);
+ // killough 10/98: beta lost souls attacked different
+-void A_BetaSkullAttack(struct mobj_s *);
+-void A_Stop(struct mobj_s *);
++void A_BetaSkullAttack(struct mobj_s *, struct player_s *, struct pspdef_s *);
++void A_Stop(struct mobj_s *, struct player_s *, struct pspdef_s *);
+ 
+ // [XA] New mbf21 codepointers
+ 
+-void A_SpawnObject(struct mobj_s *);
+-void A_MonsterProjectile(struct mobj_s *);
+-void A_MonsterBulletAttack(struct mobj_s *);
+-void A_MonsterMeleeAttack(struct mobj_s *);
+-void A_RadiusDamage(struct mobj_s *);
+-void A_NoiseAlert(struct mobj_s *);
+-void A_HealChase(struct mobj_s *);
+-void A_SeekTracer(struct mobj_s *);
+-void A_FindTracer(struct mobj_s *);
+-void A_ClearTracer(struct mobj_s *);
+-void A_JumpIfHealthBelow(struct mobj_s *);
+-void A_JumpIfTargetInSight(struct mobj_s *);
+-void A_JumpIfTargetCloser(struct mobj_s *);
+-void A_JumpIfTracerInSight(struct mobj_s *);
+-void A_JumpIfTracerCloser(struct mobj_s *);
+-void A_JumpIfFlagsSet(struct mobj_s *);
+-void A_AddFlags(struct mobj_s *);
+-void A_RemoveFlags(struct mobj_s *);
++void A_SpawnObject(struct mobj_s *, struct player_s *, struct pspdef_s *);
++void A_MonsterProjectile(struct mobj_s *, struct player_s *, struct pspdef_s *);
++void A_MonsterBulletAttack(struct mobj_s *, struct player_s *, struct pspdef_s *);
++void A_MonsterMeleeAttack(struct mobj_s *, struct player_s *, struct pspdef_s *);
++void A_RadiusDamage(struct mobj_s *, struct player_s *, struct pspdef_s *);
++void A_NoiseAlert(struct mobj_s *, struct player_s *, struct pspdef_s *);
++void A_HealChase(struct mobj_s *, struct player_s *, struct pspdef_s *);
++void A_SeekTracer(struct mobj_s *, struct player_s *, struct pspdef_s *);
++void A_FindTracer(struct mobj_s *, struct player_s *, struct pspdef_s *);
++void A_ClearTracer(struct mobj_s *, struct player_s *, struct pspdef_s *);
++void A_JumpIfHealthBelow(struct mobj_s *, struct player_s *, struct pspdef_s *);
++void A_JumpIfTargetInSight(struct mobj_s *, struct player_s *, struct pspdef_s *);
++void A_JumpIfTargetCloser(struct mobj_s *, struct player_s *, struct pspdef_s *);
++void A_JumpIfTracerInSight(struct mobj_s *, struct player_s *, struct pspdef_s *);
++void A_JumpIfTracerCloser(struct mobj_s *, struct player_s *, struct pspdef_s *);
++void A_JumpIfFlagsSet(struct mobj_s *, struct player_s *, struct pspdef_s *);
++void A_AddFlags(struct mobj_s *, struct player_s *, struct pspdef_s *);
++void A_RemoveFlags(struct mobj_s *, struct player_s *, struct pspdef_s *);
+ void A_WeaponProjectile(struct mobj_s *, struct player_s *, struct pspdef_s *);
+ void A_WeaponBulletAttack(struct mobj_s *, struct player_s *, struct pspdef_s *);
+ void A_WeaponMeleeAttack(struct mobj_s *, struct player_s *, struct pspdef_s *);
+diff --git a/src/p_enemy.c b/src/p_enemy.c
+index f70239c..6d43f1c 100644
+--- a/src/p_enemy.c
++++ b/src/p_enemy.c
+@@ -1074,7 +1074,7 @@ static boolean P_HelpFriend(mobj_t *actor)
+ // Stay in state until a player is sighted.
+ //
+ 
+-void A_Look(mobj_t *actor)
++void A_Look(mobj_t *actor, player_t *player, pspdef_t *psp)
+ {
+   mobj_t *targ;
+ 
+@@ -1158,7 +1158,7 @@ void A_KeepChasing(mobj_t *actor)
+ // so it tries to close as fast as possible
+ //
+ 
+-void A_Chase(mobj_t *actor)
++void A_Chase(mobj_t *actor, player_t *player, pspdef_t *psp)
+ {
+   if (actor->reactiontime)
+     actor->reactiontime--;
+@@ -1176,7 +1176,7 @@ void A_Chase(mobj_t *actor)
+   // killough 9/7/98: keep facing towards target if strafing or backing out
+ 
+   if (actor->strafecount)
+-    A_FaceTarget(actor);
++    A_FaceTarget(actor, NULL, NULL);
+   else
+     if (actor->movedir < 8)
+       {
+@@ -1284,7 +1284,7 @@ void A_Chase(mobj_t *actor)
+ //
+ // A_FaceTarget
+ //
+-void A_FaceTarget(mobj_t *actor)
++void A_FaceTarget(mobj_t *actor, player_t *player, pspdef_t *psp)
+ {
+   if (!actor->target)
+     return;
+@@ -1303,14 +1303,14 @@ void A_FaceTarget(mobj_t *actor)
+ // A_PosAttack
+ //
+ 
+-void A_PosAttack(mobj_t *actor)
++void A_PosAttack(mobj_t *actor, player_t *player, pspdef_t *psp)
+ {
+   int damage, slope, t;
+   angle_t angle;
+ 
+   if (!actor->target)
+     return;
+-  A_FaceTarget(actor);
++  A_FaceTarget(actor, NULL, NULL);
+   angle = actor->angle;
+   slope = P_AimLineAttack(actor, angle, MISSILERANGE, 0); // killough 8/2/98
+   S_StartSound(actor, sfx_pistol);
+@@ -1322,14 +1322,14 @@ void A_PosAttack(mobj_t *actor)
+   P_LineAttack(actor, angle, MISSILERANGE, slope, damage);
+ }
+ 
+-void A_SPosAttack(mobj_t* actor)
++void A_SPosAttack(mobj_t *actor, player_t *player, pspdef_t *psp)
+ {
+   int i, bangle, slope;
+ 
+   if (!actor->target)
+     return;
+   S_StartSound(actor, sfx_shotgn);
+-  A_FaceTarget(actor);
++  A_FaceTarget(actor, NULL, NULL);
+   bangle = actor->angle;
+   slope = P_AimLineAttack(actor, bangle, MISSILERANGE, 0); // killough 8/2/98
+   for (i=0; i<3; i++)
+@@ -1341,14 +1341,14 @@ void A_SPosAttack(mobj_t* actor)
+     }
+ }
+ 
+-void A_CPosAttack(mobj_t *actor)
++void A_CPosAttack(mobj_t *actor, player_t *player, pspdef_t *psp)
+ {
+   int angle, bangle, damage, slope, t;
+ 
+   if (!actor->target)
+     return;
+   S_StartSound(actor, sfx_shotgn);
+-  A_FaceTarget(actor);
++  A_FaceTarget(actor, NULL, NULL);
+   bangle = actor->angle;
+   slope = P_AimLineAttack(actor, bangle, MISSILERANGE, 0); // killough 8/2/98
+ 
+@@ -1359,10 +1359,10 @@ void A_CPosAttack(mobj_t *actor)
+   P_LineAttack(actor, angle, MISSILERANGE, slope, damage);
+ }
+ 
+-void A_CPosRefire(mobj_t *actor)
++void A_CPosRefire(mobj_t *actor, player_t *player, pspdef_t *psp)
+ {
+   // keep firing unless target got out of sight
+-  A_FaceTarget(actor);
++  A_FaceTarget(actor, NULL, NULL);
+ 
+   // killough 12/98: Stop firing if a friend has gotten in the way
+   if (actor->flags & MF_FRIEND && P_HitFriend(actor))
+@@ -1382,10 +1382,10 @@ void A_CPosRefire(mobj_t *actor)
+     stop: P_SetMobjState(actor, actor->info->seestate);
+ }
+ 
+-void A_SpidRefire(mobj_t* actor)
++void A_SpidRefire(mobj_t *actor, player_t *player, pspdef_t *psp)
+ {
+   // keep firing unless target got out of sight
+-  A_FaceTarget(actor);
++  A_FaceTarget(actor, NULL, NULL);
+ 
+   // killough 12/98: Stop firing if a friend has gotten in the way
+   if (actor->flags & MF_FRIEND && P_HitFriend(actor))
+@@ -1401,11 +1401,11 @@ void A_SpidRefire(mobj_t* actor)
+     stop: P_SetMobjState(actor, actor->info->seestate);
+ }
+ 
+-void A_BspiAttack(mobj_t *actor)
++void A_BspiAttack(mobj_t *actor, player_t *player, pspdef_t *psp)
+ {
+   if (!actor->target)
+     return;
+-  A_FaceTarget(actor);
++  A_FaceTarget(actor, NULL, NULL);
+   P_SpawnMissile(actor, actor->target, MT_ARACHPLAZ);  // launch a missile
+ }
+ 
+@@ -1413,11 +1413,11 @@ void A_BspiAttack(mobj_t *actor)
+ // A_TroopAttack
+ //
+ 
+-void A_TroopAttack(mobj_t *actor)
++void A_TroopAttack(mobj_t *actor, player_t *player, pspdef_t *psp)
+ {
+   if (!actor->target)
+     return;
+-  A_FaceTarget(actor);
++  A_FaceTarget(actor, NULL, NULL);
+   if (P_CheckMeleeRange(actor))
+     {
+       int damage;
+@@ -1429,11 +1429,11 @@ void A_TroopAttack(mobj_t *actor)
+   P_SpawnMissile(actor, actor->target, MT_TROOPSHOT);  // launch a missile
+ }
+ 
+-void A_SargAttack(mobj_t *actor)
++void A_SargAttack(mobj_t *actor, player_t *player, pspdef_t *psp)
+ {
+   if (!actor->target)
+     return;
+-  A_FaceTarget(actor);
++  A_FaceTarget(actor, NULL, NULL);
+   if (P_CheckMeleeRange(actor))
+     {
+       int damage = ((P_Random(pr_sargattack)%10)+1)*4;
+@@ -1441,11 +1441,11 @@ void A_SargAttack(mobj_t *actor)
+     }
+ }
+ 
+-void A_HeadAttack(mobj_t *actor)
++void A_HeadAttack(mobj_t *actor, player_t *player, pspdef_t *psp)
+ {
+   if (!actor->target)
+     return;
+-  A_FaceTarget (actor);
++  A_FaceTarget (actor, NULL, NULL);
+   if (P_CheckMeleeRange(actor))
+     {
+       int damage = (P_Random(pr_headattack)%6+1)*10;
+@@ -1455,15 +1455,15 @@ void A_HeadAttack(mobj_t *actor)
+   P_SpawnMissile(actor, actor->target, MT_HEADSHOT);  // launch a missile
+ }
+ 
+-void A_CyberAttack(mobj_t *actor)
++void A_CyberAttack(mobj_t *actor, player_t *player, pspdef_t *psp)
+ {
+   if (!actor->target)
+     return;
+-  A_FaceTarget(actor);
++  A_FaceTarget(actor, NULL, NULL);
+   P_SpawnMissile(actor, actor->target, MT_ROCKET);
+ }
+ 
+-void A_BruisAttack(mobj_t *actor)
++void A_BruisAttack(mobj_t *actor, player_t *player, pspdef_t *psp)
+ {
+   if (!actor->target)
+     return;
+@@ -1482,14 +1482,14 @@ void A_BruisAttack(mobj_t *actor)
+ // A_SkelMissile
+ //
+ 
+-void A_SkelMissile(mobj_t *actor)
++void A_SkelMissile(mobj_t *actor, player_t *player, pspdef_t *psp)
+ {
+   mobj_t *mo;
+ 
+   if (!actor->target)
+     return;
+ 
+-  A_FaceTarget (actor);
++  A_FaceTarget (actor, NULL, NULL);
+   actor->z += 16*FRACUNIT;      // so missile spawns higher
+   mo = P_SpawnMissile (actor, actor->target, MT_TRACER);
+   actor->z -= 16*FRACUNIT;      // back to normal
+@@ -1501,7 +1501,7 @@ void A_SkelMissile(mobj_t *actor)
+ 
+ #define TRACEANGLE 0xc000000   /* killough 9/9/98: change to #define */
+ 
+-void A_Tracer(mobj_t *actor)
++void A_Tracer(mobj_t *actor, player_t *player, pspdef_t *psp)
+ {
+   angle_t       exact;
+   fixed_t       dist;
+@@ -1583,19 +1583,19 @@ void A_Tracer(mobj_t *actor)
+     actor->momz += FRACUNIT/8;
+ }
+ 
+-void A_SkelWhoosh(mobj_t *actor)
++void A_SkelWhoosh(mobj_t *actor, player_t *player, pspdef_t *psp)
+ {
+   if (!actor->target)
+     return;
+-  A_FaceTarget(actor);
++  A_FaceTarget(actor, NULL, NULL);
+   S_StartSound(actor,sfx_skeswg);
+ }
+ 
+-void A_SkelFist(mobj_t *actor)
++void A_SkelFist(mobj_t *actor, player_t *player, pspdef_t *psp)
+ {
+   if (!actor->target)
+     return;
+-  A_FaceTarget(actor);
++  A_FaceTarget(actor, NULL, NULL);
+   if (P_CheckMeleeRange(actor))
+     {
+       int damage = ((P_Random(pr_skelfist)%10)+1)*6;
+@@ -1748,7 +1748,7 @@ static boolean P_HealCorpse(mobj_t* actor, int radius, statenum_t healstate, sfx
+                   // got one!
+                   mobj_t *temp = actor->target;
+                   actor->target = corpsehit;
+-                  A_FaceTarget(actor);
++                  A_FaceTarget(actor, NULL, NULL);
+                   actor->target = temp;
+ 
+                   P_SetMobjState(actor, healstate);
+@@ -1809,17 +1809,17 @@ static boolean P_HealCorpse(mobj_t* actor, int radius, statenum_t healstate, sfx
+ // Check for ressurecting a body
+ //
+ 
+-void A_VileChase(mobj_t* actor)
++void A_VileChase(mobj_t *actor, player_t *player, pspdef_t *psp)
+ {
+   if (!P_HealCorpse(actor, mobjinfo[MT_VILE].radius, S_VILE_HEAL1, sfx_slop))
+-    A_Chase(actor);
++    A_Chase(actor, NULL, NULL);
+ }
+ 
+ //
+ // A_VileStart
+ //
+ 
+-void A_VileStart(mobj_t *actor)
++void A_VileStart(mobj_t *actor, player_t *player, pspdef_t *psp)
+ {
+   S_StartSound(actor, sfx_vilatk);
+ }
+@@ -1829,19 +1829,19 @@ void A_VileStart(mobj_t *actor)
+ // Keep fire in front of player unless out of sight
+ //
+ 
+-void A_StartFire(mobj_t *actor)
++void A_StartFire(mobj_t *actor, player_t *player, pspdef_t *psp)
+ {
+   S_StartSound(actor,sfx_flamst);
+-  A_Fire(actor);
++  A_Fire(actor, NULL, NULL);
+ }
+ 
+-void A_FireCrackle(mobj_t* actor)
++void A_FireCrackle(mobj_t *actor, player_t *player, pspdef_t *psp)
+ {
+   S_StartSound(actor,sfx_flame);
+-  A_Fire(actor);
++  A_Fire(actor, NULL, NULL);
+ }
+ 
+-void A_Fire(mobj_t *actor)
++void A_Fire(mobj_t *actor, player_t *player, pspdef_t *psp)
+ {
+   mobj_t* target;
+   unsigned an;
+@@ -1870,14 +1870,14 @@ void A_Fire(mobj_t *actor)
+ // Spawn the hellfire
+ //
+ 
+-void A_VileTarget(mobj_t *actor)
++void A_VileTarget(mobj_t *actor, player_t *player, pspdef_t *psp)
+ {
+   mobj_t *fog;
+ 
+   if (!actor->target)
+     return;
+ 
+-  A_FaceTarget(actor);
++  A_FaceTarget(actor, NULL, NULL);
+ 
+   // killough 12/98: fix Vile fog coordinates
+   fog = P_SpawnMobj(actor->target->x,
+@@ -1887,7 +1887,7 @@ void A_VileTarget(mobj_t *actor)
+   P_SetTarget(&actor->tracer, fog);   // killough 11/98
+   P_SetTarget(&fog->target, actor);
+   P_SetTarget(&fog->tracer, actor->target);
+-  A_Fire(fog);
++  A_Fire(fog, NULL, NULL);
+ }
+ 
+ //
+@@ -1899,7 +1899,7 @@ void A_VileJump(mobj_t *mo)
+   mo->momz = 1000*FRACUNIT/mo->info->mass;
+ }
+ 
+-void A_VileAttack(mobj_t *actor)
++void A_VileAttack(mobj_t *actor, player_t *player, pspdef_t *psp)
+ {
+   mobj_t *fire;
+   int    an;
+@@ -1907,7 +1907,7 @@ void A_VileAttack(mobj_t *actor)
+   if (!actor->target)
+     return;
+ 
+-  A_FaceTarget(actor);
++  A_FaceTarget(actor, NULL, NULL);
+ 
+   if (!P_CheckSight(actor, actor->target))
+     return;
+@@ -1938,19 +1938,19 @@ void A_VileAttack(mobj_t *actor)
+ 
+ #define FATSPREAD       (ANG90/8)
+ 
+-void A_FatRaise(mobj_t *actor)
++void A_FatRaise(mobj_t *actor, player_t *player, pspdef_t *psp)
+ {
+-  A_FaceTarget(actor);
++  A_FaceTarget(actor, NULL, NULL);
+   S_StartSound(actor, sfx_manatk);
+ }
+ 
+-void A_FatAttack1(mobj_t *actor)
++void A_FatAttack1(mobj_t *actor, player_t *player, pspdef_t *psp)
+ {
+   mobj_t *mo;
+   mobj_t *target;
+   int    an;
+ 
+-  A_FaceTarget(actor);
++  A_FaceTarget(actor, NULL, NULL);
+ 
+   // Change direction  to ...
+   actor->angle += FATSPREAD;
+@@ -1964,13 +1964,13 @@ void A_FatAttack1(mobj_t *actor)
+   mo->momy = FixedMul(mo->info->speed, finesine[an]);
+ }
+ 
+-void A_FatAttack2(mobj_t *actor)
++void A_FatAttack2(mobj_t *actor, player_t *player, pspdef_t *psp)
+ {
+   mobj_t *mo;
+   mobj_t *target;
+   int    an;
+ 
+-  A_FaceTarget(actor);
++  A_FaceTarget(actor, NULL, NULL);
+   // Now here choose opposite deviation.
+   actor->angle -= FATSPREAD;
+   target = P_SubstNullMobj(actor->target);
+@@ -1983,13 +1983,13 @@ void A_FatAttack2(mobj_t *actor)
+   mo->momy = FixedMul(mo->info->speed, finesine[an]);
+ }
+ 
+-void A_FatAttack3(mobj_t *actor)
++void A_FatAttack3(mobj_t *actor, player_t *player, pspdef_t *psp)
+ {
+   mobj_t *mo;
+   mobj_t *target;
+   int    an;
+ 
+-  A_FaceTarget(actor);
++  A_FaceTarget(actor, NULL, NULL);
+ 
+   target = P_SubstNullMobj(actor->target);
+ 
+@@ -2012,7 +2012,7 @@ void A_FatAttack3(mobj_t *actor)
+ //
+ #define SKULLSPEED              (20*FRACUNIT)
+ 
+-void A_SkullAttack(mobj_t *actor)
++void A_SkullAttack(mobj_t *actor, player_t *player, pspdef_t *psp)
+ {
+   mobj_t  *dest;
+   angle_t an;
+@@ -2029,7 +2029,7 @@ void A_SkullAttack(mobj_t *actor)
+   {
+   S_StartSound(actor, actor->info->attacksound);
+   }
+-  A_FaceTarget(actor);
++  A_FaceTarget(actor, NULL, NULL);
+   an = actor->angle >> ANGLETOFINESHIFT;
+   actor->momx = FixedMul(SKULLSPEED, finecosine[an]);
+   actor->momy = FixedMul(SKULLSPEED, finesine[an]);
+@@ -2046,7 +2046,7 @@ void A_SkullAttack(mobj_t *actor)
+ // killough 10/98: this emulates the beta version's lost soul attacks
+ //
+ 
+-void A_BetaSkullAttack(mobj_t *actor)
++void A_BetaSkullAttack(mobj_t *actor, player_t *player, pspdef_t *psp)
+ {
+   int damage;
+ 
+@@ -2060,12 +2060,12 @@ void A_BetaSkullAttack(mobj_t *actor)
+   {
+   S_StartSound(actor, actor->info->attacksound);
+   }
+-  A_FaceTarget(actor);
++  A_FaceTarget(actor, NULL, NULL);
+   damage = (P_Random(pr_skullfly)%8+1)*actor->info->damage;
+   P_DamageMobj(actor->target, actor, actor, damage);
+ }
+ 
+-void A_Stop(mobj_t *actor)
++void A_Stop(mobj_t *actor, player_t *player, pspdef_t *psp)
+ {
+   if (demo_version < DV_MBF)
+     return;
+@@ -2157,7 +2157,7 @@ void A_PainShootSkull(mobj_t *actor, angle_t angle)
+     }
+ 
+   P_SetTarget(&newmobj->target, actor->target);
+-  A_SkullAttack(newmobj);
++  A_SkullAttack(newmobj, NULL, NULL);
+ }
+ 
+ //
+@@ -2165,23 +2165,23 @@ void A_PainShootSkull(mobj_t *actor, angle_t angle)
+ // Spawn a lost soul and launch it at the target
+ //
+ 
+-void A_PainAttack(mobj_t *actor)
++void A_PainAttack(mobj_t *actor, player_t *player, pspdef_t *psp)
+ {
+   if (!actor->target)
+     return;
+-  A_FaceTarget(actor);
++  A_FaceTarget(actor, NULL, NULL);
+   A_PainShootSkull(actor, actor->angle);
+ }
+ 
+-void A_PainDie(mobj_t *actor)
++void A_PainDie(mobj_t *actor, player_t *player, pspdef_t *psp)
+ {
+-  A_Fall(actor);
++  A_Fall(actor, NULL, NULL);
+   A_PainShootSkull(actor, actor->angle+ANG90);
+   A_PainShootSkull(actor, actor->angle+ANG180);
+   A_PainShootSkull(actor, actor->angle+ANG270);
+ }
+ 
+-void A_Scream(mobj_t *actor)
++void A_Scream(mobj_t *actor, player_t *player, pspdef_t *psp)
+ {
+   int sound;
+ 
+@@ -2213,25 +2213,25 @@ void A_Scream(mobj_t *actor)
+     S_StartSound(actor, sound);
+ }
+ 
+-void A_XScream(mobj_t *actor)
++void A_XScream(mobj_t *actor, player_t *player, pspdef_t *psp)
+ {
+   S_StartSoundEx(actor, sfx_slop);
+ }
+ 
+-void A_Pain(mobj_t *actor)
++void A_Pain(mobj_t *actor, player_t *player, pspdef_t *psp)
+ {
+   if (actor->info->painsound)
+     S_StartSoundPain(actor, actor->info->painsound);
+ }
+ 
+-void A_Fall(mobj_t *actor)
++void A_Fall(mobj_t *actor, player_t *player, pspdef_t *psp)
+ {
+   // actor is on ground, it can be walked over
+   actor->flags &= ~MF_SOLID;
+ }
+ 
+ // killough 11/98: kill an object
+-void A_Die(mobj_t *actor)
++void A_Die(mobj_t *actor, player_t *player, pspdef_t *psp)
+ {
+   if (demo_version < DV_MBF)
+     return;
+@@ -2241,7 +2241,7 @@ void A_Die(mobj_t *actor)
+ //
+ // A_Explode
+ //
+-void A_Explode(mobj_t *thingy)
++void A_Explode(mobj_t *thingy, player_t *player, pspdef_t *psp)
+ {
+   P_RadiusAttack(thingy, thingy->target, 128, 128);
+ }
+@@ -2251,7 +2251,7 @@ void A_Explode(mobj_t *thingy)
+ // killough 8/9/98: same as A_Explode, except that the damage is variable
+ //
+ 
+-void A_Detonate(mobj_t *mo)
++void A_Detonate(mobj_t *mo, player_t *player, pspdef_t *psp)
+ {
+   if (demo_version < DV_MBF)
+     return;
+@@ -2263,7 +2263,7 @@ void A_Detonate(mobj_t *mo)
+ // Original idea: Linguica
+ //
+ 
+-void A_Mushroom(mobj_t *actor)
++void A_Mushroom(mobj_t *actor, player_t *player, pspdef_t *psp)
+ {
+   int i, j, n = actor->info->damage;
+ 
+@@ -2273,7 +2273,7 @@ void A_Mushroom(mobj_t *actor)
+ 
+   if (demo_version < DV_MBF)
+     return;
+-  A_Explode(actor);               // make normal explosion
++  A_Explode(actor, NULL, NULL);               // make normal explosion
+ 
+   for (i = -n; i <= n; i += 8)    // launch mushroom cloud
+     for (j = -n; j <= n; j += 8)
+@@ -2296,7 +2296,7 @@ void A_Mushroom(mobj_t *actor)
+ // if on first boss level
+ //
+ 
+-void A_BossDeath(mobj_t *mo)
++void A_BossDeath(mobj_t *mo, player_t *player, pspdef_t *psp)
+ {
+   if (MI_BossAction(mo))
+   {
+@@ -2306,22 +2306,22 @@ void A_BossDeath(mobj_t *mo)
+   return;
+ }
+ 
+-void A_Hoof (mobj_t* mo)
++void A_Hoof(mobj_t *mo, player_t *player, pspdef_t *psp)
+ {
+   S_StartSound(mo, sfx_hoof);
+-  A_Chase(mo);
++  A_Chase(mo, NULL, NULL);
+ }
+ 
+-void A_Metal(mobj_t *mo)
++void A_Metal(mobj_t *mo, player_t *player, pspdef_t *psp)
+ {
+   S_StartSound(mo, sfx_metal);
+-  A_Chase(mo);
++  A_Chase(mo, NULL, NULL);
+ }
+ 
+-void A_BabyMetal(mobj_t *mo)
++void A_BabyMetal(mobj_t *mo, player_t *player, pspdef_t *psp)
+ {
+   S_StartSound(mo, sfx_bspwlk);
+-  A_Chase(mo);
++  A_Chase(mo, NULL, NULL);
+ }
+ 
+ void A_OpenShotgun2(mobj_t *mo, player_t *player, pspdef_t *psp)
+@@ -2376,17 +2376,17 @@ void P_SpawnBrainTargets(void)  // killough 3/26/98: renamed old function
+       }
+ }
+ 
+-void A_BrainAwake(mobj_t *mo)
++void A_BrainAwake(mobj_t *mo, player_t *player, pspdef_t *psp)
+ {
+   S_StartSound(NULL,sfx_bossit); // killough 3/26/98: only generates sound now
+ }
+ 
+-void A_BrainPain(mobj_t *mo)
++void A_BrainPain(mobj_t *mo, player_t *player, pspdef_t *psp)
+ {
+   S_StartSound(NULL,sfx_bospn);
+ }
+ 
+-void A_BrainScream(mobj_t *mo)
++void A_BrainScream(mobj_t *mo, player_t *player, pspdef_t *psp)
+ {
+   int x;
+   for (x=mo->x - 196*FRACUNIT ; x< mo->x + 320*FRACUNIT ; x+= FRACUNIT*8)
+@@ -2403,7 +2403,7 @@ void A_BrainScream(mobj_t *mo)
+   S_StartSound(NULL,sfx_bosdth);
+ }
+ 
+-void A_BrainExplode(mobj_t *mo)
++void A_BrainExplode(mobj_t *mo, player_t *player, pspdef_t *psp)
+ {  // killough 5/5/98: remove dependence on order of evaluation:
+   int t = P_Random(pr_brainexp);
+   int x = mo->x + (t - P_Random(pr_brainexp))*2048;
+@@ -2417,12 +2417,12 @@ void A_BrainExplode(mobj_t *mo)
+     th->tics = 1;
+ }
+ 
+-void A_BrainDie(mobj_t *mo)
++void A_BrainDie(mobj_t *mo, player_t *player, pspdef_t *psp)
+ {
+   G_ExitLevel();
+ }
+ 
+-void A_BrainSpit(mobj_t *mo)
++void A_BrainSpit(mobj_t *mo, player_t *player, pspdef_t *psp)
+ {
+   mobj_t *targ, *newmobj;
+ 
+@@ -2452,10 +2452,10 @@ void A_BrainSpit(mobj_t *mo)
+ }
+ 
+ // travelling cube sound
+-void A_SpawnSound(mobj_t *mo)
++void A_SpawnSound(mobj_t *mo, player_t *player, pspdef_t *psp)
+ {
+   S_StartSound(mo,sfx_boscub);
+-  A_SpawnFly(mo);
++  A_SpawnFly(mo, NULL, NULL);
+ }
+ 
+ static void WatchIconSpawn(mobj_t* spawned)
+@@ -2470,7 +2470,7 @@ static void WatchIconSpawn(mobj_t* spawned)
+   }
+ }
+ 
+-void A_SpawnFly(mobj_t *mo)
++void A_SpawnFly(mobj_t *mo, player_t *player, pspdef_t *psp)
+ {
+   mobj_t *newmobj;  // killough 8/9/98
+   int    r;
+@@ -2536,7 +2536,7 @@ void A_SpawnFly(mobj_t *mo)
+   P_RemoveMobj(mo);
+ }
+ 
+-void A_PlayerScream(mobj_t *mo)
++void A_PlayerScream(mobj_t *mo, player_t *player, pspdef_t *psp)
+ {
+   int sound = sfx_pldeth;  // Default death sound.
+   if (gamemode != shareware && mo->health < -50) // killough 12/98
+@@ -2549,12 +2549,12 @@ void A_PlayerScream(mobj_t *mo)
+ // DOOM II special, map 32.
+ // Uses special tag 666.
+ //
+-void A_KeenDie(mobj_t* mo)
++void A_KeenDie(mobj_t *mo, player_t *player, pspdef_t *psp)
+ {
+   thinker_t *th;
+   line_t   junk;
+ 
+-  A_Fall(mo);
++  A_Fall(mo, NULL, NULL);
+ 
+   // scan the remaining thinkers to see if all Keens are dead
+ 
+@@ -2578,7 +2578,7 @@ void A_KeenDie(mobj_t* mo)
+ // A small set of highly-sought-after code pointers
+ //
+ 
+-void A_Spawn(mobj_t *mo)
++void A_Spawn(mobj_t *mo, player_t *player, pspdef_t *psp)
+ {
+   if (demo_version < DV_MBF)
+     return;
+@@ -2595,37 +2595,37 @@ void A_Spawn(mobj_t *mo)
+     }
+ }
+ 
+-void A_Turn(mobj_t *mo)
++void A_Turn(mobj_t *mo, player_t *player, pspdef_t *psp)
+ {
+   if (demo_version < DV_MBF)
+     return;
+   mo->angle += (angle_t)(((uint64_t) mo->state->misc1 << 32) / 360);
+ }
+ 
+-void A_Face(mobj_t *mo)
++void A_Face(mobj_t *mo, player_t *player, pspdef_t *psp)
+ {
+   if (demo_version < DV_MBF)
+     return;
+   mo->angle = (angle_t)(((uint64_t) mo->state->misc1 << 32) / 360);
+ }
+ 
+-void A_Scratch(mobj_t *mo)
++void A_Scratch(mobj_t *mo, player_t *player, pspdef_t *psp)
+ {
+   if (demo_version < DV_MBF)
+     return;
+-  mo->target && (A_FaceTarget(mo), P_CheckMeleeRange(mo)) ?
++  mo->target && (A_FaceTarget(mo, NULL, NULL), P_CheckMeleeRange(mo)) ?
+     mo->state->misc2 ? S_StartSound(mo, mo->state->misc2) : (void) 0,
+     P_DamageMobjBy(mo->target, mo, mo, mo->state->misc1, MOD_Melee) : (void) 0;
+ }
+ 
+-void A_PlaySound(mobj_t *mo)
++void A_PlaySound(mobj_t *mo, player_t *player, pspdef_t *psp)
+ {
+   if (demo_version < DV_MBF)
+     return;
+   S_StartSoundOrigin(mo, mo->state->misc2 ? NULL : mo, mo->state->misc1);
+ }
+ 
+-void A_RandomJump(mobj_t *mo)
++void A_RandomJump(mobj_t *mo, player_t *player, pspdef_t *psp)
+ {
+   if (demo_version < DV_MBF)
+     return;
+@@ -2637,7 +2637,7 @@ void A_RandomJump(mobj_t *mo)
+ // This allows linedef effects to be activated inside deh frames.
+ //
+ 
+-void A_LineEffect(mobj_t *mo)
++void A_LineEffect(mobj_t *mo, player_t *player, pspdef_t *psp)
+ {
+   if (demo_version < DV_MBF)
+     return;
+@@ -2677,7 +2677,7 @@ void A_LineEffect(mobj_t *mo)
+ //   args[6]: Y velocity (fixed point)
+ //   args[7]: Z velocity (fixed point)
+ //
+-void A_SpawnObject(mobj_t *actor)
++void A_SpawnObject(mobj_t *actor, player_t *player, pspdef_t *psp)
+ {
+   int type, angle, ofs_x, ofs_y, ofs_z, vel_x, vel_y, vel_z;
+   angle_t an;
+@@ -2745,7 +2745,7 @@ void A_SpawnObject(mobj_t *actor)
+ //   args[3]: X/Y spawn offset, relative to calling actor's angle
+ //   args[4]: Z spawn offset, relative to actor's default projectile fire height
+ //
+-void A_MonsterProjectile(mobj_t *actor)
++void A_MonsterProjectile(mobj_t *actor, player_t *player, pspdef_t *psp)
+ {
+   int type, angle, pitch, spawnofs_xy, spawnofs_z;
+   mobj_t *mo;
+@@ -2760,7 +2760,7 @@ void A_MonsterProjectile(mobj_t *actor)
+   spawnofs_xy = actor->state->args[3];
+   spawnofs_z  = actor->state->args[4];
+ 
+-  A_FaceTarget(actor);
++  A_FaceTarget(actor, NULL, NULL);
+   mo = P_SpawnMissile(actor, actor->target, type);
+   if (!mo)
+     return;
+@@ -2795,7 +2795,7 @@ void A_MonsterProjectile(mobj_t *actor)
+ //   args[3]: Base damage of attack (e.g. for 3d5, customize the 3); if not set, defaults to 3
+ //   args[4]: Attack damage modulus (e.g. for 3d5, customize the 5); if not set, defaults to 5
+ //
+-void A_MonsterBulletAttack(mobj_t *actor)
++void A_MonsterBulletAttack(mobj_t *actor, player_t *player, pspdef_t *psp)
+ {
+   int hspread, vspread, numbullets, damagebase, damagemod;
+   int aimslope, i, damage, slope;
+@@ -2809,7 +2809,7 @@ void A_MonsterBulletAttack(mobj_t *actor)
+   damagebase = actor->state->args[3];
+   damagemod  = actor->state->args[4];
+ 
+-  A_FaceTarget(actor);
++  A_FaceTarget(actor, NULL, NULL);
+   S_StartSound(actor, actor->info->attacksound);
+ 
+   aimslope = P_AimLineAttack(actor, actor->angle, MISSILERANGE, 0);
+@@ -2833,7 +2833,7 @@ void A_MonsterBulletAttack(mobj_t *actor)
+ //   args[2]: Sound to play if attack hits
+ //   args[3]: Range (fixed point); if not set, defaults to monster's melee range
+ //
+-void A_MonsterMeleeAttack(mobj_t *actor)
++void A_MonsterMeleeAttack(mobj_t *actor, player_t *player, pspdef_t *psp)
+ {
+   int damagebase, damagemod, hitsound, range;
+   int damage;
+@@ -2851,7 +2851,7 @@ void A_MonsterMeleeAttack(mobj_t *actor)
+ 
+   range += actor->target->info->radius - 20 * FRACUNIT;
+ 
+-  A_FaceTarget(actor);
++  A_FaceTarget(actor, NULL, NULL);
+   if (!P_CheckRange(actor, range))
+     return;
+ 
+@@ -2867,7 +2867,7 @@ void A_MonsterMeleeAttack(mobj_t *actor)
+ //   args[0]: Damage (int)
+ //   args[1]: Radius (also int; no real need for fractional precision here)
+ //
+-void A_RadiusDamage(mobj_t *actor)
++void A_RadiusDamage(mobj_t *actor, player_t *player, pspdef_t *psp)
+ {
+   if (!mbf21 || !actor->state)
+     return;
+@@ -2879,7 +2879,7 @@ void A_RadiusDamage(mobj_t *actor)
+ // A_NoiseAlert
+ // Alerts nearby monsters (via sound) to the calling actor's target's presence.
+ //
+-void A_NoiseAlert(mobj_t *actor)
++void A_NoiseAlert(mobj_t *actor, player_t *player, pspdef_t *psp)
+ {
+   if (!mbf21 || !actor->target)
+     return;
+@@ -2893,7 +2893,7 @@ void A_NoiseAlert(mobj_t *actor)
+ //   args[0]: State to jump to on the calling actor when resurrecting a corpse
+ //   args[1]: Sound to play when resurrecting a corpse
+ //
+-void A_HealChase(mobj_t* actor)
++void A_HealChase(mobj_t *actor, player_t *player, pspdef_t *psp)
+ {
+   int state, sound;
+ 
+@@ -2904,7 +2904,7 @@ void A_HealChase(mobj_t* actor)
+   sound = actor->state->args[1];
+ 
+   if (!P_HealCorpse(actor, actor->info->radius, state, sound))
+-    A_Chase(actor);
++    A_Chase(actor, NULL, NULL);
+ }
+ 
+ //
+@@ -2913,7 +2913,7 @@ void A_HealChase(mobj_t* actor)
+ //   args[0]: direct-homing threshold angle (degrees, in fixed point)
+ //   args[1]: maximum turn angle (degrees, in fixed point)
+ //
+-void A_SeekTracer(mobj_t *actor)
++void A_SeekTracer(mobj_t *actor, player_t *player, pspdef_t *psp)
+ {
+   angle_t threshold, maxturnangle;
+ 
+@@ -2932,7 +2932,7 @@ void A_SeekTracer(mobj_t *actor)
+ //   args[0]: field-of-view to search in (degrees, in fixed point); if zero, will search in all directions
+ //   args[1]: distance to search (map blocks, i.e. 128 units)
+ //
+-void A_FindTracer(mobj_t *actor)
++void A_FindTracer(mobj_t *actor, player_t *player, pspdef_t *psp)
+ {
+   angle_t fov;
+   int dist;
+@@ -2950,7 +2950,7 @@ void A_FindTracer(mobj_t *actor)
+ // A_ClearTracer
+ // Clear current tracer (seek target).
+ //
+-void A_ClearTracer(mobj_t *actor)
++void A_ClearTracer(mobj_t *actor, player_t *player, pspdef_t *psp)
+ {
+   if (!mbf21 || !actor)
+     return;
+@@ -2964,7 +2964,7 @@ void A_ClearTracer(mobj_t *actor)
+ //   args[0]: State to jump to
+ //   args[1]: Health threshold
+ //
+-void A_JumpIfHealthBelow(mobj_t* actor)
++void A_JumpIfHealthBelow(mobj_t *actor, player_t *player, pspdef_t *psp)
+ {
+   int state, health;
+ 
+@@ -2984,7 +2984,7 @@ void A_JumpIfHealthBelow(mobj_t* actor)
+ //   args[0]: State to jump to
+ //   args[1]: Field-of-view to check (degrees, in fixed point); if zero, will check in all directions
+ //
+-void A_JumpIfTargetInSight(mobj_t* actor)
++void A_JumpIfTargetInSight(mobj_t *actor, player_t *player, pspdef_t *psp)
+ {
+   int state;
+   angle_t fov;
+@@ -3009,7 +3009,7 @@ void A_JumpIfTargetInSight(mobj_t* actor)
+ //   args[0]: State to jump to
+ //   args[1]: Distance threshold
+ //
+-void A_JumpIfTargetCloser(mobj_t* actor)
++void A_JumpIfTargetCloser(mobj_t *actor, player_t *player, pspdef_t *psp)
+ {
+   int state, distance;
+ 
+@@ -3030,7 +3030,7 @@ void A_JumpIfTargetCloser(mobj_t* actor)
+ //   args[0]: State to jump to
+ //   args[1]: Field-of-view to check (degrees, in fixed point); if zero, will check in all directions
+ //
+-void A_JumpIfTracerInSight(mobj_t* actor)
++void A_JumpIfTracerInSight(mobj_t *actor, player_t *player, pspdef_t *psp)
+ {
+   angle_t fov;
+   int state;
+@@ -3055,7 +3055,7 @@ void A_JumpIfTracerInSight(mobj_t* actor)
+ //   args[0]: State to jump to
+ //   args[1]: Distance threshold (fixed point)
+ //
+-void A_JumpIfTracerCloser(mobj_t* actor)
++void A_JumpIfTracerCloser(mobj_t *actor, player_t *player, pspdef_t *psp)
+ {
+   int state, distance;
+ 
+@@ -3077,7 +3077,7 @@ void A_JumpIfTracerCloser(mobj_t* actor)
+ //   args[1]: Standard Flag(s) to check
+ //   args[2]: MBF21 Flag(s) to check
+ //
+-void A_JumpIfFlagsSet(mobj_t* actor)
++void A_JumpIfFlagsSet(mobj_t *actor, player_t *player, pspdef_t *psp)
+ {
+   int state;
+   unsigned int flags, flags2;
+@@ -3100,7 +3100,7 @@ void A_JumpIfFlagsSet(mobj_t* actor)
+ //   args[0]: Standard Flag(s) to add
+ //   args[1]: MBF21 Flag(s) to add
+ //
+-void A_AddFlags(mobj_t* actor)
++void A_AddFlags(mobj_t *actor, player_t *player, pspdef_t *psp)
+ {
+   unsigned int flags, flags2;
+   boolean update_blockmap;
+@@ -3132,7 +3132,7 @@ void A_AddFlags(mobj_t* actor)
+ //   args[0]: Flag(s) to remove
+ //   args[1]: MBF21 Flag(s) to remove
+ //
+-void A_RemoveFlags(mobj_t* actor)
++void A_RemoveFlags(mobj_t *actor, player_t *player, pspdef_t *psp)
+ {
+   unsigned int flags, flags2;
+   boolean update_blockmap;
+diff --git a/src/p_pspr.c b/src/p_pspr.c
+index 8120155..cb3468d 100644
+--- a/src/p_pspr.c
++++ b/src/p_pspr.c
+@@ -1114,7 +1114,7 @@ void A_Light2 (mobj_t *mo, player_t *player, pspdef_t *psp)
+ // Spawn a BFG explosion on every monster in view
+ //
+ 
+-void A_BFGSpray(mobj_t *mo)
++void A_BFGSpray(mobj_t *mo, player_t *player, pspdef_t *psp)
+ {
+   int i;
+ 
