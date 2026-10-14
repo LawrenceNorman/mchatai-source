@@ -195,8 +195,15 @@ export class GameManager {
     const ratio = this.pixelRatio;
     this.canvas.width = Math.round(this.width * ratio);
     this.canvas.height = Math.round(this.height * ratio);
+    // CSS size: the logical size, but never wider than the container. A fixed
+    // inline height in px beat the page's width:100%, so an 840px playfield ran
+    // off a 402pt phone (Paddle Duel, Road Hopper, Bunker Defense; 2026-10-13).
+    // Height follows the width, keeping the shape. Games that read pointer
+    // positions must map them through getBoundingClientRect (the examples do).
     this.canvas.style.width = `${this.width}px`;
-    this.canvas.style.height = `${this.height}px`;
+    this.canvas.style.maxWidth = "100%";
+    this.canvas.style.height = "auto";
+    this.canvas.style.aspectRatio = `${this.width} / ${this.height}`;
     this.ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
 
     return this;
