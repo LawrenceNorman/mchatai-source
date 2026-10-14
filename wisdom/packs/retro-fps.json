@@ -1,0 +1,107 @@
+{
+  "packID": "retro-fps",
+  "version": 1,
+  "displayName": "Retro FPS (classic first-person shooter engine)",
+  "description": "How to build a first-person shooter on the vendored retro-fps track: the Woof! engine (GPL) with Freedoom art, compiled to WebAssembly. The page is one small index.html; the agent writes the levels as text grids plus an optional text reskin, and the runtime supplies weapons, monsters, doors, keys, HUD, music, sound, touch controls and offline loading. Track: mchatai-source/frameworks/retro-fps (README, CONTEXT.md, examples/outpost-alpha).",
+  "categories": ["games"],
+  "keywords": [
+    "fps",
+    "first person",
+    "first-person",
+    "doom",
+    "boomer shooter",
+    "retro shooter",
+    "retro fps",
+    "old school shooter",
+    "old-school shooter",
+    "corridor shooter",
+    "space marine",
+    "call of duty",
+    "quake",
+    "wolfenstein",
+    "duke nukem",
+    "heretic",
+    "hexen",
+    "techbase",
+    "keycard",
+    "military base",
+    "demons"
+  ],
+  "guidelines": [
+    {
+      "id": "rfps-001",
+      "severity": "critical",
+      "appliesTo": "anygame",
+      "rule": "ENGINE CHOICE: for a FIRST-PERSON SHOOTER (Doom-like, retro or boomer shooter, 'a Call of Duty / Halo type game with X', space marines, soldiers, aliens, demons, a military or alien base, a multi-level campaign) build on the vendored RETRO-FPS engine. It is a complete classic FPS - weapons, monsters with AI, doors, keys, secrets, HUD, music, sound effects and touch controls - and you write only the levels as text. This OVERRIDES the general building-blocks note that suggests the three.js arena starter, and it replaces hand-rolled raycasters. Use three.js only when the user explicitly asks for three.js, low-poly 3D models, vehicles or an open 3D world.",
+      "why": "The engine plays like the classic games, runs offline in the app, the hub and on phones, and is far richer than anything hand-rolled in one session."
+    },
+    {
+      "id": "rfps-002",
+      "severity": "critical",
+      "appliesTo": "anygame",
+      "rule": "PAGE SHAPE: the whole game is ONE small index.html containing: one or more <script type=\"text/x-retro-fps-map\"> level blocks, an optional <script type=\"text/x-retro-fps-dehacked\"> block, then exactly <script src=\"./libs/rfps.js\"></script> and <script src=\"./libs/rfps-data.js\"></script>, then <script>RetroFPS.start({ title: \"Your Game Name\" });</script>. The two ./libs/ files are added at install time: never create, inline, read, fetch or link anything else, and never load from a URL or CDN. Do NOT add your own canvas, game loop, input handling, sound, music player, HUD, menu or touch controls - the runtime provides all of them.",
+      "why": "Anything extra fights the engine for the canvas and keyboard, and a CDN load fails offline and on the hub.",
+      "examples": [
+        "<!doctype html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no\">\n<title>Iron Vanguard</title>\n</head>\n<body>\n<script type=\"text/x-retro-fps-map\">\nname: Landing Zone\nmusic: D_RUNNIN\nsky: SKY1\nintertext: The landing zone is clear. | Push on to the relay station.\n\nzones:\n  .  floor=0   ceil=128 floorflat=FLOOR4_8 ceilflat=CEIL3_5 wall=STARTAN3 light=176\n  o  floor=-16 ceil=224 floorflat=FLOOR7_1 ceilflat=F_SKY1  wall=BROWN1   light=224\n\nthings:\n  P  player1 angle=east\n  g  shotgun\n  I  imp angle=west\n\ngrid:\n###############\n#..g..#ooooooo#\n#.P...DooIoooX#\n#.....#ooooooo#\n###############\n</script>\n<script src=\"./libs/rfps.js\"></script>\n<script src=\"./libs/rfps-data.js\"></script>\n<script>RetroFPS.start({ title: \"Iron Vanguard\" });</script>\n</body>\n</html>"
+      ]
+    },
+    {
+      "id": "rfps-003",
+      "severity": "critical",
+      "appliesTo": "anygame",
+      "rule": "LEVEL FORMAT: a level block has header lines (name:, music:, sky:, and optional intertext: shown after the level - use | for a line break), then zones:, things: and grid:. In the grid each character is one 64x64 map-unit cell: # is solid wall, D is a door that opens on USE, X is the exit (walking onto it ends the level). Every other character must be declared under zones: or things:. Surround the whole map with #. Exactly one player1 per level, and an exit the player can walk to. Several level blocks make a campaign played in order. # starts a comment outside the grid, so do not use # in names or text."
+    },
+    {
+      "id": "rfps-004",
+      "severity": "critical",
+      "appliesTo": "anygame",
+      "rule": "ZONES: '<char> floor=<int> ceil=<int> floorflat=<FLAT> ceilflat=<FLAT> wall=<TEXTURE> light=<0-255>' plus optional damage=5|10|20 (hurts while standing on it; use on NUKAGE1, LAVA1 or SLIME01 floors), secret=1, lightfx=flicker|blink|fastblink|slowblink|glow|strobe, door=blue|yellow|red (this zone's cells are a door that needs that key; put the matching bluekey, yellowkey or redkey somewhere the player reaches first), and exit=1 (an exit pad). A door or exit zone takes its heights from the rooms beside it. Use ceilflat=F_SKY1 for outdoor areas. Movement limits: a step UP into a neighboring zone may be at most 24 units (dropping down is fine) and every walkable cell needs at least 56 units between floor and ceiling."
+    },
+    {
+      "id": "rfps-005",
+      "severity": "critical",
+      "appliesTo": "anygame",
+      "rule": "THINGS: '<char> <type> [angle=east|north|west|south|degrees] [ambush=1] [skill=easy|medium|hard]'. A thing cell takes its zone from the cells around it, so place things inside rooms, never in doorways. Types - start: player1. Monsters: zombieman, shotgunguy, chaingunner, imp, demon, spectre, lostsoul, cacodemon, hellknight, baron, revenant, mancubus, arachnotron, painelemental, archvile. Weapons: shotgun, supershotgun, chaingun, rocketlauncher, plasmagun, chainsaw, bfg. Ammo: clip, bullets, shells, shellbox, rocket, rocketbox, cell, cellpack, backpack. Health and armor: stimpack, medikit, healthbonus, armorbonus, greenarmor, bluearmor, soulsphere, megasphere, berserk. Keys: bluekey, yellowkey, redkey. Decoration: barrel, burningbarrel, floorlamp, techlamp, shorttechlamp, techcolumn, tallgreencolumn, tallredcolumn, candelabra, tallbluetorch, tallredtorch, tree, deadplayer, bloodpool. ambush=1 keeps a monster still until it sees the player."
+    },
+    {
+      "id": "rfps-006",
+      "severity": "important",
+      "appliesTo": "anygame",
+      "rule": "LEVEL DESIGN: build a real FPS level, not a maze. Each level: 4 to 7 distinct rooms joined by doors and corridors, roughly 30 to 60 columns by 15 to 30 rows, at least one outdoor sky area, at least two height changes (stairs of 16-24 unit steps, a raised walkway, a sunken nukage pit), a key-locked door that gates the exit, and a secret room with a reward. Vary light and textures room by room. Give a weapon upgrade early (a shotgun in the first or second room), pace monsters from weak (zombieman, imp) to strong, and put health and ammo after fights. Use 12 to 35 monsters per level, facing where the player enters, with some ambush=1 behind doors. For a campaign write 2 to 4 levels of rising difficulty with a short intertext between them.",
+      "why": "Height, light and pacing are what make a classic FPS level feel designed instead of generated."
+    },
+    {
+      "id": "rfps-007",
+      "severity": "important",
+      "appliesTo": "anygame",
+      "rule": "TEXTURES: use only names from the base art - an unknown name draws nothing. Walls, tech base: STARTAN2 STARTAN3 STARG3 STARGR1 STARBR2 TEKWALL1 TEKWALL4 TEKGREN2 COMPTALL COMPBLUE COMPSPAN SUPPORT2 SUPPORT3 SILVER1 SILVER2 METAL METAL1 SHAWN2 PIPE2 PIPE4 SPACEW2 SPACEW3 MODWALL1 LITE3 LITE5 GRAY1 GRAY4 GRAY7 GRAYTALL. Walls, bunker and military: BROWN1 BROWN96 BROWNGRN CEMENT1 CEMENT7 BRONZE1 BRONZE3 PANEL1. Walls, rock and ruins: ROCK2 ROCK3 ROCK4 ASHWALL2 ASHWALL4 STONE2 STONE3 STONE6 BRICK1 BRICK7 BRICK10 WOOD1 WOOD5 ZIMMER2 MARBLE1 GSTONE1 SKIN2 SP_HOT1 FIREBLU1. Floors: FLOOR0_1 FLOOR0_3 FLOOR0_6 FLOOR1_1 FLOOR3_3 FLOOR4_1 FLOOR4_5 FLOOR4_6 FLOOR4_8 FLOOR5_1 FLOOR5_2 FLOOR5_4 FLOOR6_1 FLOOR6_2 FLOOR7_1 FLOOR7_2 FLAT1 FLAT1_1 FLAT2 FLAT5 FLAT5_4 FLAT14 FLAT20 FLAT22 FLAT23 MFLR8_1 MFLR8_3 STEP1 STEP2 GRASS1 GRASS2 RROCK01 RROCK09 RROCK19 DEM1_5. Ceilings: CEIL1_1 CEIL3_1 CEIL3_3 CEIL3_5 CEIL3_6 CEIL4_2 CEIL5_1 CEIL5_2, light panels TLITE6_1 TLITE6_4 TLITE6_5 TLITE6_6 GRNLITE1. Liquids (floors): NUKAGE1 FWATER1 LAVA1 BLOOD1 SLIME01 SLIME09. Outdoor: ceilflat=F_SKY1 with sky: SKY1, SKY2 or SKY3. Door, door-track and exit-pad textures are chosen automatically."
+    },
+    {
+      "id": "rfps-008",
+      "severity": "important",
+      "appliesTo": "anygame",
+      "rule": "MUSIC: music: names one of the base tracks - D_RUNNIN D_STALKS D_COUNTD D_BETWEE D_DOOM D_THE_DA D_SHAWN D_DDTBLU D_IN_CIT D_DEAD D_STLKS2 D_THEDA2 D_DOOM2 D_DDTBL2 D_RUNNI2 D_DEAD2 D_STLKS3 D_ROMERO D_SHAWN2 D_MESSAG D_COUNT2 D_DDTBL3 D_AMPIE D_THEDA3 D_ADRIAN D_MESSG2 D_ROMER2 D_TENSE D_SHAWN3 D_OPENIN D_EVIL D_ULTIMA D_READ_M. Give each level a different track."
+    },
+    {
+      "id": "rfps-009",
+      "severity": "important",
+      "appliesTo": "anygame",
+      "rule": "RESKIN THE TEXT to fit the theme with an optional <script type=\"text/x-retro-fps-dehacked\"> block. It starts with the three lines 'Patch File for DeHackEd v3.0', 'Doom version = 21', 'Patch format = 6', a blank line, then [STRINGS] and lines of MNEMONIC = text. Useful mnemonics: GOTCLIP GOTCLIPBOX GOTSHELLS GOTSHELLBOX GOTROCKET GOTCELL GOTSHOTGUN GOTSHOTGUN2 GOTCHAINGUN GOTLAUNCHER GOTPLASMA GOTBFG9000 GOTCHAINSAW GOTSTIM GOTMEDIKIT GOTHTHBONUS GOTARMBONUS GOTARMOR GOTMEGA GOTMSPHERE GOTBERSERK GOTBACKPACK GOTBLUECARD GOTYELWCARD GOTREDCARD GOTMAP, and the locked-door messages PD_BLUEK PD_YELLOWK PD_REDK. Keep each message under 40 characters. Describe the game in words that match what the player sees - soldiers, aliens, demons, a base - since the art is fixed.",
+      "examples": [
+        "Patch File for DeHackEd v3.0\nDoom version = 21\nPatch format = 6\n\n[STRINGS]\nGOTCLIP = Grabbed a magazine.\nGOTSHOTGUN = Combat shotgun acquired!\nGOTBLUECARD = Blue access card.\nPD_BLUEK = This hatch needs a blue access card."
+      ]
+    },
+    {
+      "id": "rfps-010",
+      "severity": "important",
+      "appliesTo": "anygame",
+      "rule": "NAMES: give the game and every level an original name. Never put a trademarked game title (Doom, Quake, Halo, Call of Duty, Wolfenstein, Duke Nukem) in the title, level names, intertext or messages; mention the inspiration only in your reply to the user."
+    },
+    {
+      "id": "rfps-011",
+      "severity": "recommended",
+      "appliesTo": "anygame",
+      "rule": "ERRORS: if a level has a mistake the page shows it and logs it to the console with the level, row and column - for example 'level 2 (Relay Station): grid row 4 col 9: open cell on the edge of the map; surround the map with #' or 'the player cannot reach the exit'. Fix exactly what it names. Unknown texture, flat or music names are logged as warnings. RetroFPS.start also takes skill: 1 (easiest) to 5, default 3."
+    }
+  ]
+}
