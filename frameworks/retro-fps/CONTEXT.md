@@ -3,7 +3,10 @@
 A retro-fps game is one small `index.html`. You write the levels as text; the runtime compiles them
 into Doom-format maps and runs them on the Woof! engine with Freedoom's art and sound. Weapons,
 monsters, doors, keys, secrets, the HUD, music, sound effects, touch controls and offline loading
-are all provided. `examples/outpost-alpha/index.html` is a complete two-level game to copy from.
+are all provided, and so is everything around the game: a start card with the title, a briefing,
+the controls and difficulty, music and sound switches; a pause menu (Esc or ☰); M for music; and a
+"press E to try again" hint after the player dies. `examples/outpost-alpha/index.html` is a complete
+two-level game to copy from.
 
 ## The page
 
@@ -34,8 +37,21 @@ are all provided. `examples/outpost-alpha/index.html` is a complete two-level ga
 
 `./libs/rfps.js` and `./libs/rfps-data.js` come from `dist/` and are copied in when the game is
 installed. Never write your own copy, load anything from a URL, or add a canvas, game loop, input
-handling or sound. `RetroFPS.start` also takes `skill` (1 easiest to 5, default 3) and `debug: true`,
-which logs the engine's output.
+handling, sound, start screen, help text or menu.
+
+`RetroFPS.start` options:
+
+| Option | Meaning |
+|---|---|
+| `title` | the game's name, on the start card and the browser tab |
+| `briefing` | one or two sentences for the start card, such as the mission (default: level 1's name) |
+| `skill` | starting difficulty, 1 easiest to 5 (default 3); the player can change it on the card |
+| `debug: true` | logs the engine's output to the console |
+
+The player's controls, which the start card lists: W/S or ↑/↓ move, A/D step sideways, ←/→ turn
+(or the mouse, once the player clicks the game where the browser allows it), Space, Ctrl or a
+click fires, E opens doors and flips switches, 1–7, Q or the mouse wheel change weapon, Tab shows
+the map. In a DeHackEd reskin or a briefing, call the use action "E", never Space.
 
 ## A level
 
@@ -78,7 +94,7 @@ Each character is one 64×64 map-unit cell.
 | Character | Meaning |
 |---|---|
 | `#` (or space) | solid |
-| `D` | a door; it opens when the player presses USE |
+| `D` | a door; it opens when the player presses E (USE on a phone) |
 | `X` | the exit; walking onto it ends the level |
 | anything else | must be declared under `zones:` or `things:` |
 
@@ -120,6 +136,19 @@ cell takes its zone from its neighbors, so keep things inside rooms rather than 
 | keys | `bluekey` `yellowkey` `redkey` (and `blueskull` `yellowskull` `redskull`) |
 | decoration | `barrel` `burningbarrel` `floorlamp` `techlamp` `shorttechlamp` `techcolumn` `tallgreencolumn` `tallredcolumn` `candelabra` `tallbluetorch` `tallredtorch` `tree` `deadplayer` `bloodpool` |
 
+## Making it fair
+
+New players have just found the controls, so the first seconds matter:
+- **The start is safe.** No monster may have a clear line to the player's starting spot. The first
+  monsters wait behind a door or around a corner. `rfps-check` fails on this with a DESIGN line. (The
+  page turns such monsters to face away as a stopgap, but fix the level.)
+- **Ramp up.** The first fight is one to three weak monsters (`zombieman`, `shotgunguy`, `imp`).
+  Tougher ones come in later rooms; `baron`, `revenant`, `mancubus`, `arachnotron` and `archvile`
+  belong in later levels.
+- **Arm the player.** Put a `shotgun` and some ammo within the first room or two of level 1, and
+  health near the hard fights.
+- Mark monsters that should wait in their room `ambush=1`; they stay put until they see the player.
+
 ## Text reskin
 
 The art is fixed, but the words are not. A `text/x-retro-fps-dehacked` block is a DeHackEd patch.
@@ -142,5 +171,7 @@ The mnemonics, and the texture, flat and music names that exist, are listed in
 ## Checking a level
 
 `node tools/rfps-check.js index.html` compiles every level with the same compiler the page uses. It
-reports mistakes by level, row and column, and warns about unknown texture, flat and music names.
-The page shows the same messages on screen and logs them to the console.
+reports mistakes by level, row and column, DESIGN problems (such as monsters that can see the
+start), and warns about unknown texture, flat and music names. It exits with status 1 on a mistake
+or a DESIGN line; fix both before you finish. The page shows mistakes on screen and logs the rest to
+the console.

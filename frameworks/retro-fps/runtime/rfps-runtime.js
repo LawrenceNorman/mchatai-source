@@ -6,7 +6,9 @@
  * ./libs/rfps-data.js (engine, resources and Freedoom art), then calls
  * RetroFPS.start(). The runtime compiles the text into a Doom map, writes it
  * into the engine's file system and boots the engine. Nothing is fetched, so
- * the page runs from file:// as well as from mchatai.com.
+ * the page runs from file:// as well as from mchatai.com. Around the engine the
+ * page draws a start card and pause menu (controls, difficulty, music, sound),
+ * touch controls on phones, and the "press E to try again" hint.
  *
  * Engine: Woof! (GPL-2.0-or-later). Art and sound: Freedoom (BSD-3-Clause).
  * Corresponding source and build: mchatai-source/frameworks/retro-fps/.
@@ -17,7 +19,7 @@
 (function (root) {
   "use strict";
 
-  var VERSION = "1.0.0";
+  var VERSION = "1.1.0";
   var CELL = 64;
   var MAX_STEP = 24;       // tallest step a player can climb
   var PLAYER_HEIGHT = 56;  // headroom a player needs
@@ -41,6 +43,12 @@
     shortredcolumn: 33, candle: 34, candelabra: 35, tallbluetorch: 44, tallgreentorch: 45,
     tallredtorch: 46, shortbluetorch: 55, shortgreentorch: 56, shortredtorch: 57,
     deadplayer: 15, deadzombieman: 18, deadimp: 20, bloodpool: 24, tree: 43, bigtree: 54
+  };
+
+  var MONSTERS = {
+    zombieman: 1, shotgunguy: 1, chaingunner: 1, imp: 1, demon: 1, spectre: 1, lostsoul: 1,
+    cacodemon: 1, hellknight: 1, baron: 1, revenant: 1, mancubus: 1, arachnotron: 1,
+    painelemental: 1, archvile: 1
   };
 
   var LOCKS = {
@@ -364,7 +372,7 @@
       });
     });
 
-    var thingList = [], starts = [], keysPresent = {};
+    var thingList = [], starts = [], keysPresent = {}, monsters = [];
     for (r = 0; r < H; r++) for (c = 0; c < W; c++) {
       ch = at(c, r);
       if (!things[ch]) continue;
@@ -372,11 +380,33 @@
       var type = THING_TYPES[t.kind];
       thingList.push([c * CELL + CELL / 2, -r * CELL - CELL / 2, thingAngle(t.angle), type, thingFlags(t)]);
       if (type === 1) starts.push([c, r]);
+      if (MONSTERS[t.kind]) monsters.push({ c: c, r: r, ch: ch, index: thingList.length - 1 });
       keysPresent[t.kind] = 1;
     }
 
     validate();
-    return { vertices: vertices, linedefs: linedefs, sidedefs: sidedefs, sectors: sectors, things: thingList, warnings: warnings };
+    return { vertices: vertices, linedefs: linedefs, sidedefs: sidedefs, sectors: sectors, things: thingList,
+             warnings: warnings, startSeenBy: seenFromStart() };
+
+    // Monsters with a clear line to the player's starting spot. Doom monsters
+    // wake when they see the player, so these open fire before the player has
+    // moved. Walls and doors block the line; heights are ignored.
+    function seenFromStart() {
+      var s = starts[0], out = [];
+      monsters.forEach(function (m) {
+        var x0 = s[0] + 0.5, y0 = s[1] + 0.5, x1 = m.c + 0.5, y1 = m.r + 0.5;
+        var n = Math.ceil(Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0)) * 8);
+        for (var i = 1; i < n; i++) {
+          var cx = Math.floor(x0 + (x1 - x0) * i / n), cy = Math.floor(y0 + (y1 - y0) * i / n);
+          var cc = at(cx, cy);
+          if (cc === SOLID || isDoorChar(cc)) return;
+        }
+        // The angle that faces straight away from the start (grid rows run south).
+        var away = Math.round(Math.atan2(s[1] - m.r, m.c - s[0]) * 180 / Math.PI / 45) * 45;
+        out.push({ ch: m.ch, row: m.r + 1, col: m.c + 1, index: m.index, away: (away + 360) % 360 });
+      });
+      return out;
+    }
 
     function validate() {
       if (starts.length !== 1) throw new MapError("needs exactly one player1 start, found " + starts.length);
@@ -505,9 +535,12 @@
   }
 
   // Compile a list of level texts into one PWAD. Throws MapError naming the level.
+  // `design` lists levels that load but play unfairly (rfps-check fails on them).
+  // The page itself still plays them: with opts.fairStart (on in the page) the
+  // monsters that can see the start are turned to face away from it.
   function compileLevels(texts, opts) {
     opts = opts || {};
-    var levels = [], warnings = [];
+    var levels = [], warnings = [], design = [];
     texts.forEach(function (text, i) {
       var label = "level " + (i + 1);
       try {
@@ -515,6 +548,18 @@
         if (parsed.meta.name) label += " (" + parsed.meta.name + ")";
         var compiled = compileMap(parsed, opts);
         compiled.warnings.forEach(function (w) { warnings.push(label + ": " + w); });
+        var seen = compiled.startSeenBy;
+        if (seen.length) {
+          var where = seen.slice(0, 6).map(function (m) { return m.ch + " at row " + m.row + " col " + m.col; }).join(", ");
+          design.push(label + ": " + seen.length + (seen.length === 1 ? " monster has" : " monsters have") +
+            " a clear line to the player start (" + where + (seen.length > 6 ? ", ..." : "") + "), so " +
+            (seen.length === 1 ? "it shoots" : "they shoot") + " before the player has moved. Keep the start " +
+            "area clear: put the first monsters out of sight of P, behind a wall or a door.");
+          if (opts.fairStart) {
+            seen.forEach(function (m) { compiled.things[m.index][2] = m.away; });
+            warnings.push(label + ": turned " + seen.length + " monster(s) that could see the start to face away from it");
+          }
+        }
         levels.push({ lumpName: "MAP" + (i + 1 < 10 ? "0" : "") + (i + 1), meta: parsed.meta, compiled: compiled });
       } catch (e) {
         if (e instanceof MapError) throw new MapError(e.message, label);
@@ -522,7 +567,7 @@
       }
     });
     if (opts.names) warnings = warnings.concat(checkNames(levels, opts.names));
-    return { levels: levels, warnings: warnings };
+    return { levels: levels, warnings: warnings, design: design };
   }
 
   // Texture, flat and music names the base art does not have. The engine
@@ -552,7 +597,7 @@
   // ------------------------------------------------------------- the page
 
   var KEY_CODES = {
-    KeyW: [87, "w"], KeyS: [83, "s"], KeyA: [65, "a"], KeyD: [68, "d"],
+    KeyW: [87, "w"], KeyS: [83, "s"], KeyA: [65, "a"], KeyD: [68, "d"], KeyE: [69, "e"],
     ArrowLeft: [37, "ArrowLeft"], ArrowRight: [39, "ArrowRight"],
     ArrowUp: [38, "ArrowUp"], ArrowDown: [40, "ArrowDown"],
     Space: [32, " "], ControlRight: [17, "Control"], Tab: [9, "Tab"],
@@ -584,11 +629,51 @@
     "height:100dvh!important;display:block;outline:none}",
     "#rfps-status{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;",
     "gap:12px;color:#e8e8e8;font:600 18px system-ui,-apple-system,sans-serif;text-align:center;padding:24px;",
-    "background:#000;z-index:3}",
+    "background:#000;z-index:5}",
     "#rfps-status small{font-weight:400;font-size:14px;color:#aaa;max-width:640px;white-space:pre-wrap;",
     "font-family:ui-monospace,Menlo,monospace;text-align:left}",
-    "#rfps-status button{font:600 16px system-ui,sans-serif;padding:12px 22px;border-radius:10px;border:0;",
-    "background:#c9302c;color:#fff;min-height:44px}",
+    "#rfps-status button,#rfps-card .go{font:600 16px system-ui,sans-serif;padding:12px 22px;border-radius:10px;",
+    "border:0;background:#c9302c;color:#fff;min-height:44px;cursor:pointer}",
+    "#rfps-card{position:fixed;inset:0;z-index:4;display:flex;align-items:center;justify-content:center;",
+    "background:rgba(0,0,0,.55);padding:16px;box-sizing:border-box}",
+    "#rfps-card .panel{width:100%;max-width:540px;max-height:100%;overflow:auto;box-sizing:border-box;",
+    "background:rgba(16,16,18,.95);color:#e8e8e8;border:1px solid rgba(255,255,255,.14);border-radius:14px;",
+    "padding:20px 22px;font:15px/1.45 system-ui,-apple-system,sans-serif;box-shadow:0 12px 40px rgba(0,0,0,.6)}",
+    "#rfps-card h1{margin:0 0 6px;font:700 22px/1.2 system-ui,-apple-system,sans-serif}",
+    "#rfps-card .brief{margin:0 0 12px;color:#b8b8b8}",
+    "#rfps-card table{width:100%;border-collapse:collapse;margin:4px 0 10px}",
+    "#rfps-card td{padding:5px 0;vertical-align:top;border-top:1px solid rgba(255,255,255,.07)}",
+    "#rfps-card td:first-child{width:40%;padding-right:12px;color:#a8a8a8}",
+    "#rfps-card kbd{display:inline-block;min-width:12px;text-align:center;padding:1px 6px;margin:0 2px 2px 0;",
+    "border:1px solid rgba(255,255,255,.3);border-bottom-width:2px;border-radius:5px;",
+    "font:600 12px/1.5 ui-monospace,Menlo,monospace;color:#fff}",
+    "#rfps-card .opt{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:8px 0}",
+    "#rfps-card .opt>span{min-width:84px;color:#a8a8a8}",
+    "#rfps-card .opt button{font:600 14px system-ui,sans-serif;min-height:38px;padding:6px 14px;border-radius:9px;",
+    "border:1px solid rgba(255,255,255,.25);background:transparent;color:#e8e8e8;cursor:pointer}",
+    "#rfps-card .opt button[aria-pressed=true]{background:#e8e8e8;border-color:#e8e8e8;color:#111}",
+    "#rfps-card .note{font-size:13px;color:#8a8a8a}",
+    "#rfps-card .actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}",
+    "#rfps-card .actions .plain{font:600 15px system-ui,sans-serif;min-height:44px;padding:10px 18px;",
+    "border-radius:10px;border:1px solid rgba(255,255,255,.25);background:transparent;color:#e8e8e8;cursor:pointer}",
+    // A phone on its side is short and wide: controls left, options and Start right.
+    "@media (max-height:560px) and (min-width:560px){",
+    "#rfps-card{padding:10px}",
+    "#rfps-card .panel{max-width:880px;padding:12px 18px}",
+    "#rfps-card .cols{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:0 22px;align-items:start}",
+    "#rfps-card h1{font-size:19px;margin-bottom:2px}",
+    "#rfps-card .brief{margin-bottom:6px}",
+    "#rfps-card table{margin:0}",
+    "#rfps-card td{padding:3px 0;font-size:14px}",
+    "#rfps-card .opt{margin:2px 0 6px}",
+    "#rfps-card .opt button{min-height:36px;padding:4px 12px}",
+    "#rfps-card .actions{margin-top:8px}}",
+    "#rfps-hint{position:fixed;left:50%;top:38%;transform:translate(-50%,-50%);z-index:3;display:none;",
+    "background:rgba(0,0,0,.72);color:#fff;font:600 17px system-ui,sans-serif;padding:12px 18px;",
+    "border-radius:10px;pointer-events:none;text-align:center;max-width:80vw}",
+    "#rfps-menu{position:fixed;top:calc(env(safe-area-inset-top,0px) + 12px);z-index:3;width:44px;height:44px;",
+    "border-radius:10px;border:1px solid rgba(255,255,255,.3);background:rgba(0,0,0,.35);color:#fff;",
+    "font:700 18px system-ui,sans-serif;cursor:pointer;opacity:.8;padding:0}",
     "#rfps-touch{position:fixed;inset:0;z-index:2;touch-action:none}",
     "#rfps-touch .zone{position:absolute;top:0;bottom:0}",
     "#rfps-touch .btn{position:absolute;display:flex;align-items:center;justify-content:center;border-radius:50%;",
@@ -688,7 +773,7 @@
     button("FIRE", 92, { right: safeR + "22px)", bottom: safeB + "30px)" },
       function () { hold("ControlRight", true); }, function () { hold("ControlRight", false); });
     button("USE", 64, { right: safeR + "128px)", bottom: safeB + "40px)" },
-      function () { hold("Space", true); }, function () { hold("Space", false); });
+      function () { hold("KeyE", true); }, function () { hold("KeyE", false); });
     button("GUN", 52, { right: safeR + "42px)", bottom: safeB + "138px)" }, function () {
       var canvas = document.getElementById("canvas");
       canvas.dispatchEvent(new WheelEvent("wheel", { deltaY: -120, deltaMode: 0, bubbles: true, cancelable: true }));
@@ -701,18 +786,47 @@
     return (navigator.maxTouchPoints || 0) > 0 || "ontouchstart" in window;
   }
 
-  function config(touch) {
+  function config(touch, prefs) {
     return [
       "fullscreen 0",            // windowed, so the canvas follows the page's CSS size
-      "grabmouse 0",             // no pointer lock: refused on phones and in the app's preview
+      "grabmouse 0",             // the page asks for pointer lock itself (see watchMouse)
       "show_endoom 0",
       "autorun 1",
-      "hud_crosshair " + (touch ? 1 : 0),
-      "sfx_volume 8",
-      "music_volume 8",
+      "hud_crosshair 1",
+      // Dynamic resolution compares each frame with the display's refresh, but
+      // a browser frame includes the wait for the next animation frame, so it
+      // drops to 400 lines within seconds and keeps changing. Use one height.
+      "dynamic_resolution 0",
+      "current_video_height " + (touch ? 400 : 600),
+      "sfx_volume " + (prefs.sfx ? 8 : 0),
+      "music_volume " + (prefs.music ? 8 : 0),
+      // Space fires (what new players press first); E opens doors and flips
+      // switches; Q changes weapon. The engine's defaults put use on Space.
+      "input_fire ctrl, spacebar, mouse1, rt",
+      "input_use e, enter, pada",
+      "input_nextweapon q, wheelup, rb",
       "window_width " + Math.max(320, window.innerWidth || 960),
       "window_height " + Math.max(200, window.innerHeight || 600)
     ].join("\n") + "\n";
+  }
+
+  var PREFS_KEY = "rfps.prefs";
+  var SKILLS = [[2, "Easy"], [3, "Normal"], [4, "Hard"]];
+
+  // The player's own choices (music, sound, difficulty), kept in this browser.
+  function loadPrefs() {
+    var p = { music: true, sfx: true, skill: 0 };
+    try {
+      var saved = JSON.parse(root.localStorage.getItem(PREFS_KEY) || "{}");
+      if (typeof saved.music === "boolean") p.music = saved.music;
+      if (typeof saved.sfx === "boolean") p.sfx = saved.sfx;
+      if (saved.skill >= 1 && saved.skill <= 5) p.skill = saved.skill;
+    } catch (e) { /* storage blocked: defaults */ }
+    return p;
+  }
+
+  function savePrefs(p) {
+    try { root.localStorage.setItem(PREFS_KEY, JSON.stringify(p)); } catch (e) { /* not kept */ }
   }
 
   function nameSets(names) {
@@ -753,6 +867,232 @@
     showStatus(title, detail);
   }
 
+  function keys(parent, list) {
+    list.forEach(function (k, i) {
+      if (typeof k === "string" && k.charAt(0) === " ") parent.appendChild(document.createTextNode(k));
+      else el("kbd", { text: k }, parent);
+    });
+  }
+
+  // The game running on this page: the engine module and the overlay around it.
+  function Game(M, canvas, opts) {
+    this.M = M; this.canvas = canvas; this.opts = opts;
+    this.started = false; this.lockFailed = false;
+  }
+
+  Game.prototype.call = function (name, args) {
+    var f = this.M && this.M["_" + name];
+    return f ? f.apply(null, args || []) : undefined;
+  };
+
+  Game.prototype.state = function () {
+    try { return JSON.parse(this.M.UTF8ToString(this.call("rfps_state"))); } catch (e) { return null; }
+  };
+
+  Game.prototype.applyVolumes = function () {
+    var p = this.opts.prefs;
+    this.call("rfps_set_volume", [p.sfx ? 8 : 0, p.music ? 8 : 0]);
+  };
+
+  Game.prototype.cardOpen = function () { return !!document.getElementById("rfps-card"); };
+
+  Game.prototype.lockPointer = function () {
+    var self = this, c = this.canvas;
+    if (this.opts.touch || this.lockFailed || !c.requestPointerLock || document.pointerLockElement === c) return;
+    try {
+      var p = c.requestPointerLock();
+      if (p && p.catch) p.catch(function () { self.lockFailed = true; });
+    } catch (e) { this.lockFailed = true; }
+  };
+
+  Game.prototype.toggleMusic = function () {
+    this.opts.prefs.music = !this.opts.prefs.music;
+    savePrefs(this.opts.prefs);
+    this.applyVolumes();
+    this.flash(this.opts.prefs.music ? "Music on" : "Music off");
+  };
+
+  Game.prototype.flash = function (text) {
+    var h = this.hint, self = this;
+    h.textContent = text; h.style.display = "block";
+    clearTimeout(this.flashTimer);
+    this.flashTimer = setTimeout(function () { self.flashTimer = 0; h.style.display = "none"; }, 1400);
+  };
+
+  Game.prototype.resume = function () {
+    var card = document.getElementById("rfps-card");
+    if (card) card.remove();
+    this.started = true;
+    this.call("rfps_pause", [0]);
+    this.canvas.focus();
+  };
+
+  Game.prototype.openCard = function (mode) {
+    var self = this, o = this.opts, prefs = o.prefs;
+    if (this.cardOpen()) return;
+    this.call("rfps_pause", [1]);
+    if (document.pointerLockElement && document.exitPointerLock) document.exitPointerLock();
+    var wrap = el("div", { id: "rfps-card", role: "dialog", "aria-modal": "true" }, document.body);
+    var panel = el("div", { class: "panel" }, wrap);
+    el("h1", { text: mode === "start" ? o.title : "Paused" }, panel);
+    if (mode === "start" && o.briefing) el("p", { class: "brief", text: o.briefing }, panel);
+
+    var cols = el("div", { class: "cols" }, panel);
+    var table = el("table", {}, cols);
+    var side = el("div", { class: "side" }, cols);
+    function row(label, list) {
+      var tr = el("tr", {}, table);
+      el("td", { text: label }, tr);
+      keys(el("td", {}, tr), list);
+    }
+    if (o.touch) {
+      row("Move", [" Drag on the left side"]);
+      row("Turn", [" Drag on the right side"]);
+      row("Fire", ["FIRE"]);
+      row("Open doors, flip switches", ["USE"]);
+      row("Change weapon", ["GUN"]);
+      row("Map / menu", ["MAP", "☰"]);
+    } else {
+      row("Move", ["W", "S", " or ", "↑", "↓"]);
+      row("Step sideways", ["A", "D"]);
+      row("Turn", this.lockFailed ? ["←", "→"] : ["←", "→", " or the mouse (click the game)"]);
+      row("Fire", ["Space", "Ctrl", " or click"]);
+      row("Open doors, flip switches", ["E"]);
+      row("Change weapon", ["1", " to ", "7", " ", "Q", " or mouse wheel"]);
+      row("Map", ["Tab"]);
+      row("Menu", ["Esc"]);
+      row("Music on / off", ["M"]);
+    }
+
+    function option(label, items, note) {
+      var line = el("div", { class: "opt" }, side);
+      el("span", { text: label }, line);
+      items.forEach(function (it) {
+        var b = el("button", { type: "button", "aria-pressed": String(!!it.on), text: it.label }, line);
+        b.addEventListener("click", function () { it.run(); self.refreshCard(mode); });
+      });
+      if (note) el("span", { class: "note", text: note }, line);
+    }
+    var skillNow = o.skill;
+    option("Difficulty", SKILLS.map(function (s) {
+      var on = skillNow === s[0] || (s[0] === 2 && skillNow < 2) || (s[0] === 4 && skillNow > 4);
+      return { label: s[1], on: on, run: function () {
+        if (on) return;
+        o.skill = prefs.skill = s[0];
+        savePrefs(prefs);
+        self.call("rfps_new_game", [s[0], mode === "start" ? 1 : 0]);
+      } };
+    }), mode === "start" ? null : "Restarts this level");
+    option("Music", [{ label: "On", on: prefs.music, run: function () { if (!prefs.music) self.toggleMusic(); } },
+                     { label: "Off", on: !prefs.music, run: function () { if (prefs.music) self.toggleMusic(); } }]);
+    option("Sound", [{ label: "On", on: prefs.sfx, run: function () { prefs.sfx = true; savePrefs(prefs); self.applyVolumes(); } },
+                     { label: "Off", on: !prefs.sfx, run: function () { prefs.sfx = false; savePrefs(prefs); self.applyVolumes(); } }]);
+
+    var actions = el("div", { class: "actions" }, side);
+    var go = el("button", { class: "go", type: "button", text: mode === "start" ? "Start" : "Resume" }, actions);
+    go.addEventListener("click", function () { self.resume(); self.lockPointer(); });
+    if (mode !== "start") {
+      var again = el("button", { class: "plain", type: "button", text: "Restart level" }, actions);
+      again.addEventListener("click", function () { self.call("rfps_new_game", [0, 0]); self.resume(); self.lockPointer(); });
+    }
+    this.cardMode = mode;
+    this.primary = function () { go.click(); };
+    setTimeout(function () { try { go.focus({ preventScroll: true }); } catch (e) { /* older engines */ } }, 0);
+  };
+
+  Game.prototype.refreshCard = function (mode) {
+    var card = document.getElementById("rfps-card");
+    if (!card) return;
+    card.remove();
+    this.openCard(mode);
+  };
+
+  // Keys the page handles itself, ahead of the engine: Esc/F1 open the menu,
+  // M switches music, and nothing reaches the engine while the menu is up.
+  Game.prototype.watchKeys = function () {
+    var self = this;
+    window.addEventListener("keydown", function (e) {
+      if (self.cardOpen()) {
+        e.stopImmediatePropagation();
+        var onButton = e.target && e.target.closest && e.target.closest("#rfps-card button");
+        if (e.code === "Escape" && self.started) { e.preventDefault(); self.resume(); }
+        else if ((e.code === "Enter" || e.code === "Space") && !onButton) { e.preventDefault(); self.primary(); }
+        return;
+      }
+      if (e.code === "Escape" || e.code === "F1") {
+        e.stopImmediatePropagation(); e.preventDefault();
+        self.openCard("pause");
+      } else if (e.code === "KeyM" && !e.repeat) {
+        e.stopImmediatePropagation();
+        self.toggleMusic();
+      } else if (e.code === "Tab") {
+        e.preventDefault();      // the map, not the browser's focus ring
+      }
+    }, true);
+  };
+
+  // Mouse movement turns the player only while the pointer is locked to the
+  // game. Unlocked, every cursor or trackpad move over the page would spin the
+  // view. A click on the game asks for the lock (browsers that allow it);
+  // losing it (Esc) opens the menu.
+  Game.prototype.watchMouse = function () {
+    var self = this, c = this.canvas;
+    function guard(e) {
+      if (e.pointerType && e.pointerType !== "mouse") return;
+      if (document.pointerLockElement === c) return;
+      e.stopImmediatePropagation();
+    }
+    window.addEventListener("pointermove", guard, true);
+    window.addEventListener("mousemove", guard, true);
+    c.addEventListener("pointerdown", function (e) {
+      if (e.pointerType === "mouse" && self.started) self.lockPointer();
+    });
+    var wasLocked = false;
+    document.addEventListener("pointerlockchange", function () {
+      var locked = document.pointerLockElement === c;
+      if (!locked && wasLocked && self.started && !self.cardOpen()) self.openCard("pause");
+      wasLocked = locked;
+    });
+    document.addEventListener("pointerlockerror", function () { self.lockFailed = true; });
+  };
+
+  Game.prototype.watchState = function () {
+    var self = this, o = this.opts, h = this.hint;
+    var killed = o.touch ? "You were killed. Tap USE to try again." : "You were killed. Press E to try again.";
+    setInterval(function () {
+      if (self.flashTimer) return;
+      var s = self.started && !self.cardOpen() ? self.state() : null;
+      var show = !!(s && s.gamestate === 0 && s.dead);
+      if (show) h.textContent = killed;
+      h.style.display = show ? "block" : "none";
+    }, 300);
+  };
+
+  Game.prototype.mount = function () {
+    var self = this, o = this.opts;
+    // The engine names its window after itself ("Commercial mode - Woof ..."),
+    // which becomes the tab title. Keep the game's own.
+    function keepTitle() { if (document.title !== o.title) document.title = o.title; }
+    keepTitle();
+    var titleEl = document.querySelector("title");
+    if (titleEl && root.MutationObserver) {
+      new MutationObserver(keepTitle).observe(titleEl, { childList: true, characterData: true, subtree: true });
+    }
+    this.hint = el("div", { id: "rfps-hint", role: "status" }, document.body);
+    if (o.touch) installTouchControls();
+    var menu = el("button", { id: "rfps-menu", type: "button", tabindex: "-1", "aria-label": "Menu", text: "☰" }, document.body);
+    menu.style.right = o.touch ? "calc(env(safe-area-inset-right,0px) + 78px)" : "calc(env(safe-area-inset-right,0px) + 12px)";
+    menu.addEventListener("click", function () { menu.blur(); self.openCard("pause"); });
+    this.watchMouse();
+    this.watchState();
+    this.call("rfps_pause", [1]);
+    this.applyVolumes();
+    if (o.intro === false) this.resume();
+    else this.openCard("start");
+  };
+
+  var current = null;   // the game on this page, for RetroFPS.state()
+
   function start(options) {
     options = options || {};
     var style = el("style", { text: CSS }, document.head);
@@ -777,18 +1117,21 @@
 
     var compiled;
     try {
-      compiled = compileLevels(texts, { names: data.names && nameSets(data.names) });
+      compiled = compileLevels(texts, { names: data.names && nameSets(data.names), fairStart: true });
     } catch (e) {
       return fail("This level has a mistake", e.message);
     }
-    compiled.warnings.forEach(function (w) { console.warn("[retro-fps] " + w); });
+    compiled.warnings.concat(compiled.design).forEach(function (w) { console.warn("[retro-fps] " + w); });
 
-    var extra = [];
+    // The page's own menu says "Paused"; an empty M_PAUSE patch (1x1, no
+    // posts) keeps the engine from drawing its PAUSE title above it.
+    var extra = [["M_PAUSE", new Uint8Array([1, 0, 1, 0, 0, 0, 0, 0, 12, 0, 0, 0, 255])]];
     var deh = document.querySelector('script[type="text/x-retro-fps-dehacked"]');
     if (deh && deh.textContent.trim()) extra.push(["DEHACKED", textBytes(deh.textContent.replace(/^\s*\n/, ""))]);
     var pwad = buildPwad(compiled.levels, extra);
 
     var touch = isTouchDevice();
+    var prefs = loadPrefs();
     var canvas = document.getElementById("canvas");
     if (!canvas) {
       canvas = el("canvas", { id: "canvas", tabindex: "-1" });
@@ -796,7 +1139,14 @@
     }
     canvas.addEventListener("contextmenu", function (e) { e.preventDefault(); });
 
-    var skill = Math.max(1, Math.min(5, parseInt(options.skill, 10) || 3));
+    var skill = Math.max(1, Math.min(5, prefs.skill || parseInt(options.skill, 10) || 3));
+    var game = new Game(null, canvas, {
+      title: title, touch: touch, prefs: prefs, skill: skill, intro: options.intro,
+      briefing: options.briefing || compiled.levels[0].meta.name || ""
+    });
+    // Before the engine starts, so these listeners run ahead of its own.
+    game.watchKeys();
+
     var lastErrors = [];
     Promise.all([inflate(data.wasm), inflate(data.pk3), inflate(data.base)]).then(function (bins) {
       return root.createWoof({
@@ -808,7 +1158,7 @@
           M.FS.writeFile("/woof.pk3", bins[1]);
           M.FS.writeFile("/base.wad", bins[2]);
           M.FS.writeFile("/game.wad", pwad);
-          M.FS.writeFile("/rfps.cfg", config(touch));
+          M.FS.writeFile("/rfps.cfg", config(touch, prefs));
         }],
         print: options.debug ? function (t) { console.log(t); } : function () {},
         printErr: function (t) {
@@ -824,26 +1174,30 @@
           showStatus(title, "Thanks for playing.", { label: "Play again", run: function () { location.reload(); } });
         }
       });
-    }).then(function () {
+    }).then(function (M) {
       var status = document.getElementById("rfps-status");
       if (status) status.remove();
-      if (touch) installTouchControls();
+      game.M = M;
+      current = game;
+      game.mount();
       // The engine sizes its window before it knows the page; a resize makes
       // it read the canvas's CSS size again.
       [50, 400, 1500].forEach(function (ms) {
         setTimeout(function () { window.dispatchEvent(new Event("resize")); }, ms);
       });
-      canvas.focus();
     }).catch(function (e) {
       fail("The game could not start", String(e && e.message || e));
     });
   }
 
+  // The running game's state (health, ammo, kills, map, ...) or null.
+  function state() { return current ? current.state() : null; }
+
   var api = {
     VERSION: VERSION, THING_TYPES: THING_TYPES,
     parseMap: parseMap, compileMap: compileMap, compileLevels: compileLevels,
     buildPwad: buildPwad, umapinfo: umapinfo, checkNames: checkNames, MapError: MapError,
-    start: start
+    start: start, state: state
   };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else root.RetroFPS = api;

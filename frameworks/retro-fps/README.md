@@ -25,14 +25,19 @@ writes a whole game, and a campaign of several levels, without touching the engi
 
 ## How a game gets made, installed and published
 
-1. **Writing.** A shooter goal injects the `retro-fps` wisdom pack. The agent writes an
-   `index.html` that holds the levels and loads `./libs/rfps.js` and `./libs/rfps-data.js`.
+1. **Writing.** A shooter goal points the agent here: CLI builds (Claude Code, Codex) through the
+   first-person-shooter entry in `harness/prompts/cli-project-context.md`, other builds through the
+   `retro-fps` wisdom pack. The agent writes an `index.html` that holds the levels and loads
+   `./libs/rfps.js` and `./libs/rfps-data.js`, and runs `tools/rfps-check.js` on it.
 2. **Installing.** mChatAI+'s WEBLIB step (`frameworks/_index/web-libs.json`, entries `rfps` and
    `rfps-data`) copies both files from `dist/` into the game's `libs/` folder. The game then runs
    offline from `file://`.
-3. **Playing.** The runtime compiles the level text in the page and boots the engine with WebGL.
-   The canvas follows the page's size. Phones get a joystick, turn-by-drag and FIRE / USE / GUN /
-   MAP buttons.
+3. **Playing.** The runtime compiles the level text in the page and boots the engine with WebGL,
+   paused behind a start card: title, briefing, controls, difficulty, music and sound. Esc (or ☰)
+   brings the card back as a pause menu, and M switches music. Space, Ctrl or a click fires; E opens
+   doors. The mouse turns the view only while it is locked to the game (a click asks for the lock
+   where the browser allows it). The canvas follows the page's size. Phones get a joystick,
+   turn-by-drag and FIRE / USE / GUN / MAP buttons. After a death the page says how to try again.
 4. **Publishing.** Publishing rewrites `./libs/<file>` to `https://mchatai.com/v/lib/<file>`, so both
    files must be hosted there (under `mchataiweb/public/v/lib/`) before a retro-fps game is published.
    Every published game then shares one cached copy of the engine.

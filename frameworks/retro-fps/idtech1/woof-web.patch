@@ -45,16 +45,16 @@ index 32986e9..cb84fce 100644
 +    add_subdirectory(cmake/packaging)
 +endif()
 diff --git a/src/CMakeLists.txt b/src/CMakeLists.txt
-index b5e1455..b67d474 100644
+index b5e1455..2168c29 100644
 --- a/src/CMakeLists.txt
 +++ b/src/CMakeLists.txt
-@@ -202,11 +202,35 @@ set(WOOF_SOURCES
+@@ -202,11 +202,37 @@ set(WOOF_SOURCES
      z_zone.c               z_zone.h
  )
  
 +if(EMSCRIPTEN)
 +    list(REMOVE_ITEM WOOF_SOURCES nw_sdl.c)
-+    list(APPEND WOOF_SOURCES nw_web.c)
++    list(APPEND WOOF_SOURCES nw_web.c rfps_web.c)
 +endif()
 +
  # Standard target definition
@@ -74,17 +74,19 @@ index b5e1455..b67d474 100644
 +        "-sSTACK_SIZE=4194304"
 +        "-sDYNAMIC_EXECUTION=0"
 +        "-sFORCE_FILESYSTEM=1"
-+        "-sEXPORTED_RUNTIME_METHODS=FS,callMain"
++        "-sEXPORTED_RUNTIME_METHODS=FS,callMain,UTF8ToString"
++        # The page's overlay (pause, volumes, difficulty, player state): rfps_web.c.
++        "-sEXPORTED_FUNCTIONS=_main,_rfps_pause,_rfps_set_volume,_rfps_new_game,_rfps_state"
 +        # Without wasmBinary listed here a release build ignores the bytes the
 +        # page supplies and fetches woof.wasm, which fails on file://.
-+        "-sINCOMING_MODULE_JS_API=canvas,wasmBinary,arguments,preRun,postRun,print,printErr,onRuntimeInitialized,onAbort,locateFile"
++        "-sINCOMING_MODULE_JS_API=canvas,wasmBinary,arguments,preRun,postRun,print,printErr,onRuntimeInitialized,onAbort,onExit,locateFile"
 +    )
 +endif()
 +
  if(WIN32)
      # Stamp out and compile resource file on Windows.
      configure_file(resource.rc.in "${CMAKE_CURRENT_BINARY_DIR}/resource.rc")
-@@ -306,6 +330,7 @@ if(WOOF_STRICT)
+@@ -306,6 +332,7 @@ if(WOOF_STRICT)
  endif()
  
  # Setup tool
@@ -92,7 +94,7 @@ index b5e1455..b67d474 100644
  set(SETUP_SOURCES
      d_iwad.c                d_iwad.h
      i_exit.c                i_exit.h
-@@ -346,6 +371,7 @@ target_link_libraries(
+@@ -346,6 +373,7 @@ target_link_libraries(
  if(MSVC)
      target_link_options(woof-setup PRIVATE "/MANIFEST:NO")
  endif()
@@ -100,7 +102,7 @@ index b5e1455..b67d474 100644
  
  # Base file
  add_dependencies(woof woof-base)
-@@ -375,6 +401,6 @@ if(WIN32)
+@@ -375,6 +403,6 @@ if(WIN32)
      else()
          install(TARGETS woof woof-setup RUNTIME DESTINATION .)
      endif()
@@ -109,7 +111,7 @@ index b5e1455..b67d474 100644
      install(TARGETS woof woof-setup RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
  endif()
 diff --git a/src/d_main.c b/src/d_main.c
-index 6398ce4..4806994 100644
+index 6398ce4..6abcaad 100644
 --- a/src/d_main.c
 +++ b/src/d_main.c
 @@ -33,6 +33,11 @@
@@ -137,13 +139,16 @@ index 6398ce4..4806994 100644
    // save the current screen if about to wipe
    if (gamestate != wipegamestate)
      {
-@@ -1519,6 +1530,17 @@ void D_SetSavegameDirectory(void)
+@@ -1519,6 +1530,20 @@ void D_SetSavegameDirectory(void)
  
  #undef SET_DIR
  
 +#ifdef __EMSCRIPTEN__
++void RFPS_WebFrame(void); // rfps_web.c: the page's pause and music switch
++
 +static void D_WebFrame(void)
 +{
++  RFPS_WebFrame();
 +  I_StartFrame();
 +  TryRunTics();
 +  if (screenvisible)
@@ -155,7 +160,7 @@ index 6398ce4..4806994 100644
  //
  // D_DoomMain
  //
-@@ -2418,6 +2440,12 @@ void D_DoomMain(void)
+@@ -2418,6 +2443,12 @@ void D_DoomMain(void)
  
    D_StartGameLoop();
  
@@ -168,7 +173,7 @@ index 6398ce4..4806994 100644
    for (;;)
      {
        // frame syncronous IO operations
-@@ -2429,6 +2457,7 @@ void D_DoomMain(void)
+@@ -2429,6 +2460,7 @@ void D_DoomMain(void)
        if (screenvisible)
          D_Display();
      }
@@ -3099,3 +3104,137 @@ index 8120155..cb3468d 100644
  {
    int i;
  
+diff --git a/src/rfps_web.c b/src/rfps_web.c
+new file mode 100644
+index 0000000..d3421aa
+--- /dev/null
++++ b/src/rfps_web.c
+@@ -0,0 +1,128 @@
++//
++// Copyright(C) 2026 mChatAI
++//
++// This program is free software; you can redistribute it and/or
++// modify it under the terms of the GNU General Public License
++// as published by the Free Software Foundation; either version 2
++// of the License, or (at your option) any later version.
++//
++// This program is distributed in the hope that it will be useful,
++// but WITHOUT ANY WARRANTY; without even the implied warranty of
++// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++// GNU General Public License for more details.
++//
++// DESCRIPTION:
++//      The small interface the retro-fps web page calls: pause, volumes,
++//      difficulty / restart, and a snapshot of the player's state for the
++//      page's overlay and tests. Built only for Emscripten.
++//
++
++#include <stdio.h>
++
++#include <emscripten.h>
++
++#include "d_player.h"
++#include "doomdef.h"
++#include "doomstat.h"
++#include "g_game.h"
++#include "m_fixed.h"
++#include "p_mobj.h"
++#include "s_sound.h"
++
++void RFPS_WebFrame(void);
++
++static int want_paused;
++static int music_on = 1;
++
++// Called once per browser frame, before the tics run. The page owns pausing
++// (its overlay), so the engine's own pause bit follows want_paused; music the
++// player switched off stays paused, even after a level change restarts it.
++void RFPS_WebFrame(void)
++{
++    if (gamestate == GS_LEVEL)
++    {
++        if (want_paused && !(paused & 1))
++        {
++            paused |= 1;
++            S_PauseSound();
++            S_PauseMusic();
++        }
++        else if (!want_paused && (paused & 1))
++        {
++            paused &= ~1;
++            S_ResumeSound();
++            if (music_on)
++            {
++                S_ResumeMusic();
++            }
++        }
++    }
++
++    if (!music_on)
++    {
++        S_PauseMusic();
++    }
++}
++
++EMSCRIPTEN_KEEPALIVE void rfps_pause(int on)
++{
++    want_paused = !!on;
++}
++
++// Volumes are 0..15; a negative value leaves that one unchanged. Music at 0
++// is paused rather than played silently, so it costs nothing.
++EMSCRIPTEN_KEEPALIVE void rfps_set_volume(int sfx, int music)
++{
++    if (sfx >= 0)
++    {
++        S_SetSfxVolume(sfx > 15 ? 15 : sfx);
++    }
++    if (music >= 0)
++    {
++        music_on = music > 0;
++        S_SetMusicVolume(music > 15 ? 15 : music);
++        if (music_on && !paused)
++        {
++            S_ResumeMusic();
++        }
++    }
++}
++
++// skill 1..5 as on the command line (0 keeps the current one); map 0 keeps
++// the current map. Starts that map fresh, as a new game does.
++EMSCRIPTEN_KEEPALIVE void rfps_new_game(int skill, int map)
++{
++    if (skill < 1 || skill > 5)
++    {
++        skill = gameskill + 1;
++    }
++    if (map < 1)
++    {
++        map = gamemap > 0 ? gamemap : 1;
++    }
++    G_DeferedInitNew((skill_t)(skill - 1), 1, map);
++}
++
++EMSCRIPTEN_KEEPALIVE const char *rfps_state(void)
++{
++    static char buf[640];
++    const player_t *p = &players[consoleplayer];
++    const mobj_t *mo = p->mo;
++
++    snprintf(buf, sizeof(buf),
++             "{\"gamestate\":%d,\"map\":%d,\"skill\":%d,\"paused\":%d,"
++             "\"menu\":%d,\"health\":%d,\"armor\":%d,\"dead\":%d,"
++             "\"weapon\":%d,\"ammo\":[%d,%d,%d,%d],\"kills\":%d,"
++             "\"totalkills\":%d,\"items\":%d,\"totalitems\":%d,"
++             "\"secrets\":%d,\"totalsecrets\":%d,\"leveltime\":%d,"
++             "\"angle\":%u,\"x\":%d,\"y\":%d,\"music\":%d,\"sfx\":%d}",
++             (int)gamestate, gamemap, (int)gameskill + 1, paused,
++             (int)menuactive, p->health, p->armorpoints,
++             p->playerstate == PST_DEAD, (int)p->readyweapon, p->ammo[0],
++             p->ammo[1], p->ammo[2], p->ammo[3], p->killcount, totalkills,
++             p->itemcount, totalitems, p->secretcount, totalsecret,
++             leveltime, mo ? (unsigned)mo->angle : 0u,
++             mo ? mo->x >> FRACBITS : 0, mo ? mo->y >> FRACBITS : 0,
++             music_on ? snd_MusicVolume : 0, snd_SfxVolume);
++    return buf;
++}

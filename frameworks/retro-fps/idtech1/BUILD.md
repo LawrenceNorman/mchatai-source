@@ -23,6 +23,8 @@ Emscripten 6.0.12.
 | `i_oalmusic.c`: music is pumped once per frame; the queue is primed before play; `AL_MAX_GAIN` is capped at 1 | There are no threads under `file://`. The web OpenAL follows the 1.1 spec and rejects a gain above 1. |
 | `i_oalsound.c`: non-positional sounds get `AL_MAX_DISTANCE` 1, not 0 | Web Audio's `PannerNode` throws on `maxDistance` ≤ 0; with rolloff at 0 the value is inaudible. |
 | 82 state actions widened to three parameters (`fix_action_arity.py`) | The engine calls every action as `p3(mobj, player, psp)`. Native code ignores extra arguments; WebAssembly traps ("function signature mismatch") the first time a monster acts. |
+| `src/rfps_web.c` (new), exported with `_main`: `rfps_pause`, `rfps_set_volume`, `rfps_new_game`, `rfps_state`; `RFPS_WebFrame()` runs at the top of each browser frame | The page's start card and pause menu pause the game, switch music and sound, change difficulty and restart the level, and read the player's state (death hint, tests). Music switched off is paused rather than played silently, including after a level change. |
+| `onExit` added to `INCOMING_MODULE_JS_API`; `UTF8ToString` exported | A release build otherwise ignores the page's `onExit`, and the page reads `rfps_state`'s JSON as a string. |
 
 Things the runtime (`../runtime/rfps-runtime.js`) handles instead of the engine:
 - The windowed config, so SDL sizes the canvas from the page's CSS.
@@ -30,6 +32,16 @@ Things the runtime (`../runtime/rfps-runtime.js`) handles instead of the engine:
   size behind and then stops following the page.
 - A minimum hold of three tics on touch buttons. A quick tap otherwise presses and releases inside
   one tic and never fires.
+- `dynamic_resolution 0` and a fixed `current_video_height` (600, or 400 on touch screens). Dynamic
+  resolution compares each frame with the display's refresh, but a browser frame includes the wait
+  for the next animation frame, so it fell to 400 lines within seconds and kept changing.
+- Mouse movement reaches the engine only while the pointer is locked to the canvas. The engine reads
+  relative motion every frame even with `grabmouse 0`, so any cursor or trackpad move over the page
+  spun the view. A click on the game asks for the lock; losing it opens the pause menu.
+- Key bindings in the config: Space, Ctrl and a click fire, E uses, Q changes weapon. The engine's
+  defaults put use on Space, the first key a new player presses to shoot.
+- An empty `M_PAUSE` patch in the game WAD, so the engine's PAUSE title does not sit above the
+  page's menu, and the page title is kept (SDL sets it to "Commercial mode - Woof ...").
 
 ## Moving to a newer Woof
 

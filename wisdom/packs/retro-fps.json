@@ -3,7 +3,9 @@
   "version": 1,
   "displayName": "Retro FPS (classic first-person shooter engine)",
   "description": "How to build a first-person shooter on the vendored retro-fps track: the Woof! engine (GPL) with Freedoom art, compiled to WebAssembly. The page is one small index.html; the agent writes the levels as text grids plus an optional text reskin, and the runtime supplies weapons, monsters, doors, keys, HUD, music, sound, touch controls and offline loading. Track: mchatai-source/frameworks/retro-fps (README, CONTEXT.md, examples/outpost-alpha).",
-  "categories": ["games"],
+  "categories": [
+    "games"
+  ],
   "keywords": [
     "fps",
     "first person",
@@ -39,7 +41,7 @@
       "id": "rfps-002",
       "severity": "critical",
       "appliesTo": "anygame",
-      "rule": "PAGE SHAPE: the whole game is ONE small index.html containing: one or more <script type=\"text/x-retro-fps-map\"> level blocks, an optional <script type=\"text/x-retro-fps-dehacked\"> block, then exactly <script src=\"./libs/rfps.js\"></script> and <script src=\"./libs/rfps-data.js\"></script>, then <script>RetroFPS.start({ title: \"Your Game Name\" });</script>. The two ./libs/ files are added at install time: never create, inline, read, fetch or link anything else, and never load from a URL or CDN. Do NOT add your own canvas, game loop, input handling, sound, music player, HUD, menu or touch controls - the runtime provides all of them.",
+      "rule": "PAGE SHAPE: the whole game is ONE small index.html containing: one or more <script type=\"text/x-retro-fps-map\"> level blocks, an optional <script type=\"text/x-retro-fps-dehacked\"> block, then exactly <script src=\"./libs/rfps.js\"></script> and <script src=\"./libs/rfps-data.js\"></script>, then <script>RetroFPS.start({ title: \"Your Game Name\" });</script>. The two ./libs/ files are added at install time: never create, inline, read, fetch or link anything else, and never load from a URL or CDN. Do NOT add your own canvas, game loop, input handling, sound, music player, HUD, start screen, help or controls text, menu, pause screen or touch controls - the runtime provides all of them: a start card (title, briefing, controls, difficulty, music and sound switches), an Esc pause menu and touch controls. Give the start card a one- or two-sentence mission with RetroFPS.start({ title: \"Your Game Name\", briefing: \"...\" }).",
       "why": "Anything extra fights the engine for the canvas and keyboard, and a CDN load fails offline and on the hub.",
       "examples": [
         "<!doctype html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no\">\n<title>Iron Vanguard</title>\n</head>\n<body>\n<script type=\"text/x-retro-fps-map\">\nname: Landing Zone\nmusic: D_RUNNIN\nsky: SKY1\nintertext: The landing zone is clear. | Push on to the relay station.\n\nzones:\n  .  floor=0   ceil=128 floorflat=FLOOR4_8 ceilflat=CEIL3_5 wall=STARTAN3 light=176\n  o  floor=-16 ceil=224 floorflat=FLOOR7_1 ceilflat=F_SKY1  wall=BROWN1   light=224\n\nthings:\n  P  player1 angle=east\n  g  shotgun\n  I  imp angle=west\n\ngrid:\n###############\n#..g..#ooooooo#\n#.P...DooIoooX#\n#.....#ooooooo#\n###############\n</script>\n<script src=\"./libs/rfps.js\"></script>\n<script src=\"./libs/rfps-data.js\"></script>\n<script>RetroFPS.start({ title: \"Iron Vanguard\" });</script>\n</body>\n</html>"
@@ -67,7 +69,7 @@
       "id": "rfps-006",
       "severity": "important",
       "appliesTo": "anygame",
-      "rule": "LEVEL DESIGN: build a real FPS level, not a maze. Each level: 4 to 7 distinct rooms joined by doors and corridors, roughly 30 to 60 columns by 15 to 30 rows, at least one outdoor sky area, at least two height changes (stairs of 16-24 unit steps, a raised walkway, a sunken nukage pit), a key-locked door that gates the exit, and a secret room with a reward. Vary light and textures room by room. Give a weapon upgrade early (a shotgun in the first or second room), pace monsters from weak (zombieman, imp) to strong, and put health and ammo after fights. Use 12 to 35 monsters per level, facing where the player enters, with some ambush=1 behind doors. For a campaign write 2 to 4 levels of rising difficulty with a short intertext between them.",
+      "rule": "LEVEL DESIGN: build a real FPS level, not a maze. Each level: 4 to 7 distinct rooms joined by doors and corridors, roughly 30 to 60 columns by 15 to 30 rows, at least one outdoor sky area, at least two height changes (stairs of 16-24 unit steps, a raised walkway, a sunken nukage pit), a key-locked door that gates the exit, and a secret room with a reward. Vary light and textures room by room. Give a weapon upgrade early (a shotgun in the first or second room), pace monsters from weak (zombieman, imp) to strong, and put health and ammo after fights. THE START IS SAFE: no monster may have a clear line to the player1 cell (walls and doors block the line); the first fight is 1 to 3 weak monsters behind a door or around a corner - node tools/rfps-check.js fails with a DESIGN line otherwise. Use 12 to 35 monsters per level; in later rooms they face the doorway the player comes through, and some wait with ambush=1. For a campaign write 2 to 4 levels of rising difficulty with a short intertext between them.",
       "why": "Height, light and pacing are what make a classic FPS level feel designed instead of generated."
     },
     {
@@ -101,7 +103,7 @@
       "id": "rfps-011",
       "severity": "recommended",
       "appliesTo": "anygame",
-      "rule": "ERRORS: if a level has a mistake the page shows it and logs it to the console with the level, row and column - for example 'level 2 (Relay Station): grid row 4 col 9: open cell on the edge of the map; surround the map with #' or 'the player cannot reach the exit'. Fix exactly what it names. Unknown texture, flat or music names are logged as warnings. RetroFPS.start also takes skill: 1 (easiest) to 5, default 3."
+      "rule": "ERRORS: if a level has a mistake the page shows it and logs it to the console with the level, row and column - for example 'level 2 (Relay Station): grid row 4 col 9: open cell on the edge of the map; surround the map with #' or 'the player cannot reach the exit'. Fix exactly what it names. Unknown texture, flat or music names are logged as warnings. Run node tools/rfps-check.js index.html before finishing: it exits 1 on a mistake or a DESIGN line (a level that loads but plays unfairly, such as monsters that can see the start) - fix both. RetroFPS.start also takes skill: 1 (easiest) to 5, default 3. Players fire with Space, Ctrl or a click and use doors with E, so text that names the use key says E."
     }
   ]
 }

@@ -7,7 +7,9 @@
 // a bare level text file) with the same compiler the page uses, and reports
 // mistakes by level, row and column. Texture, flat and music names are checked
 // against the base art when dist/rfps-names.json is present. Exit status is 1
-// when a level would not load.
+// when a level would not load, or loads but plays unfairly (DESIGN lines: for
+// example monsters that can see the player start and shoot before the player
+// has moved). Fix DESIGN lines too; the page plays them, but badly.
 "use strict";
 const fs = require("fs");
 const path = require("path");
@@ -40,13 +42,15 @@ for (const file of process.argv.slice(2)) {
     continue;
   }
   try {
-    const { levels, warnings } = runtime.compileLevels(texts, { names });
+    const { levels, warnings, design } = runtime.compileLevels(texts, { names, fairStart: false });
     for (const lv of levels) {
       const c = lv.compiled;
       console.log(`${file}: ${lv.lumpName} "${lv.meta.name || ""}" ok: ${c.linedefs.length} lines, ` +
         `${c.sectors.length} sectors, ${c.things.length} things`);
     }
     for (const w of warnings) console.log(`${file}: warning: ${w}`);
+    for (const d of design) console.log(`${file}: DESIGN ${d}`);
+    if (design.length) failed = true;
   } catch (e) {
     console.log(`${file}: ERROR ${e.message}`);
     failed = true;
