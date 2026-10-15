@@ -20,7 +20,10 @@ DIST = ROOT / "dist"
 
 def main() -> None:
     DIST.mkdir(exist_ok=True)
-    (DIST / "vf.js").write_text((ROOT / "runtime" / "vf-runtime.js").read_text())
+    # The runtime, then its modes (each reads VersusFighter._core): one file for every game page.
+    parts = [ROOT / "runtime" / "vf-runtime.js"] + sorted((ROOT / "runtime").glob("vf-*.js"))
+    parts = [p for i, p in enumerate(parts) if p not in parts[:i]]
+    (DIST / "vf.js").write_text("\n".join(p.read_text() for p in parts))
     for base_dir in sorted((ROOT / "sprites").iterdir()):
         atlas = base_dir / "atlas.json"
         if not atlas.exists():

@@ -19,6 +19,8 @@ reaches this track until VF.3.
   the check after changing a map.
 - `tools/vf-check.js` — validates a game page (exit 1 on errors).
 - `examples/demo.html` — four original fighters on both bodies (run `tools/vf-build.py` first).
+- `runtime/vf-brawler.js` — brawler mode (`"mode": "brawler"`): a side-scrolling beat-'em-up on the same bodies,
+  built into `dist/vf.js`. `examples/iron-alley.html` is a two-stage demo.
 
 Rebuild after changing a map or the runtime:
 

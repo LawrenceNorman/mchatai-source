@@ -19,6 +19,7 @@
   var EDGE = 28;                       // closest a fighter's centre gets to the stage edge
   var BODY = 16;                       // half-width of a fighter's push box (a base's feel.body overrides it)
   var BASES = {};
+  var MODES = {};                      // other game modes (vf-brawler.js adds "brawler"), keyed by game.mode
   var active = null;                   // the mounted game (one per page)
 
   // ---------------------------------------------------------------- utilities
@@ -818,13 +819,21 @@
     if (!root) throw new Error("Versus Fighter: mount target not found");
     if (!document.getElementById("vf-style")) { var s = document.createElement("style"); s.id = "vf-style"; s.textContent = CSS; document.head.appendChild(s); }
     if (active) active.dead = true;
-    active = new Game(root, game, opts);
+    var Mode = (game && game.mode && MODES[game.mode]) || Game;
+    active = new Mode(root, game, opts);
     return { state: function () { return active.state(); }, pause: function () { if (active.screen === "fight" && !active.paused) active.togglePause(); } };
   }
 
   G.VersusFighter = {
     VERSION: VERSION, mount: mount, registerBase: registerBase,
     state: function () { return active ? active.state() : null; },
-    _test: { buildMove: buildMove, Controls: Controls, MOTIONS: MOTIONS, overlap: overlap, BASES: BASES, paintStage: paintStage, game: function () { return active; } }
+    _test: { buildMove: buildMove, Controls: Controls, MOTIONS: MOTIONS, overlap: overlap, BASES: BASES, paintStage: paintStage, game: function () { return active; } },
+    // The shared core for other modes (vf-brawler.js): the bodies, moves, fighter, input, audio,
+    // stage painter and the 1v1 Game, whose overlays, touch, loop and drawing a mode can inherit.
+    _core: { VERSION: VERSION, W: W, H: H, FLOOR: FLOOR, STAGE_W: STAGE_W, STEP: STEP, SCALE: SCALE, BODY: BODY,
+             BASES: BASES, MODES: MODES, clamp: clamp, overlap: overlap, el: el, rng: rng, hashSeed: hashSeed, hexToRgb: hexToRgb,
+             whenBasesReady: whenBasesReady, recolored: recolored, recoloredFrame: recoloredFrame,
+             CLASSES: CLASSES, NORMALS: NORMALS, buildMove: buildMove, Controls: Controls, Fighter: Fighter, Audio: Audio,
+             paintStage: paintStage, Game: Game }
   };
 })(typeof window !== "undefined" ? window : globalThis);

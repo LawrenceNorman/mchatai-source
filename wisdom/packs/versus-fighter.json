@@ -1,8 +1,8 @@
 {
   "packID": "versus-fighter",
-  "version": 1,
-  "displayName": "Versus Fighter (1v1 fighting-game runtime)",
-  "description": "How to build a one-on-one fighting game on the vendored versus-fighter track: a fixed runtime (two fighters with frame data, hit and hurt boxes, blocking, combos, special-move inputs, projectiles, best-of-three rounds, a CPU opponent, two-player and touch controls, start card, character select, pause menu, sound) and CC0 fighter bodies. The agent writes only the game as JSON: fighters, their colours and special moves, stages, rules. Track: mchatai-source/frameworks/versus-fighter (README, CONTEXT.md, examples/demo.html).",
+  "version": 2,
+  "displayName": "Versus Fighter (1v1 fighting games and side-scrolling beat-'em-ups)",
+  "description": "How to build a one-on-one fighting game, or (\"mode\": \"brawler\") a side-scrolling beat-'em-up, on the vendored versus-fighter track: a fixed runtime (two fighters with frame data, hit and hurt boxes, blocking, combos, special-move inputs, projectiles, best-of-three rounds, a CPU opponent, two-player and touch controls, start card, character select, pause menu, sound) and CC0 fighter bodies. The agent writes only the game as JSON: fighters, their colours and special moves, stages, rules. Track: mchatai-source/frameworks/versus-fighter (README, CONTEXT.md, examples/demo.html).",
   "categories": [
     "games"
   ],
@@ -23,14 +23,25 @@
     "mortal kombat",
     "king of fighters",
     "guilty gear",
-    "dragon ball fight"
+    "dragon ball fight",
+    "beat 'em up",
+    "beat-em-up",
+    "beat em up",
+    "beat-'em-up",
+    "brawler game",
+    "side-scrolling brawler",
+    "street brawl",
+    "streets of rage",
+    "final fight",
+    "double dragon",
+    "golden axe"
   ],
   "guidelines": [
     {
       "id": "vf-001",
       "severity": "critical",
       "appliesTo": "anygame",
-      "rule": "ENGINE CHOICE: for a ONE-ON-ONE FIGHTING GAME ('a Street Fighter type game', a versus or tournament fighter, martial-arts duels, special moves and combos, two fighters on one screen) build on the vendored VERSUS-FIGHTER runtime and write only the game data. It already provides two fighters with frame data, hit and hurt boxes, blocking, combos, knockdowns, motion inputs (quarter circles, dragon punch, half circles), projectiles, best-of-three rounds with a timer, a CPU opponent with three difficulties, two players on one keyboard or gamepads, touch controls on phones, the HUD, painted stages, sound, music, a start card, character select and a pause menu. Do NOT hand-roll a fighting engine, sprites or a canvas game loop. Not for side-scrolling beat-'em-ups against many enemies, platform fighters, fighting in a 3D arena, or dogfights between planes or spaceships: those are other genres.",
+      "rule": "ENGINE CHOICE: for a ONE-ON-ONE FIGHTING GAME ('a Street Fighter type game', a versus or tournament fighter, martial-arts duels, special moves and combos, two fighters on one screen) build on the vendored VERSUS-FIGHTER runtime and write only the game data. It already provides two fighters with frame data, hit and hurt boxes, blocking, combos, knockdowns, motion inputs (quarter circles, dragon punch, half circles), projectiles, best-of-three rounds with a timer, a CPU opponent with three difficulties, two players on one keyboard or gamepads, touch controls on phones, the HUD, painted stages, sound, music, a start card, character select and a pause menu. Do NOT hand-roll a fighting engine, sprites or a canvas game loop. For a SIDE-SCROLLING BEAT-'EM-UP (\"a Streets of Rage type game\", a brawler where you fight waves of enemies along a street) use the same runtime with \"mode\": \"brawler\" (rule vf-007). Not for platform fighters, fighting in a 3D arena, or dogfights between planes or spaceships: those are other genres.",
       "why": "A fighting engine with real frame data, inputs and a fair CPU is weeks of tuning; the runtime is tested on desktop and phones and runs offline in the app and on the hub."
     },
     {
@@ -67,6 +78,13 @@
       "severity": "critical",
       "appliesTo": "anygame",
       "rule": "CHECK AND FINISH: write index.html in your working directory early and keep it current. Then run node <mchatai-source>/frameworks/versus-fighter/tools/vf-check.js index.html (the exact path is in your project context). It must exit 0: it checks the JSON, bodies, animations, inputs, colours, stage themes, the library tags and the names. Fix every ERROR line. Once it passes you are done; a look in a browser is optional, so keep it short."
+    },
+    {
+      "id": "vf-007",
+      "severity": "critical",
+      "appliesTo": "anygame",
+      "rule": "BRAWLER MODE (beat-'em-ups): set \"mode\": \"brawler\" in the game JSON; the page, libraries and VersusFighter.mount call are the same as a 1v1 game. Write: players (1-6 fighters, same fields as fighters; their FIRST special is the special button), enemies (an object of enemy types by id: name, base, colors, health 10-400 with regulars about 25-60 and a boss 120-250, speed 0.4-1.6, aggression 0-1, attacks from LP/HP/LK/HK, points), stages (1-4 streets: name, theme, sky, floor, accent, length 800-8000, about 1600-2400; waves of { at: where along the street (0 to length minus 384), enemies: [type ids, 1-8] }, three or four waves that grow and mix fast weak types with slow heavy ones; boss: { type, name }), lives 1-9. The runtime provides walking in depth lanes, punch combos, kicks, jump attacks, the special, enemies that take turns attacking, the camera holding until a wave is down, the GO arrow, lives, score, bosses, stage clear and continue. Model the game on frameworks/versus-fighter/examples/iron-alley.html with your own names, crews and streets.",
+      "why": "A beat-'em-up needs crowds that take turns, depth lanes, a camera that holds for each wave and bosses; the runtime has all of them tested on desktop and phones."
     }
   ]
 }

@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Iron Alley</title>
+<style>html,body{margin:0;height:100%;background:#0b0b12}#game{position:fixed;inset:0}</style>
+</head>
+<body>
+<div id="game"></div>
+<script type="application/json" id="vf-game">
+{
+  "mode": "brawler",
+  "title": "Iron Alley",
+  "tagline": "Two stages, one night. Clear the street block by block.",
+  "lives": 3,
+  "cpu": "normal",
+  "players": [
+    {
+      "name": "Rook Ishida",
+      "base": "ava",
+      "colors": {
+        "top": "#e8505b"
+      },
+      "style": "Quick hands",
+      "health": 120,
+      "specials": [
+        {
+          "name": "Gutter Spin",
+          "anim": "sp_cartwheel",
+          "input": "QCB+K",
+          "damage": 12,
+          "knockdown": true
+        }
+      ]
+    },
+    {
+      "name": "Bastion Kael",
+      "base": "komato",
+      "colors": {
+        "armor": "#5a6472",
+        "glow": "#ff9a3c"
+      },
+      "style": "Slow, unstoppable",
+      "health": 150,
+      "specials": [
+        {
+          "name": "Breaker Charge",
+          "anim": "sp_charge",
+          "input": "QCF+P",
+          "damage": 14,
+          "knockdown": true,
+          "dash": 3.0
+        }
+      ]
+    }
+  ],
+  "enemies": {
+    "punk": {
+      "name": "Street Punk",
+      "base": "ava",
+      "colors": {
+        "top": "#8a8a8a",
+        "pants": "#2a2a3a"
+      },
+      "health": 30,
+      "speed": 1.0,
+      "aggression": 0.55,
+      "attacks": [
+        "LP",
+        "LK"
+      ],
+      "points": 100
+    },
+    "bruiser": {
+      "name": "Dock Bruiser",
+      "base": "ava",
+      "colors": {
+        "top": "#3d8f4e",
+        "pants": "#1d1d24"
+      },
+      "health": 45,
+      "speed": 0.85,
+      "aggression": 0.6,
+      "attacks": [
+        "HP",
+        "HK",
+        "LP"
+      ],
+      "points": 150
+    },
+    "enforcer": {
+      "name": "Iron Enforcer",
+      "base": "komato",
+      "colors": {
+        "armor": "#7a2a2a",
+        "glow": "#ffd23c"
+      },
+      "health": 160,
+      "speed": 0.7,
+      "aggression": 0.7,
+      "attacks": [
+        "HP",
+        "HK",
+        "LK"
+      ],
+      "points": 1000
+    }
+  },
+  "stages": [
+    {
+      "name": "Neon Underpass",
+      "theme": "city",
+      "sky": [
+        "#141a3a",
+        "#e0607e"
+      ],
+      "floor": "#2a2433",
+      "accent": "#ffd27a",
+      "length": 1700,
+      "waves": [
+        {
+          "at": 150,
+          "enemies": [
+            "punk",
+            "punk"
+          ]
+        },
+        {
+          "at": 600,
+          "enemies": [
+            "punk",
+            "bruiser",
+            "punk"
+          ]
+        },
+        {
+          "at": 1000,
+          "enemies": [
+            "bruiser",
+            "bruiser"
+          ]
+        }
+      ],
+      "boss": {
+        "type": "enforcer",
+        "name": "Warden Brask"
+      }
+    },
+    {
+      "name": "Harbor Yards",
+      "theme": "harbor",
+      "sky": [
+        "#0f2236",
+        "#f0a050"
+      ],
+      "floor": "#2b2a30",
+      "accent": "#fff0b0",
+      "length": 1900,
+      "waves": [
+        {
+          "at": 200,
+          "enemies": [
+            "bruiser",
+            "punk",
+            "punk"
+          ]
+        },
+        {
+          "at": 700,
+          "enemies": [
+            "bruiser",
+            "bruiser",
+            "punk"
+          ]
+        },
+        {
+          "at": 1200,
+          "enemies": [
+            "punk",
+            "punk",
+            "bruiser",
+            "bruiser"
+          ]
+        }
+      ],
+      "boss": {
+        "type": "enforcer",
+        "name": "Harbor Boss Okonkwo"
+      }
+    }
+  ]
+}
+</script>
+<script src="../dist/vf.js"></script>
+<script src="../dist/vf-base-ava.js"></script>
+<script src="../dist/vf-base-komato.js"></script>
+<script>VersusFighter.mount("#game", JSON.parse(document.getElementById("vf-game").textContent));</script>
+</body>
+</html>

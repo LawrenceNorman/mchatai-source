@@ -44,11 +44,15 @@ function check(file) {
 
   if (!game.title) errors.push("game.title is missing");
   named("title", game.title);
-  if (!Array.isArray(game.fighters) || !game.fighters.length) errors.push("game.fighters needs at least one fighter");
-  else if (game.fighters.length > 12) errors.push("at most 12 fighters");
+  const brawler = game.mode === "brawler";
+  if (game.mode != null && !brawler) errors.push('mode is "brawler" (a side-scrolling beat-\'em-up) or omitted (1v1 versus)');
+  const people = brawler ? (game.players || []) : (game.fighters || []);
+  const listName = brawler ? "players" : "fighters";
+  if (!Array.isArray(people) || !people.length) errors.push(`game.${listName} needs at least one fighter`);
+  else if (people.length > (brawler ? 6 : 12)) errors.push(`at most ${brawler ? 6 : 12} ${listName}`);
   const used = new Set();
-  (game.fighters || []).forEach((f, i) => {
-    const who = `fighters[${i}] (${f.name || "unnamed"})`;
+  people.forEach((f, i) => {
+    const who = `${listName}[${i}] (${f.name || "unnamed"})`;
     if (!f.name) errors.push(`${who}: name is missing`);
     named(who + " name", f.name);
     const base = f.base || "ava";
@@ -88,10 +92,50 @@ function check(file) {
       if (s.projectile && s.dash) warnings.push(`${sw}: a projectile special with dash runs after its own projectile`);
     });
     if ((f.specials || []).length > 6) warnings.push(`${who}: more than 6 specials is hard to learn`);
+    if (brawler && !(f.specials || []).length) warnings.push(`${who}: no specials, so the special button does nothing (the first special is the one it uses)`);
     if ((f.specials || []).filter((s) => s.projectile).length > 1) warnings.push(`${who}: one projectile special is plenty (only one can be on screen)`);
   });
+  // Brawler: enemy crews, and stages that are streets with waves and a boss.
+  const crews = brawler ? (game.enemies || {}) : {};
+  if (brawler) {
+    if (typeof crews !== "object" || Array.isArray(crews) || !Object.keys(crews).length) errors.push('game.enemies is an object of enemy types, e.g. { "punk": { "name": …, "base": "ava", … } }');
+    for (const [id, t] of Object.entries(crews)) {
+      const who = `enemies.${id} (${t.name || "unnamed"})`;
+      if (!t.name) errors.push(`${who}: name is missing`);
+      named(who + " name", t.name);
+      const base = t.base || "ava"; used.add(base);
+      const atlas = bases[base];
+      if (!atlas) { errors.push(`${who}: no art base "${base}" (have: ${Object.keys(bases).join(", ")})`); continue; }
+      const groups = Object.keys(atlas.palette || {});
+      for (const [k, v] of Object.entries(t.colors || {})) {
+        if (!HEX.test(v)) errors.push(`${who}: colors.${k} "${v}" is not a #hex color`);
+        if (!groups.includes(k)) warnings.push(`${who}: colors.${k} recolors nothing on base ${base} (use ${groups.join(", ")})`);
+      }
+      if (t.health != null && !(t.health >= 10 && t.health <= 400)) errors.push(`${who}: health should be 10–400`);
+      if (t.speed != null && !(t.speed >= 0.4 && t.speed <= 1.6)) errors.push(`${who}: speed should be 0.4–1.6`);
+      if (t.aggression != null && !(t.aggression >= 0 && t.aggression <= 1)) errors.push(`${who}: aggression should be 0–1`);
+      for (const a of t.attacks || []) if (!["LP", "HP", "LK", "HK"].includes(a)) errors.push(`${who}: attacks lists normals: LP, HP, LK, HK (not "${a}")`);
+    }
+    if (game.lives != null && !(game.lives >= 1 && game.lives <= 9)) errors.push("lives should be 1–9");
+  }
   const stages = game.stages || (game.stage ? [game.stage] : []);
-  if (!stages.length) warnings.push("no stages; a default one is painted");
+  if (!stages.length) (brawler ? errors : warnings).push(brawler ? "a brawler needs stages with waves" : "no stages; a default one is painted");
+  if (brawler) stages.forEach((st, i) => {
+    const where = `stages[${i}] (${st.name || "unnamed"})`;
+    const length = st.length || 1800;
+    if (!(length >= 800 && length <= 8000)) errors.push(`${where}: length should be 800–8000`);
+    if (!(st.waves || []).length && !st.boss) errors.push(`${where}: needs waves (and usually a boss)`);
+    (st.waves || []).forEach((w, j) => {
+      if (!(w.at >= 0 && w.at <= length - 384)) errors.push(`${where} waves[${j}]: "at" should be 0–${length - 384} (where along the street it starts)`);
+      if (!(w.enemies || []).length || w.enemies.length > 8) errors.push(`${where} waves[${j}]: 1–8 enemies`);
+      for (const e of w.enemies || []) if (!crews[e]) errors.push(`${where} waves[${j}]: no enemy type "${e}" in game.enemies`);
+    });
+    if (st.boss) {
+      const type = typeof st.boss === "string" ? st.boss : st.boss.type;
+      if (!crews[type]) errors.push(`${where}: boss type "${type}" is not in game.enemies`);
+      if (st.boss.name) named(`${where} boss name`, st.boss.name);
+    }
+  });
   stages.forEach((s, i) => {
     if (!s.name) errors.push(`stages[${i}]: name is missing`);
     if (s.theme && !THEMES.includes(s.theme)) errors.push(`stages[${i}]: theme "${s.theme}" — use ${THEMES.join(", ")}`);
@@ -106,7 +150,7 @@ function check(file) {
   for (const b of used) if (!srcs.some((s) => s.endsWith(`vf-base-${b}.js`))) errors.push(`the page does not load base "${b}": <script src="libs/vf-base-${b}.js"></script>`);
   if (!/VersusFighter\.mount\(/.test(html)) errors.push("the page never calls VersusFighter.mount(...)");
   if (/https?:\/\/[^"']*\.(js|png|gif|mp3|ogg)/i.test(html)) errors.push("the page references a remote file; everything must work offline from libs/");
-  return { errors, warnings, fighters: (game.fighters || []).length, stages: stages.length };
+  return { errors, warnings, fighters: people.length, stages: stages.length, mode: brawler ? "brawler" : "versus" };
 }
 
 if (require.main === module) {
@@ -115,7 +159,7 @@ if (require.main === module) {
   const r = check(file);
   r.warnings.forEach((w) => console.log("warning: " + w));
   r.errors.forEach((e) => console.log("ERROR: " + e));
-  console.log(r.errors.length ? `vf-check: ${r.errors.length} error(s)` : `vf-check: OK (${r.fighters} fighters, ${r.stages} stages)`);
+  console.log(r.errors.length ? `vf-check: ${r.errors.length} error(s)` : `vf-check: OK (${r.mode}: ${r.fighters} ${r.mode === "brawler" ? "players" : "fighters"}, ${r.stages} stages)`);
   process.exit(r.errors.length ? 1 : 0);
 }
 module.exports = { check };

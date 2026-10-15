@@ -1,6 +1,7 @@
 # Versus Fighter: writing a game
 
-A versus-fighter game is one small `index.html`. You write the game as JSON: the fighters (a body,
+A versus-fighter game is one small `index.html`: a one-on-one fighter, or with `"mode": "brawler"`
+a side-scrolling beat-'em-up (see "Brawler mode" below). You write the game as JSON: the fighters (a body,
 colors, an original name, special moves), the stages and the rules. The runtime provides everything
 else: two fighters with frame data, hit and hurt boxes, blocking, combos, knockdowns; best-of-three
 rounds with a timer; a CPU opponent (easy, normal, hard); two players on one keyboard or gamepads;
@@ -97,6 +98,38 @@ Both bodies also have the normals `jab`, `straight`, `kick_light`, `kick_heavy`,
 Give each fighter a different mix so they play differently: one with an anti-air uppercut and a
 dash, one that rushes in, one that keeps away with a projectile. When two specials share a motion's
 end (a half circle ends in a quarter circle), the longer motion wins, and `DP` beats `QCF`.
+
+## Brawler mode: a side-scrolling beat-'em-up
+
+Set `"mode": "brawler"` and the same page (same libraries, same `VersusFighter.mount`) becomes a
+street to fight along: the player walks in depth lanes (up and down move into and out of the
+screen), waves of enemies come in from both sides and the camera holds until they are down, a GO
+arrow sends the player on, each stage ends with a boss, and lives and score carry across stages.
+The runtime provides the walking, a three-punch combo that knocks down, kicks, jump attacks, a
+special that hits everyone around (it costs a little health), enemies that take turns attacking,
+knockdowns, health bars, lives, score, stage clear and continue. `examples/iron-alley.html` is a
+complete two-stage game to copy from.
+
+```json
+{ "mode": "brawler", "title": "Iron Alley", "tagline": "Clear the street block by block.", "lives": 3, "cpu": "normal",
+  "players": [ { "name": "Rook Ishida", "base": "ava", "colors": { "top": "#e8505b" }, "style": "Quick hands", "health": 120,
+                 "specials": [ { "name": "Gutter Spin", "anim": "sp_cartwheel", "input": "QCB+K", "damage": 12, "knockdown": true } ] } ],
+  "enemies": {
+    "punk":     { "name": "Street Punk",   "base": "ava",    "colors": { "top": "#8a8a8a" }, "health": 30,  "speed": 1.0, "aggression": 0.55, "attacks": ["LP", "LK"] },
+    "enforcer": { "name": "Iron Enforcer", "base": "komato", "colors": { "armor": "#7a2a2a" }, "health": 160, "speed": 0.7, "aggression": 0.7, "attacks": ["HP", "HK"] } },
+  "stages": [ { "name": "Neon Underpass", "theme": "city", "sky": ["#141a3a", "#e0607e"], "floor": "#2a2433", "accent": "#ffd27a", "length": 1700,
+                "waves": [ { "at": 150, "enemies": ["punk", "punk"] }, { "at": 700, "enemies": ["punk", "punk", "punk"] } ],
+                "boss": { "type": "enforcer", "name": "Warden Brask" } } ] }
+```
+
+| Field | Meaning |
+|---|---|
+| `players` | 1–6 playable fighters, the same fields as `fighters` above. Their FIRST special is the special button |
+| `enemies` | enemy types by id: `name`, `base`, `colors`, `health` (10–400: about 25–60 for regulars, 120–250 for a boss), `speed` (0.4–1.6), `aggression` (0–1), `attacks` (normals they use: `LP`, `HP`, `LK`, `HK`), `points` |
+| `stages[].length` | the street's length, 800–8000 (about 1600–2400 makes a good stage) |
+| `stages[].waves` | `{ "at": <where along the street, 0 to length − 384>, "enemies": [type ids, 1–8] }`; three or four waves that grow, mixing fast weak types with slow heavy ones (the `komato` body makes a good heavy or boss) |
+| `stages[].boss` | `{ "type": <an enemy id>, "name": <its own name> }`, fought near the end of the street |
+| `lives` | 1–9 (default 3) |
 
 ## Names
 
