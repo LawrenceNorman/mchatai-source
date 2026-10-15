@@ -302,8 +302,16 @@
     if (stage.sun !== false) { x.fillStyle = accent; x.globalAlpha = 0.85; x.beginPath(); x.arc(STAGE_W * (0.25 + r() * 0.5), 38 + r() * 30, 14 + r() * 10, 0, 7); x.fill(); x.globalAlpha = 1; }
     function shade(hex, f) { var c3 = hexToRgb(hex) || [40, 40, 50]; return "rgb(" + c3.map(function (v) { return Math.round(v * f); }).join(",") + ")"; }
     var far = shade(sky[0], 0.55), mid = shade(floor, 0.8);
+    if (theme === "space") {            // stars and a ringed planet instead of a skyline
+      for (var st = 0; st < 160; st++) { x.fillStyle = "rgba(255,255,255," + (0.3 + r() * 0.7).toFixed(2) + ")"; x.fillRect(Math.floor(r() * STAGE_W), Math.floor(r() * (FLOOR - 40)), 1, 1); }
+      var px = STAGE_W * (0.2 + r() * 0.6), py = 60 + r() * 30; x.fillStyle = shade(accent, 0.8); x.beginPath(); x.arc(px, py, 26, 0, 7); x.fill();
+      x.strokeStyle = shade(accent, 1.1); x.lineWidth = 2; x.beginPath(); x.ellipse(px, py, 44, 8, -0.3, 0, 7); x.stroke();
+    }
     x.fillStyle = far;
-    if (theme === "mountains" || theme === "temple" || theme === "forest") {
+    if (theme === "space") { /* no far layer */ }
+    else if (theme === "desert") { for (var dn = 0; dn < 6; dn++) { var dx = r() * STAGE_W, dw = 120 + r() * 140, dh = 18 + r() * 26; x.beginPath(); x.ellipse(dx, FLOOR - 36, dw, dh, 0, Math.PI, 0); x.fill(); }
+      x.fillStyle = mid; for (var me = 0; me < 3; me++) { var mx = r() * STAGE_W; x.fillRect(mx, FLOOR - 36 - 50, 60 + r() * 40, 50); } }
+    else if (theme === "mountains" || theme === "temple" || theme === "forest") {
       for (var m = 0; m < 7; m++) { var cx = r() * STAGE_W, w = 90 + r() * 120, h = 50 + r() * 60; x.beginPath(); x.moveTo(cx - w, FLOOR - 40); x.lineTo(cx, FLOOR - 40 - h); x.lineTo(cx + w, FLOOR - 40); x.fill(); }
     } else {
       for (var b = 0; b < STAGE_W; b += 14 + r() * 22) { var bh = 30 + r() * 70; x.fillRect(b, FLOOR - 36 - bh, 12 + r() * 18, bh); }
@@ -313,6 +321,9 @@
     else if (theme === "harbor") { for (var s = 0; s < 5; s++) { var sx = r() * STAGE_W; x.fillRect(sx, FLOOR - 52, 46, 14); x.fillRect(sx + 18, FLOOR - 84, 3, 32); } x.fillStyle = shade(sky[1] || sky[0], 0.6); x.fillRect(0, FLOOR - 38, STAGE_W, 10); }
     else if (theme === "forest") { for (var f = 0; f < STAGE_W; f += 26 + r() * 20) { x.beginPath(); x.moveTo(f, FLOOR - 36); x.lineTo(f + 14, FLOOR - 96 - r() * 30); x.lineTo(f + 28, FLOOR - 36); x.fill(); } }
     else if (theme === "dojo") { x.fillRect(0, FLOOR - 92, STAGE_W, 6); for (var d = 0; d < STAGE_W; d += 64) x.fillRect(d, FLOOR - 92, 6, 92); }
+    else if (theme === "desert" || theme === "space") { /* mid layer drawn above */ }
+    else if (theme === "rooftop") { for (var t = 30; t < STAGE_W; t += 150 + r() * 80) { x.fillRect(t, FLOOR - 92, 30, 26); x.fillRect(t + 4, FLOOR - 66, 4, 30); x.fillRect(t + 22, FLOOR - 66, 4, 30); }
+      x.fillStyle = shade(floor, 1.2); x.fillRect(0, FLOOR - 40, STAGE_W, 4); }
     else { for (var bb = 0; bb < STAGE_W; bb += 30 + r() * 40) { var h2 = 20 + r() * 40; x.fillRect(bb, FLOOR - 36 - h2, 26, h2); x.fillStyle = accent; x.globalAlpha = 0.5; for (var wy = FLOOR - 32 - h2; wy < FLOOR - 40; wy += 8) if (r() < 0.5) x.fillRect(bb + 4 + Math.floor(r() * 3) * 7, wy, 3, 3); x.globalAlpha = 1; x.fillStyle = mid; } }
     // floor with perspective lines
     x.fillStyle = floor; x.fillRect(0, FLOOR - 36, STAGE_W, H - FLOOR + 36);
@@ -729,6 +740,6 @@
   G.VersusFighter = {
     VERSION: VERSION, mount: mount, registerBase: registerBase,
     state: function () { return active ? active.state() : null; },
-    _test: { buildMove: buildMove, Controls: Controls, MOTIONS: MOTIONS, overlap: overlap, BASES: BASES }
+    _test: { buildMove: buildMove, Controls: Controls, MOTIONS: MOTIONS, overlap: overlap, BASES: BASES, paintStage: paintStage }
   };
 })(typeof window !== "undefined" ? window : globalThis);
