@@ -2327,14 +2327,19 @@
       },
       "channel": {
         "kind": "update",
-        "summary": "Read the user's podcast channel, or create/update it by passing any of title, description, author, visibility.",
+        "summary": "Read one of the user's podcast channels, or create/update it by passing any of title, description, author, visibility, category, subCategory, language, link.",
         "optional": [
+          "channel",
           "title",
           "description",
           "author",
-          "visibility"
+          "visibility",
+          "category",
+          "subCategory",
+          "language",
+          "link"
         ],
-        "notes": "Called with NO args it only reads, so it is safe to check whether a channel exists before offering to make one.",
+        "notes": "Called with no fields it only reads, so it is safe to check whether a channel exists before offering to make one. `channel` names one of the user's shows (a short lowercase slug, at most 5 per account); omitted means 'default', their first. category and subCategory are Apple Podcasts categories, for example 'Education' / 'Language Learning'.",
         "example": {
           "command": "applet",
           "applet": "audiocast",
@@ -2343,10 +2348,13 @@
       },
       "artwork": {
         "kind": "update",
-        "summary": "Ensure the channel has published cover art. Pass force to regenerate.",
+        "summary": "Ensure the channel has published cover art. Pass force to regenerate, or imagePath to use your own cover.",
         "optional": [
-          "force"
+          "channel",
+          "force",
+          "imagePath"
         ],
+        "notes": "imagePath must be a square JPEG or PNG, 1400-3000 px (Apple's rule), in a folder the app can read (inside its container, such as your Workbench folder).",
         "example": {
           "command": "applet",
           "applet": "audiocast",
@@ -2362,9 +2370,11 @@
         "optional": [
           "audioPath",
           "projectID",
-          "description"
+          "description",
+          "channel",
+          "public"
         ],
-        "notes": "Needs audioPath OR projectID (which uses that project's newest render). DANGEROUS: this puts a file on the open internet under the user's name and a subscriber may fetch it within seconds. Deleting the local audio afterwards does not retract it - that needs unpublishEpisode. Ask before every publish unless the user has said otherwise for this specific feed.",
+        "notes": "Needs audioPath OR projectID (which uses that project's newest render). `channel` names the show (default: 'default'); a named show must already exist (create it with `channel`). The audio is re-encoded to 64 kbps mono AAC and one share may be at most 20 MB, so keep an episode under about 40 minutes. DANGEROUS: this puts a file on the open internet under the user's name and a subscriber may fetch it within seconds. Deleting the local audio afterwards does not retract it - that needs unpublishEpisode. Ask before every publish unless the user has said otherwise for this specific feed.",
         "example": {
           "command": "applet",
           "applet": "audiocast",
