@@ -6,6 +6,36 @@
   "cadence": "daily",
   "pattern": {"trigger": ["conversation", "schedule", "relay"], "state": ["records", "memories"], "records": ["Training Log"], "continuity": "thread-per-topic", "qualityControl": ["none"], "freshness": "none"},
   "_whyRecords": "Training Log is the Ledger collection that matches CONTEXT.md's 'one row per session' (empty on 2026-10-11); the brief never named it.",
+  "checkIn": {
+    "question": "Did you work out {day}?",
+    "logTo": "Training Log",
+    "icon": "figure.run",
+    "fields": {"date": "Date", "entry": "Entry", "movement": "Movement", "place": "Place", "laps": "Laps", "minutes": "Minutes", "distance": "Distance (mi)", "flights": "Flights", "note": "Note", "source": "Source"},
+    "columns": [
+      {"name": "Entry", "kind": "line"},
+      {"name": "Place", "kind": "line"},
+      {"name": "Laps", "kind": "number"},
+      {"name": "Minutes", "kind": "number"},
+      {"name": "Distance (mi)", "kind": "number"},
+      {"name": "Flights", "kind": "number"}
+    ],
+    "pins": [
+      {"label": "Run", "values": {"movement": "Run"}},
+      {"label": "Walk", "values": {"movement": "Walk"}},
+      {"label": "Stairs", "values": {"movement": "Stairs"}},
+      {"label": "Lift", "values": {"movement": "Lift"}},
+      {"label": "Rest day", "values": {"movement": "Rest"}}
+    ],
+    "recentCount": 3,
+    "recentDays": 30,
+    "askTodayAfterHour": 17,
+    "keepDays": 2,
+    "maxChoices": 8,
+    "healthSuggestions": ["workouts", "flightsClimbed"],
+    "distanceUnit": "mi",
+    "minFlights": 20
+  },
+  "_whyCheckIn": "2026-10-15. From Oct 12 to 15 the Daily Coordinator asked this assistant every morning what had been done that training week, and every answer was 'nothing on record': the Training Log had zero rows, because nothing put a workout in it except typing to this assistant. The check-in is asked by the APP (no model call) once a day, in For You on the Mac and the iPhone and above this assistant's conversation; a tap writes the row. Buttons: the person's own recent entries first, then these pins. The iPhone may add Apple Health suggestions for the day (computed and kept on the phone until tapped). Columns are only ever added to the log, never changed. Miles because the first user runs in miles; change distanceUnit and the Distance column name together. minFlights 20: an ordinary day is about 10 flights, so fewer is not a stairs session.",
   "tools": ["todo.*", "ledger.*", "assistant.remember", "assistant.getContext", "assistant.recall"],
   "budgetUSDPerDay": 0.50,
   "backend": null,

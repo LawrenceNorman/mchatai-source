@@ -77,6 +77,16 @@ with a link. `assistant.openLoop` / `closeLoop` / `listLoops`; the person sees t
 under "Waiting on you" in the Assistant pane with Done / Snooze / Dismiss / Open, and
 a closed loop is filtered out before any model reads the list again.
 
+**Check-ins** are open loops the APP opens, not the model: a manifest's `checkIn` block
+(question, `logTo` collection, columns, pins) makes the platform ask once a day ("Did you work
+out yesterday?") wherever loops show, including For You on the Mac and the iPhone. A tap writes
+the row; nothing goes to the thread, so it costs nothing. Choose it when a `records` collection
+should fill from the person's own quick answers. Example: `workout`.
+
+**Trap:** a log that only fills when the person thinks to type into the chat. The Workout
+assistant answered "nothing on record" every morning for a week (2026-10-12 to 15), because
+nothing asked.
+
 **Trap:** waiting items kept as prose. A status report that re-derives "what is
 waiting on you" from memory and transcripts lists the same items every time,
 because nothing records that one was dealt with (Lawrence, 2026-10-11: "so I don't
@@ -167,7 +177,7 @@ for them on every turn.
 | `news` | schedule (daily), relay | artifacts, evidence (sources) | — | enumerated | evidence (cite sources) | seen-ledger designed, not declared |
 | `history-writer` | conversation (manual), premium | evidence (dossier), artifacts (StoryMaker), records (Ledger) | project | enumerated + free tier | evidence (quote per claim) + deterministic (tone lint) | — |
 | `litrpg` | conversation (manual) | records (Ledger rows for rules), artifacts | — | enumerated | — | — |
-| `workout` | conversation, schedule (daily), relay | records (Ledger, one row per session), memories | — | enumerated | — | — |
+| `workout` | conversation, schedule (daily), relay | records (Training Log, filled by the daily check-in), memories | thread-per-topic | enumerated | — | — |
 | `music` | conversation (manual) | artifacts (LoopStar, audio library) | — | enumerated | — | — |
 | `marketing` | schedule (weekly) | artifacts (posts, drafts), memories | — | unrestricted (documented why) | human (approval cards) + cold readers | — |
 | `grants` | conversation, schedule (weekly scan routine), relay | memories, records (Funding Opportunities, Funding Applications), artifacts (drafts), evidence (funder quotes) | thread-per-topic | enumerated; `mail.send` withheld | human + evidence + deterministic (scan.py conflict filter) | seen-ledger (scan.py state + Ledger Key) |
