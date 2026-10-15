@@ -1,6 +1,6 @@
 {
   "packID": "mobile-frontend",
-  "version": 2,
+  "version": 3,
   "displayName": "Mobile-First Frontend Guidelines",
   "description": "Quality rules for mini-apps designed primarily for phones (iOS / Android). Focus on touch ergonomics, viewport sizing, no-keyboard interaction, gesture handling, and thumb-reach UX. Apply when the goal mentions 'mobile', 'phone', 'iOS', 'Android', 'touch', or any classic mobile-game name (PvZ, jetpack side-scroller, match-three puzzle, tap-to-flap arcade, etc).",
   "categories": [
@@ -244,6 +244,134 @@
         "// BAD — linear strip splits direction pair with action between",
         "// <div><button>◀</button><button>🥊</button><button>▶</button></div>"
       ]
+    },
+    {
+      "id": "mob-017",
+      "rule": "Set CSS touch-action:none on the game/interactive canvas (and call preventDefault in your touch/pointer handlers where needed) so swiping to play does not scroll, pull-to-refresh, or pinch-zoom the page. Apply it to the playfield, not necessarily the whole document, so any scrollable UI still scrolls.",
+      "why": "By default the browser claims touch gestures for scroll and zoom, so dragging to steer/aim/paint instead scrolls the page or zooms, making the game unplayable. touch-action:none on the canvas hands those gestures to the game. preventDefault on touchmove also stops iOS rubber-band scrolling during play.",
+      "severity": "critical",
+      "appliesTo": "miniApp",
+      "examples": [
+        "CSS: canvas{touch-action:none;display:block}",
+        "in a touchmove handler that controls the game: e.preventDefault();",
+        "WRONG: dragging on the canvas scrolls the page instead of moving the player"
+      ],
+      "mergedFrom": "mobile-web/mob-003"
+    },
+    {
+      "id": "mob-018",
+      "rule": "Provide on-screen touch controls for anything that uses WASD/arrow keys, the mouse, or a keyboard on desktop. Detect touch (e.g. matchMedia('(pointer: coarse)') or the first touch event) and show a virtual joystick/d-pad for movement, large tap zones or buttons for actions (jump/fire/interact), and on-screen buttons for any keyboard shortcut. Keyboard/mouse still work on desktop.",
+      "why": "A phone has no WASD and no mouse; a desktop-only control scheme is simply unplayable on touch. An on-screen joystick plus action buttons (shown when touch is detected) makes the same game playable everywhere with no separate build. This is the difference between a mobile user enjoying the game and immediately closing it.",
+      "severity": "critical",
+      "appliesTo": "miniApp",
+      "examples": [
+        "show a virtual joystick + Jump/Fire buttons when matchMedia('(pointer: coarse)').matches or on first touchstart",
+        "tap zones: left/right halves of the screen to move, tap to act",
+        "WRONG: 'Use WASD to move' with no touch alternative"
+      ],
+      "mergedFrom": "mobile-web/mob-004"
+    },
+    {
+      "id": "mob-019",
+      "rule": "NEVER call element.requestPointerLock(), and never gate gameplay or starting the game on it. Pointer Lock is not granted in the in-app WKWebView preview and does not exist on mobile, so a pointer-lock control scheme is completely unplayable there. For look/aim use DRAG-LOOK: accumulate movementX/movementY deltas while dragging (yaw -= dx*sens; pitch -= dy*sens), so turning is unbounded and works with touch.",
+      "why": "requestPointerLock silently fails in the preview and on phones; a 'click to play' that calls it leaves the game stuck on the menu, and an FPS using it can never aim. Delta-accumulating drag-look (mouse-drag on desktop, touch-drag on mobile) works everywhere and is not bounded by the screen edge. Pointer lock is a dead end on these targets.",
+      "severity": "critical",
+      "appliesTo": "miniApp",
+      "examples": [
+        "drag-look: on pointermove while dragging, yaw -= e.movementX*sens; pitch = clamp(pitch - e.movementY*sens, -1.55, 1.55);",
+        "start the game unconditionally on tap - do NOT await/gate on requestPointerLock",
+        "WRONG: canvas.requestPointerLock() for aim or to begin play"
+      ],
+      "mergedFrom": "mobile-web/mob-005"
+    },
+    {
+      "id": "mob-020",
+      "rule": "Audio must start on the first user tap, never on load. Mobile browsers block autoplay, so unlock the AudioContext (resume it / call the library's start, e.g. Tone.start()) inside the first pointerdown/touch, and show a clear tap-to-start overlay. Keep everything else (visuals/gameplay) running even if audio stays blocked.",
+      "why": "iOS and mobile Safari/WKWebView require a genuine gesture to start audio; calling play/resume at load does nothing and the app is permanently silent. A visible tap-to-start overlay both satisfies the unlock requirement and tells the user what to do. Never block rendering on a suspended audio context - degrade to muted.",
+      "severity": "critical",
+      "appliesTo": "miniApp",
+      "examples": [
+        "overlay.addEventListener('pointerdown', async () => { await unlockAudio(); hideOverlay(); start(); }, { once:true });",
+        "if audio cannot start, keep the game fully playable and visually intact, just muted",
+        "WRONG: starting music on window load - blocked and silent on mobile"
+      ],
+      "mergedFrom": "mobile-web/mob-006"
+    },
+    {
+      "id": "mob-021",
+      "rule": "Clamp devicePixelRatio to <=2 and keep a lower entity/particle/body budget on mobile. Detect small screens / coarse pointers and reduce particle counts, sprite counts, physics bodies, light counts, and effect intensity, and cap the render resolution at 2x DPR. Keep the experience smooth rather than maxing detail.",
+      "why": "A 3x Retina phone renders 9x the pixels of a 1x display; on a busy scene that is the difference between 60fps and a slideshow. Clamping DPR to 2 and trimming the entity budget on mobile is the highest-ROI performance fix. A smooth, slightly simpler scene beats a gorgeous one stuttering at 10fps.",
+      "severity": "important",
+      "appliesTo": "miniApp",
+      "examples": [
+        "const dpr = Math.min(window.devicePixelRatio || 1, 2);",
+        "const PARTICLES = (innerWidth < 700 || matchMedia('(pointer: coarse)').matches) ? 60 : 160;",
+        "lower physics body / sprite caps on mobile"
+      ],
+      "mergedFrom": "mobile-web/mob-009"
+    },
+    {
+      "id": "mob-022",
+      "rule": "The experience MUST be fully usable with TOUCH ALONE - no keyboard, no mouse, no hover required to reach any feature or complete the core loop. Mentally (or actually) walk through it as a phone user: can you start it, control it, trigger every essential action, and reach a win/finish, using only taps and drags? If any step needs a key or hover, add a touch path.",
+      "why": "The acceptance bar for a mobile mini-app is touch-only playability. Many builds render fine on a phone but hide a critical action behind a key press or a hover, so a phone user gets stuck. Explicitly verifying the whole loop with touch catches the gaps that 'it looks fine on mobile' misses.",
+      "severity": "critical",
+      "appliesTo": "miniApp",
+      "examples": [
+        "every documented control has an on-screen touch equivalent",
+        "start, play, pause/restart, and any menu are all reachable by tap",
+        "WRONG: a game that needs Space to jump or Enter to restart with no on-screen button"
+      ],
+      "mergedFrom": "mobile-web/mob-012"
+    },
+    {
+      "id": "mob-023",
+      "rule": "On phones the screen is small, so NO first-person weapon/viewmodel (3D mesh or sprite) may cover more than ~1/3 of the screen -- keep it bottom-anchored and compact so gameplay stays visible. Any game that uses WASD/arrows/mouse on desktop MUST render on-screen touch controls on mobile (virtual joystick + drag-look + action buttons, each >=44px), and must be fully completable with touch alone.",
+      "appliesTo": "miniApp",
+      "severity": "important",
+      "mergedFrom": "mobile-web/mob-015"
+    },
+    {
+      "id": "mob-024",
+      "rule": "When you render Unicode game glyphs (chess pieces, the four filled card suits, HUD 'lives' hearts) and color them via CSS, append the U+FE0E text-presentation variation selector to each glyph string — in JS write it as the escape \\uFE0E, e.g. '♟\\uFE0E', '♠\\uFE0E', '♥\\uFE0E', '♦\\uFE0E', '♣\\uFE0E' — and/or set `font-variant-emoji: text` on the container. U+265F (black chess pawn) and the four filled suits ♠♣♥♦ default to COLOR EMOJI on iOS/Safari, which IGNORES your CSS color, text-shadow, and SVG fill, so a white pawn / a red suit / a magenta heart renders as a wrong-colored emoji. U+265F is the ONLY chess codepoint with default emoji presentation (♔ through ♞ are text-default and already honor CSS color), which is why only PAWNS invert. CAVEAT: U+FE0E only works on codepoints that HAVE a defined text-variation sequence — it is a NO-OP for emoji-default glyphs without one, e.g. ⚪/⚫ (U+26AA/26AB medium circles, often used as checkers/draughts pieces) and the 🎲 game-die emoji; for those use a CSS/SVG shape or a text-default codepoint instead.",
+      "why": "On iOS/Safari, emoji-presentation codepoints render as full-color emoji and ignore CSS color/text-shadow/SVG fill. A chess mini-app colored its solid pawn glyph white via .piece.white, but iOS showed a dark emoji pawn (verified 2026-07-01) while every other piece rendered correctly — only U+265F is emoji-default. Card games hit the identical bug via ♠♣♥♦. Desktop renders all of these as text, so the bug is INVISIBLE on the macOS preview and only shows up on a phone.",
+      "severity": "important",
+      "appliesTo": "miniApp",
+      "examples": [
+        "WRONG: const GLYPH = { pawn: '♟' }; .piece.white{color:#fff} — iOS shows a color pawn emoji ignoring the white",
+        "WRONG: `<span style=\"color:${suitColor}\">♥</span>` — iOS renders a color heart emoji, not a red text heart",
+        "GOOD: const GLYPH = { pawn: '♟\\uFE0E' }; (or set font-variant-emoji:text on the piece/card/suit elements)",
+        "GOOD: livesEl.textContent = '♥\\uFE0E'.repeat(lives) so the HUD heart honors your CSS color",
+        "N/A: checkers built from '⚫'/'⚪' cannot be fixed with U+FE0E (no text variation sequence) — use a CSS/SVG circle"
+      ],
+      "mergedFrom": "mobile-web/mob-016"
+    },
+    {
+      "id": "mob-025",
+      "rule": "Any game/app with a GRID or BOARD or a row/hand of repeated pieces (cards, chess/checkers pieces, tiles, dominoes, mahjong, gems, a 2048/match-3 grid, a poker board) MUST lay out responsively so nothing overlaps, clips off-screen, or overflows horizontally on a phone. Rules that always apply: (1) size the board/pieces in relative units or clamp to the viewport — e.g. `width:min(92vw, 560px)` for the board, and derive piece/cell size from it — so it fits the narrowest phone; NEVER a fixed desktop pixel canvas that gets squeezed. (2) A row of items (community cards, a captured-pieces tray, a tile rack) either fits the width or wraps/scrolls WITHIN its own container — it must not spill onto neighbors. (3) When enlarging elements on request ('make the pieces bigger'), scale proportionally at EACH @media breakpoint and re-verify the fit; do NOT hardcode one big base size. (4) Give the board/main-play-area the most space; fold controls/settings into a compact bar or collapsible panel. This is genre-agnostic — card games, board games, and tile/puzzle games all break the same way when a desktop-sized layout is shrunk to a phone.",
+      "why": "The mChatAI Playability Gate now runs a mobile-viewport LAYOUT check (PG.B3, 2026-07-02) on every branch across genres — horizontal overflow + off-screen clipping (deterministic) and overlap/unreadable (vision). A layout that overflows or overlaps on a phone will be FLAGGED (and reads as broken to users) even if the game logic works. Verified on a Texas Hold'em where oversized cards overlapped the board/pot on mobile while looking fine on desktop; the same failure mode applies to any grid/board/hand game.",
+      "severity": "important",
+      "appliesTo": "miniApp",
+      "examples": [
+        "GOOD: `.board{width:min(92vw,560px);aspect-ratio:1}` then cells = board/8 — fits every phone",
+        "GOOD: `.hand{display:flex;gap:6px;overflow-x:auto}` so a long rack scrolls inside itself, not over the board",
+        "WRONG: a 1300px absolute-positioned 'table' with seats at fixed px, shrunk to a 390px phone → pieces collide",
+        "WRONG (iteration): bumping a base `.card`/`.piece` width to a big value without matching the @media rules → overflow on mobile"
+      ],
+      "mergedFrom": "mobile-web/mob-017"
+    },
+    {
+      "id": "mob-026",
+      "rule": "Wrap ALL on-screen touch controls (d-pads, joysticks, action buttons) in ONE container carrying data-mchatai=\"touch-controls\" -- prefer mounting the ui.touch-controls Lego component, which does this for you. The container must (a) show only on touch/coarse-pointer devices and stay hidden on desktop, (b) hide while the native mChatAI controller overlay is active (listen for window CustomEvent 'mchatai:virtualgamepad' with detail {active:true|false}), and (c) never be the ONLY input path: every control must map to a keyboard handler the game also supports. Cover EVERY input axis the game logic reads -- if the code moves forward/back/left/right, the surface needs all four, not just steering.",
+      "why": "On-screen controls baked into the page are clutter on desktop (a keyboard exists) and DOUBLE controls on iOS when the user brings up the platform's built-in D-Pad overlay, which synthesizes real keyboard events. The single marked container is the platform contract that lets every layer (desktop, iOS overlay, install-time backstop) hide or show the surface deterministically. An incomplete surface (steering but no forward button) makes the game boring or unplayable on the very devices the controls exist for.",
+      "severity": "critical",
+      "appliesTo": "miniApp",
+      "examples": [
+        "import { TouchControls } from './web-components/ui/TouchControls.js'; TouchControls.mount(document.body, { dpad:['up','down','left','right'], actions:[{label:'JUMP', key:' '}] })",
+        "hand-rolled: <div data-mchatai=\"touch-controls\"> ...buttons... </div> plus a window listener for mchatai:virtualgamepad that toggles it",
+        "WRONG: control buttons scattered in the DOM with no shared marked container (nothing can hide them under the native D-Pad)",
+        "WRONG: a runner game whose touch surface has left/right only -- the accelerate control the game loop reads is missing"
+      ],
+      "mergedFrom": "mobile-web/mob-018"
     }
   ]
 }

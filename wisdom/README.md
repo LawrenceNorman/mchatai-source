@@ -21,6 +21,12 @@ Quality guidelines for AI-generated apps. Domain-specific checklists that preven
 5. **Admin reviews** at mchatai.com/admin/wisdom and publishes the best ones
 6. **All users download** published guidelines from Firestore on app launch
 
+## Checking a pack
+
+Run `python3 wisdom/tools/check_packs.py` after adding or editing a pack. It fails on anything the app
+would not load or would have to guess: a rule without `id`, `rule` or `severity`, a pack without `packID`, or a
+duplicate rule id. (Until 2026-10-15 one rule without `severity` silently dropped its whole pack.)
+
 ## Contributing
 
 Guidelines are learned automatically from user corrections. The most impactful corrections get promoted to community guidelines. You can also submit guidelines by opening an issue or PR on this repo.
