@@ -55,10 +55,12 @@ function check(file) {
     used.add(base);
     const atlas = bases[base];
     if (!atlas) { errors.push(`${who}: no art base "${base}" (have: ${Object.keys(bases).join(", ")})`); return; }
+    const groups = Object.keys(atlas.palette || {});
     for (const [k, v] of Object.entries(f.colors || {})) {
       if (!HEX.test(v)) errors.push(`${who}: colors.${k} "${v}" is not a #hex color`);
-      if (!["top", "pants"].includes(k)) warnings.push(`${who}: colors.${k} recolors nothing on base ${base} (use top, pants)`);
+      if (!groups.includes(k)) warnings.push(`${who}: colors.${k} recolors nothing on base ${base} (use ${groups.join(", ") || "no colors"})`);
     }
+    if (f.health != null && !(f.health >= 50 && f.health <= 200)) errors.push(`${who}: health should be 50–200`);
     for (const [k, v] of Object.entries(f.moves || {})) {
       if (!NORMALS.includes(k)) errors.push(`${who}: moves.${k} is not a normal (use ${NORMALS.join(", ")})`);
       if (v.anim && !atlas.anims[v.anim]) errors.push(`${who}: moves.${k}.anim "${v.anim}" is not an animation of ${base}`);
@@ -73,6 +75,7 @@ function check(file) {
       else if (!a.attack) errors.push(`${sw}: anim "${s.anim}" is not an attack (it has no hit frames)`);
       if (!INPUT.test(String(s.input || "").toUpperCase())) errors.push(`${sw}: input "${s.input}" — use QCF, QCB, DP, HCF or HCB, then +P/+K (e.g. "DP+P")`);
       if (s.damage != null && !(s.damage >= 1 && s.damage <= 40)) errors.push(`${sw}: damage should be 1–40`);
+      if (s.low && s.overhead) errors.push(`${sw}: a move can be low or overhead, not both`);
     });
     if ((f.specials || []).length > 6) warnings.push(`${who}: more than 6 specials is hard to learn`);
   });

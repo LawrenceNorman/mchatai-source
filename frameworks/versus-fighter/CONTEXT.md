@@ -32,7 +32,7 @@ or P) and M for music. `examples/demo.html` is a complete three-fighter game to 
 ```
 
 `./libs/vf.js` and `./libs/vf-base-<body>.js` come from `dist/` and are copied in when the game is
-installed: load one base file per body your fighters use. Never write your own copy, load anything
+installed: load one base file per body your fighters use (`vf-base-ava.js`, `vf-base-komato.js`). Never write your own copy, load anything
 from a URL, or add a canvas, game loop, input handling, sound, start screen, help text or menu.
 
 ## The game
@@ -60,10 +60,10 @@ from a URL, or add a canvas, game loop, input handling, sound, start screen, hel
 | `timer` | seconds per round, 20–99 |
 | `cpu` | starting CPU difficulty: `easy`, `normal`, `hard` (the player can change it) |
 | `fighters` | 1–12. Two or fewer skip character select; one fighter is a mirror match |
-| `fighters[].base` | the body: `ava` (an agile kickboxer) |
-| `fighters[].colors` | `top` and `pants` as `#hex`; the rest of the sprite keeps its shading |
+| `fighters[].base` | the body: `ava` (an agile kickboxer) or `komato` (an armored brute: bigger, wider, slower, a lower jump) |
+| `fighters[].colors` | as `#hex`, by body: `ava` has `top` and `pants`; `komato` has `armor` and `glow` (the fins and lights). The rest of the sprite keeps its shading |
 | `fighters[].style` | a few words under the portrait on character select |
-| `fighters[].health` | default 100 |
+| `fighters[].health` | default 100 (50–200); a `komato` brute suits 110–130 |
 | `fighters[].specials` | 1–4 special moves (below) |
 | `fighters[].moves` | optional tweaks to normals, e.g. `{ "HK": { "damage": 15 } }` |
 | `stages` | 1–4; `theme` is `city`, `harbor`, `temple`, `forest`, `mountains`, `dojo`, `desert`, `rooftop` or `space`; colors as `#hex` |
@@ -82,10 +82,16 @@ A special is an attack animation of the body, a motion and a button:
 | `dash` | moves forward while attacking (about 2–4.5) |
 | `rise` | jumps up while attacking (about 2.5–3.5; for uppercuts) |
 | `invuln` | ticks of invulnerability at the start (anti-air moves, about 6–10) |
+| `low` | `true`: must be blocked crouching (slides, sweeps) |
+| `overhead` | `true`: must be blocked standing |
 
 Attack animations of `ava`: `sp_uppercut` (a rising uppercut, the natural anti-air), `sp_dashpunch`
-(a lunging punch), `sp_cartwheel` (a cartwheel kick), and the normals `jab`, `straight`,
-`kick_light`, `kick_heavy`, `crouch_punch`, `crouch_kick`, `sweep`, `jump_punch`, `jump_kick`.
+(a lunging punch), `sp_cartwheel` (a cartwheel kick).
+Attack animations of `komato`: `sp_charge` (a full-body shoulder charge; give it `dash`),
+`sp_lunge` (a lunging blade thrust), `sp_rising` (a rising strike, the anti-air), `sp_slide` (a
+low slide; give it `low` and `dash`).
+Both bodies also have the normals `jab`, `straight`, `kick_light`, `kick_heavy`, `crouch_punch`,
+`crouch_kick`, `sweep`, `jump_punch`, `jump_kick`, which a special may use too.
 Give each fighter a different mix so they play differently: one with an anti-air uppercut and a
 dash, one that rushes in, one that keeps away.
 

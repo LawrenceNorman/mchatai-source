@@ -12,11 +12,12 @@
 (function (G) {
   "use strict";
 
-  var VERSION = "0.1.0";
+  var VERSION = "0.2.0";
   var W = 384, H = 216, FLOOR = 204, STAGE_W = 680, STEP = 1000 / 60;
-  var SCALE = 2;                       // sprites (and their boxes) are drawn at 2x: ~88 px fighters on a 216 px screen
+  var SCALE = 2;                       // sprites (and their boxes) are drawn at 2x: ~88 px fighters on a 216 px screen;
+                                       // a base drawn at full size sets "drawScale": 1
   var EDGE = 28;                       // closest a fighter's centre gets to the stage edge
-  var BODY = 16;                       // half-width of a fighter's push box
+  var BODY = 16;                       // half-width of a fighter's push box (a base's feel.body overrides it)
   var BASES = {};
   var active = null;                   // the mounted game (one per page)
 
@@ -151,6 +152,10 @@
     this.def = def; this.base = base; this.side = side; this.game = game;
     this.name = def.name || "Fighter"; this.maxHp = def.health || 100;
     this.sheet = recolored(base, def.colors);
+    // The body's feel (atlas "feel"): push-box half-width, walk and jump speed. A big body is wider and slower.
+    var feel = base.def.feel || {};
+    this.body = feel.body || BODY; this.walkSpeed = feel.walk || 1; this.jumpPower = feel.jump || 1;
+    this.scale = base.def.drawScale || SCALE;
     this.moves = {};
     var over = def.moves || {};
     for (var k in NORMALS) { var spec = {}; var n = NORMALS[k]; for (var a in n) spec[a] = n[a]; var o = over[k] || {}; for (var b in o) spec[b] = o[b]; var m = buildMove(spec, base); if (m) this.moves[k] = m; }
@@ -179,14 +184,14 @@
   Fighter.prototype.tickAnim = function () {
     if (this.state === "attack") return;              // attacks are driven by move ticks
     var a = this.base.def.anims[this.anim]; if (!a) return;
-    var per = { walk_fwd: 4, walk_back: 5, idle: 7, jump_air: 5, jump_start: 3, knockdown: 3, ko: 4, getup: 3, win: 6, hit_high: 3, hit_low: 3 }[this.anim] || 4;
+    var per = a.per || { walk_fwd: 4, walk_back: 5, idle: 7, jump_air: 5, jump_start: 3, knockdown: 3, ko: 4, getup: 3, win: 6, hit_high: 3, hit_low: 3 }[this.anim] || 4;
     if (++this.ft >= per) { this.ft = 0;
       if (this.fi < a.frames.length - 1) this.fi++;
       else if (a.loop) this.fi = 0; }
   };
   Fighter.prototype.box = function (b) {               // atlas box -> world box
-    if (!b) return null; var x0 = this.x + this.facing * b[0] * SCALE, x1 = this.x + this.facing * b[2] * SCALE;
-    return [Math.min(x0, x1), this.y + b[1] * SCALE, Math.max(x0, x1), this.y + b[3] * SCALE];
+    if (!b) return null; var k = this.scale, x0 = this.x + this.facing * b[0] * k, x1 = this.x + this.facing * b[2] * k;
+    return [Math.min(x0, x1), this.y + b[1] * k, Math.max(x0, x1), this.y + b[3] * k];
   };
   Fighter.prototype.hurtbox = function () { return this.invuln > 0 || this.state === "knockdown" || this.state === "getup" || this.state === "ko" ? null : this.box(this.frame().hurt); };
   Fighter.prototype.hitbox = function () {
@@ -428,8 +433,9 @@
     var grid = el("div", "vf-grid");
     this.roster.forEach(function (f, i) {
       var card = el("button", "vf-pick"), cv = el("canvas"); cv.width = 64; cv.height = 64;
-      var base = BASES[f.base || "ava"], sheet = recolored(base, f.colors), fr = base.def.frames[base.def.anims.idle.frames[0]], an = base.def.anchor;
-      var cx = cv.getContext("2d"); cx.imageSmoothingEnabled = false; cx.drawImage(sheet, fr.rect[0], fr.rect[1], fr.rect[2], fr.rect[3], 32 - an[0], 62 - an[1], fr.rect[2], fr.rect[3]);
+      var base = BASES[f.base || "ava"], sheet = recolored(base, f.colors), fr = base.def.frames[base.def.anims.idle.frames[0]], an = fr.anchor || base.def.anchor;
+      var ps = (base.def.drawScale || SCALE) / SCALE;   // a full-size base is halved to fit the card
+      var cx = cv.getContext("2d"); cx.imageSmoothingEnabled = ps < 1; cx.drawImage(sheet, fr.rect[0], fr.rect[1], fr.rect[2], fr.rect[3], 32 - an[0] * ps, 62 - an[1] * ps, fr.rect[2] * ps, fr.rect[3] * ps);
       card.appendChild(cv); card.appendChild(el("span", "", f.name || "Fighter"));
       if (f.style) card.appendChild(el("small", "", f.style));
       card.onclick = function () {
@@ -564,7 +570,7 @@
     if (held.up) { f.state = "jumpsquat"; f.jumpDir = fwd; f.squat = 3; f.setAnim("jump_start", true); return; }
     if (held.down) { if (f.state !== "crouch") { f.state = "crouch"; f.setAnim("crouch", true); } f.crouching = true; f.vx = 0; return; }
     f.crouching = false; f.state = "stand";
-    f.vx = fwd > 0 ? 2.3 * f.facing : fwd < 0 ? -1.8 * f.facing : 0;
+    f.vx = (fwd > 0 ? 2.3 : fwd < 0 ? -1.8 : 0) * f.walkSpeed * f.facing;
     f.setAnim(fwd > 0 ? "walk_fwd" : fwd < 0 ? "walk_back" : "idle");
   };
   Game.prototype.findSpecial = function (f, ctl, button, now) {
@@ -573,7 +579,7 @@
     return null;
   };
   Game.prototype.physics = function (f, foe) {
-    if (f.state === "jumpsquat") { if (--f.squat <= 0) { f.state = "air"; f.vy = -8.2; f.vx = (f.jumpDir > 0 ? 2.7 : f.jumpDir < 0 ? -2.7 : 0) * f.facing; f.airAttackUsed = false; f.setAnim("jump_air", true); } return; }
+    if (f.state === "jumpsquat") { if (--f.squat <= 0) { f.state = "air"; f.vy = -8.2 * f.jumpPower; f.vx = (f.jumpDir > 0 ? 2.7 : f.jumpDir < 0 ? -2.7 : 0) * f.jumpPower * f.facing; f.airAttackUsed = false; f.setAnim("jump_air", true); } return; }
     if (f.state === "attack") { f.updateAttack(); if (f.move && f.move.dash && f.mt > f.move.activeTo) f.vx *= 0.8; }
     if (f.state === "hitstun" || f.state === "blockstun") { if (--f.stun <= 0) { f.state = f.crouching ? "crouch" : "stand"; f.setAnim(f.crouching ? "crouch" : "idle", true); f.combo = 0; } f.vx *= 0.82; }
     if (f.state === "knockdown") { if (f.y === 0) f.vx *= 0.85; if (--f.stun <= 0 && f.y === 0) { if (f.hp <= 0) { f.state = "ko"; } else { f.state = "getup"; f.stun = 24; f.setAnim("getup", true); } } }
@@ -588,7 +594,7 @@
   };
   Game.prototype.separate = function (a, b) {
     if (a.state === "ko" || b.state === "ko") return;
-    var dx = b.x - a.x, need = BODY * 2; if (Math.abs(dx) >= need || Math.abs(a.y - b.y) > 70) return;
+    var dx = b.x - a.x, need = a.body + b.body; if (Math.abs(dx) >= need || Math.abs(a.y - b.y) > 70) return;
     var push = (need - Math.abs(dx)) / 2 * (dx >= 0 ? 1 : -1);
     a.x = clamp(a.x - push, EDGE, STAGE_W - EDGE); b.x = clamp(b.x + push, EDGE, STAGE_W - EDGE);
     if (Math.abs(b.x - a.x) < need) { if (a.x <= EDGE + 1) b.x = a.x + need; else if (b.x >= STAGE_W - EDGE - 1) a.x = b.x - need; }
@@ -663,12 +669,12 @@
     x.drawImage(this.attract, Math.round((Math.sin(this.now / 400) * 0.5 + 0.5) * (STAGE_W - W)), 0, W, H, 0, 0, W, H);
     x.fillStyle = "rgba(10,10,20,0.45)"; x.fillRect(0, 0, W, H);
   };
-  Game.prototype.drawShadow = function (f, ox) { var x = this.ctx, s = clamp(1 + f.y / 160, 0.4, 1); x.fillStyle = "rgba(0,0,0,0.35)"; x.beginPath(); x.ellipse(Math.round(f.x - ox), FLOOR + 1, 24 * s, 5 * s, 0, 0, 7); x.fill(); };
+  Game.prototype.drawShadow = function (f, ox) { var x = this.ctx, s = clamp(1 + f.y / 160, 0.4, 1); x.fillStyle = "rgba(0,0,0,0.35)"; x.beginPath(); x.ellipse(Math.round(f.x - ox), FLOOR + 1, f.body * 1.5 * s, 5 * s, 0, 0, 7); x.fill(); };
   Game.prototype.drawFighter = function (f, ox) {
-    var x = this.ctx, fr = f.frame(), an = f.base.def.anchor, r = fr.rect, sx = Math.round(f.x - ox), sy = Math.round(FLOOR + f.y);
+    var x = this.ctx, fr = f.frame(), an = fr.anchor || f.base.def.anchor, r = fr.rect, k = f.scale, sx = Math.round(f.x - ox), sy = Math.round(FLOOR + f.y);
     if (f.invuln > 0 && f.state === "stand" && (this.now >> 2) % 2) x.globalAlpha = 0.6;
     x.save(); x.translate(sx, sy); if (f.facing < 0) x.scale(-1, 1);
-    x.drawImage(f.sheet, r[0], r[1], r[2], r[3], -an[0] * SCALE, -an[1] * SCALE, r[2] * SCALE, r[3] * SCALE); x.restore(); x.globalAlpha = 1;
+    x.drawImage(f.sheet, r[0], r[1], r[2], r[3], -an[0] * k, -an[1] * k, r[2] * k, r[3] * k); x.restore(); x.globalAlpha = 1;
   };
   Game.prototype.drawHud = function () {
     var x = this.ctx, self = this;
