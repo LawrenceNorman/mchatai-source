@@ -100,6 +100,7 @@ function check(file) {
   if (game.rounds != null && !(game.rounds >= 1 && game.rounds <= 5)) errors.push("rounds (to win) should be 1–5");
   if (game.timer != null && !(game.timer >= 20 && game.timer <= 99)) errors.push("timer should be 20–99 seconds");
   if (game.cpu != null && !["easy", "normal", "hard"].includes(game.cpu)) errors.push('cpu should be "easy", "normal" or "hard"');
+  if (game.look != null && !["sharp", "pixel"].includes(game.look)) errors.push('look should be "pixel" (or omitted for the sharp default)');
   const srcs = [...html.matchAll(/<script[^>]*src=["']([^"']+)["']/gi)].map((x) => x[1]);
   if (!srcs.some((s) => /(^|\/)vf\.js$/.test(s))) errors.push('the page does not load the runtime: <script src="libs/vf.js"></script>');
   for (const b of used) if (!srcs.some((s) => s.endsWith(`vf-base-${b}.js`))) errors.push(`the page does not load base "${b}": <script src="libs/vf-base-${b}.js"></script>`);

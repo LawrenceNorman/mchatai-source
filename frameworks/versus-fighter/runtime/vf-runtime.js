@@ -12,7 +12,7 @@
 (function (G) {
   "use strict";
 
-  var VERSION = "0.3.0";
+  var VERSION = "0.4.0";
   var W = 384, H = 216, FLOOR = 204, STAGE_W = 680, STEP = 1000 / 60;
   var SCALE = 2;                       // sprites (and their boxes) are drawn at 2x: ~88 px fighters on a 216 px screen;
                                        // a base drawn at full size sets "drawScale": 1
@@ -54,32 +54,45 @@
   // Recolor: the base's "palette" groups pixels by hue band (e.g. top = reds, pants = navy).
   // A fighter's colors { top: "#3fa7ff" } move each group to the new hue and saturation and keep
   // every pixel's own lightness, so the shading survives.
-  function recolored(base, colors) {
+  function recolorInto(x, w, h, groups, colors) {
+    var names = Object.keys(colors || {}).filter(function (n) { return groups[n]; });
+    if (!names.length) return;
+    var id = x.getImageData(0, 0, w, h), d = id.data;
+    var targets = names.map(function (n) { var rgb = hexToRgb(colors[n]); var hsl = rgb ? rgbToHsl(rgb[0], rgb[1], rgb[2]) : null; return { g: groups[n], hsl: hsl }; });
+    var memo = {};         // atlases have a few hundred distinct colours: map each one once
+    function mapColor(r0, g0, b0) {
+      var hsl = rgbToHsl(r0, g0, b0), hue = hsl[0] * 360;
+      for (var t = 0; t < targets.length; t++) {
+        var g = targets[t].g, tg = targets[t].hsl; if (!tg) continue;
+        var inBand = g.hue[0] <= g.hue[1] ? hue >= g.hue[0] && hue <= g.hue[1] : hue >= g.hue[0] || hue <= g.hue[1];
+        if (inBand && hsl[1] >= (g.minSat || 0) && hsl[2] >= (g.minLight || 0) && hsl[2] <= (g.maxLight == null ? 1 : g.maxLight)) {
+          var shift = tg[2] - (g.refLight || 0.5);
+          return hslToRgb(tg[0], tg[1], clamp(hsl[2] + shift, 0.04, 0.96));
+        }
+      }
+      return null;
+    }
+    for (var i = 0; i < d.length; i += 4) {
+      if (!d[i + 3]) continue;
+      var key = (d[i] << 16) | (d[i + 1] << 8) | d[i + 2], out = memo[key];
+      if (out === undefined) out = memo[key] = mapColor(d[i], d[i + 1], d[i + 2]);
+      if (out) { d[i] = out[0]; d[i + 1] = out[1]; d[i + 2] = out[2]; }
+    }
+    x.putImageData(id, 0, 0);
+  }
+  function recolored(base, colors) {           // the whole sheet, for a fighter in a match
     var key = JSON.stringify(colors || {});
     if (base.recolors[key]) return base.recolors[key];
     var c = document.createElement("canvas"); c.width = base.img.width; c.height = base.img.height;
     var x = c.getContext("2d"); x.drawImage(base.img, 0, 0);
-    var groups = base.def.palette || {}, names = Object.keys(colors || {}).filter(function (n) { return groups[n]; });
-    if (names.length) {
-      var id = x.getImageData(0, 0, c.width, c.height), d = id.data;
-      var targets = names.map(function (n) { var rgb = hexToRgb(colors[n]); var hsl = rgb ? rgbToHsl(rgb[0], rgb[1], rgb[2]) : null; return { g: groups[n], hsl: hsl }; });
-      for (var i = 0; i < d.length; i += 4) {
-        if (!d[i + 3]) continue;
-        var hsl = rgbToHsl(d[i], d[i + 1], d[i + 2]), hue = hsl[0] * 360;
-        for (var t = 0; t < targets.length; t++) {
-          var g = targets[t].g, tg = targets[t].hsl; if (!tg) continue;
-          var inBand = g.hue[0] <= g.hue[1] ? hue >= g.hue[0] && hue <= g.hue[1] : hue >= g.hue[0] || hue <= g.hue[1];
-          if (inBand && hsl[1] >= (g.minSat || 0) && hsl[2] >= (g.minLight || 0) && hsl[2] <= (g.maxLight == null ? 1 : g.maxLight)) {
-            var shift = tg[2] - (g.refLight || 0.5);
-            var out = hslToRgb(tg[0], tg[1], clamp(hsl[2] + shift, 0.04, 0.96));
-            d[i] = out[0]; d[i + 1] = out[1]; d[i + 2] = out[2];
-            break;
-          }
-        }
-      }
-      x.putImageData(id, 0, 0);
-    }
+    recolorInto(x, c.width, c.height, base.def.palette || {}, colors);
     return (base.recolors[key] = c);
+  }
+  function recoloredFrame(base, colors, fr) {  // one frame, for a portrait: cheap on character select
+    var c = document.createElement("canvas"), r = fr.rect; c.width = r[2]; c.height = r[3];
+    var x = c.getContext("2d"); x.drawImage(base.img, r[0], r[1], r[2], r[3], 0, 0, r[2], r[3]);
+    recolorInto(x, c.width, c.height, base.def.palette || {}, colors);
+    return c;
   }
 
   // ---------------------------------------------------------------- moves
@@ -319,9 +332,10 @@
   // ---------------------------------------------------------------- stage painter
   // A stage is data: { name, theme, sky: [top, bottom], floor, accent }. Themes give the far and
   // mid layers their shapes; colors and the seed (the stage name) make each one its own.
-  function paintStage(stage) {
-    var c = document.createElement("canvas"); c.width = STAGE_W; c.height = H;
-    var x = c.getContext("2d"), r = rng(hashSeed(stage.name || "stage"));
+  function paintStage(stage, R) {
+    R = R || 1;
+    var c = document.createElement("canvas"); c.width = STAGE_W * R; c.height = H * R;
+    var x = c.getContext("2d"), r = rng(hashSeed(stage.name || "stage")); x.scale(R, R);
     var sky = stage.sky || ["#1b2440", "#f08a5d"], floor = stage.floor || "#2c2633", accent = stage.accent || "#ffd27a";
     var g = x.createLinearGradient(0, 0, 0, FLOOR); g.addColorStop(0, sky[0]); g.addColorStop(1, sky[1] || sky[0]);
     x.fillStyle = g; x.fillRect(0, 0, STAGE_W, H);
@@ -380,8 +394,11 @@
 
   Game.prototype.build = function () {
     var r = this.root; r.classList.add("vf-root"); r.innerHTML = "";
-    this.canvas = el("canvas", "vf-canvas"); this.canvas.width = W; this.canvas.height = H;
+    this.canvas = el("canvas", "vf-canvas"); this.canvas.width = W; this.canvas.height = H; this.R = 1;
     this.ctx = this.canvas.getContext("2d"); this.ctx.imageSmoothingEnabled = false;
+    // "look": "pixel" keeps the chunky retro pixels; the default draws at the screen's resolution.
+    this.pixel = (this.data.look || this.opts.look) === "pixel";
+    if (!this.pixel) this.canvas.style.imageRendering = "auto";
     this.layer = el("div", "vf-layer");
     r.appendChild(this.canvas); r.appendChild(this.layer);
     var self = this;
@@ -397,10 +414,13 @@
     G.addEventListener("blur", function () { self.keys = {}; if (self.screen === "fight" && !self.paused) self.togglePause(); });
     this.resize = function () {
       var bw = r.clientWidth || W, bh = r.clientHeight || H, s = Math.min(bw / W, bh / H);
-      // Desktop: whole or half steps keep every pixel the same size. Phones: fill the screen
-      // (nearest-neighbour scaling still looks crisp at that size).
-      if (s >= 1 && !self.touch) s = Math.floor(s * 2) / 2;
+      // Pixel look on desktop: whole or half steps keep every pixel the same size. Phones fill the screen.
+      if (self.pixel && s >= 1 && !self.touch) s = Math.floor(s * 2) / 2;
       self.canvas.style.width = Math.round(W * s) + "px"; self.canvas.style.height = Math.round(H * s) + "px";
+      // Sharp look: the canvas has as many pixels as the screen shows (capped: 3x the game's
+      // 384 x 216 on touch devices, 5x on desktops). The game itself still runs in W x H units.
+      var R = self.pixel ? 1 : clamp(Math.round(s * (G.devicePixelRatio || 1)), 1, self.touch ? 3 : 5);
+      if (R !== self.R) { self.R = R; self.canvas.width = W * R; self.canvas.height = H * R; self.attract = null; }
     };
     this.touch = ("ontouchstart" in G) || (navigator.maxTouchPoints || 0) > 0;
     G.addEventListener("resize", this.resize); this.resize();
@@ -454,10 +474,10 @@
     p.appendChild(el("h2", "", this.mode === "versus" ? "Player " + (who + 1) + ", choose" : "Choose your fighter"));
     var grid = el("div", "vf-grid");
     this.roster.forEach(function (f, i) {
-      var card = el("button", "vf-pick"), cv = el("canvas"); cv.width = 64; cv.height = 64;
-      var base = BASES[f.base || "ava"], sheet = recolored(base, f.colors), fr = base.def.frames[base.def.anims.idle.frames[0]], an = fr.anchor || base.def.anchor;
+      var card = el("button", "vf-pick"), cv = el("canvas"); cv.width = 128; cv.height = 128; if (!self.pixel) cv.style.imageRendering = "auto";
+      var base = BASES[f.base || "ava"], fr = base.def.frames[base.def.anims.idle.frames[0]], sheet = recoloredFrame(base, f.colors, fr), an = fr.anchor || base.def.anchor;
       var ps = (base.def.drawScale || SCALE) / SCALE;   // a full-size base is halved to fit the card
-      var cx = cv.getContext("2d"); cx.imageSmoothingEnabled = ps < 1; cx.drawImage(sheet, fr.rect[0], fr.rect[1], fr.rect[2], fr.rect[3], 32 - an[0] * ps, 62 - an[1] * ps, fr.rect[2] * ps, fr.rect[3] * ps);
+      var cx = cv.getContext("2d"); cx.scale(2, 2); cx.imageSmoothingEnabled = !self.pixel || ps < 1; cx.imageSmoothingQuality = "high"; cx.drawImage(sheet, 0, 0, fr.rect[2], fr.rect[3], 32 - an[0] * ps, 62 - an[1] * ps, fr.rect[2] * ps, fr.rect[3] * ps);
       card.appendChild(cv); card.appendChild(el("span", "", f.name || "Fighter"));
       if (f.style) card.appendChild(el("small", "", f.style));
       card.onclick = function () {
@@ -477,7 +497,7 @@
     this.f = [new Fighter(d0, BASES[d0.base || "ava"], 0, this), new Fighter(d1b, BASES[d1.base || "ava"], 1, this)];
     this.cpu = this.mode === "solo" ? new CPU(this.difficulty) : null;
     this.stage = this.stages[Math.floor(Math.random() * this.stages.length)];
-    this.stageImg = paintStage(this.stage);
+    this.stageImg = paintStage(this.stage, this.R); this.stageR = this.R;
     this.startRound();
   };
   Game.prototype.startRound = function () {
@@ -704,10 +724,12 @@
 
   // ---- drawing
   Game.prototype.draw = function () {
-    var x = this.ctx; x.imageSmoothingEnabled = false;
+    var x = this.ctx, R = this.R || 1;
+    x.setTransform(R, 0, 0, R, 0, 0); x.imageSmoothingEnabled = R > 1; x.imageSmoothingQuality = "high";
     if (!this.f || this.screen === "card" || this.screen === "select" || this.screen === "loading") { this.drawAttract(); return; }
     var p1 = this.f[0], p2 = this.f[1], cam = clamp((p1.x + p2.x) / 2, W / 2, STAGE_W - W / 2), ox = cam - W / 2;
-    x.drawImage(this.stageImg, Math.round(ox * 0.85), 0, W, H, 0, 0, W, H);
+    if (this.stageR !== R) { this.stageImg = paintStage(this.stage, R); this.stageR = R; }
+    x.drawImage(this.stageImg, Math.round(ox * 0.85 * R), 0, W * R, H * R, 0, 0, W, H);
     for (var i = 0; i < 2; i++) this.drawShadow(this.f[i], ox);
     var order = p1.state === "attack" ? [1, 0] : [0, 1];
     for (var j = 0; j < 2; j++) this.drawFighter(this.f[order[j]], ox);
@@ -720,13 +742,14 @@
       x.strokeStyle = "#f33"; if (ab) x.strokeRect(ab[0] - ox, FLOOR + ab[1], ab[2] - ab[0], ab[3] - ab[1]); }
   };
   Game.prototype.drawAttract = function () {
-    var x = this.ctx; if (!this.attract) this.attract = paintStage(this.stages[0]);
-    x.drawImage(this.attract, Math.round((Math.sin(this.now / 400) * 0.5 + 0.5) * (STAGE_W - W)), 0, W, H, 0, 0, W, H);
+    var x = this.ctx, R = this.R || 1; if (!this.attract) this.attract = paintStage(this.stages[0], R);
+    x.drawImage(this.attract, Math.round((Math.sin(this.now / 400) * 0.5 + 0.5) * (STAGE_W - W) * R), 0, W * R, H * R, 0, 0, W, H);
     x.fillStyle = "rgba(10,10,20,0.45)"; x.fillRect(0, 0, W, H);
   };
   Game.prototype.drawShadow = function (f, ox) { var x = this.ctx, s = clamp(1 + f.y / 160, 0.4, 1); x.fillStyle = "rgba(0,0,0,0.35)"; x.beginPath(); x.ellipse(Math.round(f.x - ox), FLOOR + 1, f.body * 1.5 * s, 5 * s, 0, 0, 7); x.fill(); };
   Game.prototype.drawFighter = function (f, ox) {
-    var x = this.ctx, fr = f.frame(), an = fr.anchor || f.base.def.anchor, r = fr.rect, k = f.scale, sx = Math.round(f.x - ox), sy = Math.round(FLOOR + f.y);
+    var x = this.ctx, R = this.R || 1, fr = f.frame(), an = fr.anchor || f.base.def.anchor, r = fr.rect, k = f.scale;
+    var sx = Math.round((f.x - ox) * R) / R, sy = Math.round((FLOOR + f.y) * R) / R;    // whole device pixels
     if (f.invuln > 0 && f.state === "stand" && (this.now >> 2) % 2) x.globalAlpha = 0.6;
     x.save(); x.translate(sx, sy); if (f.facing < 0) x.scale(-1, 1);
     x.drawImage(f.sheet, r[0], r[1], r[2], r[3], -an[0] * k, -an[1] * k, r[2] * k, r[3] * k); x.restore(); x.globalAlpha = 1;
@@ -802,6 +825,6 @@
   G.VersusFighter = {
     VERSION: VERSION, mount: mount, registerBase: registerBase,
     state: function () { return active ? active.state() : null; },
-    _test: { buildMove: buildMove, Controls: Controls, MOTIONS: MOTIONS, overlap: overlap, BASES: BASES, paintStage: paintStage }
+    _test: { buildMove: buildMove, Controls: Controls, MOTIONS: MOTIONS, overlap: overlap, BASES: BASES, paintStage: paintStage, game: function () { return active; } }
   };
 })(typeof window !== "undefined" ? window : globalThis);

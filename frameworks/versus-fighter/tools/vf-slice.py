@@ -23,7 +23,10 @@ map.json "source":
 
 map.json "trim": true packs each frame's own bounding box instead of whole cells (each frame then
 carries its own "anchor"), and "drawScale" sets how large the runtime draws the base (default 2; a
-sheet kept at full size draws at 1). "colors": n stores the atlas as an n-colour palette PNG.
+sheet kept at full size draws at 1). "upscale": 2 or 4 runs Scale2x (EPX) once or twice over each
+packed frame: pixel art keeps its colours and gains smooth diagonals, so it stays sharp when the
+runtime draws it at screen resolution (anchors and boxes scale with it; halve "drawScale" per
+step). "colors": n stores the atlas as an n-colour palette PNG.
 
 An animation lists its sheet frames as "range": [first, last] (with "step": n to keep every n-th),
 or as "frames": [...]. "reverse" plays them backwards (walk back = the walk reversed); "pingpong"
@@ -51,6 +54,23 @@ STANCE_MARGIN = 3       # px of slack around the reference stance before a pixel
 # standing one, so measured against the idle stance a crouch punch looks extended all the time).
 REFERENCE = {"crouch_punch": "crouch", "crouch_kick": "crouch", "sweep": "crouch",
              "jump_kick": "jump_air", "jump_punch": "jump_air"}
+
+
+def scale2x(a):
+    """EPX / Scale2x on an RGBA array: doubles it, rounding diagonal steps, adding no colours."""
+    h, w = a.shape[:2]
+    p = np.pad(a, ((1, 1), (1, 1), (0, 0)), mode="edge")
+    E = p[1:-1, 1:-1]; B = p[:-2, 1:-1]; D = p[1:-1, :-2]; F = p[1:-1, 2:]; H = p[2:, 1:-1]
+
+    def eq(x, y):
+        return np.all(x == y, axis=2)
+    c = ~eq(B, H) & ~eq(D, F)
+    out = np.zeros((h * 2, w * 2, a.shape[2]), a.dtype)
+    out[0::2, 0::2] = np.where((c & eq(D, B))[..., None], D, E)
+    out[0::2, 1::2] = np.where((c & eq(B, F))[..., None], F, E)
+    out[1::2, 0::2] = np.where((c & eq(D, H))[..., None], D, E)
+    out[1::2, 1::2] = np.where((c & eq(H, F))[..., None], F, E)
+    return out
 
 
 def frames_of(a):
@@ -112,7 +132,9 @@ def main(map_path: str, sheet_path: str) -> None:
 
     # Atlas layout: a grid of whole cells, or (trim) each frame's own box, shelf-packed.
     trim = spec.get("trim", False)
-    place = {}                          # sheet frame -> (atlas x, atlas y, cell x0, cell y0, w, h)
+    up = int(spec.get("upscale", 1))    # 1, 2 or 4: Scale2x passes over every packed frame
+    assert up in (1, 2, 4), "upscale is 1, 2 or 4"
+    place = {}                          # sheet frame -> (atlas x, atlas y, cell x0, cell y0, w, h), atlas units
     if trim:
         boxes = {}
         for i in used:
@@ -125,8 +147,10 @@ def main(map_path: str, sheet_path: str) -> None:
         area = sum(b[2] * b[3] for b in boxes.values())
         aw = max(max(b[2] for b in boxes.values()), min(2048, int(math.ceil(math.sqrt(area) * 1.15 / 64)) * 64))
         x = y = shelf = 0
+        aw *= up
         for i in sorted(used, key=lambda i: (-boxes[i][3], i)):
             bx, by, w, h = boxes[i]
+            w, h = w * up, h * up
             if x + w > aw:
                 x, y, shelf = 0, y + shelf, 0
             place[i] = (x, y, bx, by, w, h)
@@ -136,8 +160,8 @@ def main(map_path: str, sheet_path: str) -> None:
         per_row = 16
         for k, i in enumerate(used):
             r, c = divmod(k, per_row)
-            place[i] = (c * cw, r * ch, 0, 0, cw, ch)
-        atlas = np.zeros((math.ceil(len(used) / per_row) * ch, per_row * cw, 4), dtype=np.uint8)
+            place[i] = (c * cw * up, r * ch * up, 0, 0, cw * up, ch * up)
+        atlas = np.zeros((math.ceil(len(used) / per_row) * ch * up, per_row * cw * up, 4), dtype=np.uint8)
     frames, where = [], {}
 
     def box_of(i):
@@ -163,9 +187,15 @@ def main(map_path: str, sheet_path: str) -> None:
             for off in range(a["active"][0], a["active"][1] + 1):
                 active_region[fl[off]] = (rb, a.get("region", "front"))
 
+    def scaled(b):
+        return [v * up for v in b] if b else b
+
     for i in used:
         px, py, bx, by, w, h = place[i]
-        atlas[py:py + h, px:px + w] = cell(i)[by:by + h, bx:bx + w]
+        piece = cell(i)[by:by + h // up, bx:bx + w // up]
+        for _ in range({1: 0, 2: 1, 4: 2}[up]):
+            piece = scale2x(piece)
+        atlas[py:py + h, px:px + w] = piece
         m = cell_mask(i)
         fy, fx = np.where(m)
         hurt = None
@@ -176,17 +206,17 @@ def main(map_path: str, sheet_path: str) -> None:
             rb, region = active_region[i]
             gx, gy = fx - ax, fy - ay
             front = gx > rb[2] - STANCE_MARGIN
-            up = gy < rb[1] + STANCE_MARGIN
+            above = gy < rb[1] + STANCE_MARGIN
             outside = (gx < rb[0]) | (gx > rb[2]) | (gy < rb[1])
-            sel = {"front": front, "up": up, "around": outside}[region]
+            sel = {"front": front, "up": above, "around": outside}[region]
             if sel.sum() < 3:           # nothing past the stance: strike with the leading half
                 sel = gx > 0
             hx, hy = gx[sel], gy[sel]
             hit = [int(hx.min()), int(hy.min()), int(hx.max()), int(hy.max())]
         where[i] = len(frames)
-        fr = {"src": i, "rect": [px, py, w, h], "hurt": hurt, "hit": hit}
+        fr = {"src": i, "rect": [px, py, w, h], "hurt": scaled(hurt), "hit": scaled(hit)}
         if trim:
-            fr["anchor"] = [ax - bx, ay - by]
+            fr["anchor"] = [(ax - bx) * up, (ay - by) * up]
         frames.append(fr)
 
     anims = {}
@@ -203,14 +233,22 @@ def main(map_path: str, sheet_path: str) -> None:
 
     out_dir = map_file.parent
     img = Image.fromarray(atlas)
-    if spec.get("colors"):              # palette PNG: soft-edged renders compress 3-4x
-        img = img.quantize(colors=spec["colors"], method=Image.Quantize.FASTOCTREE, dither=Image.Dither.NONE)
+    if spec.get("colors"):              # palette PNG: exact when the atlas has that few colours,
+        flat = atlas.reshape(-1, 4)     # else quantized (soft-edged renders compress 3-4x)
+        flat = np.where(flat[:, 3:4] == 0, 0, flat)             # one "transparent" entry
+        uniq, inv = np.unique(flat, axis=0, return_inverse=True)
+        if len(uniq) <= spec["colors"]:
+            img = Image.fromarray(inv.reshape(atlas.shape[:2]).astype(np.uint8), "P")
+            img.putpalette(uniq[:, :3].astype(np.uint8).flatten().tolist())
+            img.info["transparency"] = bytes(uniq[:, 3].astype(np.uint8).tolist())
+        else:
+            img = img.quantize(colors=spec["colors"], method=Image.Quantize.FASTOCTREE, dither=Image.Dither.NONE)
     img.save(out_dir / "atlas.png", optimize=True)
     out = {
         "base": spec["base"],
-        "cell": [cw, ch],
-        "anchor": [ax, ay],
-        "stance": stance,
+        "cell": [cw * up, ch * up],
+        "anchor": [ax * up, ay * up],
+        "stance": scaled(stance),
         "facing": spec.get("facing", "right"),
         "credit": f'{spec["name"]}: {src["author"]}, {src["license"]} ({src["url"]})',
         "frames": frames,

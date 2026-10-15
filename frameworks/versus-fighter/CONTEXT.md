@@ -59,6 +59,7 @@ from a URL, or add a canvas, game loop, input handling, sound, start screen, hel
 | `rounds` | rounds to win the match, 1–5 (2 = best of three) |
 | `timer` | seconds per round, 20–99 |
 | `cpu` | starting CPU difficulty: `easy`, `normal`, `hard` (the player can change it) |
+| `look` | omit for the default sharp look (drawn at the screen's resolution); `"pixel"` keeps chunky retro pixels |
 | `fighters` | 1–12. Two or fewer skip character select; one fighter is a mirror match |
 | `fighters[].base` | the body: `ava` (an agile kickboxer) or `komato` (an armored brute: bigger, wider, slower, a lower jump) |
 | `fighters[].colors` | as `#hex`, by body: `ava` has `top` and `pants`; `komato` has `armor` and `glow` (the fins and lights). The rest of the sprite keeps its shading |

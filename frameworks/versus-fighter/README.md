@@ -3,14 +3,16 @@
 A fixed fighting runtime where the AI writes each game as data (fighters, moves, stages), the way
 `frameworks/retro-fps` does for shooters. Design and status: `mchatai_macOS/docs/VERSUS_FIGHTER_TRACK.md`.
 
-**Status (2026-10-15): VF.0–VF.1 done, VF.2 under way (second body and projectiles done).** Not routed yet: no goal
+**Status (2026-10-15): VF.0–VF.2 done (two bodies, projectiles, sharp rendering, WebKit check).** Not routed yet: no goal
 reaches this track until VF.3.
 
 - `runtime/vf-runtime.js` — the engine (`VersusFighter.mount(el, game)`, `VersusFighter.state()`).
 - `sprites/<base>/` — a CC0 sprite set cut into named animations: `map.json` (hand-mapped frame
   lists, active windows, recolor groups, the body's feel), `atlas.png` + `atlas.json` (built by
-  `tools/vf-slice.py`). Bodies: `ava` (an agile kickboxer, drawn at 2x) and `komato` (an armored
-  brute, kept at full size and drawn at 1x, frames trimmed to their own boxes).
+  `tools/vf-slice.py`). Bodies: `ava` (an agile kickboxer: pixel art, Scale4x-smoothed at build
+  time) and `komato` (an armored brute: a 3D render kept at full size). Both atlases are trimmed
+  per frame and stored as palette PNGs. The runtime draws at the screen's resolution (capped at 3x
+  the 384 x 216 game on touch devices, 5x on desktops); `"look": "pixel"` keeps the chunky pixels.
 - `tools/vf-build.py` — writes `dist/vf.js` and `dist/vf-base-<base>.js` (atlas + sheet as a data
   URI, so recoloring works under file://).
 - `tools/vf-preview.py` — draws every animation of a body as a strip with its hurt and hit boxes:
