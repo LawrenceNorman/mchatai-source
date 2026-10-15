@@ -175,3 +175,9 @@ reports mistakes by level, row and column, DESIGN problems (such as monsters tha
 start), and warns about unknown texture, flat and music names. It exits with status 1 on a mistake
 or a DESIGN line; fix both before you finish. The page shows mistakes on screen and logs the rest to
 the console.
+
+## Finishing
+
+Write `index.html` in your working directory early and keep it current: it is what gets installed
+if you run out of turns. Once `rfps-check` passes you are done; a look in a browser is optional,
+so keep it short. The install step loads the game itself and checks it starts.
