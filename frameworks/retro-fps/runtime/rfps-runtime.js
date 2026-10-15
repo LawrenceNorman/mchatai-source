@@ -19,7 +19,7 @@
 (function (root) {
   "use strict";
 
-  var VERSION = "1.1.0";
+  var VERSION = "1.1.1";
   var CELL = 64;
   var MAX_STEP = 24;       // tallest step a player can climb
   var PLAYER_HEIGHT = 56;  // headroom a player needs
@@ -656,6 +656,8 @@
     "#rfps-card .actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}",
     "#rfps-card .actions .plain{font:600 15px system-ui,sans-serif;min-height:44px;padding:10px 18px;",
     "border-radius:10px;border:1px solid rgba(255,255,255,.25);background:transparent;color:#e8e8e8;cursor:pointer}",
+    "#rfps-card .credits{margin:14px 0 0;font-size:12px;line-height:1.4;color:#8a8a8a}",
+    "#rfps-card .credits a{color:#b8b8b8}",
     // A phone on its side is short and wide: controls left, options and Start right.
     "@media (max-height:560px) and (min-width:560px){",
     "#rfps-card{padding:10px}",
@@ -667,7 +669,8 @@
     "#rfps-card td{padding:3px 0;font-size:14px}",
     "#rfps-card .opt{margin:2px 0 6px}",
     "#rfps-card .opt button{min-height:36px;padding:4px 12px}",
-    "#rfps-card .actions{margin-top:8px}}",
+    "#rfps-card .actions{margin-top:8px}",
+    "#rfps-card .credits{margin-top:6px;font-size:11px}}",
     "#rfps-hint{position:fixed;left:50%;top:38%;transform:translate(-50%,-50%);z-index:3;display:none;",
     "background:rgba(0,0,0,.72);color:#fff;font:600 17px system-ui,sans-serif;padding:12px 18px;",
     "border-radius:10px;pointer-events:none;text-align:center;max-width:80vw}",
@@ -809,6 +812,9 @@
       "window_height " + Math.max(200, window.innerHeight || 600)
     ].join("\n") + "\n";
   }
+
+  // Corresponding source for the engine build in dist/ (GPL-2.0-or-later), plus licenses.
+  var SOURCE_URL = "https://github.com/LawrenceNorman/mchatai-source/tree/main/frameworks/retro-fps";
 
   var PREFS_KEY = "rfps.prefs";
   var SKILLS = [[2, "Easy"], [3, "Normal"], [4, "Hard"]];
@@ -995,6 +1001,10 @@
       var again = el("button", { class: "plain", type: "button", text: "Restart level" }, actions);
       again.addEventListener("click", function () { self.call("rfps_new_game", [0, 0]); self.resume(); self.lockPointer(); });
     }
+    // The engine is GPL software: every copy of the game names it and links to its source.
+    var credits = el("p", { class: "credits" }, panel);
+    credits.appendChild(document.createTextNode("Engine: Woof! (GPL-2.0). Art and sound: Freedoom (BSD). "));
+    el("a", { href: SOURCE_URL, target: "_blank", rel: "noopener", text: "Source code" }, credits);
     this.cardMode = mode;
     this.primary = function () { go.click(); };
     setTimeout(function () { try { go.focus({ preventScroll: true }); } catch (e) { /* older engines */ } }, 0);
