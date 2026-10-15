@@ -84,6 +84,7 @@ A special is an attack animation of the body, a motion and a button:
 | `invuln` | ticks of invulnerability at the start (anti-air moves, about 6–10) |
 | `low` | `true`: must be blocked crouching (slides, sweeps) |
 | `overhead` | `true`: must be blocked standing |
+| `projectile` | `true`, or `{ "speed": 1.5–6, "size": 3–14, "color": "#hex" }`: the move throws a glowing orb instead of striking (default colour: the fighter's brightest colour). One on screen per fighter; two orbs that meet cancel. Use a punch animation (`straight`, `jab`) and no `dash`; `QCF+P` is the genre's usual input |
 
 Attack animations of `ava`: `sp_uppercut` (a rising uppercut, the natural anti-air), `sp_dashpunch`
 (a lunging punch), `sp_cartwheel` (a cartwheel kick).
@@ -93,7 +94,8 @@ low slide; give it `low` and `dash`).
 Both bodies also have the normals `jab`, `straight`, `kick_light`, `kick_heavy`, `crouch_punch`,
 `crouch_kick`, `sweep`, `jump_punch`, `jump_kick`, which a special may use too.
 Give each fighter a different mix so they play differently: one with an anti-air uppercut and a
-dash, one that rushes in, one that keeps away.
+dash, one that rushes in, one that keeps away with a projectile. When two specials share a motion's
+end (a half circle ends in a quarter circle), the longer motion wins, and `DP` beats `QCF`.
 
 ## Names
 

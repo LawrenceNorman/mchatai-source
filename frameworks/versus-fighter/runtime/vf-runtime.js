@@ -12,7 +12,7 @@
 (function (G) {
   "use strict";
 
-  var VERSION = "0.2.0";
+  var VERSION = "0.3.0";
   var W = 384, H = 216, FLOOR = 204, STAGE_W = 680, STEP = 1000 / 60;
   var SCALE = 2;                       // sprites (and their boxes) are drawn at 2x: ~88 px fighters on a 216 px screen;
                                        // a base drawn at full size sets "drawScale": 1
@@ -30,6 +30,11 @@
   function hexToRgb(h) { h = String(h || "").replace("#", ""); if (h.length === 3) h = h.replace(/./g, "$&$&"); var n = parseInt(h, 16); return isNaN(n) ? null : [(n >> 16) & 255, (n >> 8) & 255, n & 255]; }
   function rgbToHsl(r, g, b) { r /= 255; g /= 255; b /= 255; var mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2, h = 0, s = 0, d = mx - mn;
     if (d) { s = l > 0.5 ? d / (2 - mx - mn) : d / (mx + mn); h = mx === r ? (g - b) / d + (g < b ? 6 : 0) : mx === g ? (b - r) / d + 2 : (r - g) / d + 4; h /= 6; } return [h, s, l]; }
+  function brightest(colors) {     // the most vivid of a fighter's colours (projectiles, accents)
+    var best = null, score = -1; for (var k in colors || {}) { var rgb = hexToRgb(colors[k]); if (!rgb) continue;
+      var hsl = rgbToHsl(rgb[0], rgb[1], rgb[2]), sc = hsl[2] + hsl[1] * 0.5; if (sc > score) { score = sc; best = colors[k]; } }
+    return best;
+  }
   function hslToRgb(h, s, l) { function f(p, q, t) { if (t < 0) t += 1; if (t > 1) t -= 1; return t < 1 / 6 ? p + (q - p) * 6 * t : t < 1 / 2 ? q : t < 2 / 3 ? p + (q - p) * (2 / 3 - t) * 6 : p; }
     if (!s) return [l * 255, l * 255, l * 255]; var q = l < 0.5 ? l * (1 + s) : l + s - l * s, p = 2 * l - q; return [f(p, q, h + 1 / 3) * 255, f(p, q, h) * 255, f(p, q, h - 1 / 3) * 255]; }
 
@@ -121,6 +126,9 @@
     tS.forEach(function (x) { t += x; }); m.activeFrom = t; tA.forEach(function (x) { t += x; }); m.activeTo = t;
     tR.forEach(function (x) { t += x; }); m.total = t;
     m.activeOffset = win[0];
+    // A projectile special throws a glowing orb at the start of its active window instead of striking.
+    if (m.projectile) { var pj = m.projectile === true ? {} : m.projectile;
+      m.projectile = { speed: clamp(+pj.speed || 3.4, 1.5, 6), size: clamp(+pj.size || 7, 3, 14), color: pj.color || null }; }
     return m;
   }
 
@@ -156,6 +164,7 @@
     var feel = base.def.feel || {};
     this.body = feel.body || BODY; this.walkSpeed = feel.walk || 1; this.jumpPower = feel.jump || 1;
     this.scale = base.def.drawScale || SCALE;
+    this.glow = brightest(def.colors) || "#8fd8ff";      // its projectiles' colour
     this.moves = {};
     var over = def.moves || {};
     for (var k in NORMALS) { var spec = {}; var n = NORMALS[k]; for (var a in n) spec[a] = n[a]; var o = over[k] || {}; for (var b in o) spec[b] = o[b]; var m = buildMove(spec, base); if (m) this.moves[k] = m; }
@@ -165,6 +174,10 @@
       spec.motion = parts[0]; spec.button = parts[1] || "P";
       var m = buildMove(spec, base); return m;
     }).filter(Boolean);
+    // Check longer motions first: a half circle ends in a quarter circle, and DP beats QCF.
+    var PRIO = { HCF: 0, HCB: 0, DP: 1, QCF: 2, QCB: 2 };
+    this.specials = this.specials.map(function (m, i) { return [m, i]; })
+      .sort(function (a, b) { return ((PRIO[a[0].motion] || 3) - (PRIO[b[0].motion] || 3)) || a[1] - b[1]; }).map(function (x) { return x[0]; });
     this.reset(side);
   }
   Fighter.prototype.reset = function (side) {
@@ -172,7 +185,7 @@
     this.x = side === 0 ? STAGE_W / 2 - 75 : STAGE_W / 2 + 75; this.y = 0; this.vx = 0; this.vy = 0;
     this.facing = side === 0 ? 1 : -1; this.state = "stand"; this.anim = "idle"; this.fi = 0; this.ft = 0; this.t = 0;
     this.move = null; this.mt = 0; this.hitThisMove = false; this.stun = 0; this.combo = 0; this.airAttackUsed = false;
-    this.buffer = null; this.invuln = 0; this.crouching = false;
+    this.buffer = null; this.invuln = 0; this.crouching = false; this.proj = null; this.fired = false;
   };
   Fighter.prototype.setAnim = function (name, restart) {
     if (this.anim === name && !restart) return; this.anim = name; this.fi = 0; this.ft = 0;
@@ -195,12 +208,12 @@
   };
   Fighter.prototype.hurtbox = function () { return this.invuln > 0 || this.state === "knockdown" || this.state === "getup" || this.state === "ko" ? null : this.box(this.frame().hurt); };
   Fighter.prototype.hitbox = function () {
-    if (this.state !== "attack" || this.hitThisMove || this.mt < this.move.activeFrom || this.mt >= this.move.activeTo) return null;
+    if (this.state !== "attack" || this.hitThisMove || this.move.projectile || this.mt < this.move.activeFrom || this.mt >= this.move.activeTo) return null;
     return this.box(this.frame().hit) || this.box([0, -30, 22, -14]);
   };
   Fighter.prototype.canAct = function () { return this.state === "stand" || this.state === "crouch"; };
   Fighter.prototype.startMove = function (m, now) {
-    this.state = "attack"; this.move = m; this.mt = 0; this.hitThisMove = false; this.anim = m.anim; this.fi = 0;
+    this.state = "attack"; this.move = m; this.mt = 0; this.hitThisMove = false; this.fired = false; this.anim = m.anim; this.fi = 0;
     if (m.invuln) this.invuln = m.invuln;
     if (m.dash) this.vx = this.facing * m.dash * 1.6;
     if (m.rise && this.y === 0) this.vy = -m.rise * 1.6;
@@ -210,6 +223,7 @@
     var m = this.move; this.mt++;
     var t = 0, k = 0; while (k < m.ticks.length - 1 && t + m.ticks[k] <= this.mt) { t += m.ticks[k]; k++; }
     this.fi = k;
+    if (m.projectile && !this.fired && this.mt >= m.activeFrom) { this.fired = true; this.game.fire(this, m); }
     if (this.mt >= m.total) {
       this.move = null;
       if (this.y < 0) { this.state = "air"; this.setAnim("jump_air", true); }
@@ -223,11 +237,18 @@
                      normal: { react: 20, block: 0.4, aa: 0.3, aggro: 0.38, special: 0.1 },
                      hard: { react: 10, block: 0.7, aa: 0.65, aggro: 0.58, special: 0.18 } };
   function CPU(level) { this.p = DIFFICULTY[level] || DIFFICULTY.normal; this.wait = 0; this.plan = null; this.hold = 0; }
-  CPU.prototype.think = function (me, foe, ctl, now) {
+  CPU.prototype.think = function (me, foe, ctl, now, projs) {
     var p = this.p; ctl.edge = {};
     var dist = Math.abs(foe.x - me.x), toward = foe.x > me.x ? "right" : "left", away = toward === "right" ? "left" : "right";
     if (this.hold > 0) { this.hold--; return; }
     ctl.held = { left: 0, right: 0, up: 0, down: 0 };
+    // A projectile coming at us: decide once per projectile whether to block it, jump it or eat it.
+    var q = (projs || []).filter(function (o) { return o.owner === foe && (o.x - me.x) * o.vx < 0 && Math.abs(o.x - me.x) < 120; })[0];
+    if (q && me.canAct()) {
+      if (!q.plan) { var r = Math.random(); q.plan = r < p.block ? "block" : r < p.block + p.aa * 0.6 ? "jump" : "none"; }
+      if (q.plan === "block") { ctl.held[away] = 1; if (q.move.low) ctl.held.down = 1; this.hold = 6; return; }
+      if (q.plan === "jump" && Math.abs(q.x - me.x) < 80) { q.plan = "none"; ctl.held.up = 1; ctl.held[toward] = 1; this.hold = 4; return; }
+    }
     // Defend: the foe is attacking within reach, or jumping in.
     if (foe.state === "attack" && dist < 115 && Math.random() < p.block) { ctl.held[away] = 1; if (foe.move && foe.move.low) ctl.held.down = 1; this.hold = 10; return; }
     if (foe.y < -24 && foe.vx * (me.x - foe.x) > 0 && dist < 130 && Math.random() < p.aa) {
@@ -277,6 +298,7 @@
     else if (kind === "ko") { this.tone(160, 40, 0.8, 0.4, "sawtooth"); this.noise(0.5, 400, 0.4, 0.7); }
     else if (kind === "bell") this.tone(880, 860, 0.35, 0.2, "triangle");
     else if (kind === "land") this.noise(0.05, 300, 0.15, 1);
+    else if (kind === "fireball") { this.noise(0.28, 650, 0.22, 0.8); this.tone(260, 820, 0.2, 0.1, "sawtooth"); }
   };
   Audio.prototype.startMusic = function () {
     var c = this.ctx; if (!c || this.musicNodes || !this.music) return;
@@ -344,7 +366,7 @@
     this.root = root; this.data = game; this.opts = opts || {};
     this.audio = new Audio(); this.screen = "loading"; this.mode = "solo"; this.difficulty = game.cpu || "normal";
     this.roundsToWin = clamp(game.rounds || 2, 1, 5); this.roundTime = clamp(game.timer || 60, 20, 99);
-    this.wins = [0, 0]; this.round = 1; this.now = 0; this.banner = null; this.freeze = 0; this.sparks = [];
+    this.wins = [0, 0]; this.round = 1; this.now = 0; this.banner = null; this.freeze = 0; this.sparks = []; this.projectiles = [];
     this.ctl = [new Controls(), new Controls()]; this.cpu = null; this.keys = {}; this.taps = {}; this.paused = false;
     this.roster = (game.fighters || []).slice(0, 12);
     if (!this.roster.length) throw new Error("Versus Fighter: the game file has no fighters");
@@ -459,7 +481,7 @@
     this.startRound();
   };
   Game.prototype.startRound = function () {
-    this.f[0].reset(0); this.f[1].reset(1); this.timer = this.roundTime; this.timerTicks = 0; this.sparks = [];
+    this.f[0].reset(0); this.f[1].reset(1); this.timer = this.roundTime; this.timerTicks = 0; this.sparks = []; this.projectiles = [];
     this.screen = "intro"; this.introT = 0; this.banner = { text: "Round " + this.round, sub: null, t: 0 }; this.audio.sfx("bell");
   };
   Game.prototype.togglePause = function () {
@@ -534,10 +556,11 @@
     }
     if (this.freeze > 0) { this.freeze--; this.updateSparks(); return; }
     var p1 = this.f[0], p2 = this.f[1];
-    if (this.screen === "fight" && this.cpu) this.cpu.think(p2, p1, this.ctl[1], this.now);
+    if (this.screen === "fight" && this.cpu) this.cpu.think(p2, p1, this.ctl[1], this.now, this.projectiles);
     for (var i = 0; i < 2; i++) this.control(this.f[i], this.ctl[i], this.f[1 - i]);
     for (var j = 0; j < 2; j++) this.physics(this.f[j], this.f[1 - j]);
     this.separate(p1, p2);
+    this.updateProjectiles();
     this.collide(p1, p2);
     for (var k = 0; k < 2; k++) { var f = this.f[k]; f.tickAnim(); if (f.invuln > 0) f.invuln--; f.shownHp += (f.hp - f.shownHp) * 0.06; }
     this.updateSparks();
@@ -575,7 +598,9 @@
   };
   Game.prototype.findSpecial = function (f, ctl, button, now) {
     var kind = button[1] === "P" ? "P" : "K";
-    for (var i = 0; i < f.specials.length; i++) { var s = f.specials[i]; if ((s.button === kind || s.button === button) && ctl.motion(s.motion, now)) return s; }
+    for (var i = 0; i < f.specials.length; i++) { var s = f.specials[i];
+      if (s.projectile && f.proj) continue;               // one projectile on screen per fighter
+      if ((s.button === kind || s.button === button) && ctl.motion(s.motion, now)) return s; }
     return null;
   };
   Game.prototype.physics = function (f, foe) {
@@ -612,11 +637,13 @@
     if (m.low && !crouch) return false; if (m.overhead && crouch) return false;
     return true;
   };
-  Game.prototype.resolve = function (atk, def) {
-    var m = atk.move; atk.hitThisMove = true;
-    var dir = atk.x <= def.x ? 1 : -1, hx = (atk.hitbox && atk.box(atk.frame().hit)) || [def.x, def.y - 30, def.x, def.y - 30];
+  Game.prototype.resolve = function (atk, def, proj) {
+    var m = proj ? proj.move : atk.move; if (!proj) atk.hitThisMove = true;
+    var from = proj ? { x: proj.x - (proj.vx > 0 ? 12 : -12), move: m } : atk;   // where the hit comes from
+    var dir = from.x <= def.x ? 1 : -1;
+    var hx = proj ? [proj.x - proj.r, proj.y - proj.r, proj.x + proj.r, proj.y + proj.r] : atk.box(atk.frame().hit) || [def.x, def.y - 30, def.x, def.y - 30];
     var sx = (Math.max(hx[0], def.x - 8) + Math.min(hx[2], def.x + 8)) / 2, sy = (hx[1] + hx[3]) / 2;
-    if (this.isBlocking(def, atk)) {
+    if (this.isBlocking(def, from)) {
       def.state = "blockstun"; def.stun = m.blockstun; def.crouching = !!this.ctl[def.side].held.down;
       def.setAnim(def.crouching ? "block_crouch" : "block_stand", true); def.vx = dir * m.push * 1.4;
       if (m.chip) def.hp = Math.max(1, def.hp - Math.round(m.damage * m.chip));
@@ -645,6 +672,33 @@
     if (why === "K.O.") this.audio.sfx("ko"); else this.audio.sfx("bell");
     if (winner != null) { var w = this.f[winner], l = this.f[1 - winner]; w.state = "win"; w.move = null; w.setAnim("win", true); if (l.hp <= 0 && l.state !== "knockdown") { l.state = "knockdown"; l.stun = 40; l.setAnim("ko", true); } }
   };
+  // ---- projectiles: thrown at the start of a projectile special's active window; one per fighter
+  Game.prototype.fire = function (f, m) {
+    var st = f.base.def.stance, hb = f.box(f.frame().hit);
+    var x = hb ? (f.facing > 0 ? hb[2] : hb[0]) : f.x + f.facing * (st[2] * f.scale + 6);
+    var y = hb ? (hb[1] + hb[3]) / 2 : f.y + st[1] * f.scale * 0.6;
+    var p = { owner: f, x: x, y: y, vx: f.facing * m.projectile.speed, r: m.projectile.size, color: m.projectile.color || f.glow, move: m, life: 260, t: 0, trail: [] };
+    this.projectiles.push(p); f.proj = p; this.audio.sfx("fireball");
+  };
+  Game.prototype.updateProjectiles = function () {
+    var ps = this.projectiles, self = this;
+    ps.forEach(function (p) { p.trail.unshift([p.x, p.y]); if (p.trail.length > 5) p.trail.pop(); p.x += p.vx; p.t++;
+      if (--p.life <= 0 || p.x < -20 || p.x > STAGE_W + 20) p.dead = true; });
+    for (var i = 0; i < ps.length; i++) for (var j = i + 1; j < ps.length; j++) { var a = ps[i], b = ps[j];   // two projectiles cancel
+      if (!a.dead && !b.dead && a.owner !== b.owner && Math.abs(a.x - b.x) < a.r + b.r && Math.abs(a.y - b.y) < a.r + b.r + 10) {
+        a.dead = b.dead = true; self.spark((a.x + b.x) / 2, (a.y + b.y) / 2, "#ffffff", 14); self.audio.sfx("block"); } }
+    ps.forEach(function (p) { if (p.dead) return; var foe = self.f[1 - p.owner.side], hb = foe.hurtbox();
+      if (hb && overlap([p.x - p.r, p.y - p.r, p.x + p.r, p.y + p.r], hb)) { p.dead = true; self.resolve(p.owner, foe, p); } });
+    this.projectiles = ps.filter(function (p) { if (p.dead && p.owner.proj === p) p.owner.proj = null; return !p.dead; });
+  };
+  Game.prototype.drawProjectile = function (p, ox) {
+    var x = this.ctx, k = 1 + Math.sin(p.t * 0.6) * 0.12, px = Math.round(p.x - ox), py = Math.round(FLOOR + p.y);
+    function disc(cx, cy, r) { x.beginPath(); x.arc(cx, cy, Math.max(1, r), 0, 7); x.fill(); }
+    x.fillStyle = p.color;
+    for (var i = p.trail.length - 1; i >= 0; i--) { x.globalAlpha = 0.22 * (1 - i / p.trail.length); disc(Math.round(p.trail[i][0] - ox), Math.round(FLOOR + p.trail[i][1]), p.r * (1 - i * 0.12)); }
+    x.globalAlpha = 0.35; disc(px, py, p.r * 1.7 * k); x.globalAlpha = 1; disc(px, py, p.r * k);
+    x.fillStyle = "#ffffff"; disc(px, py, p.r * 0.45 * k);
+  };
   Game.prototype.spark = function (x, y, color, n) { for (var i = 0; i < n; i++) { var a = Math.random() * 6.283, s = 0.6 + Math.random() * 2.2; this.sparks.push({ x: x, y: y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: 10 + Math.random() * 8, color: color }); } };
   Game.prototype.updateSparks = function () { this.sparks = this.sparks.filter(function (p) { p.x += p.vx; p.y += p.vy; p.vy += 0.08; return --p.life > 0; }); };
 
@@ -657,6 +711,7 @@
     for (var i = 0; i < 2; i++) this.drawShadow(this.f[i], ox);
     var order = p1.state === "attack" ? [1, 0] : [0, 1];
     for (var j = 0; j < 2; j++) this.drawFighter(this.f[order[j]], ox);
+    for (var q = 0; q < this.projectiles.length; q++) this.drawProjectile(this.projectiles[q], ox);
     var self = this; this.sparks.forEach(function (p) { x.fillStyle = p.color; x.fillRect(Math.round(p.x - ox), Math.round(FLOOR + p.y), 2, 2); });
     this.drawHud();
     if (this.banner) this.drawBanner();
@@ -712,7 +767,8 @@
   Game.prototype.state = function () {
     function fs(f) { return f ? { name: f.name, hp: f.hp, maxHp: f.maxHp, x: Math.round(f.x), y: Math.round(f.y), state: f.state, anim: f.anim, facing: f.facing } : null; }
     return { version: VERSION, screen: this.screen, paused: this.paused, mode: this.mode, difficulty: this.difficulty, round: this.round, timer: this.timer,
-             wins: this.wins.slice(), p1: fs(this.f && this.f[0]), p2: fs(this.f && this.f[1]), roster: this.roster.map(function (f) { return f.name; }) };
+             wins: this.wins.slice(), p1: fs(this.f && this.f[0]), p2: fs(this.f && this.f[1]), roster: this.roster.map(function (f) { return f.name; }),
+             projectiles: (this.projectiles || []).map(function (p) { return { side: p.owner.side, x: Math.round(p.x), y: Math.round(p.y) }; }) };
   };
 
   // ---------------------------------------------------------------- styles + API

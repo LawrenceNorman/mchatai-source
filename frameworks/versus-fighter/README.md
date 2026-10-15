@@ -3,7 +3,7 @@
 A fixed fighting runtime where the AI writes each game as data (fighters, moves, stages), the way
 `frameworks/retro-fps` does for shooters. Design and status: `mchatai_macOS/docs/VERSUS_FIGHTER_TRACK.md`.
 
-**Status (2026-10-15): VF.0–VF.1 done, VF.2 under way (second body).** Not routed yet: no goal
+**Status (2026-10-15): VF.0–VF.1 done, VF.2 under way (second body and projectiles done).** Not routed yet: no goal
 reaches this track until VF.3.
 
 - `runtime/vf-runtime.js` — the engine (`VersusFighter.mount(el, game)`, `VersusFighter.state()`).

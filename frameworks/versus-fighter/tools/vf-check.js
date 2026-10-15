@@ -76,8 +76,19 @@ function check(file) {
       if (!INPUT.test(String(s.input || "").toUpperCase())) errors.push(`${sw}: input "${s.input}" — use QCF, QCB, DP, HCF or HCB, then +P/+K (e.g. "DP+P")`);
       if (s.damage != null && !(s.damage >= 1 && s.damage <= 40)) errors.push(`${sw}: damage should be 1–40`);
       if (s.low && s.overhead) errors.push(`${sw}: a move can be low or overhead, not both`);
+      if (s.projectile != null && typeof s.projectile !== "boolean") {
+        const pj = s.projectile;
+        if (typeof pj !== "object" || Array.isArray(pj)) errors.push(`${sw}: projectile is true or { "speed", "size", "color" }`);
+        else {
+          if (pj.speed != null && !(pj.speed >= 1.5 && pj.speed <= 6)) errors.push(`${sw}: projectile.speed should be 1.5–6`);
+          if (pj.size != null && !(pj.size >= 3 && pj.size <= 14)) errors.push(`${sw}: projectile.size should be 3–14`);
+          if (pj.color != null && !HEX.test(pj.color)) errors.push(`${sw}: projectile.color "${pj.color}" is not a #hex color`);
+        }
+      }
+      if (s.projectile && s.dash) warnings.push(`${sw}: a projectile special with dash runs after its own projectile`);
     });
     if ((f.specials || []).length > 6) warnings.push(`${who}: more than 6 specials is hard to learn`);
+    if ((f.specials || []).filter((s) => s.projectile).length > 1) warnings.push(`${who}: one projectile special is plenty (only one can be on screen)`);
   });
   const stages = game.stages || (game.stage ? [game.stage] : []);
   if (!stages.length) warnings.push("no stages; a default one is painted");
