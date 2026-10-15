@@ -1,0 +1,72 @@
+{
+  "packID": "versus-fighter",
+  "version": 1,
+  "displayName": "Versus Fighter (1v1 fighting-game runtime)",
+  "description": "How to build a one-on-one fighting game on the vendored versus-fighter track: a fixed runtime (two fighters with frame data, hit and hurt boxes, blocking, combos, special-move inputs, projectiles, best-of-three rounds, a CPU opponent, two-player and touch controls, start card, character select, pause menu, sound) and CC0 fighter bodies. The agent writes only the game as JSON: fighters, their colours and special moves, stages, rules. Track: mchatai-source/frameworks/versus-fighter (README, CONTEXT.md, examples/demo.html).",
+  "categories": [
+    "games"
+  ],
+  "keywords": [
+    "street fighter",
+    "fighting game",
+    "versus fighter",
+    "tournament fighter",
+    "1v1 fighting",
+    "one on one fight",
+    "one-on-one fight",
+    "martial arts",
+    "kung fu",
+    "karate",
+    "special moves",
+    "hadouken",
+    "tekken",
+    "mortal kombat",
+    "king of fighters",
+    "guilty gear",
+    "dragon ball fight"
+  ],
+  "guidelines": [
+    {
+      "id": "vf-001",
+      "severity": "critical",
+      "appliesTo": "anygame",
+      "rule": "ENGINE CHOICE: for a ONE-ON-ONE FIGHTING GAME ('a Street Fighter type game', a versus or tournament fighter, martial-arts duels, special moves and combos, two fighters on one screen) build on the vendored VERSUS-FIGHTER runtime and write only the game data. It already provides two fighters with frame data, hit and hurt boxes, blocking, combos, knockdowns, motion inputs (quarter circles, dragon punch, half circles), projectiles, best-of-three rounds with a timer, a CPU opponent with three difficulties, two players on one keyboard or gamepads, touch controls on phones, the HUD, painted stages, sound, music, a start card, character select and a pause menu. Do NOT hand-roll a fighting engine, sprites or a canvas game loop. Not for side-scrolling beat-'em-ups against many enemies, platform fighters, fighting in a 3D arena, or dogfights between planes or spaceships: those are other genres.",
+      "why": "A fighting engine with real frame data, inputs and a fair CPU is weeks of tuning; the runtime is tested on desktop and phones and runs offline in the app and on the hub."
+    },
+    {
+      "id": "vf-002",
+      "severity": "critical",
+      "appliesTo": "anygame",
+      "rule": "PAGE SHAPE: the whole game is ONE small index.html: a <div id=\"game\"></div>, the game as JSON in <script type=\"application/json\" id=\"vf-game\">...</script>, then exactly <script src=\"./libs/vf.js\"></script>, one <script src=\"./libs/vf-base-<body>.js\"></script> per body your fighters use (vf-base-ava.js, vf-base-komato.js), and <script>VersusFighter.mount(\"#game\", JSON.parse(document.getElementById(\"vf-game\").textContent));</script>. The ./libs/ files are added at install time: never create, inline, fetch or link anything else, and never load from a URL or CDN. Do NOT add your own canvas, game loop, input handling, sound, music, HUD, start screen, help text, menus or touch controls.",
+      "why": "Anything extra fights the runtime for the canvas and keyboard, and a CDN load fails offline and on the hub.",
+      "examples": [
+        "<!doctype html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover\">\n<title>Neon Harbor Showdown</title>\n<style>html,body{margin:0;height:100%;background:#0b0b12}#game{position:fixed;inset:0}</style>\n</head>\n<body>\n<div id=\"game\"></div>\n<script type=\"application/json\" id=\"vf-game\">\n{ \"title\": \"Neon Harbor Showdown\", \"tagline\": \"Best of three on the harbor.\", \"rounds\": 2, \"timer\": 60, \"cpu\": \"normal\",\n  \"fighters\": [\n    { \"name\": \"Rook Ishida\", \"base\": \"ava\", \"colors\": { \"top\": \"#e8505b\" }, \"style\": \"Rushdown\",\n      \"specials\": [ { \"name\": \"Lantern Rise\", \"anim\": \"sp_uppercut\", \"input\": \"DP+P\", \"damage\": 14, \"knockdown\": true, \"invuln\": 8, \"rise\": 3.2 },\n                    { \"name\": \"Tide Breaker\", \"anim\": \"sp_dashpunch\", \"input\": \"QCF+P\", \"damage\": 12, \"dash\": 3.6 } ] },\n    { \"name\": \"Mara Quell\", \"base\": \"ava\", \"colors\": { \"top\": \"#3fa7ff\", \"pants\": \"#1d1d24\" }, \"style\": \"Keeps you out\",\n      \"specials\": [ { \"name\": \"Riptide Orb\", \"anim\": \"straight\", \"input\": \"QCF+P\", \"damage\": 10, \"projectile\": { \"speed\": 3.4 } } ] },\n    { \"name\": \"Bastion Kael\", \"base\": \"komato\", \"health\": 120, \"colors\": { \"armor\": \"#5a6472\", \"glow\": \"#ff9a3c\" }, \"style\": \"Armored brute\",\n      \"specials\": [ { \"name\": \"Breaker Charge\", \"anim\": \"sp_charge\", \"input\": \"QCF+P\", \"damage\": 15, \"dash\": 4.0, \"knockdown\": true },\n                    { \"name\": \"Slag Slide\", \"anim\": \"sp_slide\", \"input\": \"QCB+K\", \"damage\": 11, \"low\": true, \"dash\": 3.2 } ] }\n  ],\n  \"stages\": [ { \"name\": \"Neon Harbor\", \"theme\": \"harbor\", \"sky\": [\"#141a3a\", \"#e0607e\"], \"floor\": \"#2a2433\", \"accent\": \"#ffd27a\" } ] }\n</script>\n<script src=\"./libs/vf.js\"></script>\n<script src=\"./libs/vf-base-ava.js\"></script>\n<script src=\"./libs/vf-base-komato.js\"></script>\n<script>VersusFighter.mount(\"#game\", JSON.parse(document.getElementById(\"vf-game\").textContent));</script>\n</body>\n</html>"
+      ]
+    },
+    {
+      "id": "vf-003",
+      "severity": "critical",
+      "appliesTo": "anygame",
+      "rule": "GAME DATA: title, tagline, rounds (1-5 to win; 2 = best of three), timer (20-99 s), cpu (easy, normal, hard), optional look (\"pixel\" for chunky retro pixels; omit for the sharp default). fighters: 1-12 (two or fewer skip character select). Each fighter: an ORIGINAL name, base (ava = an agile kickboxer; komato = an armored brute, bigger and slower, suits health 110-130), colors by body (ava: top, pants; komato: armor, glow) as #hex, style (a few words), optional health (50-200), and 1-4 specials. A special: name, anim (ava: sp_uppercut, sp_dashpunch, sp_cartwheel; komato: sp_charge, sp_lunge, sp_rising, sp_slide; both: the normals jab, straight, kick_light, kick_heavy, crouch_punch, crouch_kick, sweep, jump_punch, jump_kick), input (QCF, QCB, DP, HCF or HCB, then +P or +K), damage (1-40; normals do 5-13), and optional knockdown, dash (about 2-4.5), rise (about 2.5-3.5), invuln (6-10 ticks), low, overhead, projectile (true or { speed 1.5-6, size 3-14, color }). stages: 1-4, each with name, theme (city, harbor, temple, forest, mountains, dojo, desert, rooftop, space), sky [top, bottom], floor and accent colours."
+    },
+    {
+      "id": "vf-004",
+      "severity": "important",
+      "appliesTo": "anygame",
+      "rule": "ROSTER DESIGN: make the fighters play differently, the way the genre does: a rushdown fighter (dash specials, an anti-air uppercut on DP+P), a zoner who keeps away (one projectile special on QCF+P, an anti-air), a brute on the komato body (charge, slide, more health), an acrobat (cartwheel or jump-ins). One projectile per fighter at most; give every fighter an anti-air or a reversal so jump-ins can be answered. Use colours that tell fighters apart at a glance, and give stages colours that keep the fighters readable (darker floor, mid-tone sky).",
+      "why": "A roster of look-alike fighters with the same moves plays like a mirror match."
+    },
+    {
+      "id": "vf-005",
+      "severity": "critical",
+      "appliesTo": "anygame",
+      "rule": "NAMES: the mechanics belong to the genre; the names do not. The title, every fighter, special move and stage get ORIGINAL names. Never use a character, move or series name from an existing fighting game (no Street Fighter, Ryu, Ken, Chun-Li, Guile, Hadouken, Shoryuken, Sonic Boom, Mortal Kombat, Sub-Zero, Scorpion, Fatality, Tekken, King of Fighters and the like), even when the request names one: 'a Street Fighter type game' means the genre. Mention the inspiration only in your reply to the user."
+    },
+    {
+      "id": "vf-006",
+      "severity": "critical",
+      "appliesTo": "anygame",
+      "rule": "CHECK AND FINISH: write index.html in your working directory early and keep it current. Then run node <mchatai-source>/frameworks/versus-fighter/tools/vf-check.js index.html (the exact path is in your project context). It must exit 0: it checks the JSON, bodies, animations, inputs, colours, stage themes, the library tags and the names. Fix every ERROR line. Once it passes you are done; a look in a browser is optional, so keep it short."
+    }
+  ]
+}

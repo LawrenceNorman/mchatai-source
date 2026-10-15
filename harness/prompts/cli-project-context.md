@@ -114,6 +114,14 @@ Build these on the vendored **retro-fps engine** (Woof! with Freedoom art, in We
 - If a starter `index.html` for another genre was placed in your working directory (a Space Invaders file, for example), REPLACE it entirely: its "EXTEND this file" note does not apply to a first-person shooter.
 - Before finishing, check the levels: `node /Users/lawrencenorman/mystuff/src/mchatai_platform/mchatai-source/frameworks/retro-fps/tools/rfps-check.js index.html`. It must exit 0, including its DESIGN lines (for example, no monster may see the player's start).
 
+### Fighting games (one-on-one versus fighters: "a Street Fighter type game", martial-arts or tournament duels, special moves and combos)
+Build these on the vendored **versus-fighter runtime**. Fighters with frame data, blocking, combos, special-move inputs, projectiles, rounds, a CPU opponent, two-player and touch controls, the HUD, stages, sound, the start card, character select and the pause menu are all provided; you write only the game, as JSON. Do NOT hand-roll a fighting engine, sprites or a canvas game loop. (Not for side-scrolling beat-'em-ups or dogfights between planes.)
+- `/Users/lawrencenorman/mystuff/src/mchatai_platform/mchatai-source/frameworks/versus-fighter/CONTEXT.md` — the page shape, the game JSON, the two bodies, special moves. Read it first.
+- `/Users/lawrencenorman/mystuff/src/mchatai_platform/mchatai-source/frameworks/versus-fighter/examples/demo.html` — a complete four-fighter game. Model yours on it, with an original roster, moves and stages for the user's theme. It loads `../dist/` only so it runs inside the repo; yours loads `./libs/`.
+- Your `index.html` loads `./libs/vf.js` and one `./libs/vf-base-<body>.js` per body your fighters use (added at install; never create them) and calls `VersusFighter.mount("#game", …)`. The title, every fighter, special move and stage get ORIGINAL names: "a Street Fighter type game" means the genre, never its characters or moves.
+- If a starter `index.html` for another genre was placed in your working directory, REPLACE it entirely.
+- Before finishing: `node /Users/lawrencenorman/mystuff/src/mchatai_platform/mchatai-source/frameworks/versus-fighter/tools/vf-check.js index.html` must exit 0.
+
 ### Arcade shooters (Space Invaders, Galaga, Asteroids, etc.)
 - `/Users/lawrencenorman/mystuff/src/mchatai_platform/mchatai-source/assets/packs/arcade-retro.json` — CSS + sprite grids
 - `/Users/lawrencenorman/mystuff/src/mchatai_platform/mchatai-source/assets/packs/mandatory-starters/arcade-shooter-starter.js` — copy-paste renderSprite() + all sprite constants
