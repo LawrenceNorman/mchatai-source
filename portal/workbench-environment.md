@@ -24,6 +24,13 @@ does every web page inside it (AI Web, the Preview pane). They can't.
   to pick the file in the page's own file dialog.
 - **Many files:** attach them one action at a time, in order, then read the
   page's upload list before going on.
+- **Cards for uploads.** On a site where the person has set Always allow
+  (including Submit or Publish), a file from a registered upload folder uploads
+  without a card, whatever its type. If upload cards keep appearing anyway, the
+  folder's switch is called **"Attach without asking"** (Approvals tab →
+  Picture folders, or the "Attach without asking from <folder>" link on the
+  card). Use those exact words. Nothing in the app is called "Approve all", so
+  don't send the person looking for it, and don't ask twice.
 - **Check the page, not the action.** After any upload, read the page for an
   error before moving on. An action that reports success doesn't prove the bytes
   arrived.
