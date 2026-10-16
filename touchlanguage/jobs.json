@@ -1,0 +1,77 @@
+{
+  "_comment": "TouchLanguage's AI jobs (Phase KN shape: content/ai-jobs/jobs.json). They live here rather than in content/ai-jobs because only the iOS applet runs them and the Mac's AIJobCatalog has no platform filter yet; move them there when it does. Model ids come from harness/routing/role-models.json via cloudRole, never from Swift.",
+  "_consumer": "mChatAI iOS TouchLanguageJobs (TouchLanguage/TouchLanguageJobs.swift)",
+  "version": 1,
+  "jobs": [
+    {
+      "id": "touchlanguage.turn",
+      "title": "Tutor replies",
+      "blurb": "One or two spoken sentences from the tutor, every turn of a conversation.",
+      "taskCategory": "simple",
+      "privacy": "any",
+      "engines": [
+        "cloud",
+        "foundation"
+      ],
+      "_engines": "Decision 2026-10-15: the prototype prefers the user's own OpenAI or Google key; Apple's on-device model answers when no key is usable. The app meters cloud spend and stops at its prototype ceiling.",
+      "cloudProviders": [
+        "*"
+      ],
+      "cloudRole": "tutor",
+      "defaultMode": "bestQuality",
+      "reasoning": "minimal",
+      "temperature": 0.7,
+      "maxTokens": 160,
+      "typicalTokens": {
+        "input": 900,
+        "output": 60
+      }
+    },
+    {
+      "id": "touchlanguage.feedback",
+      "title": "Conversation feedback",
+      "blurb": "The card at the end of a conversation: what went well, three things to practise, new words.",
+      "taskCategory": "analysis",
+      "privacy": "any",
+      "engines": [
+        "cloud",
+        "foundation"
+      ],
+      "cloudProviders": [
+        "*"
+      ],
+      "cloudRole": "summary",
+      "defaultMode": "bestQuality",
+      "reasoning": "minimal",
+      "temperature": 0.3,
+      "maxTokens": 900,
+      "typicalTokens": {
+        "input": 2500,
+        "output": 400
+      }
+    },
+    {
+      "id": "touchlanguage.translate",
+      "title": "Translate a tutor line",
+      "blurb": "The translation shown when the learner taps a tutor line in the transcript.",
+      "taskCategory": "simple",
+      "privacy": "any",
+      "engines": [
+        "cloud",
+        "foundation"
+      ],
+      "cloudProviders": [
+        "*"
+      ],
+      "cloudRole": "tutor",
+      "defaultMode": "lowestCost",
+      "reasoning": "minimal",
+      "temperature": 0.1,
+      "maxTokens": 200,
+      "typicalTokens": {
+        "input": 120,
+        "output": 60
+      }
+    }
+  ]
+}

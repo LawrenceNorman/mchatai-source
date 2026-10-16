@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "_comment": "A mode adds a prompt block (prompts/mode.<id>.md) to the tutor system prompt. opening = 'persona' speaks the persona's own opening line with no model call; 'instruction' sends openingInstruction as the first user turn so the model starts (the 2025 app's initiatingInstruction). usesWordlist = the app passes {{wordHints}} drawn from wordlists/<lang>/common-1000.csv within the level's vocabulary band. In a usesWordlist mode the app picks the first word and fills {{firstWord}}; if the reply doesn't contain it, the app speaks strings.wordLabOpening instead.",
+  "modes": [
+    {
+      "id": "chat",
+      "label": "Chat",
+      "symbol": "bubble.left.and.bubble.right.fill",
+      "blurb": "Talk about anything.",
+      "prompt": "prompts/mode.chat.md",
+      "opening": "persona",
+      "usesWordlist": false
+    },
+    {
+      "id": "story",
+      "label": "Story time",
+      "symbol": "book.fill",
+      "blurb": "A tiny story, then one question.",
+      "prompt": "prompts/mode.story.md",
+      "opening": "instruction",
+      "openingInstruction": "Begin now: tell the first story and ask the question.",
+      "usesWordlist": false
+    },
+    {
+      "id": "vocabulary",
+      "label": "Word lab",
+      "symbol": "text.book.closed.fill",
+      "blurb": "One word at a time, harder as you go.",
+      "prompt": "prompts/mode.vocabulary.md",
+      "opening": "instruction",
+      "openingInstruction": "Begin now with the word {{firstWord}}: say it, then ask whether the learner knows what it means.",
+      "usesWordlist": true
+    }
+  ]
+}
