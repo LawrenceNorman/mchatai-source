@@ -1,0 +1,69 @@
+{
+  "version": 1,
+  "lastUpdated": "2026-10-16",
+  "_source_of_truth": true,
+  "_comment": "The output contract of the bible designer (STORYMAKER_AUTHORSHIP_PLAN.md BD.1): what a bible pack may contain. A pack is the same shape as story/schemas/litrpg.json, plus optional seedRows and statChanges. Two engines read THIS file: story/tools/validate_pack.py and StoryMaker's storymaker.applyBiblePack verb (BD.2), so the rules live once, as content. Domain-agnostic on purpose: nothing here assumes fiction (biography.json and a military-campaign pack pass the same rules; docs/PIVOTAL_HISTORY_ENGINE.md §7). DECODER SAFETY: comment keys at this TOP LEVEL ONLY.",
+
+  "_howToRead": "patterns are regular expressions. limits are hard: a pack over a limit is refused, never trimmed. reservedKeyPrefixes are packKey prefixes the platform owns (a pack column using one would overwrite a core column). systemKinds are the tables every StoryMaker bible already has; a pack may ADD columns to them, and seed rows into them are keyed on the named key column.",
+
+  "packIDPattern": "^[a-z][a-z0-9-]{1,47}$",
+  "kindPattern": "^[a-z][a-z0-9-]{0,31}$",
+  "packKeyPattern": "^[a-z][A-Za-z0-9]*(\\.[A-Za-z][A-Za-z0-9-]*)+$",
+
+  "topLevelKeys": ["version", "lastUpdated", "packID", "displayName", "summary", "entityKinds", "fields", "seedRows", "statChanges", "designer"],
+  "requiredTopLevelKeys": ["packID", "entityKinds", "fields"],
+  "entityKindKeys": ["kind", "displayName", "iconName"],
+  "fieldKeys": ["packKey", "name", "kind", "section", "promptTier", "aiVisible", "isTimeVarying", "llmHint", "targetKind", "unit", "options", "min", "max", "direction"],
+  "requiredFieldKeys": ["packKey", "name", "kind"],
+  "seedRowKeys": ["key", "values"],
+  "statChangeKeys": ["track", "rows"],
+  "statChangeRowKeys": ["chapter", "who", "stat", "kind", "amount", "why", "onlyWhen", "untilChapter"],
+  "designerKeys": ["interview", "date", "axesCovered", "_note"],
+
+  "fieldKinds": ["text", "line", "number", "checkbox", "date", "link", "richText", "select", "multiSelect"],
+  "_fieldKindsWhy": "formula, rollup and count are derived from other columns and need an expression a pack cannot carry; color has no story use yet. A kind outside this list decodes as 'unknown' in the app and renders read-only, which is never what a designer meant.",
+  "promptTiers": ["always", "whenRelevant", "onDemand", "never"],
+  "directions": ["nonDecreasing", "nonIncreasing"],
+  "_directionsWhy": "direction is the machine-readable form of an llmHint like 'Non-decreasing. A crawler never loses a tier.' bible_check (AA.1) reads it; a hint alone is a request, not a rule.",
+
+  "reservedKinds": ["change"],
+  "_reservedKindsWhy": "change is the Stat Changes table (StoryBibleChanges.swift). Its rows come from statChanges, never from a kind a pack declares.",
+  "reservedKeyPrefixes": ["core.", "storymaker.", "change."],
+
+  "systemKinds": {
+    "character": { "keyColumn": "Name", "columns": ["Name", "Description", "Aliases", "Voice Notes", "Goals", "Secrets", "Appearance"] },
+    "location":  { "keyColumn": "Name", "columns": ["Name", "Description", "Rules"] },
+    "worldrule": { "keyColumn": "Rule", "columns": ["Category", "Rule"] },
+    "glossary":  { "keyColumn": "Term", "columns": ["Term", "Definition"] }
+  },
+  "packKindKeyColumn": "Name",
+  "_keyColumnWhy": "Seed rows are matched on the key column so a re-apply adds nothing and an author's own row of the same name is never duplicated. Kinds a pack declares get a Name column first (StoryBibleLedgerStore.enable).",
+
+  "statChangeModes": {
+    "set": ["set", "absolute", "="],
+    "change": ["change", "delta", "add", "+", "-"],
+    "printed": ["printed", "assertion", "shown", "status"]
+  },
+  "_statChangeModesWhy": "The words StoryBibleChanges.mode accepts. set = the value is now N; change = add N (negative subtracts); printed = what the page shows, checked against the running total and never added.",
+
+  "nameRules": {
+    "maxChars": 48,
+    "forbiddenPattern": "[_]|^[a-z]+[A-Z]|^[a-z0-9.\\-]+$",
+    "_why": "Column names are prompt tokens: the model reads 'Grit: 14', so 'Mana Regeneration Rate' and never mana_regen or manaRegen. All-lowercase single tokens read as slugs; 'Born' and 'URL' are fine, 'grit' is not."
+  },
+
+  "limits": {
+    "kinds": 16,
+    "fieldsPerKind": 24,
+    "alwaysTierFieldsPerKind": 3,
+    "optionsPerField": 40,
+    "seedRowsPerKind": 300,
+    "statChangeRows": 600,
+    "hintMaxChars": 400,
+    "keyMaxChars": 200
+  },
+  "_limitsWhy": "alwaysTierFieldsPerKind: an always-tier column is injected into EVERY prompt that mentions the entity; litrpg and biography each spend at most 2. seedRowsPerKind and statChangeRows keep a designed pack a starting point, not an import path (Stat Changes' own size guard is 5,000 rows).",
+
+  "axesRequired": ["premise", "shape", "arc", "change", "naming"],
+  "_axesRequiredWhy": "A designer pack's designer.axesCovered must name every axis in story/designer/question-banks/. A pack that skipped one was designed with a blank axis (assistants/PATTERNS.md: the trap is a blank axis)."
+}

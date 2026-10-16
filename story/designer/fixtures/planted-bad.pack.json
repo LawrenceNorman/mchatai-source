@@ -1,0 +1,36 @@
+{
+  "_comment": "FIXTURE: a designed pack with planted defects — the mistakes a model makes when it writes a pack without the gate. test_story_tools.py asserts validate_pack.py refuses it and names each defect's rule (listed in _plantedRules). Exit code 1 from the CLI is the point.",
+  "_plantedRules": ["field-name", "field-options", "seed-column", "change-printed", "tier-budget", "designer-axes", "field-key-reserved", "seed-stat", "change-direction", "catalog-collision", "nested-comment"],
+  "packID": "book-planted",
+  "designer": { "interview": "none", "date": "2026-10-16", "axesCovered": ["premise", "shape", "naming"] },
+  "entityKinds": [
+    { "kind": "faction", "displayName": "Factions" }
+  ],
+  "fields": {
+    "character": [
+      { "packKey": "planted.mana", "name": "mana_regen", "kind": "number", "isTimeVarying": true },
+      { "packKey": "planted.level", "name": "Level", "kind": "number", "isTimeVarying": true, "direction": "nonDecreasing", "promptTier": "always" },
+      { "packKey": "planted.class", "name": "Class", "kind": "select", "promptTier": "always" },
+      { "packKey": "planted.title", "name": "Title", "kind": "line", "promptTier": "always" },
+      { "packKey": "planted.oath", "name": "Oath", "kind": "line", "promptTier": "always" },
+      { "packKey": "core.secrets2", "name": "Hidden Agenda", "kind": "text" },
+      { "packKey": "litrpg.tier", "name": "Tier", "kind": "text", "_note": "should have been a number" }
+    ],
+    "faction": [
+      { "packKey": "planted.goal", "name": "Goal", "kind": "text" }
+    ]
+  },
+  "seedRows": {
+    "character": [
+      { "key": "Hero", "values": { "Stamina": 10, "Level": 3 } }
+    ]
+  },
+  "statChanges": {
+    "track": ["planted.level"],
+    "rows": [
+      { "chapter": 0, "who": "Hero", "stat": "Level", "kind": "set", "amount": 3 },
+      { "chapter": 2, "who": "Hero", "stat": "Level", "kind": "change", "amount": -1, "why": "cursed" },
+      { "chapter": 3, "who": "Hero", "stat": "Level", "kind": "printed", "amount": 5 }
+    ]
+  }
+}

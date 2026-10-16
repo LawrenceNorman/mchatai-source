@@ -1,0 +1,40 @@
+{
+  "axis": "change",
+  "order": 4,
+  "_comment": "Bible designer, axis 4 of 5 (story/designer/INTERVIEW.md): what changes from chapter to chapter. Changing numbers are logged as Stat Changes rows (an event per change), never overwritten in a cell: 'Chapter 23: Kira gains 500 XP' beats editing a number. DECODER SAFETY: comment keys at this TOP LEVEL ONLY.",
+  "goal": "Know which values change over chapters, which of them are numbers, which way they may move, their floors and ceilings, and what the page prints.",
+  "fills": ["isTimeVarying", "direction", "min", "max", "statChanges.track", "statChanges.rows (chapter-0 starting values)"],
+  "questions": [
+    {
+      "id": "change.what",
+      "ask": "As the chapters go by, what changes — numbers, possessions, who someone answers to, what they know?",
+      "why": "Each answer is a column that changes over chapters, so 'as of chapter 12' has an answer.",
+      "listenFor": "levels, stats, money, strength, who holds an item, loyalties"
+    },
+    {
+      "id": "change.numbers",
+      "ask": "Which of those are numbers? For each: can it ever go down? Is there a floor or a ceiling?",
+      "why": "A number that never goes down gets a direction the checker enforces; a floor or ceiling becomes min and max.",
+      "listenFor": "'it never drops', 'it can go negative', 'it caps at 10'"
+    },
+    {
+      "id": "change.page",
+      "ask": "Does the page ever show these numbers — a status screen, a ledger, a report, a muster roll?",
+      "why": "Each number the page prints becomes a printed row, checked against the running total, so a status box that disagrees with the story is caught.",
+      "listenFor": "status boxes, character sheets, official counts quoted in the text"
+    },
+    {
+      "id": "change.temporary",
+      "ask": "Are some changes temporary or conditional — while something is worn, until a certain chapter, only at night?",
+      "why": "A change that only holds sometimes is the most common source of a number drifting; it is logged with its condition, never folded in silently.",
+      "listenFor": "'while', 'until', 'only when', buffs, wounds that heal"
+    },
+    {
+      "id": "change.start",
+      "ask": "What are the starting values?",
+      "why": "Starting values are chapter-0 set rows; every later change is counted from them.",
+      "listenFor": "numbers for the main people at the start of the book; in nonfiction, the source that gives them"
+    }
+  ],
+  "doneWhen": "Every changing number is named, has its direction, floor and ceiling if any, and a starting value (or is marked to look up)."
+}

@@ -1,0 +1,40 @@
+{
+  "axis": "naming",
+  "order": 5,
+  "_comment": "Bible designer, axis 5 of 5 (story/designer/INTERVIEW.md): read the design back in the author's words and settle what the AI always sees. Column names are prompt tokens: the model reads 'Resolve: 4', so the name is the author's word, never a slug. DECODER SAFETY: comment keys at this TOP LEVEL ONLY.",
+  "goal": "Confirm every table, column, unit and rule in the author's words, and decide what the AI always knows, fetches when needed, or never repeats.",
+  "fills": ["name", "unit", "promptTier", "aiVisible", "llmHint"],
+  "questions": [
+    {
+      "id": "naming.readback",
+      "ask": "Here are the tables and columns as I have them, in your words. Anything to rename, merge or drop?",
+      "why": "The read-back is where a name the designer guessed gets replaced by the author's.",
+      "listenFor": "renames, merges, 'I never call it that'"
+    },
+    {
+      "id": "naming.units",
+      "ask": "What units do the numbers use?",
+      "why": "A unit stops a number being read on the wrong scale (coins or thousands of coins, soldiers or regiments).",
+      "listenFor": "points, coins, soldiers, days, miles"
+    },
+    {
+      "id": "naming.always",
+      "ask": "Which one or two things about a person should the AI never forget, even when they only pass through a scene?",
+      "why": "Those become always-tier columns, sent with every prompt that mentions the row. Everything else is sent only when the row is in the scene, so the budget stays small.",
+      "listenFor": "a class or rank, an allegiance, a defining limit"
+    },
+    {
+      "id": "naming.hidden",
+      "ask": "Is there anything the AI should know but not keep putting on the page — an appearance detail, a secret, a long reference?",
+      "why": "Appearance a model over-repeats is hidden from prompts; secrets and long references are fetched only on demand.",
+      "listenFor": "'it keeps mentioning her hair', spoilers, long lists"
+    },
+    {
+      "id": "naming.apply",
+      "ask": "Ready for me to make these tables? You can rename, hide or add any column later in the grid.",
+      "why": "Nothing is applied without the author's OK, and the grid is theirs afterwards.",
+      "listenFor": "yes / not yet / change one thing first"
+    }
+  ],
+  "doneWhen": "The author has seen every name in their words, chosen what the AI always sees, and said yes to applying."
+}

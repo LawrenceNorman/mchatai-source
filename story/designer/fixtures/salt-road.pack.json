@@ -1,0 +1,101 @@
+{
+  "version": 1,
+  "lastUpdated": "2026-10-16",
+  "_comment": "FIXTURE: the pack the designer produces from interview-salt-road.md (a fictional book). test_story_tools.py checks it passes validate_pack.py with no findings, with the transcript. Not in the catalog index: a designed pack belongs to one book.",
+  "packID": "book-salt-road",
+  "displayName": "The Salt Road",
+  "summary": "A salt trader's apprentice rises through a merchant guild; progression is coin, favour and guild rank.",
+  "designer": {
+    "interview": "story/designer/fixtures/interview-salt-road.md",
+    "date": "2026-10-16",
+    "axesCovered": ["premise", "shape", "arc", "change", "naming"]
+  },
+  "entityKinds": [
+    { "kind": "guild", "displayName": "Guilds", "iconName": "building.columns" },
+    { "kind": "ware",  "displayName": "Wares",  "iconName": "shippingbox" },
+    { "kind": "knack", "displayName": "Knacks", "iconName": "sparkles" }
+  ],
+  "fields": {
+    "character": [
+      { "packKey": "salt.guildRank", "name": "Guild Rank", "kind": "number", "section": "Guild",
+        "promptTier": "always", "aiVisible": true, "isTimeVarying": true,
+        "min": 1, "max": 7, "direction": "nonDecreasing",
+        "llmHint": "Seven ranks. Never goes down; the author handles a broken salt oath by hand." },
+      { "packKey": "salt.swornTo", "name": "Sworn To", "kind": "link", "section": "Guild",
+        "promptTier": "always", "aiVisible": true, "isTimeVarying": true, "targetKind": "guild",
+        "llmHint": "The guild this person is sworn to. Changes are turning points." },
+      { "packKey": "salt.coin", "name": "Coin", "kind": "number", "section": "Purse",
+        "promptTier": "whenRelevant", "aiVisible": true, "isTimeVarying": true,
+        "unit": "silver", "min": 0,
+        "llmHint": "Never below zero. The guild ledger prints it at the end of each chapter." },
+      { "packKey": "salt.favour", "name": "Favour", "kind": "number", "section": "Purse",
+        "promptTier": "whenRelevant", "aiVisible": true, "isTimeVarying": true,
+        "min": -10, "max": 10,
+        "llmHint": "Falls when a hard deal is cut. Can go negative, down to -10; caps at 10." },
+      { "packKey": "salt.debts", "name": "Debts", "kind": "text", "section": "Purse",
+        "promptTier": "onDemand", "aiVisible": true, "isTimeVarying": false,
+        "llmHint": "Money owed. Fetch only when the scene turns on a debt." }
+    ],
+    "location": [
+      { "packKey": "salt.toll", "name": "Toll", "kind": "number", "section": "Road",
+        "promptTier": "whenRelevant", "aiVisible": true, "isTimeVarying": false, "unit": "silver" }
+    ],
+    "guild": [
+      { "packKey": "salt.guildSeat", "name": "Seat", "kind": "line", "section": "Guild",
+        "promptTier": "whenRelevant", "aiVisible": true, "isTimeVarying": false,
+        "llmHint": "The city the guild is run from." },
+      { "packKey": "salt.guildWants", "name": "Wants", "kind": "text", "section": "Guild",
+        "promptTier": "whenRelevant", "aiVisible": true, "isTimeVarying": false }
+    ],
+    "ware": [
+      { "packKey": "salt.wareOrigin", "name": "Origin", "kind": "line", "section": "Trade",
+        "promptTier": "whenRelevant", "aiVisible": true, "isTimeVarying": false },
+      { "packKey": "salt.warePrice", "name": "Price", "kind": "number", "section": "Trade",
+        "promptTier": "whenRelevant", "aiVisible": true, "isTimeVarying": false, "unit": "silver" },
+      { "packKey": "salt.heldBy", "name": "Held By", "kind": "link", "section": "Trade",
+        "promptTier": "whenRelevant", "aiVisible": true, "isTimeVarying": true, "targetKind": "character",
+        "llmHint": "Who holds it now. Possession changes; 'who had it in chapter 3' is a real question." },
+      { "packKey": "salt.contraband", "name": "Contraband", "kind": "checkbox", "section": "Trade",
+        "promptTier": "whenRelevant", "aiVisible": true, "isTimeVarying": false }
+    ],
+    "knack": [
+      { "packKey": "salt.knackCost", "name": "Cost", "kind": "line", "section": "Training",
+        "promptTier": "whenRelevant", "aiVisible": true, "isTimeVarying": false,
+        "llmHint": "What the guild charges to teach it." },
+      { "packKey": "salt.knackRank", "name": "Rank", "kind": "select", "section": "Training",
+        "promptTier": "whenRelevant", "aiVisible": true, "isTimeVarying": true,
+        "options": ["Novice", "Journeyman", "Master"] }
+    ]
+  },
+  "seedRows": {
+    "character": [
+      { "key": "Ilse Varro", "values": { "Description": "A salt trader's apprentice who believes the guild is fair.", "Sworn To": "Lantern Guild" } },
+      { "key": "Bram Okafor", "values": { "Description": "Ilse's master.", "Sworn To": "Lantern Guild" } },
+      { "key": "Teodor Hask", "values": { "Description": "Ilse's rival." } }
+    ],
+    "guild": [
+      { "key": "Lantern Guild", "values": {} },
+      { "key": "Tidemark Combine", "values": {} }
+    ],
+    "ware": [
+      { "key": "Rock Salt", "values": { "Held By": "Ilse Varro" } }
+    ],
+    "knack": [
+      { "key": "Appraisal", "values": { "Cost": "Paid to the guild to be taught." } }
+    ],
+    "worldrule": [
+      { "key": "The salt oath. Mechanism: a trader sworn to a guild may sell salt only through that guild. Cost: breaking it costs every guild rank. Limit: it covers salt only, not other wares.",
+        "values": { "Category": "Oaths" } }
+    ]
+  },
+  "statChanges": {
+    "track": ["salt.coin", "salt.favour", "salt.guildRank"],
+    "rows": [
+      { "chapter": 0, "who": "Ilse Varro",  "stat": "Coin",       "kind": "set", "amount": 12, "why": "Starting purse." },
+      { "chapter": 0, "who": "Ilse Varro",  "stat": "Favour",     "kind": "set", "amount": 0,  "why": "Starting favour." },
+      { "chapter": 0, "who": "Ilse Varro",  "stat": "Guild Rank", "kind": "set", "amount": 1,  "why": "Lowest rank." },
+      { "chapter": 0, "who": "Bram Okafor", "stat": "Coin",       "kind": "set", "amount": 40, "why": "Starting purse." },
+      { "chapter": 1, "who": "Ilse Varro",  "stat": "Coin",       "kind": "printed", "amount": 12, "why": "The guild ledger at the end of chapter one." }
+    ]
+  }
+}
