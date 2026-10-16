@@ -181,6 +181,15 @@ Build these on the vendored **versus-fighter runtime**. Fighters with frame data
 ### Phones
 11. **Playable on a phone held sideways (about 844×390) as well as upright (390×844).** In a short landscape view, put side panels BESIDE the play area and size the board or canvas from the available height. Never centre a column that can grow taller than the screen with `justify-content:center` inside a scrolling container: the overflow spills above the top, where it cannot be scrolled to, and hides the board (a tactics game shipped that way on 2026-10-15). Use `flex-start` or `safe center`. Before finishing, check 844×390, 932×430 and 390×844: the whole play area shows below the header and takes taps.
 
+### Games: make it feel great
+What the best catalog game so far (Echo Reef, 2026-10-16) had, and what a game should aim for:
+12. **A premise with heart, on a title card:** who you are, who or what you are helping, and why, in a sentence or two.
+13. **One signature mechanic with a twist,** and every other system serving it (Echo Reef: the map is dark until your sonar pings reveal it).
+14. **A short, complete arc:** about three acts or places, each with its own look and one new wrinkle; an intro card for each, and a finale card with the time or score and a saved best.
+15. **Progress the player can see and cares about:** companions that follow you, places that light up and stay lit, a map that fills in.
+16. **Feedback on every action:** a particle burst, a short synthesized sound, a small flash or shake; an ambient soundscape; depth from light, gradients, vignette and parallax.
+17. **Few verbs** (move plus one or two actions), the same on keyboard and touch. Finish fewer features and make them feel good, rather than many half-done ones.
+
 ## Output
 
 **If you decided you're building an HTML mini-app** (the default — and the case for almost every Goal): output the COMPLETE artifact in a `\`\`\`miniapp` fenced JSON block. The JSON must have `id`, `name`, `manifest`, and `html` fields.
