@@ -3,57 +3,200 @@
   "_comment": "ASR and TTS ladders per target language, in the shape Phase VH (mchatai_macOS/docs/SPEECH_HARNESS_SPEC.md) proposes for harness/routing/asr.json and tts.json; when VH lands this file moves there and the applet's picker goes away. The first rung whose condition holds wins. `locales` are the ones iOS 26 can recognise on-device (SpeechTranscriber.supportedLocales, checked 2026-10-15). Cloud model ids live here and never in Swift. Conditions: always · locale.onDevice (the transcriber model is installed or downloadable) · user.cloudAllowed (spend guard allows the applet) · key.<provider> (the user has that key).",
   "languages": {
     "es": {
-      "name": "Spanish", "nativeName": "Español", "nativeOf": ["es"],
-      "locales": ["es-MX", "es-ES", "es-US", "es-CL"], "defaultLocale": "es-MX",
+      "name": "Spanish",
+      "nativeName": "Español",
+      "nativeOf": [
+        "es"
+      ],
+      "locales": [
+        "es-MX",
+        "es-ES",
+        "es-US",
+        "es-CL"
+      ],
+      "defaultLocale": "es-MX",
       "asr": [
-        { "backend": "apple-speechanalyzer", "condition": "locale.onDevice" },
-        { "backend": "apple-sfspeech", "condition": "always" },
-        { "backend": "api:openai-transcribe", "model": "gpt-4o-mini-transcribe", "condition": "user.cloudAllowed AND key.openai" }
+        {
+          "backend": "apple-sfspeech",
+          "condition": "always"
+        },
+        {
+          "backend": "apple-speechanalyzer",
+          "condition": "locale.onDevice"
+        },
+        {
+          "backend": "api:openai-transcribe",
+          "model": "gpt-4o-mini-transcribe",
+          "condition": "user.cloudAllowed AND key.openai"
+        }
       ],
       "tts": [
-        { "backend": "apple-avspeech", "condition": "always", "voiceByLocale": { "es-MX": "Paulina", "es-ES": "Mónica", "es-US": "Paulina", "es-CL": "Paulina" } },
-        { "backend": "api:openai-tts", "model": "gpt-4o-mini-tts", "voice": "alloy", "condition": "user.cloudAllowed AND key.openai" }
+        {
+          "backend": "apple-avspeech",
+          "condition": "always",
+          "voiceByLocale": {
+            "es-MX": "Paulina",
+            "es-ES": "Mónica",
+            "es-US": "Paulina",
+            "es-CL": "Paulina"
+          }
+        },
+        {
+          "backend": "api:openai-tts",
+          "model": "gpt-4o-mini-tts",
+          "voice": "alloy",
+          "condition": "user.cloudAllowed AND key.openai"
+        }
       ]
     },
     "en": {
-      "name": "English", "nativeName": "English", "nativeOf": ["en"],
-      "locales": ["en-US", "en-GB", "en-AU", "en-CA", "en-IE", "en-IN", "en-NZ", "en-SG", "en-ZA"], "defaultLocale": "en-US",
+      "name": "English",
+      "nativeName": "English",
+      "nativeOf": [
+        "en"
+      ],
+      "locales": [
+        "en-US",
+        "en-GB",
+        "en-AU",
+        "en-CA",
+        "en-IE",
+        "en-IN",
+        "en-NZ",
+        "en-SG",
+        "en-ZA"
+      ],
+      "defaultLocale": "en-US",
       "asr": [
-        { "backend": "apple-speechanalyzer", "condition": "locale.onDevice" },
-        { "backend": "apple-sfspeech", "condition": "always" },
-        { "backend": "api:openai-transcribe", "model": "gpt-4o-mini-transcribe", "condition": "user.cloudAllowed AND key.openai" }
+        {
+          "backend": "apple-sfspeech",
+          "condition": "always"
+        },
+        {
+          "backend": "apple-speechanalyzer",
+          "condition": "locale.onDevice"
+        },
+        {
+          "backend": "api:openai-transcribe",
+          "model": "gpt-4o-mini-transcribe",
+          "condition": "user.cloudAllowed AND key.openai"
+        }
       ],
       "tts": [
-        { "backend": "apple-avspeech", "condition": "always", "voiceByLocale": { "en-US": "Samantha", "en-GB": "Daniel", "en-AU": "Karen", "en-IE": "Moira", "en-IN": "Rishi", "en-ZA": "Tessa" } },
-        { "backend": "api:openai-tts", "model": "gpt-4o-mini-tts", "voice": "alloy", "condition": "user.cloudAllowed AND key.openai" }
+        {
+          "backend": "apple-avspeech",
+          "condition": "always",
+          "voiceByLocale": {
+            "en-US": "Samantha",
+            "en-GB": "Daniel",
+            "en-AU": "Karen",
+            "en-IE": "Moira",
+            "en-IN": "Rishi",
+            "en-ZA": "Tessa"
+          }
+        },
+        {
+          "backend": "api:openai-tts",
+          "model": "gpt-4o-mini-tts",
+          "voice": "alloy",
+          "condition": "user.cloudAllowed AND key.openai"
+        }
       ]
     },
     "fr": {
-      "name": "French", "nativeName": "Français", "nativeOf": ["fr"],
-      "locales": ["fr-FR", "fr-CA", "fr-BE", "fr-CH"], "defaultLocale": "fr-FR",
+      "name": "French",
+      "nativeName": "Français",
+      "nativeOf": [
+        "fr"
+      ],
+      "locales": [
+        "fr-FR",
+        "fr-CA",
+        "fr-BE",
+        "fr-CH"
+      ],
+      "defaultLocale": "fr-FR",
       "asr": [
-        { "backend": "apple-speechanalyzer", "condition": "locale.onDevice" },
-        { "backend": "apple-sfspeech", "condition": "always" },
-        { "backend": "api:openai-transcribe", "model": "gpt-4o-mini-transcribe", "condition": "user.cloudAllowed AND key.openai" }
+        {
+          "backend": "apple-sfspeech",
+          "condition": "always"
+        },
+        {
+          "backend": "apple-speechanalyzer",
+          "condition": "locale.onDevice"
+        },
+        {
+          "backend": "api:openai-transcribe",
+          "model": "gpt-4o-mini-transcribe",
+          "condition": "user.cloudAllowed AND key.openai"
+        }
       ],
       "tts": [
-        { "backend": "apple-avspeech", "condition": "always", "voiceByLocale": { "fr-FR": "Thomas", "fr-CA": "Amélie" } },
-        { "backend": "api:openai-tts", "model": "gpt-4o-mini-tts", "voice": "alloy", "condition": "user.cloudAllowed AND key.openai" }
+        {
+          "backend": "apple-avspeech",
+          "condition": "always",
+          "voiceByLocale": {
+            "fr-FR": "Thomas",
+            "fr-CA": "Amélie"
+          }
+        },
+        {
+          "backend": "api:openai-tts",
+          "model": "gpt-4o-mini-tts",
+          "voice": "alloy",
+          "condition": "user.cloudAllowed AND key.openai"
+        }
       ]
     },
     "pt": {
-      "name": "Portuguese", "nativeName": "Português", "nativeOf": ["pt"],
-      "locales": ["pt-BR", "pt-PT"], "defaultLocale": "pt-BR",
+      "name": "Portuguese",
+      "nativeName": "Português",
+      "nativeOf": [
+        "pt"
+      ],
+      "locales": [
+        "pt-BR",
+        "pt-PT"
+      ],
+      "defaultLocale": "pt-BR",
       "asr": [
-        { "backend": "apple-speechanalyzer", "condition": "locale.onDevice" },
-        { "backend": "apple-sfspeech", "condition": "always" },
-        { "backend": "api:openai-transcribe", "model": "gpt-4o-mini-transcribe", "condition": "user.cloudAllowed AND key.openai" }
+        {
+          "backend": "apple-sfspeech",
+          "condition": "always"
+        },
+        {
+          "backend": "apple-speechanalyzer",
+          "condition": "locale.onDevice"
+        },
+        {
+          "backend": "api:openai-transcribe",
+          "model": "gpt-4o-mini-transcribe",
+          "condition": "user.cloudAllowed AND key.openai"
+        }
       ],
       "tts": [
-        { "backend": "apple-avspeech", "condition": "always", "voiceByLocale": { "pt-BR": "Luciana", "pt-PT": "Joana" } },
-        { "backend": "api:openai-tts", "model": "gpt-4o-mini-tts", "voice": "alloy", "condition": "user.cloudAllowed AND key.openai" }
+        {
+          "backend": "apple-avspeech",
+          "condition": "always",
+          "voiceByLocale": {
+            "pt-BR": "Luciana",
+            "pt-PT": "Joana"
+          }
+        },
+        {
+          "backend": "api:openai-tts",
+          "model": "gpt-4o-mini-tts",
+          "voice": "alloy",
+          "condition": "user.cloudAllowed AND key.openai"
+        }
       ]
     }
   },
-  "nativeLanguages": { "en": "English", "es": "Spanish", "fr": "French", "pt": "Portuguese" }
+  "nativeLanguages": {
+    "en": "English",
+    "es": "Spanish",
+    "fr": "French",
+    "pt": "Portuguese"
+  },
+  "_asrOrder": "2026-10-15 evening: apple-sfspeech first. On Lawrence's iPhone the SpeechAnalyzer rung heard nothing (mic red, no words; no [ASR LOG] lines, so it was that rung), while Hands Free (the same ASRManager the sfspeech rung wraps) works. The analyzer path transcribes recorded speech correctly on the Mac, so the failure is live-mic only; the next build adds a watchdog that falls back automatically, and a Recognizer picker to try it."
 }
