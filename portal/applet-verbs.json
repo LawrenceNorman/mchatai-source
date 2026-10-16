@@ -3362,6 +3362,92 @@
             "description": "The chapter's id, exact title, or 1-based position (\"3\" is the third chapter)."
           }
         }
+      },
+      "getbible": {
+        "kind": "read",
+        "summary": "A project's bible tables: each table's columns (with how the AI sees each one: promptTier, aiVisible, whether it changes over chapters), its row count, and its rows by column name. A project whose bible is not yet in Ledger tables lists its entries by name.",
+        "required": [
+          "project"
+        ],
+        "optional": [
+          "kind",
+          "match",
+          "limit"
+        ],
+        "notes": "`packs` names any designed pack the project carries. To show a table beside the conversation, use `applet preview show` with viewer surface-ledger.",
+        "example": {
+          "command": "applet",
+          "applet": "storymaker",
+          "verb": "getBible",
+          "args": {
+            "project": "The Salt Road",
+            "kind": "character"
+          }
+        },
+        "args": {
+          "project": {
+            "type": "string",
+            "description": "The project's id or exact title (from listProjects). A miss returns the projects that exist."
+          },
+          "kind": {
+            "type": "string",
+            "description": "One table, by kind (character, guild…) or name (Characters, Guilds…)."
+          },
+          "match": {
+            "type": "string",
+            "description": "Only rows whose key (Name, Rule or Term) contains this."
+          },
+          "limit": {
+            "type": "integer",
+            "description": "Rows per table (default 25, max 200)."
+          }
+        }
+      },
+      "applybiblepack": {
+        "kind": "modify",
+        "summary": "Apply a bible pack the author designed with you (mchatai-source story/designer/INTERVIEW.md): new tables, new columns and starting rows, checked first against story/designer/pack-schema.json. A pack with any problem is refused WHOLE — nothing is written — and the findings say what to fix.",
+        "required": [
+          "project",
+          "pack",
+          "authorAsked"
+        ],
+        "optional": [
+          "dryRun"
+        ],
+        "notes": "Run `python3 story/tools/validate_pack.py` on the pack first; this verb applies the same contract. `dryRun: true` writes nothing and reports what would be added, for showing the author. It never overwrites a cell the author filled, never re-adds a row the author deleted, and re-applying the same pack adds nothing; an updated pack adds only its new columns and rows. A project whose bible was still StoryMaker's list moves to Ledger tables (`movedToLedger`).",
+        "pairedCheck": "applet storymaker getBible {project}",
+        "example": {
+          "command": "applet",
+          "applet": "storymaker",
+          "verb": "applyBiblePack",
+          "args": {
+            "project": "The Salt Road",
+            "pack": {
+              "packID": "book-salt-road",
+              "entityKinds": [],
+              "fields": {}
+            },
+            "authorAsked": "Yes, make the tables."
+          }
+        },
+        "args": {
+          "project": {
+            "type": "string",
+            "description": "The project's id or exact title (from listProjects). A miss returns the projects that exist."
+          },
+          "pack": {
+            "type": "object",
+            "description": "The pack itself, inline (an object, or its JSON text). No path."
+          },
+          "authorAsked": {
+            "type": "string",
+            "description": "The author's own words approving these tables (quote them). Not needed for a dry run."
+          },
+          "dryRun": {
+            "type": "boolean",
+            "description": "Check the pack and report what it would add, writing nothing."
+          }
+        }
       }
     },
     "aividrecorder": {
