@@ -178,6 +178,9 @@ Build these on the vendored **versus-fighter runtime**. Fighters with frame data
     ```
     The proxy enforces an allowlist (`mchatai-source/proxy/allowlist.json`) — currently includes weather.gov, open-meteo, OpenStreetMap geocoding, Wikipedia, randomuser.me, dog.ceo, cat API, jokes, currency, Pokémon, spaceflight news, plus a few more. If you need a host that isn't on the list, the proxy returns HTTP 403 with `{ ok: false, howToAdd: "..." }` — surface that to the user; don't fall back to a third-party CORS proxy in production.
 
+### Phones
+11. **Playable on a phone held sideways (about 844×390) as well as upright (390×844).** In a short landscape view, put side panels BESIDE the play area and size the board or canvas from the available height. Never centre a column that can grow taller than the screen with `justify-content:center` inside a scrolling container: the overflow spills above the top, where it cannot be scrolled to, and hides the board (a tactics game shipped that way on 2026-10-15). Use `flex-start` or `safe center`. Before finishing, check 844×390, 932×430 and 390×844: the whole play area shows below the header and takes taps.
+
 ## Output
 
 **If you decided you're building an HTML mini-app** (the default — and the case for almost every Goal): output the COMPLETE artifact in a `\`\`\`miniapp` fenced JSON block. The JSON must have `id`, `name`, `manifest`, and `html` fields.
