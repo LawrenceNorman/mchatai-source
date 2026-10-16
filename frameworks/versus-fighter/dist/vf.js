@@ -1221,7 +1221,7 @@
       x.fillStyle = color || (frac > 0.3 ? "#ffd84a" : "#ff8a3c"); x.fillRect(bx, by, Math.round(w * frac), 6);
     }
     // Translucent panels keep the HUD readable over a stage's moon or skyline.
-    x.fillStyle = "rgba(8,8,18,0.5)"; x.fillRect(4, 4, 134, 36); x.fillRect(W - 140, 4, 136, this.focus ? 40 : 18);
+    x.fillStyle = "rgba(8,8,18,0.72)"; x.fillRect(4, 4, 134, 36); x.fillRect(W - 140, 4, 136, this.focus ? 40 : 18);
     bar(10, 10, 120, p);
     x.font = "8px monospace"; x.textAlign = "left"; x.fillStyle = "#fff"; x.fillText(p.name.toUpperCase(), 10, 26);
     for (var i = 0; i < this.lives; i++) { x.fillStyle = "#ffd84a"; x.fillRect(10 + i * 8, 30, 5, 5); }
