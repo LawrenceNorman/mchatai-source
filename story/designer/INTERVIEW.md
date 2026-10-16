@@ -106,7 +106,8 @@ authority; this section is how to use it well.
    only fetch when needed.
 5. On their OK, apply it with `storymaker.applyBiblePack` (the pack inline, plus the project).
    It checks the pack against the same contract and refuses it whole on any error, so nothing
-   is ever half-applied. Then raise the tables beside the conversation (`applet preview show`,
+   is ever half-applied. It treats every pack as designed: a draft without its `designer` block,
+   or one that skipped an axis, is refused. Then raise the tables beside the conversation (`applet preview show`,
    viewer `surface-ledger`) so the author can see and edit them.
 6. Anything still open (a cost not decided, a starting value to look up) becomes an open loop
    (`assistant.openLoop`), not a line in your summary that scrolls away.
