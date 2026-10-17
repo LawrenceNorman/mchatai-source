@@ -1,0 +1,68 @@
+{
+  "version": 1,
+  "updated": "2026-10-16",
+  "_source_of_truth": true,
+  "_comment": "Fiction prose rules for story/tools/prose_lint.py (STORYMAKER_AUTHORSHIP_PLAN.md QG.1), the same shape as history/lint-rules.json. Data, so a phrase is added by PR with no code change. HARD rules gate an agent's draft: a writer agent runs prose_lint until it exits 0, and a flagged span is repaired, never the whole chapter regenerated. On the AUTHOR's own text every finding is a note: the author's text always wins. Phrase rules run on narration only — text inside double quotation marks is a character speaking, and characters may talk in cliches. Another kind of book brings its own rules file (--rules); nothing in the engine assumes fiction. DECODER SAFETY: comment keys at this TOP LEVEL ONLY.",
+
+  "rules": [
+    {"id": "breath_unknown", "severity": "hard", "pattern": "\\blet out a breath (?:he|she|they|I|we) (?:didn'?t|did not|hadn'?t|had not) (?:know|realize)", "why": "the most-quoted machine cliche in fiction"},
+    {"id": "spine_shiver", "severity": "hard", "pattern": "\\bshivers?(?: ran| went| crawled| raced)? (?:down|up) (?:his|her|their|my|your) spine", "why": "stock physical reaction; show the specific one"},
+    {"id": "testament_to", "severity": "hard", "pattern": "\\ba testament to\\b", "why": "a summary verdict where a detail should be"},
+    {"id": "tapestry", "severity": "hard", "pattern": "\\b(?:rich |vibrant |intricate )?tapestr(?:y|ies) of\\b", "why": "a decorative abstraction that names nothing"},
+    {"id": "time_stood_still", "severity": "hard", "pattern": "\\btime (?:seemed to )?(?:stood|stand|stopped|stop) still\\b", "why": "stock; slow the scene with what happens in it"},
+    {"id": "little_did", "severity": "hard", "pattern": "\\blittle did (?:he|she|they|I|we) know\\b", "why": "an intrusive narrator spoiling the next scene"},
+    {"id": "every_fiber", "severity": "hard", "pattern": "\\bevery fib(?:er|re) of (?:his|her|their|my) being\\b", "why": "stock intensifier"},
+    {"id": "deafening_silence", "severity": "hard", "pattern": "\\b(?:the silence was deafening|deafening silence)\\b", "why": "stock paradox"},
+    {"id": "navigate_complexities", "severity": "hard", "pattern": "\\bnavigat(?:e|ed|ing) the complexit(?:y|ies)\\b", "why": "report language in a scene"},
+    {"id": "orbs", "severity": "hard", "pattern": "\\b(?:his|her|their) (?:\\w+ )?orbs\\b", "why": "eyes are eyes"},
+    {"id": "symphony_of", "severity": "soft", "pattern": "\\ba (?:symphony|cacophony|kaleidoscope|dance|whirlwind) of\\b", "why": "a decorative metaphor; name the sounds or the movements"},
+    {"id": "delve", "severity": "soft", "pattern": "\\bdelv(?:e|ed|es|ing)\\b", "why": "a word models overuse; people dig, search, read"},
+    {"id": "weight_of_words", "severity": "soft", "pattern": "\\bthe weight of (?:the|his|her|their|those|my|your) (?:words|silence|gaze|stare)\\b", "why": "abstract heaviness instead of a reaction"},
+    {"id": "air_thick", "severity": "soft", "pattern": "\\bthe air (?:was |grew |hung )?(?:thick|heavy|charged|electric) with\\b", "why": "stock atmosphere"},
+    {"id": "in_that_moment", "severity": "soft", "pattern": "\\bin that (?:moment|instant)\\b", "why": "usually removable without loss"},
+    {"id": "something_shifted", "severity": "soft", "pattern": "\\bsomething (?:shifted|changed|broke|cracked) (?:in|between|inside|within)\\b", "why": "a vague turn; say what changed"},
+    {"id": "couldnt_help", "severity": "soft", "pattern": "\\b(?:couldn'?t|could not) help but\\b", "why": "filler before the action"},
+    {"id": "barely_whisper", "severity": "soft", "pattern": "\\bbarely (?:above|more than) a whisper\\b", "why": "stock dialogue tag"},
+    {"id": "smile_tugged", "severity": "soft", "pattern": "\\b(?:a )?(?:smile|grin) (?:tugged|played|danced) (?:at|on|across)\\b", "why": "stock expression"},
+    {"id": "palpable", "severity": "soft", "pattern": "\\b(?:palpable (?:tension|fear|relief)|(?:tension|fear|relief) (?:was )?palpable)\\b", "why": "tells the reader what to feel"},
+    {"id": "felt_like_eternity", "severity": "soft", "pattern": "\\bfor what (?:felt|seemed) like (?:an eternity|forever|hours)\\b", "why": "stock time-stretch"},
+    {"id": "stark_reminder", "severity": "soft", "pattern": "\\ba stark reminder\\b", "why": "a summary of what the scene should show"},
+    {"id": "ministrations", "severity": "soft", "pattern": "\\bministrations\\b", "why": "a euphemism that hides the action"},
+    {"id": "mix_of", "severity": "soft", "pattern": "\\ba (?:strange |curious )?(?:mix|mixture|blend) of [a-z]+ and [a-z]+\\b", "why": "two named feelings instead of one shown"},
+    {"id": "heart_pounding", "severity": "soft", "pattern": "\\bheart (?:pounding|hammering|racing|thundering) (?:in|against) (?:his|her|their|my) (?:chest|ribs)\\b", "why": "stock fear"},
+    {"id": "world_fell_away", "severity": "soft", "pattern": "\\bthe (?:world|rest of the world|room) (?:seemed to )?(?:fell|fall|faded|fade|melted|melt|dissolved) away\\b", "why": "stock focus shift"}
+  ],
+
+  "endings": {
+    "severity": "soft",
+    "lastParagraphs": 2,
+    "patterns": [
+      "\\b(?:he|she|they|I|we) (?:finally )?(?:realized|realised|understood|knew) (?:then |now )?(?:that|what|how|why)\\b",
+      "\\bfor the first time\\b",
+      "\\b(?:it|that) was (?:only )?then that\\b",
+      "\\bmaybe (?:that|this) was (?:enough|the point|what)\\b",
+      "\\band (?:that|this) was enough\\b",
+      "\\bdeep down\\b",
+      "\\bin the end\\b",
+      "\\b(?:this|that) was (?:what|how|why) \\w+",
+      "\\bsomehow\\b"
+    ],
+    "why": "a closing paragraph that explains the scene to the reader; end on the image or the act and let the reader do the understanding"
+  },
+
+  "repeats": {
+    "severity": "soft",
+    "minWords": 6,
+    "maxReported": 12,
+    "why": "the same six or more words in two places; an editor's repetition note. A deliberate refrain is fine — say so and move on"
+  },
+
+  "statScreens": {
+    "linePattern": "^\\s*(?:\\[[^\\]\\n]{1,80}\\]|[│|║┃].*[│|║┃]|[A-Z][A-Za-z .'-]{0,30}:\\s*[-+]?\\d[\\d,./%]*(?:\\s*/\\s*\\d[\\d,]*)?\\b.{0,40})\\s*$",
+    "minLines": 2,
+    "maxPerChapter": 2,
+    "maxLinesPerScreen": 10,
+    "severity": "hard",
+    "why": "status boxes are seasoning: more than two in a chapter, or one longer than ten lines, and the page turns into a spreadsheet. The numbers live in the bible's Stat Changes, where a printed box is checked against them"
+  }
+}

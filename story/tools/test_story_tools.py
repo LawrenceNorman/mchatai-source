@@ -18,6 +18,7 @@ import unittest
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import _story  # noqa: E402
+import prose_lint  # noqa: E402
 import validate_pack  # noqa: E402
 
 FIX = os.path.join(_story.DESIGNER, "fixtures")
@@ -280,6 +281,100 @@ class LimitsAreContent(unittest.TestCase):
         c["limits"]["alwaysTierFieldsPerKind"] = 1
         f = validate_pack.validate(load(os.path.join(FIX, "salt-road.pack.json")), contract_=c)
         self.assertIn("tier-budget", hard(f))
+
+
+# ── QG.1: the prose gate ──────────────────────────────────────────────────────
+
+PROSE = os.path.join(_story.STORY, "fixtures", "prose")
+
+
+class ProseLint(unittest.TestCase):
+    def setUp(self):
+        self.rules = prose_lint.load_rules()
+        self.clean = read(os.path.join(PROSE, "ch01-clean.md"))
+        self.planted = read(os.path.join(PROSE, "ch02-planted.md"))
+
+    def rules_fired(self, findings, severity=None):
+        return {f["rule"] for f in findings if severity is None or f["severity"] == severity}
+
+    def test_clean_chapter_has_no_findings(self):
+        self.assertEqual(prose_lint.chapter_findings(self.clean, self.rules), [])
+
+    def test_every_planted_defect_fires(self):
+        f = prose_lint.chapter_findings(self.planted, self.rules, "ch02")
+        self.assertEqual(self.rules_fired(f, "hard"), {"breath_unknown", "tapestry", "stat_screens", "stat_screen_long"})
+        self.assertEqual(self.rules_fired(f, "soft"), {"explaining_ending"})
+
+    def test_a_cliche_in_dialogue_is_the_character_speaking(self):
+        spoken = '"Little did they know," he said.'
+        self.assertEqual(prose_lint.chapter_findings(spoken, self.rules), [])
+        self.assertIn("little_did", self.rules_fired(prose_lint.chapter_findings("Little did they know.", self.rules)))
+
+    def test_a_shared_run_is_one_repeat(self):
+        f = prose_lint.repeat_findings([("ch01", self.clean), ("ch02", self.planted)], self.rules)
+        self.assertEqual(len(f), 1, f)
+        self.assertEqual(f[0]["rule"], "repeated_phrase")
+        self.assertEqual(f[0]["severity"], "soft")
+
+    def test_status_boxes_do_not_count_as_repeats(self):
+        box = "[Ilse Varro — Guild Rank 1]\n[Coin: 12 silver from the guild ledger]\n"
+        self.assertEqual(prose_lint.repeat_findings([("a", "One line.\n\n" + box), ("b", "Other.\n\n" + box)],
+                                                    self.rules), [])
+
+    def test_rules_are_data(self):
+        """A phrase added to the rules file fires with no code change, and a rules file for
+        another kind of book (no status boxes) checks none."""
+        rules = json.loads(json.dumps(self.rules))
+        rules["rules"].append({"id": "salt_road_word", "severity": "hard", "pattern": "\\bflats\\b", "why": "test"})
+        self.assertIn("salt_road_word", self.rules_fired(prose_lint.chapter_findings(self.clean, rules)))
+        rules.pop("statScreens")
+        self.assertNotIn("stat_screens", self.rules_fired(prose_lint.chapter_findings(self.planted, rules)))
+
+    def test_cli_exit_codes(self):
+        tool = os.path.join(HERE, "prose_lint.py")
+        clean = subprocess.run([sys.executable, tool, "chapter", os.path.join(PROSE, "ch01-clean.md")],
+                               capture_output=True, text=True)
+        self.assertEqual(clean.returncode, 0, clean.stdout)
+        bad = subprocess.run([sys.executable, tool, "book", os.path.join(PROSE, "ch01-clean.md"),
+                              os.path.join(PROSE, "ch02-planted.md")], capture_output=True, text=True)
+        self.assertEqual(bad.returncode, 1)
+        self.assertIn("repeated_phrase", bad.stdout)
+
+
+# ── QG.2: agents pinned to Opus by content ─────────────────────────────────────
+
+AGENTS = os.path.join(_story.STORY, "agents")
+
+
+def frontmatter(path):
+    text = read(path)
+    m = re.match(r"^---\n(.*?)\n---\n", text, re.S)
+    if not m:
+        return None
+    return dict(line.split(":", 1) for line in m.group(1).splitlines() if ":" in line)
+
+
+class StoryAgents(unittest.TestCase):
+    def test_every_agent_parses_and_pins_its_model(self):
+        files = [n for n in os.listdir(AGENTS) if n.endswith(".md") and n != "README.md"]
+        self.assertEqual(sorted(files), ["story-chapter-writer.md", "story-cold-reader.md", "story-continuity-auditor.md"])
+        for name in files:
+            meta = frontmatter(os.path.join(AGENTS, name))
+            self.assertIsNotNone(meta, f"{name} has no frontmatter")
+            meta = {k.strip(): v.strip() for k, v in meta.items()}
+            self.assertEqual(meta.get("name"), name[:-3], name)
+            self.assertTrue(meta.get("description"), name)
+            self.assertEqual(meta.get("model"), "opus", f"{name}: writers and checkers stay on the strongest model")
+
+    def test_the_app_does_not_name_the_agents(self):
+        """The model is content: no Swift in the app checkout names these agents or their model."""
+        app = os.path.join(os.path.dirname(os.path.dirname(_story.STORY)), "mchatai_macOS", "mChatAI", "mChatAI")
+        if not os.path.isdir(app):
+            self.skipTest("mchatai_macOS checkout not beside this one")
+        for root, _, files in os.walk(app):
+            for n in files:
+                if n.endswith(".swift"):
+                    self.assertNotIn("story-chapter-writer", read(os.path.join(root, n)), n)
 
 
 # ── the content itself ────────────────────────────────────────────────────────
