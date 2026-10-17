@@ -326,6 +326,19 @@ def compute(project):
         problems.append(finding("event_unverified", "soft",
                                 f"{len(unverified)} event(s) not counted — " + "; ".join(unverified[:6])
                                 + (" …" if len(unverified) > 6 else "")))
+    # The edge re-check (domains/pivotal-history/scout.md §2.3) reads the scout's for/against quotes
+    # instead of whole sources, so each must be verbatim in its source like any evidence. Two of the
+    # first scout's failed on OCR line-break hyphens and nothing caught it (2026-10-16).
+    bad_edge = []
+    for side, rows in (d.get("edgeEvidence") or {}).items():
+        for e in rows if isinstance(rows, list) else []:
+            sid, q = str(e.get("source", "")), e.get("quote", "")
+            if words(q) < t["minQuoteWords"] or norm(q).rstrip(" ,.") not in norm(project.source_text(sid) or ""):
+                bad_edge.append(f"{side} {sid}: {q[:50]!r}")
+    if bad_edge:
+        problems.append(finding("edge_evidence_unverified", "soft",
+                                f"{len(bad_edge)} edgeEvidence quote(s) are not verbatim in their source, so the re-check "
+                                "cannot rest on them — " + "; ".join(bad_edge[:4]) + (" …" if len(bad_edge) > 4 else "")))
     # An episode's `phase` (prelude, siege, relief, aftermath) is what a life's `lifeStage` is.
     stages = {e.get("lifeStage") or e.get("phase") for e in events if e.get("lifeStage") or e.get("phase")}
     counts = {

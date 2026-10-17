@@ -2625,6 +2625,16 @@ class DomainRichness(DomainCase):
         self.assertNotEqual(computed["mode"], "biography")    # an episode is never a life
         self.assertIn(computed["pov"], ("L0", "L0+L1"))
 
+    def test_edge_quotes_are_checked_like_evidence(self):
+        d = self.project.dossier
+        d["edgeEvidence"] = {"for": [{"source": "s1", "quote": "Mrs. Fixture came to Harbor Town from Ohio in 1890"}],
+                             "against": [{"source": "s1", "quote": "a sentence that the fixture gazette never printed anywhere"}]}
+        _hw.save_json(self.project.path("dossier.json"), d)
+        _, problems = richness.compute(self.project)
+        bad = [f for f in problems if f["rule"] == "edge_evidence_unverified"]
+        self.assertEqual(len(bad), 1)
+        self.assertIn("1 edgeEvidence", bad[0]["message"])
+
     def test_a_plain_project_counts_as_before(self):
         self.set_domain(None)
         computed, _ = richness.compute(self.project)
