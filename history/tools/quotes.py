@@ -25,7 +25,7 @@ def claim_findings(project, n):
     ch = project.chapter(n)
     if ch is None:
         return [finding("chapter_missing", "hard", f"chapters/{int(n):02d}.json does not exist")]
-    t = thresholds()
+    t = thresholds(project)
     sources = project.sources
     texts = {}
     out = []
@@ -66,7 +66,7 @@ def copy_words(text):
 
 def copy_findings(project, n):
     ch = project.chapter(n) or {}
-    t = thresholds()
+    t = thresholds(project)
     k = t["verbatimCopyWindowWords"]
     prose = copy_words(strip_quoted(ch.get("text", "")))
     if len(prose) < k:

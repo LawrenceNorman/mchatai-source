@@ -23,22 +23,93 @@ from _hw import (Project, finding, lint_rules, norm, quoted_spans, report,  # no
                  sentence_around, strip_quoted, thresholds, words)
 
 
-def compiled_rules(origin=None):
+def compiled_rules(origin=None, project=None):
+    """(id, severity, regex, why, scope). scope: "all" (default); "outsideL1" or "insideL1" for a
+    domain's point-of-view rules, which only mean something on one side of a declared passage."""
     out = []
-    for r in lint_rules():
+    for r in lint_rules(project):
         if origin and r.get("origin") != origin:
             continue
-        out.append((r["id"], r.get("severity", "hard"), re.compile(r["pattern"], re.I), r["why"]))
+        out.append((r["id"], r.get("severity", "hard"), re.compile(r["pattern"], re.I), r["why"], r.get("scope", "all")))
     return out
 
 
-def phrase_findings(text, rules=None, strip=True):
+def phrase_findings(text, rules=None, strip=True, l1=(), exempt=()):
+    """Phrase rules over `text`. `l1`: [(start, end)] of declared immersive passages; inside them a
+    rule named in `exempt` does not fire (the domain names which, in content) and every other rule
+    still does."""
     scan = strip_quoted(text) if strip else (text or "")
     out = []
-    for rid, sev, rx, why in rules or compiled_rules():
+    for rid, sev, rx, why, scope in rules or compiled_rules():
         for m in rx.finditer(scan):
+            inside = any(a <= m.start() < b for a, b in l1)
+            if (scope == "outsideL1" and inside) or (scope == "insideL1" and not inside) or (inside and rid in exempt):
+                continue
             out.append(finding(rid, sev, f"{m.group(0).strip()!r} — {why}", sentence_around(text, m.start(), m.end())))
     return out
+
+
+def pov_findings(project, ch, text, t):
+    """The point-of-view ladder (history/domains/pivotal-history/voice.md §2), mechanically.
+
+    A chapter may declare immersive (L1) passages in `passages`: [{"mode": "L1", "from": "<its first
+    words>", "to": "<its last words>"}]. Returns ([(start, end)] of the passages, findings). Only a
+    domain with a `pov` ladder allows them; a History Writer story is narrative nonfiction only
+    (design D1). An L1 passage must be earned by the dossier, open on a declaration the reader can
+    see, anchor a claim in every sentence, and stay under its share of the chapter."""
+    import cite   # cite imports nothing from here; kept local so the phrase rules load without it
+    passages = ch.get("passages") or []
+    if not passages:
+        return [], []
+    pov = t.get("pov")
+    if not isinstance(pov, dict):
+        return [], [finding("pov_mode_unsupported", "hard",
+                            "this chapter declares point-of-view passages, but its project has no point-of-view "
+                            "ladder (project.json `domain`) — a History Writer story is narrative nonfiction only")]
+    modes = set(pov.get("modes") or [])
+    patterns = [re.compile(p) for p in pov.get("l1DeclarationPatterns") or []]
+    anchors = [norm(c["anchor"]) for c in ch.get("claims", []) if c.get("anchor") and not c.get("retired")]
+    spans, out = [], []
+    for i, p in enumerate(passages, 1):
+        mode, a, b = p.get("mode"), p.get("from") or "", p.get("to") or ""
+        if mode not in modes or mode == "L0":
+            why = ("L2, historical fiction, is out of scope for this domain" if mode == "L2"
+                   else f"mode {mode!r} is not one this domain declares ({', '.join(sorted(modes)) or 'none'})")
+            out.append(finding("pov_mode_unknown", "hard", f"passage {i}: {why}"))
+            continue
+        start = text.find(a) if a else -1
+        stop = text.find(b, start) if start >= 0 and b else -1
+        if start < 0 or stop < 0:
+            out.append(finding("l1_span_unresolved", "hard",
+                               f"passage {i}: its `from` and `to` words must be copied exactly from the chapter, in order"))
+            continue
+        end = stop + len(b)
+        spans.append((start, end))
+        body = text[start:end]
+        sents = [s for _, ss in cite.paragraphs(body) for s in ss]
+        if sents and not any(rx.search(sents[0]) for rx in patterns):
+            out.append(finding("l1_undeclared", "hard",
+                               "an immersive passage opens on its declaration, so the reader knows the mode has changed "
+                               f"(voice.md §2: {', '.join(pov.get('l1DeclarationExamples') or [])})", sents[0][:200]))
+        for s in sents:
+            ns = norm(s)
+            if not any(an and an in ns for an in anchors):
+                out.append(finding("l1_unanchored", "hard",
+                                   "every sentence of an immersive passage carries a sourced detail — anchor a claim in it, "
+                                   "or cut it", s[:200]))
+    if spans:
+        if (project.dossier.get("computed") or {}).get("pov") != "L0+L1":
+            out.append(finding("l1_not_earned", "hard",
+                               "the dossier does not earn immersive passages (richness.py dossier: point of view "
+                               f"{(project.dossier.get('computed') or {}).get('pov') or 'not computed'}) — tell it in L0"))
+        n = words(text)
+        share = sum(words(text[a:b]) for a, b in spans) / n if n else 0
+        cap = pov.get("l1ShareMax", 0)
+        if share > cap:
+            out.append(finding("l1_share", "hard",
+                               f"immersive passages are {100 * share:.0f}% of the chapter (cap {100 * cap:.0f}%) — the "
+                               "sourced narrative carries the chapter"))
+    return spans, out
 
 
 def is_title(inner):
@@ -110,10 +181,12 @@ def chapter_findings(project, n):
     ch = project.chapter(n)
     if ch is None:
         return [finding("chapter_missing", "hard", f"chapters/{int(n):02d}.json does not exist")]
-    t = thresholds()
+    t = thresholds(project)
     text = ch.get("text", "")
     claims = ch.get("claims", [])
-    out = phrase_findings(text)
+    spans, out = pov_findings(project, ch, text, t)
+    exempt = set((t.get("pov") or {}).get("l1ExemptRules") or []) if spans else set()
+    out += phrase_findings(text, compiled_rules(project=project), l1=spans, exempt=exempt)
 
     # §2 — a quotation is verbatim from a claimed source, or it is invented.
     evidence = " \n ".join(norm(c.get("evidence", "")) for c in claims)

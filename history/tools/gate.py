@@ -47,7 +47,7 @@ def intro_findings(project):
     out = (quotes.claim_findings(project, 0) + quotes.copy_findings(project, 0)
            + voice_lint.chapter_findings(project, 0) + checks.number_findings(project, 0)
            + checks.correction_findings(project, 0) + cite.anchor_findings(project, 0))
-    lo, hi = thresholds().get("introWords", [200, 600])
+    lo, hi = thresholds(project).get("introWords", [200, 600])
     n = words(ch.get("text", ""))
     if n > hi:
         out.append(finding("over_ceiling", "hard", f"the introduction is {n} words, over its {hi}-word ceiling — cut, do not reword"))

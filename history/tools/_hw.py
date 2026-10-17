@@ -4,7 +4,8 @@ Standard library only, so a CLI session can run every tool with the system pytho
 
 A story PROJECT is one folder (the Workbench working folder, or any folder you choose):
 
-    project.json          {"slug", "subject", "series", "storymakerProject"?}
+    project.json          {"slug", "subject", "series", "storymakerProject"?, "domain"?}
+                          (domain: history/domains/<id>/, an overlay of thresholds and lint rules)
     dossier.json          what the record holds  (schemas/dossier.schema.json)
     sources/index.json    one record per fetched source
     sources/<id>.txt      the fetched text — a source counts only when this exists
@@ -39,12 +40,46 @@ def save_json(path, data):
     os.replace(tmp, path)
 
 
-def thresholds():
-    return load_json(os.path.join(HISTORY, "thresholds.json"))
+DOMAINS = os.path.join(HISTORY, "domains")
 
 
-def lint_rules():
-    return load_json(os.path.join(HISTORY, "lint-rules.json"))["rules"]
+def domain_of(project=None):
+    """The project's domain (`project.json` `domain`), or None for a History Writer story.
+
+    A domain (history/domains/<id>/) is a content overlay for a new kind of history: its
+    thresholds.json replaces the base keys it names, and its lint-rules.json adds rules. Nothing
+    of the base is removed, and a project with no `domain` reads exactly the base files. A domain
+    that does not exist is an error, never a silent fall-back to the base."""
+    if project is None:
+        return None
+    meta = load_json(project.path("project.json"), {}) or {}
+    dom = meta.get("domain")
+    if not dom:
+        return None
+    if not os.path.isdir(os.path.join(DOMAINS, dom)):
+        raise SystemExit(f"project.json names domain {dom!r}, which history/domains/ does not have")
+    return dom
+
+
+def domain_path(domain, *parts):
+    return os.path.join(DOMAINS, domain, *parts)
+
+
+def thresholds(project=None):
+    base = load_json(os.path.join(HISTORY, "thresholds.json"))
+    dom = domain_of(project)
+    if dom:
+        over = load_json(domain_path(dom, "thresholds.json"), {}) or {}
+        base = {**base, **{k: v for k, v in over.items() if not k.startswith("_")}}
+    return base
+
+
+def lint_rules(project=None):
+    rules = list(load_json(os.path.join(HISTORY, "lint-rules.json"))["rules"])
+    dom = domain_of(project)
+    if dom:
+        rules += (load_json(domain_path(dom, "lint-rules.json"), {}) or {}).get("rules", [])
+    return rules
 
 
 # ── text ─────────────────────────────────────────────────────────────────────

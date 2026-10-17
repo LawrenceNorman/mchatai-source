@@ -69,12 +69,15 @@ class CatalogPacksPass(unittest.TestCase):
         r = cli("--catalog")
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
 
-    def test_campaign_sketch_passes_and_is_not_in_the_catalog(self):
+    def test_campaign_sketch_and_catalog_pack_pass(self):
+        # The owner gave the go on 2026-10-16 (docs/PIVOTAL_HISTORY_ENGINE.md §8): the sketch became
+        # story/schemas/campaign.json. The sketch stays as the designer's domain-agnostic fixture.
         f = validate_pack.validate(load(os.path.join(FIX, "campaign.sketch.json")))
         self.assertEqual(hard(f), set(), f)
+        f = validate_pack.validate(load(os.path.join(_story.SCHEMAS, "campaign.json")))
+        self.assertEqual(f, [], f)
         index = load(os.path.join(_story.SCHEMAS, "_index.json"))
-        self.assertNotIn("campaign", [p["id"] for p in index["packs"]],
-                         "the campaign pack is a sketch until the owner says go")
+        self.assertIn("campaign", [p["id"] for p in index["packs"]])
 
 
 class DesignedFixturePasses(unittest.TestCase):

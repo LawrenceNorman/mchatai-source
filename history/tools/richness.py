@@ -6,6 +6,9 @@ The model never asserts a tier. This computes it from what was actually fetched:
   richness.py dossier  <project>   count the record, pick tier + mode + ceiling, write dossier.computed
   richness.py plan     <project>   check the plan against the dossier, write each chapter's ceiling
   richness.py validate <project>   structural checks only; writes nothing
+  richness.py table    <stories-dir> [--json]
+                                   one row per scouted dossier: tier, mode, point of view, ceiling,
+                                   sources, licence-clean sources, events, own words, edge re-check
   richness.py mentions <project> [source-id ...] [--terms "A|B"] [--window N] [--max-words N]
                                    print only the passages around each mention of the subject
                                    (or of --terms): the words the tier counts, and all a scout
@@ -29,6 +32,7 @@ does hold).
 Exit 0 when the dossier reaches at least tier C (or the plan is consistent); 1 otherwise.
 """
 import datetime
+import json
 import os
 import re
 import sys
@@ -38,10 +42,24 @@ from _hw import Project, finding, load_json, norm, report, save_json, thresholds
 
 # A year, or a decade ("1890s" reads as 1890): sources often date a life only by decade.
 YEAR = re.compile(r"\b(1[5-9]\d\d|20\d\d)(?=s?\b)")
+# Older history (history/domains/pivotal-history): "52 BC", "AD 9", "1223", "1223-05-31". A BC year
+# reads as negative, so years still sort in order. Kept apart from YEAR so a Seattle date string is
+# read exactly as before.
+ERA_YEAR = re.compile(r"\b(\d{1,4})\s*(BCE|BC|B\.C\.)|\b(?:AD|A\.D\.|CE)\s*(\d{1,4})\b|\b(\d{1,4})\s*(?:AD|A\.D\.|CE)\b")
+MEDIEVAL_YEAR = re.compile(r"\b(1[0-4]\d\d)(?=s?\b)")
 
 
 def year_of(date):
-    m = YEAR.search(str(date or ""))
+    s = str(date or "")
+    m = ERA_YEAR.search(s)
+    if m:
+        if m.group(1):
+            return -int(m.group(1))
+        return int(m.group(3) or m.group(4))
+    m = YEAR.search(s)
+    if m:
+        return int(m.group(1))
+    m = MEDIEVAL_YEAR.search(s)
     return int(m.group(1)) if m else None
 
 
@@ -244,7 +262,7 @@ def event_evidence_problem(project, event, srcs, usable, t):
 
 def compute(project):
     d = project.dossier
-    t = thresholds()
+    t = thresholds(project)
     if not d.get("subject"):
         return None, [finding("dossier_missing", "hard", "dossier.json is missing or has no `subject`")]
     aliases = list(dict.fromkeys([d["subject"]] + list(d.get("aliases") or [])))
@@ -308,7 +326,8 @@ def compute(project):
         problems.append(finding("event_unverified", "soft",
                                 f"{len(unverified)} event(s) not counted — " + "; ".join(unverified[:6])
                                 + (" …" if len(unverified) > 6 else "")))
-    stages = {e.get("lifeStage") for e in events if e.get("lifeStage")}
+    # An episode's `phase` (prelude, siege, relief, aftermath) is what a life's `lifeStage` is.
+    stages = {e.get("lifeStage") or e.get("phase") for e in events if e.get("lifeStage") or e.get("phase")}
     counts = {
         "independentSources": len(groups),
         "beyondEncyclopedias": beyond,
@@ -321,6 +340,15 @@ def compute(project):
         # about John T. Gayton as one.
         "wordsAboutSubject": sum(max(usable[sid]["fresh"] for sid in g) for g in content),
     }
+    # A domain that scores licences (history/domains/pivotal-history): how many independent groups
+    # hold at least one source a paid book may quote and reuse (sourcing.md §5), and how many words
+    # about the subject those sources carry. Facts-only sources still give facts; these give scenes.
+    clean = {c.lower() for c in t.get("licenceCleanClasses") or []}
+    if clean:
+        lic = {sid: (project.sources[sid].get("license") or "facts-only").lower() for sid in usable}
+        counts["licenceClean"] = sum(1 for g in groups if any(lic[sid] in clean for sid in g))
+        counts["licenceCleanWords"] = sum(usable[sid]["fresh"] for sid in usable if lic[sid] in clean)
+        counts["ownWordsWords"] = sum(usable[sid]["own"] or 0 for sid in usable)
 
     tier, unmet = None, {}
     for tr in t["tiers"]:
@@ -357,6 +385,15 @@ def compute(project):
         computed["ceilingWords"] = ceiling
         computed["estimatedChapters"] = max(tier["chapters"][0],
                                             min(tier["chapters"][1], round(ceiling / t["wordsPerChapter"]) or 1))
+    # The point-of-view ladder (history/domains/pivotal-history/voice.md §2): an immersive (L1)
+    # passage is EARNED by the record, as length is. Computed here, never chosen by a model.
+    pov = t.get("pov")
+    if isinstance(pov, dict):
+        need = pov.get("l1Requires") or {}
+        short = [f"{k} {counts.get(k, 0)} < {v}" for k, v in need.items() if counts.get(k, 0) < v]
+        computed["pov"] = "L0" if short or not tier else "L0+L1"
+        if short:
+            computed["povUnmet"] = short
     if tier and tier["id"] == "C" and mode == "biography":
         problems.append(finding("mode_tier_mismatch", "soft",
                                 "a biography at portrait length — check the life stages are really sourced"))
@@ -376,6 +413,9 @@ def cmd_dossier(project):
         print(f"  {k:<20} {v}")
     if computed.get("ceilingWords"):
         print(f"  ceiling              {computed['ceilingWords']} words, ~{computed['estimatedChapters']} chapter(s)")
+    if computed.get("pov"):
+        unmet = f" (L1 needs: {'; '.join(computed['povUnmet'])})" if computed.get("povUnmet") else ""
+        print(f"  point of view        {computed['pov']}{unmet}")
     for tid, why in computed["unmet"].items():
         print(f"  not tier {tid}: {'; '.join(why)}")
     if computed["tier"] is None:
@@ -385,7 +425,7 @@ def cmd_dossier(project):
 
 
 def validate_plan(project, write):
-    d, plan, t = project.dossier, project.plan, thresholds()
+    d, plan, t = project.dossier, project.plan, thresholds(project)
     out = []
     computed = d.get("computed") or {}
     if not computed.get("ceilingWords"):
@@ -582,7 +622,54 @@ def cmd_mentions(project, argv):
     return 0
 
 
+TIER_ORDER = {"A": 0, "B": 1, "C": 2}
+
+
+def table_rows(stories_dir):
+    """One row per scouted dossier under `stories_dir`, from what richness.py computed and the
+    re-check recorded — never from a model's summary. Best tier first, then most words."""
+    rows = []
+    for slug in sorted(os.listdir(stories_dir)):
+        project = Project(os.path.join(stories_dir, slug))
+        d = project.dossier
+        if not d.get("subject"):
+            continue
+        c = d.get("computed") or {}
+        n = c.get("counts") or {}
+        check = d.get("edgeCheck") or {}
+        rows.append({
+            "slug": slug, "subject": d["subject"], "edge": d.get("edge") or "",
+            "tier": c.get("tier"), "mode": c.get("mode"), "pov": c.get("pov"),
+            "ceilingWords": c.get("ceilingWords"), "independentSources": n.get("independentSources"),
+            "licenceClean": n.get("licenceClean"), "datedEvents": n.get("datedEvents"),
+            "ownWords": n.get("ownWords"), "wordsAboutSubject": n.get("wordsAboutSubject"),
+            "edgeCheck": check.get("verdict"), "counted": bool(c),
+            "years": [c.get("firstEventYear"), c.get("lastEventYear")],
+        })
+    rows.sort(key=lambda r: (TIER_ORDER.get(r["tier"], 9), -(r["wordsAboutSubject"] or 0)))
+    return rows
+
+
+def cmd_table(stories_dir, as_json=False):
+    rows = table_rows(stories_dir)
+    if as_json:
+        print(json.dumps(rows, indent=1, ensure_ascii=False))
+        return 0
+    head = f"{'episode':<34} {'tier':<4} {'mode':<9} {'pov':<6} {'ceiling':>7} {'srcs':>4} {'clean':>5} {'events':>6} {'own':>3} {'words':>6}  edge check"
+    print(head)
+    print("-" * len(head))
+    for r in rows:
+        print(f"{r['subject'][:34]:<34} {r['tier'] or '—':<4} {r['mode'] or '—':<9} {r['pov'] or '—':<6} "
+              f"{r['ceilingWords'] or '—':>7} {r['independentSources'] if r['independentSources'] is not None else '—':>4} "
+              f"{r['licenceClean'] if r['licenceClean'] is not None else '—':>5} {r['datedEvents'] if r['datedEvents'] is not None else '—':>6} "
+              f"{r['ownWords'] if r['ownWords'] is not None else '—':>3} {r['wordsAboutSubject'] or '—':>6}  "
+              f"{r['edgeCheck'] or ('not counted' if not r['counted'] else 'not re-checked')}")
+    return 0
+
+
 def main(argv):
+    if len(argv) >= 3 and argv[1] == "table":
+        return cmd_table(argv[2], "--json" in argv)
     if len(argv) < 3 or argv[1] not in ("dossier", "plan", "validate", "mentions"):
         print(__doc__)
         return 2

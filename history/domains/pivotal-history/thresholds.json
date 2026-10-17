@@ -1,0 +1,54 @@
+{
+  "version": 1,
+  "updated": "2026-10-16",
+  "_source_of_truth": "mchatai-source/history/domains/pivotal-history/thresholds.json",
+  "_comment": "Overlay on history/thresholds.json for a project whose project.json says \"domain\": \"pivotal-history\". Each key here REPLACES the base key of the same name; every other base key (minQuoteWords, verbatimCopyWindowWords, eraShareMax, sourceRatio, introWords, the editor) holds unchanged. Read by tools/_hw.thresholds(project). Like the base file, these are first calibrations: the pilot measures them.",
+
+  "eventEvidenceRequired": true,
+  "_eventEvidenceRequired": "On from the first scout. Every dossier event carries a verbatim quote that richness.py checks, so a scout on a cheaper model can miss an event but cannot add one (design D8).",
+
+  "biographyMinLifeStages": 99,
+  "_biographyMinLifeStages": "An episode is never a biography. Its events carry a `phase` (prelude, march, siege, battle, aftermath) where a life's carry a `lifeStage`, and four phases inside one season are still one episode. 99 keeps richness.py from calling it a life; the mode is episode, or ensemble for a long campaign told through its turning points.",
+  "episodeWindowYears": 5,
+
+  "encyclopediaPublishers": ["Wikipedia", "HistoryLink", "Encyclopaedia Britannica", "World History Encyclopedia", "Livius"],
+  "_encyclopediaPublishers": "Summaries of other work. Tier A needs sources beyond them.",
+
+  "licenceCleanClasses": ["pd", "cc-by"],
+  "_licenceCleanClasses": "richness.py counts licenceClean (independent groups holding at least one source a paid book may quote and reuse, history/sourcing.md §5) and licenceCleanWords. Facts-only sources still give facts; licence-clean ones also give scenes and quotations.",
+
+  "tiers": [
+    {
+      "id": "A",
+      "label": "book-length",
+      "words": [10000, 20000],
+      "chapters": [8, 14],
+      "requires": {"independentSources": 8, "beyondEncyclopedias": 3, "licenceClean": 3, "datedEvents": 25, "lifeStages": 3, "ownWords": 1, "wordsAboutSubject": 17000}
+    },
+    {
+      "id": "B",
+      "label": "novella-length",
+      "words": [4000, 8000],
+      "chapters": [4, 7],
+      "requires": {"independentSources": 4, "beyondEncyclopedias": 1, "licenceClean": 2, "datedEvents": 12, "lifeStages": 2, "ownWords": 0, "wordsAboutSubject": 7000}
+    },
+    {
+      "id": "C",
+      "label": "portrait",
+      "words": [1500, 3000],
+      "chapters": [1, 2],
+      "requires": {"independentSources": 2, "beyondEncyclopedias": 0, "licenceClean": 1, "datedEvents": 6, "lifeStages": 1, "ownWords": 0, "wordsAboutSubject": 2500}
+    }
+  ],
+  "_tiers": "The base tiers plus licenceClean, and one source beyond the encyclopedias at tier B: an episode told only from Wikipedia has nothing new to say. lifeStages counts an episode's phases.",
+
+  "pov": {
+    "modes": ["L0", "L1"],
+    "l1Requires": {"ownWords": 1, "ownWordsWords": 2000},
+    "l1DeclarationPatterns": ["^\\s*(?:Had|If) you\\b", "^\\s*Were you\\b"],
+    "l1DeclarationExamples": ["Had you stood on the outer wall that morning, …", "If you had been aboard the Monitor, …"],
+    "l1ExemptRules": ["stage_direction"],
+    "l1ShareMax": 0.35
+  },
+  "_pov": "voice.md §2, the point-of-view ladder. l1Requires: an immersive passage is earned by a participant's or eyewitness's own account (marked ownWords, with its span), as length is earned by words about the subject; richness.py dossier writes computed.pov as L0 or L0+L1. l1DeclarationPatterns: the first sentence of every L1 passage must match one, so the reader can see the mode change. l1ExemptRules: base rules that do not fire INSIDE a declared passage (stage_direction: 'in front of you stands' is the declared frame); every other rule still does, and outside a passage nothing is exempt. l1ShareMax: L1 words over chapter words. L2, historical fiction, is not a mode here."
+}

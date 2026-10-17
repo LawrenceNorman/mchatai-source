@@ -1,0 +1,50 @@
+{
+  "version": 1,
+  "updated": "2026-10-16",
+  "_source_of_truth": "mchatai-source/history/domains/pivotal-history/lint-rules.json",
+  "_comment": "Phrase rules a pivotal-history chapter keeps IN ADDITION to every rule in history/lint-rules.json (tools/_hw.lint_rules(project) appends these). Same shape as the base file, plus `scope`: all (default), outsideL1 (fires only outside a declared immersive passage) or insideL1 (only inside one). Patterns are compiled case-insensitive and run on the prose with quotations blanked, so a quoted speaker is never the narrator.",
+  "rules": [
+    {
+      "id": "undeclared_immersive",
+      "section": "§2",
+      "severity": "hard",
+      "origin": "pivotal-history-v1",
+      "scope": "outsideL1",
+      "pattern": "\\b(?:you|your|yours|yourself|yourselves)\\b|\\bwould have (?:seen|heard|felt|smelled|smelt|watched|stood|looked|noticed|tasted)\\b",
+      "why": "second person or a scene's 'would have' outside a declared immersive passage: the modes are never silently mixed. Tell it in L0, or declare an L1 passage in `passages`"
+    },
+    {
+      "id": "l1_interior",
+      "section": "§2",
+      "severity": "hard",
+      "origin": "pivotal-history-v1",
+      "scope": "insideL1",
+      "pattern": "\\byou\\s+(?:(?:would|might|could|must)\\s+)?(?:have\\s+)?(?:felt|feel|fear|feared|thought|think|wonder|wondered|hope|hoped|knew|know|believe|believed|dread|dreaded|want|wanted|longed|worried|prayed|despaired)\\b|\\byou\\s+(?:are|were|would be|would have been)\\s+(?:afraid|frightened|terrified|proud|glad|angry|sure|certain|relieved|desperate|exhausted)\\b",
+      "why": "an immersive passage places the reader where the sources place the soldiers; it never gives the reader, or anyone, a feeling no source records. Show what was there to see and hear"
+    },
+    {
+      "id": "edge_label",
+      "section": "§3",
+      "severity": "hard",
+      "origin": "pivotal-history-v1",
+      "pattern": "\\b(?:game[- ]chang(?:er|ers|ing)|revolutionary|decisive(?:ly)?|turned the tide|turn(?:ing)? of the tide|changed (?:the course of )?history|changed the world|unstoppable|invincible|(?:military|tactical|strategic) genius|ingenious|brilliant(?:ly)?)\\b",
+      "why": "a label in place of the mechanism. Show how the edge worked, what it cost and where it stopped working (Mechanism / Cost / Limit), and let the outcome say the rest"
+    },
+    {
+      "id": "othering_label",
+      "section": "§5",
+      "severity": "hard",
+      "origin": "pivotal-history-v1",
+      "pattern": "\\b(?:barbarians?|barbaric|barbarous|savages?|savagery|bloodthirsty|heathens?|uncivili[sz]ed|(?-i:hordes?))\\b",
+      "why": "a narrator's verdict on a people. Name them as they named themselves; a chronicler's word for an enemy stays inside a quotation, credited to the chronicler"
+    },
+    {
+      "id": "chronicle_testifies",
+      "section": "§4",
+      "severity": "hard",
+      "origin": "pivotal-history-v1",
+      "pattern": "\\b(?:the\\s+|this\\s+|that\\s+|one\\s+|another\\s+|a\\s+)?(?:chronicles?|annals?|commentar(?:y|ies)|accounts?|sources?|manuscripts?|texts?|sagas?)\\s+(?:says?|said|records?|recorded|tells?|told|gives?|gave|notes?|noted|claims?|claimed|puts?|states?|stated|reports?|reported|describes?|described|mentions?|mentioned|calls?|called|lists?|listed|counts?|counted|numbers?|numbered)\\b",
+      "why": "a document as the subject of a verb of telling (history/voice.md §3). When a figure needs its author, name the PERSON who wrote it and when: 'Caesar put the relief army at …', 'the Novgorod chronicler wrote that …'"
+    }
+  ]
+}

@@ -397,7 +397,7 @@ class EventEvidence(FixtureCase):
     def test_required_evidence_stops_bare_events_counting(self):
         real = richness.thresholds
         try:
-            richness.thresholds = lambda: dict(real(), eventEvidenceRequired=True)
+            richness.thresholds = lambda *a: dict(real(*a), eventEvidenceRequired=True)
             self.set_event(evidence="Mrs. Fixture came to Harbor Town from Ohio in 1890")
             computed, _ = richness.compute(self.project)
             self.assertEqual(computed["counts"]["datedEvents"], 1, "only the event with a checked quote counts")
@@ -548,9 +548,9 @@ class Citations(FixtureCase):
         _hw.save_json(self.project.chapter_path(0), intro)
         real = gate.thresholds
         try:
-            gate.thresholds = lambda: dict(real(), introWords=[5, 20])
+            gate.thresholds = lambda *a: dict(real(*a), introWords=[5, 20])
             self.assertIn("over_ceiling", self.rules(gate.intro_findings(self.project)))
-            gate.thresholds = lambda: dict(real(), introWords=[5, 600])
+            gate.thresholds = lambda *a: dict(real(*a), introWords=[5, 600])
             self.assertEqual(self.rules(gate.intro_findings(self.project)), set())
         finally:
             gate.thresholds = real
@@ -2435,6 +2435,236 @@ class ContentContracts(unittest.TestCase):
         for f in os.listdir(HERE):
             if f.endswith(".py") and f != "test_tools.py":
                 self.assertNotIn("/Users/", read(os.path.join(HERE, f)), f)
+
+
+# ── domains (history/domains/, 2026-10-16) ───────────────────────────────────
+
+PIVOTAL = os.path.join(_hw.DOMAINS, "pivotal-history")
+
+
+class DomainCase(FixtureCase):
+    """The demo project, joined to the pivotal-history domain."""
+
+    def setUp(self):
+        super().setUp()
+        self.set_domain("pivotal-history")
+
+    def set_domain(self, domain):
+        p = self.project.path("project.json")
+        meta = json.loads(read(p))
+        if domain:
+            meta["domain"] = domain
+        else:
+            meta.pop("domain", None)
+        _hw.save_json(p, meta)
+
+    def set_pov(self, pov):
+        d = self.project.dossier
+        d.setdefault("computed", {})["pov"] = pov
+        _hw.save_json(self.project.path("dossier.json"), d)
+
+    def chapter(self, text, passages=(), anchors=()):
+        """Chapter 3: `text`, with one claim anchored on each of `anchors`."""
+        claims = [{"id": f"p{i}", "text": a, "source": "s1", "kind": "fact", "anchor": a,
+                   "evidence": "Mrs. Fixture came to Harbor Town from Ohio in 1890 and opened her boarding house"}
+                  for i, a in enumerate(anchors, 1)]
+        _hw.save_json(self.project.chapter_path(3), {"chapter": 3, "text": text, "claims": claims,
+                                                     "passages": list(passages)})
+
+    def voice(self):
+        return voice_lint.chapter_findings(self.project, 3)
+
+
+L1_TEXT = ("Edith Fixture reached Harbor Town in 1890.\n\n"
+           "Had you stood on Water Street that spring, the mill whistle would have reached you from the river. "
+           "In front of you stands the lot she bought.\n\n"
+           "Fixture opened her house in 1893. It cost four hundred dollars, and it lodged twenty-two men from the "
+           "mills. In 1901 Fixture was elected president of the Ladies' Library Association, with eleven of the "
+           "fourteen votes cast. She promised one hundred books from her own shelves for its reading room in the "
+           "old bank building, which opened on the first of June.")
+L1_PASSAGE = {"mode": "L1", "from": "Had you stood on Water Street", "to": "the lot she bought."}
+L1_ANCHORS = ["reached Harbor Town in 1890", "the mill whistle would have reached you",
+              "In front of you stands the lot", "Fixture opened her house in 1893"]
+
+
+class DomainOverlay(DomainCase):
+    def test_a_domain_project_reads_the_overlay_and_a_plain_one_the_base(self):
+        t = _hw.thresholds(self.project)
+        self.assertTrue(t["eventEvidenceRequired"])
+        self.assertIn("pov", t)
+        self.assertEqual(t["minQuoteWords"], _hw.thresholds()["minQuoteWords"])   # a base key holds
+        self.set_domain(None)
+        self.assertEqual(_hw.thresholds(self.project), _hw.thresholds())
+        self.assertEqual(_hw.lint_rules(self.project), _hw.lint_rules())
+
+    def test_a_domain_adds_rules_and_removes_none(self):
+        base = {r["id"] for r in _hw.lint_rules()}
+        mine = {r["id"] for r in _hw.lint_rules(self.project)}
+        self.assertTrue(base < mine)
+        self.assertIn("undeclared_immersive", mine)
+
+    def test_an_unknown_domain_is_an_error_not_the_base(self):
+        self.set_domain("no-such-domain")
+        with self.assertRaises(SystemExit):
+            _hw.thresholds(self.project)
+
+
+class OldDates(unittest.TestCase):
+    def test_years_before_1500_and_bc(self):
+        cases = {"52 BC": -52, "c. 332 BCE": -332, "AD 9": 9, "9 AD": 9, "1223": 1223, "1223-05-31": 1223,
+                 "31 May 1223": 1223, "4 June 1942": 1942, "1890s": 1890, "1892-11-08": 1892, "": None, "spring": None}
+        for date, year in cases.items():
+            self.assertEqual(richness.year_of(date), year, date)
+
+    def test_bc_years_sort_in_order(self):
+        self.assertLess(richness.year_of("52 BC"), richness.year_of("51 BC"))
+
+
+class PointOfView(DomainCase):
+    def test_a_declared_earned_anchored_passage_passes(self):
+        self.set_pov("L0+L1")
+        self.chapter(L1_TEXT, [L1_PASSAGE], L1_ANCHORS)
+        found = self.rules(self.voice())
+        self.assertFalse(found & {"undeclared_immersive", "l1_undeclared", "l1_unanchored", "l1_interior",
+                                  "l1_not_earned", "l1_share", "stage_direction", "pov_mode_unknown"}, found)
+
+    def test_stage_direction_is_exempt_only_inside_the_passage(self):
+        self.set_pov("L0+L1")
+        self.chapter(L1_TEXT + " In front of you stands the bank.", [L1_PASSAGE], L1_ANCHORS)
+        self.assertIn("stage_direction", self.rules(self.voice()))
+
+    def test_second_person_outside_a_passage_fails(self):
+        self.chapter("Edith Fixture reached Harbor Town in 1890. You would have seen the mill.",
+                     anchors=["reached Harbor Town in 1890"])
+        self.assertIn("undeclared_immersive", self.rules(self.voice()))
+
+    def test_a_passage_must_open_on_its_declaration(self):
+        self.set_pov("L0+L1")
+        text = L1_TEXT.replace("Had you stood on Water Street that spring, the", "On Water Street that spring, the")
+        self.chapter(text, [dict(L1_PASSAGE, **{"from": "On Water Street that spring"})], L1_ANCHORS)
+        self.assertIn("l1_undeclared", self.rules(self.voice()))
+
+    def test_every_sentence_of_a_passage_carries_a_claim(self):
+        self.set_pov("L0+L1")
+        self.chapter(L1_TEXT, [L1_PASSAGE], [a for a in L1_ANCHORS if not a.startswith("In front")])
+        self.assertIn("l1_unanchored", self.rules(self.voice()))
+
+    def test_no_feelings_inside_a_passage(self):
+        self.set_pov("L0+L1")
+        text = L1_TEXT.replace("In front of you stands the lot she bought.",
+                               "In front of you stands the lot she bought, and you feel the cold.")
+        self.chapter(text, [dict(L1_PASSAGE, to="you feel the cold.")], L1_ANCHORS)
+        self.assertIn("l1_interior", self.rules(self.voice()))
+
+    def test_a_passage_the_dossier_did_not_earn_fails(self):
+        self.set_pov("L0")
+        self.chapter(L1_TEXT, [L1_PASSAGE], L1_ANCHORS)
+        self.assertIn("l1_not_earned", self.rules(self.voice()))
+
+    def test_a_long_passage_fails_its_share(self):
+        self.set_pov("L0+L1")
+        self.chapter(L1_TEXT.split("Fixture opened")[0], [L1_PASSAGE], L1_ANCHORS)
+        self.assertIn("l1_share", self.rules(self.voice()))
+
+    def test_fiction_is_not_a_mode(self):
+        self.set_pov("L0+L1")
+        self.chapter(L1_TEXT, [dict(L1_PASSAGE, mode="L2")], L1_ANCHORS)
+        self.assertIn("pov_mode_unknown", self.rules(self.voice()))
+
+    def test_a_history_writer_story_has_no_passages_at_all(self):
+        self.set_domain(None)
+        self.set_pov("L0+L1")
+        self.chapter(L1_TEXT, [L1_PASSAGE], L1_ANCHORS)
+        found = self.rules(self.voice())
+        self.assertIn("pov_mode_unsupported", found)
+        self.assertIn("stage_direction", found)   # nothing is exempt without a domain
+
+
+class DomainPhraseRules(DomainCase):
+    def found(self, text):
+        return self.rules(voice_lint.phrase_findings(text, voice_lint.compiled_rules(project=self.project)))
+
+    def test_labels_and_documents_as_witnesses(self):
+        self.assertIn("edge_label", self.found("The longbow was decisive."))
+        self.assertIn("othering_label", self.found("The barbarians crossed the river."))
+        self.assertIn("othering_label", self.found("The Mongol horde crossed the river."))
+        self.assertIn("chronicle_testifies", self.found("The chronicle says ten thousand fell."))
+
+    def test_what_they_leave_alone(self):
+        self.assertEqual(self.found("Batu's Golden Horde ruled the steppe."), set())
+        self.assertEqual(self.found("The Novgorod chronicler wrote that ten thousand fell."), set())
+        self.assertNotIn("othering_label", self.found('The abbot called them "the barbarians from the east."'))
+
+    def test_every_rule_the_domain_voice_names_is_enforced(self):
+        voice = read(os.path.join(PIVOTAL, "voice.md"))
+        named = set()
+        for bracket in re.findall(r"\[([a-z_, A-Za-z.0-9]+)\]", voice):
+            named |= set(re.findall(r"\b[a-z0-9]+(?:_[a-z0-9]+)+\b", bracket))
+        rule_ids = {r["id"] for r in _hw.lint_rules(self.project)}
+        tools = "".join(read(os.path.join(HERE, f))
+                        for f in os.listdir(HERE) if f.endswith(".py") and f != "test_tools.py")
+        missing = sorted(n for n in named if n not in rule_ids and f'"{n}"' not in tools)
+        self.assertEqual(missing, [])
+
+
+class DomainRichness(DomainCase):
+    def test_licence_counts_phases_and_point_of_view(self):
+        d = self.project.dossier
+        evidence = {"e02": "Mrs. Fixture came to Harbor Town from Ohio in 1890 and opened her boarding house",
+                    "e04": "Mrs. Edith Fixture was elected president of the Ladies' Library Association at its meeting"}
+        for e in d["events"]:
+            e["phase"] = e.pop("lifeStage", None) or "prelude"
+            if e["id"] in evidence:                      # the domain counts only events with a checked quote
+                e["evidence"] = evidence[e["id"]]
+        _hw.save_json(self.project.path("dossier.json"), d)
+        computed, _ = richness.compute(self.project)
+        n = computed["counts"]
+        self.assertIn("licenceClean", n)
+        self.assertGreaterEqual(n["licenceClean"], 1)          # s1 and s3 are pd
+        self.assertGreaterEqual(n["lifeStages"], 2)           # phases count as stages
+        self.assertNotEqual(computed["mode"], "biography")    # an episode is never a life
+        self.assertIn(computed["pov"], ("L0", "L0+L1"))
+
+    def test_a_plain_project_counts_as_before(self):
+        self.set_domain(None)
+        computed, _ = richness.compute(self.project)
+        self.assertNotIn("licenceClean", computed["counts"])
+        self.assertNotIn("pov", computed)
+
+    def test_the_table_reads_the_dossiers(self):
+        computed, _ = richness.compute(self.project)
+        d = self.project.dossier
+        d["computed"], d["edgeCheck"] = computed, {"verdict": "holds", "why": "fixture"}
+        _hw.save_json(self.project.path("dossier.json"), d)
+        rows = richness.table_rows(self.tmp)
+        self.assertEqual([r["slug"] for r in rows], ["project"])
+        self.assertEqual(rows[0]["edgeCheck"], "holds")
+
+
+class DomainContent(unittest.TestCase):
+    def test_domain_files_parse_and_every_source_has_a_licence(self):
+        for name in ("thresholds.json", "lint-rules.json", "series.json", "sources.json"):
+            json.loads(read(os.path.join(PIVOTAL, name)))
+        sources = json.loads(read(os.path.join(PIVOTAL, "sources.json")))["sources"]
+        self.assertEqual(len({s["id"] for s in sources}), len(sources))
+        for s in sources:
+            self.assertIn(s.get("licence"), ("pd", "cc-by", "facts-only", "clue-only"), s["id"])
+            self.assertTrue(s.get("basis"), s["id"])
+        wiki = next(s for s in sources if s["id"] == "wikipedia")
+        self.assertEqual(wiki["licence"], "facts-only")      # CC BY-SA: the fact, never the passage
+
+    def test_domain_rules_compile(self):
+        for r in json.loads(read(os.path.join(PIVOTAL, "lint-rules.json")))["rules"]:
+            re.compile(r["pattern"], re.I)
+            self.assertIn(r.get("scope", "all"), ("all", "outsideL1", "insideL1"), r["id"])
+
+    def test_candidates_are_leads_with_an_edge(self):
+        path = os.path.join(PIVOTAL, "candidates.json")
+        if not os.path.exists(path):
+            self.skipTest("no long list yet")
+        for c in json.loads(read(path))["candidates"]:
+            for key in ("slug", "subject", "edge", "edgeKind", "aliases", "start"):
+                self.assertTrue(c.get(key), (c.get("slug"), key))
 
 
 if __name__ == "__main__":
