@@ -85,6 +85,11 @@ class _Text(HTMLParser):
             self.main_out.append(s)
 
     def handle_starttag(self, tag, attrs):
+        if tag == "body" and any(t == "head" for t, _, _ in self.stack):
+            # <body> closes an unclosed <head>, as a browser does. An unterminated <meta> swallowed
+            # the </head> of NSA's Midway history, and the whole page read as head: 0 words
+            # (2026-10-16).
+            self.handle_endtag("head")
         a = dict(attrs)
         skipping = (tag in SKIP or (a.get("role") or "").lower() in SKIP_ROLES
                     or (a.get("aria-hidden") or "").lower() == "true"

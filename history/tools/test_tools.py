@@ -2641,6 +2641,22 @@ class DomainRichness(DomainCase):
         self.assertEqual(rows[0]["edgeCheck"], "holds")
 
 
+class SourceQuirks(unittest.TestCase):
+    """What the first pivotal-history scout's old sources taught the generic tools (2026-10-16)."""
+
+    def test_an_unterminated_meta_does_not_hide_the_page(self):
+        import fetch
+        body = " ".join(["The Japanese plan for Midway was read in advance."] * 12)
+        raw = ('<html><head><title>Part Two</title>\n<meta name="keyword" content="Midway"\n</head>\n'
+               f'<body><h3>Part Two</h3><p>{body}</p></body></html>')
+        title, text = fetch.html_to_text(raw)
+        self.assertEqual(title, "Part Two")
+        self.assertGreater(_hw.words(text), 50)
+
+    def test_ligatures_compare_as_letters(self):
+        self.assertEqual(_hw.norm("the Cæsar of Œdipus"), _hw.norm("the Caesar of Oedipus"))
+
+
 class DomainContent(unittest.TestCase):
     def test_domain_files_parse_and_every_source_has_a_licence(self):
         for name in ("thresholds.json", "lint-rules.json", "series.json", "sources.json"):

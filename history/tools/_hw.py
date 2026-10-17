@@ -111,12 +111,18 @@ def clean_source_text(text):
     return _PAGE_FURNITURE.sub("\n", (text or "").translate(_C1))
 
 
+# Old translations print ligatures ("Cæsar", "Œdipus"); a quote retyped with "ae" is the same words
+# (a Syracuse scout's evidence failed on it, 2026-10-16).
+_LIGATURES = str.maketrans({"æ": "ae", "Æ": "Ae", "œ": "oe", "Œ": "Oe", "ﬁ": "fi", "ﬂ": "fl"})
+
+
 def norm(text):
-    """Comparison form: dashes and curly quotes unified, invisible characters (soft hyphens,
-    zero-width spaces) dropped, whitespace collapsed, lowercased. The landmark quote check's
-    normalisation plus quote marks — retyping a quote with curly marks changes no word of it."""
+    """Comparison form: dashes and curly quotes unified, ligatures spelled out, invisible
+    characters (soft hyphens, zero-width spaces) dropped, whitespace collapsed, lowercased. The
+    landmark quote check's normalisation plus quote marks — retyping a quote with curly marks
+    changes no word of it."""
     text = (text or "").translate(_C1).translate(_INVISIBLE).translate(_DASHES).translate(_QUOTES)
-    return re.sub(r"\s+", " ", text).strip().lower()
+    return re.sub(r"\s+", " ", text.translate(_LIGATURES)).strip().lower()
 
 
 def words(text):
