@@ -1,0 +1,35 @@
+{
+  "id": "pivotal-history",
+  "displayName": "Pivotal Histories",
+  "blurb": "Finds battles, sieges and breakthroughs that turned on an edge (a tactic, a technology, a piece of science, a supply line) and writes them in StoryMaker with every fact sourced.",
+  "memoryScope": "pivotal-history",
+  "cadence": "manual",
+  "pattern": {"trigger": ["conversation"], "state": ["evidence", "artifacts"], "continuity": "project", "qualityControl": ["evidence", "deterministic"], "freshness": "none"},
+  "_whyNoRecordsShape": "Its rows (the campaign fact ledger: strength, supply, ground held) live inside StoryMaker projects and the story folder's plan.json, which have their own stores (history/domains/pivotal-history/voice.md §8). The author's decisions (which pilot, the opening rule) are open loops, not records.",
+  "access": "premium",
+  "tools": [
+    "storymaker.*",
+    "aiweb.getstate", "aiweb.getcurrentpage", "aiweb.listhistory", "aiweb.openpage",
+    "aiweb.inspectpage", "aiweb.screenshot", "aiweb.captureforassistant",
+    "aiwrite.*",
+    "ledger.*",
+    "preview.list", "preview.show",
+    "assistant.remember", "assistant.getContext", "assistant.recall",
+    "assistant.openLoop", "assistant.closeLoop", "assistant.listLoops"
+  ],
+  "freeTools": [
+    "storymaker.getstate", "storymaker.listprojects", "storymaker.getproject", "storymaker.getchapter",
+    "storymaker.getoutline", "storymaker.listsuggestions", "storymaker.listedits", "storymaker.getbible",
+    "aiweb.getstate", "aiweb.getcurrentpage", "aiweb.listhistory", "aiweb.openpage",
+    "aiweb.inspectpage", "aiweb.screenshot", "aiweb.captureforassistant",
+    "aiwrite.*",
+    "preview.list", "preview.show",
+    "assistant.remember", "assistant.getContext",
+    "assistant.openLoop", "assistant.closeLoop", "assistant.listLoops"
+  ],
+  "_whyFreeTools": "The History Writer's split (design D6): scouting and reading dossiers are free, writing into StoryMaker is premium. The scout report goes to AI Write, so aiwrite.* stays free, as it is for history-writer.",
+  "workdirLinks": ["history"],
+  "_whyWorkdirLinks": "./history carries the engine (PLAYBOOK, voice, tools) and this domain (history/domains/pivotal-history/). The campaign bible is applied by id through storymaker.applyBiblePack, so story/ needs no link.",
+  "budgetUSDPerDay": 5.00,
+  "backend": "claude"
+}

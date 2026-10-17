@@ -186,6 +186,7 @@ for them on every turn.
 | `job-search` | conversation, schedule (daily), relay | memories, records (Job Applications, Potential Jobs; `recordLeads` since CW.4) | thread-per-topic | enumerated; `mail.send` withheld | human (approval before submit) | — |
 | `news` | schedule (daily), relay | artifacts, evidence (sources) | — | enumerated | evidence (cite sources) | seen-ledger designed, not declared |
 | `history-writer` | conversation (manual), premium | evidence (dossier), artifacts (StoryMaker), records (Ledger) | project | enumerated + free tier | evidence (quote per claim) + deterministic (tone lint) | — |
+| `pivotal-history` | conversation (manual), premium | evidence (dossier), artifacts (StoryMaker; the campaign ledger lives in the project) | project | enumerated + free tier (the scout) | evidence (quote per claim) + deterministic (voice lint + declared L1 passages) | none |
 | `litrpg` | conversation (manual) | records (Ledger rows for rules), artifacts | — | enumerated | — | — |
 | `workout` | conversation, schedule (daily), relay | records (Training Log, filled by the daily check-in), memories | thread-per-topic | enumerated | — | — |
 | `music` | conversation (manual) | artifacts (LoopStar, audio library) | — | enumerated | — | — |
