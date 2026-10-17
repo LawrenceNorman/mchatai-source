@@ -87,8 +87,9 @@ def numeric_state(rows, as_of, modes):
       change   add N; with onlyWhen it is held aside as a variant, never folded in
       printed  what the page shows: recorded with the total at that point, never added
 
-    A temporary change (untilChapter) counts only while as_of < untilChapter. That is the app's
-    ModifierExpiry.atChapter, evaluated at the ASKED chapter.
+    A temporary change (untilChapter; the grid calls it "Ends in chapter") counts only while
+    as_of < untilChapter: poisoned in 5, cured in 7 → it counts in 5 and 6, not from 7 on. That is
+    the app's ModifierExpiry.atChapter, evaluated at the ASKED chapter.
 
     Returns {"value", "variants": [(condition, value)], "assertions": [(chapter, printed, derived)]}.
     """

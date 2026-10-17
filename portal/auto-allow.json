@@ -1,0 +1,38 @@
+{
+  "version": 1,
+  "lastUpdated": "2026-10-16",
+  "_source_of_truth": true,
+  "_comment": "Which tool calls a Workbench thread runs WITHOUT a permission card, for assistants whose assistant.json says \"autoAllow\": \"readOnly\" (assistants/PATTERNS.md §5; owner, 2026-10-16: designer threads should not ask before reading). Read by WorkbenchAutoAllow.swift. Read-only means: a read tool, a shell line made only of the commands below with no write redirect, the scripts below, or an applet verb whose kind is \"read\" in applet-verbs.json. Everything else asks, as before, and a missing or unreadable file auto-allows nothing. Writes keep their card, which has Allow All. DECODER SAFETY: comment keys at this TOP LEVEL ONLY.",
+
+  "readOnlyTools": ["Read", "Grep", "Glob", "LS", "NotebookRead"],
+
+  "readOnlyCommands": ["cat", "head", "tail", "wc", "grep", "egrep", "fgrep", "rg", "ls", "find", "stat", "file", "du", "diff", "cmp", "jq", "sort", "cut", "tr", "nl", "column", "printf", "echo", "pwd", "cd", "basename", "dirname", "realpath", "readlink", "test", "[", "true", "false", "date", "which", "md5", "shasum", "sed"],
+  "_readOnlyCommandsWhy": "Each only reads or prints. Left out on purpose: awk (system(), print > file), tee, xargs, env, sh/bash/zsh -c, python -c, uniq (a second file argument is an OUTPUT), curl, open.",
+
+  "refusedFlags": {
+    "find": ["-delete", "-exec", "-execdir", "-ok", "-okdir", "-fprint", "-fprint0", "-fprintf", "-fls"],
+    "sort": ["-o", "--output"],
+    "rg": ["--pre"],
+    "date": ["-s", "--set"],
+    "sed": ["-i", "--in-place", "-e", "-f", "--expression", "--file"]
+  },
+  "sedScriptPattern": "^(\\d+|\\$)?(,(\\d+|\\$))?p$",
+  "_sedWhy": "sed scripts can write (w) or execute (e), so only a line-range print is read-only: sed -n '1,80p' file.",
+
+  "readOnlyScripts": ["story/tools/validate_pack.py"],
+  "readOnlyPythonModules": ["json.tool"],
+
+  "neverAutoAllowedVerbs": ["loopstar.openjingle"],
+  "_neverAutoAllowedVerbsWhy": "Verbs applet-verbs.json calls \"read\" that can also write: openJingle with load: true installs parts onto the LoopStar board. A verb that writes in ANY mode is listed here or relabelled; WorkbenchAutoAllowTests fails on a write-sounding read verb that is neither.",
+
+  "shimNames": ["mchatai"],
+  "shimReadSubcommands": ["ready", "status", "skills"],
+  "shimDiscoveryCommands": ["portalVerbs", "portalApplets", "portalManifest"],
+
+  "sensitivePathPatterns": [
+    "/\\.ssh(/|$)", "/\\.aws(/|$)", "/\\.gnupg(/|$)", "/Library/Keychains(/|$)", "/\\.config/gh(/|$)",
+    "\\.netrc([\\s'\"]|$)", "(^|[/\\s'\"])\\.env([.\\s'\"]|$)", "\\.pem$", "id_(rsa|ed25519|ecdsa)", "credentials",
+    "mChatAIShell/config\\.json", "/Library/Cookies(/|$)", "\\.claude/\\.credentials"
+  ],
+  "_sensitiveWhy": "A read of these still asks: secrets would otherwise reach the model without anyone seeing the request."
+}

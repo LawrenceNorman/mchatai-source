@@ -131,6 +131,16 @@ applet that can write to other people.
 
 **Trap:** a convenient wildcard that quietly includes a sending verb.
 
+**Reads without a card.** `"autoAllow": "readOnly"` lets a thread run read-only tool calls
+(file reads, read-only shell commands, applet verbs whose kind is `read`) without a permission
+card. Writes still ask, and their card offers Allow All. The rules are content
+(`portal/auto-allow.json`); anything they do not name asks, and with no rules loaded everything
+asks. Choose it when the work is mostly reading the person's material (a bible designer).
+
+**Trap:** a verb labelled `read` that can write (`ledger.exportSeed` wrote a file; 2026-10-16).
+Relabel it in `applet-verbs.json` or list it in `neverAutoAllowedVerbs`;
+`WorkbenchAutoAllowTests` fails on a write-sounding read verb that is neither.
+
 ### 6. Quality control: how output is checked
 
 | Option | Example |
