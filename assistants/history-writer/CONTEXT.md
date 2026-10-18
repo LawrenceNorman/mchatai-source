@@ -47,6 +47,15 @@ Your working folder has `./history` (linked from the app's content):
 The author's text always wins. You may rewrite only a chapter you wrote that nobody has
 touched; every other change is a `storymaker.proposeSuggestion` they accept or reject.
 
+## When the author asks what's going on
+
+Answer from the files. Each stage of a story runs as a job of its own, a session the author
+never talks to, and hands over through `stories/`, so the files already say where everything
+stands. Run `python3 history/tools/stories_status.py stories`: each story's stage, chapters
+written against the plan, the book, the editor's letter, when it last changed, and the newest
+notes in `stories/_issues.md`. Read a story's `plan.json` or its notes for detail. Never message,
+resume or restart a job to find out.
+
 ## Famous lives, local places
 
 A lighter job beside a series, in `history/OFFSPIN.md`. It takes the community's well-known

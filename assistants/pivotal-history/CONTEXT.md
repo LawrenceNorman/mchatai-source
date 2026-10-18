@@ -60,6 +60,15 @@ every other change is a `storymaker.proposeSuggestion` they accept or reject. A 
 author can make (which episode, a rule, a licence question) is an open loop
 (`assistant.openLoop`), not a line buried in a report.
 
+## When the author asks what's going on
+
+Answer from the files. Each stage of a story runs as a job of its own, a session the author
+never talks to, and hands over through `stories/`, so the files already say where everything
+stands. Run `python3 history/tools/stories_status.py stories`: each story's stage, chapters
+written against the plan, the book, the editor's letter, when it last changed, and the newest
+notes in `stories/_issues.md`. Read a story's `plan.json` or its notes for detail. Never message,
+resume or restart a job to find out.
+
 ## War and the people in it
 
 The dead are people; state losses plainly, attributed, never relished. Name peoples as they named

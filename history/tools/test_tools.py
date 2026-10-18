@@ -2727,5 +2727,69 @@ class DomainContent(unittest.TestCase):
                 self.assertTrue(c.get(key), (c.get("slug"), key))
 
 
+class StoriesStatus(unittest.TestCase):
+    """stories_status.py: "what's going on" read from the files, never from a running job."""
+
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp()
+        self.stories = os.path.join(self.tmp, "stories")
+
+    def tearDown(self):
+        shutil.rmtree(self.tmp)
+
+    def write(self, rel, data=None):
+        path = os.path.join(self.stories, rel)
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w", encoding="utf-8") as fh:
+            fh.write(data if isinstance(data, str) else json.dumps(data or {}))
+
+    def test_each_stage_is_read_from_its_files(self):
+        import stories_status
+        self.write("scouted-one/dossier.json")
+        self.write("planned-one/plan.json", {"chapters": [{"n": 1}, {"n": 2}]})
+        self.write("writing-one/plan.json", {"chapters": [{"n": 1}, {"n": 2}, {"n": 3}]})
+        self.write("writing-one/chapters/00.json")
+        self.write("writing-one/chapters/01.json")
+        self.write("writing-one/chapters/03.json")
+        self.write("built-one/plan.json", {"chapters": [{"n": 1}]})
+        self.write("built-one/chapters/01.json")
+        self.write("built-one/book/manifest.json")
+        for rel in ("plan.json", "chapters/01.json", "book/manifest.json", "editor/letter.json"):
+            self.write("done-one/" + rel, {"chapters": [{"n": 1}]} if rel == "plan.json" else None)
+        self.write("_SCOUT_BRIEF.md", "not a story")
+        self.write("_issues.md", "# Issues\n\n## 2026-10-10 — writing-one (chapters)\n\nslow fetch\n\n"
+                                  "## 2026-10-11 — coordinating thread: tools\n\n"
+                                  "## 2026-10-12 — writing-one, done-one (finish)\n")
+        report = stories_status.status(self.stories)
+        rows = {r["slug"]: r for r in report["stories"]}
+        self.assertEqual(set(rows), {"scouted-one", "planned-one", "writing-one", "built-one", "done-one"})
+        self.assertEqual({s: r["stage"] for s, r in rows.items()},
+                         {"scouted-one": "scouted", "planned-one": "planned", "writing-one": "chapters",
+                          "built-one": "built", "done-one": "finished"})
+        w = rows["writing-one"]
+        self.assertEqual((w["chaptersWritten"], w["chaptersPlanned"], w["introduction"]), (2, 3, True))
+        self.assertEqual(w["missingChapters"], [2])
+        self.assertEqual(w["issueNotes"], 2)
+        self.assertEqual(w["latestIssue"], "2026-10-12 writing-one, done-one (finish)")
+        self.assertEqual(rows["done-one"]["issueNotes"], 1)
+        self.assertEqual(rows["scouted-one"]["issueNotes"], 0)
+        self.assertEqual((report["notes"]["count"], report["notes"]["aboutNoStory"]), (3, 1))
+        self.assertEqual(report["notes"]["latest"][0], "2026-10-12 writing-one, done-one (finish)")
+        # A slug inside a longer one is not a mention of it.
+        self.assertEqual(stories_status.issue_notes(self.stories, ["one"])[0][2], [])
+
+    def test_the_table_and_json_run_without_the_app(self):
+        self.write("planned-one/plan.json", {"chapters": [{"n": 1}]})
+        tool = os.path.join(HERE, "stories_status.py")
+        out = subprocess.run([sys.executable, tool, self.stories], capture_output=True, text=True)
+        self.assertEqual(out.returncode, 0, out.stderr)
+        self.assertIn("planned-one", out.stdout)
+        data = json.loads(subprocess.run([sys.executable, tool, self.stories, "--json"],
+                                         capture_output=True, text=True).stdout)
+        self.assertEqual(data["stories"][0]["stage"], "planned")
+        missing = subprocess.run([sys.executable, tool, os.path.join(self.tmp, "nope")], capture_output=True, text=True)
+        self.assertEqual(missing.returncode, 2)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=1)
