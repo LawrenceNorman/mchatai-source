@@ -27,7 +27,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from _story import (SCHEMAS, catalog, contract, finding, key, load_json,  # noqa: E402
-                    mode_of, numeric_state, report)
+                    mode_of, report, series_findings)
 
 HARD, SOFT = "hard", "soft"
 
@@ -482,36 +482,9 @@ def _check_changes(p, c, seed_keys, out):
 
     for (_, pk), rs in series.items():
         f = tracked[pk][1]
-        name = f.get("name")
-        who = rs[0]["who"].strip()
-        prev = None
-        for ch in sorted({r["chapter"] for r in rs}):
-            st = numeric_state(rs, ch, c["statChangeModes"])
-            here = [r for r in rs if r["chapter"] == ch]
-            for (a_ch, printed, derived) in st["assertions"]:
-                if a_ch == ch and abs(printed - derived) > 1e-9:
-                    out.append(finding("change-printed", HARD,
-                                       f"chapter {ch} prints {who}'s {name} as {printed:g}; the rows before it "
-                                       f"give {derived:g}", here[-1]["_where"]))
-            value = st["value"]
-            touched = any(mode_of(r.get("kind"), c["statChangeModes"]) in ("set", "change") and not r.get("onlyWhen")
-                          for r in here)
-            if not touched:
-                continue
-            if _is_number(f.get("min")) and value < f["min"]:
-                out.append(finding("change-range", HARD,
-                                   f"{who}'s {name} is {value:g} at chapter {ch}, below its min {f['min']}",
-                                   here[-1]["_where"]))
-            if _is_number(f.get("max")) and value > f["max"]:
-                out.append(finding("change-range", HARD,
-                                   f"{who}'s {name} is {value:g} at chapter {ch}, above its max {f['max']}",
-                                   here[-1]["_where"]))
-            d = f.get("direction")
-            if prev is not None and ((d == "nonDecreasing" and value < prev) or (d == "nonIncreasing" and value > prev)):
-                out.append(finding("change-direction", HARD,
-                                   f"{who}'s {name} goes {prev:g} → {value:g} at chapter {ch}; the column is "
-                                   f"{d}", here[-1]["_where"]))
-            prev = value
+        for rule, _, i, message in series_findings(rs, rs[0]["who"].strip(), f.get("name"), f,
+                                                   c["statChangeModes"]):
+            out.append(finding(rule, HARD, message, rs[i]["_where"]))
 
 
 def _check_catalog(p, c, cat, out, designed):

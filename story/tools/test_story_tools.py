@@ -18,11 +18,13 @@ import unittest
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import _story  # noqa: E402
+import bible_check  # noqa: E402
 import prose_lint  # noqa: E402
 import validate_pack  # noqa: E402
 
 FIX = os.path.join(_story.DESIGNER, "fixtures")
 BANKS = os.path.join(_story.DESIGNER, "question-banks")
+PLAN = os.path.join(_story.STORY, "fixtures", "planner")
 
 
 def load(path):
@@ -443,6 +445,172 @@ class FoldMatchesTheApp(unittest.TestCase):
                 {"chapter": 2, "kind": "change", "amount": 3, "untilChapter": 4}]
         self.assertEqual(_story.numeric_state(rows, 3, modes)["value"], 13)
         self.assertEqual(_story.numeric_state(rows, 4, modes)["value"], 10)
+
+
+# ── AA.1: a planned chapter, checked against the book's live bible ─────────────
+
+def _table(export, kind):
+    return next(t for t in export["tables"] if t["kind"] == kind)
+
+
+class BibleCheck(unittest.TestCase):
+    """bible_check reads a real storymaker.getBible export (fixtures/planner/salt-road-bible.json:
+    the Salt Road pack applied to a throwaway book). option-good.json must pass; each rule must
+    fire on its own defect."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.export = load(os.path.join(PLAN, "salt-road-bible.json"))
+        cls.pack = load(os.path.join(FIX, "salt-road.pack.json"))
+        cls.rules = bible_check.option_contract()
+        cls.modes = _story.contract()["statChangeModes"]
+        cls.good = load(os.path.join(PLAN, "option-good.json"))
+
+    def check(self, option, export=None, pack=True):
+        bible = bible_check.Bible(export or self.export, self.rules, self.pack if pack else None)
+        return bible_check.check(option, bible, self.rules, self.modes)
+
+    def alone(self, mutate, pack=True):
+        option = copy.deepcopy(self.good)
+        mutate(option)
+        return self.check(option, pack=pack)
+
+    @staticmethod
+    def change(stat, amount, kind="change", who="Ilse Varro", **more):
+        return lambda o: o["statChanges"].append(dict(who=who, stat=stat, kind=kind, amount=amount, **more))
+
+    def test_the_clean_option_passes_with_and_without_the_pack(self):
+        self.assertEqual(self.check(self.good), [])
+        self.assertEqual(self.check(self.good, pack=False), [])
+
+    def test_every_planted_defect_is_named(self):
+        bad = load(os.path.join(PLAN, "option-bad.json"))
+        self.assertEqual(hard(self.check(bad)), set(bad["_plantedRules"]))
+
+    def test_a_misspelt_name_offers_the_bibles_spelling(self):
+        fs = self.alone(lambda o: o["names"].append("Teodor Haskell"))
+        self.assertEqual(hard(fs), {"unknown-name"})
+        self.assertIn("did you mean 'Teodor Hask'", fs[0]["message"])
+
+    def test_an_alias_and_a_declared_new_name_resolve(self):
+        export = copy.deepcopy(self.export)
+        _table(export, "character")["rows"][0]["Aliases"] = "Ils, the apprentice"
+        option = copy.deepcopy(self.good)
+        option["names"] += ["Ils", "The Apprentice"]
+        option["statChanges"][0]["who"] = "Ils"
+        self.assertEqual(hard(self.check(option, export)), set(), "an alias is the same person, rows and all")
+        del option["newEntities"]
+        self.assertEqual(hard(self.check(option, export)), {"unknown-name"}, "Karsk passes only when declared")
+
+    def test_a_cost_must_be_paid(self):
+        self.assertEqual(hard(self.alone(lambda o: o["uses"][0].pop("pays"))), {"cost-unpaid"})
+        self.assertEqual(hard(self.alone(lambda o: o["uses"].append({"entity": "Rock Salt"}))), set(),
+                         "a row with no cost needs no payment")
+
+    def test_a_rule_is_named_by_its_name_or_category_not_by_a_word_in_it(self):
+        for said in ("The salt oath", "salt oath", "Oaths"):
+            self.assertEqual(hard(self.alone(lambda o: o.update(ruleTested=said))), set(), said)
+        for said in ("oath", "the tide oath", "Mechanism"):
+            self.assertEqual(hard(self.alone(lambda o: o.update(ruleTested=said))), {"unknown-rule"}, said)
+
+    def test_who_and_stat_must_exist_on_that_table(self):
+        self.assertEqual(hard(self.alone(self.change("Coin", 1, who="Mara"))), {"unknown-who"})
+        self.assertEqual(hard(self.alone(self.change("Stamina", 1))), {"unknown-stat"})
+        self.assertEqual(hard(self.alone(self.change("Toll", 1))), {"unknown-stat"}, "Toll is a Location's number")
+        self.assertEqual(hard(self.alone(self.change("Coin", 1, kind="minus"))), {"change-mode"})
+
+    def test_range_and_direction(self):
+        self.assertEqual(hard(self.alone(self.change("Coin", -20))), {"change-range"})
+        self.assertEqual(hard(self.alone(self.change("Coin", -20), pack=False)), set(),
+                         "no min in the bible or a pack: nothing to hold it to")
+        self.assertEqual(hard(self.alone(self.change("Favour", 11, kind="set"))), {"change-range"})
+        self.assertEqual(hard(self.alone(self.change("Guild Rank", -1))), {"change-range", "change-direction"})
+        self.assertEqual(hard(self.alone(self.change("Guild Rank", 1))), set())
+        self.assertEqual(hard(self.alone(self.change("Favour", -9, onlyWhen="if she lies"))), set(),
+                         "a conditional change is held aside, never folded in")
+
+    def test_a_min_on_the_bibles_own_column_needs_no_pack(self):
+        export = copy.deepcopy(self.export)
+        next(c for c in _table(export, "character")["columns"] if c["name"] == "Coin")["min"] = 0
+        option = copy.deepcopy(self.good)
+        self.change("Coin", -20)(option)
+        self.assertEqual(hard(self.check(option, export, pack=False)), {"change-range"})
+
+    def test_a_printed_number_must_match_the_rows_before_it(self):
+        self.assertEqual(hard(self.alone(lambda o: o["statChanges"][2].update(amount=12))), {"change-printed"})
+
+    def test_a_problem_already_in_the_bible_is_not_the_options(self):
+        export = copy.deepcopy(self.export)
+        printed = next(r for r in _table(export, "change")["rows"] if r["Kind"] == "printed")
+        printed["Amount"] = "11"
+        history = bible_check.Bible(export, self.rules, self.pack)
+        self.assertTrue(any(r["amount"] == 11 for r in history.changes), "the bad row is really there")
+        self.assertEqual(hard(self.check(self.good, export)), set())
+
+    def test_new_entities(self):
+        self.assertEqual(hard(self.alone(lambda o: o["newEntities"][0].update(kind="spaceship"))),
+                         {"unknown-kind", "unknown-name"})
+        self.assertEqual(hard(self.alone(lambda o: o["newEntities"][0].update(kind="change"))),
+                         {"unknown-kind", "unknown-name"}, "Stat Changes takes changes, not entities")
+        fs = self.alone(lambda o: o["newEntities"].append({"kind": "ware", "key": "Rock Salt"}))
+        self.assertEqual((hard(fs), soft(fs)), (set(), {"already-exists"}))
+
+    def test_shape(self):
+        for name, mutate in (("two beats", lambda o: o.update(beats=o["beats"][:2])),
+                             ("unknown key", lambda o: o.update(mood="grim")),
+                             ("no rule", lambda o: o.pop("ruleTested")),
+                             ("chapter 0", lambda o: o.update(chapter=0)),
+                             ("ends before it starts", lambda o: o["statChanges"][0].update(untilChapter=2)),
+                             ("amount in words", lambda o: o["statChanges"][0].update(amount="three")),
+                             ("unknown use key", lambda o: o["uses"][0].update(price=3)),
+                             ("new entity without a kind", lambda o: o["newEntities"][0].pop("kind"))):
+            self.assertEqual(hard(self.alone(mutate)), {"option-shape"}, name)
+
+    def test_not_only_fiction(self):
+        """A campaign's units and supply rules check the same way (docs/PIVOTAL_HISTORY_ENGINE.md §7)."""
+        export = {"tables": [
+            {"kind": "unit", "name": "Units", "columns": [
+                {"name": "Name", "kind": "line"},
+                {"name": "Strength", "kind": "number", "packKey": "campaign.strength", "min": 0}],
+             "rows": [{"Name": "2nd Minnesota"}]},
+            {"kind": "worldrule", "name": "World Rules", "columns": [
+                {"name": "Category", "kind": "line"}, {"name": "Rule", "kind": "text"}],
+             "rows": [{"Category": "Supply", "Rule": "The river line. Mechanism: nothing crosses after dark."}]},
+            dict(_table(self.export, "change"), rows=[
+                {"Chapter": "0", "Who": "2nd Minnesota", "Stat": "Strength", "Kind": "set", "Amount": "900"}])]}
+        option = {"chapter": 3, "title": "The Crossing", "ruleTested": "river line", "names": ["2nd Minnesota"],
+                  "beats": ["They reach the ford.", "The light goes.", "They cross anyway."],
+                  "statChanges": [{"who": "2nd Minnesota", "stat": "Strength", "kind": "change", "amount": -120}]}
+        self.assertEqual(self.check(option, export, pack=False), [])
+        option["statChanges"][0]["amount"] = -1000
+        self.assertEqual(hard(self.check(option, export, pack=False)), {"change-range"})
+
+    def test_cli(self):
+        def run(*args):
+            return subprocess.run([sys.executable, os.path.join(HERE, "bible_check.py"), *args],
+                                  capture_output=True, text=True)
+        bible, good = os.path.join(PLAN, "salt-road-bible.json"), os.path.join(PLAN, "option-good.json")
+        ok = run("--bible", bible, good)
+        self.assertEqual(ok.returncode, 0, ok.stdout + ok.stderr)
+        self.assertIn("option-good.json: CLEAN", ok.stdout)
+        bad = run("--bible", bible, "--pack", os.path.join(FIX, "salt-road.pack.json"), "--json",
+                  os.path.join(PLAN, "option-bad.json"))
+        self.assertEqual(bad.returncode, 1)
+        self.assertFalse(json.loads(bad.stdout)[0]["ok"])
+        self.assertEqual(run("--bible", good, good).returncode, 2, "an option is not a bible")
+        import tempfile
+        with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False) as fh:
+            json.dump({"ok": True, "result": self.export}, fh)
+        try:
+            self.assertEqual(run("--bible", fh.name, good).returncode, 0, "the whole verb reply works too")
+        finally:
+            os.unlink(fh.name)
+
+    def test_the_planner_brief_shows_every_key_and_the_real_command(self):
+        text = read(os.path.join(_story.STORY, "planner", "PLANNER.md"))
+        self.assertIn("python3 story/tools/bible_check.py --bible", text)
+        for k in self.rules["topLevelKeys"]:
+            self.assertIn(f'"{k}"', text, f"PLANNER.md's example option shows {k}")
 
 
 if __name__ == "__main__":

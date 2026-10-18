@@ -112,3 +112,43 @@ def numeric_state(rows, as_of, modes):
         elif m == "printed":
             assertions.append((r["chapter"], float(r["amount"]), base))
     return {"value": base, "variants": [(c, base + v) for c, v in held], "assertions": assertions}
+
+
+def _is_number(v):
+    return isinstance(v, (int, float)) and not isinstance(v, bool)
+
+
+def series_findings(rows, who, name, limits, modes):
+    """One subject's one stat, walked chapter by chapter: what validate_pack (a pack's seed rows)
+    and bible_check (a planned chapter on a live bible) both refuse.
+
+      change-printed    a printed number the rows before it disagree with
+      change-range      past the column's min or max, at a chapter a set or a plain change touches
+      change-direction  against the column's direction, between two such chapters
+
+    rows: as numeric_state takes them. limits: anything with the column's min / max / direction
+    (a pack field, or a dict of the three). Returns [(rule, chapter, index of that chapter's last
+    row in `rows`, message)].
+    """
+    out, prev = [], None
+    lo, hi, d = limits.get("min"), limits.get("max"), limits.get("direction")
+    for ch in sorted({r["chapter"] for r in rows}):
+        st = numeric_state(rows, ch, modes)
+        here = [i for i, r in enumerate(rows) if r["chapter"] == ch]
+        for a_ch, printed, derived in st["assertions"]:
+            if a_ch == ch and abs(printed - derived) > 1e-9:
+                out.append(("change-printed", ch, here[-1],
+                            f"chapter {ch} prints {who}'s {name} as {printed:g}; the rows before it give {derived:g}"))
+        value = st["value"]
+        if not any(mode_of(rows[i].get("kind"), modes) in ("set", "change") and not rows[i].get("onlyWhen")
+                   for i in here):
+            continue
+        if _is_number(lo) and value < lo:
+            out.append(("change-range", ch, here[-1], f"{who}'s {name} is {value:g} at chapter {ch}, below its min {lo}"))
+        if _is_number(hi) and value > hi:
+            out.append(("change-range", ch, here[-1], f"{who}'s {name} is {value:g} at chapter {ch}, above its max {hi}"))
+        if prev is not None and ((d == "nonDecreasing" and value < prev) or (d == "nonIncreasing" and value > prev)):
+            out.append(("change-direction", ch, here[-1],
+                        f"{who}'s {name} goes {prev:g} → {value:g} at chapter {ch}; the column is {d}"))
+        prev = value
+    return out

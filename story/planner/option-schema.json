@@ -1,0 +1,38 @@
+{
+  "version": 1,
+  "lastUpdated": "2026-10-18",
+  "_source_of_truth": true,
+  "_comment": "The contract for ONE next-chapter option the planner proposes (STORYMAKER_AUTHORSHIP_PLAN.md AA.1; story/planner/PLANNER.md). story/tools/bible_check.py reads every rule from here and checks the option against the book's bible (a storymaker.getBible export). Domain-agnostic: an option for a history or a campaign uses the same shape with that book's people and numbers. DECODER SAFETY: comment keys at this TOP LEVEL ONLY.",
+
+  "topLevelKeys": ["chapter", "title", "summary", "beats", "gains", "losses", "ruleTested", "uses", "names", "newEntities", "statChanges", "threads"],
+  "requiredKeys": ["chapter", "title", "beats", "ruleTested"],
+  "useKeys": ["entity", "pays"],
+  "newEntityKeys": ["kind", "key", "why"],
+  "statChangeKeys": ["who", "stat", "kind", "amount", "why", "onlyWhen", "untilChapter"],
+
+  "limits": {
+    "beatsMin": 3,
+    "beatsMax": 6,
+    "titleMaxChars": 80,
+    "beatMaxChars": 400,
+    "names": 40,
+    "uses": 20,
+    "statChanges": 30,
+    "nearMissCutoff": 0.75
+  },
+  "_nearMissWhy": "An unknown name close to a bible name (difflib ratio at or above nearMissCutoff) is reported with 'did you mean': most unknown names are misspellings.",
+
+  "ruleNameLeadingWords": ["the", "a", "an"],
+  "_ruleWhy": "ruleTested names a World Rules row by its Category or by its name: the Rule text up to its first full stop, as the designer writes rules ('The salt oath. Mechanism: …'). A leading word in this list is ignored on both sides. A word that is merely IN a rule ('oath') does not match: the planner names the rule it tests.",
+
+  "keyColumns": ["Name", "Rule", "Term"],
+  "aliasColumns": ["Aliases"],
+  "_keysWhy": "A row is found by its table's key column (the same Name / Rule / Term the designer's seed rows use), or by an alias in an Aliases column.",
+
+  "costColumns": {"names": ["Cost"], "packKeySuffixes": ["cost"]},
+  "_costWhy": "An option that uses a row with a cost (a skill, a module, an implant) must say how the cost is paid this chapter. A gain with no cost is the most common way a progression story goes flat (designer arc.cost).",
+
+  "planKind": "chapterplan",
+  "changeKind": "change",
+  "worldRuleKind": "worldrule"
+}
