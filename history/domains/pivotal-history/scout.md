@@ -53,6 +53,11 @@ codebreak) that passes three tests:
    own words, and the re-check verdict. `python3 history/tools/richness.py table stories` prints
    it from the dossiers. Recommend one pilot and say why.
 
+**Planning an episode** (PLAYBOOK §2, unchanged) has one twist: a dossier event far outside the
+episode's own window (an excavation centuries later, a commemoration) belongs inside the chapter
+it explains, and the plan says so in `plan.endNote`. `story_end_before_record` reads chapter spans,
+not allotted events, so without the note it fires (the Alesia pilot, 2026-10-18).
+
 **Stop.** The author picks the pilot. Nothing is planned or written until they do.
 
 ## 3. Cost
