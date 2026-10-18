@@ -1,7 +1,7 @@
 ---
 id: pivotal-history-voice
-version: 1
-updated: 2026-10-16
+version: 1.1
+updated: 2026-10-18
 appliesTo: Pivotal Histories stories (project.json "domain": "pivotal-history")
 extends: history/voice.md (version 4)
 enforcedBy: history/domains/pivotal-history/lint-rules.json + history/tools/gate.py
@@ -101,13 +101,23 @@ tempted to settle the matter quietly.
   history/voice.md §7 treats living communities: proportionate, never a caricature, never closing
   on the injury alone.
 
-## 6. The opening
+## 6. The opening: the ground
 
-History Writer stories open with the subject's portrait (history/PLAYBOOK.md §5.4, the author's
-rule), and `gate.py story` enforces it. An episode has no single face. **The equivalent rule for
-episodes is a PROPOSAL waiting on the author's decision** (docs/PIVOTAL_HISTORY_ENGINE.md §9), and
-until it is decided the portrait gate stands unchanged: a pilot opens with the portrait of the
-person at the centre of the episode, or the author records why not.
+History Writer stories open with the subject's portrait (history/PLAYBOOK.md §5.4). An episode has
+no single face, so **an episode opens with its ground** (the author's decision, 2026-10-18): the
+introduction's first picture is a map or plan of the place (a period one, or one drawn from a free
+basemap) or a photograph of the site, captioned with the place's name then, and now where a source
+gives it. Set it with `images.py opening` (the portrait's slot, with the same licence, caption and
+placement checks), then `images.py open`. `gate.py story` refuses a story with no opening, and an
+opening whose caption does not name the place by one of the dossier's `place` names (the
+period's and today's).
+[opening_missing, opening_not_ground] Only the author can record that no such picture exists.
+
+Pictures are real: photographs, period maps, plans and drawings from open archives
+(history/voice.md §14). A generated picture is not a source of anything; whether a declared,
+labelled illustration may ever appear is an open question for the author (docs/PIVOTAL_HISTORY_ENGINE.md
+§10), and until it is decided the base rule holds: never a generated picture of a real person,
+place or scene.
 
 ## 7. The world around the episode
 
@@ -138,6 +148,9 @@ are two rows, never one averaged row (§4).
 ---
 
 ## Change log
+
+**v1.1 — 2026-10-18.** The author agreed the opening rule proposed in v1: an episode opens with its
+ground (§6), enforced by `gate.py story`.
 
 **v1 — 2026-10-16.** The author's direction (docs/PIVOTAL_HISTORY_ENGINE.md): apply the Black
 Seattle wisdom to pivotal histories without relearning it. Every History Writer rule holds. Added

@@ -2651,6 +2651,40 @@ class DomainRichness(DomainCase):
         self.assertEqual(rows[0]["edgeCheck"], "holds")
 
 
+class EpisodeOpening(DomainCase):
+    """voice.md §6 of the pivotal-history domain (the author, 2026-10-18): an episode opens with
+    its ground, in the portrait's slot, and the caption names the place."""
+
+    def opening(self, caption):
+        import images
+        d = self.project.dossier
+        d["place"] = ["Harbor Town", "Water Street"]
+        _hw.save_json(self.project.path("dossier.json"), d)
+        _hw.save_json(self.project.path("images", "index.json"), [{
+            "id": "img1", "title": "File:Plan.jpg", "url": "https://upload.wikimedia.org/plan.jpg",
+            "license": "Public domain", "caption": caption, "chapter": 0, "at": "start", "after": ""}])
+        meta = json.loads(read(self.project.path("project.json")))
+        meta["portrait"] = "img1"
+        _hw.save_json(self.project.path("project.json"), meta)
+        return self.rules(images.portrait_findings(self.project))
+
+    def test_no_opening_is_named_for_an_episode(self):
+        import images
+        self.assertEqual(images.opening_rule(self.project), "ground")
+        self.assertIn("opening_missing", self.rules(images.portrait_findings(self.project)))
+
+    def test_the_ground_named_in_the_caption_passes_and_a_face_fails(self):
+        os.makedirs(self.project.path("images"), exist_ok=True)
+        self.assertEqual(self.opening("A plan of Harbor Town and its wharves, 1895."), set())
+        self.assertIn("opening_not_ground", self.opening("Edith Fixture at her door, 1902."))
+
+    def test_a_life_still_opens_with_a_portrait(self):
+        import images
+        self.set_domain(None)
+        self.assertEqual(images.opening_rule(self.project), "portrait")
+        self.assertIn("portrait_missing", self.rules(images.portrait_findings(self.project)))
+
+
 class SourceQuirks(unittest.TestCase):
     """What the first pivotal-history scout's old sources taught the generic tools (2026-10-16)."""
 

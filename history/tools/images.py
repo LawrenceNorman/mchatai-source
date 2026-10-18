@@ -29,6 +29,9 @@
                          portrait: its caption's evidence is the holder's own page about it. Its
                          licence reads "Used with permission (non-commercial)"; a paid edition must
                          clear each such picture again (images.json `permission`).
+  images.py opening <project> …    the same as `portrait`, for an episode (domains/pivotal-history): its
+                         opening picture is its GROUND, a map or plan of the place or the site, and
+                         its caption must name the place (gate.py story checks it)
   images.py open <project> [<id>]   the story opens with its portrait: the portrait becomes the
                          introduction's first picture, in images/index.json, book/00.txt and
                          StoryMaker (a chapter the author has edited gets it as a suggestion). The
@@ -59,7 +62,7 @@ import urllib.request
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import fetch  # noqa: E402
 import voice_lint  # noqa: E402
-from _hw import HISTORY, Project, finding, load_json, norm, report, save_json, words  # noqa: E402
+from _hw import HISTORY, Project, finding, load_json, norm, report, save_json, thresholds, words  # noqa: E402
 
 API_UA = "mChatAI-HistoryWriter/1.0 (https://mchatai.com; history research tools)"
 COMMONS = "https://commons.wikimedia.org/w/api.php"
@@ -474,15 +477,29 @@ def portrait_pick(project):
     return (pick.get("image") if isinstance(pick, dict) else pick), meta
 
 
+def opening_rule(project):
+    """What a story opens with: the subject's portrait (a life), or, where the project's domain says
+    so in content (thresholds `opening`), its ground: a map or plan of the place, or the site, whose
+    caption names the place (an episode has no single face; the author, 2026-10-18)."""
+    return (thresholds(project).get("opening") or {}).get("kind", "portrait")
+
+
 def portrait_findings(project):
     """Every history opens with its subject's portrait (the author, 2026-10-11, the third time he
     asked): one is set, and a picture of it opens the introduction. Only the author may say that no
-    photograph of the person exists (project.json portraitNone {why, confirmedBy})."""
+    photograph of the person exists (project.json portraitNone {why, confirmedBy}). An episode opens
+    with its GROUND instead (opening_rule): the same slot, the same checks, and its caption must name
+    the place by one of the dossier's aliases."""
     pick, meta = portrait_pick(project)
     if not pick:
         none = meta.get("portraitNone") or {}
         if none.get("why") and none.get("confirmedBy"):
             return []
+        if opening_rule(project) == "ground":
+            return [finding("opening_missing", "hard",
+                            "an episode opens with its ground: a map or plan of the place, or a photograph of the site, "
+                            "captioned with the place's name (images.py opening, then images.py open). Only the author can "
+                            "record that none exists (project.json portraitNone)")]
         return [finding("portrait_missing", "hard",
                         "the story has no portrait. Find one (images.py find; a free licence, public domain by date, or "
                         "the author's permission for a non-commercial book: images.py portrait … permission), set it, then "
@@ -496,6 +513,16 @@ def portrait_findings(project):
     if not any(r.get("url") == rec.get("url") and str(r.get("chapter")) == "0" for r in rows):
         return [finding("portrait_not_opening", "hard",
                         f"the portrait ({pick}) does not open the introduction: run images.py open {project.root}")]
+    if opening_rule(project) == "ground":
+        d = project.dossier or {}
+        # The ground's names, then and now (dossier `place`); the episode's aliases only when it has
+        # none, since an alias may be a ship or a fleet ("Monitor", "Armada"), not a place.
+        place = [a for a in (d.get("place") or d.get("aliases") or []) if a and len(a) > 2]
+        cap = rec.get("caption") or ""
+        if not any(re.search(r"(?<!\w)" + re.escape(a) + r"(?!\w)", cap, re.I) for a in place):
+            return [finding("opening_not_ground", "hard",
+                            f"the opening picture ({pick}) must show the ground, and its caption must name the place "
+                            f"({', '.join(place[:4])}); this one reads {cap[:80]!r}")]
     return []
 
 
@@ -725,6 +752,8 @@ def main(argv):
                 return 2
             return cmd_add(Project(argv[2]), argv[3], need["--caption"], need["--evidence"],
                            flag(argv, "--evidence-source"), need["--chapter"], need["--after"], flag(argv, "--credit"))
+        if len(argv) >= 2 and argv[1] == "opening":
+            argv = [argv[0], "portrait"] + argv[2:]      # an episode's opening picture is set the same way
         if len(argv) >= 4 and argv[1] == "portrait" and argv[3] == "permission":
             return cmd_portrait_permission(Project(argv[2]), flag(argv, "--url"), flag(argv, "--page"),
                                            flag(argv, "--describe-url"), flag(argv, "--holder"), flag(argv, "--caption"),

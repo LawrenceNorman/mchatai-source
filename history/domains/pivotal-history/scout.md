@@ -35,6 +35,8 @@ codebreak) that passes three tests:
    - Every event: a date (`52 BC`, `1223`, `4 June 1942` all read), a `phase` (prelude, march,
      siege, battle, aftermath, …) and a verbatim `evidence` quote. `eventEvidenceRequired` is on in
      this domain, so an event without a checked quote does not count.
+   - `place` names the ground, the period's name and today's ("Alesia", "Alise-Sainte-Reine"). The
+     story's opening picture is captioned with one of them (voice.md §6).
    - `identityBasis` holds the membership claim: "<the edge> decided <the outcome>", and
      `identitySource` the source id that says so.
    - `python3 history/tools/richness.py dossier stories/<slug>` computes the tier, the mode, the
