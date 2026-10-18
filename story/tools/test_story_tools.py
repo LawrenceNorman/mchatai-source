@@ -21,6 +21,7 @@ import _story  # noqa: E402
 import beat_map  # noqa: E402
 import bible_check  # noqa: E402
 import prose_lint  # noqa: E402
+import research_brief  # noqa: E402
 import validate_pack  # noqa: E402
 import voice_rules  # noqa: E402
 
@@ -847,6 +848,75 @@ class VoiceRules(unittest.TestCase):
         text = read(os.path.join(_story.STORY, "voice", "VOICE.md"))
         for cmd in ("python3 story/tools/voice_rules.py check --edits", "python3 story/tools/voice_rules.py apply",
                     "prose_lint.py chapter <file> --also voice/lint-rules.project.json"):
+            self.assertIn(cmd, text)
+
+
+# ── AA.3: a sourced research brief ────────────────────────────────────────────────
+
+RESEARCHFIX = os.path.join(_story.STORY, "fixtures", "research", "salt-assay")
+
+
+class ResearchBrief(unittest.TestCase):
+    """History Writer's evidence rules, through its own checker, on a brief laid out as an HW project."""
+
+    def copy(self):
+        import shutil
+        import tempfile
+        d = tempfile.mkdtemp()
+        dst = os.path.join(d, "salt-assay")
+        shutil.copytree(RESEARCHFIX, dst)
+        self.addCleanup(shutil.rmtree, d)
+        return dst
+
+    def edit_brief(self, folder, mutate):
+        path = os.path.join(folder, "chapters", "01.json")
+        brief = load(path)
+        mutate(brief)
+        with open(path, "w") as fh:
+            json.dump(brief, fh)
+
+    def test_the_fixture_brief_is_clean_and_renders_its_sources(self):
+        self.assertEqual(research_brief.check(RESEARCHFIX), [])
+        md = research_brief.render(RESEARCHFIX)
+        self.assertIn("## What the sources say", md)
+        self.assertIn("[1] On the weighing of salt (fixture). Fixture Press. https://example.org/fixture/on-the-weighing-of-salt", md)
+        self.assertIn("“A trader could demand a public weighing before the masters if she believed a tally false.” [2]", md)
+
+    def test_each_evidence_rule(self):
+        cases = {
+            "quote_unverified": lambda b: b["claims"][0].update(evidence="wet salt may hold a great deal of water by weight"),
+            "quote_too_short": lambda b: b["claims"][0].update(evidence="wet salt"),
+            "source_unknown": lambda b: b["claims"][0].update(source="s9"),
+            "verbatim_copy": lambda b: b.update(text=b["text"] + " A trader could demand a public weighing before the "
+                                                "masters if she believed a tally false."),
+        }
+        for rule, mutate in cases.items():
+            folder = self.copy()
+            self.edit_brief(folder, mutate)
+            self.assertIn(rule, hard(research_brief.check(folder)), rule)
+
+    def test_a_clue_supports_nothing(self):
+        folder = self.copy()
+        path = os.path.join(folder, "sources", "index.json")
+        index = load(path)
+        index[1]["kind"] = "clue-only"
+        with open(path, "w") as fh:
+            json.dump(index, fh)
+        self.assertEqual(hard(research_brief.check(folder)), {"source_clue_only"})
+
+    def test_render_refuses_an_unchecked_brief(self):
+        folder = self.copy()
+        self.edit_brief(folder, lambda b: b["claims"][0].update(evidence="this sentence is not in the source at all"))
+        run = subprocess.run([sys.executable, os.path.join(HERE, "research_brief.py"), "render", folder],
+                             capture_output=True, text=True)
+        self.assertEqual(run.returncode, 1)
+        self.assertNotIn("## Sources", run.stdout)
+
+    def test_the_research_brief_names_the_real_commands(self):
+        text = read(os.path.join(_story.STORY, "research", "RESEARCH.md"))
+        for cmd in ("python3 history/tools/fetch.py fetch research/<topic>",
+                    "python3 story/tools/research_brief.py check research/<topic>",
+                    "storymaker.linkResearch {project, chapter, brief:"):
             self.assertIn(cmd, text)
 
 if __name__ == "__main__":

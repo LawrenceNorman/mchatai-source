@@ -11,6 +11,8 @@ on a lighter one.
    is tested, the planned Stat Changes) and the bible rows it names. Read the rows yourself with
    `storymaker.getBible` (`kind`, `match`) rather than trusting a summary. A stat, item, ability
    or rule you would use that has no row is a question for the thread, not something to invent.
+   A plan's Research column links sourced briefs (story/research/RESEARCH.md): read them with
+   `aiwrite.getDoc` as background, and never paste their sentences into the chapter.
 2. Read the chapter before this one and the book's `voice/voice.md` (the rules the author chose
    from their own edits, story/voice/VOICE.md) if it has one. Write in the author's voice, not a
    generic one; the author's edits to earlier agent drafts (`storymaker.listEdits`) are the best

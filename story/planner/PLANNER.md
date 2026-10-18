@@ -37,7 +37,9 @@ Each option is one JSON file, `planning/chNN-optA.json`, in the shape of
 
 Make the options differ in a way the author can choose between: which rule is tested, who gains
 and who loses, which thread moves. Stay inside the outline unless the author has asked to leave it.
-Every number that changes is a planned Stat Changes row; every cost is paid in the option.
+Every number that changes is a planned Stat Changes row; every cost is paid in the option. If
+an option turns on something real the author has to get right (a trade, a period's medicine),
+offer a sourced brief (`story/research/RESEARCH.md`) instead of guessing at the facts.
 `ruleTested` is a World Rules row's name (its Rule text up to the first full stop) or its
 Category, not a word that appears in it. A `printed` row (what the page will show) goes after
 the changes it follows: the rows fold in the order you list them.

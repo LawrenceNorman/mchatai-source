@@ -3508,6 +3508,54 @@
             "description": "Change a plan the author has edited or decided, or pick a different plan for a chapter that has one. Needs authorAsked."
           }
         }
+      },
+      "linkresearch": {
+        "kind": "modify",
+        "summary": "Link a sourced research brief (written to AI Write; mchatai-source story/research/RESEARCH.md) from a chapter's plan, in its Research column. Changes nothing else in the plan, so it needs no replace.",
+        "required": [
+          "project",
+          "chapter",
+          "brief",
+          "open"
+        ],
+        "optional": [
+          "plan"
+        ],
+        "notes": "The plan is the chapter's accepted one, or the one `plan` names, or the chapter's only plan. The same link is not added twice. The brief is never pasted into the prose.",
+        "pairedCheck": "applet storymaker getBible {project, kind: chapterplan}",
+        "example": {
+          "command": "applet",
+          "applet": "storymaker",
+          "verb": "linkResearch",
+          "args": {
+            "project": "The Salt Road",
+            "chapter": 2,
+            "brief": "How salt was assayed",
+            "open": "<the entity.open link aiwrite.createDoc returned>"
+          }
+        },
+        "args": {
+          "project": {
+            "type": "string",
+            "description": "The project's id or exact title (from listProjects). A miss returns the projects that exist."
+          },
+          "chapter": {
+            "type": "integer",
+            "description": "The number of the chapter whose plan the brief is for."
+          },
+          "brief": {
+            "type": "string",
+            "description": "The brief's title."
+          },
+          "open": {
+            "type": "string",
+            "description": "The brief's link: the `open` of the entity aiwrite.createDoc returned."
+          },
+          "plan": {
+            "type": "string",
+            "description": "The plan's title, when the chapter has no accepted plan or the brief is for another one."
+          }
+        }
       }
     },
     "aividrecorder": {
