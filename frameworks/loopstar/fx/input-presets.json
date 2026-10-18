@@ -1,26 +1,431 @@
 {
-  "_comment": "LoopStar input FX presets (Phase LI, iPhone). What the mic or instrument goes through on its way into a loop: you hear it while you play (headphones), and it is printed into the take. Fields, all optional (absent = off): compression 0-1; drive {style: lofi|crush|speaker|funk|overdrive, mix 0-100}; pitch semitones -12..12; eq {low, mid, high} dB -12..12; delay {beats (quarter-note beats: 0.75 = dotted eighth), feedback 0-90, mix 0-100}; reverb {space: room|chamber|plate|hall|cathedral, mix 0-100}. Delay is ALWAYS a note value -- it follows the tempo (../LOOPSTAR_SOUL.md). Edit or add here; zero rebuild.",
+  "_comment": "LoopStar input FX presets (Phase LI, iPhone). What the mic or instrument goes through on its way into a loop: you hear it while you play (headphones), and it is printed into the take. Fields, all optional (absent = off): compression 0-1; drive {style: lofi|crush|speaker|funk|overdrive|highgain, mix 0-100}; pitch semitones -12..12; eq {low, mid, high} dB -12..12; delay {beats (quarter-note beats: 0.75 = dotted eighth), feedback 0-90, mix 0-100}; reverb {space: room|chamber|plate|hall|cathedral, mix 0-100}. Delay is ALWAYS a note value -- it follows the tempo (../LOOPSTAR_SOUL.md). Edit or add here; zero rebuild. INPUT TYPES (2026-10-15, the board's pedals): `inputTypes` groups presets by what is plugged in or played; a type lists preset ids in order, `icon` is an SF Symbol name. A preset may sit in several types.",
   "presets": [
-    { "id": "clean", "name": "Clean", "blurb": "Straight in, nothing added" },
-    { "id": "vocal", "name": "Vocal", "blurb": "Tamed peaks, air on top, a dotted-eighth echo",
-      "compression": 0.45, "eq": { "low": -3, "mid": 0, "high": 3 },
-      "delay": { "beats": 0.75, "feedback": 25, "mix": 14 }, "reverb": { "space": "plate", "mix": 18 } },
-    { "id": "vocal-dry", "name": "Vocal Dry", "blurb": "Close and upfront, no space",
-      "compression": 0.6, "eq": { "low": -2, "mid": 1, "high": 2 } },
-    { "id": "beatbox", "name": "Beatbox", "blurb": "Heavy squash and extra low end for mouth drums",
-      "compression": 0.8, "eq": { "low": 5, "mid": -2, "high": 3 } },
-    { "id": "guitar-space", "name": "Guitar Space", "blurb": "Clean guitar with a synced echo and a wide room",
-      "compression": 0.3, "delay": { "beats": 0.75, "feedback": 38, "mix": 22 }, "reverb": { "space": "hall", "mix": 22 } },
-    { "id": "guitar-crunch", "name": "Guitar Crunch", "blurb": "Overdrive into a small room",
-      "compression": 0.25, "drive": { "style": "overdrive", "mix": 45 }, "eq": { "low": 1, "mid": 2, "high": -2 },
-      "reverb": { "space": "room", "mix": 12 } },
-    { "id": "octave-down", "name": "Octave Down", "blurb": "Guitar an octave lower -- a bass line without a bass",
-      "pitch": -12, "compression": 0.4, "eq": { "low": 3, "mid": 0, "high": -4 } },
-    { "id": "lofi-mic", "name": "Lo-Fi", "blurb": "Crushed and dark, like a dusty sample",
-      "drive": { "style": "lofi", "mix": 40 }, "eq": { "low": -4, "mid": 2, "high": -8 } },
-    { "id": "dub-echo", "name": "Dub Echo", "blurb": "Quarter-note echoes that keep going",
-      "delay": { "beats": 1.0, "feedback": 62, "mix": 35 }, "reverb": { "space": "room", "mix": 14 } },
-    { "id": "cavern", "name": "Cavern", "blurb": "Huge space for pads and drones",
-      "delay": { "beats": 1.5, "feedback": 50, "mix": 25 }, "reverb": { "space": "cathedral", "mix": 40 } }
+    {
+      "id": "clean",
+      "name": "Clean",
+      "blurb": "Straight in, nothing added"
+    },
+    {
+      "id": "vocal",
+      "name": "Vocal",
+      "blurb": "Tamed peaks, air on top, a dotted-eighth echo",
+      "compression": 0.45,
+      "eq": {
+        "low": -3,
+        "mid": 0,
+        "high": 3
+      },
+      "delay": {
+        "beats": 0.75,
+        "feedback": 25,
+        "mix": 14
+      },
+      "reverb": {
+        "space": "plate",
+        "mix": 18
+      }
+    },
+    {
+      "id": "vocal-dry",
+      "name": "Vocal Dry",
+      "blurb": "Close and upfront, no space",
+      "compression": 0.6,
+      "eq": {
+        "low": -2,
+        "mid": 1,
+        "high": 2
+      }
+    },
+    {
+      "id": "beatbox",
+      "name": "Beatbox",
+      "blurb": "Heavy squash and extra low end for mouth drums",
+      "compression": 0.8,
+      "eq": {
+        "low": 5,
+        "mid": -2,
+        "high": 3
+      }
+    },
+    {
+      "id": "guitar-space",
+      "name": "Guitar Space",
+      "blurb": "Clean guitar with a synced echo and a wide room",
+      "compression": 0.3,
+      "delay": {
+        "beats": 0.75,
+        "feedback": 38,
+        "mix": 22
+      },
+      "reverb": {
+        "space": "hall",
+        "mix": 22
+      }
+    },
+    {
+      "id": "guitar-crunch",
+      "name": "Guitar Crunch",
+      "blurb": "Overdrive into a small room",
+      "compression": 0.25,
+      "drive": {
+        "style": "overdrive",
+        "mix": 45
+      },
+      "eq": {
+        "low": 1,
+        "mid": 2,
+        "high": -2
+      },
+      "reverb": {
+        "space": "room",
+        "mix": 12
+      }
+    },
+    {
+      "id": "octave-down",
+      "name": "Octave Down",
+      "blurb": "Guitar an octave lower -- a bass line without a bass",
+      "pitch": -12,
+      "compression": 0.4,
+      "eq": {
+        "low": 3,
+        "mid": 0,
+        "high": -4
+      }
+    },
+    {
+      "id": "lofi-mic",
+      "name": "Lo-Fi",
+      "blurb": "Crushed and dark, like a dusty sample",
+      "drive": {
+        "style": "lofi",
+        "mix": 40
+      },
+      "eq": {
+        "low": -4,
+        "mid": 2,
+        "high": -8
+      }
+    },
+    {
+      "id": "dub-echo",
+      "name": "Dub Echo",
+      "blurb": "Quarter-note echoes that keep going",
+      "delay": {
+        "beats": 1.0,
+        "feedback": 62,
+        "mix": 35
+      },
+      "reverb": {
+        "space": "room",
+        "mix": 14
+      }
+    },
+    {
+      "id": "cavern",
+      "name": "Cavern",
+      "blurb": "Huge space for pads and drones",
+      "delay": {
+        "beats": 1.5,
+        "feedback": 50,
+        "mix": 25
+      },
+      "reverb": {
+        "space": "cathedral",
+        "mix": 40
+      }
+    },
+    {
+      "id": "guitar-clean",
+      "name": "Clean Guitar",
+      "blurb": "Even and bright, a touch of room",
+      "compression": 0.35,
+      "eq": {
+        "low": -1,
+        "mid": 0,
+        "high": 2
+      },
+      "reverb": {
+        "space": "room",
+        "mix": 14
+      }
+    },
+    {
+      "id": "blues",
+      "name": "Blues",
+      "blurb": "Warm overdrive that cleans up when you play soft",
+      "compression": 0.3,
+      "drive": {
+        "style": "overdrive",
+        "mix": 32
+      },
+      "eq": {
+        "low": 0,
+        "mid": 3,
+        "high": -1
+      },
+      "reverb": {
+        "space": "plate",
+        "mix": 18
+      }
+    },
+    {
+      "id": "shred",
+      "name": "Shred",
+      "blurb": "High gain, mids forward, a dotted-eighth echo for leads",
+      "compression": 0.5,
+      "drive": {
+        "style": "highgain",
+        "mix": 85
+      },
+      "eq": {
+        "low": 2,
+        "mid": 4,
+        "high": 1
+      },
+      "delay": {
+        "beats": 0.75,
+        "feedback": 28,
+        "mix": 18
+      },
+      "reverb": {
+        "space": "hall",
+        "mix": 16
+      }
+    },
+    {
+      "id": "metal",
+      "name": "Metal",
+      "blurb": "Full gain, scooped mids, tight and dry",
+      "compression": 0.45,
+      "drive": {
+        "style": "highgain",
+        "mix": 95
+      },
+      "eq": {
+        "low": 4,
+        "mid": -4,
+        "high": 3
+      },
+      "reverb": {
+        "space": "room",
+        "mix": 8
+      }
+    },
+    {
+      "id": "funk-clean",
+      "name": "Funk Clean",
+      "blurb": "Squashed and snappy for sixteenth-note chops",
+      "compression": 0.65,
+      "drive": {
+        "style": "funk",
+        "mix": 12
+      },
+      "eq": {
+        "low": -2,
+        "mid": 1,
+        "high": 4
+      },
+      "reverb": {
+        "space": "room",
+        "mix": 8
+      }
+    },
+    {
+      "id": "ambient-swells",
+      "name": "Ambient Swells",
+      "blurb": "Long echoes into a cathedral",
+      "compression": 0.3,
+      "delay": {
+        "beats": 1.5,
+        "feedback": 55,
+        "mix": 35
+      },
+      "reverb": {
+        "space": "cathedral",
+        "mix": 45
+      }
+    },
+    {
+      "id": "acoustic-sparkle",
+      "name": "Acoustic Sparkle",
+      "blurb": "Less boom, more shimmer",
+      "compression": 0.4,
+      "eq": {
+        "low": -3,
+        "mid": -1,
+        "high": 4
+      },
+      "reverb": {
+        "space": "plate",
+        "mix": 16
+      }
+    },
+    {
+      "id": "acoustic-room",
+      "name": "Acoustic Room",
+      "blurb": "Natural, like a good room",
+      "compression": 0.3,
+      "eq": {
+        "low": -2,
+        "mid": 0,
+        "high": 2
+      },
+      "reverb": {
+        "space": "room",
+        "mix": 20
+      }
+    },
+    {
+      "id": "bass-punch",
+      "name": "Bass Punch",
+      "blurb": "Squeezed and round, sits under the beat",
+      "compression": 0.65,
+      "eq": {
+        "low": 4,
+        "mid": 2,
+        "high": -3
+      }
+    },
+    {
+      "id": "bass-grit",
+      "name": "Bass Grit",
+      "blurb": "A little dirt for the mids to cut through",
+      "compression": 0.5,
+      "drive": {
+        "style": "speaker",
+        "mix": 22
+      },
+      "eq": {
+        "low": 3,
+        "mid": 3,
+        "high": -2
+      }
+    },
+    {
+      "id": "bass-dub",
+      "name": "Dub Bass",
+      "blurb": "Deep and dark with a quarter-note echo",
+      "compression": 0.5,
+      "eq": {
+        "low": 5,
+        "mid": -2,
+        "high": -5
+      },
+      "delay": {
+        "beats": 1.0,
+        "feedback": 40,
+        "mix": 15
+      }
+    },
+    {
+      "id": "uke-bright",
+      "name": "Uke Bright",
+      "blurb": "Clear and sweet, no plastic boom",
+      "compression": 0.4,
+      "eq": {
+        "low": -4,
+        "mid": 1,
+        "high": 3
+      },
+      "reverb": {
+        "space": "plate",
+        "mix": 14
+      }
+    },
+    {
+      "id": "uke-island",
+      "name": "Uke Island",
+      "blurb": "A soft echo and a wide hall",
+      "compression": 0.3,
+      "eq": {
+        "low": -3,
+        "mid": 0,
+        "high": 2
+      },
+      "delay": {
+        "beats": 0.75,
+        "feedback": 25,
+        "mix": 12
+      },
+      "reverb": {
+        "space": "hall",
+        "mix": 22
+      }
+    }
+  ],
+  "inputTypes": [
+    {
+      "id": "electric",
+      "name": "Electric guitar",
+      "icon": "guitars",
+      "presets": [
+        "guitar-clean",
+        "blues",
+        "guitar-crunch",
+        "shred",
+        "metal",
+        "funk-clean",
+        "guitar-space",
+        "ambient-swells",
+        "octave-down"
+      ]
+    },
+    {
+      "id": "acoustic",
+      "name": "Acoustic guitar",
+      "icon": "guitars.fill",
+      "presets": [
+        "acoustic-sparkle",
+        "acoustic-room",
+        "guitar-space",
+        "ambient-swells"
+      ]
+    },
+    {
+      "id": "bass",
+      "name": "Bass",
+      "icon": "waveform.path",
+      "presets": [
+        "bass-punch",
+        "bass-grit",
+        "bass-dub",
+        "octave-down"
+      ]
+    },
+    {
+      "id": "ukulele",
+      "name": "Ukulele",
+      "icon": "music.note",
+      "presets": [
+        "uke-bright",
+        "uke-island",
+        "acoustic-room",
+        "dub-echo"
+      ]
+    },
+    {
+      "id": "voice",
+      "name": "Voice",
+      "icon": "music.mic",
+      "presets": [
+        "vocal",
+        "vocal-dry",
+        "beatbox",
+        "lofi-mic"
+      ]
+    },
+    {
+      "id": "other",
+      "name": "Keys & other",
+      "icon": "pianokeys",
+      "presets": [
+        "clean",
+        "dub-echo",
+        "cavern",
+        "lofi-mic"
+      ]
+    }
   ]
 }
