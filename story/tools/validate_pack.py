@@ -255,7 +255,8 @@ def _check_kinds(p, c, out):
             continue
         if name in c["reservedKinds"]:
             out.append(finding("kind-reserved", HARD,
-                               f"{name!r} is reserved (Stat Changes); use statChanges for its rows", where))
+                               f"{name!r} is a table the platform keeps (Stat Changes, Chapter Plans); a pack "
+                               "cannot declare it (Stat Changes rows go in statChanges)", where))
         if name in seen:
             out.append(finding("kind-duplicate", HARD, f"{name!r} is declared twice", where))
         seen.add(name)

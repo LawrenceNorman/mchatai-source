@@ -144,9 +144,9 @@ def series_findings(rows, who, name, limits, modes):
                    for i in here):
             continue
         if _is_number(lo) and value < lo:
-            out.append(("change-range", ch, here[-1], f"{who}'s {name} is {value:g} at chapter {ch}, below its min {lo}"))
+            out.append(("change-range", ch, here[-1], f"{who}'s {name} is {value:g} at chapter {ch}, below its min {lo:g}"))
         if _is_number(hi) and value > hi:
-            out.append(("change-range", ch, here[-1], f"{who}'s {name} is {value:g} at chapter {ch}, above its max {hi}"))
+            out.append(("change-range", ch, here[-1], f"{who}'s {name} is {value:g} at chapter {ch}, above its max {hi:g}"))
         if prev is not None and ((d == "nonDecreasing" and value < prev) or (d == "nonIncreasing" and value > prev)):
             out.append(("change-direction", ch, here[-1],
                         f"{who}'s {name} goes {prev:g} → {value:g} at chapter {ch}; the column is {d}"))

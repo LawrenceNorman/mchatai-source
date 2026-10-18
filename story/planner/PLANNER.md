@@ -61,9 +61,19 @@ The check does not judge whether a chapter contradicts a rule's spirit; the cont
 
 ## 4. Show the author
 
-Plain words, not JSON: for each option its title, the beats, what is gained and lost, the rule
-tested, the numbers that change (as sentences: "Ilse loses 3 silver"), and any finding left. Ask
-which one, or what to change.
+Record each checked option as a proposed plan, so the options sit side by side in the book's
+Chapter Plans table:
+
+    storymaker.planChapter {project, option: <the JSON>, check: "bible_check: CLEAN"}
+
+then raise that table beside the conversation (the reply's `show` line says how). In the
+conversation, plain words, not JSON: for each option its title, the beats, what is gained and
+lost, the rule tested, the numbers that change (as sentences: "Ilse loses 3 silver"), and any
+finding left. Ask which one, or what to change.
+
+The author may edit a plan in the table. Re-recording a plan the author has touched is refused:
+read it back (`storymaker.getBible {project, kind: "chapterplan"}`), fold their words into the
+option, check it again, and record it with `replace: true` and their words in `authorAsked`.
 
 ## 5. Record the choice
 
@@ -73,7 +83,7 @@ result line in `check`:
     storymaker.planChapter {project, option: <the JSON>, status: "accepted",
                             authorAsked: "…", check: "bible_check: CLEAN"}
 
-The Chapter Plan row is the record; the planned Stat Changes are written there, not into Stat
-Changes, until the chapter is drafted and the author accepts it. Then open a loop for the next
-step (`assistant.openLoop`: "Draft chapter 9 — say go"), so it waits in "Waiting on you" instead
-of scrolling away.
+The chapter's other proposed plans become Not chosen. The Chapter Plans row is the record; the
+planned Stat Changes stay in it, not in Stat Changes, until the chapter is drafted and the author
+accepts it. Then open a loop for the next step (`assistant.openLoop`: "Draft chapter 9 — say
+go"), so it waits in "Waiting on you" instead of scrolling away.

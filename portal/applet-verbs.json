@@ -3365,7 +3365,7 @@
       },
       "getbible": {
         "kind": "read",
-        "summary": "A project's bible tables: each table's columns (with how the AI sees each one: promptTier, aiVisible, whether it changes over chapters), its row count, and its rows by column name. A project whose bible is not yet in Ledger tables lists its entries by name.",
+        "summary": "A project's bible tables: each table's columns (with how the AI sees each one: promptTier, aiVisible, whether it changes over chapters, and a number's min, max and direction), its row count, and its rows by column name. A project whose bible is not yet in Ledger tables lists its entries by name.",
         "required": [
           "project"
         ],
@@ -3374,7 +3374,7 @@
           "match",
           "limit"
         ],
-        "notes": "`packs` names any designed pack the project carries. To show a table beside the conversation, use `applet preview show` with viewer surface-ledger.",
+        "notes": "`packs` names any designed pack the project carries. To check a planned chapter, save the whole result with `limit: 1000` and pass it to `python3 story/tools/bible_check.py --bible`. To show a table beside the conversation, use `applet preview show` with viewer surface-ledger.",
         "example": {
           "command": "applet",
           "applet": "storymaker",
@@ -3399,7 +3399,7 @@
           },
           "limit": {
             "type": "integer",
-            "description": "Rows per table (default 25, max 200)."
+            "description": "Rows per table (default 25, max 1000)."
           }
         }
       },
@@ -3446,6 +3446,66 @@
           "dryRun": {
             "type": "boolean",
             "description": "Check the pack and report what it would add, writing nothing."
+          }
+        }
+      },
+      "planchapter": {
+        "kind": "modify",
+        "summary": "Record one next-chapter option as a row of the book's Chapter Plans table (mchatai-source story/planner/PLANNER.md), where the author reads it beside the conversation. Proposed by default; accepted when the author picks it, which sets the chapter's other proposed plans to Not chosen.",
+        "required": [
+          "project",
+          "option"
+        ],
+        "optional": [
+          "status",
+          "authorAsked",
+          "check",
+          "replace"
+        ],
+        "notes": "Check every option first with `python3 story/tools/bible_check.py --bible <getBible result> <option.json>`. Only a book whose bible is in Ledger tables has Chapter Plans. A plan is found by its chapter and title: re-recording an untouched Proposed plan updates it, but a plan the author has edited, picked or set aside is refused unless `replace: true` with `authorAsked` quoting them. A chapter with an accepted plan refuses a second one the same way. Planned Stat Changes stay in the plan (its Planned changes column), not in Stat Changes, until the chapter is drafted and the author accepts it.",
+        "pairedCheck": "applet storymaker getBible {project, kind: chapterplan}",
+        "example": {
+          "command": "applet",
+          "applet": "storymaker",
+          "verb": "planChapter",
+          "args": {
+            "project": "The Salt Road",
+            "option": {
+              "chapter": 2,
+              "title": "The Road Out",
+              "beats": ["Bram sends Ilse alone with the cart.", "A Tidemark buyer offers twice the price.", "She sells through the guild anyway."],
+              "ruleTested": "salt oath",
+              "statChanges": [{"who": "Ilse Varro", "stat": "Coin", "kind": "change", "amount": -3, "why": "The gate toll."}]
+            },
+            "status": "accepted",
+            "authorAsked": "Go with the road one.",
+            "check": "bible_check: CLEAN"
+          }
+        },
+        "args": {
+          "project": {
+            "type": "string",
+            "description": "The project's id or exact title (from listProjects). A miss returns the projects that exist."
+          },
+          "option": {
+            "type": "object",
+            "description": "One option in the story/planner/option-schema.json shape, inline (an object, or its JSON text). Needs chapter, title and beats."
+          },
+          "status": {
+            "type": "string",
+            "description": "proposed (the default) or accepted."
+          },
+          "authorAsked": {
+            "type": "string",
+            "description": "The author's own words picking this plan. Required to accept, and with replace."
+          },
+          "check": {
+            "type": "string",
+            "description": "What bible_check.py said about this option (\"bible_check: CLEAN\", or the findings the author accepted). Required to accept."
+          },
+          "replace": {
+            "type": "boolean",
+            "description": "Change a plan the author has edited or decided, or pick a different plan for a chapter that has one. Needs authorAsked."
           }
         }
       }
