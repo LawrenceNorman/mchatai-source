@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "lastUpdated": "2026-10-18",
+  "_source_of_truth": true,
+  "_comment": "The contract for voice rules an agent proposes from the author's edits (story/voice/VOICE.md; STORYMAKER_AUTHORSHIP_PLAN.md AA.5, History Writer D7 for fiction). story/tools/voice_rules.py reads every rule from here. DECODER SAFETY: comment keys at this TOP LEVEL ONLY.",
+
+  "proposalKeys": ["rules"],
+  "ruleKeys": ["id", "say", "kind", "edits", "pattern", "in"],
+  "requiredRuleKeys": ["id", "say", "kind", "edits"],
+  "idPattern": "^[a-z][a-z0-9_]{2,40}$",
+  "kinds": ["style", "cut", "taste"],
+  "refusedKinds": {"fact": "A changed name, number or date is a correction to the bible, not a voice rule. Tell the author what the bible now says and update it only with their OK."},
+  "scopes": ["narration", "all"],
+  "_scopesWhy": "Like prose_lint: a rule reads narration only (dialogue is a character speaking) unless it says \"in\": \"all\".",
+
+  "minEdits": 2,
+  "_minEditsWhy": "One edit is a fix; a rule needs at least two of the author's own edits pointing the same way.",
+  "sayMaxChars": 300,
+  "overlaySeverity": "hard",
+  "_overlayWhy": "A rule the author accepted gates the agent's later drafts like a shared lint rule. On the author's own text every finding is a note, as always.",
+
+  "_patternRules": "A phrase rule's pattern must match what the agent wrote in at least minEdits of the edits it cites (the before text), and must not match anything the author wrote in any edit (every author after text): a rule that would flag the author's own words is not their voice. A rule with no pattern is recorded as unenforced, so nobody mistakes it for a gate."
+}

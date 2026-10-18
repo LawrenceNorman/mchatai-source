@@ -22,6 +22,7 @@ import beat_map  # noqa: E402
 import bible_check  # noqa: E402
 import prose_lint  # noqa: E402
 import validate_pack  # noqa: E402
+import voice_rules  # noqa: E402
 
 FIX = os.path.join(_story.DESIGNER, "fixtures")
 BANKS = os.path.join(_story.DESIGNER, "question-banks")
@@ -753,6 +754,100 @@ class BeatMap(unittest.TestCase):
         for k in self.c["mapBeatKeys"]:
             self.assertIn(f'"{k}"', text)
 
+
+
+# ── AA.5: the author's edits become voice rules ──────────────────────────────────
+
+VOICEFIX = os.path.join(_story.STORY, "fixtures", "voice")
+
+
+class VoiceRules(unittest.TestCase):
+    """A rule cites the author's own edits; its pattern catches what the agent wrote and never
+    what the author wrote. Applying writes a version of voice.md and the book's lint overlay."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.c = voice_rules.contract()
+        cls.edits = voice_rules.edits_of(load(os.path.join(VOICEFIX, "edits.json")))
+        cls.good = load(os.path.join(VOICEFIX, "proposal-good.json"))
+        cls.taken = voice_rules.shared_rule_ids()
+
+    def check(self, proposal, taken=None):
+        return voice_rules.check(proposal, self.edits, self.c, self.taken if taken is None else taken)
+
+    def test_good_rules_pass_and_a_patternless_rule_is_noted(self):
+        fs = self.check(self.good)
+        self.assertEqual((hard(fs), soft(fs)), (set(), {"unenforced"}))
+
+    def test_every_planted_defect_is_named(self):
+        bad = load(os.path.join(VOICEFIX, "proposal-bad.json"))
+        self.assertEqual(hard(self.check(bad)), set(bad["_plantedRules"]))
+
+    def test_a_dialogue_rule_reads_dialogue_only_when_it_says_so(self):
+        """\"Fine,\" is inside quotation marks: a narration rule cannot see it."""
+        rule = {"id": "no_fine", "say": "x", "kind": "style", "edits": ["e1f0a1", "e1f0a3"], "pattern": "\\bfine\\b"}
+        self.assertEqual(hard(self.check({"rules": [rule]})), {"pattern-misses"}, "narration only: no flag, no catch")
+        self.assertIn("pattern-flags-author", hard(self.check({"rules": [dict(rule, **{"in": "all"})]})))
+
+    def test_apply_writes_a_version_and_the_overlay(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            voice, overlay = os.path.join(d, "voice", "voice.md"), os.path.join(d, "voice", "lint-rules.project.json")
+            fs, summary = voice_rules.apply(self.good, self.edits, voice, overlay, ["no_nodding", "fewer_gestures"],
+                                            "Keep the nodding one, and the gestures.", self.c, today="2026-10-18")
+            self.assertEqual(hard(fs), set())
+            text = read(voice)
+            self.assertIn("## v1 — 2026-10-18 — from 3 of the author's edits", text)
+            self.assertIn("The author: “Keep the nodding one, and the gestures.”", text)
+            self.assertIn("- Characters don't nod to agree or to answer; they say or do something. (checked; from "
+                          "edits e1f0a1, e1f0a2, e1f0a3 in Karsk, The Road Out)", text)
+            self.assertIn("(not checked: no pattern can catch it;", text)
+            rules = load(overlay)["rules"]
+            self.assertEqual([r["id"] for r in rules], ["no_nodding"], "only a rule with a pattern is enforced")
+            self.assertEqual((rules[0]["severity"], rules[0]["addedIn"]), ("hard", "v1"))
+
+            again, summary = voice_rules.apply(self.good, self.edits, voice, overlay, ["no_nodding"], "Again.", self.c)
+            self.assertEqual(hard(again), {"rule-exists"})
+            self.assertIsNone(summary, "a refused apply writes nothing")
+            fs, _ = voice_rules.apply(self.good, self.edits, voice, overlay, ["no_realising_lines"], "That one too.",
+                                      self.c, today="2026-10-19")
+            self.assertEqual(hard(fs), set())
+            self.assertIn("## v2 — 2026-10-19", read(voice))
+            self.assertEqual([r["id"] for r in load(overlay)["rules"]], ["no_nodding", "no_realising_lines"])
+
+            # The overlay gates a draft through prose_lint --also.
+            chapter = os.path.join(d, "ch.md")
+            with open(chapter, "w") as fh:
+                fh.write("Bram nodded at the cart. \"Go,\" he said.\n")
+            run = subprocess.run([sys.executable, os.path.join(HERE, "prose_lint.py"), "chapter", chapter,
+                                  "--also", overlay, "--json"], capture_output=True, text=True)
+            self.assertEqual(run.returncode, 1, run.stdout + run.stderr)
+            self.assertIn("no_nodding", {f["rule"] for f in json.loads(run.stdout)["findings"]})
+
+    def test_apply_refuses_without_the_authors_words_or_an_unknown_id(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            voice, overlay = os.path.join(d, "voice.md"), os.path.join(d, "overlay.json")
+            self.assertEqual(hard(voice_rules.apply(self.good, self.edits, voice, overlay, ["no_nodding"], " ",
+                                                    self.c)[0]), {"author-said"})
+            self.assertEqual(hard(voice_rules.apply(self.good, self.edits, voice, overlay, ["nope"], "Yes.",
+                                                    self.c)[0]), {"accept-unknown"})
+            self.assertFalse(os.path.exists(voice) or os.path.exists(overlay))
+
+    def test_a_book_rule_never_replaces_a_shared_one(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            overlay = os.path.join(d, "o.json")
+            with open(overlay, "w") as fh:
+                json.dump({"rules": [{"id": "delve", "pattern": "x", "why": "x"}]}, fh)
+            with self.assertRaises(ValueError):
+                prose_lint.load_rules(None, [overlay])
+
+    def test_the_voice_brief_names_the_real_commands(self):
+        text = read(os.path.join(_story.STORY, "voice", "VOICE.md"))
+        for cmd in ("python3 story/tools/voice_rules.py check --edits", "python3 story/tools/voice_rules.py apply",
+                    "prose_lint.py chapter <file> --also voice/lint-rules.project.json"):
+            self.assertIn(cmd, text)
 
 if __name__ == "__main__":
     unittest.main(verbosity=1)

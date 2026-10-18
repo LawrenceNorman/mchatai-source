@@ -4,12 +4,14 @@
   prose_lint.py chapter FILE [--against FILE ...]   one chapter; repeats checked against the others
   prose_lint.py book FILE [FILE ...]                every chapter, and repeats across them
   prose_lint.py text < chapter.txt                  any text from stdin
-  options: --rules PATH (default story/lint-rules-fiction.json), --json
+  options: --rules PATH (default story/lint-rules-fiction.json), --also PATH (a book's own rules,
+           e.g. the voice rules its author accepted, story/voice/VOICE.md; repeatable), --json
 
 Rules are DATA (story/lint-rules-fiction.json, the shape of history/lint-rules.json): stock
 phrases, an explaining last paragraph, a stat-screen budget, and the same six or more words in
 two places. Phrase rules read narration only: text inside double quotation marks is a character
-speaking. Another kind of book passes its own rules file; nothing here assumes fiction.
+speaking (a rule with "in": "all" reads dialogue too). Another kind of book passes its own rules
+file; nothing here assumes fiction.
 
 It does not judge good writing. HARD findings gate an AGENT's draft (repair the flagged span,
 never regenerate the chapter); on the author's own text every finding is a note. Exit 1 when any
@@ -30,8 +32,29 @@ _QUOTED = re.compile(r"“[^”]*”|\"[^\"\n]*\"")
 _WORD = re.compile(r"[A-Za-z0-9’']+")
 
 
-def load_rules(path=None):
-    return load_json(path or DEFAULT_RULES)
+def load_rules(path=None, also=()):
+    """The rules file, with each `also` file's phrase rules added (a book's own rules). An id
+    that is already a rule is an error: a book's rule never silently replaces a shared one."""
+    rules = load_json(path or DEFAULT_RULES)
+    if not isinstance(rules, dict):
+        return rules
+    rules = dict(rules, rules=list(rules.get("rules", [])))
+    ids = {r["id"] for r in rules["rules"]}
+    for extra in also:
+        more = load_json(extra)
+        if not isinstance(more, dict):
+            raise ValueError(f"no rules at {extra}")
+        for r in more.get("rules", []):
+            if r["id"] in ids:
+                raise ValueError(f"{extra}: rule {r['id']!r} is already a rule")
+            ids.add(r["id"])
+            rules["rules"].append(r)
+    return rules
+
+
+def scope_of(text, rule):
+    """What a phrase rule reads: narration (dialogue blanked), or everything with "in": "all"."""
+    return text if rule.get("in") == "all" else narration(text)
 
 
 def narration(text):
@@ -77,10 +100,9 @@ def stat_screens(text, cfg):
 
 def chapter_findings(text, rules, name="chapter"):
     out = []
-    scan = narration(text)
     for rule in rules.get("rules", []):
         rx = re.compile(rule["pattern"], re.I)
-        for m in rx.finditer(scan):
+        for m in rx.finditer(scope_of(text, rule)):
             out.append(finding(rule["id"], rule.get("severity", HARD),
                                f"{m.group(0).strip()!r} — {rule['why']}",
                                f"{name}:{line_of(text, m.start())} {sentence_around(text, m.start(), m.end())}"))
@@ -173,9 +195,13 @@ def main(argv=None):
     ap.add_argument("files", nargs="*")
     ap.add_argument("--against", nargs="*", default=[], help="other chapters to check repeats against")
     ap.add_argument("--rules", help="a rules file (default story/lint-rules-fiction.json)")
+    ap.add_argument("--also", action="append", default=[], help="a book's own rules, added to the others")
     ap.add_argument("--json", action="store_true")
     args = ap.parse_args(argv)
-    rules = load_rules(args.rules)
+    try:
+        rules = load_rules(args.rules, args.also)
+    except ValueError as e:
+        ap.error(str(e))
     if not isinstance(rules, dict):
         ap.error(f"no rules at {args.rules or DEFAULT_RULES}")
 

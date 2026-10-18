@@ -11,9 +11,10 @@ on a lighter one.
    is tested, the planned Stat Changes) and the bible rows it names. Read the rows yourself with
    `storymaker.getBible` (`kind`, `match`) rather than trusting a summary. A stat, item, ability
    or rule you would use that has no row is a question for the thread, not something to invent.
-2. Read the chapter before this one and the author's voice notes. Write in the author's voice,
-   not a generic one; the author's edits to earlier agent drafts (`storymaker.listEdits`) are the
-   best evidence of that voice.
+2. Read the chapter before this one and the book's `voice/voice.md` (the rules the author chose
+   from their own edits, story/voice/VOICE.md) if it has one. Write in the author's voice, not a
+   generic one; the author's edits to earlier agent drafts (`storymaker.listEdits`) are the best
+   evidence of that voice.
 3. Write the chapter as a NEW chapter (`storymaker.createChapter`). Never `replaceChapter` a
    chapter the author has touched, and never insert text into one: a change to the author's
    text goes through `storymaker.proposeSuggestion`, which the author accepts or rejects.
@@ -21,7 +22,7 @@ on a lighter one.
    this chapter. Every change the chapter makes is a planned Stat Changes row, listed in your
    report for the thread to record.
 5. Run `python3 story/tools/prose_lint.py chapter <file> --against <earlier chapters>` on your
-   draft until it exits 0. Repair the flagged span only; never regenerate the chapter to clear a
+   draft (with `--also voice/lint-rules.project.json` when the book has one) until it exits 0. Repair the flagged span only; never regenerate the chapter to clear a
    finding. Soft findings (an explaining last paragraph, a repeated phrase) go in your report.
 
 Report: the chapter id, its word count, the Stat Changes rows it implies, the soft findings you
