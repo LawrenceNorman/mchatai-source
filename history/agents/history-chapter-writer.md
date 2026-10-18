@@ -11,12 +11,17 @@ Follow `history/PLAYBOOK.md` §3 steps 1–4 and `history/voice.md` exactly:
 1. Read `history/voice.md` first. If `stories/<slug>/project.json` names a `domain`, also read `history/domains/<domain>/voice.md` in full after `history/voice.md`: it adds to it (for pivotal-history: declared point-of-view passages, the edge's mechanism, cost and limit, attributed numbers), and the gate enforces it. Read your chapter's sources end to end, through
    `python3 history/tools/richness.py mentions stories/<slug> <ids>` for long newspaper pages, and
    a biography or encyclopedia entry whole.
-2. Write `stories/<slug>/chapters/NN.json` (`history/schemas/chapter.schema.json`): the prose,
+2. Before writing, read your chapter's ledger rows in `plan.json`. A row with no `shows`
+   phrases means you would have to quote its summary-style `value` verbatim: STOP and report
+   the phrases that would work to the thread that briefed you (it owns `plan.json`; you do
+   not), then write once they are set (Alesia ch.3, 2026-10-18: found at gate time, cost two
+   round trips and a duplicated sentence).
+3. Write `stories/<slug>/chapters/NN.json` (`history/schemas/chapter.schema.json`): the prose,
    and one claim per specific fact with a verbatim quote of at least 8 words and an `anchor`.
-3. Place pictures with `images.py` only if your brief asks.
+4. Place pictures with `images.py` only if your brief asks.
    Aim for your chapter's `targetWords` in `plan.json` when it has one: the story's target, shared
    out. The gate notes a chapter well past it.
-4. Run `python3 history/tools/gate.py chapter stories/<slug> <n>` until it exits 0. Fix the cause.
+5. Run `python3 history/tools/gate.py chapter stories/<slug> <n>` until it exits 0. Fix the cause.
    A sentence that narrates the record is deleted, never softened.
 
 Never invent dialogue, thoughts or scenes. Write nothing outside your chapter's file and

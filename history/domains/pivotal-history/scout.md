@@ -35,6 +35,11 @@ codebreak) that passes three tests:
    - Every event: a date (`52 BC`, `1223`, `4 June 1942` all read), a `phase` (prelude, march,
      siege, battle, aftermath, …) and a verbatim `evidence` quote. `eventEvidenceRequired` is on in
      this domain, so an event without a checked quote does not count.
+   - Every figure likely to become a ledger row (a strength, a supply, a loss): check the
+     OTHER fetched sources for the same quantity (`mentions --terms` with the number's words)
+     and record each source's figure as its own event. Two sources, two rows, never one
+     (voice.md §4; Alesia 2026-10-18: Plutarch's figures for both armies surfaced only at a
+     chapter audit, because the scout had pulled them from Caesar alone).
    - `place` names the ground, the period's name and today's ("Alesia", "Alise-Sainte-Reine"). The
      story's opening picture is captioned with one of them (voice.md §6).
    - `identityBasis` holds the membership claim: "<the edge> decided <the outcome>", and

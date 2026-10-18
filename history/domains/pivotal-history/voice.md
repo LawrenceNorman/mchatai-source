@@ -51,7 +51,10 @@ the wall, in the line, on the deck. It is allowed only on these terms, each chec
   sentence with nothing from a source in it is invention and is cut. [l1_unanchored]
 - **Perception, never feeling.** What was there to see, hear and smell, from the sources. No
   feeling, thought or hope for the reader or anyone else unless a source records it. [l1_interior]
-- **Short.** At most 35% of a chapter. The narrative carries the chapter. [l1_share]
+- **Short.** At most 35% of a chapter. And do not LAND it on a figure: a passage's last
+  sentence is where an attributed number drifts in (a count only a commander's report gives is
+  not something a bystander perceives). Put such figures in the plain narrative after the
+  passage, attributed (§4). (Alesia ch.4's audit, 2026-10-18.) The narrative carries the chapter. [l1_share]
 - **Inside it, and only inside it,** the frame may say "in front of you stands …" (the base
   `stage_direction` rule is exempt there, by name in `thresholds.json` `pov.l1ExemptRules`).
   Every other rule holds: no invented dialogue, no "must have", no "today".
