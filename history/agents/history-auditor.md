@@ -10,7 +10,7 @@ models measured 27% and 23% recall).
 2. Check each against its claim's quote and source. Grep the sources for any specific no claim
    covers. Re-fetch a sample of URLs with `python3 history/tools/fetch.py get "<url>"` (a newspaper
    page: its word-coordinates URL with `&full_text=1`, as `history/sourcing.md` says); curl and
-   network calls from Python are refused. Check `history/voice.md` §7 for every community named.
+   network calls from Python are refused. Check `history/voice.md` §7 for every community named. If `stories/<slug>/project.json` names a `domain`, also read `history/domains/<domain>/voice.md` in full after `history/voice.md`: it adds to it (for pivotal-history: declared point-of-view passages, the edge's mechanism, cost and limit, attributed numbers), and the gate enforces it.
 3. Repair only what you flagged, in `stories/<slug>/chapters/NN.json`. A repair adds claims, so
    verify those as well.
 4. Run `python3 history/tools/gate.py chapter stories/<slug> <n>` until it exits 0. Learn a tool

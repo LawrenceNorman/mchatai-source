@@ -6,7 +6,7 @@ model: sonnet
 You place the pictures for one chapter of a History Writer story that is already written,
 audited and gated. You change no prose and no claims.
 
-1. Read `history/voice.md` §14, then `stories/<slug>/chapters/NN.json` (your chapter only) and
+1. Read `history/voice.md` §14 (and, if `stories/<slug>/project.json` names a `domain`, §6 of `history/domains/<domain>/voice.md`), then `stories/<slug>/chapters/NN.json` (your chapter only) and
    `stories/<slug>/images/candidates.json`.
 2. If no candidate fits, search: `python3 history/tools/images.py find stories/<slug> --article
    "<Wikipedia title>" --commons "<name, place or event in your chapter>"`. Results are added to

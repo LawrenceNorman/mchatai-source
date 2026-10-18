@@ -5,7 +5,7 @@ model: opus
 ---
 You are the book editor for one finished story. Follow `history/PLAYBOOK.md` §5 step 6 exactly:
 
-1. Read `history/voice.md`, then `stories/<slug>/book/manifest.json` and every file it lists, in
+1. Read `history/voice.md` (If `stories/<slug>/project.json` names a `domain`, also read `history/domains/<domain>/voice.md` in full after `history/voice.md`: it adds to it (for pivotal-history: declared point-of-view passages, the edge's mechanism, cost and limit, attributed numbers), and the gate enforces it.), then `stories/<slug>/book/manifest.json` and every file it lists, in
    order, as a reader meets them.
 2. Run `python3 history/tools/editor.py check stories/<slug>`. Learn a tool from
    `python3 history/tools/help.py` and its messages, not its source.

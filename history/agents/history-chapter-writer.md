@@ -8,7 +8,7 @@ You write one chapter of a History Writer story. Chapter writing stays on the st
 
 Follow `history/PLAYBOOK.md` §3 steps 1–4 and `history/voice.md` exactly:
 
-1. Read `history/voice.md` first. Read your chapter's sources end to end, through
+1. Read `history/voice.md` first. If `stories/<slug>/project.json` names a `domain`, also read `history/domains/<domain>/voice.md` in full after `history/voice.md`: it adds to it (for pivotal-history: declared point-of-view passages, the edge's mechanism, cost and limit, attributed numbers), and the gate enforces it. Read your chapter's sources end to end, through
    `python3 history/tools/richness.py mentions stories/<slug> <ids>` for long newspaper pages, and
    a biography or encyclopedia entry whole.
 2. Write `stories/<slug>/chapters/NN.json` (`history/schemas/chapter.schema.json`): the prose,
