@@ -18,6 +18,7 @@ import unittest
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import _story  # noqa: E402
+import beat_map  # noqa: E402
 import bible_check  # noqa: E402
 import prose_lint  # noqa: E402
 import validate_pack  # noqa: E402
@@ -611,6 +612,146 @@ class BibleCheck(unittest.TestCase):
         self.assertIn("python3 story/tools/bible_check.py --bible", text)
         for k in self.rules["topLevelKeys"]:
             self.assertIn(f'"{k}"', text, f"PLANNER.md's example option shows {k}")
+
+
+# ── AA.2: a draft mapped onto a story structure ─────────────────────────────────
+
+BEATFIX = os.path.join(_story.STORY, "fixtures", "beats")
+
+
+class BeatPacks(unittest.TestCase):
+    """Every pack in story/canon/beats/ passes the contract; each rule fires on its own defect."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.c = beat_map.contract()
+        cls.packs = beat_map.catalog()
+
+    def test_every_pack_and_the_index_are_clean(self):
+        self.assertGreaterEqual(len(self.packs), 4)
+        for pid, pack in self.packs.items():
+            self.assertEqual(hard(beat_map.validate_pack(pack, self.c)), set(), pid)
+        self.assertEqual(beat_map.validate_index(), [])
+
+    def test_common_names_are_internal_and_name_real_beats(self):
+        for pid, pack in self.packs.items():
+            for bid in pack.get("_commonNames") or {}:
+                self.assertIn(bid, {b["id"] for b in pack["beats"]}, f"{pid}: _commonNames names a beat it lacks")
+
+    def alone(self, mutate):
+        pack = copy.deepcopy(self.packs["fifteen-beats"])
+        mutate(pack)
+        return hard(beat_map.validate_pack(pack, self.c))
+
+    def test_each_pack_rule_alone(self):
+        self.assertEqual(self.alone(lambda p: p.pop("summary")), {"pack-shape"})
+        self.assertEqual(self.alone(lambda p: p.update(mood="grim")), {"pack-shape"})
+        self.assertEqual(self.alone(lambda p: p.update(packID="Fifteen Beats")), {"pack-id"})
+        self.assertEqual(self.alone(lambda p: p["beats"][3].update(id="Catalyst!")), {"beat-id"})
+        self.assertEqual(self.alone(lambda p: p["beats"][3].update(id="setup")), {"beat-duplicate"})
+        self.assertEqual(self.alone(lambda p: p["beats"][3].update(window=[0.2, 0.1])), {"beat-window"})
+        self.assertEqual(self.alone(lambda p: p.update(displayName="Save the Cat beats")), {"pack-mark"})
+        self.assertEqual(self.alone(lambda p: p["beats"][3].update(describe="As in Romancing the Beat.")), {"pack-mark"})
+        self.assertEqual(self.alone(lambda p: p["beats"][3].update(window=[0.5, 1.5])), {"beat-window"})
+        self.assertEqual(self.alone(lambda p: p.update(beats=p["beats"][:2])), {"pack-limits"})
+        self.assertEqual(self.alone(lambda p: p["beats"][-1].update(window=[0.0, 1.0])), {"pack-order"})
+
+
+class BeatMap(unittest.TestCase):
+    """A map is the agent's reading; beat_map.py refuses a quote that is not in its chapter and
+    computes what is missing itself."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.c = beat_map.contract()
+        cls.pack = beat_map.catalog()["fifteen-beats"]
+        cls.chapters, cls.basis = beat_map.chapters_of(load(os.path.join(BEATFIX, "salt-road-outline.json")))
+        cls.good = load(os.path.join(BEATFIX, "beat-map-good.json"))
+
+    def check(self, m, chapters=None, basis=None):
+        return beat_map.check(m, self.pack, chapters or self.chapters, basis or self.basis, self.c)
+
+    def test_the_fixture_outline_names_its_missing_beats_middle_first(self):
+        fs, rep = self.check(self.good)
+        self.assertEqual(fs, [])
+        self.assertEqual(self.basis, "chapters", "an outline is placed by chapter")
+        self.assertEqual(rep["missing"], ["midpoint", "pressure", "dark-night"])
+        self.assertEqual(rep["missingInMiddle"], ["midpoint", "pressure"])
+        self.assertEqual((rep["early"], rep["late"], rep["outOfOrder"]), ([], [], []))
+        lines = beat_map.describe(rep, self.pack)
+        self.assertIn("Missing in the middle: Midpoint, Pressure closes in", lines)
+        self.assertIn("Missing elsewhere: Dark night", lines)
+
+    def test_every_planted_map_defect_is_named(self):
+        bad = load(os.path.join(BEATFIX, "beat-map-bad.json"))
+        fs, _ = self.check(bad)
+        self.assertEqual(hard(fs), set(bad["_plantedRules"]))
+
+    def test_a_paraphrase_is_refused_and_a_curly_quote_is_not(self):
+        m = copy.deepcopy(self.good)
+        m["beats"][3]["evidence"] = "Bram is called to Karsk to explain a short shipment"
+        self.assertEqual(hard(self.check(m)[0]), {"evidence-not-found"})
+        m = copy.deepcopy(self.good)
+        m["beats"][0]["evidence"] = "WEIGHS  salt at dawn in the Lantern Guild’s   weighing house"
+        self.assertEqual(self.check(m)[0], [], "case, spacing and curly quotes aside")
+
+    def test_a_common_name_points_to_the_packs_own_id(self):
+        m = copy.deepcopy(self.good)
+        m["beats"][9]["beat"] = "all-is-lost"
+        fs, _ = self.check(m)
+        self.assertEqual(hard(fs), {"unknown-beat"})
+        self.assertIn("did you mean 'lowest-point'", fs[0]["message"])
+
+    def test_early_late_and_order(self):
+        m = copy.deepcopy(self.good)
+        m["beats"][10]["chapter"], m["beats"][10]["evidence"] = 2, "he sends Ilse in his place with the cart"
+        fs, rep = self.check(m)
+        self.assertEqual(fs, [])
+        self.assertEqual([x["beat"] for x in rep["early"]], ["the-answer"])
+        self.assertEqual(rep["outOfOrder"], [{"beat": "the-answer", "chapter": 2, "before": [
+            "debate", "into-the-new", "second-story", "premise-in-play", "lowest-point"]}])
+        self.assertIn("Out of order: The answer (ch 2) comes before Debate, Into the new world, Second story, "
+                      "The premise in play, Lowest point, which this structure puts first",
+                      beat_map.describe(rep, self.pack))
+        m = copy.deepcopy(self.good)
+        m["beats"][3]["chapter"], m["beats"][3]["evidence"] = 9, "accused of stealing the tally book"
+        self.assertEqual([x["beat"] for x in self.check(m)[1]["late"]], ["catalyst"])
+
+    def test_prose_is_placed_by_words(self):
+        """A long first chapter pushes chapter 2 deep into the book."""
+        manuscript = {"chapters": [{"title": "One", "text": "word " * 900 + "the letter came"},
+                                   {"title": "Two", "text": "the letter came again " + "word " * 96}]}
+        chapters, basis = beat_map.chapters_of(manuscript)
+        self.assertEqual(basis, "words")
+        m = {"pack": "fifteen-beats", "beats": [{"beat": "catalyst", "chapter": 2, "evidence": "the letter came again"}]}
+        _, rep = self.check(m, chapters, basis)
+        self.assertEqual([x["beat"] for x in rep["late"]], ["catalyst"], "chapter 2 starts at 90% of the words")
+
+    def test_the_whole_verb_reply_works_as_a_manuscript(self):
+        chapters, _ = beat_map.chapters_of({"ok": True, "result": load(os.path.join(BEATFIX, "salt-road-outline.json"))})
+        self.assertEqual(len(chapters), 12)
+
+    def test_cli(self):
+        def run(*args):
+            return subprocess.run([sys.executable, os.path.join(HERE, "beat_map.py"), *args],
+                                  capture_output=True, text=True)
+        outline = os.path.join(BEATFIX, "salt-road-outline.json")
+        self.assertEqual(run("packs").returncode, 0)
+        ok = run("check", "--manuscript", outline, os.path.join(BEATFIX, "beat-map-good.json"))
+        self.assertEqual(ok.returncode, 0, ok.stdout + ok.stderr)
+        self.assertIn("Missing in the middle: Midpoint, Pressure closes in", ok.stdout)
+        bad = run("check", "--manuscript", outline, "--pack", "fifteen-beats", "--json",
+                  os.path.join(BEATFIX, "beat-map-bad.json"))
+        self.assertEqual(bad.returncode, 1)
+        self.assertFalse(json.loads(bad.stdout)["ok"])
+        self.assertEqual(run("check", "--manuscript", outline, "--pack", "nope",
+                             os.path.join(BEATFIX, "beat-map-good.json")).returncode, 2)
+
+    def test_the_mapping_brief_names_the_real_command(self):
+        text = read(os.path.join(_story.STORY, "canon", "MAPPING.md"))
+        self.assertIn("python3 story/tools/beat_map.py check --manuscript", text)
+        for k in self.c["mapBeatKeys"]:
+            self.assertIn(f'"{k}"', text)
 
 
 if __name__ == "__main__":

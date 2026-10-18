@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "lastUpdated": "2026-10-18",
+  "_source_of_truth": true,
+  "_comment": "The contract for a story-structure beat pack (story/canon/beats/) and for a beat map an agent writes against one (story/canon/MAPPING.md). story/tools/beat_map.py reads every rule from here. A pack is a rubric, not a formula: the map shows the author which beats a draft has, which it lacks, and which land early or late. DECODER SAFETY: comment keys at this TOP LEVEL ONLY.",
+
+  "requiredKeys": ["packID", "displayName", "summary", "beats"],
+  "topLevelKeys": ["version", "lastUpdated", "packID", "displayName", "summary", "bestFor", "ordered", "beats"],
+  "beatKeys": ["id", "name", "window", "describe", "lookFor"],
+  "requiredBeatKeys": ["id", "name", "window", "describe"],
+  "_keysWhy": "Keys starting with _ are comments and allowed anywhere in a pack. _commonNames (beat id → the names writers commonly use for it) is internal: it lets an agent recognise 'my all is lost moment' without that name appearing in anything the author is shown as ours.",
+
+  "marksNotInNames": ["save the cat", "romancing the beat"],
+  "_marksWhy": "Titles of books whose names are marks. A pack's internal _lineage may say where a structure comes from; nothing an author is shown as ours (displayName, summary, bestFor, a beat's name, describe or lookFor) may use them.",
+
+  "idPattern": "^[a-z][a-z0-9-]{1,40}$",
+  "limits": {
+    "beatsMin": 3,
+    "beatsMax": 40,
+    "nameMaxChars": 40,
+    "summaryMaxChars": 300,
+    "describeMaxChars": 400,
+    "lookForMax": 6
+  },
+
+  "tolerance": 0.05,
+  "_toleranceWhy": "A beat counts as early or late only when it lands more than this fraction of the book outside its window. Windows are where the beat usually falls, as a fraction of the whole (0 = the first word, 1 = the last).",
+  "middle": [0.25, 0.75],
+  "_middleWhy": "The span the report calls 'the middle': where drafts most often go missing, so its missing beats are listed first.",
+
+  "mapKeys": ["pack", "basis", "beats", "notes"],
+  "mapBeatKeys": ["beat", "chapter", "evidence"],
+  "evidenceMaxWords": 40,
+  "_evidenceWhy": "Every beat in a map quotes the chapter it is in, word for word (spacing, case and curly quotes aside). A quote that is not in that chapter is refused: it means the agent paraphrased or invented the beat, and the author would be told their draft has something it does not."
+}
