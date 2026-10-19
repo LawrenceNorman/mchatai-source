@@ -2635,6 +2635,14 @@ class DomainRichness(DomainCase):
         self.assertEqual(len(bad), 1)
         self.assertIn("1 edgeEvidence", bad[0]["message"])
 
+    def test_an_own_words_source_no_event_cites_is_named(self):
+        d = self.project.dossier
+        for e in d["events"]:
+            e["sources"] = [x for x in e.get("sources", []) if x != "s3"] or ["s1"]
+        _hw.save_json(self.project.path("dossier.json"), d)
+        _, problems = richness.compute(self.project)
+        self.assertIn("own_words_uncited", {f["rule"] for f in problems})
+
     def test_a_plain_project_counts_as_before(self):
         self.set_domain(None)
         computed, _ = richness.compute(self.project)
@@ -2738,6 +2746,11 @@ class SourceQuirks(unittest.TestCase):
         title, text = fetch.html_to_text(raw)
         self.assertEqual(title, "Part Two")
         self.assertGreater(_hw.words(text), 50)
+
+    def test_footnote_markers_are_not_words(self):
+        self.assertEqual(_hw.norm("sunk by Dauntlesses,[156] while Mogami survived"),
+                         _hw.norm("sunk by Dauntlesses, while Mogami survived"))
+        self.assertIn("1890", _hw.norm("the [1890] directory"))     # an editor's bracketed year is a word
 
     def test_ligatures_compare_as_letters(self):
         self.assertEqual(_hw.norm("the Cæsar of Œdipus"), _hw.norm("the Caesar of Oedipus"))

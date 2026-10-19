@@ -133,12 +133,18 @@ def clean_source_text(text):
 _LIGATURES = str.maketrans({"æ": "ae", "Æ": "Ae", "œ": "oe", "Œ": "Oe", "ﬁ": "fi", "ﬂ": "fl"})
 
 
+_FOOTNOTE = re.compile(r"\[(?:\d{1,3}|[a-z]|note \d{1,3}|citation needed)\]")   # never a bracketed year
+
+
 def norm(text):
     """Comparison form: dashes and curly quotes unified, ligatures spelled out, invisible
     characters (soft hyphens, zero-width spaces) dropped, whitespace collapsed, lowercased. The
     landmark quote check's normalisation plus quote marks — retyping a quote with curly marks
     changes no word of it."""
     text = (text or "").translate(_C1).translate(_INVISIBLE).translate(_DASHES).translate(_QUOTES)
+    # An encyclopedia's footnote markers ("Dauntlesses,[156] while") are not words of the sentence:
+    # a quote copied around one is the same words (Midway's planning, 2026-10-18).
+    text = _FOOTNOTE.sub("", text)
     return re.sub(r"\s+", " ", text.translate(_LIGATURES)).strip().lower()
 
 

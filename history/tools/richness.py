@@ -331,6 +331,15 @@ def compute(project):
         problems.append(finding("event_unverified", "soft",
                                 f"{len(unverified)} event(s) not counted — " + "; ".join(unverified[:6])
                                 + (" …" if len(unverified) > 6 else "")))
+    # A participant's own account that no event cites (Midway, 2026-10-18: Fletcher's report, the one
+    # source aboard a ship in the fight, reached the plan only because a planner went looking for an
+    # immersive passage). It is the source a point-of-view passage and the best quotations need.
+    cited = {str(s) for e in d.get("events", []) for s in e.get("sources", [])}
+    idle = [sid for sid, rec in project.sources.items() if rec.get("ownWords") and sid in usable and sid not in cited]
+    if idle:
+        problems.append(finding("own_words_uncited", "soft",
+                                f"own-words source(s) {', '.join(idle)} support no dossier event — read them through "
+                                "`mentions` and record what they hold"))
     # The edge re-check (domains/pivotal-history/scout.md §2.3) reads the scout's for/against quotes
     # instead of whole sources, so each must be verbatim in its source like any evidence. Two of the
     # first scout's failed on OCR line-break hyphens and nothing caught it (2026-10-16).
