@@ -2643,6 +2643,17 @@ class DomainRichness(DomainCase):
         _, problems = richness.compute(self.project)
         self.assertIn("own_words_uncited", {f["rule"] for f in problems})
 
+    def test_a_shows_phrase_copied_from_a_facts_only_source_is_named(self):
+        plan = self.project.plan
+        row = {"id": "lx", "entity": "person:edith", "field": "bio.standing", "value": "owner", "chapter": 1,
+               "evidence": {"source": "s2", "quote": "Born in Ohio in 1870, she arrived in 1890 and within three years"},
+               "shows": ["within three years had become one of the few women", "owned her building"]}
+        plan.setdefault("ledger", []).append(row)
+        _hw.save_json(self.project.path("plan.json"), plan)
+        found = [f for f in richness.validate_plan(self.project, write=False) if f["rule"] == "shows_copies_source"]
+        self.assertEqual(len(found), 1, found)            # the copied phrase, not the paraphrase
+        self.assertIn("within three years", found[0]["message"])
+
     def test_a_plain_project_counts_as_before(self):
         self.set_domain(None)
         computed, _ = richness.compute(self.project)

@@ -487,6 +487,15 @@ def validate_plan(project, write):
         if words(quote) < t["minQuoteWords"] or norm(quote) not in norm(text):
             out.append(finding("ledger_quote_unverified", "hard",
                                f"ledger row {r.get('id')}: its evidence is not a verbatim quote of {t['minQuoteWords']}+ words from source {sid}"))
+        # A `shows` phrase is what the prose must contain, so one clipped from a facts-only source puts
+        # that source's own sentence into the story (Midway, 2026-10-18: ten words of Wikipedia, which
+        # the copy gate then had to be argued around). Write `shows` as a short paraphrase.
+        if (sources[sid].get("license") or "facts-only").lower() == "facts-only":
+            for phrase in r.get("shows") or []:
+                if words(phrase) >= t.get("showsCopyWords", 6) and norm(phrase) in norm(text):
+                    out.append(finding("shows_copies_source", "soft",
+                                       f"ledger row {r.get('id')}: `shows` {phrase[:60]!r} is copied from facts-only source {sid}; "
+                                       "write it as a short paraphrase, or the prose must reproduce the source to pass"))
     ids = {r.get("id") for r in rows}
     for ch in chapters:
         for lid in ch.get("ledger", []):
