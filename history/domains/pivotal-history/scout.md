@@ -40,6 +40,8 @@ codebreak) that passes three tests:
      and record each source's figure as its own event. Two sources, two rows, never one
      (voice.md §4; Alesia 2026-10-18: Plutarch's figures for both armies surfaced only at a
      chapter audit, because the scout had pulled them from Caesar alone).
+   - `when` is the episode's date as a reader should see it ("52 BC", "June 1942", "1268–1273"): the
+     title block prints it under the name, and the series book orders its stories by it.
    - `place` names the ground, the period's name and today's ("Alesia", "Alise-Sainte-Reine"). The
      story's opening picture is captioned with one of them (voice.md §6).
    - `identityBasis` holds the membership claim: "<the edge> decided <the outcome>", and

@@ -306,13 +306,31 @@ def first_sentence(md, limit=240):
 # ── a story ──────────────────────────────────────────────────────────────────
 
 def year_of(value):
+    """A year from a date or a number. BC years read negative ("52 BC" → -52), as richness.py reads
+    them, so a book of episodes sorts from the ancient world forward (Pivotal Histories, 2026-10-18)."""
+    if isinstance(value, int) and not isinstance(value, bool):
+        return value
+    from richness import year_of as dated
+    y = dated(value)
+    if y is not None:
+        return y
     m = YEAR.search(str(value or ""))
     return int(m.group(1)) if m else None
 
 
+def when_label(year):
+    return f"{-year} BC" if isinstance(year, int) and year < 0 else (str(year) if year is not None else "")
+
+
 def arrival(project, place):
-    """(year, why) for the year the subject arrived in the place."""
+    """(year, why) for the year the subject arrived in the place, or, for an episode (a dossier with
+    a `when`), the year it happened: a book of episodes runs in the order they happened."""
     d = project.dossier or {}
+    if d.get("when"):
+        y = year_of(d["when"])
+        if y is None:
+            y = year_of((d.get("computed") or {}).get("firstEventYear"))
+        return y, f"the episode's date ({d['when']})"
     events = [e for e in d.get("events", []) if year_of(e.get("date"))]
     arrivals = sorted((e for e in events if e.get("lifeStage") == "arrival"), key=lambda e: year_of(e["date"]))
     here = [e for e in arrivals if place and place.lower() in (e.get("what") or "").lower()]
@@ -680,6 +698,7 @@ def build_story(project, shim, use_files, out, place, problems, pool, lens=None)
     review = meta.get("review") or {}
     return {
         "slug": slug, "name": subject, "years": years, "arrived": arrived, "arrivedWhy": why,
+        "when": str(dossier.get("when") or ""),
         "bornHere": why.startswith("born in"),
         "born": year_of(life.get("born")),
         "summary": (intro or {}).get("summary", ""), "portrait": portrait, "portraitCredit": portrait_credit,
@@ -712,11 +731,8 @@ def publishable(story, community=True):
 # ── the book ─────────────────────────────────────────────────────────────────
 
 def series_entry(series_id):
-    data = load_json(os.path.join(HISTORY, "series.json"), {}) or {}
-    for s in data.get("series", []):
-        if s.get("id") == series_id:
-            return s, data.get("place") or ""
-    return None, data.get("place") or ""
+    from _hw import series_entry as find
+    return find(series_id)
 
 
 def landed_projects(stories_dir, series_id):
@@ -771,7 +787,7 @@ def cmd_order(stories_dir, series_id):
     parts = (entry.get("book") or {}).get("parts", [])
     for year, _, name, why in sorted(rows):
         part = parts[part_for(year, parts)]["title"] if parts else ""
-        print(f"{year if year != 9999 else '????'}  {name:<28} {part:<28} {why}")
+        print(f"{when_label(year) if year != 9999 else '????':>7}  {name:<28} {part:<28} {why}")
     return 0
 
 
@@ -875,7 +891,9 @@ def cmd_build(stories_dir, series_id, out, use_files=False, publish=False, revie
                         + ", ".join(by_permission))
     elif by_permission:
         notes.append(f"{len(by_permission)} stories with pictures used by permission, non-commercially: {', '.join(by_permission)}")
-    the_map = book_map.build(stories, projects[0], out, notes)
+    # A book whose places are not the landmark guide's (Pivotal Histories: Alesia, Midway) has no
+    # places map: book_map draws on the guide's Seattle basemap (`placesMap: false`).
+    the_map = book_map.build(stories, projects[0], out, notes) if book.get("placesMap", True) else None
     place_photos = the_map.pop("_photosUsed", []) if the_map else []
     generated = datetime.date.today().isoformat()
     pics = {}
@@ -1220,7 +1238,7 @@ function home(){
     h += `<section class="part"><h2>${L.n ? `<span class="pn">${L.n}</span>` : ""}${esc(L.t)}${L.y ? `<span class="yrs">${L.y}</span>` : ""}</h2>
       <ol class="people">${p.stories.map(k => { const s = S[k]; return `<li><a class="person" href="#/p/${k}">${portrait(s)}<div>
         <h3>${esc(s.name)}</h3>
-        <p class="when">${s.bornHere ? `Born in ${esc(B.place || "the city")}` : s.arrived ? `Arrived ${s.arrived}` : ""}${s.arrived && s.years ? " · " : ""}${esc(s.years)}</p>
+        <p class="when">${s.when ? esc(s.when) : `${s.bornHere ? `Born in ${esc(B.place || "the city")}` : s.arrived ? `Arrived ${s.arrived}` : ""}${s.arrived && s.years ? " · " : ""}${esc(s.years)}`}</p>
         ${s.summary ? `<p class="sum">${esc(s.summary)}</p>` : ""}
         <p class="len">${s.chapters.length} chapters · ${s.minutes} min${s.draft ? " · draft" : ""}</p>
       </div></a></li>`; }).join("")}</ol></section>`;
@@ -1237,7 +1255,7 @@ function person(slug){
     ${s.portrait ? `<img class="hero" data-src="${esc(s.portrait)}" alt="${esc(s.name)}">` : ""}
     <p class="kicker"><a href="#/">${esc(B.title)}</a>${L.t ? ` · ${esc(L.n ? L.n + ": " : "")}${esc(L.t)}` : ""}</p>
     <h1>${esc(s.name)}</h1>
-    <p class="years">${esc(s.years)}${s.bornHere ? `${s.years ? " · " : ""}born in ${esc(B.place || "the city")}` : s.arrived ? `${s.years ? " · " : ""}arrived ${esc(s.arrivedIn || "in " + (B.place || "the city"))} ${s.arrived}` : ""}</p>
+    <p class="years">${s.when ? esc(s.when) : ""}${s.when ? "" : esc(s.years)}${s.when ? "" : s.bornHere ? `${s.years ? " · " : ""}born in ${esc(B.place || "the city")}` : s.arrived ? `${s.years ? " · " : ""}arrived ${esc(s.arrivedIn || "in " + (B.place || "the city"))} ${s.arrived}` : ""}</p>
     ${draftNote(s)}
     ${s.portrait && s.portraitCredit ? `<p class="pcredit">Portrait: ${esc(s.portraitCredit)}</p>` : ""}
   </header>

@@ -620,9 +620,11 @@ def title_block(project):
     life = dossier.get("lifespan") or {}
     born, died = year(life.get("born")), year(life.get("died"))
     years = f"{born}–{died}" if born and died else (f"born {born}" if born else (f"died {died}" if died else ""))
-    sid = meta.get("series") or dossier.get("series")
-    known = (load_json(os.path.join(HISTORY, "series.json"), {}) or {}).get("series", [])
-    series = next((s.get("title") for s in known if s.get("id") == sid and s.get("title")), "")
+    # An episode has a date, not a lifespan: the dossier's `when` ("52 BC", "June 1942"), as written.
+    years = years or str(dossier.get("when") or "").strip()
+    from _hw import series_entry
+    entry, _ = series_entry(meta.get("series") or dossier.get("series"))
+    series = (entry or {}).get("title") or ""
     dek = " · ".join(x for x in (years, series) if x)
     return f"# {name}\n\n*{dek}*" if dek else f"# {name}"
 

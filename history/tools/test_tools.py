@@ -2685,6 +2685,48 @@ class EpisodeOpening(DomainCase):
         self.assertIn("portrait_missing", self.rules(images.portrait_findings(self.project)))
 
 
+class EpisodeBook(DomainCase):
+    """A domain's series is a book like any other (the author, 2026-10-18: 'keep going so we can
+    eventually make a complete book'): its title block, its order, its date."""
+
+    def test_a_domain_series_is_found_with_its_book(self):
+        entry, _ = _hw.series_entry("pivotal-histories")
+        self.assertEqual(entry["title"], "Pivotal Histories")
+        self.assertFalse(entry["book"]["placesMap"])
+        self.assertEqual(_hw.series_entry("no-such-series")[0], None)
+
+    def test_an_episode_title_block_carries_its_date_and_series(self):
+        meta = json.loads(read(self.project.path("project.json")))
+        meta.update(subject="The Siege of Fixture Ford", series="pivotal-histories")
+        _hw.save_json(self.project.path("project.json"), meta)
+        d = self.project.dossier
+        d.pop("lifespan", None)
+        d["when"] = "52 BC"
+        _hw.save_json(self.project.path("dossier.json"), d)
+        self.assertEqual(cite.title_block(self.project), "# The Siege of Fixture Ford\n\n*52 BC · Pivotal Histories*")
+
+    def test_episodes_order_by_their_date_bc_first(self):
+        import series_book
+        self.assertEqual(series_book.year_of("52 BC"), -52)
+        self.assertEqual(series_book.year_of(-52), -52)
+        self.assertEqual(series_book.when_label(-52), "52 BC")
+        d = self.project.dossier
+        d["when"] = "214–212 BC"
+        _hw.save_json(self.project.path("dossier.json"), d)
+        year, why = series_book.arrival(self.project, "")
+        self.assertEqual(year, -214)
+        self.assertIn("episode", why)
+        parts = _hw.series_entry("pivotal-histories")[0]["book"]["parts"]
+        self.assertEqual(parts[series_book.part_for(-214, parts)]["title"], "The ancient world")
+        self.assertEqual(parts[series_book.part_for(1942, parts)]["title"], "The twentieth century")
+
+    def test_a_life_keeps_its_arrival(self):
+        import series_book
+        self.set_domain(None)
+        year, why = series_book.arrival(self.project, "Harbor Town")
+        self.assertNotIn("episode", why)
+
+
 class SourceQuirks(unittest.TestCase):
     """What the first pivotal-history scout's old sources taught the generic tools (2026-10-16)."""
 

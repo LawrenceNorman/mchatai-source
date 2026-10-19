@@ -47,10 +47,15 @@ YEAR = re.compile(r"\b(1[5-9]\d\d|20\d\d)(?=s?\b)")
 # read exactly as before.
 ERA_YEAR = re.compile(r"\b(\d{1,4})\s*(BCE|BC|B\.C\.)|\b(?:AD|A\.D\.|CE)\s*(\d{1,4})\b|\b(\d{1,4})\s*(?:AD|A\.D\.|CE)\b")
 MEDIEVAL_YEAR = re.compile(r"\b(1[0-4]\d\d)(?=s?\b)")
+# A BC range ("214–212 BC"): the era marker covers both years, so the range starts at the first.
+BC_RANGE = re.compile(r"\b(\d{1,4})\s*[–—-]\s*\d{1,4}\s*(?:BCE|BC|B\.C\.)")
 
 
 def year_of(date):
     s = str(date or "")
+    m = BC_RANGE.search(s)
+    if m:
+        return -int(m.group(1))
     m = ERA_YEAR.search(s)
     if m:
         if m.group(1):

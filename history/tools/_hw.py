@@ -74,6 +74,23 @@ def thresholds(project=None):
     return base
 
 
+def series_entry(series_id):
+    """(series, place) for a series id: history/series.json first, then each domain's series.json
+    (history/domains/<id>/series.json), so a domain's series has a title and a book like any other.
+    A domain's file has no top-level place; its stories name their own (dossier `place`)."""
+    base = load_json(os.path.join(HISTORY, "series.json"), {}) or {}
+    for s in base.get("series", []):
+        if s.get("id") == series_id:
+            return s, base.get("place") or ""
+    if os.path.isdir(DOMAINS):
+        for dom in sorted(os.listdir(DOMAINS)):
+            data = load_json(os.path.join(DOMAINS, dom, "series.json"), {}) or {}
+            for s in data.get("series", []):
+                if s.get("id") == series_id:
+                    return s, data.get("place") or ""
+    return None, base.get("place") or ""
+
+
 def lint_rules(project=None):
     rules = list(load_json(os.path.join(HISTORY, "lint-rules.json"))["rules"])
     dom = domain_of(project)
