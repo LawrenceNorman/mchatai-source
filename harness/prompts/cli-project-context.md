@@ -187,7 +187,7 @@ What the best catalog game so far (Echo Reef, 2026-10-16) had, and what a game s
 13. **One signature mechanic with a twist,** and every other system serving it (Echo Reef: the map is dark until your sonar pings reveal it).
 14. **A short, complete arc:** about three acts or places, each with its own look and one new wrinkle; an intro screen for each, and a finale screen with the time or score and a saved best.
 15. **Progress the player can see and cares about:** companions that follow you, places that light up and stay lit, a map that fills in.
-16. **Feedback on every action:** a particle burst, a short synthesized sound, a small flash or shake; an ambient soundscape; depth from light, gradients, vignette and parallax.
+16. **Feedback on every action:** a particle burst, a short synthesized sound, a small flash or shake; an ambient soundscape; depth from light, gradients, vignette and parallax. An animation only plays if the element carrying it survives long enough to paint: never add a class to an element and then rebuild its container in the same tick. If a re-render follows (a list redrawn with `innerHTML = ''`, a board re-laid-out), wait for the animation first — `setTimeout(..., <the animation's length>)` or the element's `animationend` — and keep input held until then. A deduction game shipped on 2026-10-19 with a wrong answer's shake and red flash that no player could ever see, because the caption lines were rebuilt on the same line that added them.
 17. **Few verbs** (move plus one or two actions), the same on keyboard and touch. Finish fewer features and make them feel good, rather than many half-done ones.
 
 ## Output
