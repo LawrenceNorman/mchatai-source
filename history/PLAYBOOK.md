@@ -138,7 +138,11 @@ sources end to end as step 1 says: `richness.py mentions` for long newspaper pag
 news fills the columns, and a biography or encyclopedia entry whole, because `mentions` skips
 the passages that say "he" instead of the name. The thread running the
 story keeps the plan, hands each writer the chapter's events and source ids, runs the gates and
-lands the result. Ask each subagent for a report of a few lines; the files hold the rest.
+lands the result. Ask each subagent for a report of a few lines; the files hold the rest. Run
+subagents in the FOREGROUND (several at once in one message is fine): never end the thread's turn while one
+is still running. An idle thread is closed after 15 minutes to free a slot and is not re-invoked when its
+background subagents finish; the Armada's chapters stage (2026-10-19) lost two audits and its introduction
+that way.
 
 1. Read `voice.md` again. Read every source the chapter's events cite, end to end; the human
    story is often past the halfway mark of a document.
