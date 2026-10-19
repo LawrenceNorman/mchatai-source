@@ -790,6 +790,23 @@ class PictureCredits(unittest.TestCase):
                          "A. Roe Anderson, Public domain")
 
 
+class CatalogueCredits(unittest.TestCase):
+    """Picture credits carry a library catalogue's punctuation in from Commons (Hampton Roads'
+    editor, 2026-10-19)."""
+
+    def test_catalogue_punctuation_is_cleaned(self):
+        import images
+        self.assertEqual(images.credit_name("Robert Underwood Johnson and Clarence Clough Buel (Book authors).,"),
+                         "Robert Underwood Johnson and Clarence Clough Buel")
+        self.assertEqual(images.credit_name("From Harper's weekly : a journal of civilization. (New York : Harper' s Weekly Co.,,"),
+                         "From Harper's weekly: a journal of civilization. New York: Harper's Weekly Co.")
+
+    def test_a_clean_credit_is_unchanged(self):
+        import images
+        for name in ("Joe Mabel", "Mathew Brady (1822-1896)", "Harper's Weekly Co.", "Asahel Curtis"):
+            self.assertEqual(images.credit_name(name), name)
+
+
 class PictureRemoval(FixtureCase):
     def test_a_placed_picture_comes_out_whole(self):
         os.makedirs(self.project.path("images"), exist_ok=True)

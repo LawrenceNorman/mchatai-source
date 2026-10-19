@@ -225,6 +225,13 @@ UNKNOWN_AUTHOR = re.compile(r"^(?:unknown(?:\s+(?:author|photographer|artist))?[
 UNKNOWN_PHRASE = re.compile(r"\bunknown\s+(?:author|photographer|artist)\b", re.I)
 
 
+CATALOGUE_ROLE = re.compile(r"\s*\((?:book\s+)?(?:authors?|editors?|photographers?|artists?|illustrators?|engravers?|publishers?)\)", re.I)
+
+
+CREDIT_ABBREV = {"co", "inc", "ltd", "jr", "sr", "bros", "corp", "st", "ed", "eds", "dept", "assn", "mfg", "ca", "al",
+                 "assoc", "calif", "penna", "photog", "intl", "natl", "univ", "coll"}
+
+
 def credit_name(who):
     """The artist as a caption should name them. Commons' HTML can repeat a name ("Unknown author
     Unknown author" in six captions, 2026-10-05): a name said twice is said once, and an unknown
@@ -235,6 +242,22 @@ def credit_name(who):
     if words and len(words) % 2 == 0 and words[:half] == words[half:]:
         words = words[:half]
     name = " ".join(words)
+    # Library catalogue punctuation, carried in from Commons' author field (Hampton Roads' editor,
+    # 2026-10-19: "Harper' s Weekly Co.,,", "(Book authors).,"): a role in parentheses is metadata,
+    # an apostrophe split from its "s" is OCR, and a run of commas and stops is one mark.
+    had_role = bool(CATALOGUE_ROLE.search(name))
+    name = CATALOGUE_ROLE.sub("", name)
+    name = re.sub(r"(\w)'\s+s\b", r"\1's", name)
+    name = re.sub(r"\(\s*[^()]*$", lambda m: m.group(0)[1:].strip(), name)      # an unclosed "(" opens nothing
+    name = re.sub(r"\s+([,;:])", r"\1", name)                                   # "Parks , Office" → "Parks, Office"
+    name = re.sub(r"([,;:])\1+", r"\1", name)                                    # ",," → "," (never ".,": "D.C., USA")
+    name = re.sub(r"\s+", " ", name).strip(" ,;:")
+    # A closing stop the catalogue added ("Uncredited.", "source."), never an abbreviation's
+    # ("Co.", "Mass.", "et al.", "H."): only after a whole word of five letters or more, or where a
+    # catalogue role was cut from just before it ("Buel (Book authors).").
+    last = re.search(r"(\w+)\.$", name)
+    if last and last.group(1).lower() not in CREDIT_ABBREV and (len(last.group(1)) >= 5 or (had_role and len(last.group(1)) > 1)):
+        name = name[:-1]
     if UNKNOWN_PHRASE.search(name) and not UNKNOWN_AUTHOR.match(name):
         name = re.sub(r"\s+", " ", UNKNOWN_PHRASE.sub(" ", name)).strip(" ,;.")
         name = name[:1].upper() + name[1:]
