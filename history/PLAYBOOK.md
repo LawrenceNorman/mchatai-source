@@ -108,6 +108,10 @@ context, so a context full of sources costs that much on every step (Cost, below
      `story/schemas/biography.json`), each with the chapter it lands in, the phrases that show
      it (`shows`), and verbatim evidence.
    - an **endNote** if the story stops before the record does.
+   - **notes**, optional: a rule every writer needs that the sources state once (a time zone, a
+     calendar, a name the sources give two ways), with its source and quote. The thread hands
+     them to every writer.
+   - each ledger row's **shows** as a short paraphrase, never a clipped span of its quote.
    - **targetWords**, optional: the length you choose, when it is shorter than the dossier's
      ceiling. The ceiling is a maximum, not a quota. A target lowers each chapter's starved
      floor and leaves its ceiling where the dossier put it. Choose it before you write, and

@@ -53,14 +53,21 @@ codebreak) that passes three tests:
    model, tries to REFUTE "the edge decided it" from the fetched sources: did they credit numbers,
    weather, disease, treachery, or a commander's blunder instead? Record the verdict in the
    dossier as `edgeCheck`: `{"verdict": "holds" | "partial" | "fails", "why": "…", "otherCauses":
-   ["…"]}`. A `fails` is dropped. A `partial` is kept, and the story names the other causes
+   ["…"]}`. The same reader then checks each EVENT: every clause of its `what` (a name, a date, a
+   cause) must be in its own `evidence` quote, and a `what` that says more is corrected or split
+   before planning (Midway, 2026-10-18: a wrong ship, a wrong date and a sentence about the wrong
+   admiral reached the chapters and cost three audits). A `fails` is dropped. A `partial` is kept, and the story names the other causes
    (voice.md §3).
 4. **The table for the author.** One row per candidate: the episode, the edge, tier, mode, point of
    view, ceiling words, independent and licence-clean sources, dated events, the participants'
    own words, and the re-check verdict. `python3 history/tools/richness.py table stories` prints
    it from the dossiers. Recommend one pilot and say why.
 
-**Planning an episode** (PLAYBOOK §2, unchanged) has one twist: a dossier event far outside the
+**Planning an episode** (PLAYBOOK §2) also: write each ledger row's `shows` as a short paraphrase,
+never a clipped span of its quote (`richness.py plan` names one copied from a facts-only source:
+the prose would have to reproduce that source to pass); and when the sources disagree by a rule (a
+time zone, Old and New Style dates), record the rule once in `plan.json` `notes`, with its quote,
+for every writer (Midway's writers each rediscovered Nimitz's two-hour zone offset). And one twist: a dossier event far outside the
 episode's own window (an excavation centuries later, a commemoration) belongs inside the chapter
 it explains, and the plan says so in `plan.endNote`. `story_end_before_record` reads chapter spans,
 not allotted events, so without the note it fires (the Alesia pilot, 2026-10-18).
