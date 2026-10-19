@@ -41,14 +41,17 @@ Every story folder's `project.json` says `"domain": "pivotal-history"`. That lin
 domain's rules; without it the dates before 1500 and the immersive passages fail.
 
 `./mchatai` drives the app: `./mchatai raw '{"command":"applet","applet":"storymaker","verb":"getState"}'`.
-The story's bible is the `campaign` pack: `storymaker.applyBiblePack`.
+A story's ledger (an army's strength, supply and ground; a commander's rank) lives in its
+`plan.json`, in the `campaign` pack's vocabulary (`story/schemas/campaign.json`), where the gates
+check it. Apply the pack to a StoryMaker project (`storymaker.applyBiblePack`) only when the author
+asks for the tables in so many words: the verb takes his request as `authorAsked`.
 
 ## How a story moves
 
 1. **Scout**: candidates, fetched sources, a dossier each, `richness.py dossier` for the numbers,
    then the edge re-check: try to refute "the edge decided it" from the sources. Show the author
    the table (`richness.py table stories`) and **stop**. They pick.
-2. **Plan** the chosen story, create it in StoryMaker, apply the campaign bible, set the outline.
+2. **Plan** the chosen story, create it in StoryMaker, set the outline.
 3. **Write** one chapter at a time. Gate it, have a fresh reader audit it, land it with
    `storymaker.createChapter`.
 4. **Listen.** `storymaker.listEdits` shows what the author changed. Fact changes become
