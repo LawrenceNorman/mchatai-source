@@ -956,7 +956,7 @@ def cmd_build(stories_dir, series_id, out, use_files=False, publish=False, revie
             extra.append(f"{s['edited']} part(s) edited by the author")
         if s["pendingSuggestions"]:
             extra.append(f"{s['pendingSuggestions']} suggestion(s) waiting")
-        print(f"  {s['arrived'] or '????'}  {s['name']:<28} {flag:<6} {s['origin']}"
+        print(f"  {when_label(s['arrived']) or '????':>7}  {s['name']:<28} {flag:<6} {s['origin']}"
               + (f"; {', '.join(extra)}" if extra else ""))
     for name, why in held:
         print(f"  held   {name}: {'; '.join(why)}")
