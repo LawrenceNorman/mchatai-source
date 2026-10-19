@@ -2571,6 +2571,18 @@ class PointOfView(DomainCase):
         self.chapter(L1_TEXT, [dict(L1_PASSAGE, mode="L2")], L1_ANCHORS)
         self.assertIn("pov_mode_unknown", self.rules(self.voice()))
 
+    def test_an_episode_subject_has_no_first_name(self):
+        d = self.project.dossier
+        d["subject"] = "The Battle of Fixture Ford"
+        _hw.save_json(self.project.path("dossier.json"), d)
+        self.chapter("The frigate came up the river in 1890. The battery opened fire.", anchors=[])
+        self.assertNotIn("first_name_for_subject", self.rules(self.voice(), hard_only=False))
+        self.set_domain(None)                                   # a life keeps the rule
+        d["subject"] = "Edith Fixture"
+        _hw.save_json(self.project.path("dossier.json"), d)
+        self.chapter("Edith came to Harbor Town in 1890.", anchors=[])
+        self.assertIn("first_name_for_subject", self.rules(self.voice(), hard_only=False))
+
     def test_a_history_writer_story_has_no_passages_at_all(self):
         self.set_domain(None)
         self.set_pov("L0+L1")
@@ -2653,6 +2665,15 @@ class DomainRichness(DomainCase):
         found = [f for f in richness.validate_plan(self.project, write=False) if f["rule"] == "shows_copies_source"]
         self.assertEqual(len(found), 1, found)            # the copied phrase, not the paraphrase
         self.assertIn("within three years", found[0]["message"])
+
+    def test_a_shows_phrase_with_an_ellipsis_is_refused(self):
+        plan = self.project.plan
+        plan.setdefault("ledger", []).append({"id": "ly", "entity": "person:edith", "field": "bio.standing", "value": "owner",
+                                             "chapter": 1, "shows": ["awarded ... on 4 October"],
+                                             "evidence": {"source": "s1", "quote": "Mrs. Fixture came to Harbor Town from Ohio in 1890"}})
+        _hw.save_json(self.project.path("plan.json"), plan)
+        rules = {f["rule"] for f in richness.validate_plan(self.project, write=False) if f["severity"] == "hard"}
+        self.assertIn("shows_unmatchable", rules)
 
     def test_a_plain_project_counts_as_before(self):
         self.set_domain(None)

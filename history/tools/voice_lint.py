@@ -205,7 +205,10 @@ def chapter_findings(project, n):
 
     # §7 — the subject goes by their surname, a woman exactly as a man (2026-10-06).
     dossier = project.dossier or {}
-    out += first_name_findings(text, dossier.get("subject") or "", dossier.get("aliases") or ())
+    # Only a person has a first name: an episode's subject ("The Battle of Hampton Roads") read as one
+    # made "The" a first name and flagged every sentence that began with it (2026-10-18).
+    if t.get("subjectIsPerson", True):
+        out += first_name_findings(text, dossier.get("subject") or "", dossier.get("aliases") or ())
 
     n_words = words(text)
     # §9 — era context, capped.

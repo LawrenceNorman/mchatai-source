@@ -487,6 +487,13 @@ def validate_plan(project, write):
         if words(quote) < t["minQuoteWords"] or norm(quote) not in norm(text):
             out.append(finding("ledger_quote_unverified", "hard",
                                f"ledger row {r.get('id')}: its evidence is not a verbatim quote of {t['minQuoteWords']}+ words from source {sid}"))
+        # A `shows` phrase is matched as literal text, so an elision inside one ("awarded ... on 4 October
+        # 1861") can never be in any prose: the chapter cannot pass (Hampton Roads, 2026-10-18, twice).
+        for phrase in r.get("shows") or []:
+            if "..." in phrase or "…" in phrase:
+                out.append(finding("shows_unmatchable", "hard",
+                                   f"ledger row {r.get('id')}: `shows` {phrase[:60]!r} contains an ellipsis and is matched as "
+                                   "literal text, so no prose can contain it; give whole phrases instead"))
         # A `shows` phrase is what the prose must contain, so one clipped from a facts-only source puts
         # that source's own sentence into the story (Midway, 2026-10-18: ten words of Wikipedia, which
         # the copy gate then had to be argued around). Write `shows` as a short paraphrase.

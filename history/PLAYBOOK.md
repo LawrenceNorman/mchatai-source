@@ -111,7 +111,10 @@ context, so a context full of sources costs that much on every step (Cost, below
    - **notes**, optional: a rule every writer needs that the sources state once (a time zone, a
      calendar, a name the sources give two ways), with its source and quote. The thread hands
      them to every writer.
-   - each ledger row's **shows** as a short paraphrase, never a clipped span of its quote.
+   - each ledger row's **shows** as a short paraphrase, never a clipped span of its quote, and
+     never with an ellipsis (it is matched as literal text).
+   - a ledger **value** never adds, averages or narrows source figures: a total no source prints is
+     not a fact, and a figure for a whole force is not one ship's (Hampton Roads, 2026-10-18).
    - **targetWords**, optional: the length you choose, when it is shorter than the dossier's
      ceiling. The ceiling is a maximum, not a quota. A target lowers each chapter's starved
      floor and leaves its ceiling where the dossier put it. Choose it before you write, and
