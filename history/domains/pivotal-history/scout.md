@@ -46,6 +46,17 @@ codebreak) that passes three tests:
      story's opening picture is captioned with one of them (voice.md §6).
    - `identityBasis` holds the membership claim: "<the edge> decided <the outcome>", and
      `identitySource` the source id that says so.
+   - **The cast** (voice.md §11): every person the story will name goes in `people[]` and every
+     people or force (the Gauls, the Arverni, the Mandubii, the legions, the German horsemen) in
+     `peoples[]`, each with `who` (one plain line for a reader who has never heard of them: "a
+     Gallic people whose chief town Alesia was"), `source`, and `evidence` (a verbatim quote of 8+
+     words that supports the line; `richness.py plan` checks it), and `aliases` for the other names
+     a chapter may use. A modern figure the story leans on counts too (Napoleon III, the emperor of
+     the French who paid for the digs).
+   - **The outcome** (voice.md §10): `outcome: {"events": [...], "phrases": [...]}`, the ids of the
+     events that resolve the episode (the surrender, the fall, the sinking) and three to six phrases
+     that would give the ending away ("surrendered", "laid down their arms", "handed over"). The
+     introduction is gated against them, so it can open the story without ending it.
    - `python3 history/tools/richness.py dossier stories/<slug>` computes the tier, the mode, the
      licence counts and the point of view (`L0`, or `L0+L1` when a participant's account earns
      immersive passages).
@@ -63,7 +74,9 @@ codebreak) that passes three tests:
    own words, and the re-check verdict. `python3 history/tools/richness.py table stories` prints
    it from the dossiers. Recommend one pilot and say why.
 
-**Planning an episode** (PLAYBOOK §2) also: write each ledger row's `shows` as a short paraphrase,
+**Planning an episode** (PLAYBOOK §2) also sets what voice.md §10–§13 ask: the book's `question`,
+each chapter's `turn` and `introduces`, two to four `observations`, the `pictures` each chapter
+should show, and an `afterword` as the last chapter. And: write each ledger row's `shows` as a short paraphrase,
 never a clipped span of its quote (`richness.py plan` names one copied from a facts-only source:
 the prose would have to reproduce that source to pass); and when the sources disagree by a rule (a
 time zone, Old and New Style dates), record the rule once in `plan.json` `notes`, with its quote,

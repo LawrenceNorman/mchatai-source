@@ -115,6 +115,15 @@ context, so a context full of sources costs that much on every step (Cost, below
      never with an ellipsis (it is matched as literal text).
    - a ledger **value** never adds, averages or narrows source figures: a total no source prints is
      not a fact, and a figure for a whole force is not one ship's (Hampton Roads, 2026-10-18).
+   - **An episode** (a project whose `domain` voice has a writer, a cast and an afterword: for
+     pivotal-history, `domains/pivotal-history/voice.md` §10–§13): the book's **question**; each
+     chapter's **turn** (what the reader wants to know next; it ends on it) and **introduces** (the
+     cast entries it meets first; `plan.intro.introduces` for the introduction; every entry once);
+     each chapter's **pictures** (what a reader should see); two to four **observations** (`text`,
+     `chapter`, `events`, `shows`); and, last, the **afterword** (`"role": "afterword"`, no events).
+     The dossier holds the cast's `who` lines and the `outcome` (the domain's `scout.md`); add them
+     before planning if a scout did not. `python3 history/tools/storytelling.py cast stories/<slug>`
+     lists the cast and where each is introduced.
    - **targetWords**, optional: the length you choose, when it is shorter than the dossier's
      ceiling. The ceiling is a maximum, not a quota. A target lowers each chapter's starved
      floor and leaves its ceiling where the dossier put it. Choose it before you write, and
@@ -151,6 +160,15 @@ that way.
    context is claims of kind `era`; quoted words are claims of kind `quote`. Give every claim
    an `anchor`: a few words, copied exactly, of the sentence in your prose it supports. The
    notes a reader sees are placed from the anchors.
+   **In an episode the writer also has a voice** (the domain's voice §2a and `storytelling.md`,
+   read both): a sentence that anchors no claim is your own, and it asks the chapter's question,
+   puts a fact in terms a reader can hold, weighs whose word we are taking, offers a reading, or
+   draws a lesson. It adds no fact, gives no one a feeling, never says "I", and stays under a
+   quarter of the chapter; a chapter with none fails to engage. Introduce each cast entry the plan
+   gives the chapter where it is first named, with a claim of kind `cast` and `"about": "<its
+   name>"`; a modern comparison's figure is a claim of kind `scale`. Keep sentences to 22 words or
+   fewer on average, and end on the chapter's `turn`. `python3 history/tools/storytelling.py writer
+   stories/<slug> <n>` marks which sentences are yours.
 3. Place up to three pictures (`voice.md` §14): `python3 history/tools/images.py add
    stories/<slug> "File:…" --chapter <n> --after "<words from the paragraph it follows>"
    --caption "<what it shows, when>" --evidence "<words from its description>"`, then
@@ -158,7 +176,8 @@ that way.
    parallel, leave this to the finish stage: one `history-picture-placer` subagent per chapter,
    one at a time.
 4. Run `python3 history/tools/gate.py chapter stories/<slug> <n>`. Fix the CAUSE of every
-   finding and run it again until it exits 0. A sentence that narrates the record is deleted,
+   finding and run it again until it exits 0. (In an episode a `writer_absent` note means the
+   chapter is still all paraphrase: give it the question it answers.) A sentence that narrates the record is deleted,
    never softened. A number no source gave is removed or sourced.
 5. **Audit** with a fresh reader who did not write it. List every specific in the prose: a
    name, date, number, place or cause. Grep the sources for any specific no claim covers.
@@ -202,7 +221,11 @@ After the author reviews:
 ## 5. Finish the story
 
 1. **The introduction** (`voice.md` §13), written now that the whole life is known:
-   `chapters/00.json`, 200 to 600 words, with claims and anchors like any chapter. Run
+   `chapters/00.json`, 200 to 600 words, with claims and anchors like any chapter. **An episode's
+   introduction is a cold open that keeps the ending** (the domain's voice §10): one true scene, the
+   book's question in your own sentence, orientation (who the sides are, who is telling us), and no
+   outcome. `gate.py intro` fails one that quotes an outcome event's evidence or uses an outcome
+   phrase (dossier `outcome`). Run
    `python3 history/tools/gate.py intro stories/<slug>` until it exits 0, then audit it as in
    step 3.5.
 2. **Citable sources.** Run `python3 history/tools/cite.py check stories/<slug>`. A source with
@@ -225,6 +248,12 @@ After the author reviews:
    introduction the author has edited gets it as a suggestion). `gate.py story` refuses a story
    with no portrait, or one that does not open the introduction. Only the author can record that
    no photograph of the person exists: `project.json` `portraitNone` {why, confirmedBy}.
+   **An episode's illustrations** (the domain's voice §6), for what no real picture can show: write a
+   spec of quoted details, run `python3 history/tools/images.py illustrate stories/<slug> <spec.json>
+   --dry-run` to see the prompt and the cost, then without `--dry-run` once. It waits in
+   `images/illustrations.json`; `images.py review stories/<slug>` writes the author's review page. Only
+   the author approves (`images.py approve … --by "<name>"`); never approve one yourself, and land the
+   book without the ones still waiting.
    Then the book. First draw the maps: `python3 history/tools/maps.py render stories/<slug>`
    draws one small street map for each designated landmark the story names, from the Seattle
    Landmarks site's own basemap (the same picture as the landmark page's map, credited to
@@ -234,7 +263,9 @@ After the author reviews:
    linked to the landmark's page, each landmark's map (linked to the same page) after the
    paragraph that first names it in the chapter that names it most, the Notes appendix (one note per paragraph, keyed by its
    opening words), the numbered Sources with their links and credits, and `manifest.json`
-   with the order. It refuses while `images.py check` has a finding. Land it with
+   with the order. An episode's book also gets a **Who's who** after the introduction, from the
+   dossier's cast (`book/whoswho.txt`, the manifest's `frontmatter`), and its afterword lands after
+   the last chapter. It refuses while `images.py check` has a finding. Land it with
    `python3 history/tools/cite.py land stories/<slug>`. It makes the StoryMaker calls itself, so
    no chapter passes through your context:
    - the introduction is created before the first chapter, and the Notes and the Sources after
@@ -246,18 +277,21 @@ After the author reviews:
      edited the outline, it is left alone and reported.
 5. Run `python3 history/tools/gate.py story stories/<slug>`. Every planned chapter and the
    introduction are written and clean, the portrait opens the introduction, and the story does
-   not end before the record does.
+   not end before the record does. In an episode, every chapter but the afterword also carries a
+   picture, and era context stays within its cap over the whole book.
 6. **The book editor**: the last read before the author's, by a fresh reader who wrote none of
    it (the `history-editor` subagent, or a new thread). Read the book as a reader will: `book/manifest.json`, then every file it
    lists, in order. Run `python3 history/tools/editor.py check stories/<slug>` for what the
-   whole book says twice, or says out of scale or out of voice. Then write
+   whole book says twice, or says out of scale or out of voice (in an episode, also sentences that
+   run long, the reading grade, and an observation that never landed). Then write
    `stories/<slug>/editor/notes.json`, at most fifteen notes, the ones that matter most to the
    book as a whole. Each note is
    `{"chapter": <n>, "kind": "flow" | "tone" | "consistency" | "clarity" | "repetition",
    "quote": "<words copied exactly from that chapter as landed>", "note": "<what a reader
    meets there, in plain words>", "replacement": "<the passage, rewritten>"}`.
    - Look for:
-     - how the chapters hand on to each other;
+     - how the chapters hand on to each other. In an episode, a chapter that closes on a summary
+       instead of its `turn` is a note of kind `turn`;
      - what a reader needs to know sooner;
      - the same thing told twice. The introduction especially: it introduces, and does not
        re-tell the chapters in their own words;

@@ -64,9 +64,20 @@
      "ceilingWords": {
       "type": "integer",
       "description": "Written by richness.py plan."
-     }
+     },
+     "role": {"enum": ["chapter", "afterword"], "description": "A pivotal-history story's last chapter may be its afterword (domain voice §12): no events, its own length (thresholds afterword.words), the writer's share up to writer.afterwordMaxShare."},
+     "turn": {"type": "string", "description": "What the reader wants to know next: the chapter ends on it, never on a summary (domain voice §10)."},
+     "introduces": {"type": "array", "items": {"type": "string"}, "description": "The cast entries (dossier people[] / peoples[] `name`) this chapter introduces at their first meeting (domain voice §11). richness.py plan fails an entry no chapter introduces."},
+     "pictures": {"type": "array", "items": {"type": "string"}, "description": "What a reader of this chapter should SEE (the double ring in section; the stakes): the wants images.py find and illustrate work from (domain voice §13)."}
     }
    }
+  },
+  "question": {"type": "string", "description": "The question the book answers, which the introduction asks (a pivotal-history story, domain voice §10)."},
+  "intro": {"type": "object", "description": "The introduction's plan: `introduces`, the cast entries it meets (domain voice §10, §11).", "properties": {"introduces": {"type": "array", "items": {"type": "string"}}}},
+  "observations": {
+   "type": "array",
+   "description": "Two to four one-liners that make the episode worth telling (domain voice §12), each with the chapter that lands it, the events that carry it, and phrases (`shows`) the prose will contain. editor.py check notes one that never lands.",
+   "items": {"type": "object", "required": ["text", "chapter"], "properties": {"text": {"type": "string"}, "chapter": {"type": "integer"}, "events": {"type": "array", "items": {"type": "string"}}, "shows": {"type": "array", "items": {"type": "string"}}}}
   },
   "ledger": {
    "type": "array",

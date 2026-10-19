@@ -39,6 +39,19 @@
   images.py follow <project>  after the author's review (cite.py adopt): each placed picture's `after`
                          follows the author's text, review/NN.txt, to the paragraph it now sits
                          under; a picture the author took out is listed, never removed
+  images.py illustrate <project> <spec.json> [--dry-run]
+                         a DECLARED illustration, for an episode only (domains/pivotal-history/voice.md §6):
+                         what no photograph or period picture can show, drawn from a spec whose every
+                         detail is a verbatim quote ({"title", "view", "details": [{"detail", "source",
+                         "evidence"}], "caption", "captionEvidence": {"source", "quote"}, "sources",
+                         "chapter", "after"}). The prompt is written from the spec; the model, its price
+                         and the story's budget are content (thresholds `illustrations`). --dry-run prints
+                         the prompt and the cost and calls nothing. A real run calls the app's DreamSnap
+                         verb once and records the picture in images/illustrations.json, NOT in the story
+  images.py review <project> [--out page.html]   the author's review page for the illustrations
+  images.py approve <project> <ill-id> --by "<who>" [--chapter N --after "…"]   the AUTHOR's yes: the
+                         illustration is placed like any picture, labelled as generated
+  images.py reject  <project> <ill-id> --by "<who>" --why "…"   the author's no (its cost still counts)
   images.py check <project>   licences, credits, captions checked against their sources,
                               placements that resolve to one paragraph, the voice's phrase rules
   images.py list  <project>   what is placed where
@@ -684,13 +697,17 @@ def image_findings(project):
     for rec in index(project):
         label = rec.get("id", "?")
         url = urllib.parse.urlparse(rec.get("url", ""))
+        if rec.get("generated"):
+            # A declared illustration (domain voice §6): a local file, so the Read view always loads it;
+            # its own checks stand in for the host and the licence.
+            out += illustration_findings(project, rec)
         # A portrait only is never in StoryMaker's text, so its host need not be one the Read view shows.
-        if hosts is not None and not rec.get("portraitOnly") and (url.scheme != "https" or (url.hostname or "").lower() not in hosts):
+        elif hosts is not None and not rec.get("portraitOnly") and (url.scheme != "https" or (url.hostname or "").lower() not in hosts):
             out.append(finding("image_host_unlisted", "hard",
                                f"{label}: {url.hostname or rec.get('url')!r} is not an https host in content/markdown-images.json, "
                                "so StoryMaker's Read view shows a link instead of the picture. Use a copy from a listed "
                                "host, or add the host to that file by PR"))
-        ok, why = (True, "") if permission_ok(rec) else licence_verdict(rec.get("license"))
+        ok, why = (True, "") if permission_ok(rec) or rec.get("generated") else licence_verdict(rec.get("license"))
         if not ok:
             out.append(finding("image_licence", "hard", f"{label}: {why}"))
         if cfg.get("creditRequired", True) and not credit_line(rec):
@@ -718,9 +735,311 @@ def image_findings(project):
         for f in voice_lint.phrase_findings(cap):
             if f["severity"] == "hard":
                 out.append(finding("image_caption_" + f["rule"], "hard", f"{label}: caption — {f['message']}", cap[:120]))
+    if any(r.get("generated") for r in index(project)) or illustrations(project):
+        for rule, msg in budget_problems(project):
+            out.append(finding(rule, "hard", msg))
     for n, k in per.items():
         if k > cfg.get("maxPerChapter", 3):
             out.append(finding("too_many_images", "soft", f"chapter {n} has {k} pictures; keep the strongest {cfg.get('maxPerChapter', 3)}"))
+    return out
+
+
+# ── declared illustrations (domains/pivotal-history/voice.md §6, 2026-10-19) ─
+
+def ill_config(project):
+    return thresholds(project).get("illustrations") or None
+
+
+def illustrations(project):
+    """Every illustration made for the story, approved or not: images/illustrations.json."""
+    return load_json(project.path("images", "illustrations.json"), []) or []
+
+
+def spec_problems(project, spec):
+    """What is wrong with an illustration spec, as [(rule, message)]: every detail a verbatim quote
+    from a fetched source, a view, a caption with its evidence, and no person's face."""
+    cfg = ill_config(project) or {}
+    t = thresholds(project)
+    out = []
+    details = spec.get("details") or []
+    if not details:
+        out.append(("illustration_spec_unverified", "the spec has no `details`: each is a short quote, its source and its evidence"))
+    for i, d in enumerate(details, 1):
+        text = project.source_text(str(d.get("source", "")))
+        ev = d.get("evidence") or ""
+        if text is None:
+            out.append(("illustration_spec_unverified", f"detail {i}: source {d.get('source')!r} has no fetched text"))
+        elif words(ev) < t["minQuoteWords"] or norm(ev) not in norm(text):
+            out.append(("illustration_spec_unverified",
+                        f"detail {i}: its evidence is not a verbatim quote of {t['minQuoteWords']}+ words from {d.get('source')}"))
+        elif not d.get("detail") or norm(d["detail"]) not in norm(ev):
+            out.append(("illustration_spec_unverified", f"detail {i}: {d.get('detail')!r} must be words copied from its evidence"))
+    if not (spec.get("view") or "").strip():
+        out.append(("illustration_spec_unverified", "the spec has no `view`: what the picture shows, and from where"))
+    cap = spec.get("caption") or ""
+    ce = spec.get("captionEvidence") or {}
+    ctext = project.source_text(str(ce.get("source", "")))
+    floor = config().get("minCaptionEvidenceWords", 6)
+    if not cap or ctext is None or words(ce.get("quote", "")) < floor or norm(ce.get("quote", "")) not in norm(ctext):
+        out.append(("image_caption_unverified",
+                    f"the caption needs `captionEvidence` {{source, quote}}: a verbatim quote of {floor}+ words that says what it shows"))
+    for f in voice_lint.phrase_findings(cap):
+        if f["severity"] == "hard":
+            out.append(("image_caption_" + f["rule"], f"caption — {f['message']}"))
+    import storytelling
+    # What is DRAWN is the view and the title; a caption may credit whose description it follows.
+    words_of = " ".join(str(spec.get(k) or "") for k in ("view", "title"))
+    names = [k for e in storytelling.cast_entries(project) if e["kind"] == "person" for k in e["keys"]]
+    hit = [n for n in names if re.search(r"(?<!\w)" + re.escape(n) + r"(?!\w)", words_of)]
+    hit += [w for w in cfg.get("personWords") or [] if re.search(r"(?<!\w)" + re.escape(w) + r"(?!\w)", words_of, re.I)]
+    if hit:
+        out.append(("illustration_person",
+                    f"the spec names {', '.join(dict.fromkeys(hit))}: an illustration never shows a real person's face "
+                    "(domain voice §6). Show the works, the ground or the mechanism"))
+    if not (spec.get("sources") or "").strip():
+        out.append(("illustration_unlabelled", "the spec needs `sources`, named for the label (\"Caesar's Gallic War VII.72–73\")"))
+    return out
+
+
+def ill_prompt(project, spec):
+    cfg = ill_config(project) or {}
+    tmpl = cfg.get("promptTemplate") or "{view}. Details: {details}."
+    details = "; ".join(d["detail"].strip() for d in spec.get("details") or [] if d.get("detail"))
+    return tmpl.format(view=spec["view"].strip().rstrip("."), details=details)
+
+
+def ill_label(project, spec):
+    cfg = ill_config(project) or {}
+    return (cfg.get("label") or "Illustration generated from {sources}; not a photograph or a period image").format(
+        sources=(spec.get("sources") or "the sources").strip())
+
+
+def budget_problems(project, extra_usd=0.0, extra_count=0):
+    """[(rule, message)] when the illustrations made (approved or not, since each one is paid for)
+    plus `extra` would pass the story's cap (thresholds illustrations.maxCount, maxUSD)."""
+    cfg = ill_config(project) or {}
+    made = [r for r in illustrations(project) if r.get("usd") is not None]
+    count = len(made) + extra_count
+    usd = round(sum(float(r.get("usd") or 0) for r in made) + extra_usd, 4)
+    out = []
+    if count > cfg.get("maxCount", 0):
+        out.append(("illustration_budget", f"{count} illustrations would pass the story's cap of {cfg.get('maxCount', 0)}"))
+    if usd > cfg.get("maxUSD", 0) + 1e-9:
+        out.append(("illustration_budget", f"${usd:.2f} of illustrations would pass the story's cap of ${cfg.get('maxUSD', 0):.2f}"))
+    return out
+
+
+def app_call(shim, applet, verb, args, wait=180):
+    """One applet verb through the workdir's ./mchatai shim, its JSON as an argument (no shell)."""
+    import subprocess
+    payload = json.dumps({"command": "applet", "applet": applet, "verb": verb, "args": args})
+    try:
+        out = subprocess.run([shim, "raw", payload, "--wait", str(wait)], capture_output=True, text=True, timeout=wait + 30)
+    except Exception as e:
+        return {"status": "error", "error": str(e)}
+    try:
+        return json.loads(out.stdout)
+    except ValueError:
+        return {"status": "error", "error": (out.stdout or out.stderr or "no reply")[:300]}
+
+
+def dreamsnap_images_dir(project):
+    """DreamSnap's Images folder (DreamSnapProjectManager: <Application Support>/mChatAI/DreamSnap/Images):
+    found above the story when the story is in the app's Workbench, else in the app's container."""
+    d = os.path.abspath(project.root)
+    while d != os.path.dirname(d):
+        cand = os.path.join(d, "DreamSnap", "Images")
+        if os.path.isdir(cand):
+            return cand
+        d = os.path.dirname(d)
+    for base in ("~/Library/Containers/com.sevenhillsstudio.mChatAImac/Data/Library/Application Support/mChatAI",
+                 "~/Library/Application Support/mChatAI"):
+        cand = os.path.join(os.path.expanduser(base), "DreamSnap", "Images")
+        if os.path.isdir(cand):
+            return cand
+    return None
+
+
+def cmd_illustrate(project, spec_path, dry=False):
+    """A declared illustration from a spec (see the usage): checked, priced against the budget, and
+    with --dry-run printed and never generated. A real run calls the app's DreamSnap verb once and
+    records the picture in images/illustrations.json, waiting for the author's approval."""
+    cfg = ill_config(project)
+    if not cfg:
+        raise Refused("this story's domain declares no illustrations (thresholds `illustrations`): a History Writer "
+                      "story uses real pictures only (voice.md §14)")
+    spec = load_json(spec_path, None)
+    if not isinstance(spec, dict):
+        raise Refused(f"{spec_path}: not a JSON object")
+    problems = spec_problems(project, spec)
+    model = cfg.get("model")
+    price = (cfg.get("usdPerImage") or {}).get(model)
+    if price is None:
+        problems.append(("illustration_budget", f"no price for {model!r} in thresholds illustrations.usdPerImage, so the budget cannot be checked"))
+    else:
+        problems += budget_problems(project, float(price), 1)
+    prompt = ill_prompt(project, spec) if spec.get("view") else ""
+    made = illustrations(project)
+    spent = sum(float(r.get("usd") or 0) for r in made)
+    print(f"model    {model}  (${price if price is not None else '?'} an image; {cfg.get('usdSource', '')[:60]}…)")
+    print(f"budget   {len(made)} made, ${spent:.2f} spent; cap {cfg.get('maxCount')} / ${cfg.get('maxUSD'):.2f}")
+    print(f"label    {ill_label(project, spec)}")
+    print(f"prompt   {prompt}")
+    if problems:
+        for rule, msg in problems:
+            print(f"  ✗ [{rule}] {msg}")
+        raise Refused(f"{len(problems)} problem(s) with the spec; nothing was generated")
+    if dry:
+        print(f"dry run: this would cost ${price:.3f} and call nothing. Run without --dry-run to generate it.")
+        return 0
+    shim = None
+    import cite
+    shim = cite.find_shim(project)
+    if not shim:
+        raise Refused("no ./mchatai shim above the story folder: illustrations are generated by the app")
+    state = app_call(shim, "dreamsnap", "getState", {}, 30)
+    app_model = (state.get("result") or {}).get("model")
+    if state.get("status") != "ok":
+        raise Refused(f"DreamSnap did not answer: {state.get('error') or state.get('output')}")
+    if app_model != model:
+        raise Refused(f"DreamSnap is set to {app_model!r}, the story's content says {model!r}: the price would be wrong. "
+                      "Set DreamSnap's model, or change thresholds illustrations.model by PR")
+    r = app_call(shim, "dreamsnap", "generatePhoto", {"prompt": prompt}, 240)
+    res = r.get("result") or {}
+    if r.get("status") != "ok" or not res.get("file"):
+        raise Refused(f"generation failed: {(r.get('error') or r.get('output') or '')[:300]} (nothing was recorded; "
+                      "a failed call may still be billed by the provider)")
+    folder = dreamsnap_images_dir(project)
+    src = os.path.join(folder, res["file"]) if folder else None
+    if not src or not os.path.isfile(src):
+        raise Refused(f"DreamSnap saved {res.get('file')!r}, which is not in its Images folder ({folder})")
+    nums = [int(m.group(1)) for x in made for m in [re.fullmatch(r"ill(\d+)", x.get("id", ""))] if m]
+    rid = f"ill{(max(nums) + 1) if nums else 1}"
+    os.makedirs(project.path("images"), exist_ok=True)
+    import shutil
+    ext = os.path.splitext(src)[1] or ".jpg"
+    shutil.copyfile(src, project.path("images", rid + ext))
+    made.append({"id": rid, "status": "pending", "title": spec.get("title") or "", "spec": spec, "prompt": prompt,
+                 "model": res.get("model") or model, "usd": float(price), "file": f"images/{rid}{ext}",
+                 "width": res.get("width"), "height": res.get("height"), "label": ill_label(project, spec),
+                 "dreamsnap": {"project": (r.get("entity") or {}).get("id"), "file": res.get("file")},
+                 "generatedAt": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds")})
+    save_json(project.path("images", "illustrations.json"), made)
+    print(f"{rid}  {project.path('images', rid + ext)}  (${price:.3f}; waiting for the author's approval: images.py review)")
+    return 0
+
+
+def cmd_approve(project, rid, by, chapter=None, after=None, reject=None):
+    """The author's decision on an illustration. Approval places it like any picture (its chapter
+    and `after` from the spec unless given); a rejection keeps the record, and its cost."""
+    if not by:
+        raise Refused("--by names who decided: only the author approves an illustration (domain voice §6)")
+    made = illustrations(project)
+    rec = next((r for r in made if r.get("id") == rid), None)
+    if rec is None:
+        raise Refused(f"{rid}: not in images/illustrations.json")
+    now = datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds")
+    if reject is not None:
+        rec.update(status="rejected", decidedBy=by, decidedAt=now, why=reject)
+        save_json(project.path("images", "illustrations.json"), made)
+        print(f"{rid} rejected by {by}")
+        return 0
+    spec = rec["spec"]
+    problems = spec_problems(project, spec)
+    if problems:
+        raise Refused("; ".join(m for _, m in problems))
+    n = int(chapter if chapter is not None else spec.get("chapter", -1))
+    aft = (after if after is not None else spec.get("after") or "").strip()
+    if project.chapter(n) is None or paragraph_index(project, n, aft) is None:
+        raise Refused(f"place it with --chapter and --after (words copied from exactly one paragraph of the chapter)")
+    import pathlib
+    rows = [r for r in index(project) if r.get("id") != rid]
+    ce = spec.get("captionEvidence") or {}
+    rows.append({"id": rid, "title": rec.get("title") or rid, "generated": True, "approved": True, "approvedBy": by,
+                 "approvedAt": now, "url": pathlib.Path(project.path(rec["file"])).resolve().as_uri(), "file": rec["file"],
+                 "license": "Generated illustration", "artist": "", "creditOverride": rec.get("label") or ill_label(project, spec),
+                 "caption": spec.get("caption", "").strip(), "evidence": ce.get("quote", "").strip(),
+                 "evidenceSource": str(ce.get("source", "")), "chapter": n, "after": aft, "model": rec.get("model"),
+                 "usd": rec.get("usd"), "spec": spec, "addedAt": now})
+    save_json(project.path("images", "index.json"), rows)
+    rec.update(status="approved", decidedBy=by, decidedAt=now, chapter=n, after=aft)
+    save_json(project.path("images", "illustrations.json"), made)
+    print(f"{rid} approved by {by}: chapter {n}, after “{aft[:50]}”")
+    return 0
+
+
+def cmd_review(project, out=None):
+    """The author's review page: each illustration with its picture, its spec's quoted details and
+    their sources, the prompt, the label, the cost, and how to approve or reject it."""
+    import html as H
+    made = illustrations(project)
+    cfg = ill_config(project) or {}
+    out = out or project.path("images", "illustrations.html")
+    slug = os.path.basename(project.root)
+    spent = sum(float(r.get("usd") or 0) for r in made)
+    cards = []
+    page_dir = os.path.dirname(os.path.abspath(out))
+    inside = os.path.abspath(out).startswith(os.path.abspath(project.root) + os.sep)
+    for r in made:
+        spec = r.get("spec") or {}
+        if inside:
+            pic = os.path.relpath(project.path(r["file"]), page_dir)
+        else:                       # a page outside the story carries its own copies of the pictures
+            import shutil
+            os.makedirs(os.path.join(page_dir, "img"), exist_ok=True)
+            shutil.copyfile(project.path(r["file"]), os.path.join(page_dir, "img", os.path.basename(r["file"])))
+            pic = "img/" + os.path.basename(r["file"])
+        rows = "".join(f"<li><q>{H.escape(d.get('detail', ''))}</q> <span class=src>{H.escape(str(d.get('source', '')))}: "
+                       f"“…{H.escape(d.get('evidence', ''))}…”</span></li>" for d in spec.get("details") or [])
+        cards.append(f"""<article class="{H.escape(r.get('status', 'pending'))}">
+<img src="{H.escape(pic)}" alt="{H.escape(spec.get('caption', ''))}">
+<div class=meta><h2>{H.escape(r['id'])} · {H.escape(r.get('title') or '')} <span class=st>{H.escape(r.get('status', 'pending'))}</span></h2>
+<p class=cap>{H.escape(spec.get('caption', ''))}</p><p class=label>{H.escape(r.get('label', ''))}</p>
+<p>For chapter {H.escape(str(spec.get('chapter', '?')))}, after “{H.escape((spec.get('after') or '')[:80])}”.
+{H.escape(r.get('model', ''))}, ${float(r.get('usd') or 0):.3f}.</p>
+<h3>What it was drawn from</h3><ul>{rows}</ul>
+<details><summary>The prompt</summary><p>{H.escape(r.get('prompt', ''))}</p></details>
+<pre>python3 history/tools/images.py approve stories/{H.escape(slug)} {H.escape(r['id'])} --by "&lt;your name&gt;"
+python3 history/tools/images.py reject stories/{H.escape(slug)} {H.escape(r['id'])} --by "&lt;your name&gt;" --why "&lt;…&gt;"</pre></div>
+</article>""")
+    page = f"""<!doctype html><html lang=en><head><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1">
+<title>Illustrations for review</title><style>
+:root{{--bg:#faf8f4;--fg:#1d1b18;--muted:#6b665e;--line:#e2ddd3;--ok:#2f6b3a;--no:#9a3324}}
+@media (prefers-color-scheme:dark){{:root{{--bg:#171614;--fg:#ece8e1;--muted:#a39d93;--line:#34312c;--ok:#7fbf8a;--no:#e08a78}}}}
+body{{background:var(--bg);color:var(--fg);font:16px/1.5 Georgia,serif;margin:0;padding:24px 16px;max-width:980px;margin:auto}}
+h1{{font-size:26px;margin:0 0 4px}} .sub{{color:var(--muted);margin:0 0 24px}}
+article{{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:20px;border-top:1px solid var(--line);padding:20px 0}}
+@media (max-width:720px){{article{{grid-template-columns:1fr}}}}
+img{{width:100%;height:auto;border:1px solid var(--line)}} h2{{font-size:18px;margin:0}} h3{{font-size:14px;margin:12px 0 4px}}
+.st{{font:12px system-ui;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}} .approved .st{{color:var(--ok)}} .rejected .st{{color:var(--no)}}
+.cap{{margin:8px 0 2px}} .label{{font-style:italic;color:var(--muted);margin:0 0 8px}} .src{{color:var(--muted);font-size:14px}}
+ul{{padding-left:18px}} pre{{white-space:pre-wrap;font-size:12px;background:var(--line);padding:8px}}
+</style></head><body><h1>Illustrations for review</h1>
+<p class=sub>{H.escape(slug)} · {len(made)} made, ${spent:.2f} of ${float(cfg.get('maxUSD', 0)):.2f} · nothing is placed in the story until you approve it</p>
+{''.join(cards) or '<p>No illustrations yet.</p>'}</body></html>"""
+    os.makedirs(os.path.dirname(os.path.abspath(out)), exist_ok=True)
+    with open(out, "w", encoding="utf-8") as fh:
+        fh.write(page)
+    print(out)
+    return 0
+
+
+def illustration_findings(project, rec):
+    """images.py check for a placed generated picture: approved by name, labelled, its spec still
+    verbatim, its file in the story, and the story within its budget."""
+    label = rec.get("id", "?")
+    out = []
+    if not (rec.get("approved") is True and rec.get("approvedBy")):
+        out.append(finding("illustration_unapproved", "hard",
+                           f"{label}: a generated picture is placed only after the author approves it (images.py approve … --by)"))
+    lab = (rec.get("creditOverride") or "").lower()
+    if "illustration generated" not in lab or "not a photograph" not in lab:
+        out.append(finding("illustration_unlabelled", "hard",
+                           f"{label}: its credit must say it is an illustration generated from the sources and not a photograph"))
+    for rule, msg in spec_problems(project, rec.get("spec") or {}):
+        out.append(finding(rule, "hard", f"{label}: {msg}"))
+    if not rec.get("file") or not os.path.isfile(project.path(rec["file"])):
+        out.append(finding("image_file_missing", "hard", f"{label}: {rec.get('file')!r} is not in the story's folder"))
     return out
 
 
@@ -788,6 +1107,14 @@ def main(argv):
         if len(argv) >= 4 and argv[1] == "portrait":
             return cmd_portrait(Project(argv[2]), argv[3], flag(argv, "--caption"), flag(argv, "--evidence"),
                                 flag(argv, "--evidence-source"), flag(argv, "--crop"), flag(argv, "--credit"))
+        if len(argv) >= 4 and argv[1] == "illustrate":
+            return cmd_illustrate(Project(argv[2]), argv[3], dry="--dry-run" in argv)
+        if len(argv) >= 4 and argv[1] in ("approve", "reject"):
+            ch = flag(argv, "--chapter")
+            return cmd_approve(Project(argv[2]), argv[3], flag(argv, "--by"), int(ch) if ch is not None else None,
+                               flag(argv, "--after"), (flag(argv, "--why") or "") if argv[1] == "reject" else None)
+        if len(argv) >= 3 and argv[1] == "review":
+            return cmd_review(Project(argv[2]), flag(argv, "--out"))
         if len(argv) >= 3 and argv[1] == "check":
             return report("images", image_findings(Project(argv[2])))
         if len(argv) >= 3 and argv[1] == "follow":

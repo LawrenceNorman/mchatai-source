@@ -471,7 +471,9 @@ def validate_plan(project, write):
         for eid in ch.get("events", []):
             if eid not in events:
                 out.append(finding("plan_unknown_event", "hard", f"chapter {ch.get('n')} allots event {eid!r}, which the dossier does not hold"))
-        allotted += len(ch.get("events", []))
+        if ch.get("role") != "afterword":
+            allotted += len(ch.get("events", []))
+    out += story_shape_findings(project, chapters, events, t)
     sources = project.sources
     rows = plan.get("ledger", [])
     for r in rows:
@@ -521,6 +523,13 @@ def validate_plan(project, write):
         target = None
     if write and allotted:
         for ch in chapters:
+            if ch.get("role") == "afterword":
+                # The afterword takes no share of the story's events or its ceiling: it has its own
+                # length (domain voice §12), and no floor but a note.
+                ch["ceilingWords"] = ((t.get("afterword") or {}).get("words") or [0, 600])[1]
+                ch.pop("floorWords", None)
+                ch.pop("targetWords", None)
+                continue
             share = len(ch.get("events", [])) / allotted
             ch["ceilingWords"] = round(story * share)
             ch["floorWords"] = round(t["starvedFraction"] * (target or story) * share)
@@ -537,7 +546,7 @@ def validate_plan(project, write):
     # Every chapter costs a writer and an auditor, about 7M tokens whatever its length: the tier-B
     # stories planned five chapters of 280-560 words and cost as much as the book-length ones
     # (2026-10-05). A short chapter is better merged with its neighbour.
-    thin = [ch for ch in chapters if target and allotted and len(chapters) > 2
+    thin = [ch for ch in chapters if target and allotted and len(chapters) > 2 and ch.get("role") != "afterword"
             and round(target * len(ch.get("events", [])) / allotted) < t.get("thinChapterWords", 450)]
     if thin:
         out.append(finding("chapters_thin", "soft",
@@ -549,6 +558,76 @@ def validate_plan(project, write):
     if last and ends and max(ends) < last and not plan.get("endNote"):
         out.append(finding("story_end_before_record", "hard",
                            f"the dossier holds events up to {last} but the plan stops at {max(ends)} — carry the story there, or say why it stops in plan.endNote"))
+    return out
+
+
+def story_shape_findings(project, chapters, events, t):
+    """An episode's plan (domain voice §10-§12), when the domain asks: the afterword is one chapter,
+    the last; every cast entry is introduced by exactly one chapter (or the introduction) and its
+    line is sourced like a claim; and the book's question, each chapter's turn and the observations
+    are written down before anyone writes. Off for a History Writer life."""
+    out = []
+    after = [c for c in chapters if c.get("role") == "afterword"]
+    if len(after) > 1:
+        out.append(finding("afterword_twice", "hard", "the plan has more than one afterword; a book has one, after its last chapter"))
+    if after and chapters[-1] is not after[0]:
+        out.append(finding("afterword_not_last", "hard", f"the afterword (chapter {after[0].get('n')}) must be the plan's last chapter"))
+    for c in chapters:
+        if c.get("role") not in (None, "chapter", "afterword"):
+            out.append(finding("plan_role_unknown", "hard", f"chapter {c.get('n')} has role {c.get('role')!r}; a chapter is a chapter or the afterword"))
+    if (t.get("cast") or {}).get("required"):
+        import storytelling
+        import voice_lint
+        entries = storytelling.cast_entries(project)
+        assigned = storytelling.cast_assignments(project)
+        sources = project.sources
+        for label in assigned:
+            if storytelling.entry_named(entries, label) is None or label not in {e["name"] for e in entries}:
+                out.append(finding("plan_unknown_cast", "hard",
+                                   f"the plan introduces {label!r}, which is not a cast entry's `name` in the dossier's people[] or peoples[]"))
+        for e in entries:
+            where = assigned.get(e["name"]) or []
+            if not where:
+                out.append(finding("cast_unassigned", "hard",
+                                   f"{e['name']} is in the cast and no chapter introduces them: add the name to one chapter's "
+                                   "`introduces` (or plan.intro.introduces) (domain voice §11)"))
+            elif len(where) > 1:
+                out.append(finding("cast_assigned_twice", "hard", f"{e['name']} is introduced by more than one chapter ({where})"))
+            if not e["who"]:
+                out.append(finding("cast_who_missing", "hard", f"cast entry {e['name']} has no `who`: one line saying who they were"))
+            text = project.source_text(e["source"]) if e["source"] in sources else None
+            if text is None or words(e["evidence"]) < t["minQuoteWords"] or norm(e["evidence"]) not in norm(text):
+                out.append(finding("cast_quote_unverified", "hard",
+                                   f"cast entry {e['name']}: its `evidence` is not a verbatim quote of {t['minQuoteWords']}+ words "
+                                   f"from source {e['source'] or '(none)'}; the Who's who is sourced like a note"))
+            for f in voice_lint.phrase_findings(e["who"], voice_lint.compiled_rules(project=project)):
+                if f["severity"] == "hard":
+                    out.append(finding("cast_who_voice", "hard", f"cast entry {e['name']}'s line: {f['message']}", e["who"]))
+    shape = t.get("plan") or {}
+    plan = project.plan or {}
+    if shape.get("question") and not str(plan.get("question") or "").strip():
+        out.append(finding("question_missing", "soft", "the plan has no `question`: the one the book answers, which the introduction asks (domain voice §10)"))
+    if shape.get("turns"):
+        flat = [str(c.get("n")) for c in chapters if c.get("role") != "afterword" and not str(c.get("turn") or "").strip()]
+        if flat:
+            out.append(finding("turn_missing", "soft",
+                               f"chapter(s) {', '.join(flat)} have no `turn`: what the reader wants to know next, which the chapter "
+                               "ends on instead of a summary (domain voice §10)"))
+    lo_hi = shape.get("observations")
+    if lo_hi:
+        obs = plan.get("observations") or []
+        if not lo_hi[0] <= len(obs) <= lo_hi[1]:
+            out.append(finding("observations_count", "soft",
+                               f"the plan has {len(obs)} observation(s); an episode has {lo_hi[0]} to {lo_hi[1]}: what makes it worth "
+                               "telling, each with the chapter that lands it and the phrases that carry it (domain voice §12)"))
+        nums = {int(c.get("n")) for c in chapters}
+        for i, o in enumerate(obs, 1):
+            if not o.get("text") or int(o.get("chapter", -1)) not in nums or not o.get("shows"):
+                out.append(finding("observation_incomplete", "soft",
+                                   f"observation {i} needs `text`, a `chapter` the plan holds and `shows` (phrases the prose will carry)"))
+            for eid in o.get("events") or []:
+                if eid not in events:
+                    out.append(finding("plan_unknown_event", "hard", f"observation {i} names event {eid!r}, which the dossier does not hold"))
     return out
 
 

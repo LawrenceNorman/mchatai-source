@@ -34,16 +34,19 @@ def compiled_rules(origin=None, project=None):
     return out
 
 
-def phrase_findings(text, rules=None, strip=True, l1=(), exempt=()):
+def phrase_findings(text, rules=None, strip=True, l1=(), exempt=(), writer=(), writer_exempt=()):
     """Phrase rules over `text`. `l1`: [(start, end)] of declared immersive passages; inside them a
     rule named in `exempt` does not fire (the domain names which, in content) and every other rule
-    still does."""
+    still does. `writer`: [(start, end)] of the writer's own sentences (domain voice §2a), where the
+    rules named in `writer_exempt` do not fire."""
     scan = strip_quoted(text) if strip else (text or "")
     out = []
     for rid, sev, rx, why, scope in rules or compiled_rules():
         for m in rx.finditer(scan):
             inside = any(a <= m.start() < b for a, b in l1)
             if (scope == "outsideL1" and inside) or (scope == "insideL1" and not inside) or (inside and rid in exempt):
+                continue
+            if rid in writer_exempt and any(a <= m.start() < b for a, b in writer):
                 continue
             out.append(finding(rid, sev, f"{m.group(0).strip()!r} — {why}", sentence_around(text, m.start(), m.end())))
     return out
@@ -186,7 +189,18 @@ def chapter_findings(project, n):
     claims = ch.get("claims", [])
     spans, out = pov_findings(project, ch, text, t)
     exempt = set((t.get("pov") or {}).get("l1ExemptRules") or []) if spans else set()
-    out += phrase_findings(text, compiled_rules(project=project), l1=spans, exempt=exempt)
+    # The writer's own sentences (a domain's voice §2a): a sentence that anchors no claim. Only a
+    # domain with a `writer` block has them; a History Writer story is claims, as before.
+    writer, writer_exempt = [], set()
+    if isinstance(t.get("writer"), dict):
+        import storytelling
+        sents, _, relaxed = storytelling.classify(ch, spans)
+        writer = [(sents[i][2], sents[i][3]) for i in relaxed]
+        writer_exempt = set(t["writer"].get("exemptRules") or [])
+    out += phrase_findings(text, compiled_rules(project=project), l1=spans, exempt=exempt,
+                           writer=writer, writer_exempt=writer_exempt)
+    if isinstance(t.get("writer"), dict):
+        out += storytelling.writer_findings(project, n, ch, spans)
 
     # §2 — a quotation is verbatim from a claimed source, or it is invented.
     evidence = " \n ".join(norm(c.get("evidence", "")) for c in claims)
@@ -211,9 +225,10 @@ def chapter_findings(project, n):
         out += first_name_findings(text, dossier.get("subject") or "", dossier.get("aliases") or ())
 
     n_words = words(text)
-    # §9 — era context, capped.
+    # §9 — era context, capped. A domain may measure it over the book instead (eraShareScope
+    # "book": an episode's orientation, gate.py story); the base measures each chapter.
     era_words = sum(words(c.get("text", "")) for c in claims if c.get("kind") == "era")
-    if n_words and era_words / n_words > t["eraShareMax"]:
+    if t.get("eraShareScope", "chapter") == "chapter" and n_words and era_words / n_words > t["eraShareMax"]:
         out.append(finding("era_share", "hard",
                            f"era context is {100 * era_words / n_words:.0f}% of the chapter (cap {100 * t['eraShareMax']:.0f}%) — the person is the subject"))
 
@@ -222,6 +237,11 @@ def chapter_findings(project, n):
     ceiling = pc.get("ceilingWords")
     if ceiling and n_words > ceiling:
         out.append(finding("over_ceiling", "hard", f"{n_words} words over this chapter's {ceiling}-word ceiling — cut, do not reword"))
+    if pc.get("role") == "afterword":
+        lo = ((t.get("afterword") or {}).get("words") or [0])[0]
+        if n_words < lo:
+            out.append(finding("under_floor", "soft", f"the afterword is {n_words} words, under {lo} (domain voice §12)"))
+        return out
     aim = pc.get("targetWords")
     if aim and n_words > t.get("targetOverrun", 1.3) * aim:
         out.append(finding("over_target", "soft",

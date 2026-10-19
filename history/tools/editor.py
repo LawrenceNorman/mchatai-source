@@ -34,7 +34,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from _hw import Project, finding, load_json, report, save_json, thresholds, words  # noqa: E402
 import cite  # noqa: E402
 
-KINDS = ("flow", "tone", "consistency", "clarity", "repetition")
+KINDS = ("flow", "tone", "consistency", "clarity", "repetition", "turn")
 QUOTED = re.compile(r'"[^"\n]+"|“[^”\n]+”')
 NUMBER = re.compile(r"\$?\d[\d,]*(?:\.\d+)?")
 MONTHS = set("january february march april may june july august september october november december".split())
@@ -193,11 +193,49 @@ def opening_findings(chapters):
             for shape, titles in shapes.items() if len(titles) >= 3]
 
 
+def readability_findings(project, chapters):
+    """Plain words, read aloud (domain voice §2a): a chapter whose sentences run long, or whose
+    reading grade (Flesch-Kincaid) falls outside the domain's range. Off unless the domain asks."""
+    r = thresholds(project).get("readability")
+    if not isinstance(r, dict):
+        return []
+    import storytelling
+    lo, hi = r.get("gradeRange", [8, 12])
+    cap = r.get("maxAvgSentenceWords", 22)
+    out = []
+    for c in chapters:
+        _, _, wps, grade = storytelling.readability(c["prose"])
+        if wps > cap or not lo <= grade <= hi:
+            out.append(finding("readability", "soft",
+                               f"{c['title']}: sentences average {wps:.1f} words (aim at most {cap}) and it reads at grade "
+                               f"{grade:.1f} (aim {lo}–{hi}). Break the long ones; put a short one after a long one."))
+    return out
+
+
+def observation_findings(project, chapters):
+    """The plan's observations (domain voice §12): each lands in its chapter, carried by at least one
+    of its `shows` phrases."""
+    obs = (project.plan or {}).get("observations") or []
+    if not obs or not (thresholds(project).get("plan") or {}).get("observations"):
+        return []
+    from _hw import norm
+    prose = {c["n"]: norm(c["prose"]) for c in chapters}
+    out = []
+    for o in obs:
+        n = int(o.get("chapter", -1))
+        if not any(norm(s) in prose.get(n, "") for s in o.get("shows") or []):
+            out.append(finding("observation_unlanded", "soft",
+                               f"the observation {o.get('text', '')[:90]!r} was to land in chapter {n}, and none of its phrases "
+                               f"({', '.join(repr(s) for s in (o.get('shows') or [])[:3])}) is there"))
+    return out
+
+
 def check_findings(project):
     k = cfg()
     chapters = [c for c in book(project) if c["prose"]]
     return (repeat_findings(chapters, k) + balance_findings(chapters, k)
-            + drift_findings(chapters, k) + opening_findings(chapters))
+            + drift_findings(chapters, k) + opening_findings(chapters)
+            + readability_findings(project, chapters) + observation_findings(project, chapters))
 
 
 # ── verify: a fresh reader's notes, gated before the author sees them ────────

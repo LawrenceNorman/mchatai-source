@@ -6,6 +6,13 @@
                                   plus its length (thresholds.introWords)
   gate.py story   <project>       every chapter, plus the story-level checks
 
+An episode (a domain whose thresholds ask: domains/pivotal-history/voice.md v2) also gets the
+writer's own sentences checked in every chapter (writer_*), its cast introduced at the first
+meeting (cast_*), a cold-open introduction that asks its question and keeps the ending
+(intro_question_missing, intro_spoils_outcome), a picture in every chapter (picture_floor) and its
+era context capped over the book. `storytelling.py writer <project> <n>` shows which sentences are
+the writer's.
+
 Exit 0 only when no HARD finding remains. Fix the CAUSE, not the wording: a sentence that
 narrates the record is deleted, never softened; a number no source gave is removed or sourced.
 
@@ -22,6 +29,7 @@ import cite  # noqa: E402
 import images  # noqa: E402
 import quotes  # noqa: E402
 import richness  # noqa: E402
+import storytelling  # noqa: E402
 import voice_lint  # noqa: E402
 from _hw import Project, finding, report, thresholds, words  # noqa: E402
 
@@ -35,7 +43,8 @@ def chapter_findings(project, n):
             + checks.number_findings(project, n)
             + checks.growth_findings(project, n)
             + checks.correction_findings(project, n)
-            + cite.anchor_findings(project, n))
+            + cite.anchor_findings(project, n)
+            + storytelling.cast_findings(project, n, project.chapter(n) or {}))
 
 
 def intro_findings(project):
@@ -47,6 +56,10 @@ def intro_findings(project):
     out = (quotes.claim_findings(project, 0) + quotes.copy_findings(project, 0)
            + voice_lint.chapter_findings(project, 0) + checks.number_findings(project, 0)
            + checks.correction_findings(project, 0) + cite.anchor_findings(project, 0))
+    # An episode's cold open (domain voice §10): it asks the book's question, introduces the cast it
+    # meets, and keeps the ending. Each is off unless the domain asks for it.
+    out += (storytelling.question_findings(project, ch, voice_lint.pov_findings(project, ch, ch.get("text", ""), thresholds(project))[0])
+            + storytelling.outcome_findings(project, ch) + storytelling.cast_findings(project, 0, ch))
     lo, hi = thresholds(project).get("introWords", [200, 600])
     n = words(ch.get("text", ""))
     if n > hi:
@@ -71,6 +84,9 @@ def story_findings(project):
             out.append(finding("chapter_not_clean", "hard", f"chapter {n} has {len(hard)} violation(s) — run gate.py chapter {project.root} {n}"))
     # The author's rule (2026-10-11, the third time he asked): every history opens with its subject's portrait.
     out += images.portrait_findings(project)
+    # An episode's book (domain voice §11, §13): every chapter has a picture, and era context is
+    # capped over the whole book. Off unless the domain asks.
+    out += storytelling.picture_floor_findings(project) + storytelling.era_book_findings(project)
     # voice.md §4 — the story may not end before the record does.
     out += [f for f in richness.validate_plan(project, write=False) if f["rule"] == "story_end_before_record"]
     return out

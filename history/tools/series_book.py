@@ -374,10 +374,19 @@ def story_parts(project, shim, use_files):
         if not use_files:
             return None, f"StoryMaker getProject: {got.get('error')}", {}
     parts = []
+    front = man.get("frontmatter") or []          # an episode's Who's who, after the introduction
     for c in man.get("chapters", []):
         with open(project.path(c["file"]), encoding="utf-8") as fh:
             parts.append({"kind": "intro" if c.get("n") == 0 else "chapter", "title": c.get("title") or "",
                           "text": fh.read(), "edited": False})
+        if c.get("n") == 0:
+            for f in front:
+                with open(project.path(f["file"]), encoding="utf-8") as fh:
+                    parts.append({"kind": "chapter", "title": f.get("title") or "", "text": fh.read(), "edited": False})
+            front = []
+    for f in front:
+        with open(project.path(f["file"]), encoding="utf-8") as fh:
+            parts.insert(0, {"kind": "chapter", "title": f.get("title") or "", "text": fh.read(), "edited": False})
     for a in man.get("appendices", []):
         with open(project.path(a["file"]), encoding="utf-8") as fh:
             parts.append({"kind": (a.get("title") or "").lower(), "title": a.get("title") or "",
@@ -449,8 +458,10 @@ class Assets:
                 shutil.copyfile(path, os.path.join(self.out, rel))
                 self.done[url] = rel
                 return rel
-            self.problems.append(f"{self.slug}: a picture points at a file outside the story's maps: {url[:120]}")
-            return url
+            # An approved illustration (domain voice §6) is a recorded picture with a local file.
+            if not (self.by_url.get(url) or {}).get("generated"):
+                self.problems.append(f"{self.slug}: a picture points at a file outside the story's maps: {url[:120]}")
+                return url
         rec = self.by_url.get(url) or self.by_url.get(url.split("?")[0])
         src = self.project.path(rec["file"]) if rec and rec.get("file") else None
         if not src or not os.path.isfile(src):

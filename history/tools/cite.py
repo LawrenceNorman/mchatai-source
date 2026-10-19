@@ -592,14 +592,64 @@ def key_phrase(paragraph, limit=8):
 
 def source_numbers(project, numbers):
     """{source id: number}, numbered in the order the story first cites them, paragraph by
-    paragraph, the introduction first."""
+    paragraph, the introduction first, then the Who's who when the book has one."""
     out = {}
+    cast_done = False
     for n in numbers:
+        if not cast_done and int(n) > 0:
+            for e in whoswho_entries(project):
+                if e["source"] in project.sources:
+                    out.setdefault(e["source"], len(out) + 1)
+            cast_done = True
         rows, _ = paragraph_sources(project, n)
         for _, sids in rows:
             for sid in sids:
                 out.setdefault(sid, len(out) + 1)
+    if not cast_done:
+        for e in whoswho_entries(project):
+            if e["source"] in project.sources:
+                out.setdefault(e["source"], len(out) + 1)
     return out
+
+
+# ── the Who's who (an episode's cast, domain voice §11) ─────────────────────
+
+def whoswho_title(project):
+    from _hw import thresholds
+    return ((thresholds(project).get("cast") or {}).get("title")) or "Who's who"
+
+
+def whoswho_entries(project):
+    """The cast, for the Who's who page, in the order the book introduces them: the introduction's
+    first, then each chapter's, in its `introduces` order. [] unless the domain asks for a cast and
+    the dossier holds one with its lines."""
+    from _hw import thresholds
+    if not ((thresholds(project).get("cast") or {}).get("required")):
+        return []
+    import storytelling
+    entries = [e for e in storytelling.cast_entries(project) if e["who"]]
+    if not entries:
+        return []
+    plan = project.plan or {}
+    order = list((plan.get("intro") or {}).get("introduces") or [])
+    for c in plan.get("chapters", []):
+        order += list(c.get("introduces") or [])
+    rank = {name: i for i, name in enumerate(order)}
+    return sorted(entries, key=lambda e: rank.get(e["name"], len(rank)))
+
+
+def whoswho_line(e):
+    """'Mandubii: a Gallic people whose chief town Alesia was.' The name as the dossier gives it (a
+    second spelling in brackets stays), then its line as written, an opening article lower-cased."""
+    name = e["name"].strip()
+    who = e["who"].strip().rstrip(".")
+    if re.match(r"(?:A|An|The)\s", who):
+        who = who[0].lower() + who[1:]
+    return f"{name}: {who}."
+
+
+def whoswho_text(project):
+    return "\n\n".join(whoswho_line(e) for e in whoswho_entries(project)) + "\n"
 
 
 def title_block(project):
@@ -643,7 +693,12 @@ def notes_appendix(project, numbers):
     lines = [st.get("notesHeading", "Notes"), ""]
     if st.get("notesIntro"):
         lines += [st["notesIntro"], ""]
+    cast = [e for e in whoswho_entries(project) if e["source"] in nums]
+    cast_done = not cast
     for n in numbers:
+        if not cast_done and int(n) > 0:
+            lines += whoswho_notes(project, cast, nums)
+            cast_done = True
         rows, _ = paragraph_sources(project, n)
         cited = [(p, sids) for p, sids in rows if sids]
         if not cited:
@@ -653,7 +708,16 @@ def notes_appendix(project, numbers):
             refs = ", ".join(str(nums[sid]) for sid in sorted(set(sids), key=lambda x: nums[x]))
             lines.append(f"“{key_phrase(p)}”: {refs}.")
         lines.append("")
+    if not cast_done:
+        lines += whoswho_notes(project, cast, nums)
     return "\n".join(lines).rstrip() + "\n"
+
+
+def whoswho_notes(project, cast, nums):
+    lines = [whoswho_title(project), ""]
+    for e in cast:
+        lines.append(f"“{key_phrase(whoswho_line(e))}”: {nums[e['source']]}.")
+    return lines + [""]
 
 
 def full_entry(rec):
@@ -1059,6 +1123,14 @@ def cmd_book(project):
         if not same:
             return report("book (refused)", [finding("render_changed_prose", "hard",
                                                      f"chapter {n}: the rendered text minus its notes is not the gated prose")])
+    # An episode's cast (domain voice §11): the Who's who, landed after the introduction. Apparatus,
+    # like the notes: written from the dossier's sourced lines, never from the chapters.
+    manifest["frontmatter"] = []
+    if whoswho_entries(project):
+        with open(os.path.join(out_dir, "whoswho.txt"), "w", encoding="utf-8") as fh:
+            fh.write(whoswho_text(project))
+        manifest["frontmatter"].append({"title": whoswho_title(project), "file": "book/whoswho.txt", "part": "whoswho",
+                                        "storymaker": (load_json(project.path("project.json"), {}) or {}).get("whoswhoChapterID")})
     if appendix:
         with open(os.path.join(out_dir, "notes.txt"), "w", encoding="utf-8") as fh:
             fh.write(notes_appendix(project, nums))
@@ -1078,6 +1150,9 @@ def cmd_book(project):
     print(f"book/ ({manifest['style']} notes): {len(nums)} chapter(s), {count} sources. Land them in this order:")
     for c in manifest["chapters"]:
         print(f"  {c['n']:>2}  {c['title']}  ({c['file']})")
+        if c["n"] == 0:
+            for f in manifest["frontmatter"]:
+                print(f"  --  {f['title']}  ({f['file']})")
     for a in manifest["appendices"]:
         print(f"  --  {a['title']}  ({a['file']})")
     return 0
@@ -1195,8 +1270,17 @@ def cmd_land(project, dry=False):
     live = (got.get("result") or {}).get("chapters", [])
     held = [c["id"] for c in live]
     keys = {"Notes": "notesChapterID", "Sources": "sourcesChapterID"}
-    rows = [(c, (c.get("storymaker") or {}).get("chapterID") or (meta.get("introChapterID") if c["n"] == 0 else None))
-            for c in man.get("chapters", [])]
+    front = man.get("frontmatter") or []
+    for f in front:
+        if f.get("part") == "whoswho":
+            keys[f["title"]] = "whoswhoChapterID"
+    rows = []
+    for c in man.get("chapters", []):
+        rows.append((c, (c.get("storymaker") or {}).get("chapterID") or (meta.get("introChapterID") if c["n"] == 0 else None)))
+        if c["n"] == 0:
+            rows += [(f, meta.get(keys.get(f.get("title"), ""), None)) for f in front]
+    if not any(c["n"] == 0 for c in man.get("chapters", [])):
+        rows = [(f, meta.get(keys.get(f.get("title"), ""), None)) for f in front] + rows
     rows += [(a, meta.get(keys.get(a.get("title"), ""), None)) for a in man.get("appendices", [])]
     # A part landed by hand has no recorded id (the second story's introduction, Notes and Sources,
     # 2026-10-04). Take the StoryMaker chapter with its title, if no other part has it, rather than
@@ -1250,6 +1334,10 @@ def cmd_land(project, dry=False):
             args = {"project": pid, "title": title, "text": text}
             if c.get("n") == 0 and first_body:
                 args["before"] = first_body
+            elif c.get("part") == "whoswho" and meta.get("introChapterID") in held:
+                args["after"] = meta["introChapterID"]          # the Who's who follows the introduction
+            elif c.get("part") == "whoswho" and first_body:
+                args["before"] = first_body
             elif held:
                 args["after"] = held[-1]
             r = storymaker(shim, "createChapter", **args)
@@ -1258,7 +1346,12 @@ def cmd_land(project, dry=False):
                 problems += 1
                 report_rows.append((title, f"NOT CREATED: {(r.get('error') or '')[:160]}"))
                 continue
-            held.insert(held.index(first_body), cid) if args.get("before") else held.append(cid)
+            if args.get("before"):
+                held.insert(held.index(args["before"]), cid)
+            elif args.get("after") and args["after"] in held:
+                held.insert(held.index(args["after"]) + 1, cid)
+            else:
+                held.append(cid)
             stamp = {"project": pid, "chapterID": cid,
                      "landedAt": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds")}
             if "n" in c:
@@ -1294,7 +1387,8 @@ def cmd_land(project, dry=False):
             # summaries once blanked Horace Cayton's outline on landing, 2026-10-05); else a plain line.
             summary = (plan.get(n) or {}).get("summary") or held.get(cid or "") or held.get(c.get("title") or "") \
                 or {0: intro_summary(project, meta)}.get(n) \
-                or {"Notes": "The notes, keyed to each paragraph's opening words.", "Sources": "Every source, numbered, with its link."}.get(c.get("title"), "")
+                or {"Notes": "The notes, keyed to each paragraph's opening words.", "Sources": "Every source, numbered, with its link."}.get(c.get("title"), "") \
+                or ("The people and peoples of the story, one line each, in the order the book meets them." if c.get("part") == "whoswho" else "")
             outline.append({"title": c.get("title"), "summary": summary, "linkedChapterID": cid or ""})
         r = storymaker(shim, "setOutline", project=pid, chapters=outline)
         if r.get("status") != "ok":

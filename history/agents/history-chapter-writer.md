@@ -8,7 +8,7 @@ You write one chapter of a History Writer story. Chapter writing stays on the st
 
 Follow `history/PLAYBOOK.md` §3 steps 1–4 and `history/voice.md` exactly:
 
-1. Read `history/voice.md` first. If `stories/<slug>/project.json` names a `domain`, also read `history/domains/<domain>/voice.md` in full after `history/voice.md`: it adds to it (for pivotal-history: declared point-of-view passages, the edge's mechanism, cost and limit, attributed numbers), and the gate enforces it. Read your chapter's sources end to end, through
+1. Read `history/voice.md` first. If `stories/<slug>/project.json` names a `domain`, also read `history/domains/<domain>/voice.md` in full after `history/voice.md`: it adds to it (for pivotal-history: declared point-of-view passages, the edge's mechanism, cost and limit, attributed numbers, and since v2 the writer's own sentences, the cast, the cold open and the afterword), and the gate enforces it. Read `storytelling.md` beside it when the domain has one. Read your chapter's sources end to end, through
    `python3 history/tools/richness.py mentions stories/<slug> <ids>` for long newspaper pages, and
    a biography or encyclopedia entry whole.
 2. Before writing, read your chapter's ledger rows in `plan.json`. A row with no `shows`
@@ -18,6 +18,13 @@ Follow `history/PLAYBOOK.md` §3 steps 1–4 and `history/voice.md` exactly:
    round trips and a duplicated sentence).
 3. Write `stories/<slug>/chapters/NN.json` (`history/schemas/chapter.schema.json`): the prose,
    and one claim per specific fact with a verbatim quote of at least 8 words and an `anchor`.
+   In an episode (the domain's voice §2a), you also write your own sentences, the ones that anchor
+   no claim. Ask the chapter's question, give a fact a scale a reader can hold, weigh whose word we
+   are taking, offer a reading as a reading, or draw a lesson. Your own sentences add no fact and give
+   no one a feeling, and never say "I". Keep them to a quarter of the chapter at most, and write at
+   least one. Introduce each cast entry your chapter's `introduces` lists with a claim of kind `cast`
+   (`"about"`: its name) in the paragraph that first names it. End on the chapter's `turn`.
+   `python3 history/tools/storytelling.py writer stories/<slug> <n>` marks your sentences.
 4. Place pictures with `images.py` only if your brief asks.
    Aim for your chapter's `targetWords` in `plan.json` when it has one: the story's target, shared
    out. The gate notes a chapter well past it.

@@ -1,17 +1,34 @@
 {
-  "version": 1,
-  "updated": "2026-10-16",
+  "version": 2,
+  "updated": "2026-10-19",
   "_source_of_truth": "mchatai-source/history/domains/pivotal-history/lint-rules.json",
   "_comment": "Phrase rules a pivotal-history chapter keeps IN ADDITION to every rule in history/lint-rules.json (tools/_hw.lint_rules(project) appends these). Same shape as the base file, plus `scope`: all (default), outsideL1 (fires only outside a declared immersive passage) or insideL1 (only inside one). Patterns are compiled case-insensitive and run on the prose with quotations blanked, so a quoted speaker is never the narrator.",
   "rules": [
+    {
+      "id": "reader_address",
+      "section": "§2a",
+      "severity": "hard",
+      "origin": "pivotal-history-v2",
+      "scope": "outsideL1",
+      "pattern": "\\b(?:you|your|yours|yourself|yourselves)\\b",
+      "why": "the reader addressed in a sentence that carries a sourced fact. 'You' belongs to the writer's own sentences (a question, a comparison: voice.md §2a), which anchor no claim, and to a declared immersive passage; a sentence that states a fact states it in the third person"
+    },
     {
       "id": "undeclared_immersive",
       "section": "§2",
       "severity": "hard",
       "origin": "pivotal-history-v1",
       "scope": "outsideL1",
-      "pattern": "\\b(?:you|your|yours|yourself|yourselves)\\b|\\bwould have (?:seen|heard|felt|smelled|smelt|watched|stood|looked|noticed|tasted)\\b",
-      "why": "second person or a scene's 'would have' outside a declared immersive passage: the modes are never silently mixed. Tell it in L0, or declare an L1 passage in `passages`"
+      "pattern": "\\bwould have (?:seen|heard|felt|smelled|smelt|watched|stood|looked|noticed|tasted)\\b",
+      "why": "the reader placed in the past ('would have seen') outside a declared immersive passage: the modes are never silently mixed. Tell it in L0, or declare an L1 passage in `passages`. (Until v2 this rule also caught 'you'; that half is reader_address, allowed in a writer's sentence.)"
+    },
+    {
+      "id": "writer_first_person",
+      "section": "§2a",
+      "severity": "hard",
+      "origin": "pivotal-history-v2",
+      "pattern": "(?-i:(?<![a-z,;] [A-Z][a-z]{1} )(?<![a-z,;] [A-Z][a-z]{2} )(?<![a-z,;] [A-Z][a-z]{3} )(?<![a-z,;] [A-Z][a-z]{4} )(?<![a-z,;] [A-Z][a-z]{5} )(?<![a-z,;] [A-Z][a-z]{6} )(?<![a-z,;] [A-Z][a-z]{7} )(?<![a-z,;] [A-Z][a-z]{8} )(?<![a-z,;] [A-Z][a-z]{9} )(?<![a-z,;] [A-Z][a-z]{10} )(?<![a-z,;] [A-Z][a-z]{11} )(?<![a-z,;] [A-Z][a-z]{12} )\\bI\\b)(?=\\s+(?:am|was|have|had|think|thought|believe|suspect|would|will|can|could|do|did|find|found|read|take|doubt)\\b)|(?-i:\\bI['’](?:m|d|ve|ll)\\b)|\\b(?:my|me|myself)\\b",
+      "why": "a Pivotal Histories book speaks as 'we' (the writer and the reader together) and 'you' (the reader), never 'I': the series has no one person to give it to, and a reading needs its reasons more than its owner (storytelling.md §3)"
     },
     {
       "id": "l1_interior",

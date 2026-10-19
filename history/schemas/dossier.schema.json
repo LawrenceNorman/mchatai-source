@@ -112,9 +112,23 @@
       "items": {
        "type": "string"
       }
-     }
+     },
+     "who": {"type": "string", "description": "One line: who they were, for a reader who has never heard of them (a pivotal-history story's cast; the Who's who prints it). Sourced by `source` and `evidence`."},
+     "aliases": {"type": "array", "items": {"type": "string"}, "description": "Other names the chapters may use for them (a surname is taken from a full name already)."},
+     "source": {"type": "string", "description": "The source id that supports `who`."},
+     "evidence": {"type": "string", "description": "A verbatim quote of at least thresholds.minQuoteWords words from `source` that supports `who`."}
     }
    }
+  },
+  "peoples": {
+   "type": "array",
+   "description": "A pivotal-history story's peoples and forces (the Gauls, the Arverni, the Mandubii, the legions), the same shape as people[]: name, who, aliases, source, evidence. With people[], the cast (history/domains/pivotal-history/voice.md §11).",
+   "items": {"type": "object", "properties": {"name": {"type": "string"}, "who": {"type": "string"}, "aliases": {"type": "array", "items": {"type": "string"}}, "source": {"type": "string"}, "evidence": {"type": "string"}}}
+  },
+  "outcome": {
+   "type": "object",
+   "description": "A pivotal-history episode's ending, which the introduction keeps (domain voice §10): the ids of the events that resolve it, and three to six phrases that would give it away. gate.py intro fails an introduction that quotes one of those events' evidence or carries one of the phrases.",
+   "properties": {"events": {"type": "array", "items": {"type": "string"}}, "phrases": {"type": "array", "items": {"type": "string"}}}
   },
   "deadEnds": {
    "type": "array",

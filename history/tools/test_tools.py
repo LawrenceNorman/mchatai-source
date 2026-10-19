@@ -2546,8 +2546,11 @@ class PointOfView(DomainCase):
                                   "l1_not_earned", "l1_share", "stage_direction", "pov_mode_unknown"}, found)
 
     def test_stage_direction_is_exempt_only_inside_the_passage(self):
+        # Outside the passage, in a sentence that carries a sourced fact. (A sentence that anchors no
+        # claim is the writer's own since voice v2, where stage_direction is relaxed by name: see
+        # WritersSentences.)
         self.set_pov("L0+L1")
-        self.chapter(L1_TEXT + " In front of you stands the bank.", [L1_PASSAGE], L1_ANCHORS)
+        self.chapter(L1_TEXT + " In front of you stands the bank.", [L1_PASSAGE], L1_ANCHORS + ["In front of you stands the bank"])
         self.assertIn("stage_direction", self.rules(self.voice()))
 
     def test_second_person_outside_a_passage_fails(self):
@@ -2894,6 +2897,353 @@ class StoriesStatus(unittest.TestCase):
         missing = subprocess.run([sys.executable, tool, os.path.join(self.tmp, "nope")], capture_output=True, text=True)
         self.assertEqual(missing.returncode, 2)
 
+
+# ── voice v2 for an episode: the writer's own sentences, the cold open, the cast (2026-10-19) ──
+# The author on the first Alesia: "very stale and nearly unengaging". 222 of its 222 sentences
+# anchored a claim. docs/PIVOTAL_HISTORY_STORYTELLING_PLAN.md; domains/pivotal-history/voice.md v2.
+
+E_ARRIVE = "Mrs. Fixture came to Harbor Town from Ohio in 1890 and opened her boarding house"
+E_ELECT = "Mrs. Edith Fixture was elected president of the Ladies' Library Association at its meeting"
+E_COST = "opened her boarding house on Water Street in 1893, at a cost of four hundred dollars"
+ARRIVAL = "Edith Fixture came to Harbor Town from Ohio in 1890."
+COST = "Her boarding house on Water Street cost four hundred dollars in 1893."
+ASSOC = "Ladies' Library Association"
+
+
+class VoiceTwoCase(DomainCase):
+    def write(self, n, text, claims=(), passages=()):
+        """chapters/NN.json: `claims` are (anchor, evidence[, kind[, about]]), every one from s1."""
+        rows = []
+        for i, c in enumerate(claims, 1):
+            row = {"id": f"v{i}", "text": c[0], "source": "s1", "evidence": c[1], "anchor": c[0],
+                   "kind": c[2] if len(c) > 2 else "fact"}
+            if len(c) > 3:
+                row["about"] = c[3]
+            rows.append(row)
+        _hw.save_json(self.project.chapter_path(n), {"chapter": n, "title": f"Chapter {n}", "text": text,
+                                                     "claims": rows, "passages": list(passages)})
+
+    def found(self, n=3, hard_only=True):
+        return self.rules(voice_lint.chapter_findings(self.project, n), hard_only)
+
+    def edit_dossier(self, **kw):
+        d = self.project.dossier
+        d.update(kw)
+        _hw.save_json(self.project.path("dossier.json"), d)
+
+    def edit_plan(self, fn):
+        plan = self.project.plan
+        fn(plan)
+        _hw.save_json(self.project.path("plan.json"), plan)
+
+
+FACTS = [("came to Harbor Town from Ohio in 1890", E_ARRIVE), ("cost four hundred dollars in 1893", E_COST)]
+
+
+class WritersSentences(VoiceTwoCase):
+    def test_a_sentence_with_no_claim_is_the_writers_and_its_rules_relax(self):
+        text = (f"{ARRIVAL} {COST} In 1901 she was elected president of the Ladies' Library Association at its "
+                "meeting. Today, how would you build a house for four hundred dollars?")
+        self.write(3, text, FACTS + [("In 1901 she was elected president", E_ELECT)])
+        import storytelling
+        _, writer, _ = storytelling.classify(self.project.chapter(3))
+        self.assertEqual(len(writer), 1)
+        found = self.found(hard_only=False)
+        self.assertFalse(found & {"reader_address", "present_tense_now", "writer_specific", "writer_absent",
+                                  "writer_share", "flourish", "stage_direction"}, found)
+
+    def test_a_writers_sentence_adds_no_specifics(self):
+        # A name in mid-sentence. (A capital that opens a sentence counts as a name only when the
+        # chapter also capitalises it inside one: with no dictionary, "Armies have …" must not fail.)
+        for extra, why in [("It took her nine weeks.", "number"), ("She had never seen Chicago.", "name"),
+                           ("In June she rested.", "month"), ('She called it "a house of my own making."', "quotation")]:
+            self.write(3, f"{ARRIVAL} {COST} {extra}", FACTS)
+            self.assertIn("writer_specific", self.found(), why)
+        self.write(3, f"{ARRIVAL} {COST} Ohio was a long way from the house, and four hundred dollars was a lot.", FACTS)
+        self.assertNotIn("writer_specific", self.found())        # stated in the anchored sentences
+
+    def test_no_feelings_for_anyone_who_was_there(self):
+        for extra in ("Fixture was terrified.", "They feared the rains.", "She must have felt alone."):
+            self.write(3, f"{ARRIVAL} {COST} {extra}", FACTS)
+            self.assertTrue({"writer_feeling", "speculation"} & self.found(), extra)
+        self.write(3, f"{ARRIVAL} {COST} The better reading is that the house was a wager.", FACTS)
+        self.assertNotIn("writer_feeling", self.found())
+
+    def test_the_writers_share_is_capped_and_its_absence_noted(self):
+        self.write(3, f"{ARRIVAL} {COST}", FACTS)
+        self.assertIn("writer_absent", self.found(hard_only=False))
+        long_take = " ".join(["Think of what four hundred dollars meant to a house on Water Street, and what a house meant."] * 3)
+        self.write(3, f"{ARRIVAL} {COST} {long_take}", FACTS)
+        self.assertIn("writer_share", self.found())
+
+    def test_the_afterword_may_be_mostly_the_writer(self):
+        self.edit_plan(lambda p: p["chapters"].append({"n": 3, "title": "Afterword", "role": "afterword", "events": []}))
+        take = " ".join(["Think of what four hundred dollars meant to a house on Water Street, and what a house meant."] * 2)
+        self.write(3, f"{ARRIVAL} {COST} {take}", FACTS)
+        self.assertNotIn("writer_share", self.found())
+
+    def test_a_sentence_that_states_a_fact_does_not_address_the_reader(self):
+        self.write(3, f"You can see that {ARRIVAL[0].lower() + ARRIVAL[1:]} {COST}",
+                   [("came to Harbor Town from Ohio in 1890", E_ARRIVE), FACTS[1]])
+        self.assertIn("reader_address", self.found())
+
+    def test_never_i(self):
+        self.write(3, f"{ARRIVAL} {COST} I think the house was a wager.", FACTS)
+        self.assertIn("writer_first_person", self.found())
+        self.write(3, f"{ARRIVAL} {COST} We have only her letter for this.", FACTS)
+        self.assertNotIn("writer_first_person", self.found())
+
+    def test_a_sourced_comparison_is_relaxed_like_the_writers_own(self):
+        text = f"{ARRIVAL} Today you would pay that for a week in a hotel, at four hundred dollars."
+        self.write(3, text, [FACTS[0], ("you would pay that for a week", E_COST, "scale")])
+        self.assertFalse(self.found() & {"reader_address", "present_tense_now"}, self.found())
+        self.write(3, text, [FACTS[0], ("you would pay that for a week", E_COST, "fact")])
+        self.assertTrue(self.found() & {"reader_address", "present_tense_now"})
+
+    def test_a_history_writer_story_has_no_writers_sentences(self):
+        self.set_domain(None)
+        self.write(3, f"{ARRIVAL} {COST} Imagine you were there.", FACTS)
+        found = self.found(hard_only=False)
+        self.assertIn("stage_direction", found)                  # nothing relaxed in a life
+        self.assertFalse({f for f in found if f.startswith("writer_")}, found)
+
+
+class ColdOpen(VoiceTwoCase):
+    def setUp(self):
+        super().setUp()
+        d = self.project.dossier
+        for e in d["events"]:
+            if e["id"] == "e04":
+                e["evidence"] = E_ELECT
+        d["outcome"] = {"events": ["e04"], "phrases": ["elected president", "won the vote"]}
+        _hw.save_json(self.project.path("dossier.json"), d)
+
+    def intro(self, text, claims):
+        self.write(0, text, claims)
+        return self.rules(gate.intro_findings(self.project), hard_only=False)
+
+    def test_an_introduction_that_tells_the_ending_fails(self):
+        found = self.intro(f"{ARRIVAL} In 1901 she was elected president of a society. How did she do it?",
+                           [FACTS[0], ("In 1901 she was elected president", E_ELECT)])
+        self.assertIn("intro_spoils_outcome", found)
+        found = self.intro(f"{ARRIVAL} In 1901 she led a society of readers. How did she do it?",
+                           [FACTS[0], ("In 1901 she led a society of readers", E_ELECT)])
+        self.assertIn("intro_spoils_outcome", found)              # the claim quotes the outcome's evidence
+
+    def test_a_cold_open_that_keeps_the_ending_passes(self):
+        found = self.intro(f"{ARRIVAL} {COST} What could a boarding house buy a woman in Harbor Town?", FACTS)
+        self.assertFalse(found & {"intro_spoils_outcome", "intro_question_missing", "outcome_unmarked"}, found)
+
+    def test_the_question_and_the_outcome_are_asked_for(self):
+        self.assertIn("intro_question_missing", self.intro(f"{ARRIVAL} {COST}", FACTS))
+        self.edit_dossier(outcome=None)
+        self.assertIn("outcome_unmarked", self.intro(f"{ARRIVAL} {COST} Why Water Street?", FACTS))
+
+    def test_a_life_keeps_its_introduction_rules(self):
+        self.set_domain(None)
+        found = self.intro(f"{ARRIVAL} In 1901 she was elected president of a society.",
+                           [FACTS[0], ("In 1901 she was elected president", E_ELECT)])
+        self.assertFalse(found & {"intro_spoils_outcome", "intro_question_missing", "outcome_unmarked"}, found)
+
+
+class Cast(VoiceTwoCase):
+    def setUp(self):
+        super().setUp()
+        self.edit_dossier(peoples=[{"name": ASSOC, "who": "the women's society that ran the town's reading room",
+                                    "source": "s1", "evidence": E_ELECT}])
+
+    def plan_rules(self):
+        return {f["rule"] for f in richness.validate_plan(self.project, write=False) if f["severity"] == "hard"}
+
+    def assign(self, *chapters):
+        def fn(p):
+            for c in p["chapters"]:
+                c["introduces"] = [ASSOC] if c["n"] in chapters else []
+        self.edit_plan(fn)
+
+    def test_every_entry_is_introduced_once_and_sourced(self):
+        self.assertIn("cast_unassigned", self.plan_rules())
+        self.assign(2)
+        self.assertFalse(self.plan_rules() & {"cast_unassigned", "cast_assigned_twice", "cast_quote_unverified"})
+        self.assign(1, 2)
+        self.assertIn("cast_assigned_twice", self.plan_rules())
+        self.assign(2)
+        self.edit_plan(lambda p: p["chapters"][0].update(introduces=["Nobody At All"]))
+        self.assertIn("plan_unknown_cast", self.plan_rules())
+        self.edit_dossier(peoples=[{"name": ASSOC, "who": "a society", "source": "s1", "evidence": "words no source printed anywhere at all"}])
+        self.assertIn("cast_quote_unverified", self.plan_rules())
+
+    def test_the_introducing_chapter_says_who_they_were(self):
+        import storytelling
+        self.assign(2)
+        first = f"In 1901 the {ASSOC} elected Fixture."
+        self.write(2, first, [("In 1901 the", E_ELECT)])
+        self.assertIn("cast_unintroduced", self.rules(storytelling.cast_findings(self.project, 2, self.project.chapter(2))))
+        self.write(2, first + " It was the women's society that ran the reading room.",
+                   [("In 1901 the", E_ELECT), ("the women's society that ran", E_ELECT, "cast", ASSOC)])
+        self.assertEqual(self.rules(storytelling.cast_findings(self.project, 2, self.project.chapter(2)), False), set())
+        self.write(1, f"{ARRIVAL} The {ASSOC} met on Tuesdays.", [FACTS[0]])
+        self.assertIn("cast_before_intro", self.rules(storytelling.cast_findings(self.project, 1, self.project.chapter(1)), False))
+
+    def clean_chapter_two(self):
+        self.write(2, f"In 1901 the {ASSOC} elected Fixture. It was the women's society that ran the reading room.",
+                   [("In 1901 the", E_ELECT), ("the women's society that ran", E_ELECT, "cast", ASSOC)])
+
+    def test_the_book_has_a_whos_who_after_the_introduction(self):
+        self.assign(2)
+        self.clean_chapter_two()
+        self.assertEqual(cite.cmd_book(self.project), 0)
+        man = json.loads(read(self.project.path("book", "manifest.json")))
+        self.assertEqual([f["part"] for f in man["frontmatter"]], ["whoswho"])
+        self.assertEqual(read(self.project.path("book", "whoswho.txt")).strip(),
+                         f"{ASSOC}: the women's society that ran the town's reading room.")
+        notes = read(self.project.path("book", "notes.txt"))
+        self.assertIn("Who's who", notes)
+        self.assertLess(notes.index("Who's who"), notes.index("Water Street, 1893"))
+
+    def test_a_life_has_no_cast_rules_and_no_whos_who(self):
+        self.set_domain(None)
+        self.assertNotIn("cast_unassigned", self.plan_rules())
+        self.clean_chapter_two()
+        self.assertEqual(cite.cmd_book(self.project), 0)
+        self.assertFalse(os.path.exists(self.project.path("book", "whoswho.txt")))
+
+
+class EpisodeBook(VoiceTwoCase):
+    def test_the_afterword_has_its_own_length_and_no_share_of_the_events(self):
+        before = {c["n"]: c["ceilingWords"] for c in self.project.plan["chapters"]}
+        self.edit_plan(lambda p: p["chapters"].append({"n": 3, "title": "Afterword", "role": "afterword", "events": []}))
+        richness.validate_plan(self.project, write=True)
+        after = {c["n"]: c.get("ceilingWords") for c in self.project.plan["chapters"]}
+        self.assertEqual({k: after[k] for k in before}, before)
+        self.assertEqual(after[3], _hw.thresholds(self.project)["afterword"]["words"][1])
+        self.edit_plan(lambda p: p["chapters"].insert(0, p["chapters"].pop()))
+        self.assertIn("afterword_not_last", {f["rule"] for f in richness.validate_plan(self.project, write=False)})
+
+    def test_every_chapter_has_a_picture(self):
+        import storytelling
+        self.assertEqual(self.rules(storytelling.picture_floor_findings(self.project)), {"picture_floor"})
+        os.makedirs(self.project.path("images"), exist_ok=True)
+        _hw.save_json(self.project.path("images", "index.json"), [{"id": "img1", "chapter": 1}, {"id": "img2", "chapter": 2}])
+        self.assertEqual(storytelling.picture_floor_findings(self.project), [])
+        self.edit_plan(lambda p: p["chapters"].append({"n": 3, "title": "Afterword", "role": "afterword", "events": []}))
+        self.assertEqual(storytelling.picture_floor_findings(self.project), [])        # the afterword needs none
+
+    def test_era_context_is_capped_over_the_book(self):
+        import storytelling
+        era = "Harbor Town had four hundred dollars of trade in 1893 and a mill that lodged men from Ohio."
+        self.write(1, f"{ARRIVAL} {era}", [FACTS[0], (era, E_COST, "era")])
+        self.assertNotIn("era_share", self.found(1))                             # not per chapter
+        self.write(2, era, [(era, E_COST, "era")])
+        self.assertIn("era_share", self.rules(storytelling.era_book_findings(self.project)))
+        self.set_domain(None)
+        self.assertIn("era_share", self.found(1))                                # a life: per chapter, as before
+        self.assertEqual(storytelling.era_book_findings(self.project), [])
+
+    def test_the_plan_names_its_question_turns_and_observations(self):
+        notes = {f["rule"] for f in richness.validate_plan(self.project, write=False)}
+        self.assertTrue({"question_missing", "turn_missing", "observations_count"} <= notes, notes)
+
+        def fill(p):
+            p["question"] = "What could a boarding house buy a woman in Harbor Town?"
+            for c in p["chapters"]:
+                c["turn"] = "what she will do with the house"
+            p["observations"] = [{"text": "a house was a vote", "chapter": 2, "shows": ["reading room"]},
+                                 {"text": "Water Street was the town", "chapter": 1, "shows": ["Water Street"]}]
+        self.edit_plan(fill)
+        notes = {f["rule"] for f in richness.validate_plan(self.project, write=False)}
+        self.assertFalse(notes & {"question_missing", "turn_missing", "observations_count", "observation_incomplete"}, notes)
+
+    def test_the_editor_reads_for_plain_words_and_landed_observations(self):
+        import editor
+        self.edit_plan(lambda p: p.update(observations=[{"text": "the library was a fight", "chapter": 2,
+                                                         "shows": ["a phrase no chapter holds"]}]))
+        found = {f["rule"] for f in editor.check_findings(self.project)}
+        self.assertIn("observation_unlanded", found)
+        self.assertIn("readability", found)              # the fixture's chapters run long and plain
+        self.set_domain(None)
+        found = {f["rule"] for f in editor.check_findings(self.project)}
+        self.assertFalse(found & {"readability", "observation_unlanded"}, found)
+
+
+
+class Illustrations(VoiceTwoCase):
+    """Declared illustrations (domain voice §6; the author, 2026-10-19: "under $3 for some images and
+    then I can review")."""
+
+    def spec(self, **kw):
+        s = {"title": "The boarding house", "view": "a cut-away of a two-storey boarding house on a muddy street",
+             "details": [{"detail": "four hundred dollars", "source": "s1", "evidence": E_COST}],
+             "caption": "The boarding house on Water Street, drawn in section.",
+             "captionEvidence": {"source": "s1", "quote": "opened her boarding house on Water Street in 1893"},
+             "sources": "the Fixture Gazette, 2 May 1901", "chapter": 1, "after": "That year she opened"}
+        s.update(kw)
+        path = os.path.join(self.tmp, "spec.json")
+        _hw.save_json(path, s)
+        return path
+
+    def run_tool(self, *args):
+        return subprocess.run([sys.executable, os.path.join(HERE, "images.py"), *args], capture_output=True, text=True)
+
+    def test_a_dry_run_prints_the_prompt_and_cost_and_calls_nothing(self):
+        r = self.run_tool("illustrate", self.root, self.spec(), "--dry-run")
+        self.assertEqual(r.returncode, 0, r.stdout)
+        self.assertIn("four hundred dollars", r.stdout)                  # the prompt, from the spec
+        self.assertIn("call nothing", r.stdout)
+        self.assertFalse(os.path.exists(self.project.path("images", "illustrations.json")))
+
+    def test_a_spec_must_be_quoted_and_never_a_face(self):
+        bad = self.run_tool("illustrate", self.root, self.spec(details=[{"detail": "nine rooms", "source": "s1",
+                                                                         "evidence": E_COST}]), "--dry-run")
+        self.assertEqual(bad.returncode, 3)
+        self.assertIn("illustration_spec_unverified", bad.stdout)
+        face = self.run_tool("illustrate", self.root, self.spec(view="a portrait of the landlady at her door"), "--dry-run")
+        self.assertEqual(face.returncode, 3)
+        self.assertIn("illustration_person", face.stdout)
+
+    def test_the_budget_trips_at_the_cap(self):
+        import images
+        cap = _hw.thresholds(self.project)["illustrations"]
+        price = cap["usdPerImage"][cap["model"]]
+        n = min(cap["maxCount"], int(cap["maxUSD"] // price))         # whichever cap binds first
+        os.makedirs(self.project.path("images"), exist_ok=True)
+        _hw.save_json(self.project.path("images", "illustrations.json"),
+                      [{"id": f"ill{i}", "usd": price, "status": "rejected"} for i in range(1, n + 1)])
+        self.assertEqual(images.budget_problems(self.project), [])
+        self.assertIn("illustration_budget", {r for r, _ in images.budget_problems(self.project, price, 1)})
+        r = self.run_tool("illustrate", self.root, self.spec(), "--dry-run")
+        self.assertEqual(r.returncode, 3)
+        self.assertIn("illustration_budget", r.stdout)
+
+    def test_only_the_authors_approval_places_it(self):
+        import images
+        os.makedirs(self.project.path("images"), exist_ok=True)
+        with open(self.project.path("images", "ill1.jpg"), "wb") as fh:
+            fh.write(b"\xff\xd8\xff\xd9")
+        spec = json.loads(read(self.spec()))
+        _hw.save_json(self.project.path("images", "illustrations.json"),
+                      [{"id": "ill1", "status": "pending", "spec": spec, "usd": 0.134, "file": "images/ill1.jpg",
+                        "label": images.ill_label(self.project, spec), "prompt": "…", "model": "m"}])
+        # Placed by hand without approval: refused.
+        rec = {"id": "ill1", "generated": True, "url": "file:///x/ill1.jpg", "file": "images/ill1.jpg", "spec": spec,
+               "creditOverride": images.ill_label(self.project, spec), "caption": spec["caption"],
+               "evidence": spec["captionEvidence"]["quote"], "evidenceSource": "s1", "chapter": 1, "after": "That year she opened"}
+        _hw.save_json(self.project.path("images", "index.json"), [rec])
+        self.assertIn("illustration_unapproved", self.rules(images.image_findings(self.project)))
+        _hw.save_json(self.project.path("images", "index.json"), [])
+        with self.assertRaises(images.Refused):
+            images.cmd_approve(self.project, "ill1", None)                 # no name, no approval
+        self.assertEqual(images.cmd_approve(self.project, "ill1", "the author"), 0)
+        placed = images.index(self.project)[0]
+        self.assertTrue(placed["approved"] and placed["generated"])
+        self.assertEqual(self.rules(images.image_findings(self.project)), set())
+        self.assertIn("not a photograph", cite.image_markdown(placed))
+
+    def test_a_life_has_no_illustrations(self):
+        self.set_domain(None)
+        r = self.run_tool("illustrate", self.root, self.spec(), "--dry-run")
+        self.assertEqual(r.returncode, 3)
+        self.assertIn("real pictures only", r.stdout)
 
 if __name__ == "__main__":
     unittest.main(verbosity=1)
