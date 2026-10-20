@@ -395,6 +395,59 @@ Councilmember Sam Smith, June 1990"). Otherwise it shows initials. `"portrait": 
 (or `null`) in `project.json` overrides. On an identity series a wrong face is worse than none:
 the first rule, "the caption mentions the surname", put a grandson and two buildings on cards.
 
+## 7. Publish a story as a podcast and a video
+
+The author, 2026-10-20: publishing goes "through mchatai+, so you can preview each step before it
+goes out". Each medium is made by the app's own verbs. Every step leaves something the author can
+open, hear or watch, and change. Nothing goes out without the author's word, given for each
+medium and each episode. The tools here only prepare.
+
+1. **Episodes:** `python3 history/tools/narration.py episodes <project>` reads the story back
+   from StoryMaker, so the author's edits are what is read. It writes `podcast/episodes.json`:
+   - episode 1 is the title, the introduction and the Who's who;
+   - after it comes one episode per chapter;
+   - each episode is its sentences in reading order, with its length and what voicing it costs.
+
+   The Notes and Sources are not read. The last episode ends on one line naming the sources.
+   The voice, the model, the pauses, the price and a short pronunciation list are content: the
+   domain thresholds' `audio` block. `narration.py show <project>` prints each episode's length
+   and cost.
+2. **A narration project per episode:** `scriptcreator.createProject {title, lines, provider,
+   voice, hd}` is called with the episode's `projectTitle` and `lines`. It is free. It returns a
+   link that opens the project in Audio Script Creator, where the author can change a line or a
+   pause before anything is voiced.
+3. **Voice it:** `scriptcreator.render {project, maxCharacters}` voices every line not voiced
+   yet. `maxCharacters` is the spending cap, and the verb refuses rather than go over it. It
+   reports the finished file only after checking that the file plays. Voice one episode first
+   and let the author hear it before the rest. A voice can fail on a line. For example, OpenAI
+   answered one Alesia line with a 503. When that happens, render again: only the lines without
+   audio are sent.
+4. **Publish an episode** only on the author's word, to the series' channel:
+   `audiocast.publishEpisode {audioPath, title, summary, channel}`. `audiocast.channel` creates
+   the channel once.
+5. **Slides for the video:** `python3 history/tools/deck.py plan <project> <n>` lays episode n out
+   as slides:
+   - a title card over the opening picture;
+   - a slide for each picture and map, placed at the line that introduces it;
+   - quote cards from the chapter's own quotes where narration would otherwise hold one slide
+     too long (the `video` thresholds);
+   - the Who's who as cards of names.
+
+   Each slide's notes are its share of the narration. Together the notes are the episode's
+   lines, word for word, and a test holds this. `deck.py push <project> <n>` builds the deck in
+   AI Slides, where the author can open it and change it.
+6. **The video:** `aividrecorder.fromDeck {deck, provider, voice, maxCharacters}` makes a Video
+   Recorder project, one still per slide with the notes read aloud. When the voice fails it says
+   "NOT narrated" and returns `narrated: false`. `aividrecorder.narrate {project, provider,
+   voice, maxCharacters}` voices the same project again, sending only the lines without a take.
+   On Alesia it finished five lines after a timeout. The author watches it and edits it there,
+   then exports it with the YouTube preset and uploads it. Today the video voices the narration
+   a second time, at the same price as the podcast. A Video Recorder verb that reuses the
+   podcast's audio is still to come.
+
+Proved on Alesia, episode 1, 2026-10-20: a 5-minute podcast episode and a 4:48 video, both
+read by onyx.
+
 ---
 
 ## Cost
