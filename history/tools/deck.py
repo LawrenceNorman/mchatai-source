@@ -78,15 +78,18 @@ def quote_of(sentences, c):
     return min(fit, key=lambda s: abs(words(s) - 14)) if fit else None
 
 
-def plan(project, n):
-    """The slides of episode n (1-based, as narration.py numbers them)."""
+def walk(project, n):
+    """Episode n (1-based, as narration.py numbers them) as the video meets it, in order: its
+    opening (the story's title and opening picture), then each chapter heading, placed picture, Who's
+    who row and spoken sentence of the landed text, then, in the last episode, the closing credit
+    line. The slide plan and the visual beats (visuals.py) both read this one walk.
+    Returns (episodes, episode, project.json, items); each item is a dict with a `kind`."""
     import cite
     import narration
     import series_book
-    c = cfg(project)
     data = load_json(project.path("podcast", "episodes.json"))
     if not data:
-        raise SystemExit("run narration.py episodes first: the deck follows the podcast's episodes")
+        raise SystemExit("run narration.py episodes first: the video follows the podcast's episodes")
     ep = data["episodes"][int(n) - 1]
     shim = cite.find_shim(project)
     got, _, _ = series_book.story_parts(project, shim, not shim)
@@ -99,13 +102,6 @@ def plan(project, n):
     pics = picture_files(project)
     meta = load_json(project.path("project.json"), {}) or {}
     say = narration.cfg(project)["say"]
-    slides, cur = [], None
-
-    def open_slide(**kw):
-        nonlocal cur
-        if cur and (cur["notes"] or cur.get("layout") in ("title", "section")):
-            slides.append(cur)
-        cur = {"notes": [], **kw}
 
     # The episode's opening headings (the story's title, then a chapter's) are said over the title card.
     heads = []
@@ -117,64 +113,104 @@ def plan(project, n):
                 break
         else:
             break
-    title_line = " ".join(heads)
-    # Opening card: the story's opening picture (its ground) under the episode's title.
+    # The story's opening picture (its ground) under the episode's title.
     opening = None
     pick = meta.get("portrait")
     for key, (path, rec) in pics.items():
         if rec.get("id") == (pick.get("image") if isinstance(pick, dict) else pick):
-            opening = path
+            opening = (path, rec)
     sub = ("Part " + str(ep["n"]) + ": " + ep["title"]) if ep["title"] != "Introduction" else \
         " · ".join(x for x in (str((project.dossier or {}).get("when") or ""), "Pivotal Histories") if x)
-    open_slide(layout="fullBleed" if opening else "title", title=meta.get("subject") or "",
-               **({"caption": sub} if opening else {"subtitle": sub}), image=opening)
-    cur["notes"].append(title_line)
-    used_quotes = set()
+    items = [{"kind": "open", "title": meta.get("subject") or "", "sub": sub, "text": " ".join(heads),
+              "image": opening[0] if opening else None, "rec": opening[1] if opening else None}]
     for part in mine:
         text = cite.TITLE_BLOCK.sub("", part["text"])
-        is_who = part["title"].lower().startswith("who")
-        if is_who:
-            # The names as cards of seven, each card's notes the lines of its names.
-            rows = [ln.strip() for ln in text.split("\n\n") if ":" in ln]
-            for k in range(0, len(rows), 7):
-                chunk = rows[k:k + 7]
-                open_slide(layout="bullets", title=part["title"], body=[r.split(":")[0].strip() for r in chunk])
-                if k == 0:
-                    cur["notes"].append(narration.spoken(part["title"] + ".", say))
-                cur["notes"] += [narration.spoken(r, say) for r in chunk]
+        if part["title"].lower().startswith("who"):
+            items.append({"kind": "whoTitle", "title": part["title"], "text": narration.spoken(part["title"] + ".", say)})
+            for row in [ln.strip() for ln in text.split("\n\n") if ":" in ln]:
+                name, _, who = row.partition(":")
+                items.append({"kind": "who", "name": name.strip(), "who": who.strip(), "text": narration.spoken(row, say)})
             continue
-        elif part["kind"] == "chapter":
+        if part["kind"] == "chapter":
             # The chapter's title is the episode's first line, already said over the title card.
-            open_slide(layout="section", title=part["title"], subtitle=meta.get("subject") or "")
+            items.append({"kind": "section", "title": part["title"]})
         for block in re.split(r"\n\s*\n", text.strip()):
             block = block.strip()
             m = re.match(r"^\[?!\[([^\]]*)\]\(([^)]*)\)", block)
             if m:
                 key = m.group(1)
                 hit = pics.get(key) or next((v for k, v in pics.items() if k.startswith(key[:60])), None)
-                if hit and hit[0] == opening and len(slides) <= 1 and cur.get("image") == opening:
-                    continue                      # the opening picture already carries the title card
                 if hit:
-                    path, rec = hit
-                    if path.endswith(".svg"):
-                        path = png_of(path, project.path("video", "maps"))
-                    open_slide(layout="fullBleed", title="", caption=short(rec.get("caption") or rec.get("name") or "", 110),
-                               image=path)
+                    items.append({"kind": "picture", "path": hit[0], "rec": hit[1]})
                 continue
             prose = cite.strip_additions(block).strip()
             if not prose:
                 continue
             for _, sents in cite.paragraphs(prose):
                 for s in sents:
-                    cur["notes"].append(narration.spoken(s.strip(), say))
-                    secs = words(" ".join(cur["notes"])) / c["wordsPerSecond"]
-                    if secs > c["maxSecondsPerSlide"]:
-                        q = quote_of([x for x in sents if x not in used_quotes], c)
-                        if q:
-                            used_quotes.add(q)
-                            open_slide(layout="quote", quote=q)
+                    items.append({"kind": "line", "text": narration.spoken(s.strip(), say), "paragraph": sents})
     if ep["lines"] and ep["n"] == len(data["episodes"]):
-        cur["notes"].append(ep["lines"][-1]["text"])          # the closing credit line
+        items.append({"kind": "credit", "text": ep["lines"][-1]["text"]})          # the closing credit line
+    return data, ep, meta, items
+
+
+def plan(project, n):
+    """The slides of episode n (1-based, as narration.py numbers them)."""
+    c = cfg(project)
+    data, ep, meta, items = walk(project, n)
+    slides, cur = [], None
+
+    def open_slide(**kw):
+        nonlocal cur
+        if cur and (cur["notes"] or cur.get("layout") in ("title", "section")):
+            slides.append(cur)
+        cur = {"notes": [], **kw}
+
+    opening = None
+    used_quotes = set()
+    k = 0
+    while k < len(items):
+        it = items[k]
+        kind = it["kind"]
+        if kind == "open":
+            opening = it["image"]
+            open_slide(layout="fullBleed" if opening else "title", title=it["title"],
+                       **({"caption": it["sub"]} if opening else {"subtitle": it["sub"]}), image=opening)
+            cur["notes"].append(it["text"])
+        elif kind == "whoTitle":
+            # The names as cards of seven, each card's notes the lines of its names.
+            rows = []
+            while k + 1 < len(items) and items[k + 1]["kind"] == "who":
+                k += 1
+                rows.append(items[k])
+            for j in range(0, len(rows), 7):
+                chunk = rows[j:j + 7]
+                open_slide(layout="bullets", title=it["title"], body=[r["name"] for r in chunk])
+                if j == 0:
+                    cur["notes"].append(it["text"])
+                cur["notes"] += [r["text"] for r in chunk]
+        elif kind == "section":
+            open_slide(layout="section", title=it["title"], subtitle=meta.get("subject") or "")
+        elif kind == "picture":
+            path, rec = it["path"], it["rec"]
+            if path == opening and len(slides) <= 1 and cur.get("image") == opening:
+                k += 1
+                continue                      # the opening picture already carries the title card
+            if path.endswith(".svg"):
+                path = png_of(path, project.path("video", "maps"))
+            open_slide(layout="fullBleed", title="", caption=short(rec.get("caption") or rec.get("name") or "", 110),
+                       image=path)
+        elif kind == "line":
+            cur["notes"].append(it["text"])
+            secs = words(" ".join(cur["notes"])) / c["wordsPerSecond"]
+            if secs > c["maxSecondsPerSlide"]:
+                q = quote_of([x for x in it["paragraph"] if x not in used_quotes], c)
+                if q:
+                    used_quotes.add(q)
+                    open_slide(layout="quote", quote=q)
+        elif kind == "credit":
+            cur["notes"].append(it["text"])
+        k += 1
     if cur:
         slides.append(cur)
     for s in slides:
