@@ -3023,6 +3023,21 @@ class WritersSentences(VoiceTwoCase):
         self.assertFalse({f for f in found if f.startswith("writer_")}, found)
 
 
+class Retelling(unittest.TestCase):
+    def test_a_second_telling_stands_in_the_book_in_place_of_the_first(self):
+        import series_book
+        tmp = tempfile.mkdtemp(prefix="hw-retell-")
+        try:
+            for slug, extra in (("story-a", {}), ("story-a-2", {"tellingOf": "story-a"}), ("other", {})):
+                os.makedirs(os.path.join(tmp, slug, "book"))
+                _hw.save_json(os.path.join(tmp, slug, "project.json"), {"slug": slug, "series": "s", **extra})
+                _hw.save_json(os.path.join(tmp, slug, "book", "manifest.json"), {"chapters": []})
+            self.assertEqual(sorted(os.path.basename(p.root) for p in series_book.landed_projects(tmp, "s")),
+                             ["other", "story-a-2"])
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
+
+
 class ToldBeforeVoiceTwo(VoiceTwoCase):
     """The six episodes landed before v2, and the Armada in flight, keep the rules they were gated under
     (the author, 2026-10-19: one story until it is good). Only the measures reach them."""
@@ -3137,6 +3152,14 @@ class Cast(VoiceTwoCase):
         notes = read(self.project.path("book", "notes.txt"))
         self.assertIn("Who's who", notes)
         self.assertLess(notes.index("Who's who"), notes.index("Water Street, 1893"))
+
+    def test_the_whos_who_keeps_the_ending(self):
+        import storytelling
+        self.edit_dossier(outcome={"events": [], "phrases": ["won the vote"]})
+        self.assertEqual(storytelling.whoswho_outcome_findings(self.project), [])
+        self.edit_dossier(peoples=[{"name": ASSOC, "who": "the society whose president won the vote in 1901",
+                                    "source": "s1", "evidence": E_ELECT}])
+        self.assertIn("whoswho_spoils_outcome", self.rules(storytelling.whoswho_outcome_findings(self.project)))
 
     def test_a_people_named_with_the_is_met_however_a_sentence_opens(self):
         import storytelling

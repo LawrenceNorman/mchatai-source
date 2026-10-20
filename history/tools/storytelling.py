@@ -315,6 +315,23 @@ def outcome_findings(project, ch):
     return out
 
 
+def whoswho_outcome_findings(project):
+    """The Who's who lands right after the introduction, so its lines keep the ending too: no cast
+    entry's `who` may carry an outcome phrase (the writing stage's auditor, 2026-10-19: Critognatus's
+    line said "rather than surrender")."""
+    if not v2(project) or not (thresholds(project).get("intro") or {}).get("hidesOutcome"):
+        return []
+    oc = (project.dossier or {}).get("outcome") or {}
+    out = []
+    for e in cast_entries(project):
+        for ph in oc.get("phrases") or []:
+            if re.search(r"(?<!\w)" + re.escape(ph) + r"(?!\w)", e["who"], re.I):
+                out.append(finding("whoswho_spoils_outcome", "hard",
+                                   f"{e['name']}'s Who's who line says {ph!r}, which gives the ending away; the Who's who "
+                                   "follows the introduction and keeps the ending too (voice.md §10, §11)", e["who"]))
+    return out
+
+
 # ── the cast, introduced on first meeting ────────────────────────────────────
 
 def cast_assignments(project):

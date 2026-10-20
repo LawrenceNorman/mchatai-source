@@ -261,7 +261,8 @@ Mandubii, the legions, the German horsemen) the book names, each with `who` (one
   `cast` whose `about` names the entry [cast_unintroduced]. A name used in an earlier chapter than its
   introduction is noted [cast_before_intro].
 - `cite.py book` prints a **Who's who** from the cast after the introduction, one line each, its
-  sources numbered into the Notes like any paragraph's.
+  sources numbered into the Notes like any paragraph's. It follows the introduction, so its lines
+  keep the ending too. [whoswho_spoils_outcome]
 
 ## 12. The question, the observations, and the afterword
 

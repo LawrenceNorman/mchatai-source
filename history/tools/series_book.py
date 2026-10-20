@@ -754,7 +754,10 @@ def landed_projects(stories_dir, series_id):
         if isinstance(meta, dict) and meta.get("series") == series_id and \
                 os.path.isfile(os.path.join(root, "book", "manifest.json")):
             out.append(Project(root))
-    return out
+    # A story told again (project.json `tellingOf`: Alesia's second telling, 2026-10-19) stands in
+    # the book in place of the telling it names, which stays in its folder and in StoryMaker.
+    retold = {(load_json(p.path("project.json"), {}) or {}).get("tellingOf") for p in out}
+    return [p for p in out if os.path.basename(p.root) not in retold]
 
 
 def part_for(year, parts):

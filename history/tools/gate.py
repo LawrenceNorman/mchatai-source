@@ -86,7 +86,8 @@ def story_findings(project):
     out += images.portrait_findings(project)
     # An episode's book (domain voice §11, §13): every chapter has a picture, and era context is
     # capped over the whole book. Off unless the domain asks.
-    out += storytelling.picture_floor_findings(project) + storytelling.era_book_findings(project)
+    out += (storytelling.picture_floor_findings(project) + storytelling.era_book_findings(project)
+            + storytelling.whoswho_outcome_findings(project))
     # voice.md §4 — the story may not end before the record does.
     out += [f for f in richness.validate_plan(project, write=False) if f["rule"] == "story_end_before_record"]
     return out
