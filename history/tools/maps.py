@@ -287,14 +287,15 @@ def prune(project, keep):
     turned out to be another building): `cite.py book` would never place them, and `list` would
     still show them."""
     rows = index(project)
-    stale = [r for r in rows if r["id"] not in keep]
+    # An episode's maps (geomap.py, kind "geo") are not landmarks: a landmark render keeps them.
+    stale = [r for r in rows if r["id"] not in keep and r.get("kind") != "geo"]
     for r in stale:
         path = project.path(r.get("file") or "")
         if r.get("file") and os.path.isfile(path):
             os.remove(path)
         print(f"{r['id']}  {r.get('name')} — dropped: the story no longer names it")
     if stale:
-        save_json(project.path("images", "maps", "index.json"), [r for r in rows if r["id"] in keep])
+        save_json(project.path("images", "maps", "index.json"), [r for r in rows if r["id"] in keep or r.get("kind") == "geo"])
 
 
 def cmd_render(project, ids, source):

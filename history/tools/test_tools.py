@@ -3038,6 +3038,51 @@ class Retelling(unittest.TestCase):
             shutil.rmtree(tmp, ignore_errors=True)
 
 
+class EpisodeMaps(VoiceTwoCase):
+    """Where it happened, today (geomap.py; the author, 2026-10-20: "snippets of maps so the reader can
+    see where things exist in modern times")."""
+
+    def setUp(self):
+        super().setUp()
+        self.edit_dossier(places=[{"id": "ht", "name": "Harbor Town", "today": "Harbor Town", "source": "s1",
+                                   "evidence": E_ARRIVE, "lat": 47.5, "lon": 4.5}])
+        self.edit_plan(lambda p: p.update(maps=[{"id": "map-ht", "scale": "local", "title": "Harbor Town today",
+                                                 "places": ["ht"], "chapter": 1}]))
+
+    def test_a_place_is_sourced_like_a_claim(self):
+        import geomap
+        self.assertEqual(self.rules(geomap.place_findings(self.project)), set())
+        self.edit_dossier(places=[{"id": "ht", "name": "Harbor Town", "source": "s1", "evidence": "words the gazette never printed"}])
+        self.assertTrue({"place_unsourced", "place_unpinned"} <= self.rules(geomap.place_findings(self.project)))
+
+    def test_labels_never_land_on_each_other(self):
+        import geomap
+        taken = geomap.Labels()
+        self.assertTrue(taken.place(100, 100, "Alesia", 15))
+        self.assertEqual(taken.place(104, 102, "Avaricum", 15), "")
+        self.assertTrue(taken.place(100, 160, "Avaricum", 15))
+
+    def test_the_book_places_an_episode_map_in_its_chapter_and_credits_it(self):
+        import maps
+        os.makedirs(self.project.path("images", "maps"), exist_ok=True)
+        with open(self.project.path("images", "maps", "map-ht.svg"), "w") as fh:
+            fh.write('<svg xmlns="http://www.w3.org/2000/svg"/>')
+        _hw.save_json(self.project.path("images", "maps", "index.json"), [
+            {"id": "map-ht", "kind": "geo", "name": "Harbor Town today: Harbor Town", "names": ["Harbor Town"], "chapter": 1,
+             "file": "images/maps/map-ht.svg", "url": "https://www.openstreetmap.org/?mlat=47.5&mlon=4.5#map=13/47.5/4.5",
+             "label": "OpenStreetMap", "credit": "© OpenStreetMap contributors (ODbL)"}])
+        self.write(2, f"In 1901 the {ASSOC} elected Fixture.", [("In 1901 the", E_ELECT)])
+        self.assertEqual(cite.cmd_book(self.project), 0)
+        one = read(self.project.path("book", "01.txt"))
+        paras = one.split("\n\n")
+        at = next(i for i, p in enumerate(paras) if "map-ht.svg" in p)
+        self.assertIn("Harbor Town", paras[at - 1])                       # after the paragraph naming the place
+        self.assertIn("openstreetmap.org", paras[at])                     # taps through to the live map
+        self.assertIn("Harbor Town today", read(self.project.path("book", "sources.txt")))
+        maps.prune(self.project, set())                                   # a landmark render keeps it
+        self.assertTrue(any(r["id"] == "map-ht" for r in maps.index(self.project)))
+
+
 class ToldBeforeVoiceTwo(VoiceTwoCase):
     """The six episodes landed before v2, and the Armada in flight, keep the rules they were gated under
     (the author, 2026-10-19: one story until it is good). Only the measures reach them."""
@@ -3149,6 +3194,12 @@ class Cast(VoiceTwoCase):
         self.assertEqual([f["part"] for f in man["frontmatter"]], ["whoswho"])
         self.assertEqual(read(self.project.path("book", "whoswho.txt")).strip(),
                          f"{ASSOC}: the women's society that ran the town's reading room.")
+        meta = json.loads(read(self.project.path("project.json")))           # landed once: its id is kept as a record
+        meta["whoswhoChapterID"] = "W-1"
+        _hw.save_json(self.project.path("project.json"), meta)
+        self.assertEqual(cite.cmd_book(self.project), 0)
+        man = json.loads(read(self.project.path("book", "manifest.json")))
+        self.assertEqual(man["frontmatter"][0]["storymaker"], {"chapterID": "W-1"})
         notes = read(self.project.path("book", "notes.txt"))
         self.assertIn("Who's who", notes)
         self.assertLess(notes.index("Who's who"), notes.index("Water Street, 1893"))

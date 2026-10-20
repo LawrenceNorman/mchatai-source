@@ -979,8 +979,14 @@ def map_chapters(project, nums, patterns=None):
     maps = map_records(project)
     if not maps:
         return {}
-    pats = {lid: rx for lid, _, rx in (patterns if patterns is not None else landmark_patterns())}
     out = {}
+    # An episode's maps (geomap.py) say which chapter they belong to.
+    for lid, rec in maps.items():
+        if rec.get("kind") == "geo" and int(rec.get("chapter", -1)) in [int(n) for n in nums]:
+            out.setdefault(int(rec["chapter"]), []).append(lid)
+    if all(r.get("kind") == "geo" for r in maps.values()):
+        return out
+    pats = {lid: rx for lid, _, rx in (patterns if patterns is not None else landmark_patterns())}
     for lid in maps:
         rx = pats.get(lid)
         if rx is None:
@@ -1008,7 +1014,13 @@ def with_pictures_and_links(project, n, body, used, maps_here=(), placed=None):
     pics = chapter_images(project, n)
     paras = re.split(r"\n\s*\n", body.strip())
     maps = map_records(project)
-    pats = {lid: rx for lid, _, rx in landmark_patterns()} if maps_here else {}
+    pats = {lid: rx for lid, _, rx in landmark_patterns()} if any(maps.get(l, {}).get("kind") != "geo" for l in maps_here) else {}
+    for lid in maps_here:                     # an episode's map: after the first paragraph naming one of its places
+        rec = maps.get(lid) or {}
+        if rec.get("kind") == "geo":
+            names = [x for x in rec.get("names") or [] if x]
+            hit = re.compile(r"(?<!\w)(?:" + "|".join(map(re.escape, names)) + r")(?!\w)") if names else None
+            pats[lid] = hit if hit and any(hit.search(p) for p in paras) else re.compile(r"\A")
     waiting = [lid for lid in maps_here if lid in maps and lid in pats]
     out = list(pics.get(-1, []))              # the story's portrait opens its introduction (2026-10-11)
     for i, p in enumerate(paras):
@@ -1034,6 +1046,12 @@ def pictures_and_places(project, used, placed=()):
             bits = [r.get("caption", "").rstrip(".") + ".", im.credit_line(r) + "." if im.credit_line(r) else "",
                     r.get("pageUrl") or r.get("url") or ""]
             lines.append(" ".join(b for b in bits if b))
+            lines.append("")
+    geo = [r for lid, r in sorted(map_records(project).items()) if r.get("kind") == "geo" and lid in placed]
+    if geo:
+        lines += ["Maps", ""]
+        for r in geo:
+            lines.append(f"{r.get('name', '').rstrip('.')}. {r.get('credit', '')}. {r.get('url', '')}")
             lines.append("")
     if used:
         label = (im.config().get("landmarkLinks") or {}).get("label", "Landmarks")
@@ -1130,8 +1148,9 @@ def cmd_book(project):
     if whoswho_entries(project):
         with open(os.path.join(out_dir, "whoswho.txt"), "w", encoding="utf-8") as fh:
             fh.write(whoswho_text(project))
+        held_id = (load_json(project.path("project.json"), {}) or {}).get("whoswhoChapterID")
         manifest["frontmatter"].append({"title": whoswho_title(project), "file": "book/whoswho.txt", "part": "whoswho",
-                                        "storymaker": (load_json(project.path("project.json"), {}) or {}).get("whoswhoChapterID")})
+                                        **({"storymaker": {"chapterID": held_id}} if held_id else {})})
     if appendix:
         with open(os.path.join(out_dir, "notes.txt"), "w", encoding="utf-8") as fh:
             fh.write(notes_appendix(project, nums))
