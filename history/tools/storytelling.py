@@ -24,7 +24,14 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from _hw import (Project, finding, norm, numbers, quoted_spans, report, spelled_numbers,  # noqa: E402
-                 strip_quoted, thresholds, words)
+                 strip_quoted, thresholds, voice_version, words)
+
+
+def v2(project):
+    """True for a story told in voice v2 (project.json "voice": 2) in a domain that has the writer's
+    rules. Its hard rules and the writer's relaxed rules bind only such a story; a story told
+    before v2 gets the measuring notes (writer_absent, intro_question_missing) and nothing else."""
+    return isinstance(thresholds(project).get("writer"), dict) and voice_version(project) >= 2
 
 
 # ── sentences with their places in the text ──────────────────────────────────
@@ -171,7 +178,7 @@ def specific_findings(spans, writer, ch, project, cfg):
         for m in NAME.finditer(bare):
             w = m.group(1).rstrip("'’-")
             st = _stem(w)
-            if len(w) < 2 or ROMAN.match(w) or st in have_names:
+            if len(w) < 2 or ROMAN.match(w) or w.isupper() or st in have_names:
                 continue
             if st in MONTHS:
                 why.append(f"the month {w!r}")
@@ -226,6 +233,10 @@ def writer_findings(project, n, ch, l1=()):
                            "no sentence here is the writer's own: every sentence anchors a claim, so nothing asks, scales, "
                            "weighs, reads or draws a lesson (voice.md §2a, storytelling.md). The first Alesia read 'stale and "
                            "nearly unengaging' this way"))
+    if not v2(project):
+        # Told before v2: an unanchored sentence there is not a writer's sentence by design, so only the
+        # measure (writer_absent) applies; the hard rules wait until the story is told again.
+        return [f for f in out if f["rule"] == "writer_absent"]
     out += specific_findings(spans, writer, ch, project, cfg)
     rx = feeling_pattern(cfg)
     if rx:
@@ -269,6 +280,8 @@ def outcome_findings(project, ch):
     d = project.dossier or {}
     oc = d.get("outcome")
     if not isinstance(oc, dict) or not (oc.get("events") or oc.get("phrases")):
+        if not v2(project):
+            return []
         return [finding("outcome_unmarked", "soft",
                         "the dossier has no `outcome` (the events that resolve the episode and three to six phrases that "
                         "would give it away; scout.md), so the gate cannot check the introduction keeps the ending")]
@@ -325,7 +338,7 @@ def cast_findings(project, n, ch):
     `cast` (its `about` names the entry) in the paragraph of the first mention; a name used before
     the chapter that introduces it is noted."""
     t = thresholds(project)
-    if not (t.get("cast") or {}).get("required"):
+    if not (t.get("cast") or {}).get("required") or not v2(project):
         return []
     entries = cast_entries(project)
     if not entries:
@@ -367,7 +380,7 @@ def picture_floor_findings(project):
     """voice.md §13: every body chapter carries at least one picture."""
     t = thresholds(project)
     cfg = t.get("pictures")
-    if not isinstance(cfg, dict):
+    if not isinstance(cfg, dict) or not v2(project):
         return []
     import images
     floor = cfg.get("minPerChapter", 1)
@@ -391,7 +404,7 @@ def picture_floor_findings(project):
 def era_book_findings(project):
     """voice.md §11: an episode's era cap is measured over its body chapters, not each one."""
     t = thresholds(project)
-    if t.get("eraShareScope") != "book":
+    if t.get("eraShareScope") != "book" or not v2(project):
         return []
     era = total = 0
     for c in project.plan.get("chapters", []):

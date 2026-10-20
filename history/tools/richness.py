@@ -575,8 +575,8 @@ def story_shape_findings(project, chapters, events, t):
     for c in chapters:
         if c.get("role") not in (None, "chapter", "afterword"):
             out.append(finding("plan_role_unknown", "hard", f"chapter {c.get('n')} has role {c.get('role')!r}; a chapter is a chapter or the afterword"))
-    if (t.get("cast") or {}).get("required"):
-        import storytelling
+    import storytelling
+    if (t.get("cast") or {}).get("required") and storytelling.v2(project):
         import voice_lint
         entries = storytelling.cast_entries(project)
         assigned = storytelling.cast_assignments(project)
@@ -603,7 +603,7 @@ def story_shape_findings(project, chapters, events, t):
             for f in voice_lint.phrase_findings(e["who"], voice_lint.compiled_rules(project=project)):
                 if f["severity"] == "hard":
                     out.append(finding("cast_who_voice", "hard", f"cast entry {e['name']}'s line: {f['message']}", e["who"]))
-    shape = t.get("plan") or {}
+    shape = (t.get("plan") or {}) if storytelling.v2(project) else {}
     plan = project.plan or {}
     if shape.get("question") and not str(plan.get("question") or "").strip():
         out.append(finding("question_missing", "soft", "the plan has no `question`: the one the book answers, which the introduction asks (domain voice §10)"))

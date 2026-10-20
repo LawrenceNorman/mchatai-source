@@ -2911,6 +2911,21 @@ ASSOC = "Ladies' Library Association"
 
 
 class VoiceTwoCase(DomainCase):
+    """A pivotal-history story told in voice v2 (project.json "voice": 2)."""
+
+    def setUp(self):
+        super().setUp()
+        self.set_voice(2)
+
+    def set_voice(self, v):
+        p = self.project.path("project.json")
+        meta = json.loads(read(p))
+        if v:
+            meta["voice"] = v
+        else:
+            meta.pop("voice", None)
+        _hw.save_json(p, meta)
+
     def write(self, n, text, claims=(), passages=()):
         """chapters/NN.json: `claims` are (anchor, evidence[, kind[, about]]), every one from s1."""
         rows = []
@@ -3006,6 +3021,28 @@ class WritersSentences(VoiceTwoCase):
         found = self.found(hard_only=False)
         self.assertIn("stage_direction", found)                  # nothing relaxed in a life
         self.assertFalse({f for f in found if f.startswith("writer_")}, found)
+
+
+class ToldBeforeVoiceTwo(VoiceTwoCase):
+    """The six episodes landed before v2, and the Armada in flight, keep the rules they were gated under
+    (the author, 2026-10-19: one story until it is good). Only the measures reach them."""
+
+    def setUp(self):
+        super().setUp()
+        self.set_voice(None)
+
+    def test_only_the_measures_reach_a_story_told_before_v2(self):
+        import storytelling
+        self.write(3, f"{ARRIVAL} {COST} She had never seen Chicago, and today it would cost a fortune.", FACTS)
+        found = self.found(hard_only=False)
+        self.assertFalse(found & {"writer_specific", "writer_share", "writer_feeling"}, found)
+        self.assertIn("present_tense_now", found)                # nothing relaxed in an unanchored sentence
+        self.write(3, f"{ARRIVAL} {COST}", FACTS)
+        self.assertIn("writer_absent", self.found(hard_only=False))      # the measure still reads it
+        self.edit_dossier(people=[{"name": "Edith Fixture"}])
+        self.assertNotIn("cast_unassigned", {f["rule"] for f in richness.validate_plan(self.project, write=False)})
+        self.assertEqual(storytelling.picture_floor_findings(self.project), [])
+        self.assertEqual(storytelling.era_book_findings(self.project), [])
 
 
 class ColdOpen(VoiceTwoCase):

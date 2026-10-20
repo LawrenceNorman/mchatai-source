@@ -74,6 +74,20 @@ def thresholds(project=None):
     return base
 
 
+def voice_version(project=None):
+    """The voice a story is told in: project.json `voice` (default 1). A domain's v2 rules (the
+    writer's own sentences, the cast, the picture floor, the book-wide era cap: domains/pivotal-history
+    voice.md v2) bind a story that says `"voice": 2`. A story told before them keeps the rules it was
+    gated under until it is told again (the author, 2026-10-19: one story until it is good)."""
+    if project is None:
+        return 1
+    meta = load_json(project.path("project.json"), {}) or {}
+    try:
+        return int(meta.get("voice") or 1)
+    except (TypeError, ValueError):
+        return 1
+
+
 def series_entry(series_id):
     """(series, place) for a series id: history/series.json first, then each domain's series.json
     (history/domains/<id>/series.json), so a domain's series has a title and a book like any other.

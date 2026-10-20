@@ -192,8 +192,8 @@ def chapter_findings(project, n):
     # The writer's own sentences (a domain's voice §2a): a sentence that anchors no claim. Only a
     # domain with a `writer` block has them; a History Writer story is claims, as before.
     writer, writer_exempt = [], set()
-    if isinstance(t.get("writer"), dict):
-        import storytelling
+    import storytelling
+    if storytelling.v2(project):
         sents, _, relaxed = storytelling.classify(ch, spans)
         writer = [(sents[i][2], sents[i][3]) for i in relaxed]
         writer_exempt = set(t["writer"].get("exemptRules") or [])
@@ -228,7 +228,8 @@ def chapter_findings(project, n):
     # §9 — era context, capped. A domain may measure it over the book instead (eraShareScope
     # "book": an episode's orientation, gate.py story); the base measures each chapter.
     era_words = sum(words(c.get("text", "")) for c in claims if c.get("kind") == "era")
-    if t.get("eraShareScope", "chapter") == "chapter" and n_words and era_words / n_words > t["eraShareMax"]:
+    book_scope = t.get("eraShareScope") == "book" and storytelling.v2(project)
+    if not book_scope and n_words and era_words / n_words > t["eraShareMax"]:
         out.append(finding("era_share", "hard",
                            f"era context is {100 * era_words / n_words:.0f}% of the chapter (cap {100 * t['eraShareMax']:.0f}%) — the person is the subject"))
 

@@ -20,6 +20,12 @@ that file first, then `storytelling.md` beside this one; this one only adds.
 Rule ids in [brackets] are enforced by `tools/gate.py`; a rule with no id is enforced by the
 independent audit and the author's read.
 
+**Which stories version 2 binds.** A story whose `project.json` says `"voice": 2`. The episodes
+told before v2 (Midway, Hampton Roads, Syracuse, Xiangyang, the Armada, and Alesia's first telling)
+keep version 1.1's rules until they are told again. They get only v2's measures, as notes:
+`writer_absent`, `intro_question_missing`, and `readability`. Alesia is told again first, and the
+author reads it against the first telling before any other episode changes.
+
 ---
 
 ## 1. Who is reading

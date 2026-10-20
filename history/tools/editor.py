@@ -216,7 +216,8 @@ def observation_findings(project, chapters):
     """The plan's observations (domain voice §12): each lands in its chapter, carried by at least one
     of its `shows` phrases."""
     obs = (project.plan or {}).get("observations") or []
-    if not obs or not (thresholds(project).get("plan") or {}).get("observations"):
+    import storytelling
+    if not obs or not (thresholds(project).get("plan") or {}).get("observations") or not storytelling.v2(project):
         return []
     from _hw import norm
     prose = {c["n"]: norm(c["prose"]) for c in chapters}

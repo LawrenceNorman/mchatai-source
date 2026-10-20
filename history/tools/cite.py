@@ -624,9 +624,9 @@ def whoswho_entries(project):
     first, then each chapter's, in its `introduces` order. [] unless the domain asks for a cast and
     the dossier holds one with its lines."""
     from _hw import thresholds
-    if not ((thresholds(project).get("cast") or {}).get("required")):
-        return []
     import storytelling
+    if not ((thresholds(project).get("cast") or {}).get("required")) or not storytelling.v2(project):
+        return []
     entries = [e for e in storytelling.cast_entries(project) if e["who"]]
     if not entries:
         return []
