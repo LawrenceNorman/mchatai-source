@@ -36,7 +36,7 @@ CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
 def cfg(project):
     v = thresholds(project).get("video") or {}
     return {"maxSecondsPerSlide": v.get("maxSecondsPerSlide", 50), "wordsPerSecond": v.get("wordsPerSecond", 2.5),
-            "theme": v.get("theme", "midnight"), "quoteMaxWords": v.get("quoteMaxWords", 26)}
+            "theme": v.get("theme", "mono-noir"), "quoteMaxWords": v.get("quoteMaxWords", 26)}
 
 
 def picture_files(project):
@@ -124,9 +124,10 @@ def plan(project, n):
     for key, (path, rec) in pics.items():
         if rec.get("id") == (pick.get("image") if isinstance(pick, dict) else pick):
             opening = path
+    sub = ("Part " + str(ep["n"]) + ": " + ep["title"]) if ep["title"] != "Introduction" else \
+        " · ".join(x for x in (str((project.dossier or {}).get("when") or ""), "Pivotal Histories") if x)
     open_slide(layout="fullBleed" if opening else "title", title=meta.get("subject") or "",
-               subtitle=("Part " + str(ep["n"]) + ": " + ep["title"]) if ep["title"] != "Introduction" else str((project.dossier or {}).get("when") or ""),
-               image=opening)
+               **({"caption": sub} if opening else {"subtitle": sub}), image=opening)
     cur["notes"].append(title_line)
     used_quotes = set()
     for part in mine:
@@ -157,8 +158,8 @@ def plan(project, n):
                     path, rec = hit
                     if path.endswith(".svg"):
                         path = png_of(path, project.path("video", "maps"))
-                    open_slide(layout="fullBleed", title=short(rec.get("caption") or rec.get("name") or ""), image=path,
-                               credit=rec.get("credit") or "")
+                    open_slide(layout="fullBleed", title="", caption=short(rec.get("caption") or rec.get("name") or "", 110),
+                               image=path)
                 continue
             prose = cite.strip_additions(block).strip()
             if not prose:
@@ -171,7 +172,7 @@ def plan(project, n):
                         q = quote_of([x for x in sents if x not in used_quotes], c)
                         if q:
                             used_quotes.add(q)
-                            open_slide(layout="quote", title="", body=[q])
+                            open_slide(layout="quote", quote=q)
     if ep["lines"] and ep["n"] == len(data["episodes"]):
         cur["notes"].append(ep["lines"][-1]["text"])          # the closing credit line
     if cur:
@@ -192,7 +193,8 @@ def cmd_plan(project, n):
     print(f"{d['title']}: {len(d['slides'])} slides, ~{d['seconds'] // 60} min {d['seconds'] % 60} s, {d['characters']:,} characters of notes")
     for i, s in enumerate(d["slides"], 1):
         pic = os.path.basename(s.get("image") or "") if s.get("image") else ""
-        print(f"  {i:>2}. [{s['layout']}] {(s.get('title') or (s.get('body') or [''])[0])[:60]}  {pic}  · {words(s['notes'])} words")
+        label = s.get("title") or s.get("quote") or s.get("caption") or (s.get("body") or [""])[0]
+        print(f"  {i:>2}. [{s['layout']}] {label[:60]}  {pic}  · {words(s['notes'])} words")
     return 0
 
 
@@ -217,6 +219,9 @@ def cmd_push(project, n):
     if r.get("status") != "ok" or not deck_id:
         print("createDeck failed:", r.get("error") or r.get("output"))
         return 1
+    # AI Slides starts a deck with a title slide of its own (the deck's name, no notes); the Video
+    # Recorder would read its text aloud, so the slides it started with are removed once ours are in.
+    started = len(((call(shim, "getDeck", {"deck": deck_id}).get("result") or {}).get("slides")) or [])
     files = {}
     for s in d["slides"]:
         img = s.get("image")
@@ -228,8 +233,9 @@ def cmd_push(project, n):
                 return 1
     for i, s in enumerate(d["slides"]):
         slide = {"layout": s["layout"], "title": s.get("title") or "", "notes": s["notes"]}
-        if s.get("subtitle"):
-            slide["subtitle"] = s["subtitle"]
+        for key in ("subtitle", "quote", "caption", "attribution"):
+            if s.get(key):
+                slide[key] = s[key]
         if s.get("body"):
             slide["body"] = s["body"]
         if s.get("image"):
@@ -237,6 +243,11 @@ def cmd_push(project, n):
         a = call(shim, "addSlide", {"deck": deck_id, "slide": slide})
         if a.get("status") != "ok":
             print(f"addSlide {i + 1} failed: {a.get('error')}")
+            return 1
+    for _ in range(started):
+        r = call(shim, "removeSlide", {"deck": deck_id, "index": 1})        # 1-based
+        if r.get("status") != "ok":
+            print(f"removeSlide failed: {r.get('error')}")
             return 1
     got = call(shim, "getDeck", {"deck": deck_id})
     count = len((got.get("result") or {}).get("slides") or [])
