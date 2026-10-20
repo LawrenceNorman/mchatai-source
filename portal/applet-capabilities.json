@@ -1287,6 +1287,106 @@
       "notes": "Setup is a four-rung ladder \u2014 shell connected, gws CLI installed, OAuth client present, at least one account authorized \u2014 and only the FIRST unsatisfied rung is worth telling the user about. Most machines that have run this app fail on the last rung alone, so 'set up Gmail' is the wrong sentence and a named rung with its own remedy is the right one. Phase MC: the read verbs stopped returning empty successes while a rung is open. They now fail with the blocker and the remedy attached as result.setup, and mail.connect performs the rung that can be performed."
     },
     {
+      "applet": "scriptCreator",
+      "summary": "Audio Script Creator: a narration as an editable project of lines and voices, rendered to one audio file the user opens, hears, edits and re-renders in the applet. Made from lines the caller already has; OpenAI's onyx, Apple's free voices and the other providers the applet offers. The narration step of the publishing pipeline (a podcast episode, a video's voice).",
+      "capabilities": [
+        {
+          "verb": "scriptcreator.getState",
+          "status": "callable",
+          "description": "Whether Audio Script Creator is ready, its project count and its voice providers.",
+          "example": {
+            "command": "applet",
+            "applet": "scriptcreator",
+            "verb": "getState"
+          }
+        },
+        {
+          "verb": "scriptcreator.listProjects",
+          "status": "callable",
+          "description": "Projects newest first: id, title, lines, lines rendered, characters, voice cast, final file, and the link that opens each.",
+          "example": {
+            "command": "applet",
+            "applet": "scriptcreator",
+            "verb": "listProjects"
+          }
+        },
+        {
+          "verb": "scriptcreator.getProject",
+          "status": "callable",
+          "description": "One project by id or title: its cast, lines rendered, characters, final file and duration. An unknown id returns candidates.",
+          "example": {
+            "command": "applet",
+            "applet": "scriptcreator",
+            "verb": "getProject",
+            "args": {
+              "id": "<from listProjects>"
+            }
+          }
+        },
+        {
+          "verb": "scriptcreator.listVoices",
+          "status": "callable",
+          "description": "A provider's voices (OpenAI, Google, ElevenLabs, Apple Native), the names `voice` may use. OpenAI's include onyx.",
+          "example": {
+            "command": "applet",
+            "applet": "scriptcreator",
+            "verb": "listVoices",
+            "args": {
+              "provider": "OpenAI"
+            }
+          }
+        },
+        {
+          "verb": "scriptcreator.createProject",
+          "status": "callable",
+          "description": "A narration as an editable Audio Script Creator project, from lines the caller already has (no AI segmentation). NOT rendered, so it is free; the user can open it, read it and change voices before anything is spent.",
+          "example": {
+            "command": "applet",
+            "applet": "scriptcreator",
+            "verb": "createProject",
+            "args": {
+              "title": "The Siege of Alesia · 1",
+              "provider": "OpenAI",
+              "voice": "onyx",
+              "lines": [
+                {
+                  "text": "In September 52 BC, the army that had marched to rescue Alesia left its camp at midnight.",
+                  "pauseAfter": 0.8
+                }
+              ]
+            }
+          }
+        },
+        {
+          "verb": "scriptcreator.render",
+          "status": "callable",
+          "description": "Voice every unrendered line of a project and combine the final audio file; a render resumes where the last stopped. The file is verified to have a real duration.",
+          "example": {
+            "command": "applet",
+            "applet": "scriptcreator",
+            "verb": "render",
+            "args": {
+              "id": "<from createProject>",
+              "maxCharacters": 15000
+            }
+          }
+        },
+        {
+          "verb": "scriptcreator.export",
+          "status": "callable",
+          "description": "The final file's path and duration, for audiocast.publishEpisode {audioPath} or the Video Recorder.",
+          "example": {
+            "command": "applet",
+            "applet": "scriptcreator",
+            "verb": "export",
+            "args": {
+              "id": "<from render>"
+            }
+          }
+        }
+      ]
+    },
+    {
       "applet": "aiVidRecorder",
       "summary": "Video Recorder projects, edited after capture. Import a video or a demo draft folder as an editable project, narrate it (an Apple voice is free; a paid voice needs maxCharacters), lay a music bed and turn it down over a range, caption it from the narration or transcript, cut silences and fillers, and export an MP4. fromDeck makes a narrated presentation project from an AI Slides deck (or a brief), its slides timed to the voice. It never records the screen: capture stays a person pressing Record.",
       "capabilities": [

@@ -3083,6 +3083,31 @@ class EpisodeMaps(VoiceTwoCase):
         self.assertTrue(any(r["id"] == "map-ht" for r in maps.index(self.project)))
 
 
+class Narration(VoiceTwoCase):
+    """A landed story as podcast lines (narration.py, PP.2): the gated prose only, a line a sentence."""
+
+    def test_episodes_read_the_gated_prose_a_line_a_sentence(self):
+        import narration
+        self.write(2, f"In 1901 the {ASSOC} elected Fixture. It was the women's society that ran the reading room.",
+                   [("In 1901 the", E_ELECT), ("the women's society that ran", E_ELECT, "cast", ASSOC)])
+        self.assertEqual(cite.cmd_book(self.project), 0)
+        data = narration.build(self.project, use_files=True)
+        texts = [l["text"] for e in data["episodes"] for l in e["lines"]]
+        self.assertTrue(all("](" not in t and "http" not in t for t in texts), texts[:5])
+        self.assertIn("Chapter 2.", texts)                                               # each chapter opens on its title
+        self.assertEqual(data["episodes"][0]["lines"][0]["text"], "Edith Fixture.")      # no introduction: the title opens episode 1
+        self.assertEqual(len(data["episodes"]), 2)
+        self.assertIn("In 1901 the Ladies' Library Association elected Fixture.", texts)
+        self.assertGreater(data["characters"], 0)
+        self.assertEqual(data["voice"], "onyx")
+
+    def test_the_pronunciation_list_applies_to_whole_words(self):
+        import narration
+        say = {"Napoleon III": "Napoleon the Third"}
+        self.assertEqual(narration.spoken("Napoleon III paid for the digs.", say), "Napoleon the Third paid for the digs.")
+        self.assertEqual(narration.spoken("Napoleon IIIrd", say), "Napoleon IIIrd")
+
+
 class ToldBeforeVoiceTwo(VoiceTwoCase):
     """The six episodes landed before v2, and the Armada in flight, keep the rules they were gated under
     (the author, 2026-10-19: one story until it is good). Only the measures reach them."""

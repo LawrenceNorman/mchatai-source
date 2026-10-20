@@ -2276,6 +2276,127 @@
         }
       }
     },
+    "scriptcreator": {
+      "getstate": {
+        "kind": "read",
+        "summary": "Whether Audio Script Creator is ready, its project count and its voice providers.",
+        "example": {
+          "command": "applet",
+          "applet": "scriptcreator",
+          "verb": "getState"
+        }
+      },
+      "listprojects": {
+        "kind": "read",
+        "summary": "Projects newest first: id, title, lines, lines rendered, characters, voice cast, final file, and the link that opens each.",
+        "optional": [
+          "limit"
+        ],
+        "example": {
+          "command": "applet",
+          "applet": "scriptcreator",
+          "verb": "listProjects"
+        }
+      },
+      "getproject": {
+        "kind": "read",
+        "summary": "One project by id or title: its cast, lines rendered, characters, final file and duration. An unknown id returns candidates.",
+        "required": [
+          "id"
+        ],
+        "example": {
+          "command": "applet",
+          "applet": "scriptcreator",
+          "verb": "getProject",
+          "args": {
+            "id": "<from listProjects>"
+          }
+        }
+      },
+      "listvoices": {
+        "kind": "read",
+        "summary": "A provider's voices (OpenAI, Google, ElevenLabs, Apple Native), the names `voice` may use. OpenAI's include onyx.",
+        "optional": [
+          "provider"
+        ],
+        "example": {
+          "command": "applet",
+          "applet": "scriptcreator",
+          "verb": "listVoices",
+          "args": {
+            "provider": "OpenAI"
+          }
+        }
+      },
+      "createproject": {
+        "kind": "create",
+        "summary": "A narration as an editable Audio Script Creator project, from lines the caller already has (no AI segmentation). NOT rendered, so it is free; the user can open it, read it and change voices before anything is spent.",
+        "required": [
+          "lines"
+        ],
+        "optional": [
+          "title",
+          "provider",
+          "voice",
+          "speaker",
+          "pauseSeconds",
+          "hd",
+          "timeline"
+        ],
+        "notes": "`lines`: [\"a sentence\", …] or [{\"text\", \"speaker\"?, \"pauseAfter\"? (seconds)}], in reading order; one line is one take the user can re-render alone. `provider` defaults to OpenAI with voice onyx; \"Apple Native\" is free. `timeline` takes the applet's own JSON instead. Returns entity.open, the link that opens the project.",
+        "example": {
+          "command": "applet",
+          "applet": "scriptcreator",
+          "verb": "createProject",
+          "args": {
+            "title": "The Siege of Alesia · 1",
+            "provider": "OpenAI",
+            "voice": "onyx",
+            "lines": [
+              {
+                "text": "In September 52 BC, the army that had marched to rescue Alesia left its camp at midnight.",
+                "pauseAfter": 0.8
+              }
+            ]
+          }
+        }
+      },
+      "render": {
+        "kind": "update",
+        "summary": "Voice every unrendered line of a project and combine the final audio file; a render resumes where the last stopped. The file is verified to have a real duration.",
+        "required": [
+          "id"
+        ],
+        "optional": [
+          "maxCharacters"
+        ],
+        "notes": "A paid voice (anything but Apple Native) needs maxCharacters ≥ the characters still to render: the call refuses otherwise and spends nothing. Long projects take minutes; give the tunnel call a long wait.",
+        "example": {
+          "command": "applet",
+          "applet": "scriptcreator",
+          "verb": "render",
+          "args": {
+            "id": "<from createProject>",
+            "maxCharacters": 15000
+          }
+        }
+      },
+      "export": {
+        "kind": "read",
+        "summary": "The final file's path and duration, for audiocast.publishEpisode {audioPath} or the Video Recorder.",
+        "required": [
+          "id"
+        ],
+        "example": {
+          "command": "applet",
+          "applet": "scriptcreator",
+          "verb": "export",
+          "args": {
+            "id": "<from render>"
+          }
+        }
+      }
+    },
     "audiocast": {
       "getstate": {
         "kind": "read",
