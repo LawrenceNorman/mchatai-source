@@ -220,6 +220,11 @@ After the author reviews:
 
 ## 5. Finish the story
 
+First, re-run `python3 history/tools/gate.py chapter stories/<slug> <n>` on every chapter. A
+`"status": "gated"` written by a run that was then cut off proves nothing: the Armada's chapter 3
+carried that status and six gate violations (2026-10-19), left by an audit the closed thread
+never finished.
+
 1. **The introduction** (`voice.md` §13), written now that the whole life is known:
    `chapters/00.json`, 200 to 600 words, with claims and anchors like any chapter. **An episode's
    introduction is a cold open that keeps the ending** (the domain's voice §10): one true scene, the
