@@ -3101,6 +3101,21 @@ class Narration(VoiceTwoCase):
         self.assertGreater(data["characters"], 0)
         self.assertEqual(data["voice"], "onyx")
 
+    def test_the_video_says_the_podcasts_words_in_order(self):
+        import deck
+        import narration
+        self.write(2, f"In 1901 the {ASSOC} elected Fixture. It was the women's society that ran the reading room.",
+                   [("In 1901 the", E_ELECT), ("the women's society that ran", E_ELECT, "cast", ASSOC)])
+        self.assertEqual(cite.cmd_book(self.project), 0)
+        os.makedirs(self.project.path("podcast"), exist_ok=True)
+        data = narration.build(self.project, use_files=True)
+        _hw.save_json(self.project.path("podcast", "episodes.json"), data)
+        for ep in data["episodes"]:
+            d = deck.plan(self.project, ep["n"])
+            spoken = " ".join(l["text"] for l in ep["lines"])
+            shown = " ".join(s["notes"] for s in d["slides"])
+            self.assertEqual(re.sub(r"\s+", " ", shown).strip(), re.sub(r"\s+", " ", spoken).strip())
+
     def test_the_pronunciation_list_applies_to_whole_words(self):
         import narration
         say = {"Napoleon III": "Napoleon the Third"}
