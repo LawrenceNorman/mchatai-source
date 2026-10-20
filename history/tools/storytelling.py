@@ -135,6 +135,8 @@ def cast_entries(project):
                 if len(parts) > 1 and len(parts[-1]) > 3:
                     keys.append(parts[-1])
             keys += [a for a in r.get("aliases") or [] if a]
+            # "the Gauls" is also "Gauls", and "The Gauls" where it opens a sentence (key_pattern).
+            keys += [k[4:] for k in list(keys) if k.lower().startswith("the ") and len(k) > 6]
             seen, uniq = set(), []
             for k in keys:
                 if k and k.lower() not in seen:
@@ -146,7 +148,10 @@ def cast_entries(project):
 
 
 def key_pattern(keys):
-    return re.compile(r"(?<![\w-])(?:" + "|".join(re.escape(k) for k in sorted(keys, key=len, reverse=True)) + r")(?![\w-])")
+    """A cast entry's names as written, its first letter in either case (a sentence may open on it)."""
+    def one(k):
+        return f"[{re.escape(k[0].upper())}{re.escape(k[0].lower())}]" + re.escape(k[1:]) if k[:1].isalpha() else re.escape(k)
+    return re.compile(r"(?<![\w-])(?:" + "|".join(one(k) for k in sorted(keys, key=len, reverse=True)) + r")(?![\w-])")
 
 
 def specific_findings(spans, writer, ch, project, cfg):

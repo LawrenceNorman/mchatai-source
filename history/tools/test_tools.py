@@ -3138,6 +3138,16 @@ class Cast(VoiceTwoCase):
         self.assertIn("Who's who", notes)
         self.assertLess(notes.index("Who's who"), notes.index("Water Street, 1893"))
 
+    def test_a_people_named_with_the_is_met_however_a_sentence_opens(self):
+        import storytelling
+        self.edit_dossier(peoples=[{"name": "the Millhands", "who": "The men who worked the Harbor Town mills",
+                                    "source": "s1", "evidence": "The house lodges twenty-two men from the mills."}])
+        rx = storytelling.key_pattern(storytelling.cast_entries(self.project)[0]["keys"])
+        for text in ("The Millhands struck.", "and the Millhands struck", "Millhands struck"):
+            self.assertTrue(rx.search(text), text)
+        self.assertEqual(cite.whoswho_line(storytelling.cast_entries(self.project)[0]),
+                         "The Millhands: the men who worked the Harbor Town mills.")
+
     def test_a_life_has_no_cast_rules_and_no_whos_who(self):
         self.set_domain(None)
         self.assertNotIn("cast_unassigned", self.plan_rules())

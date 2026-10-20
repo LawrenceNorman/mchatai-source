@@ -642,6 +642,7 @@ def whoswho_line(e):
     """'Mandubii: a Gallic people whose chief town Alesia was.' The name as the dossier gives it (a
     second spelling in brackets stays), then its line as written, an opening article lower-cased."""
     name = e["name"].strip()
+    name = name[:1].upper() + name[1:]                  # "the Gauls" opens its line as "The Gauls"
     who = e["who"].strip().rstrip(".")
     if re.match(r"(?:A|An|The)\s", who):
         who = who[0].lower() + who[1:]
