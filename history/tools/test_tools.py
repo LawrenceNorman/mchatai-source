@@ -3609,6 +3609,9 @@ class Publishing(VoiceTwoCase):
         asked = _hw.load_json(self.project.path("video", "commons-asked.json"), {})
         self.assertEqual(set(asked), {"x", "y"})
         self.assertFalse(os.path.exists(self.project.path("video", "broll", "b4.reserved")), "a saved id's marker goes")
+        # A run that read the list before those saves still claims above them: the disk is read again.
+        stale = [{"id": "b3", "key": "k", "title": "File:A"}]
+        self.assertGreater(int(visuals.reserve_id(self.project, stale)[1:]), 6)
 
     def test_a_story_adds_its_own_context_words(self):
         """The domain spans every era, so "carnyx" belongs to Alesia's video/context.json, not to

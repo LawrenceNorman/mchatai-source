@@ -547,7 +547,10 @@ def reserve_id(project, rows):
     both take the next number, and `download` would hand one job the other's picture."""
     folder = project.path("video", "broll")
     os.makedirs(folder, exist_ok=True)
-    taken = [int(r["id"][1:]) for r in rows if re.fullmatch(r"b\d+", r.get("id") or "")]
+    # The list ON DISK too, read now: another job's saved rows are there once its markers are gone,
+    # and a row that reused an existing file never had a file of its own id (2026-10-20: b93–b99
+    # were taken twice when only this run's start-of-run rows were consulted).
+    taken = [int(r["id"][1:]) for r in rows + broll(project) if re.fullmatch(r"b\d+", r.get("id") or "")]
     taken += [int(m.group(1)) for f in os.listdir(folder) for m in [re.match(r"b(\d+)\.", f)] if m]
     i = max(taken or [0]) + 1
     while True:
@@ -587,7 +590,9 @@ def download(project, rec, bid):
     rel = f"video/broll/{bid}{ext}"
     os.makedirs(project.path("video", "broll"), exist_ok=True)
     if os.path.exists(project.path(rel)):
-        return rel
+        # An id is claimed before it is downloaded (reserve_id), so a file already here is another
+        # picture's: never adopt it under this record's caption.
+        raise FileExistsError(f"{rel} already belongs to another picture")
     host = urllib.parse.urlparse(url).hostname or ""
     fetch.throttle(host, fetch.host_interval(host))
     req = urllib.request.Request(url, headers={"User-Agent": images.API_UA})
@@ -681,7 +686,7 @@ def cmd_find(project, n, limit=None):
             else:
                 try:
                     rel = download(project, rec, bid)
-                except (urllib.error.URLError, TimeoutError) as e:
+                except (urllib.error.URLError, TimeoutError, FileExistsError) as e:
                     print(f"  {rec['title']}: not copied ({e})", file=sys.stderr)
                     continue
             row = {k: rec.get(k) for k in ("title", "url", "pageUrl", "license", "licenseUrl", "artist", "date",
