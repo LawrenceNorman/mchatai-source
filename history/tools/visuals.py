@@ -248,9 +248,9 @@ def story_pictures(project):
     return [r for r in images.index(project) if r.get("file") and os.path.exists(project.path(r["file"]))]
 
 
-def likeness(project, name):
+def likeness(project, name, guard=None):
     """The story's own picture of a person or people: its caption names them (a coin, a bust, a
-    statue, a painting). Never generated."""
+    statue, a painting). Never generated. `guard(rec)` true skips a picture (too early)."""
     import storytelling
     keys = next((e["keys"] for e in storytelling.cast_entries(project) if e["name"] == name), [name])
     pat = re.compile(r"(?<![\w-])(?:" + "|".join(re.escape(k) for k in sorted(keys, key=len, reverse=True)) + r")", re.I)
@@ -260,7 +260,7 @@ def likeness(project, name):
         # What the picture IS: the caption up to its first full stop or relative clause. "A bust of
         # Julius Caesar, who led the Roman legions" is Caesar, never the legions.
         subject = re.split(r"[.;]|,\s*(?:who|which|whose|where)\b|\s+who\s", r.get("caption") or "")[0]
-        if pat.search(subject):
+        if pat.search(subject) and not (guard and guard(r)):
             return r
     return None
 
@@ -273,13 +273,54 @@ def map_for(project, place):
     return None
 
 
+def episode_chapter(project, ep):
+    """The plan chapter an episode reads: 0 for the introduction."""
+    if ep.get("title") == "Introduction":
+        return 0
+    for c in (project.plan or {}).get("chapters") or []:
+        if c.get("title") == ep.get("title"):
+            return int(c.get("n") or c.get("chapter") or 0)
+    return 0
+
+
+def outcome_chapters(project):
+    """The chapters that tell how the story ends: those holding the dossier's outcome events."""
+    events = set(((project.dossier or {}).get("outcome") or {}).get("events") or [])
+    return {int(c.get("n") or c.get("chapter") or 0) for c in (project.plan or {}).get("chapters") or []
+            if events & set(c.get("events") or [])}
+
+
+def spoiler_words(project):
+    """Words that show the ending: the dossier's outcome phrases and the domain glossary's `spoilers`."""
+    found = list(((project.dossier or {}).get("outcome") or {}).get("phrases") or [])
+    meta = load_json(project.path("project.json"), {}) or {}
+    dom = meta.get("domain") or ""
+    g = load_json(os.path.join(HISTORY, "domains", dom, "visuals.json"), {}) if dom else {}
+    found += (g or {}).get("spoilers") or []
+    return [fold(w) for w in found if w]
+
+
+def too_early(rec, ep_chapter, outcome, spoils):
+    """A picture of how the story ends, before the episode that tells it. The introduction keeps the
+    ending back (voice.md's cold open), and so do its pictures: Royer's 1899 surrender painting waits
+    for the chapter the book places it in."""
+    if not outcome or ep_chapter >= min(outcome):
+        return False
+    ch = rec.get("chapter")
+    if isinstance(ch, int) and ch in outcome and ch > ep_chapter:
+        return True
+    text = fold(record_text(rec) + " " + (rec.get("caption") or ""))
+    return any(w in text for w in spoils)
+
+
 def broll(project):
     return load_json(project.path("video", "broll.json"), []) or []
 
 
-def broll_for(project, key):
+def broll_for(project, key, guard=None):
     no = rejected(project)
-    return [r for r in broll(project) if r.get("key") == key and r.get("id") not in no and r.get("title") not in no]
+    return [r for r in broll(project) if r.get("key") == key and r.get("id") not in no and r.get("title") not in no
+            and not (guard and guard(r))]
 
 
 # ── 3. the checker (one for every video picture) ─────────────────────────────
@@ -303,10 +344,12 @@ def year_of(rec):
 
 
 def maker(rec):
-    a = re.split(r"[\n;]|\s{2,}", (rec.get("artist") or "").strip())[0].strip()
+    """The maker's name alone: Commons' author field can run on ("Du Locle, Camille (1832-1903).
+    Librettiste Flaubert, Gustave (1821-1880). Auteur"), and a frame's credit wants one name."""
+    a = re.split(r"[\n;(]|\.\s|\s{2,}", (rec.get("artist") or "").strip())[0].strip(" ,.")
     if not a or re.search(r"unknown|anonymous|^author$", a, re.I):
         return ""
-    return a[:80]
+    return a[:60]
 
 
 def caption_from_record(rec):
@@ -409,9 +452,26 @@ def category_files(cat, limit=50):
     return [r["title"] for r in d.get("query", {}).get("categorymembers", []) if not images.SKIP.search(r["title"])]
 
 
-def relevance(rec, words_):
+def story_words(project):
+    """The story's own names (its cast's and places'), folded: the strongest sign a picture is of it."""
+    out = set()
+    for e, _ in cast(project):
+        for k in e["keys"]:
+            out |= {stem(w) for w in re.findall(r"[^\W\d_]{4,}", k)}
+    for p, names, _ in places(project):
+        for x in names:
+            out |= {stem(w) for w in re.findall(r"[^\W\d_]{4,}", x)}
+    return {w for w in out if len(w) >= 4 and w not in UNIT_STOP}
+
+
+def relevance(rec, words_, context=(), story=()):
     text = record_text(rec)
     score = sum(2 for w in words_ if norm(w) in text)
+    # Of this story first: its own names count most (a carnyx found in Gaul before a reenactor
+    # dressed as a Briton), the domain's context words less.
+    folded = fold(text)
+    score += 3 * min(2, sum(1 for w in story if w in folded))
+    score += min(2, sum(1 for w in context if w in folded and w not in story))
     if re.search(r"[^\x00-\u024f\s\W]", caption_from_record(rec)):
         score -= 4                     # a caption in a script most viewers cannot read
     if year_of(rec):
@@ -441,6 +501,7 @@ def lookup(project, query, subject, c, context=None, skip=(), match=None):
     keep = []
     want = [w for w in re.findall(r"[A-Za-z]{4,}", subject + " " + query.replace("Category:", "")) if w.lower() not in UNIT_STOP]
     context_ws = context if context is not None else context_words(project)
+    story_ws = story_words(project)
     subject_ws = subject_words(subject, query, match, context_ws)
     is_category = query.lower().startswith("category:")
     for t, rec in info.items():
@@ -455,7 +516,7 @@ def lookup(project, query, subject, c, context=None, skip=(), match=None):
         rec["caption"] = caption_from_record(rec)
         if caption_problems(rec["caption"], rec):
             continue
-        rec["score"] = relevance(rec, want)
+        rec["score"] = relevance(rec, want, context_ws, story_ws)
         keep.append(rec)
     return sorted(keep, key=lambda r: -r["score"])
 
@@ -625,6 +686,11 @@ def plan_beats(project, n):
     data, ep, meta, items = episode(project, n)
     th = things_for(project, n)
     rows = (cast(project), places(project))
+    ep_ch, outcome, spoils = episode_chapter(project, ep), outcome_chapters(project), spoiler_words(project)
+    guard = lambda r: too_early(r, ep_ch, outcome, spoils)
+    like = lambda name: likeness(project, name, guard)
+    rolls = lambda key: broll_for(project, key, guard)
+    place_names = [fold(x) for _, names, _ in rows[1] for x in names]
     seen_people, shown_maps = set(), set()
     beats = []
     pending = None          # the picture the book places before the next paragraph
@@ -658,24 +724,40 @@ def plan_beats(project, n):
     def least_used(options):
         uses = lambda r: sum(1 for b in beats if b["material"].get("file") == r.get("file"))
         unreadable = lambda r: bool(re.search(r"[^\x00-\u024f\s\W]", r.get("caption") or ""))
-        return min(options, key=lambda r: (uses(r), unreadable(r)))
+        return min(options, key=lambda r: (unreadable(r), uses(r)))   # a caption the viewer can read first
 
-    def last_picture():
-        """A held beat's picture: one of the episode's last few, the one least recently up and never
-        the one just shown (a manuscript page held for three beats running is a still again)."""
-        shown = [b["material"] for b in beats if b["material"].get("kind") == "picture"]
-        if not shown:
-            return None
-        prev = beats[-1]["material"].get("file")
-        recent = []
-        for m in reversed(shown[-8:]):
-            if m.get("file") != prev and m.get("file") not in [r.get("file") for r in recent]:
-                recent.append(m)
-        if not recent:
-            return dict(shown[-1])
-        def last_seen(m):
-            return max(k for k, b in enumerate(beats) if b["material"].get("file") == m.get("file"))
-        return dict(min(recent, key=last_seen))
+    def last_seen(f):
+        return max([k for k, b in enumerate(beats) if b["material"].get("file") == f] or [-1])
+
+    def hold_for(ms):
+        """What a line with nothing new to show holds on, never a thing's picture away from its own
+        line (a carnyx held over the news crossing Gaul, 2026-10-20):
+        1. what the line names, even if shown before: a person's or people's picture, a place's map;
+        2. the episode's ground: the story's maps and its own pictures of the place, the least
+           recently shown, never the one just up (and nothing that shows the ending too early);
+        3. the picture just up, with a new move."""
+        for m in ms:
+            if m["type"] in ("person", "people"):
+                rec, got = like(m["key"]), rolls(m["key"])
+                if rec:
+                    return picture_material(project, rec, "story"), f"held on {m['key']}, whom the line names"
+                if got:
+                    return picture_material(project, least_used(got), "commons"), f"held on {m['key']}, whom the line names"
+            if m["type"] == "place":
+                r = map_for(project, m["key"])
+                if r:
+                    return picture_material(project, r, "map"), f"held on the map: {m['key']}"
+        import cite
+        prev = beats[-1]["material"].get("file") if beats else None
+        ground = [picture_material(project, r, "map") for r in cite.map_records(project).values()]
+        ground += [picture_material(project, r, "story") for r in story_pictures(project)
+                   if not r.get("portraitOnly") and not guard(r)
+                   and any(x in fold(r.get("caption") or "") for x in place_names)]
+        ground = [g for g in ground if g.get("file") and g.get("file") != prev]
+        if ground:
+            return min(ground, key=lambda g: last_seen(g.get("file"))), "held: the ground of the story"
+        last = next((dict(b["material"]) for b in reversed(beats) if b["material"].get("kind") == "picture"), None)
+        return (last, "held: the picture again, a new move") if last else (None, "")
 
     for it in items:
         kind = it["kind"]
@@ -688,9 +770,16 @@ def plan_beats(project, n):
         text = it["text"]
         if kind == "open":
             rec = it.get("rec")
-            m = picture_material(project, rec, "story") if rec else card("title", title=it["title"], subtitle=it["sub"])
+            total = len(data["episodes"])
+            intro = ((thresholds(project).get("video") or {}).get("intro") or {}).get("subtitle")
+            sub = it["sub"]
+            if sub.startswith(f"Part {ep['n']}:"):
+                sub = f"Part {ep['n']} of {total}:" + sub[len(f"Part {ep['n']}:"):]
+            elif intro:
+                sub = intro.format(n=ep["n"], total=total, sub=sub)
+            m = picture_material(project, rec, "story") if rec else card("title", title=it["title"], subtitle=sub)
             if rec:
-                m["title"], m["subtitle"] = it["title"], it["sub"]
+                m["title"], m["subtitle"] = it["title"], sub
             start(m, it, "the story's opening picture under its title")
             continue
         if kind == "whoTitle":
@@ -698,8 +787,8 @@ def plan_beats(project, n):
             continue
         if kind == "who":
             name = cast_names.get(it["name"].casefold(), it["name"])   # "The Gauls" row, "the Gauls" cast
-            rec = likeness(project, name)
-            got = broll_for(project, name)
+            rec = like(name)
+            got = rolls(name)
             if rec:
                 start(picture_material(project, rec, "story"), it, f"{name}: the story's own picture", title=it["name"])
             elif got:
@@ -720,8 +809,8 @@ def plan_beats(project, n):
         if not choice:
             for m in ms:
                 if m["type"] in ("person", "people") and m["key"] not in seen_people:
-                    rec = likeness(project, m["key"])
-                    got = broll_for(project, m["key"])
+                    rec = like(m["key"])
+                    got = rolls(m["key"])
                     if rec or got:
                         mat = picture_material(project, rec, "story") if rec else picture_material(project, least_used(got), "commons")
                         choice = (mat, f"first mention of {m['key']}", m["key"])
@@ -739,7 +828,7 @@ def plan_beats(project, n):
         if not choice:
             for m in ms:
                 if m["type"] == "thing":
-                    got = broll_for(project, m["key"])
+                    got = rolls(m["key"])
                     if got:
                         choice = (picture_material(project, least_used(got), "commons"), f"the thing: {m['text']}", None)
                         break
@@ -761,14 +850,37 @@ def plan_beats(project, n):
         if beats and beats[-1]["seconds"] + seconds(text, c) <= cap():
             extend(it)
         elif beats:
-            again = last_picture() or dict(beats[-1]["material"])
+            again, why = hold_for(ms)
+            again = dict(again or beats[-1]["material"])
             again.pop("title", None)
             again.pop("subtitle", None)           # the opening picture again is not the title card again
-            start(again, it, "held: the picture again, a new move")
+            start(again, it, why or "held: the picture again, a new move")
         else:
             start(card("title", title=meta.get("subject") or ""), it, "nothing to show yet")
+    # The end card: one spoken line pointing on (series navigation, not history), held for YouTube's
+    # end screen (the outro's holdSeconds go to the Video Recorder as closingHold).
+    o = (thresholds(project).get("video") or {}).get("outro") or {}
+    if o:
+        import narration
+        from _hw import series_entry
+        total = len(data["episodes"])
+        series = ((series_entry(meta.get("series") or "")[0] or {}).get("title")) or "Pivotal Histories"
+        subject = meta.get("subject") or ""
+        if ep["n"] < total:
+            nxt = data["episodes"][ep["n"]]["title"]
+            say = o.get("say", "").format(next=ep["n"] + 1, total=total, next_title=nxt, subject=subject, series=series)
+            title = o.get("title", "").format(next=ep["n"] + 1, total=total, next_title=nxt, subject=subject, series=series)
+        else:
+            say = o.get("sayLast", "").format(subject=subject, series=series)
+            title = o.get("titleLast", "").format(subject=subject, series=series)
+        if say:
+            say = narration.spoken(say, narration.cfg(project)["say"])
+            beats.append({"lines": [], "text": say, "seconds": seconds(say, c), "start": round(t, 1), "extra": True,
+                          "material": card("title", title=title, subtitle=o.get("subtitle", "").format(series=series)),
+                          "why": "the end card: what comes next"})
+            t += seconds(say, c)
     out = {"episode": ep["n"], "title": ep["title"], "lines": sum(len(b["lines"]) for b in beats),
-           "seconds": round(t), "beats": beats}
+           "seconds": round(t), "beats": beats, "closingHold": o.get("holdSeconds")}
     os.makedirs(project.path("video"), exist_ok=True)
     save_json(project.path("video", f"beats-{ep['n']}.json"), out)
     return out

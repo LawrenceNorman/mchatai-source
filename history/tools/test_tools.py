@@ -3144,8 +3144,13 @@ class VisualBeats(VoiceTwoCase):
         for ep in data["episodes"]:
             d = visuals.plan_beats(self.project, ep["n"])
             said = " ".join(l["text"] for l in ep["lines"])
-            shown = " ".join(b["text"] for b in d["beats"])
+            shown = " ".join(b["text"] for b in d["beats"] if not b.get("extra"))
             self.assertEqual(re.sub(r"\s+", " ", shown).strip(), re.sub(r"\s+", " ", said).strip())
+            extra = [b for b in d["beats"] if b.get("extra")]
+            self.assertEqual(len(extra), 1, "one end card, after every line")
+            self.assertIs(d["beats"][-1], extra[0])
+            if ep["n"] < len(data["episodes"]):
+                self.assertIn(data["episodes"][ep["n"]]["title"], extra[0]["text"], "the end card names the next part")
             order = [i for b in d["beats"] for i in b["lines"]]
             self.assertEqual(order, list(range(len(order))), "every line in exactly one beat, in order")
             cap = visuals.cfg(self.project)["max"]
@@ -3184,7 +3189,10 @@ class VisualBeats(VoiceTwoCase):
             visuals.plan_beats(self.project, ep["n"])
             d = deck.plan_from_beats(self.project, ep["n"])
             said = " ".join(l["text"] for l in ep["lines"])
-            shown = " ".join(s["notes"] for s in d["slides"])
+            shown = " ".join(s["notes"] for s in d["slides"][:-1])           # the last is the end card
+            self.assertEqual(d["slides"][-1]["layout"], "title")
+            self.assertTrue(all(s.get("words_at") == "top" for s in d["slides"] if s["layout"] == "fullBleed"),
+                            "a picture's words sit at the top, clear of the captions")
             self.assertEqual(re.sub(r"\s+", " ", shown).strip(), re.sub(r"\s+", " ", said).strip())
             for s in d["slides"]:
                 if s["layout"] == "quote":
@@ -3216,6 +3224,19 @@ class VisualBeats(VoiceTwoCase):
                 "objectName": "German: Belagerung der Stadt Alesia The anachronistic Siege title QS:P1476,de", "artist": "Melchior Feselen",
                 "date": "1533", "description": ""}
         self.assertNotIn("QS:", visuals.caption_from_record(soup), "Commons' label soup never reaches a caption")
+
+    def test_the_ending_is_not_shown_before_its_episode(self):
+        import visuals
+        royer = {"title": "File:Lionel Royer - Vercingetorix Throwing down His Weapons.jpg", "chapter": 4,
+                 "caption": "Vercingetorix throwing down his weapons at the feet of Julius Caesar, an 1899 painting"}
+        spoils = [visuals.fold(w) for w in ("surrender", "throwing down")]
+        self.assertTrue(visuals.too_early(royer, 0, {4, 5}, spoils), "the introduction keeps the ending back")
+        self.assertFalse(visuals.too_early(royer, 4, {4, 5}, spoils), "its own episode shows it")
+        statue = {"title": "File:Vercingetorix Alesia.jpg", "caption": "A statue of Vercingetorix", "chapter": 3}
+        self.assertFalse(visuals.too_early(statue, 0, {4, 5}, spoils), "a picture that does not show the end is free")
+        found = {"title": "File:La reddition de Vercingetorix.jpg", "description": "La reddition de Vercingetorix"}
+        self.assertTrue(visuals.too_early(found, 0, {4, 5}, [visuals.fold("reddition")]),
+                        "a Commons picture of the ending waits too")
 
     def test_things_must_be_words_of_their_line(self):
         import visuals

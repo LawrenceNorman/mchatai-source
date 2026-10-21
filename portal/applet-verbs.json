@@ -1713,14 +1713,15 @@
       },
       "autofocus": {
         "kind": "modify",
-        "summary": "Every full-picture slide whose picture the 16:9 fill crops keeps its subject in frame: a face first (busts, statues, painted portraits), else what stands out (Vision, on the device). Only slides with no focus yet, unless `all`, so an author's own focus is never moved.",
+        "summary": "Every full-picture slide whose picture the 16:9 fill crops keeps its subject in frame: a face first (busts, statues, painted portraits); a picture with no face that the fill would cut to less than `wholeBelow` of itself (default 0.6) is shown whole; else what stands out (Vision, on the device). Only slides with no focus yet, unless `all`, so an author's own focus is never moved.",
         "required": [
           "deck"
         ],
         "optional": [
-          "all"
+          "all",
+          "wholeBelow"
         ],
-        "notes": "result.slides lists the 1-based slides it focused. The focus is the slide's own image_focus, so AI Slides, its exports and the Video Recorder's stills and motion all show the same crop; move any of them in AI Slides.",
+        "notes": "result.slides lists the 1-based slides it changed, result.whole those it shows whole. The focus is the slide's own image_focus, so AI Slides, its exports and the Video Recorder's stills and motion all show the same crop; move any of them in AI Slides.",
         "example": {
           "command": "applet",
           "applet": "aislides",
@@ -3778,9 +3779,10 @@
           "captions",
           "leadIn",
           "tail",
-          "lineGap"
+          "lineGap",
+          "closingHold"
         ],
-        "notes": "Draft first, print later: the voice defaults to the best English Apple voice (free, on this Mac). For the print, call narrate on the new project with provider openAI, voice onyx and maxCharacters. A paid provider here also REQUIRES maxCharacters, checked against the deck's notes before anything is made. Presenter cues in the notes are not read: a time window like 0:35-1:00 on its own line or opening one, and anything in square brackets ([click]). deck: a title or id (aislides.listDecks). musicAssetID: a LoopStar audio asset (loopstar.composeMusic or jingle). captions defaults to true. llmProvider picks the model AI Slides composes with (brief only). Returns the project as entity; result.slides and result.deck say what it was built from. leadIn, tail and lineGap (seconds, 0-3) set the air around each slide's lines; a deck of a slide per line or two wants them tight (0.1, 0.25, 0.3).",
+        "notes": "Draft first, print later: the voice defaults to the best English Apple voice (free, on this Mac). For the print, call narrate on the new project with provider openAI, voice onyx and maxCharacters. A paid provider here also REQUIRES maxCharacters, checked against the deck's notes before anything is made. Presenter cues in the notes are not read: a time window like 0:35-1:00 on its own line or opening one, and anything in square brackets ([click]). deck: a title or id (aislides.listDecks). musicAssetID: a LoopStar audio asset (loopstar.composeMusic or jingle). captions defaults to true. llmProvider picks the model AI Slides composes with (brief only). Returns the project as entity; result.slides and result.deck say what it was built from. leadIn, tail and lineGap (seconds, 0-3) set the air around each slide's lines; a deck of a slide per line or two wants them tight (0.1, 0.25, 0.3). closingHold (0-20 s) keeps the last slide up after its line: an end card for YouTube's end screen wants 5-20.",
         "example": {
           "command": "applet",
           "applet": "aividrecorder",
@@ -3798,7 +3800,13 @@
         "required": [
           "id"
         ],
-        "notes": "The deck wins: a line edited only in the project is replaced by the deck's (the editor's Undo brings it back; a verb has no Undo). Presenter cues in the notes (a time window like 0:35-1:00, [click]) are never read. result.update counts slidesAdded, slidesRemoved, slidesRedrawn, linesChanged, linesRemoved and linesToRender.",
+        "optional": [
+          "leadIn",
+          "tail",
+          "lineGap",
+          "closingHold"
+        ],
+        "notes": "Pacing (leadIn, tail, lineGap, closingHold, as fromDeck takes them) changes a project already made; its slides re-time to it. The deck wins: a line edited only in the project is replaced by the deck's (the editor's Undo brings it back; a verb has no Undo). Presenter cues in the notes (a time window like 0:35-1:00, [click]) are never read. result.update counts slidesAdded, slidesRemoved, slidesRedrawn, linesChanged, linesRemoved and linesToRender.",
         "example": {
           "command": "applet",
           "applet": "aividrecorder",

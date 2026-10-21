@@ -258,7 +258,8 @@ def plan_from_beats(project, n):
         if m.get("kind") == "picture":
             image = project.path(m["file"]) if m.get("file") else None
             if m.get("subtitle"):                     # the opening: the story's title over its ground
-                slide = {"layout": "fullBleed", "title": m.get("title") or "", "caption": m["subtitle"], "image": image}
+                slide = {"layout": "fullBleed", "title": m.get("title") or "", "caption": m["subtitle"], "image": image,
+                         "words_at": "top"}
             else:
                 credit = re.sub(r"\s*·\s*Wikimedia Commons$", "", m.get("credit") or "")
                 cap = short(m.get("caption") or "", 80)
@@ -266,7 +267,9 @@ def plan_from_beats(project, n):
                 if len(parts) > 1 and parts[0] and parts[0].lower() in cap.lower():
                     credit = " · ".join(parts[1:])        # the caption already names the maker
                 caption = cap + (" · " + credit if credit else "")
-                slide = {"layout": "fullBleed", "title": b.get("title") or "", "caption": caption, "image": image}
+                # The words at the top: the bottom is the video's captions (they covered the credit).
+                slide = {"layout": "fullBleed", "title": b.get("title") or "", "caption": caption, "image": image,
+                         "words_at": "top"}
         else:
             slide = {"layout": m["layout"]}
             for k in ("title", "subtitle", "quote", "attribution", "fact", "label"):
@@ -276,6 +279,7 @@ def plan_from_beats(project, n):
         slides.append(slide)
     deck = {"title": f"{meta.get('subject')} · video {ep['n']} of {len(data['episodes'])} · {ep['title']}",
             "theme": c["theme"], "episode": ep["n"], "slides": slides, "fromBeats": True,
+            "closingHold": beats.get("closingHold"),
             "characters": sum(len(s["notes"]) for s in slides),
             "seconds": round(sum(words(s["notes"]) for s in slides) / c["wordsPerSecond"])}
     os.makedirs(project.path("video"), exist_ok=True)
@@ -367,7 +371,7 @@ def cmd_push(project, n, into=None):
                 return 1
     for i, s in enumerate(d["slides"]):
         slide = {"layout": s["layout"], "title": s.get("title") or "", "notes": s["notes"]}
-        for key in ("subtitle", "quote", "caption", "attribution", "fact", "label", "image_focus"):
+        for key in ("subtitle", "quote", "caption", "attribution", "fact", "label", "image_focus", "words_at"):
             if s.get(key):
                 slide[key] = s[key]
         if s.get("body"):
@@ -396,9 +400,17 @@ def cmd_push(project, n, into=None):
             return 1
     # A portrait filled into a 16:9 slide keeps its face (the app's subject-finder; never an author's
     # own focus): the stills and the moving video show the same crop as AI Slides.
-    f = call(shim, "autoFocus", {"deck": deck_id}, wait=180)
+    v = thresholds(project).get("video") or {}
+    # A regenerated deck (--into) gets its crops chosen again; a new one has none yet.
+    f = call(shim, "autoFocus", {"deck": deck_id, "wholeBelow": v.get("wholeBelow", 0.6), "all": bool(into)}, wait=180)
+    # The opening card is the title over the story's ground: it always fills the frame (a tall plan
+    # shown whole made a thin strip behind the title, 2026-10-20).
+    if d["slides"] and d["slides"][0].get("layout") == "fullBleed" and d["slides"][0].get("subtitle") is None \
+            and d["slides"][0].get("caption") and d["slides"][0].get("image"):
+        call(shim, "updateSlide", {"deck": deck_id, "index": 1, "slide": {"image_fit": "fill"}})
     if f.get("status") == "ok" and (f.get("result") or {}).get("slides"):
-        print(f"kept the subject in frame on slides {', '.join(map(str, f['result']['slides']))}")
+        print(f"kept the subject in frame on slides {', '.join(map(str, f['result']['slides']))}"
+              + (f"; shown whole: {', '.join(map(str, f['result'].get('whole') or []))}" if f['result'].get('whole') else ""))
     got = call(shim, "getDeck", {"deck": deck_id})
     count = len((got.get("result") or {}).get("slides") or [])
     link = f"com.sevenhillsstudio.mchatai://product/{deck_id}?applet=AISlides"
@@ -410,6 +422,8 @@ def cmd_push(project, n, into=None):
     args = {"deck": deck_id, "provider": "openai", "voice": "onyx", "maxCharacters": d["characters"] + 200}
     if d.get("fromBeats"):
         args.update((thresholds(project).get("video") or {}).get("beatPacing") or {})
+        if d.get("closingHold"):
+            args["closingHold"] = d["closingHold"]          # the end card stays up for YouTube's end screen
     print("  " + json.dumps({"command": "applet", "applet": "aividrecorder", "verb": "fromDeck", "args": args}))
     return 0
 
