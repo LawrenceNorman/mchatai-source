@@ -3562,6 +3562,30 @@ class Publishing(VoiceTwoCase):
         _hw.save_json(self.project.path("podcast", "episodes.json"), data)
         return data
 
+    def test_the_book_links_what_went_out(self):
+        """2026-10-21: the site links each part's video and podcast episode, only once they are out."""
+        import publish
+        import series_book
+        self.episodes()
+        self.assertEqual(series_book.story_media(self.project), [], "nothing out, nothing linked")
+        publish.record(self.project, 1, "video", ["url=https://youtu.be/x1"])
+        self.assertEqual(series_book.story_media(self.project), [], "a video not uploaded is not linked")
+        publish.record(self.project, 1, "video", ["uploaded=2026-10-21"])
+        publish.record(self.project, 1, "podcast", ["url=https://mchatai.com/u/a/ep1/", "published=2026-10-21"])
+        m = series_book.story_media(self.project)
+        self.assertEqual((m[0]["video"], m[0]["audio"]), ("https://youtu.be/x1", "https://mchatai.com/u/a/ep1/"))
+        publish.record(self.project, 1, "podcast", ["unpublished=2026-10-22"])
+        self.assertEqual(series_book.story_media(self.project)[0]["audio"], "", "a taken-down episode is not linked")
+
+    def test_the_author_may_publish_a_story_as_it_stands(self):
+        import series_book
+        story = {"review": {"author": "2026-10-21"}, "pendingSuggestions": 12}
+        self.assertTrue(series_book.publishable(story), "suggestions waiting hold a story")
+        story["review"]["asStands"] = True
+        self.assertEqual(series_book.publishable(story), [], "unless the author published it as it stands")
+        self.assertTrue(series_book.publishable({"review": {"asStands": True}, "pendingSuggestions": 0}),
+                        "never without his sign-off")
+
     def test_record_refuses_what_it_does_not_know(self):
         import publish
         self.assertTrue(publish.record(self.project, 1, "radio", ["voiced=2026-10-20"]))

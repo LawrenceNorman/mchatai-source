@@ -720,8 +720,28 @@ def build_story(project, shim, use_files, out, place, problems, pool, lens=None)
         "origin": origin, "edited": sum(1 for p in parts if p["edited"]),
         "pendingSuggestions": extra.get("pendingSuggestions", 0),
         "review": {"author": review.get("author"), "community": review.get("community"),
+                   "asStands": bool(review.get("asStands")),
                    "needsCommunity": bool(dossier.get("communityReview"))},
     }
+
+
+def story_media(project):
+    """The parts of a story that went out as a video or a podcast episode, in order: each one's title,
+    length and pages, from the story's publishing record (publish.py). Only what is out: a video with
+    no upload or an episode not published (or taken down) is left off."""
+    meta = load_json(project.path("project.json"), {}) or {}
+    pub = meta.get("publishing") or {}
+    eps = (load_json(project.path("podcast", "episodes.json"), {}) or {}).get("episodes") or []
+    out = []
+    for ep in eps:
+        r = pub.get(str(ep.get("n"))) or {}
+        v, a = r.get("video") or {}, r.get("podcast") or {}
+        video = v.get("url", "") if v.get("uploaded") and safe_url(v.get("url", "")) else ""
+        audio = a.get("url", "") if a.get("published") and not a.get("unpublished") and safe_url(a.get("url", "")) else ""
+        if video or audio:
+            out.append({"n": ep.get("n"), "title": ep.get("title", ""), "minutes": round(ep.get("minutes") or 0),
+                        "video": video, "audio": audio})
+    return out
 
 
 def publishable(story, community=True):
@@ -733,7 +753,9 @@ def publishable(story, community=True):
         why.append("the author signs it off (review.author in project.json)")
     if community and rv.get("needsCommunity") and not rv.get("community"):
         why.append("a reader from the community has read it (review.community in project.json)")
-    if story.get("pendingSuggestions"):
+    # `review.asStands` (2026-10-21): the author published the text as it stands, the one his podcast
+    # and videos read, and left the book editor's suggestions for later. They are still reported.
+    if story.get("pendingSuggestions") and not rv.get("asStands"):
         n = story["pendingSuggestions"]
         why.append(f"the {n} editor suggestion{'s' if n != 1 else ''} waiting in StoryMaker are settled")
     return why
@@ -865,6 +887,7 @@ def cmd_build(stories_dir, series_id, out, use_files=False, publish=False, revie
         story = build_story(project, shim, use_files, out, place, problems, pool, entry.get("survey") or {})
         if story is None:
             continue
+        story["media"] = story_media(project)
         # The author may publish on his own review (book.communityReviewWaived, 2026-10-11).
         why = publishable(story, community=not review and not book.get("communityReviewWaived"))
         if (publish or review) and why and not (review and drafts):
@@ -923,9 +946,12 @@ def cmd_build(stories_dir, series_id, out, use_files=False, publish=False, revie
         # text with a script-like pattern in them (2026-10-09, resources/places/SL-0094-guide.jpg).
         for sub in ("img", "places"):
             shutil.rmtree(os.path.join(out, "resources", sub), ignore_errors=True)
+    client = load_json(os.path.join(os.path.dirname(os.path.abspath(out)), "client.json"), {}) or {}
+    channels = {k: v for k, v in (client.get("media") or {}).items() if isinstance(v, str) and safe_url(v)}
     data = {
         "pics": pics,
         "book": {"title": book.get("title") or entry.get("title"), "subtitle": book.get("subtitle", ""),
+                 "noun": book.get("storyNoun") or ["life", "lives"], "channels": channels,
                  "place": place,
                  "intro": book.get("intro", ""), "companion": book.get("companion") or {},
                  "canonical": book.get("canonical", "") if publish else "", "generated": generated,
@@ -1103,6 +1129,15 @@ sup.src a:hover{color:var(--accent)}
 .toc li a span{margin-left:auto;color:var(--muted);font:italic 15px/1.5 var(--serif);white-space:nowrap}
 .toc li a:hover{color:var(--accent)}
 .toc .more{margin:12px 0 0;font-size:14px}
+.watch{margin:22px 0 6px;padding:14px 16px;border:1px solid var(--line);border-radius:10px}
+.watch h2{margin:0 0 8px;font:600 12px/1 var(--sans);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.watch ol{margin:0;padding:0;list-style:none}
+.watch li{display:flex;flex-wrap:wrap;gap:4px 12px;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--line)}
+.watch li:last-child{border-bottom:0}
+.watch .wt{font:16px/1.4 var(--serif)}
+.watch .wt small{color:var(--muted);font:italic 14px var(--serif)}
+.watch .wl{font:600 14px/1.6 var(--sans);white-space:nowrap}
+.channels,.partlinks{margin:10px 0 0;font:600 14px/1.6 var(--sans)}
 .btn{display:inline-block;margin-top:22px;padding:10px 16px;border-radius:999px;background:var(--accent);color:#fff;text-decoration:none;font-weight:600;font-size:14.5px}
 :root[data-theme=dark] .btn{color:#0e161c}
 @media (prefers-color-scheme:dark){:root:not([data-theme=light]) .btn{color:#0e161c}}
@@ -1245,7 +1280,8 @@ function home(){
     <h1>${esc(B.title)}</h1>
     ${B.subtitle ? `<p class="sub">${esc(B.subtitle)}</p>` : ""}
     ${B.intro ? `<p class="lede">${esc(B.intro)}</p>` : ""}
-    <p class="meta">${nStories} ${nStories === 1 ? "life" : "lives"} · ${nCh} chapters · ${hours}</p>
+    <p class="meta">${nStories} ${nStories === 1 ? B.noun[0] : B.noun[1]} · ${nCh} chapters · ${hours}</p>
+    ${channelLinks()}
   </section>`;
   D.parts.forEach((p, i) => {
     const L = partLabel(i);
@@ -1273,12 +1309,32 @@ function person(slug){
     ${draftNote(s)}
     ${s.portrait && s.portraitCredit ? `<p class="pcredit">Portrait: ${esc(s.portraitCredit)}</p>` : ""}
   </header>
+  ${watchList(s)}
   <div class="prose">${s.intro ? s.intro.html : ""}</div>
   <nav class="toc" aria-label="Chapters"><h2>Chapters</h2><ol>${toc}</ol>
     <p class="more"><a href="#/p/${slug}/notes">Notes</a> · <a href="#/p/${slug}/sources">Sources (${s.sourceCount})</a>${placesLine(s)}</p></nav>
   ${s.chapters.length ? `<a class="btn" href="${chapLink(slug, 1)}">Begin: ${esc(s.chapters[0].name || s.chapters[0].title)} →</a>` : ""}
   ${neighbours(slug)}
   </article>`;
+}
+// The story told aloud and on screen (2026-10-21, the author: the site links "the podcasts, the
+// videos"): each part's video and podcast episode, and the series' channels.
+function ext(url, label){ return `<a href="${esc(url)}" target="_blank" rel="noopener">${label}</a>`; }
+function channelLinks(){
+  const c = B.channels || {}, l = [];
+  if (c.youtube) l.push(ext(c.youtube, "Watch on YouTube"));
+  if (c.podcast) l.push(ext(c.podcast, "Listen to the podcast"));
+  if (c.podcastFeed) l.push(ext(c.podcastFeed, "Podcast feed (RSS)"));
+  return l.length ? `<p class="channels">${l.join(" · ")}</p>` : "";
+}
+function watchList(s){
+  if (!s.media || !s.media.length) return "";
+  return `<section class="watch"><h2>Watch and listen</h2><ol>${s.media.map(m => `<li><span class="wt">${esc(m.title)}${m.minutes ? ` <small>${m.minutes} min</small>` : ""}</span><span class="wl">${[m.video ? ext(m.video, "Video") : "", m.audio ? ext(m.audio, "Podcast") : ""].filter(Boolean).join(" · ")}</span></li>`).join("")}</ol>${channelLinks()}</section>`;
+}
+function partLinks(s, c){
+  const m = (s.media || []).find(x => x.title === (c.name || c.title) || x.title === c.title);
+  if (!m) return "";
+  return `<p class="partlinks">${[m.video ? ext(m.video, "Watch this part") : "", m.audio ? ext(m.audio, "Listen to this part") : ""].filter(Boolean).join(" · ")}</p>`;
 }
 function placesLine(s){
   const pins = D.map ? (D.map.pins || []).filter(p => p.r.some(r => r[0] === s.slug)).length : 0;
@@ -1303,6 +1359,7 @@ function chapter(slug, n){
     <p class="kicker"><a href="#/p/${slug}">${esc(s.name)}</a> · Chapter ${n} of ${s.chapters.length}</p>
     <h1>${esc(c.name || c.title)}</h1>
     ${c.start ? `<p class="years">${c.start}${c.end && c.end !== c.start ? "–" + c.end : ""}</p>` : ""}
+    ${partLinks(s, c)}
     ${draftNote(s)}
   </header>
   <div class="prose">${c.html}</div>

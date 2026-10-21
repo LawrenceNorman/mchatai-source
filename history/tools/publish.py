@@ -17,7 +17,8 @@ own note of which is which, in project.json under `publishing.<n>.<medium>`. `de
 writes `video.<n>.deck`.
 
 Keys (anything else is refused, so a typo never becomes a second record):
-  podcast  project (the Script Creator id) · voiced · published · unpublished (dates)
+  podcast  project (the Script Creator id) · voiced · published · unpublished (dates) · url (the
+           episode's page, publishEpisode's shareURL)
   video    recorder (the Video Recorder id) · export (the file) · sheet (the contact sheet) ·
            sheetApproved · approved · uploaded (dates) · url (where it went up)
 A date is the author's: record `approved` or `published` only when he said so, with the day he did.
@@ -29,7 +30,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from _hw import Project, load_json, save_json  # noqa: E402
 
 KEYS = {
-    "podcast": ("project", "voiced", "published", "unpublished"),
+    "podcast": ("project", "voiced", "published", "unpublished", "url"),
     "video": ("recorder", "export", "sheet", "sheetApproved", "approved", "uploaded", "url"),
 }
 
