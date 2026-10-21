@@ -315,6 +315,14 @@ def too_early(rec, ep_chapter, outcome, spoils):
     return any(w in text for w in spoils)
 
 
+def shows_ending(rec, spoils):
+    """A picture OF how the story ends: its record or caption says so (a surrender, weapons thrown at
+    the victor's feet). Inside the episode that tells the ending, where every one of the book's own
+    pictures sits in an ending chapter, this is what tells Royer's painting from the works."""
+    text = fold(record_text(rec) + " " + (rec.get("caption") or ""))
+    return any(w in text for w in spoils)
+
+
 def broll(project):
     return load_json(project.path("video", "broll.json"), []) or []
 
@@ -588,6 +596,15 @@ def save_found(project, new_rows, asked_now, reserved):
         disk = broll(project)
         seen = {(r.get("key"), r.get("title")) for r in disk}
         merged = disk + [r for r in new_rows if (r.get("key"), r.get("title")) not in seen]
+        # Ids stay a key: a row whose id is already another picture's gets the next free one here, under
+        # the lock. Its file keeps its name (ids and file names need not match).
+        used = set()
+        top = max([int(r["id"][1:]) for r in merged if re.fullmatch(r"b\d+", r.get("id") or "")] or [0])
+        for r in merged:
+            if r.get("id") in used:
+                top += 1
+                r["id"] = f"b{top}"
+            used.add(r.get("id"))
         asked = load_json(project.path("video", "commons-asked.json"), {}) or {}
         asked.update(asked_now)
         save_json(project.path("video", "broll.json"), merged)
@@ -770,7 +787,25 @@ def plan_beats(project, n):
     th = things_for(project, n)
     rows = (cast(project), places(project))
     ep_ch, outcome, spoils = episode_chapter(project, ep), outcome_chapters(project), spoiler_words(project)
-    guard = lambda r: too_early(r, ep_ch, outcome, spoils)
+    # In the episode that tells the ending, its pictures still wait for the telling: until a line says
+    # it (or the book places one of them), none is a hold or a likeness. 2026-10-20, episode 5: Royer's
+    # surrender painting was held as "the ground" at 2 and 7 minutes, the surrender told at 12.
+    ending_told = not outcome or ep_ch > min(outcome)
+    # The narration tells it in the dossier's own outcome phrases (the ones the cold open must not
+    # use). Not the glossary's picture words: "throwing down hurdles" is no surrender.
+    told_by = [fold(x) for x in ((project.dossier or {}).get("outcome") or {}).get("phrases") or [] if x]
+
+    # And an ending picture the book places later in this episode waits for its own place, so it is
+    # not shown as a hold a minute before it arrives.
+    anchored_here = {it["rec"].get("file") for it in items if it["kind"] == "picture" and it.get("rec")}
+    placed_here = set()
+
+    def guard(r):
+        if too_early(r, ep_ch, outcome, spoils):
+            return True
+        if not shows_ending(r, spoils):
+            return False
+        return not ending_told or (r.get("file") in anchored_here and r.get("file") not in placed_here)
     like = lambda name: likeness(project, name, guard)
     rolls = lambda key: broll_for(project, key, guard)
     place_names = [fold(x) for _, names, _ in rows[1] for x in names]
@@ -881,9 +916,13 @@ def plan_beats(project, n):
             seen_people.add(name)
             continue
         ms = mentions(project, text, th.get(it["i"], ()), rows)
+        if not ending_told and (any(w in fold(text) for w in told_by)
+                                or (pending is not None and shows_ending(pending, spoils))):
+            ending_told = True
         choice = None
         if pending is not None:
             choice = (picture_material(project, pending, "story"), "the book places this picture here", None)
+            placed_here.add(pending.get("file"))
             pending = None
         if not choice:
             q = next((m for m in ms if m["type"] == "quote" and words(m["text"]) <= c["quoteMaxWords"]), None)

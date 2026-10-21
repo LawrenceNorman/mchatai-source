@@ -35,7 +35,9 @@ domain, and `history/domains/<domain>/jobs.md` has a section per kind it adds to
   StoryMaker project never to touch. Point to a PLAYBOOK section; never paste one. The app adds who
   wrote the brief and how a job ends.
 - At most two jobs run at once. One story's stages run one after another, since each reads what
-  the last wrote. Jobs for different stories, or different episodes, may run side by side.
+  the last wrote, and so do one story's video jobs: they share its picture list, and each one's long
+  Video Recorder calls hold the app while they run (Alesia, 2026-10-20: two side by side lost each
+  other's story reads for minutes at a time). Jobs for different stories may run side by side.
 - Before you start one, say what it will cost (below), and start nothing expensive the author has
   not asked for.
 

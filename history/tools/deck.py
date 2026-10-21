@@ -106,7 +106,12 @@ def walk(project, n):
         raise SystemExit("run narration.py episodes first: the video follows the podcast's episodes")
     ep = data["episodes"][int(n) - 1]
     shim = cite.find_shim(project)
-    got, _, _ = series_book.story_parts(project, shim, not shim)
+    got, origin, _ = series_book.story_parts(project, shim, not shim)
+    if got is None:
+        # Say what failed. Discarded, it surfaced as "'NoneType' object is not iterable", and two video
+        # jobs retried blind while another job's long Video Recorder call held the app (2026-10-20).
+        raise SystemExit(f"could not read the story back: {origin}. If another job's long app call "
+                         "(fromDeck, narrate, export) is running, the app answers once it finishes: run again then.")
     body = [p for p in got if p["kind"] in ("intro", "chapter")]
     # The landed parts this episode reads: the introduction and the Who's who, or one chapter.
     if ep["title"] == "Introduction":

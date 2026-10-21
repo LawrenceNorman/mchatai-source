@@ -3237,6 +3237,13 @@ class VisualBeats(VoiceTwoCase):
         found = {"title": "File:La reddition de Vercingetorix.jpg", "description": "La reddition de Vercingetorix"}
         self.assertTrue(visuals.too_early(found, 0, {4, 5}, [visuals.fold("reddition")]),
                         "a Commons picture of the ending waits too")
+        # Inside the ending's own episode every book picture sits in an ending chapter, so what a picture
+        # SHOWS decides (2026-10-20, episode 5: Royer's painting held as the ground ten minutes early;
+        # plan_beats keeps it to its own place, checked on Alesia's six episodes, only episode 5 changed).
+        self.assertTrue(visuals.shows_ending(royer, spoils))
+        works = {"title": "File:Reconstruction of the contravallation.jpg", "chapter": 4,
+                 "caption": "The modern reconstruction of the Roman works at Alesia"}
+        self.assertFalse(visuals.shows_ending(works, spoils), "a picture in the ending's chapter need not show it")
 
     def test_things_must_be_words_of_their_line(self):
         import visuals
@@ -3609,6 +3616,10 @@ class Publishing(VoiceTwoCase):
         asked = _hw.load_json(self.project.path("video", "commons-asked.json"), {})
         self.assertEqual(set(asked), {"x", "y"})
         self.assertFalse(os.path.exists(self.project.path("video", "broll", "b4.reserved")), "a saved id's marker goes")
+        # Ids stay unique at the save, whatever a run claimed.
+        clash = visuals.save_found(self.project, [{"id": "b6", "key": "z", "title": "File:Z"}], {}, [])
+        ids = [r["id"] for r in clash]
+        self.assertEqual(len(ids), len(set(ids)), ids)
         # A run that read the list before those saves still claims above them: the disk is read again.
         stale = [{"id": "b3", "key": "k", "title": "File:A"}]
         self.assertGreater(int(visuals.reserve_id(self.project, stale)[1:]), 6)

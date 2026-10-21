@@ -26,12 +26,22 @@ deck exists, update it".
    own pictures do not cover. Free licences only, wide enough for video, each captioned from its
    own record. A lookup is made once and kept.
 5. `visuals.py beats stories/<slug> <n>`, then `visuals.py check stories/<slug>` until it exits 0.
+   `check` holds each caption to its own record; it cannot tell whether the picture is the right
+   subject for its line. So **look at every Commons beat's picture against its line** (open the file
+   under `video/broll/`). A wrong subject or a wrong event goes in `video/broll-rejected.json`: a
+   Battle of Magnesia relief for a Gallic charge, a sword-belt fitting named for its amphora shape,
+   "Alesia-type" brooches found in England, a modern museum building for an 1860s dig (all found on
+   Alesia, 2026-10-20). Log each one in `stories/_issues.md` with its line and why: the list also holds
+   the author's rejections, and the log says whose each is. Then run `beats` again; a line whose
+   picture was rejected holds on the story's own pictures, which is the right fallback.
 6. `visuals.py sheet stories/<slug> <n> stories/<slug>/video/sheet-<n>.html`: the contact sheet,
    every beat's words, picture, caption and licence, for the author.
 7. `python3 history/tools/deck.py plan stories/<slug> <n> --beats`, then `deck.py push
    stories/<slug> <n>`. When `project.json` already has this episode's deck (`video.<n>.deck`; the
    status shows it), push `--into <that deck>`: updating it in place keeps every voiced line in the
-   Video Recorder. Push prints the deck's link and the `aividrecorder.fromDeck` call to make.
+   Video Recorder. A `video/deck-<n>.json` with no deck in `project.json` is a leftover from an
+   earlier pipeline: `plan` makes it afresh. Push prints the deck's link and the
+   `aividrecorder.fromDeck` call to make.
 8. **The Video Recorder.** A new episode: run the printed `fromDeck` call exactly as printed,
    through `./mchatai raw` with `--wait 900` (the voice, the cap, the pacing, the end card's hold).
    An episode that has a Video Recorder project already (`publishing.<n>.video.recorder`): call
@@ -45,7 +55,11 @@ deck exists, update it".
 11. `python3 history/tools/publish.py record stories/<slug> <n> video recorder=<id> export=<file>
     sheet=video/sheet-<n>.html`.
 
-**Done when** `visuals.py check` exits 0 and the export exists. Never upload it anywhere.
+**Done when** `visuals.py check` exits 0, every Commons picture has been looked at against its
+line, and the export exists. Never upload it anywhere.
+
+When a story read fails ("could not read the story back"), another job's long app call (`fromDeck`,
+`narrate`, `export`) is holding the app: run the command again once it finishes.
 
 **Report:** the beats and the length; how many pictures of each kind (the book's, Commons, maps,
 cards) and how many holds; `visuals.py check`'s result; the contact sheet, the export and the
