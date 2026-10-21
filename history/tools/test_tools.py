@@ -3636,6 +3636,63 @@ class Publishing(VoiceTwoCase):
                       "File:Grave monument of a cavalry soldier.jpg"]:
             self.assertIsNone(visuals.other_event({"title": title}, story), title)
 
+    def test_numbers_are_read_whole(self):
+        """2026-10-21, the author: "Thousand / foot" and "Twenty / Kilometers" meant nothing on a slide."""
+        import visuals
+        val = lambda t: [v for _, _, v in visuals.number_spans(t)]
+        self.assertEqual(val("two hundred and forty thousand foot and eight thousand horse"), [240000, 8000])
+        self.assertEqual(val("a mound three hundred and thirty feet broad"), [330])
+        self.assertEqual(val("forty-six centurions"), [46])
+        self.assertEqual(val("a Roman mile was a thousand paces"), [1000])
+        self.assertEqual(val("two and three days"), [2, 3], "'and' joins only after a hundred or a thousand")
+        self.assertEqual(val("11,000 paces"), [11000])
+        fs = visuals.facts("Most modern historians put it at fifty thousand to a hundred thousand men.")
+        self.assertEqual(fs[0]["text"], "50,000–100,000 men")
+        fs = visuals.facts("Plutarch made it three hundred thousand. Most modern historians disagree.")
+        self.assertEqual(fs[0]["label"], "", "a unit never runs past the sentence")
+        self.assertEqual(visuals.facts("so his eleven miles come to about ten of ours")[0]["text"], "11 miles")
+        self.assertEqual(visuals.facts("the outer ring ran fourteen Roman miles")[0]["text"], "14 Roman miles")
+        self.assertEqual(visuals.with_numerals('he said "eighty thousand chosen men would perish" and twenty more'),
+                         'he said "eighty thousand chosen men would perish" and 20 more', "a quotation is never changed")
+
+    def test_a_number_card_says_what_it_counts(self):
+        import visuals
+        line = ("Caesar counted the relief army at about two hundred and forty thousand foot and eight thousand "
+                "horse, and Plutarch made it three hundred thousand.")
+        f = visuals.facts(line)[0]
+        card = visuals.fact_card(line, f, "Most modern historians put it at fifty thousand to a hundred thousand men.")
+        self.assertEqual(card["fact"], "About 240,000 foot")
+        self.assertIn("relief army", card["label"])
+        self.assertIn("300,000", card["label"])
+        self.assertEqual(card["caption"], "Most modern historians put it at 50,000 to 100,000 men.",
+                         "the next line, when it carries numbers too")
+        line = "The outer line came to about twenty kilometres, a fair match, Napoleon the Third wrote, for Caesar's fourteen miles."
+        card = visuals.fact_card(line, visuals.facts(line)[0], "The spade makes a better witness.")
+        self.assertEqual(card["fact"], "About 20 kilometres")
+        self.assertIn("outer line", card["label"])
+        self.assertNotIn("caption", card, "a next line with no numbers stays off the card")
+
+    def test_a_quote_card_carries_its_context_and_its_source(self):
+        import visuals
+        caesar = {"publisher": "Caesar (McDevitte & Bohn)", "title": "The Gallic Wars (De Bello Gallico), McDevitte & Bohn translation"}
+        self.assertEqual(visuals.card_source(caesar), "Caesar, *The Gallic Wars*")
+        line = ('The Mandubii, whose town it was, were sent out with their wives and children, and at the Roman '
+                'rampart, "weeping, they begged" to be taken as slaves. In Caesar\'s telling, the besieged decided it.')
+        card = visuals.quote_card(line, "weeping, they begged", caesar)
+        self.assertIn("**“weeping, they begged”**", card["quote"], "the source's words marked, the narration around them")
+        self.assertTrue(card["quote"].startswith("The Mandubii"))
+        self.assertNotIn("assembly", card["quote"], "only the sentence that holds the quotation")
+        self.assertEqual(card["attribution"], "Caesar, *The Gallic Wars*")
+        # Whose words they are is in the sentence before: the card carries it, never a guessed name.
+        card = visuals.quote_card('The Romans, he told them, "should be prevented from foraging."',
+                                  "should be prevented from foraging.", caesar,
+                                  previous="Vercingetorix called a council after these losses.", names=["Vercingetorix"])
+        self.assertTrue(card["quote"].startswith("Vercingetorix called a council"), card["quote"])
+        card = visuals.quote_card('But he wrote that "we are not allowed to deplore his defeat," for it was so.',
+                                  "we are not allowed to deplore his defeat,", None,
+                                  previous="Napoleon the Third admired him.", names=["Napoleon the Third"])
+        self.assertTrue(card["quote"].startswith("Napoleon the Third admired him. He wrote"), card["quote"])
+
     def test_a_story_adds_its_own_context_words(self):
         """The domain spans every era, so "carnyx" belongs to Alesia's video/context.json, not to
         every pivotal history's searches (2026-10-20)."""

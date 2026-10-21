@@ -55,6 +55,13 @@ deck exists, update it".
 11. `python3 history/tools/publish.py record stories/<slug> <n> video recorder=<id> export=<file>
     sheet=video/sheet-<n>.html`.
 
+**Updating an episode that has a video** (the author's changes, or the tools improved): the lines
+and the pictures already found stay. Put any picture he rejected in `video/broll-rejected.json`, run
+`find` only if he asked for a new picture, then from step 5: `beats`, `check`, `sheet`, `deck.py plan
+--beats`, `deck.py push --into <the episode's deck>`, `aividrecorder.updateFromDeck {id}` (only changed
+slides are drawn again, and a line that did not change keeps its voice), `export`, `description`,
+`publish.py record`. Report what changed on screen, slide by slide.
+
 **Done when** `visuals.py check` exits 0, every Commons picture has been looked at against its
 line, and the export exists. Never upload it anywhere.
 

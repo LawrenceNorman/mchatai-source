@@ -120,22 +120,238 @@ def places(project):
     return out
 
 
+# ── numbers, read whole ("two hundred and forty thousand" is 240,000, not "Thousand") ──
+SMALL = {w: i for i, w in enumerate("zero one two three four five six seven eight nine ten eleven twelve thirteen "
+                                    "fourteen fifteen sixteen seventeen eighteen nineteen".split())}
+TENS = {w: 10 * i for i, w in enumerate("_ _ twenty thirty forty fifty sixty seventy eighty ninety".split()) if w != "_"}
+SCALES = {"hundred": 100, "thousand": 1000, "million": 1_000_000}
+QUALIFIERS = ("a little more than", "a little over", "more than", "fewer than", "less than", "at least", "about",
+              "nearly", "almost", "over", "some", "roughly", "around", "barely")
+TOKEN = re.compile(r"[A-Za-z]+|\d[\d,]*(?:\.\d+)?|[^\sA-Za-z\d]")
+
+
+def _is_num_word(w):
+    w = w.lower()
+    return w in SMALL or w in TENS or w in SCALES
+
+
+def words_value(tokens):
+    """The value of a number said in words: ["two", "hundred", "and", "forty", "thousand"] → 240000."""
+    total = current = 0
+    for w in (t.lower() for t in tokens):
+        if w in ("a", "an"):
+            current = current or 1
+        elif w in SMALL:
+            current += SMALL[w]
+        elif w in TENS:
+            current += TENS[w]
+        elif w == "hundred":
+            current = (current or 1) * 100
+        elif w in ("thousand", "million"):
+            total += (current or 1) * SCALES[w]
+            current = 0
+    return total + current
+
+
+def number_spans(text):
+    """[(start, end, value)] for every number the line says, in words or digits, each read whole:
+    "a thousand", "three hundred and thirty", "forty-six", "11,000". "and" joins only after a
+    hundred, thousand or million ("two hundred and forty"), never two numbers ("two and three")."""
+    toks = [(m.group(0), m.start(), m.end()) for m in re.finditer(r"[A-Za-z]+|\d[\d,]*(?:\.\d+)?|-", text)]
+    out, i = [], 0
+    while i < len(toks):
+        w, a, b = toks[i]
+        if re.fullmatch(r"\d[\d,]*(?:\.\d+)?", w):
+            try:
+                out.append((a, b, float(w.replace(",", "")) if "." in w else int(w.replace(",", ""))))
+            except ValueError:
+                pass
+            i += 1
+            continue
+        start, words_, j = None, [], i
+        if w.lower() in ("a", "an") and j + 1 < len(toks) and toks[j + 1][0].lower() in SCALES:
+            start, words_, j = a, [w], j + 1
+        while j < len(toks):
+            t = toks[j][0]
+            if _is_num_word(t):
+                start = toks[j][1] if start is None else start
+                words_.append(t)
+                end = toks[j][2]
+                j += 1
+            elif t == "-" and words_ and j + 1 < len(toks) and _is_num_word(toks[j + 1][0]) and toks[j][1] == end:
+                j += 1                                             # "forty-six"
+            elif (t.lower() == "and" and words_ and words_[-1].lower() in SCALES and j + 1 < len(toks)
+                  and _is_num_word(toks[j + 1][0])):
+                words_.append(t)
+                j += 1
+            else:
+                break
+        if any(_is_num_word(x) for x in words_):
+            out.append((start, end, words_value(words_)))
+            i = j
+        else:
+            i += 1
+    return out
+
+
+def numeral(v):
+    return f"{v:,}" if isinstance(v, int) else f"{v:,g}"
+
+
+def with_numerals(text):
+    """The words with every number of ten or more as numerals ("240,000"), outside quotation marks:
+    a source's own words are never changed. "one day", "six cohorts" stay words."""
+    quoted = [(m.start(), m.end()) for m in re.finditer(r"[“\"][^”\"]*[”\"]", text)]
+    out, last = [], 0
+    for a, b, v in number_spans(text):
+        if v < 10 or any(qa <= a < qb for qa, qb in quoted) or re.fullmatch(r"\d[\d,]*", text[a:b]):
+            continue
+        rep_ = numeral(v)
+        if text[a].isupper() and a == 0:
+            pass                                              # a sentence never opens on a numeral
+        else:
+            out.append(text[last:a] + rep_)
+            last = b
+    return "".join(out) + text[last:]
+
+
+def sentences(text):
+    text, out, last = text.strip(), [], 0
+    for m in re.finditer(r"[.!?][”\"]?(\s+)(?=[“\"A-Z])", text):
+        out.append(text[last:m.start(1)])
+        last = m.end(1)
+    out.append(text[last:])
+    return [x for x in out if x]
+
+
+def trimmed(sentence, at, limit):
+    """The sentence, or past `limit` characters the clauses around position `at`, with … for what is cut."""
+    if len(sentence) <= limit:
+        return sentence
+    cuts = [0] + [m.end() for m in re.finditer(r"[,;:—]\s+", sentence)] + [len(sentence)]
+    lo = max(c for c in cuts if c <= at)
+    hi = min(c for c in cuts if c > at)
+    while True:
+        grown = False
+        prev = max([c for c in cuts if c < lo] or [lo])
+        nxt = min([c for c in cuts if c > hi] or [hi])
+        if nxt != hi and nxt - lo <= limit:
+            hi, grown = nxt, True
+        elif prev != lo and hi - prev <= limit:
+            lo, grown = prev, True
+        if not grown:
+            break
+    part = sentence[lo:hi].strip().rstrip(",;:—").strip()
+    return ("…" if lo > 0 else "") + part + ("…" if hi < len(sentence) and not part.endswith((".", "?", "!", "”")) else "")
+
+
 def facts(text):
-    """Numbers and dates said in the line, each with up to three words after it ("fourteen Roman
-    miles", "52 BC"), skipping a lone "one" (a pronoun as often as a number)."""
-    out = []
-    for m in FACT.finditer(text):
-        value = (m.group(1) + (m.group(2) or "")).strip()
-        if value.lower() in ("one", "two", "three", "a", "") or (value.isdigit() and int(value.replace(",", "") or 0) < 4 and not m.group(2)):
-            continue                  # "two rings", "three days": a count, not a fact worth a card
+    """Numbers and dates said in the line, read whole, each with what it counts ("240,000 foot",
+    "52 BC") and the words before it that qualify it ("about"). A lone small count ("two rings",
+    "three days") is no fact worth a card."""
+    out, skip = [], set()
+    spans = number_spans(text)
+    for k, (a, b, v) in enumerate(spans):
+        if k in skip:
+            continue
+        rest = text[b:]
+        era = re.match(r"\s+(BC|AD|BCE|CE)\b", rest)
+        if not era and isinstance(v, int) and v < 4:
+            continue
+        shown, unit_from = numeral(v), b
+        # A range: "fifty thousand to a hundred thousand men"
+        if k + 1 < len(spans) and re.fullmatch(r"\s+(?:to|or)\s+", text[b:spans[k + 1][0]]):
+            shown, unit_from = f"{numeral(v)}–{numeral(spans[k + 1][2])}", spans[k + 1][1]
+            skip.add(k + 1)
+        if era:
+            shown, unit_from = f"{numeral(v) if not isinstance(v, int) or v >= 10000 else v} {era.group(1)}", b + era.end()
         unit = []
-        for w in (m.group(3) or "").split():
-            if w.lower() in UNIT_STOP:
+        for w in re.match(r"((?:\s+[A-Za-z]+){0,2})", text[unit_from:]).group(1).split():
+            if w.lower() in UNIT_STOP or _is_num_word(w):
                 break
             unit.append(w)
-        out.append({"type": "fact", "text": (value + (" " + " ".join(unit) if unit else "")).strip(),
-                    "value": value, "label": " ".join(unit)})
+            if not w[:1].isupper():
+                break                 # "14 Roman miles", but "11 miles", not "11 miles come"
+        before = text[max(0, a - 24):a].lower()
+        qual = next((q for q in QUALIFIERS if before.rstrip().endswith(q)), "")
+        label = " ".join(unit)
+        value = (qual + " " if qual else "") + shown
+        out.append({"type": "fact", "text": (value + (" " + label if label else "")).strip(), "value": value,
+                    "label": label, "at": a, "era": bool(era)})
     return out
+
+
+def fact_card(text, f, next_line=""):
+    """A number's card that says what it is on its own: the figure big ("240,000 foot"), the line's own
+    sentence under it with its numbers as numerals, and the next sentence when it carries numbers too
+    (two counts compared). The author, 2026-10-21: "Thousand / foot" and "Twenty / Kilometers" meant
+    nothing without the narration; a slide "can have more than just a few words"."""
+    sents = sentences(text)
+    pos, idx = 0, 0
+    for i, s_ in enumerate(sents):
+        j = text.find(s_, pos)
+        if j <= f["at"] < j + len(s_):
+            idx, start = i, j
+            break
+        pos = j + len(s_)
+    else:
+        start = 0
+    sent = sents[idx] if sents else text
+    label = with_numerals(trimmed(sent, max(0, f["at"] - start), 200))
+    caption = ""
+    # The sentence after it, when it carries numbers too (two counts compared): in this line, or the
+    # next line, since the narration is a sentence a line.
+    after = sents[idx + 1] if idx + 1 < len(sents) else (sentences(next_line)[0] if next_line.strip() else "")
+    if after and any(v >= 10 for _, _, v in number_spans(after)) and len(after) <= 170:
+        caption = with_numerals(after)
+    big = f["text"][:1].upper() + f["text"][1:]
+    return card("bigFact", fact=big, label=label, caption=caption)
+
+
+def card_source(rec):
+    """A source as a slide names it: its author and the work, short ("Caesar, *The Gallic Wars*"), not
+    the note form with translators and editions."""
+    who = re.sub(r"\s*\([^)]*\)", "", rec.get("publisher") or "").strip()
+    title = re.sub(r"\s*\([^)]*\)", "", rec.get("title") or "").split(",")[0].strip()
+    if title and who and title.lower() != who.lower() and who.lower() not in ("wikipedia",):
+        return f"{who}, *{title}*"
+    return who or title
+
+
+def quote_sources(project):
+    """[(the quoted words, folded, source record)] from the story's own claims, read once."""
+    srcs = {r.get("id"): r for r in (load_json(project.path("sources", "index.json"), []) or [])}
+    out = []
+    import glob
+    for path in sorted(glob.glob(project.path("chapters", "*.json"))):
+        for c in (load_json(path, {}) or {}).get("claims") or []:
+            rec = srcs.get(c.get("source"))
+            if rec and (c.get("kind") == "quote" or c.get("evidence")):
+                out.append((re.sub(r"[^a-z0-9]+", " ", fold(c.get("evidence") or c.get("text") or "")).strip(), rec))
+    return out
+
+
+PRONOUN = re.compile(r"\b(?:he|she|his|her|him)\b", re.I)
+
+
+def quote_card(text, quote, source=None, previous="", names=()):
+    """A quotation's card that stands on its own: the line's sentence around it, the quoted words in
+    bold inside their marks (the context is the narration's, the bold words the source's), and the
+    source that holds them, from the story's own claims. 2026-10-21: "weeping, they begged" and
+    "we are not allowed to deplore his defeat," alone said too little."""
+    sents = sentences(text)
+    k = next((i for i, x in enumerate(sents) if quote in x), None)
+    sent = sents[k] if k is not None else text
+    before = sents[k - 1] if k else (sentences(previous)[-1] if previous.strip() else "")
+    sent = re.sub(r"^(?:But|And|So|Yet|Still)\s+(\w)", lambda m: m.group(1).upper(), sent)   # nothing before it here
+    # "The Romans, he told them, …": whose words they are is in the line before, so the card carries
+    # it, in the narration's own words, rather than a guessed name.
+    lead = sent[:max(0, sent.find(quote))]
+    if before and PRONOUN.search(lead) and not any(n and n.lower() in lead.lower() for n in names):
+        if len(before) <= 170:
+            sent = before + " " + sent
+    marked = re.sub(r"[“\"]([^”\"]+)[”\"]", r"**“\1”**", trimmed(sent, max(0, sent.find(quote)), 300))
+    return card("quote", quote=marked, attribution=(card_source(source) if source else "") or speaker(text))
 
 
 def mentions(project, text, things=(), rows=None):
@@ -782,10 +998,17 @@ def card(layout, **fields):
 def plan_beats(project, n):
     """Episode n's beats: [{lines, text, seconds, material, why, title?}] in order, every spoken line
     in exactly one beat."""
+    import narration
     c = cfg(project)
     data, ep, meta, items = episode(project, n)
     th = things_for(project, n)
     rows = (cast(project), places(project))
+    quoted = quote_sources(project)
+    spoken_ = [it for it in items if "i" in it]
+    around = {it["i"]: (spoken_[k - 1]["text"] if k else "", spoken_[k + 1]["text"] if k + 1 < len(spoken_) else "")
+              for k, it in enumerate(spoken_)}
+    said = narration.cfg(project)["say"]
+    person_names = [x for e, _ in rows[0] for k in e["keys"] for x in (k, narration.spoken(k, said))]
     ep_ch, outcome, spoils = episode_chapter(project, ep), outcome_chapters(project), spoiler_words(project)
     # In the episode that tells the ending, its pictures still wait for the telling: until a line says
     # it (or the book places one of them), none is a hold or a likeness. 2026-10-20, episode 5: Royer's
@@ -927,7 +1150,10 @@ def plan_beats(project, n):
         if not choice:
             q = next((m for m in ms if m["type"] == "quote" and words(m["text"]) <= c["quoteMaxWords"]), None)
             if q:
-                choice = (card("quote", quote=q["text"], attribution=speaker(text)), "a quotation in the line", None)
+                qn = re.sub(r"[^a-z0-9]+", " ", fold(q["text"])).strip()
+                src = next((rec for ev, rec in quoted if qn and qn in ev), None)
+                choice = (quote_card(text, q["text"], src, around.get(it["i"], ("", ""))[0], person_names),
+                          "a quotation in the line", None)
         if not choice:
             for m in ms:
                 if m["type"] in ("person", "people") and m["key"] not in seen_people:
@@ -955,10 +1181,9 @@ def plan_beats(project, n):
                         choice = (picture_material(project, least_used(got), "commons"), f"the thing: {m['text']}", None)
                         break
         if not choice and t - last_fact >= c["factEvery"]:
-            f = next((m for m in ms if m["type"] == "fact" and m["label"]), None)
+            f = next((m for m in ms if m["type"] == "fact" and (m["label"] or m.get("era"))), None)
             if f:
-                choice = (card("bigFact", fact=f["value"][:1].upper() + f["value"][1:], label=f["label"]),
-                          f"a number said in the line: {f['text']}", None)
+                choice = (fact_card(text, f, around.get(it["i"], ("", ""))[1]), f"a number said in the line: {f['text']}", None)
                 last_fact = t
         if choice:
             mat, why, title = choice

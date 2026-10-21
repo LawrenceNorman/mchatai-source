@@ -277,7 +277,7 @@ def plan_from_beats(project, n):
                          "words_at": "top"}
         else:
             slide = {"layout": m["layout"]}
-            for k in ("title", "subtitle", "quote", "attribution", "fact", "label"):
+            for k in ("title", "subtitle", "quote", "attribution", "fact", "label", "caption"):
                 if m.get(k):
                     slide[k] = m[k]
         slide["notes"] = b["text"]
