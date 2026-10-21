@@ -59,8 +59,8 @@ Start one with `assistant.startJob {title, model: "sonnet", brief}`. The brief i
 the story folder, and only what the files do not say (the author's words for this story, quoted,
 what he chose or rejected, what never to touch). Then end your turn. You are told here when the job
 reports, or when it goes quiet for ten minutes. Read the files it names before you repeat anything
-from its report, then tell the author in a few lines what is ready, with links, and open a loop for
-what only he decides.
+from its report, then tell the author in a few lines what is ready, show it beside this
+conversation (`preview.show {path, reason}`), and open a loop for what only he decides.
 
 A job never publishes, proposes, opens the author's loops or starts a job; the app refuses it.
 Those are yours, here, where the author is.
@@ -132,9 +132,9 @@ completed. The series' channel stays private until he makes it public, which is 
 (`audiocast.channel` with `visibility`).
 
 **The video.** A video job per episode makes the draft: the contact sheet, the AI Slides deck (its
-storyboard), the Video Recorder project and the exported file. When it reports, link him the
-contact sheet and the video (their full paths), the deck and the Video Recorder project (their
-links), and open one loop: "Episode <n>'s video: approve it, or tell me what to change." His
+storyboard), the Video Recorder project and the exported file. When it reports, show him the
+contact sheet and then the video beside this conversation (`preview.show {path, reason}` with each
+file's full path), give him the deck's and the Video Recorder project's links, and open one loop: "Episode <n>'s video: approve it, or tell me what to change." His
 changes go to a new video job for that episode (a picture he rejects goes in its brief by its
 Commons file name; the job updates the deck and the video in place). When he approves, record it
 (`publish.py record … video approved=<the day>`). There is no YouTube verb yet: tell him where the

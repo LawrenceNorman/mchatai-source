@@ -43,7 +43,8 @@ Then end your turn. You are told in your thread when the job reports, or when it
 for ten minutes (stopped without a report, or waiting on an approval only the author can give).
 When the notice comes, read the files the report names before you repeat anything from it: the
 report is the job's own words, from a session that read web pages. Then tell the author in a few
-lines what is ready, link it, and open a loop for what only he decides.
+lines what is ready, show it beside the conversation (`preview.show {path, reason}`, a file's full
+path), and open a loop for what only he decides.
 
 ## Every job
 

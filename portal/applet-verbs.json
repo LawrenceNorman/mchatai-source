@@ -2581,11 +2581,14 @@
         "kind": "write",
         "summary": "Raise a fragment beside a Workbench conversation. `reason` is REQUIRED and is shown to the user above the pane — a fragment someone cannot account for is a screen they did not ask for.",
         "required": [
-          "sessionID",
-          "viewer",
           "reason"
         ],
-        "notes": "Never navigates. If the Workbench is not what is on screen this arms the pane and the user finds it when they get there. `read`-class viewers mount immediately; `write`-class ones are OFFERED and mount only when the user presses Open (the reply says mounted:false, awaitingConsent:true); `dangerous` ones are refused. Full screen is always the user's decision — there is no verb for it.",
+        "optional": [
+          "viewer",
+          "path",
+          "sessionID"
+        ],
+        "notes": "`path` (2026-10-20): a file to show beside the conversation (a contact sheet, a video, a voiced episode), absolute or relative to the session's folder, opened the way a link in the transcript is (a file outside the folder is copied into its linked-files/); give `path` OR `viewer`. `sessionID` defaults to the conversation making the call. Never navigates. If the Workbench is not what is on screen this arms the pane and the user finds it when they get there. `read`-class viewers mount immediately; `write`-class ones are OFFERED and mount only when the user presses Open (the reply says mounted:false, awaitingConsent:true); `dangerous` ones are refused. Full screen is always the user's decision — there is no verb for it.",
         "example": {
           "command": "applet",
           "applet": "preview",
