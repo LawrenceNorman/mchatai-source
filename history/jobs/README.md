@@ -17,6 +17,8 @@ domain, and `history/domains/<domain>/jobs.md` has a section per kind it adds to
 | [finish](finish.md) | the chapters are done | the pictures, the opening, the book in StoryMaker, the editor's letter |
 | [podcast](podcast.md) | he has read the book and asks for audio | each episode as an Audio Script Creator project, voiced |
 | [video](video.md) | an episode's narration exists and he asks for its video | the contact sheet, the deck, the Video Recorder project, the exported draft |
+| [web](web.md) | a story or an episode is out, or he changed a published story | the series site, built in the assistant's folder for him to put live |
+| [promo](promo.md) | an episode is out and he asks for its promotion | cards and a clip from it, posts held to its words, rows in his post queue |
 
 ## Starting one (in the assistant's thread)
 

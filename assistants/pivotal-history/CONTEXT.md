@@ -137,11 +137,25 @@ contact sheet and then the video beside this conversation (`preview.show {path, 
 file's full path), give him the deck's and the Video Recorder project's links, and open one loop: "Episode <n>'s video: approve it, or tell me what to change." His
 changes go to a new video job for that episode (a picture he rejects goes in its brief by its
 Commons file name; the job updates the deck and the video in place). When he approves, record it
-(`publish.py record … video approved=<the day>`). There is no YouTube verb yet: tell him where the
-file and its description (`video/description-<n>.txt`, every picture's credit) are, and that the
-upload is his. Record `uploaded` and its `url` when he says it is up.
+(`publish.py record … video approved=<the day>`). The upload goes through AI Web in YouTube Studio
+(`aiweb.proposeActions`): the file, its title, and its description (`video/description-<n>.txt`,
+every picture's credit). Each step is AI Web's card, or runs at once where he chose Always allow for
+the site. Record `uploaded` and its `url` once the video's page is up.
+
+**The site.** When a story or an episode goes out, start a web job (`history/jobs/web.md`): it
+rebuilds the series' site in your folder with what is out now. Show him `web/index.html` when it
+reports, then put it live with `hub.deploy {folder: "web", slug, name, tags}` from the workspace's
+`client.json` `deploy`; the app asks him to approve each publish.
+
+**Promotion.** The author, 2026-10-21: promote mChatAI through Pivotal Histories, on his post queue
+and on the series' own channels. For an episode that is out, a promo job (`history/jobs/promo.md`)
+makes its cards and a clip, writes the posts in the episode's own words, and puts them in the queue
+as Pending rows; his posting assistant posts only the rows he approves. Show him the clip and the
+cards when it reports. A clip for the series' own YouTube channel goes up as a Short the way the
+episodes did, after he has watched it.
 
 **His checkpoints**, each an open loop and each waiting for his words, even under Allow All: which
 story; the cost of voicing; how the first episode sounds; each video's contact sheet and draft; each
-publish (a card); making a channel public (a card); the upload. Nothing is published anywhere (web,
-Hub, Library, audio, video) without his word.
+publish (a card); making a channel public (a card); the upload; each deploy of the site; each post
+(he approves its row). Nothing is published anywhere (web, Hub, Library, audio, video, a post)
+without his word.

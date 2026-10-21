@@ -465,6 +465,13 @@ key=value…`; `publish.py status <project>` reads them back.
 Proved on Alesia, 2026-10-20: six podcast episodes voiced by onyx, episode 1 published to a private
 channel; episode 1's video draft (39 beats, 4:53, moving pictures and captions) through every step.
 
+**Once it is out** (2026-10-21): the series' site is rebuilt with each part's video and podcast
+linked (`history/jobs/web.md`; the author approves each `hub.deploy`), and each episode gets its
+promotion: square cards from its deck (`aislides.renderCards` at 1080×1080), a 30–60 second clip
+cut from its export at whole lines (`promo.py windows`, then `aividrecorder.clip` with `frame:
+"vertical"`), and posts held to its own numbers, quotations and addresses by `promo.py check`, queued
+for the author's approval by `promo.py queue` (`history/jobs/promo.md`). Nothing posts from here.
+
 ---
 
 ## Cost

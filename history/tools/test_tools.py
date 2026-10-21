@@ -15,6 +15,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
@@ -27,6 +28,132 @@ import richness  # noqa: E402
 import voice_lint  # noqa: E402
 
 FIXTURE = os.path.join(_hw.HISTORY, "fixtures", "demo-project")
+
+
+class Promotion(unittest.TestCase):
+    """An episode's posts held to the episode's own words before they reach the author's post queue
+    (promo.py, history/jobs/promo.md). The author, 2026-10-21: promote mChatAI through Pivotal
+    Histories; he approves each row, and nothing here posts."""
+
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp(prefix="hw-promo-")
+        self.work = os.path.join(self.tmp, "work")
+        self.story = os.path.join(self.work, "stories", "alesia-52bc-2")
+        os.makedirs(os.path.join(self.story, "podcast"))
+        os.makedirs(os.path.join(self.story, "promo", "1"))
+        os.makedirs(os.path.join(self.story, "video"))
+        self.pics = os.path.join(self.tmp, "social")
+        _hw.save_json(os.path.join(self.story, "podcast", "episodes.json"), {"episodes": [
+            {"n": 1, "title": "Part 1 of 2: The Rampart", "lines": [
+                {"text": "Caesar's men dug two ditches, each fifteen feet wide."},
+                {"text": "He wrote that the rampart ran for eleven miles."},
+                {"text": "\u201cThe enemy came at midnight,\u201d he wrote."}]},
+            {"n": 2, "title": "Part 2 of 2", "lines": [{"text": "The end."}]}]})
+        _hw.save_json(os.path.join(self.story, "project.json"), {"title": "The Siege of Alesia", "publishing": {
+            "1": {"video": {"url": "https://youtu.be/AAA", "uploaded": "2026-10-21"},
+                  "podcast": {"url": "https://mchatai.com/u/x/alesia-1/", "published": "2026-10-21"}}}})
+        _hw.save_json(os.path.join(self.work, "client.json"), {
+            "media": {"youtube": "https://www.youtube.com/@Channel"},
+            "promo": {"queue": "Queue", "pictureFolder": self.pics, "filePrefix": "ph", "idPrefix": "PH",
+                      "site": "https://example.com/book/",
+                      "destinations": {"x": {"platform": "X", "destination": "brand", "limit": 280, "urlLength": 23,
+                                             "mustSay": "mChatAI"},
+                                       "bsky": {"platform": "Bluesky", "destination": "brand", "limit": 300}}}})
+        with open(os.path.join(self.story, "promo", "1", "card-3.png"), "wb") as fh:
+            fh.write(b"png")
+        self.project = _hw.Project(self.story)
+
+    def tearDown(self):
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def posts(self, *posts):
+        _hw.save_json(os.path.join(self.story, "promo", "posts-1.json"), {"episode": 1, "posts": list(posts)})
+
+    def problems(self):
+        import promo
+        return [p for _, p in promo.check(self.project, 1)[1]]
+
+    def good(self, **kw):
+        post = {"to": "x", "copy": "Caesar's men dug two ditches, each fifteen feet wide, and a rampart eleven "
+                                   "miles long. Part 1 of 2, made with mChatAI+: https://youtu.be/AAA?utm_source=x",
+                "media": [{"file": "promo/1/card-3.png", "shows": "Alesia part 1: the ditches card"}]}
+        post.update(kw)
+        return post
+
+    def test_a_post_in_the_episodes_own_words_is_clean(self):
+        self.posts(self.good(), {"to": "bsky", "copy": "\u201cThe enemy came at midnight.\u201d "
+                                                      "https://mchatai.com/u/x/alesia-1/"})
+        self.assertEqual(self.problems(), [])
+
+    def test_a_number_the_episode_never_says_is_refused(self):
+        self.posts(self.good(copy="Twelve miles of rampart, made with mChatAI+. https://youtu.be/AAA"))
+        self.assertTrue(any("12" in p and "never says" in p for p in self.problems()), self.problems())
+
+    def test_a_number_counts_what_the_episode_counts(self):
+        """Alesia part 3 says "a twenty-foot trench"; "twenty miles of works" passed on the number
+        alone (2026-10-21)."""
+        self.posts(self.good(copy="Fifteen miles of ditches, made with mChatAI+. https://youtu.be/AAA"))
+        self.assertTrue(any("fifteen" in p.lower() or "15 mile" in p for p in self.problems()), self.problems())
+        self.posts(self.good(copy="Two ditches, each fifteen feet wide. Made with mChatAI+. https://youtu.be/AAA"))
+        self.assertEqual(self.problems(), [], "feet is the episode's foot")
+
+    def test_a_quotation_must_be_the_episodes_words(self):
+        self.posts(self.good(copy="\u201cThe enemy came at dawn.\u201d Made with mChatAI+."))
+        self.assertTrue(any("not the episode's words" in p for p in self.problems()), self.problems())
+
+    def test_a_link_must_be_one_of_its_own_addresses(self):
+        self.posts(self.good(copy="Made with mChatAI+: https://example.org/elsewhere"))
+        self.assertTrue(any("not this episode's" in p for p in self.problems()), self.problems())
+
+    def test_a_url_counts_as_x_counts_it(self):
+        import promo
+        self.assertEqual(promo.x_length("ab https://youtu.be/" + "A" * 200, 23), 3 + 23)
+        self.posts(self.good(copy="Made with mChatAI+. " + "word " * 60))
+        self.assertTrue(any("X takes 280" in p for p in self.problems()))
+
+    def test_every_picture_says_what_it_shows_and_the_account_says_its_line(self):
+        self.posts(self.good(copy="Eleven miles. https://youtu.be/AAA", media=["promo/1/card-3.png", "promo/1/gone.png"]))
+        ps = self.problems()
+        self.assertTrue(any("must say" in p for p in ps))
+        self.assertTrue(any("needs `shows`" in p for p in ps))
+        self.assertTrue(any("not in the story folder" in p for p in ps))
+
+    def test_a_clip_window_ends_where_a_line_ends(self):
+        import promo
+        beats = [{"lines": [0], "start": 0, "seconds": 20, "text": "a"},
+                 {"lines": [1], "start": 20, "seconds": 8, "text": "b"},
+                 {"lines": [1], "start": 28, "seconds": 9, "text": "b2"},
+                 {"lines": [2], "start": 37, "seconds": 30, "text": "c"}]
+        _hw.save_json(os.path.join(self.story, "video", "beats-1.json"), {"beats": beats})
+        ws = promo.windows(self.project, 1, 30, 60)
+        self.assertEqual([(s, e) for s, e, _ in ws], [(0, 37), (20, 67), (37, 67)],
+                         "never 0-28 (line 1 goes on) and never from 28 (mid-line)")
+
+    def test_queue_copies_indexes_and_never_rewrites_an_approved_row(self):
+        import promo
+        self.posts(self.good(), {"to": "bsky", "copy": "Eleven miles of rampart. https://youtu.be/AAA"})
+        log = os.path.join(self.tmp, "calls.jsonl")
+        shim = os.path.join(self.work, "mchatai")
+        with open(shim, "w") as fh:
+            fh.write("#!/usr/bin/env python3\nimport json,sys\n"
+                     f"open({log!r},'a').write(sys.argv[2]+'\\n')\n"
+                     "req=json.loads(sys.argv[2])\n"
+                     "if req['verb']=='getRows':\n"
+                     "    print(json.dumps({'ok':True,'result':{'rows':[{'ID':'PH-alesia-1-bsky','Approval':'Approved','Status':'Queued'}]}}))\n"
+                     "else:\n    print(json.dumps({'ok':True,'result':{'appended':1}}))\n")
+        os.chmod(shim, 0o755)
+        import cite
+        with mock.patch.object(cite, "find_shim", return_value=shim):
+            self.assertEqual(promo.cmd_queue(self.project, 1), 0)
+        calls = [json.loads(l) for l in read(log).splitlines()]
+        append = next(c for c in calls if c["verb"] == "appendRows")
+        self.assertEqual(append["args"]["matchOn"], "ID")
+        self.assertIn("PH-alesia-1-x", append["args"]["csv"])
+        self.assertNotIn("PH-alesia-1-bsky", append["args"]["csv"], "an approved row is the author's")
+        self.assertIn(",Pending,", append["args"]["csv"])
+        self.assertTrue(os.path.isfile(os.path.join(self.pics, "ph-alesia-1-card-3.png")))
+        self.assertEqual(_hw.load_json(os.path.join(self.pics, "index.json"))["ph-alesia-1-card-3.png"],
+                         "Alesia part 1: the ditches card")
 
 
 def read(path):

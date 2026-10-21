@@ -1542,6 +1542,29 @@
             "app": "Yellow Island Bloom Tracker"
           }
         }
+      },
+      "deploy": {
+        "kind": "external",
+        "summary": "Publish a built folder (index.html, with resources/ beside it) to the user's own mchatai.com space at mchatai.com/u/<their id>/<slug>/, replacing what is at that slug.",
+        "required": [
+          "folder",
+          "slug"
+        ],
+        "optional": [
+          "name",
+          "tags"
+        ],
+        "notes": "A relative folder starts at the calling session's folder; mChatAI+ reads only its own folders, so build the site inside the session's folder. The server scopes a slug to the caller: this only ever replaces the user's own project. Returns url and version. External: the user approves each call unless they chose Allow All.",
+        "example": {
+          "command": "applet",
+          "applet": "hub",
+          "verb": "deploy",
+          "args": {
+            "folder": "web",
+            "slug": "pivotal-histories",
+            "name": "Pivotal Histories"
+          }
+        }
       }
     },
     "aislides": {
@@ -1946,7 +1969,7 @@
           "width",
           "height"
         ],
-        "notes": "Returns [{path, title, layout, notes, keywords}] in deck order. Render at your destination's aspect rather than letterboxing 16:9 into it. `keywords` are the slide's own long words, for whoever has to decide which card belongs to which moment.",
+        "notes": "Returns [{path, title, layout, notes, keywords}] in deck order. Render at your destination's aspect rather than letterboxing 16:9 into it. `keywords` are the slide's own long words, for whoever has to decide which card belongs to which moment. A size that is not 16:9 (1080x1080, 1080x1920) lays each slide out on a canvas of that shape at the slide's own width and scales it, so its words stay on the card.",
         "example": {
           "command": "applet",
           "applet": "aislides",
@@ -3980,6 +4003,30 @@
           "args": {
             "id": "<project id>",
             "preset": "original"
+          }
+        }
+      },
+      "clip": {
+        "kind": "create",
+        "summary": "A stretch of a video already exported (export's exportPath) as an mp4 of its own, for a post, with its captions trimmed to match. Nothing is posted.",
+        "required": [
+          "path",
+          "start",
+          "end"
+        ],
+        "optional": [
+          "frame"
+        ],
+        "notes": "start/end in seconds. frame: original (the export's own frame, the default) | vertical (1080x1920: Reels, Shorts, TikTok) | square (1080x1080); vertical and square put the whole picture over a blurred fill of itself. Cut from the export, so it never re-renders the project. Returns clipPath and clipCaptionsPath, beside the export.",
+        "example": {
+          "command": "applet",
+          "applet": "aividrecorder",
+          "verb": "clip",
+          "args": {
+            "path": "<exportPath>",
+            "start": 312,
+            "end": 356,
+            "frame": "vertical"
           }
         }
       }
