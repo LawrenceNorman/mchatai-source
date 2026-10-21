@@ -3613,6 +3613,18 @@ class Publishing(VoiceTwoCase):
         stale = [{"id": "b3", "key": "k", "title": "File:A"}]
         self.assertGreater(int(visuals.reserve_id(self.project, stale)[1:]), 6)
 
+    def test_a_picture_titled_after_another_event_is_not_this_story(self):
+        """2026-10-20: a Battle of Magnesia relief, a Battle of Issus mosaic and the Gauls' sack of Rome
+        were picked for Alesia's cavalry fights. A title naming another event's place is refused."""
+        import visuals
+        story = {visuals.stem(w) for w in ["Alesia", "Gergovia"]}
+        for title in ["File:Battle of Magnesia.jpg", "File:battle of Issus mosaic.jpg",
+                      "File:The First Invasion of Rome by the Gauls, Insult to Papirius.jpg"]:
+            self.assertTrue(visuals.other_event({"title": title}, story), title)
+        for title in ["File:Siege of Alesia.jpg", "File:The Battle at Gergovia.jpg", "File:Siege of the town walls.jpg",
+                      "File:Grave monument of a cavalry soldier.jpg"]:
+            self.assertIsNone(visuals.other_event({"title": title}, story), title)
+
     def test_a_story_adds_its_own_context_words(self):
         """The domain spans every era, so "carnyx" belongs to Alesia's video/context.json, not to
         every pivotal history's searches (2026-10-20)."""

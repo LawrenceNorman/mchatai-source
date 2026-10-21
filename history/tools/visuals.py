@@ -319,10 +319,28 @@ def broll(project):
     return load_json(project.path("video", "broll.json"), []) or []
 
 
+EVENT = re.compile(r"\b(?i:battle|siege|sack|invasion|capture|fall|storming|conquest|massacre|surrender)\s+"
+                   r"(?i:of|at)\s+(?:(?i:the)\s+)?([A-Z][\w'\-]+)")
+
+
+def other_event(rec, story):
+    """The event a file's title names when it is not this story's ("Battle of Magnesia", "The First
+    Invasion of Rome by the Gauls"): a picture of THAT event, whatever words it shares with this
+    story's line. The place it names must be one of the story's own (its cast's and places' names).
+    2026-10-20: the assistant's first Alesia videos picked a Battle of Magnesia relief, a Battle of
+    Issus mosaic and the Gauls' sack of Rome for Alesia's cavalry fights."""
+    title = file_title(rec.get("title") or "")
+    for m in EVENT.finditer(title):
+        if stem(m.group(1)) not in story:
+            return m.group(0)
+    return None
+
+
 def broll_for(project, key, guard=None):
     no = rejected(project)
+    story = story_words(project)
     return [r for r in broll(project) if r.get("key") == key and r.get("id") not in no and r.get("title") not in no
-            and not (guard and guard(r))]
+            and not (guard and guard(r)) and not other_event(r, story)]
 
 
 # ── 3. the checker (one for every video picture) ─────────────────────────────
@@ -513,6 +531,8 @@ def lookup(project, query, subject, c, context=None, skip=(), match=None):
         if not rec.get("allowed") or rec.get("title") in skip:
             continue
         if not relevant(rec, subject_ws, context_ws, need_context=not is_category):
+            continue
+        if other_event(rec, story_ws):
             continue
         if (rec.get("width") or 0) < c["minPictureWidth"] or not str(rec.get("mime") or "").startswith("image/"):
             continue
