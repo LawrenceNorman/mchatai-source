@@ -3164,8 +3164,8 @@ class VisualBeats(VoiceTwoCase):
         ms = visuals.mentions(self.project, "In 1890 Fixture reached Harbor Town and paid “four hundred dollars” for the house.")
         kinds = {m["type"] for m in ms}
         self.assertEqual(kinds & {"quote", "place", "person", "fact"}, {"quote", "place", "person", "fact"})
-        fact = next(m for m in ms if m["type"] == "fact" and m["value"].lower().startswith("four"))
-        self.assertEqual((fact["value"], fact["label"]), ("four hundred", "dollars"))
+        fact = next(m for m in ms if m["type"] == "fact" and m["value"] == "400")
+        self.assertEqual((fact["value"], fact["label"]), ("400", "dollars"), "read whole, shown as numerals")
         self.assertEqual([m for m in visuals.facts("The tenth legion held, and no one ran.")], [],
                          "an ordinal and a pronoun are not numbers")
 
@@ -3196,8 +3196,17 @@ class VisualBeats(VoiceTwoCase):
             self.assertEqual(re.sub(r"\s+", " ", shown).strip(), re.sub(r"\s+", " ", said).strip())
             for s in d["slides"]:
                 if s["layout"] == "quote":
-                    self.assertRegex(s["notes"], "[“\"]" + re.escape(s["quote"]),
-                                     "a quote card shows a quotation the narration reads, never the narrator's own sentence")
+                    # The card carries the narration's sentence around the quotation (2026-10-21, the
+                    # author: a quote alone did not stand on its own). Every marked span is a quotation
+                    # the narration reads, and everything else on the card is the narration's own words.
+                    marked = re.findall(r"\*\*“([^”]+)”\*\*", s["quote"])
+                    self.assertTrue(marked, s["quote"])
+                    for q in marked:
+                        self.assertRegex(s["notes"], "[“\"]" + re.escape(q), "a marked span is a quotation it reads")
+                    rest = re.sub(r"\*\*“[^”]+”\*\*", "|", s["quote"]).replace("…", "|")
+                    for chunk in (c.strip(" ,.;:") for c in rest.split("|")):
+                        if chunk:
+                            self.assertIn(chunk, said, "the words around it are the narration's")
 
     def test_a_found_picture_must_be_of_the_thing_and_of_this_story(self):
         import visuals
