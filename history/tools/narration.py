@@ -7,6 +7,10 @@
                                               back from StoryMaker (the author's edits are what is
                                               narrated); --files reads book/ instead
   narration.py show <project>                 the episodes, their lengths and the cost
+  narration.py push <project> <n>             episode n as an Audio Script Creator project, made by
+                                              the app's verb from podcast/episodes.json word for word
+                                              (free; an episode that has one already is left as it
+                                              is); prints its link and the call that voices it
 
 The author, 2026-10-20: publishing goes through mChatAI+, "so you can preview each step before it
 goes out". So this tool only prepares: each episode becomes an Audio Script Creator project by
@@ -23,6 +27,7 @@ pauses, the price and a short pronunciation list are content (domain thresholds 
 import json
 import os
 import re
+import subprocess
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -153,7 +158,62 @@ def cmd_show(project):
     return 0
 
 
+def verb(shim, applet, name, args, wait=60):
+    """One app verb through the workdir's shim. The JSON goes as an argument, never through a shell."""
+    out = subprocess.run([shim, "raw", json.dumps({"command": "applet", "applet": applet, "verb": name, "args": args}),
+                          "--wait", str(wait)], capture_output=True, text=True, timeout=wait + 30)
+    try:
+        return json.loads(out.stdout)
+    except ValueError:
+        return {"status": "error", "error": (out.stdout or out.stderr)[:300]}
+
+
+def cmd_push(project, n):
+    """Episode n made in Audio Script Creator: the lines exactly as podcast/episodes.json has them, so
+    what is voiced is what the gates checked. Found by its title when it was made before."""
+    import cite
+    import publish
+    data = load_json(project.path("podcast", "episodes.json"), None)
+    if not data:
+        print("no podcast/episodes.json: run narration.py episodes first")
+        return 1
+    ep = next((e for e in data["episodes"] if int(e["n"]) == int(n)), None)
+    if not ep:
+        print(f"no episode {n}: the story has {len(data['episodes'])}")
+        return 1
+    shim = cite.find_shim(project)
+    if not shim:
+        print("no ./mchatai shim above the story folder: the project is made in the app")
+        return 1
+    listing = verb(shim, "scriptcreator", "listProjects", {})
+    found = [p for p in ((listing.get("result") or {}).get("projects") or []) if p.get("title") == ep["projectTitle"]]
+    if found:
+        pid, link = found[0]["id"], found[0].get("open", "")
+        voiced = bool(found[0].get("finalFile")) and os.path.exists(found[0]["finalFile"])
+        print(f"already in Audio Script Creator: “{ep['projectTitle']}” ({pid})" + (", voiced" if voiced else ""))
+    else:
+        c = cfg(project)
+        r = verb(shim, "scriptcreator", "createProject",
+                 {"title": ep["projectTitle"], "lines": ep["lines"], "provider": data.get("provider", c["provider"]),
+                  "voice": data.get("voice", c["voice"]), "hd": c["hd"]}, wait=120)
+        entity = r.get("entity") or {}
+        pid, link = entity.get("id"), entity.get("open", "")
+        if r.get("status") == "error" or not pid:
+            print("createProject failed:", r.get("error") or r.get("output"))
+            return 1
+        print(f"made “{ep['projectTitle']}” in Audio Script Creator ({pid}): {len(ep['lines'])} lines, free")
+    publish.record(project, n, "podcast", [f"project={pid}"])
+    if link:
+        print(f"open it: {link}")
+    print(f"voice it (paid: ${ep['usd']:.2f}, only with the author's OK): "
+          + json.dumps({"command": "applet", "applet": "scriptcreator", "verb": "render",
+                        "args": {"id": pid, "maxCharacters": ep["characters"] + 200}}, ensure_ascii=False))
+    return 0
+
+
 def main(argv):
+    if len(argv) >= 4 and argv[1] == "push":
+        return cmd_push(Project(argv[2]), argv[3])
     if len(argv) >= 3 and argv[1] == "episodes":
         return cmd_episodes(Project(argv[2]), "--files" in argv)
     if len(argv) >= 3 and argv[1] == "show":

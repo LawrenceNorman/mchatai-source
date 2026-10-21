@@ -400,7 +400,11 @@ the first rule, "the caption mentions the surname", put a grandson and two build
 The author, 2026-10-20: publishing goes "through mchatai+, so you can preview each step before it
 goes out". Each medium is made by the app's own verbs. Every step leaves something the author can
 open, hear or watch, and change. Nothing goes out without the author's word, given for each
-medium and each episode. The tools here only prepare.
+medium and each episode. The tools here only prepare. An assistant runs these steps as jobs
+(`history/jobs/podcast.md`, `history/jobs/video.md`); `publish.py status <project>` shows where
+each episode stands.
+
+**The podcast**
 
 1. **Episodes:** `python3 history/tools/narration.py episodes <project>` reads the story back
    from StoryMaker, so the author's edits are what is read. It writes `podcast/episodes.json`:
@@ -409,44 +413,57 @@ medium and each episode. The tools here only prepare.
    - each episode is its sentences in reading order, with its length and what voicing it costs.
 
    The Notes and Sources are not read. The last episode ends on one line naming the sources.
-   The voice, the model, the pauses, the price and a short pronunciation list are content: the
-   domain thresholds' `audio` block. `narration.py show <project>` prints each episode's length
-   and cost.
-2. **A narration project per episode:** `scriptcreator.createProject {title, lines, provider,
-   voice, hd}` is called with the episode's `projectTitle` and `lines`. It is free. It returns a
-   link that opens the project in Audio Script Creator, where the author can change a line or a
-   pause before anything is voiced.
-3. **Voice it:** `scriptcreator.render {project, maxCharacters}` voices every line not voiced
-   yet. `maxCharacters` is the spending cap, and the verb refuses rather than go over it. It
-   reports the finished file only after checking that the file plays. Voice one episode first
-   and let the author hear it before the rest. A voice can fail on a line. For example, OpenAI
-   answered one Alesia line with a 503. When that happens, render again: only the lines without
-   audio are sent.
+   The voice, the model, the pauses, the price, the channel and a short pronunciation list are
+   content: the domain thresholds' `audio` block. `narration.py show <project>` prints each
+   episode's length and cost.
+2. **A narration project per episode:** `narration.py push <project> <n>` makes it in Audio Script
+   Creator with `scriptcreator.createProject`, from the file's lines word for word. It is free,
+   and the author can change a line or a pause there before anything is voiced.
+3. **Voice it:** `scriptcreator.render {id, maxCharacters}` (push prints the call) voices every
+   line not voiced yet. `maxCharacters` is the spending cap, and the verb refuses rather than go
+   over it. It reports the finished file only after checking that it plays. Voice one episode
+   first and let the author hear it before the rest. A voice can fail on a line (OpenAI answered
+   one Alesia line with a 503): render again, and only the lines without audio are sent.
 4. **Publish an episode** only on the author's word, to the series' channel:
-   `audiocast.publishEpisode {audioPath, title, summary, channel}`. `audiocast.channel` creates
-   the channel once.
-5. **Slides for the video:** `python3 history/tools/deck.py plan <project> <n>` lays episode n out
-   as slides:
-   - a title card over the opening picture;
-   - a slide for each picture and map, placed at the line that introduces it;
-   - quote cards from the chapter's own quotes where narration would otherwise hold one slide
-     too long (the `video` thresholds);
-   - the Who's who as cards of names.
+   `audiocast.publishEpisode {audioPath, title, description, channel}`, where `audioPath` is the
+   project's voiced file. An assistant puts it up as an `assistant.proposeAction` card, and the
+   author's click runs it.
 
-   Each slide's notes are its share of the narration. Together the notes are the episode's
-   lines, word for word, and a test holds this. `deck.py push <project> <n>` builds the deck in
-   AI Slides, where the author can open it and change it.
-6. **The video:** `aividrecorder.fromDeck {deck, provider, voice, maxCharacters}` makes a Video
-   Recorder project, one still per slide with the notes read aloud. When the voice fails it says
-   "NOT narrated" and returns `narrated: false`. `aividrecorder.narrate {project, provider,
-   voice, maxCharacters}` voices the same project again, sending only the lines without a take.
-   On Alesia it finished five lines after a timeout. The author watches it and edits it there,
-   then exports it with the YouTube preset and uploads it. Today the video voices the narration
-   a second time, at the same price as the podcast. A Video Recorder verb that reuses the
-   podcast's audio is still to come.
+**The video** (mChatAI+ `docs/VISUAL_BEATS_ARCHITECTURE.md`)
 
-Proved on Alesia, episode 1, 2026-10-20: a 5-minute podcast episode and a 4:48 video, both
-read by onyx.
+The video reads the podcast's lines, so it says what the podcast says, and shows what each line
+names: the book's own pictures where they are placed, real pictures from Wikimedia Commons, maps,
+and cards for a quotation or a number. Nothing generated, nothing unlicensed, and every caption
+says what the picture is and when.
+
+5. **What each line can show:** `visuals.py things <project> <n>` prints the one model pass as a
+   task; its answer, `video/things-<n>.json`, must be words of each line (`--check` until CLEAN).
+   A picture the author rejected goes in `video/broll-rejected.json` first.
+6. **The pictures:** `visuals.py find <project> <n>` searches Commons for what the story's own
+   pictures do not cover: the subject's own category first, free licences only, wide enough for
+   video, each caption built from the file's own record. `visuals.py beats <project> <n>` lays the
+   episode out as beats of 5–15 seconds (faster in the first half minute), from the title card
+   ("Part n of N") to the end card that names the next part. `visuals.py check <project>` holds
+   every picture to its record.
+7. **The contact sheet:** `visuals.py sheet <project> <n> <out.html>`: each beat's words, picture,
+   caption and licence. This is what the author approves from.
+8. **The deck:** `deck.py plan <project> <n> --beats`, then `deck.py push <project> <n>` makes it in
+   AI Slides, the storyboard the author can change; `--into <deck>` updates an episode's deck in
+   place. Each slide's notes are its lines, and together they are the episode's lines word for
+   word (a test holds this). Push prints the Video Recorder call.
+9. **The video:** `aividrecorder.fromDeck` with the printed arguments makes the project: the notes
+   read aloud by the series' voice, the pictures moving, captions on, the end card held for the
+   end screen. `aividrecorder.updateFromDeck {id}` brings a deck's changes into an existing project
+   and voices only the lines that changed. When the voice fails it says "NOT narrated";
+   `aividrecorder.narrate` voices only the lines without a take. The author watches it and edits
+   it there. `aividrecorder.export {id, preset: "youtube"}` writes the file, with an `.srt` beside
+   it, and `deck.py description <project> <n>` the upload's credits. The upload is the author's.
+
+Record each step in the story's files with `publish.py record <project> <n> <podcast|video>
+key=value…`; `publish.py status <project>` reads them back.
+
+Proved on Alesia, 2026-10-20: six podcast episodes voiced by onyx, episode 1 published to a private
+channel; episode 1's video draft (39 beats, 4:53, moving pictures and captions) through every step.
 
 ---
 

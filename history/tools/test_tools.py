@@ -3532,5 +3532,71 @@ class Illustrations(VoiceTwoCase):
         self.assertEqual(r.returncode, 3)
         self.assertIn("real pictures only", r.stdout)
 
+class Publishing(VoiceTwoCase):
+    """Where each episode stands on its way out (publish.py, PLAYBOOK §7). The author, 2026-10-20: he
+    drives the pipeline by talking to the assistant, which answers "where is it?" from the files."""
+
+    def episodes(self):
+        import narration
+        self.write(2, f"In 1901 the {ASSOC} elected Fixture. It was the women's society that ran the reading room.",
+                   [("In 1901 the", E_ELECT), ("the women's society that ran", E_ELECT, "cast", ASSOC)])
+        self.assertEqual(cite.cmd_book(self.project), 0)
+        os.makedirs(self.project.path("podcast"), exist_ok=True)
+        data = narration.build(self.project, use_files=True)
+        _hw.save_json(self.project.path("podcast", "episodes.json"), data)
+        return data
+
+    def test_record_refuses_what_it_does_not_know(self):
+        import publish
+        self.assertTrue(publish.record(self.project, 1, "radio", ["voiced=2026-10-20"]))
+        self.assertTrue(publish.record(self.project, 1, "video", ["aproved=2026-10-20"]), "a typo is not a new key")
+        self.assertTrue(publish.record(self.project, 1, "podcast", ["published"]), "not key=value")
+        self.assertTrue(publish.record(self.project, 1, "podcast", []))
+        meta = _hw.load_json(self.project.path("project.json"), {})
+        self.assertNotIn("publishing", meta, "nothing refused was written")
+
+    def test_status_follows_the_record_and_the_files(self):
+        import publish
+        self.assertEqual(publish.status_rows(self.project), [], "no episodes before narration.py episodes")
+        data = self.episodes()
+        self.assertEqual(publish.record(self.project, 1, "podcast", ["project=ABC", "voiced=2026-10-20"]), [])
+        self.assertEqual(publish.record(self.project, 1, "podcast", ["published=2026-10-21"]), [])
+        rows = {r["n"]: r for r in publish.status_rows(self.project)}
+        self.assertEqual(len(rows), len(data["episodes"]))
+        self.assertEqual(rows[1]["podcast"], {"project": "ABC", "voiced": "2026-10-20", "published": "2026-10-21"},
+                         "a second record adds to the first")
+        self.assertEqual(publish.podcast_cell(rows[1]["podcast"]), "published 2026-10-21")
+        self.assertEqual(publish.video_cell(rows[1]["video"], rows[1]["files"], rows[1]["deck"]), "-")
+        # The video's own files, then the record.
+        os.makedirs(self.project.path("video"), exist_ok=True)
+        _hw.save_json(self.project.path("video", "things-1.json"), {"episode": 1, "lines": {}})
+        _hw.save_json(self.project.path("video", "beats-1.json"), {"beats": [{}, {}, {}], "seconds": 30})
+        with open(self.project.path("video", "sheet-1.html"), "w") as fh:
+            fh.write("<p>sheet</p>")
+        meta = _hw.load_json(self.project.path("project.json"), {})
+        meta["video"] = {"1": {"deck": "D1", "slides": 3}}
+        _hw.save_json(self.project.path("project.json"), meta)
+        self.assertEqual(publish.record(self.project, 1, "video", ["recorder=R1", f"export={self.project.path('nope.mp4')}"]), [])
+        r = {r["n"]: r for r in publish.status_rows(self.project)}[1]
+        self.assertEqual(publish.video_cell(r["video"], r["files"], r["deck"]),
+                         "things · 3 beats · sheet · deck 3 slides · video · export missing")
+        self.assertEqual(publish.record(self.project, 1, "video", ["approved=2026-10-22"]), [])
+        r = {r["n"]: r for r in publish.status_rows(self.project)}[1]
+        self.assertEqual(publish.video_cell(r["video"], r["files"], r["deck"]), "approved 2026-10-22")
+
+    def test_a_story_adds_its_own_context_words(self):
+        """The domain spans every era, so "carnyx" belongs to Alesia's video/context.json, not to
+        every pivotal history's searches (2026-10-20)."""
+        import visuals
+        before = visuals.context_words(self.project)
+        self.assertNotIn(visuals.stem("carnyx"), before)
+        os.makedirs(self.project.path("video"), exist_ok=True)
+        _hw.save_json(self.project.path("video", "context.json"), ["carnyx", "oppidum", 7])
+        after = visuals.context_words(self.project)
+        self.assertIn(visuals.stem("carnyx"), after)
+        self.assertIn(visuals.stem("oppidum"), after)
+        self.assertTrue(before <= after, "the story's words add to the rest")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=1)

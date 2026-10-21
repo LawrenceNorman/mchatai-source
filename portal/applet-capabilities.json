@@ -25,6 +25,30 @@
           "example": { "command": "applet", "applet": "assistant", "verb": "listGoals" }
         },
         {
+          "verb": "assistant.startJob",
+          "status": "callable",
+          "description": "With `brief`: start a job of your own assistant (a fresh session for bounded work, handed over through files); your thread is told when it reports. With `assistantID` + `question`: ask another assistant something long without waiting.",
+          "example": {"command": "applet", "applet": "assistant", "verb": "startJob", "args": {"title": "Alesia · episode 2 video", "brief": "Job: video. Story: stories/alesia-52bc-2, episode 2. Read history/jobs/video.md and follow it."}}
+        },
+        {
+          "verb": "assistant.jobStatus",
+          "status": "callable",
+          "description": "A job's state: running, waiting for an approval, done or blocked with its fenced report, or stopped without one.",
+          "example": {"command": "applet", "applet": "assistant", "verb": "jobStatus", "args": {"jobID": "2F6D0C1A-7B3E-4E59-9A1C-5D8E2B7F4A60"}}
+        },
+        {
+          "verb": "assistant.listJobs",
+          "status": "callable",
+          "description": "This assistant's own jobs, running first, and recent questions to other assistants.",
+          "example": {"command": "applet", "applet": "assistant", "verb": "listJobs"}
+        },
+        {
+          "verb": "assistant.jobDone",
+          "status": "callable",
+          "description": "From a job only: report to the thread that started it (done or blocked, a few lines), then end the turn.",
+          "example": {"command": "applet", "applet": "assistant", "verb": "jobDone", "args": {"outcome": "done", "summary": "Episode 2 video: 41 beats, 5:12; contact sheet in video/."}}
+        },
+        {
           "verb": "assistant.recall",
           "status": "callable",
           "description": "Look up this assistant's memories for a query (a name, a company, a few words), ranked, with full detail. The brief carries only standing rules; this fetches the rest.",

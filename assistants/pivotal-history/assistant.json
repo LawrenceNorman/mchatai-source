@@ -14,9 +14,16 @@
     "aiwrite.*",
     "ledger.*",
     "preview.list", "preview.show",
+    "scriptcreator.*",
+    "aislides.*",
+    "aividrecorder.*",
+    "audiocast.getstate", "audiocast.listprojects", "audiocast.listvoices",
     "assistant.remember", "assistant.getContext", "assistant.recall",
-    "assistant.openLoop", "assistant.closeLoop", "assistant.listLoops"
+    "assistant.openLoop", "assistant.closeLoop", "assistant.listLoops",
+    "assistant.startJob", "assistant.jobStatus", "assistant.listJobs", "assistant.jobDone",
+    "assistant.proposeAction", "assistant.listProposals"
   ],
+  "_whyTools": "The author, 2026-10-20: he drives the whole pipeline from this assistant, from a new story to its podcast and video. Script Creator voices the episodes, AI Slides holds each video's storyboard and the Video Recorder makes and exports it, so all three are granted whole: each step leaves something he can open and change. Publishing is not granted: audiocast.publishEpisode, unpublishEpisode, channel (it can make a feed public) and artwork reach him as an assistant.proposeAction card, and his click on it runs the verb (Phase JM). Stages run as jobs the assistant starts itself (assistant.startJob with a brief; mChatAI+ docs/ASSISTANT_JOBS_PLAN.md §7); a job can never publish, propose or start a job.",
   "freeTools": [
     "storymaker.getstate", "storymaker.listprojects", "storymaker.getproject", "storymaker.getchapter",
     "storymaker.getoutline", "storymaker.listsuggestions", "storymaker.listedits", "storymaker.getbible",
@@ -25,11 +32,15 @@
     "aiwrite.*",
     "preview.list", "preview.show",
     "assistant.remember", "assistant.getContext",
-    "assistant.openLoop", "assistant.closeLoop", "assistant.listLoops"
+    "assistant.openLoop", "assistant.closeLoop", "assistant.listLoops",
+    "assistant.startJob", "assistant.jobStatus", "assistant.listJobs", "assistant.jobDone"
   ],
-  "_whyFreeTools": "The History Writer's split (design D6): scouting and reading dossiers are free, writing into StoryMaker is premium. The scout report goes to AI Write, so aiwrite.* stays free, as it is for history-writer.",
+  "_whyFreeTools": "The History Writer's split (design D6): scouting and reading dossiers are free, writing into StoryMaker is premium. The scout report goes to AI Write, so aiwrite.* stays free, as it is for history-writer. Jobs are on every plan, since a scout runs as one; a job keeps its assistant's grants, so on the free plan it can do only free things.",
   "workdirLinks": ["history"],
   "_whyWorkdirLinks": "./history carries the engine (PLAYBOOK, voice, tools) and this domain (history/domains/pivotal-history/). The campaign bible is applied by id through storymaker.applyBiblePack, so story/ needs no link.",
-  "budgetUSDPerDay": 5.00,
+  "budgetUSDPerDay": 120.00,
+  "_whyBudget": "A ceiling against a runaway, not a price: on a subscription these are the dollars the API would have charged. Sized to measured runs: the second telling of Alesia cost $58.79 over its three stage jobs (plan $2.61, chapters $46.28, finish $9.90, 2026-10-19) and this assistant's own thread a few dollars a day. Room for one story and its publishing in a day. It was $5.00 while only a driver outside the app started stages; started from here, that would refuse the first one.",
+  "autoAllow": "readOnly",
+  "maxRunningJobs": 2,
   "backend": "claude"
 }

@@ -27,6 +27,8 @@ assistants/<id>/
 | `tools` | Verb grants — `"aiweb.getCurrentPage"`, `"ledger.*"`, or `"*"`. **`null` means unrestricted.** |
 | `budgetUSDPerDay` | Advisory ceiling. `null` for none. |
 | `backend` | Preferred CLI. Falls back to whatever is available. |
+| `autoAllow` | `"readOnly"`: read-only tool calls run without a permission card (what counts as read-only is `portal/auto-allow.json`). Absent: every call asks. |
+| `maxRunningJobs` | How many jobs it may have running at once when it starts its own with `assistant.startJob {brief}` (default 2, at most 4). A job is a fresh session for bounded work that reports back to the thread that started it, and never publishes, proposes or starts a job (mChatAI+ `docs/ASSISTANT_JOBS_PLAN.md` §7). |
 | `pattern` | Phase AP.1. One choice per axis — `trigger`, `state` (+ `records`: the Ledger collections it owns), `continuity`, `qualityControl`, `freshness`. Vocabulary and the traps each prevents: [PATTERNS.md](PATTERNS.md). `scripts/lint_assistant_manifests.py` (preflight) fails a blank axis unless a `_why…` key says why. |
 | `context` | Phase AP.1. Overrides of [context-policy.json](context-policy.json) for this assistant only, same shape: `{"situational": {"maxTopical": 4}}` changes one knob and keeps the rest. |
 

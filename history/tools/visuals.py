@@ -396,8 +396,9 @@ def stem(w):
 
 
 def context_words(project):
-    """Words that tie a picture to this story: its cast's and places' names, and the domain's
-    context words (glossary `context`), folded."""
+    """Words that tie a picture to this story: its cast's and places' names, the domain's context
+    words (glossary `context`) and the story's own (`video/context.json`, a list: "carnyx" and
+    "oppidum" belong to Alesia, not to every pivotal history), folded."""
     out = set()
     for e, _ in cast(project):
         for k in e["keys"]:
@@ -409,6 +410,8 @@ def context_words(project):
     dom = meta.get("domain") or ""
     g = load_json(os.path.join(HISTORY, "domains", dom, "visuals.json"), {}) if dom else {}
     out |= {stem(w) for w in (g or {}).get("context") or []}
+    own = load_json(project.path("video", "context.json"), []) or []
+    out |= {stem(w) for w in own if isinstance(w, str)}
     return {w for w in out if len(w) >= 4}
 
 
