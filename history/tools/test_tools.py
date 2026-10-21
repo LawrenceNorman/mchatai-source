@@ -3584,6 +3584,32 @@ class Publishing(VoiceTwoCase):
         r = {r["n"]: r for r in publish.status_rows(self.project)}[1]
         self.assertEqual(publish.video_cell(r["video"], r["files"], r["deck"]), "approved 2026-10-22")
 
+    def test_two_jobs_finding_pictures_never_share_an_id_or_lose_a_find(self):
+        """Episodes 2 and 3's video jobs ran at once (2026-10-20): both read broll.json, so both would
+        take the next id, and the later save would drop the earlier one's pictures."""
+        import threading
+        import visuals
+        os.makedirs(self.project.path("video", "broll"), exist_ok=True)
+        _hw.save_json(self.project.path("video", "broll.json"), [{"id": "b3", "key": "k", "title": "File:A"}])
+        rows = visuals.broll(self.project)
+        ids = []
+        threads = [threading.Thread(target=lambda: ids.extend(visuals.reserve_id(self.project, rows) for _ in range(10)))
+                   for _ in range(4)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        self.assertEqual(len(ids), len(set(ids)), "every run claims its own ids")
+        self.assertTrue(all(int(i[1:]) > 3 for i in ids))
+        # Job A saves, then job B, which read the file before A saved.
+        visuals.save_found(self.project, [{"id": "b4", "key": "x", "title": "File:X"}], {"x": {"found": 1}}, ["b4"])
+        merged = visuals.save_found(self.project, [{"id": "b5", "key": "x", "title": "File:X"},
+                                                   {"id": "b6", "key": "y", "title": "File:Y"}], {"y": {"found": 1}}, [])
+        self.assertEqual([r["id"] for r in merged], ["b3", "b4", "b6"], "A's find kept, B's duplicate of it dropped")
+        asked = _hw.load_json(self.project.path("video", "commons-asked.json"), {})
+        self.assertEqual(set(asked), {"x", "y"})
+        self.assertFalse(os.path.exists(self.project.path("video", "broll", "b4.reserved")), "a saved id's marker goes")
+
     def test_a_story_adds_its_own_context_words(self):
         """The domain spans every era, so "carnyx" belongs to Alesia's video/context.json, not to
         every pivotal history's searches (2026-10-20)."""

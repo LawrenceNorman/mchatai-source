@@ -34,6 +34,8 @@ checked against it word for word; it names the work, its maker and its year, so 
 video/broll.json and its folder, with their licence and credit.
 """
 import base64
+import contextlib
+import fcntl
 import html
 import json
 import os
@@ -524,6 +526,57 @@ def lookup(project, query, subject, c, context=None, skip=(), match=None):
     return sorted(keep, key=lambda r: -r["score"])
 
 
+@contextlib.contextmanager
+def broll_lock(project):
+    """The story's video pictures (video/broll.json, commons-asked.json) are shared by every
+    episode's job, and two jobs may run at once (2026-10-20, the assistant's first video run): each
+    read-merge-write of them holds this lock. Held only around the write, never around a search: a
+    job's shell call would time out waiting for another job's minutes of lookups."""
+    os.makedirs(project.path("video"), exist_ok=True)
+    with open(project.path("video", ".broll.lock"), "w") as fh:
+        fcntl.flock(fh, fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            fcntl.flock(fh, fcntl.LOCK_UN)
+
+
+def reserve_id(project, rows):
+    """A picture id no other run holds: above every id in broll.json and every file in video/broll/,
+    claimed by creating its marker exclusively. Two jobs that read the same broll.json would otherwise
+    both take the next number, and `download` would hand one job the other's picture."""
+    folder = project.path("video", "broll")
+    os.makedirs(folder, exist_ok=True)
+    taken = [int(r["id"][1:]) for r in rows if re.fullmatch(r"b\d+", r.get("id") or "")]
+    taken += [int(m.group(1)) for f in os.listdir(folder) for m in [re.match(r"b(\d+)\.", f)] if m]
+    i = max(taken or [0]) + 1
+    while True:
+        try:
+            os.close(os.open(os.path.join(folder, f"b{i}.reserved"), os.O_CREAT | os.O_EXCL | os.O_WRONLY))
+            return f"b{i}"
+        except FileExistsError:
+            i += 1
+
+
+def save_found(project, new_rows, asked_now, reserved):
+    """This run's finds merged into what is on disk now, under the lock: another job may have saved
+    since this one read. One row per (subject, file); the disk's wins."""
+    with broll_lock(project):
+        disk = broll(project)
+        seen = {(r.get("key"), r.get("title")) for r in disk}
+        merged = disk + [r for r in new_rows if (r.get("key"), r.get("title")) not in seen]
+        asked = load_json(project.path("video", "commons-asked.json"), {}) or {}
+        asked.update(asked_now)
+        save_json(project.path("video", "broll.json"), merged)
+        save_json(project.path("video", "commons-asked.json"), asked)
+        for bid in reserved:
+            try:
+                os.remove(project.path("video", "broll", f"{bid}.reserved"))
+            except OSError:
+                pass
+    return merged
+
+
 def download(project, rec, bid):
     import fetch
     import images
@@ -590,6 +643,7 @@ def cmd_find(project, n, limit=None):
     have = {(r.get("key"), r.get("title")) for r in rows}
     done_keys = {r.get("key") for r in rows}
     asked = load_json(project.path("video", "commons-asked.json"), {}) or {}
+    asked_now, new_rows, reserved = {}, [], []
     todo = needs(project, n)
     budget = limit or c["maxLookups"]
     made = 0
@@ -618,9 +672,10 @@ def cmd_find(project, n, limit=None):
             made += 1
             if len(got) >= c["perSubject"]:
                 break
-        asked[key] = {"queries": queries, "found": len(got)}
+        asked[key] = asked_now[key] = {"queries": queries, "found": len(got)}
         for rec in got[:c["perSubject"]]:
-            bid = "b%d" % (max([int(r["id"][1:]) for r in rows if re.fullmatch(r"b\d+", r.get("id") or "")] or [0]) + 1)
+            bid = reserve_id(project, rows)
+            reserved.append(bid)
             if rec["title"] in by_title:                # found already for another subject: one copy
                 rel = by_title[rec["title"]]["file"]
             else:
@@ -635,13 +690,13 @@ def cmd_find(project, n, limit=None):
                         "caption": rec["caption"], "evidence": record_text(rec)[:600], "credit": credit(rec),
                         "file": rel, "year": year_of(rec)})
             rows.append(row)
+            new_rows.append(row)
             by_title.setdefault(rec["title"], row)
             have.add((key, rec["title"]))
             print(f"  {bid}  {key}: {rec['caption'][:90]}  [{rec.get('license')}]")
         if not got:
             print(f"  {key}: nothing free and wide enough ({'; '.join(queries)})")
-    save_json(project.path("video", "broll.json"), rows)
-    save_json(project.path("video", "commons-asked.json"), asked)
+    rows = save_found(project, new_rows, asked_now, reserved)
     print(f"{len(rows)} video pictures ({made} lookups this run)")
     return 0
 
