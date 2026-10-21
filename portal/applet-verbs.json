@@ -1711,6 +1711,25 @@
           }
         }
       },
+      "autofocus": {
+        "kind": "modify",
+        "summary": "Every full-picture slide whose picture the 16:9 fill crops keeps its subject in frame: a face first (busts, statues, painted portraits), else what stands out (Vision, on the device). Only slides with no focus yet, unless `all`, so an author's own focus is never moved.",
+        "required": [
+          "deck"
+        ],
+        "optional": [
+          "all"
+        ],
+        "notes": "result.slides lists the 1-based slides it focused. The focus is the slide's own image_focus, so AI Slides, its exports and the Video Recorder's stills and motion all show the same crop; move any of them in AI Slides.",
+        "example": {
+          "command": "applet",
+          "applet": "aislides",
+          "verb": "autoFocus",
+          "args": {
+            "deck": "<deck id or title>"
+          }
+        }
+      },
       "updateslide": {
         "kind": "modify",
         "summary": "Update slide `index` (1-based). Only the keys you send change; layout may be switched.",
@@ -3756,9 +3775,12 @@
           "musicAssetID",
           "musicPath",
           "musicGainDB",
-          "captions"
+          "captions",
+          "leadIn",
+          "tail",
+          "lineGap"
         ],
-        "notes": "Draft first, print later: the voice defaults to the best English Apple voice (free, on this Mac). For the print, call narrate on the new project with provider openAI, voice onyx and maxCharacters. A paid provider here also REQUIRES maxCharacters, checked against the deck's notes before anything is made. Presenter cues in the notes are not read: a time window like 0:35-1:00 on its own line or opening one, and anything in square brackets ([click]). deck: a title or id (aislides.listDecks). musicAssetID: a LoopStar audio asset (loopstar.composeMusic or jingle). captions defaults to true. llmProvider picks the model AI Slides composes with (brief only). Returns the project as entity; result.slides and result.deck say what it was built from.",
+        "notes": "Draft first, print later: the voice defaults to the best English Apple voice (free, on this Mac). For the print, call narrate on the new project with provider openAI, voice onyx and maxCharacters. A paid provider here also REQUIRES maxCharacters, checked against the deck's notes before anything is made. Presenter cues in the notes are not read: a time window like 0:35-1:00 on its own line or opening one, and anything in square brackets ([click]). deck: a title or id (aislides.listDecks). musicAssetID: a LoopStar audio asset (loopstar.composeMusic or jingle). captions defaults to true. llmProvider picks the model AI Slides composes with (brief only). Returns the project as entity; result.slides and result.deck say what it was built from. leadIn, tail and lineGap (seconds, 0-3) set the air around each slide's lines; a deck of a slide per line or two wants them tight (0.1, 0.25, 0.3).",
         "example": {
           "command": "applet",
           "applet": "aividrecorder",

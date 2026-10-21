@@ -154,9 +154,10 @@ def commons_search(query, limit):
     return [r["title"] for r in d.get("query", {}).get("search", []) if not SKIP.search(r["title"])]
 
 
-def file_info(titles):
-    """{title: candidate} for files on Commons, then for files local to en.wikipedia."""
-    width = config().get("thumbnailWidth", 1200)
+def file_info(titles, width=None):
+    """{title: candidate} for files on Commons, then for files local to en.wikipedia. `width` asks
+    for a wider copy than the book's thumbnailWidth (a video frame is 1920 wide)."""
+    width = width or config().get("thumbnailWidth", 1200)
     out, missing = {}, []
     for base in (COMMONS, WIKI):
         todo = list(dict.fromkeys(titles if base == COMMONS else missing))

@@ -3123,6 +3123,111 @@ class Narration(VoiceTwoCase):
         self.assertEqual(narration.spoken("Napoleon IIIrd", say), "Napoleon IIIrd")
 
 
+class VisualBeats(VoiceTwoCase):
+    """What a narrated episode shows, line by line (visuals.py, VB.3; docs/VISUAL_BEATS_ARCHITECTURE.md §4).
+    The author, 2026-10-20: "we need a process for identifying visual elements in the text and pull
+    the correct corresponding image materials"."""
+
+    def episode(self):
+        import narration
+        self.write(2, f"In 1901 the {ASSOC} elected Fixture. It was the women's society that ran the reading room.",
+                   [("In 1901 the", E_ELECT), ("the women's society that ran", E_ELECT, "cast", ASSOC)])
+        self.assertEqual(cite.cmd_book(self.project), 0)
+        os.makedirs(self.project.path("podcast"), exist_ok=True)
+        data = narration.build(self.project, use_files=True)
+        _hw.save_json(self.project.path("podcast", "episodes.json"), data)
+        return data
+
+    def test_every_line_is_shown_once_in_order(self):
+        import visuals
+        data = self.episode()
+        for ep in data["episodes"]:
+            d = visuals.plan_beats(self.project, ep["n"])
+            said = " ".join(l["text"] for l in ep["lines"])
+            shown = " ".join(b["text"] for b in d["beats"])
+            self.assertEqual(re.sub(r"\s+", " ", shown).strip(), re.sub(r"\s+", " ", said).strip())
+            order = [i for b in d["beats"] for i in b["lines"]]
+            self.assertEqual(order, list(range(len(order))), "every line in exactly one beat, in order")
+            cap = visuals.cfg(self.project)["max"]
+            for b in d["beats"]:
+                self.assertTrue(len(b["lines"]) == 1 or b["seconds"] <= cap, b)
+
+    def test_a_line_is_read_for_what_it_could_show(self):
+        import visuals
+        self.edit_dossier(places=[{"id": "harbor", "name": "Harbor Town", "lat": 1, "lon": 2}],
+                          people=[{"name": "Edith Fixture", "who": "The first president.", "aliases": ["Fixture"]}])
+        ms = visuals.mentions(self.project, "In 1890 Fixture reached Harbor Town and paid “four hundred dollars” for the house.")
+        kinds = {m["type"] for m in ms}
+        self.assertEqual(kinds & {"quote", "place", "person", "fact"}, {"quote", "place", "person", "fact"})
+        fact = next(m for m in ms if m["type"] == "fact" and m["value"].lower().startswith("four"))
+        self.assertEqual((fact["value"], fact["label"]), ("four hundred", "dollars"))
+        self.assertEqual([m for m in visuals.facts("The tenth legion held, and no one ran.")], [],
+                         "an ordinal and a pronoun are not numbers")
+
+    def test_a_commons_caption_says_only_what_its_record_says(self):
+        import visuals
+        rec = {"title": "File:Lionel Royer - Vercingetorix throws down his arms - 1899.jpg", "objectName": "",
+               "description": "Vercingetorix throws down his arms at the feet of Julius Caesar",
+               "artist": "Lionel Royer", "date": "1899"}
+        cap = visuals.caption_from_record(rec)
+        self.assertEqual(visuals.caption_problems(cap, rec), [], cap)
+        self.assertIn("1899", cap, "a painting says when it was made")
+        self.assertEqual(cap.count("Royer"), 1, "the maker is not said twice")
+        self.assertIn("Alesia", visuals.caption_problems("Vercingetorix at Alesia in 52 BC", rec),
+                      "a word the record does not have is refused")
+
+    def test_the_deck_from_beats_says_the_podcasts_words_in_order(self):
+        import deck
+        import visuals
+        data = self.episode()
+        for ep in data["episodes"]:
+            visuals.plan_beats(self.project, ep["n"])
+            d = deck.plan_from_beats(self.project, ep["n"])
+            said = " ".join(l["text"] for l in ep["lines"])
+            shown = " ".join(s["notes"] for s in d["slides"])
+            self.assertEqual(re.sub(r"\s+", " ", shown).strip(), re.sub(r"\s+", " ", said).strip())
+            for s in d["slides"]:
+                if s["layout"] == "quote":
+                    self.assertRegex(s["notes"], "[“\"]" + re.escape(s["quote"]),
+                                     "a quote card shows a quotation the narration reads, never the narrator's own sentence")
+
+    def test_a_found_picture_must_be_of_the_thing_and_of_this_story(self):
+        import visuals
+        ctx = {visuals.stem(w) for w in ("Roman", "Gaul", "Alesia", "siege")}
+        fire = {"title": "File:Mrs Midnight's Animal Comedians.jpg", "description": "Animals climbing ladders, a print",
+                "artist": "", "date": "1753"}
+        ladders = visuals.subject_words("scaling ladders", "siege ladder engraving")
+        self.assertFalse(visuals.relevant(fire, ladders, ctx, need_context=True),
+                         "a 1753 print of ladders is not a Roman siege (2026-10-20's first run)")
+        siege = dict(fire, description="Roman soldiers climb scaling ladders at a siege, engraving")
+        self.assertTrue(visuals.relevant(siege, ladders, ctx, need_context=True))
+        carnyx = {"title": "File:Ancient Celt with Carnyx Trumpet.jpg", "description": "reenactor", "artist": "", "date": "2011"}
+        self.assertTrue(visuals.relevant(carnyx, visuals.subject_words("a trumpet call", "Category:Carnyx"), ctx,
+                                         need_context=False), "a curated category's file need only name its subject")
+        ship = {"title": "File:StateLibQld 1 148911 Gaul (ship).jpg", "description": "The ship Gaul", "artist": "", "date": ""}
+        self.assertFalse(visuals.relevant(ship, visuals.subject_words("a council of all Gaul", "Gauls council engraving",
+                                                                      context=ctx), ctx, need_context=True),
+                         "a ship named Gaul is not a council: the story's own word proves nothing")
+        legionary = {"title": "File:Legio Abritus 01.jpg", "description": "Roman legionary reenactor", "artist": "", "date": "2015"}
+        self.assertTrue(visuals.relevant(legionary, visuals.subject_words("each Roman soldier", match=["legio", "soldier"],
+                                                                          context=ctx), ctx, need_context=True),
+                        "the model's match words carry the meaning: a legionary is a Roman soldier")
+        soup = {"title": "File:Melchior Feselen - Belagerung der Stadt Alesia (1533).jpg",
+                "objectName": "German: Belagerung der Stadt Alesia The anachronistic Siege title QS:P1476,de", "artist": "Melchior Feselen",
+                "date": "1533", "description": ""}
+        self.assertNotIn("QS:", visuals.caption_from_record(soup), "Commons' label soup never reaches a caption")
+
+    def test_things_must_be_words_of_their_line(self):
+        import visuals
+        self.episode()
+        os.makedirs(self.project.path("video"), exist_ok=True)
+        _hw.save_json(visuals.things_path(self.project, 1),
+                      {"episode": 1, "lines": {"0": [{"thing": "a golden throne", "queries": ["Category:Thrones"]}]}})
+        probs = visuals.check_things(self.project, 1)
+        self.assertTrue(any("not words of the line" in p for _, p in probs), probs)
+        self.assertEqual(visuals.things_for(self.project, 1).get(0), None, "an unchecked pass is not used")
+
+
 class ToldBeforeVoiceTwo(VoiceTwoCase):
     """The six episodes landed before v2, and the Armada in flight, keep the rules they were gated under
     (the author, 2026-10-19: one story until it is good). Only the measures reach them."""
