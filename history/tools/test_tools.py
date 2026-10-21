@@ -117,6 +117,10 @@ class Promotion(unittest.TestCase):
         self.assertTrue(any("must say" in p for p in ps))
         self.assertTrue(any("needs `shows`" in p for p in ps))
         self.assertTrue(any("not in the story folder" in p for p in ps))
+        with open(os.path.join(self.story, "promo", "1", "big.png"), "wb") as fh:
+            fh.write(b"0" * 5_000_001)
+        self.posts(self.good(media=[{"file": "promo/1/big.png", "shows": "a card"}]))
+        self.assertTrue(any("over what X takes" in p for p in self.problems()), "X refuses a picture over 5 MB")
 
     def test_a_clip_window_ends_where_a_line_ends(self):
         import promo

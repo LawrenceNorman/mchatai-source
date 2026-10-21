@@ -228,6 +228,10 @@ def check_post(project, n, post, promo, lines, title, count, allowed):
             out.append(f"{f} is neither a picture nor a video")
         elif not (isinstance(m, dict) and (m.get("shows") or "").strip()):
             out.append(f"{f} needs `shows`: what it shows, for the picture folder's index")
+        elif PICTURE.search(f) and os.path.getsize(project.path(f)) > int(d.get("maxPictureBytes") or 5_000_000):
+            # X refuses a picture over 5 MB; a card is rendered at twice its size (2026-10-21).
+            out.append(f"{f} is {os.path.getsize(project.path(f)) / 1e6:.1f} MB, over what {d['platform']} takes: "
+                       f"`sips -s format jpeg -s formatOptions 85 <png> --out <jpg>` and name the JPEG")
     if kind == "none" and files:
         out.append(f"{d['platform']} here takes no media")
     if kind == "video" and not vids:
