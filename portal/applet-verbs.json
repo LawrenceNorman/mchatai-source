@@ -1504,7 +1504,7 @@
     "hub": {
       "getstate": {
         "kind": "read",
-        "summary": "How many mini-apps are installed (searchable templates).",
+        "summary": "How many mini-apps are installed (searchable templates), and publishBase: where the signed-in user's pages live (https://mchatai.com/u/<their id>/).",
         "example": {
           "command": "applet",
           "applet": "hub",
@@ -1552,9 +1552,11 @@
         ],
         "optional": [
           "name",
-          "tags"
+          "tags",
+          "plain",
+          "unlisted"
         ],
-        "notes": "A relative folder starts at the calling session's folder; mChatAI+ reads only its own folders, so build the site inside the session's folder. The server scopes a slug to the caller: this only ever replaces the user's own project. Returns url and version. External: the user approves each call unless they chose Allow All.",
+        "notes": "A relative folder starts at the calling session's folder; mChatAI+ reads only its own folders, so build the site inside the session's folder. The server scopes a slug to the caller: this only ever replaces the user's own project. Returns url, version and status. plain: true for a document page (report, edition, archive): the page is served without the platform's Hub / Feedback / Sign-in strip, which otherwise sits over the page's top-right corner. unlisted: true for a page meant only for people who get its link: it is served the same, sends X-Robots-Tag noindex, and cannot be found by looking up its slug. Re-state both on every deploy of that slug; a deploy without them makes it an ordinary page again. External: the user approves each call unless they chose Allow All.",
         "example": {
           "command": "applet",
           "applet": "hub",
@@ -1563,6 +1565,40 @@
             "folder": "web",
             "slug": "pivotal-histories",
             "name": "Pivotal Histories"
+          }
+        }
+      },
+      "listpublished": {
+        "kind": "read",
+        "summary": "The signed-in user's pages on mchatai.com (slug, name, url, status, plain, version, sizeBytes, updatedAt), newest first.",
+        "optional": [
+          "prefix",
+          "limit",
+          "after"
+        ],
+        "notes": "prefix keeps slugs that start with it and reads every page to find them (e.g. a report series). Without it: one page of limit (default 50, max 500); pass result.next as after for the following page.",
+        "example": {
+          "command": "applet",
+          "applet": "hub",
+          "verb": "listPublished",
+          "args": {
+            "prefix": "ai-daily"
+          }
+        }
+      },
+      "unpublish": {
+        "kind": "dangerous",
+        "summary": "Take one of the user's pages off mchatai.com: its files and its record are deleted and its bytes come off their storage meter. Cannot be undone; publishing again makes a new version 1.",
+        "required": [
+          "slug"
+        ],
+        "notes": "The page's slug from listPublished. A page the Hub marked protected cannot be deleted; the reply says so.",
+        "example": {
+          "command": "applet",
+          "applet": "hub",
+          "verb": "unpublish",
+          "args": {
+            "slug": "ai-daily-2026-10-24"
           }
         }
       }
