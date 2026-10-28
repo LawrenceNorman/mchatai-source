@@ -2502,7 +2502,7 @@
     "audiocast": {
       "getstate": {
         "kind": "read",
-        "summary": "Whether Audiocast Creator is ready, the project count, and the free on-device default voice.",
+        "summary": "Whether Audiocast Creator is ready, the project count, and the default voice and provider create will use (free, on this Mac).",
         "example": {
           "command": "applet",
           "applet": "audiocast",
@@ -2520,7 +2520,7 @@
       },
       "listvoices": {
         "kind": "read",
-        "summary": "The free on-device English voices. Pass a voice id to create; omit for the default.",
+        "summary": "The voices that run on this Mac, all free: Apple's English voices (with quality) and any Ollama speech model's voices (id \"model#voice\"). Also returns the default create uses and whether Ollama answered.",
         "example": {
           "command": "applet",
           "applet": "audiocast",
@@ -2529,15 +2529,17 @@
       },
       "create": {
         "kind": "create",
-        "summary": "Turn text into spoken audio. Renders FREE on-device, saves an editable project, imports into AI Audio and uploads to CloudKit so it reaches iOS.",
+        "summary": "Turn text into spoken audio. Renders free on this Mac (an Apple voice or an Ollama speech model), saves an editable project, imports into AI Audio and uploads to CloudKit so it reaches iOS.",
         "required": [
           "script"
         ],
         "optional": [
           "title",
-          "voice"
+          "voice",
+          "provider",
+          "deliver"
         ],
-        "notes": "There is no API cost and no token spend - the voice is Apple's on-device synthesiser. This verb ALONE gets the audio onto the user's iPhone via CloudKit; publishEpisode is only needed when they want a subscribable podcast feed.",
+        "notes": "There is no API cost and no token spend: it renders on the user's Mac. `voice` is an Apple voice id or name (\"Ava\"), or an Ollama voice id \"model#voice\" (\"phonon#easton\") or name (\"Easton\"); `provider` is apple or ollama (anything else is refused). Omit both for the user's default (AI Defaults \u2192 TTS when it runs on this Mac, else the best installed Apple voice). If an Ollama render fails, the episode is rendered with the best Apple voice and the reply carries `fallback` with the reason; check it. Ollama audio is leveled to \u221216 LUFS. `deliver: false` makes a test render: the project is saved, but nothing goes to the iPhone, AI Audio or Products. This verb ALONE gets the audio onto the user's iPhone via CloudKit; publishEpisode is only needed when they want a subscribable podcast feed.",
         "example": {
           "command": "applet",
           "applet": "audiocast",

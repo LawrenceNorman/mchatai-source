@@ -1,24 +1,33 @@
 #!/usr/bin/env python3
 """Build LoopStar's recorded drum kits (iPhone, subscribers) from sample-kits.config.json.
 
-    python3 frameworks/loopstar/drums/tools/build_sample_kits.py [--app-fallback <path>] [--only <kit-id>]
+    python3 frameworks/loopstar/drums/tools/build_sample_kits.py [--only <kit-id>] [--upload]
+        [--app-fallback <iPhone app's loopstar_sample_kits_fallback.json>]
+        [--app-fallback <Mac app's loopstar_sample_kits_fallback.json>]
 
-For each kit in the config: fetch its sources (an archive or single files, by URL, cached under
-~/.cache/loopstar-sample-kits; every download is checked against the sha256 in the config), pick
-one file per voice, and write frameworks/loopstar/drums/sample-kits/<kit-id>/<voice>.wav:
+Each kit ships as ONE file on our download bucket (the config's "host": the bucket the Mac's
+instruments and pack audio already use), never as loose files: every voice back to back in a
+mono 48 kHz 16-bit WAV, 0.1 s apart (play it to audition the kit), named <kit-id>-<sha256 prefix>.wav
+so a rebuilt kit is a new file and nothing is ever cached stale. sample-kits/index.json (content,
+in this repo) lists each kit's URL, sha256, size and where each voice sits in the file; the app
+checks the sha256 before it keeps a download. Audio never goes into git: frameworks/loopstar/**/*.wav
+is ignored here on purpose, and the files are built into sample-kits/build/ (ignored too).
 
-  * mono, 48 kHz, 16-bit PCM (the app decodes anything AVAudioFile reads, but WAV is the
-    plainest thing for raw.githubusercontent to serve and for anyone to audit);
+For each kit: fetch its sources (an archive or single files, by URL, cached under
+~/.cache/loopstar-sample-kits; every download is checked against the sha256 in the config), and
+shape each voice:
+
+  * mono, 48 kHz;
   * the attack at sample 0 (everything before 5 % of the hit's peak trimmed, 1 ms kept);
   * cut where the tail falls under -60 dBFS, or at the voice's longest (a crash rings 3 s,
     a closed hat 0.6 s), with a 10 ms fade at the cut;
-  * peak at -1 dBFS, then the voice's place in the kit from the config's "gains" (the index
-    carries them, so a re-balance is a JSON edit, not a re-render).
+  * peak at -1 dBFS, then the level stage below.
 
 A voice can blend several files of the SAME hit (a close mic and the overheads, recorded at
 once, so they line up), each at a gain. A kit can carry a "process" applied to every voice
-before shaping (and "voice_process" for one voice's own, over it): pitch (semitones, by resampling, so lower = longer), a sample-and-hold "rate"
-and "bits" (the 12-bit / 26 kHz sampler sound), a low-pass, and a tanh "drive".
+before shaping (and "voice_process" for one voice's own, over it): pitch (semitones, by
+resampling, so lower = longer), a sample-and-hold "rate" and "bits" (the 12-bit / 26 kHz sampler
+sound), a low-pass, and a tanh "drive".
 
 Level: an acoustic hit is nearly all transient, so peak-normalized it plays far quieter than
 the synth kits (a rock beat measured -23 LUFS against their -12.5). Each voice gets a PUNCH
@@ -27,14 +36,15 @@ MAX_PUNCH_DB off the attack), and the build searches for the kick's level at whi
 beat (kick on 1 and 3, snare on 2 and 4, 8th-note hats) reaches the kit's "beat_lufs" (default
 BEAT_LUFS: where the synth kits' beats sit before the drum fader). Every other voice sits at
 its "balance" in LU against the kick (defaults below; a kit may override), measured BS.1770
-K-weighted over its loudest 400 ms. A voice that must come DOWN keeps its file at -1 dBFS and
+K-weighted over its loudest 400 ms. A voice that must come DOWN keeps its audio at -1 dBFS and
 gets an index gain under 1 (a re-balance is a JSON edit); one that must come UP is limited.
 
-Then frameworks/loopstar/drums/sample-kits/index.json is rewritten from the config (with each
-kit's size), and with --app-fallback, the app's bundled copy too (they must stay identical;
-LoopStarDrumContentTests checks).
+--upload sends every kit file the bucket doesn't have yet (gsutil; a content-named file never
+changes, so existing ones are skipped), then fetches each kit's public URL and checks its sha256.
+Each --app-fallback (the iPhone's and the Mac's bundled copies of the index) is rewritten too;
+they must stay identical to it (the apps' tests check).
 
-Only CC0 or CC-BY material: the samples themselves are redistributed (this public repo, then
+Only CC0 or CC-BY material: the samples themselves are redistributed (the public bucket, then
 inside the app). Each kit's "credit" names the author and licence; the config's "license_url"
 says where it was read. RULE #1: everything kit-specific lives in the config, not the app.
 """
@@ -56,6 +66,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 DRUMS = os.path.dirname(HERE)
 CONFIG = os.path.join(DRUMS, "sample-kits.config.json")
 OUT = os.path.join(DRUMS, "sample-kits")
+BUILD = os.path.join(OUT, "build")
 REPO_ROOT = os.path.abspath(os.path.join(DRUMS, "..", "..", ".."))
 CACHE = os.path.expanduser("~/.cache/loopstar-sample-kits")
 
@@ -79,6 +90,8 @@ SNARE_SLACK_LU = 3.0
 GATE_START_DB = -26.0
 GATE_END_DB = -60.0
 FADE_S = 0.010
+# Silence between the hits in a kit's file, so the file can be auditioned by ear.
+GAP_S = 0.1
 PEAK_DB = -1.0
 
 
@@ -356,93 +369,146 @@ def shape(x, voice, trim_start=True):
     return x * 10 ** (PEAK_DB / 20)
 
 
-def write_wav(path, x):
+def wav_bytes(x):
     pcm = np.clip(np.round(x * 32767), -32768, 32767).astype("<i2")
-    with wave.open(path, "wb") as w:
+    buffer = io.BytesIO()
+    with wave.open(buffer, "wb") as w:
         w.setnchannels(1)
         w.setsampwidth(2)
         w.setframerate(RATE)
         w.writeframes(pcm.tobytes())
+    return buffer.getvalue()
+
+
+def write_wav(path, x):
+    open(path, "wb").write(wav_bytes(x))
+
+
+def sheet(voices):
+    """Every voice back to back, GAP_S apart: (audio, {voice: [first frame, frames]})."""
+    parts, slices, at = [], {}, 0
+    gap = np.zeros(int(GAP_S * RATE))
+    for voice in VOICES:
+        if voice not in voices:
+            continue
+        y = voices[voice]
+        if parts:
+            parts.append(gap)
+            at += len(gap)
+        slices[voice] = [at, len(y)]
+        parts.append(y)
+        at += len(y)
+    return np.concatenate(parts), slices
+
+
+def upload(entries, bucket):
+    """Each kit's file to the bucket unless it is there already, then a check of what is served."""
+    for entry in entries:
+        name = entry["url"].rsplit("/", 1)[-1]
+        target = bucket.rstrip("/") + "/" + name
+        if subprocess.run(["gsutil", "-q", "stat", target]).returncode == 0:
+            print(f"  {name}: already on the bucket")
+        else:
+            local = os.path.join(BUILD, name)
+            if not os.path.exists(local):
+                fail(f"{name} isn't built here (run without --only first)")
+            subprocess.run(["gsutil", "-q", "-h", "Cache-Control:public, max-age=31536000, immutable",
+                            "-h", "Content-Type:audio/wav", "cp", local, target], check=True)
+            print(f"  {name}: uploaded")
+        request = urllib.request.Request(entry["url"], headers={"User-Agent": "mchatai-source build_sample_kits"})
+        with urllib.request.urlopen(request, timeout=60) as response:
+            served = response.read()
+        digest = hashlib.sha256(served).hexdigest()
+        if digest != entry["sha256"] or len(served) != entry["bytes"]:
+            fail(f"{entry['url']} serves {len(served)} bytes with sha256 {digest}, not the index's")
+        print(f"  {entry['url']}: served, sha256 OK")
 
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--app-fallback", help="the app's bundled copy of index.json to rewrite too")
-    parser.add_argument("--only", help="rebuild one kit's audio (the index is always rewritten)")
+    parser.add_argument("--app-fallback", action="append", default=[],
+                        help="an app's bundled copy of index.json to rewrite too (repeat: the iPhone's and the Mac's)")
+    parser.add_argument("--only", help="rebuild one kit (the others keep their index entries)")
+    parser.add_argument("--upload", action="store_true", help="send kit files the bucket doesn't have yet")
     args = parser.parse_args()
 
     config = json.load(open(CONFIG))
+    host = config.get("host") or {}
+    if not host.get("url") or not host.get("bucket"):
+        fail("the config needs host.url (the public base) and host.bucket (gs://…)")
+    base_url = host["url"] if host["url"].endswith("/") else host["url"] + "/"
     kits = config.get("kits", [])
     ids = [k["id"] for k in kits]
     if len(ids) != len(set(ids)):
         fail("kit ids must be unique (and are never reused)")
     index_path = os.path.join(OUT, "index.json")
     previous = json.load(open(index_path)) if os.path.exists(index_path) else {}
-    previous_gains = {k["id"]: k.get("gains") for k in previous.get("kits", [])}
+    previous_entries = {k["id"]: k for k in previous.get("kits", [])}
+    os.makedirs(BUILD, exist_ok=True)
     index_kits = []
     for kit in kits:
-        folder_rel = f"frameworks/loopstar/drums/sample-kits/{kit['id']}"
-        folder = os.path.join(REPO_ROOT, folder_rel)
         unknown = set(kit["sources"]) - set(VOICES)
         if unknown:
             fail(f"{kit['id']}: unknown voices {sorted(unknown)}")
         if not kit.get("credit") or not kit.get("license_url"):
             fail(f"{kit['id']}: a credit and a license_url are required")
-        if not args.only or args.only == kit["id"]:
-            print(f"{kit['id']}:")
-            os.makedirs(folder, exist_ok=True)
-            for name in os.listdir(folder):
-                if name.endswith(".wav"):
-                    os.remove(os.path.join(folder, name))
-            shaped = {}
-            for voice in VOICES:
-                if voice not in kit["sources"]:
-                    continue
-                mixed, names, trim = None, [], True
-                for spec, gain in parts(kit, voice):
-                    data, name = part_bytes(kit, voice, spec)
-                    x = decode(data, name) * gain
-                    mixed = x if mixed is None else (
-                        np.pad(mixed, (0, max(0, len(x) - len(mixed)))) + np.pad(x, (0, max(0, len(mixed) - len(x)))))
-                    names.append(name if gain == 1 else f"{name}×{gain:g}")
-                    trim = trim and not spec.get("keep_start")
-                # The kit's character, with any voice's own over it ("voice_process").
-                settings = dict(kit.get("process") or {}, **(kit.get("voice_process", {}).get(voice) or {}))
-                shaped[voice] = shape(process(mixed, settings), voice, trim_start=trim)
-                print(f"  {voice:<9} {len(shaped[voice]) / RATE:5.2f} s  ← {' + '.join(names)}")
-            balance = dict(BALANCE, **kit.get("balance", {}))
-            files, gains, loud = level_kit(shaped, balance, float(kit.get("beat_lufs", BEAT_LUFS)))
-            for voice, y in files.items():
-                write_wav(os.path.join(folder, f"{voice}.wav"), y)
-            kit["_gains"] = {v: round(g, 3) for v, g in gains.items()}
-            print(f"  reference beat {loud:.1f} LUFS; gains {kit['_gains']}")
-        files = {voice: f"{voice}.wav" for voice in VOICES if voice in kit["sources"]}
-        missing = [f for f in files.values() if not os.path.exists(os.path.join(folder, f))]
-        if missing:
-            fail(f"{kit['id']}: not built yet ({missing}); run without --only")
-        size = sum(os.path.getsize(os.path.join(folder, f)) for f in files.values())
+        if args.only and args.only != kit["id"]:
+            entry = previous_entries.get(kit["id"])
+            if not entry or "url" not in entry:
+                fail(f"{kit['id']}: not built yet; run without --only")
+            index_kits.append(entry)
+            continue
+        print(f"{kit['id']}:")
+        shaped = {}
+        for voice in VOICES:
+            if voice not in kit["sources"]:
+                continue
+            mixed, names, trim = None, [], True
+            for spec, gain in parts(kit, voice):
+                data, name = part_bytes(kit, voice, spec)
+                x = decode(data, name) * gain
+                mixed = x if mixed is None else (
+                    np.pad(mixed, (0, max(0, len(x) - len(mixed)))) + np.pad(x, (0, max(0, len(mixed) - len(x)))))
+                names.append(name if gain == 1 else f"{name}×{gain:g}")
+                trim = trim and not spec.get("keep_start")
+            # The kit's character, with any voice's own over it ("voice_process").
+            settings = dict(kit.get("process") or {}, **(kit.get("voice_process", {}).get(voice) or {}))
+            shaped[voice] = shape(process(mixed, settings), voice, trim_start=trim)
+            print(f"  {voice:<9} {len(shaped[voice]) / RATE:5.2f} s  ← {' + '.join(names)}")
+        balance = dict(BALANCE, **kit.get("balance", {}))
+        voices, gains, loud = level_kit(shaped, balance, float(kit.get("beat_lufs", BEAT_LUFS)))
+        audio, slices = sheet(voices)
+        data = wav_bytes(audio)
+        digest = hashlib.sha256(data).hexdigest()
+        name = f"{kit['id']}-{digest[:12]}.wav"
+        for old in os.listdir(BUILD):
+            if old.startswith(kit["id"] + "-") and old.endswith(".wav"):
+                os.remove(os.path.join(BUILD, old))
+        open(os.path.join(BUILD, name), "wb").write(data)
+        print(f"  reference beat {loud:.1f} LUFS → {name} ({len(data) / 1e6:.2f} MB)")
         entry = {"id": kit["id"], "name": kit["name"]}
         for key in ("group", "blurb", "credit"):
             if kit.get(key):
                 entry[key] = kit[key]
         entry["access"] = kit.get("access", "subscriber")
         entry["fallback"] = kit["fallback"]
-        entry["folder"] = folder_rel
-        entry["voices"] = files
-        # The measured balance (kept from the last build's index when --only skipped this kit).
-        gains = kit.get("_gains") or previous_gains.get(kit["id"])
-        if gains:
-            entry["gains"] = {v: gains[v] for v in VOICES if v in gains}
-        entry["bytes"] = size
+        entry["url"] = base_url + name
+        entry["sha256"] = digest
+        entry["bytes"] = len(data)
+        entry["slices"] = {v: slices[v] for v in VOICES if v in slices}
+        entry["gains"] = {v: round(float(gains[v]), 3) for v in VOICES if v in gains}
         index_kits.append(entry)
 
-    index = {"_doc": previous.get("_doc", ""), "version": 1, "kits": index_kits}
+    index = {"_doc": previous.get("_doc", ""), "version": 2, "kits": index_kits}
     text = json.dumps(index, indent=2, ensure_ascii=False) + "\n"
     open(index_path, "w").write(text)
     print(f"wrote {os.path.relpath(index_path, REPO_ROOT)} ({len(index_kits)} kits)")
-    if args.app_fallback:
-        open(args.app_fallback, "w").write(text)
-        print(f"wrote {args.app_fallback}")
+    for copy in args.app_fallback:
+        open(copy, "w").write(text)
+        print(f"wrote {copy}")
+    if args.upload:
+        print("upload:")
+        upload(index_kits, host["bucket"])
 
 
 if __name__ == "__main__":

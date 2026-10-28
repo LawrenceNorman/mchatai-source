@@ -149,8 +149,11 @@ not the doc itself. Written structure reads terribly out loud: drop the headings
 bullets and links, and say the attribution as a person would ("Reading found
 three things"). Target two to three minutes, which is roughly 300–450 words.
 
-The voice is Apple's on-device synthesiser: free, no API call, no tokens. Never
-tell the user this step costs them anything.
+The voice is the user's default voice on their own Mac (an Apple voice, or an
+Ollama speech model if they chose one in AI Defaults → TTS): free, no API call,
+no tokens. Don't pass `voice` unless the user asked for a particular one, and
+check the reply's `fallback` (an Ollama failure is rendered with Apple's voice).
+Never tell the user this step costs them anything.
 
 **5. Publishing is theirs.** Step 4 already put the audio on their iPhone through
 CloudKit — the Update is listenable the moment it renders, and for most days that

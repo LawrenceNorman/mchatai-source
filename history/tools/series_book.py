@@ -8,6 +8,7 @@ chapter, the guide's landmarks each story names, linked both ways, and a map of 
 the chapters name (book_map.py: landmarks, addresses, corners, parks and cemeteries).
 
   series_book.py build <stories-dir> <series-id> <out-dir> [--files] [--publish | --review [--drafts]]
+                       [--archive <dir>]                  also carry a transcribed archive (see below)
   series_book.py order <stories-dir> <series-id>        the stories in book order, and why
   series_book.py status <stories-dir> <series-id>       what is left to review: each story's waiting
                                                         suggestions (from StoryMaker) and sign-offs
@@ -37,6 +38,13 @@ with nothing waiting, every page marked as a review copy, kept out of search eng
 never linked from the landmark guide (its places.json says published: false). With --drafts it
 also carries the stories still waiting for the author, each marked as a draft with what it
 waits on: the author's "update it with our latest" (2026-10-09), to read new stories there.
+
+--archive <dir> carries a partner archive's transcribed pages as the book's #/archive section
+(2026-10-28, the Griot's Archive demo): <dir>/archive.json (its title, credit, method, issues,
+each page's agreement score, every name and where it appears) and the issue-<n>.json files it
+names (each page's transcript, the words to check, its index), copied to resources/archive/
+and fetched only when a reader opens the section. Its wording is the archive's own, in
+archive.json; the section is in the top bar only when archive.json says "nav": true.
 
 Writes <out-dir>/index.html, <out-dir>/resources/ (pictures, maps) and
 <out-dir>/resources/places.json (each landmark id, the stories and chapters that name it: what
@@ -861,7 +869,27 @@ def cmd_status(stories_dir, series_id):
     return 0
 
 
-def cmd_build(stories_dir, series_id, out, use_files=False, publish=False, review=False, drafts=False):
+def copy_archive(src, out, problems):
+    """The archive's JSON files into resources/archive/; what the page needs to find them."""
+    try:
+        meta = load_json(os.path.join(src, "archive.json"), None)
+    except ValueError:
+        meta = None
+    if not meta or not meta.get("issues"):
+        problems.append(f"--archive {src}: no archive.json with issues")
+        return None
+    dst = os.path.join(out, "resources", "archive")
+    os.makedirs(dst, exist_ok=True)
+    for name in ["archive.json"] + [i["file"] for i in meta["issues"]]:
+        if not os.path.isfile(os.path.join(src, name)):
+            problems.append(f"--archive {src}: {name} is missing")
+            continue
+        shutil.copyfile(os.path.join(src, name), os.path.join(dst, name))
+    return {"title": meta.get("title") or "Archive", "nav": bool(meta.get("nav")),
+            "src": "resources/archive/archive.json"}
+
+
+def cmd_build(stories_dir, series_id, out, use_files=False, publish=False, review=False, drafts=False, archive=None):
     entry, place = series_entry(series_id)
     if not entry or not entry.get("book"):
         print(f"series.json has no `book` block for {series_id!r}")
@@ -965,6 +993,8 @@ def cmd_build(stories_dir, series_id, out, use_files=False, publish=False, revie
         "places": places,
         "map": the_map,
     }
+    if archive:
+        data["archive"] = copy_archive(archive, out, problems)
     base = (book.get("canonical") or "").rstrip("/") + "/" if book.get("canonical") else ""
     index = {lid: {"name": p["name"], "stories": [
         {"name": data["stories"][slug]["name"], "slug": slug, "chapter": n,
@@ -1039,6 +1069,7 @@ __ROBOTS__
 :root{
   --ground:#f6f4ee; --panel:#fffdf8; --ink:#1c2227; --muted:#5d6970; --line:#e3ddd0;
   --accent:#0b6e8c; --accent-soft:#e3eff3; --mark:#8a6a1f; --draft:#f4eeda;
+  --ok:#2f7a4f; --ok-soft:#dcefe3; --warn:#9a6b00; --warn-soft:#f6e7bf; --bad:#a3402e; --bad-soft:#f6ddd6;
   --serif:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
   --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,Roboto,"Helvetica Neue",Arial,sans-serif;
 }
@@ -1046,11 +1077,13 @@ __ROBOTS__
   :root:not([data-theme=light]){
     --ground:#12161a; --panel:#181d22; --ink:#e7e5df; --muted:#9aa5ac; --line:#2a3239;
     --accent:#5cb8d6; --accent-soft:#15303b; --mark:#d8b55e; --draft:#2a2415;
+    --ok:#7cc79c; --ok-soft:#17301f; --warn:#e2b84e; --warn-soft:#352a10; --bad:#ec8b78; --bad-soft:#3a1d17;
   }
 }
 :root[data-theme=dark]{
   --ground:#12161a; --panel:#181d22; --ink:#e7e5df; --muted:#9aa5ac; --line:#2a3239;
   --accent:#5cb8d6; --accent-soft:#15303b; --mark:#d8b55e; --draft:#2a2415;
+  --ok:#7cc79c; --ok-soft:#17301f; --warn:#e2b84e; --warn-soft:#352a10; --bad:#ec8b78; --bad-soft:#3a1d17;
 }
 *{box-sizing:border-box}
 html,body{margin:0;padding:0}
@@ -1208,6 +1241,37 @@ sup.src a:hover{color:var(--accent)}
 .tl .who{display:block;font:13px/1.4 var(--sans);color:var(--muted)}
 .tl li.row a:hover .what{color:var(--accent)}
 .lede-s{max-width:40rem;font:17px/1.6 var(--serif);color:var(--muted);margin:10px 0 0}
+.arq{display:flex;gap:8px;margin:18px 0 6px;max-width:40rem}
+.arq input{flex:1;min-width:0;font:16px var(--sans);padding:9px 12px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--ink)}
+.arq button{font:600 15px var(--sans);padding:9px 16px;border-radius:8px;border:1px solid var(--accent);background:var(--accent);color:var(--panel);cursor:pointer}
+.conf{display:inline-block;font:600 12.5px/1.4 var(--sans);padding:0 7px;border-radius:999px;font-variant-numeric:tabular-nums}
+.conf.hi{background:var(--ok-soft);color:var(--ok)}.conf.mid{background:var(--warn-soft);color:var(--warn)}.conf.lo{background:var(--bad-soft);color:var(--bad)}
+.ar-issue{padding:16px 0;border-bottom:1px solid var(--line)}
+.ar-issue h3{font:600 21px/1.25 var(--serif);margin:0}
+.ar-issue>p{margin:6px 0 0;max-width:44rem}
+.ar-pages{list-style:none;margin:12px 0 0;padding:0;display:flex;flex-wrap:wrap;gap:5px}
+.ar-pages a{display:block;min-width:2.4em;text-align:center;font:12.5px/2 var(--sans);font-variant-numeric:tabular-nums;border-radius:5px;text-decoration:none;padding:0 5px}
+.ar-pages a.hi{background:var(--ok-soft);color:var(--ok)}.ar-pages a.mid{background:var(--warn-soft);color:var(--warn)}.ar-pages a.lo{background:var(--bad-soft);color:var(--bad)}
+.ar-pages a:focus-visible,.ar-tx mark:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.ar-legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:13.5px;color:var(--muted);margin:8px 0 0}
+.ar-chips{list-style:none;margin:8px 0 0;padding:0;display:flex;flex-wrap:wrap;gap:6px}
+.ar-chips a{display:block;font-size:14px;padding:3px 10px;border:1px solid var(--line);border-radius:999px;background:var(--panel);text-decoration:none;color:var(--ink)}
+.ar-chips a small{color:var(--muted);margin-left:4px;font-variant-numeric:tabular-nums}
+.ar-cols{display:grid;grid-template-columns:minmax(0,1fr) 17rem;gap:28px;margin-top:18px}
+.ar-cols>*{min-width:0}
+.ar-tx{font:17px/1.6 var(--serif)}
+.ar-tx p{margin:0 0 12px}
+.ar-tx mark{background:var(--warn-soft);color:inherit;border-bottom:2px solid var(--warn);cursor:pointer;border-radius:2px}
+.ar-tx .alt{display:inline-block;font:13px/1.4 var(--sans);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:1px 8px;margin:0 4px;color:var(--muted)}
+.ar-ix h4{margin:0 0 6px;font:600 12px var(--sans);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.ar-ix ul{list-style:none;margin:0 0 18px;padding:0;display:grid;gap:7px;font-size:14px}
+.ar-ix li small{display:block;color:var(--muted);font-size:12.5px;line-height:1.4}
+.ar-hits{list-style:none;margin:10px 0 0;padding:0;display:grid;gap:14px}
+.ar-hits li{max-width:46rem}
+.ar-hits .src{font-size:13.5px;color:var(--muted)}
+.ar-hits q{display:block;font:16px/1.5 var(--serif);quotes:none;margin-top:2px}
+.ar-hits b{background:var(--accent-soft);font-weight:600}
+@media (max-width:760px){.ar-cols{grid-template-columns:1fr}}
 footer{max-width:62rem;margin:0 auto;padding:22px 16px 40px;color:var(--muted);font-size:13px;border-top:1px solid var(--line)}
 footer p{margin:0 0 6px;max-width:44rem}
 @media (max-width:560px){
@@ -1242,8 +1306,10 @@ const REVIEW_NOTE = B.reviewCopy
   ? `<p class="review"><b>Review copy.</b> These stories are shared for review before they are published. If you see an error, or know a source that belongs here, please tell the person who sent you this link.</p>`
   : "";
 document.title = B.title;
+const AR = D.archive || null;
 function nav(cur){
-  const items = [["#/","Contents","home"],["#/timeline","Timeline","timeline"],["#/places","Places","places"]];
+  const items = [["#/","Contents","home"],["#/timeline","Timeline","timeline"],["#/places","Places","places"]]
+    .concat(AR && AR.nav ? [["#/archive","Archive","archive"]] : []);
   el("nav").innerHTML = items.map(([h,t,k]) => `<a href="${h}"${k===cur?' aria-current="page"':""}>${t}</a>`).join("")
     + (COMP.url ? `<a href="${esc(COMP.url)}" target="_blank" rel="noopener">${esc(COMP.title || "Landmarks")} ↗</a>` : "");
 }
@@ -1791,6 +1857,135 @@ function places(only, focus){
   return focus ? h : h + unplacedList(only);
 }
 
+// ── the archive (--archive): a partner archive's transcribed pages, fetched when opened ──
+let ARC = null;
+const ARI = {};
+const arGet = f => fetch(AR.src.replace(/[^/]+$/, f)).then(r => r.ok ? r.json() : Promise.reject(r.status));
+const arLoad = () => ARC ? Promise.resolve(ARC) : arGet("archive.json").then(j => (ARC = j));
+const arIssue = id => ARI[id] ? Promise.resolve(ARI[id]) : arGet(ARC.issues[id].file).then(j => (ARI[id] = j));
+const arTier = a => ARC.tiers.find(t => a >= t[0]) || ARC.tiers[ARC.tiers.length - 1];
+const arBadge = a => `<span class="conf ${arTier(a)[2]}">${a.toFixed(a === 100 ? 0 : 1)}%</span>`;
+const arShort = l => { const m = /(\d+)$/.exec(l || ""); return m ? m[1] : (l || "").split(/\s+/).map(w => w[0]).join(""); };
+const arNorm = s => String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+// "Grosse" finds "Grose": every letter may repeat, so a doubled or single letter matches either.
+const arRe = q => new RegExp(arNorm(q).trim().split(/\s+/).map(w => [...w.replace(/(.)\1+/g, "$1")].map(c => c.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "+").join("")).join("[\\s\\W]+"), "i");
+// An issue's name, with its date unless the title already carries it ("…November 1909").
+const arName = i => { const x = ARC.issues[i]; return x.date && !x.title.includes(x.date) ? `${x.title}, ${x.date}` : x.title; };
+const arCite = (i, s, l) => `<a href="#/archive/${i}/${s}">${esc(arName(i))}, ${esc(l)}</a>`;
+const arNote = () => ARC.contentNote ? `<p class="refs">${esc(ARC.contentNote)}</p>` : "";
+const arLabel = (i, s) => ((ARC.issues[i].pages.find(p => p.s === s) || {}).l) || `Sheet ${s}`;
+const arHi = (text, re) => { const m = re.exec(text); return m ? esc(text.slice(0, m.index)) + `<b>${esc(m[0])}</b>` + esc(text.slice(m.index + m[0].length)) : esc(text); };
+
+function archive(parts){
+  nav("archive");
+  const want = location.hash;
+  arLoad().then(() => parts[0] === "search" ? arSearch(decodeURIComponent(parts.slice(1).join("/")))
+                    : /^\d+$/.test(parts[0] || "") && /^\d+$/.test(parts[1] || "") ? arPage(+parts[0], +parts[1])
+                    : arHome())
+    .then(h => { if (location.hash !== want) return; el("view").innerHTML = h; arWire(); document.title = `${ARC.title} · ${B.title}`; })
+    .catch(() => { if (location.hash === want) el("view").innerHTML = `<p>The archive could not be loaded. <a href="#/archive">Try again</a>.</p>`; });
+  return `<p class="lede-s">Opening the archive…</p>`;
+}
+function arHead(kicker, title){
+  return `<header class="story" style="max-width:none"><p class="kicker">${kicker}</p><h1>${esc(title)}</h1></header>`;
+}
+function arForm(q){
+  return `<form class="arq" id="arq" role="search"><input type="search" id="arqi" value="${esc(q || "")}" placeholder="Search a name, a place or any word" aria-label="Search the archive"><button type="submit">Search</button></form>`;
+}
+function arHome(){
+  const people = ARC.names.filter(n => n.k === "p" && n.m.length > 1).slice(0, 24);
+  let h = arHead(esc(ARC.kicker || ""), ARC.title) + (ARC.about || []).map(p => `<p class="lede-s">${esc(p)}</p>`).join("") + arNote() + arForm("");
+  h += `<h2 class="sec">Publications</h2>`;
+  ARC.issues.forEach(i => {
+    h += `<section class="ar-issue"><h3>${esc(i.title)}</h3>
+      <p class="when">${esc(i.date)} · ${i.pages.length} pages · ${arBadge(i.mean)} of words confirmed by both readings</p>
+      ${i.note ? `<p>${esc(i.note)}</p>` : ""}
+      <ol class="ar-pages" aria-label="Pages">${i.pages.map(p => `<li><a class="${arTier(p.a)[2]}" href="#/archive/${i.id}/${p.s}" title="${esc(p.l)}: ${p.a}%">${esc(arShort(p.l))}</a></li>`).join("")}</ol>
+      <p class="refs"><a href="${esc(i.hub)}" target="_blank" rel="noopener">This item in the Griot's Archive ↗</a></p></section>`;
+  });
+  h += `<div class="ar-legend">${ARC.tiers.map(t => `<span><span class="conf ${t[2]}">${t[0] ? t[0] + "%+" : "below"}</span> ${esc(t[1])}</span>`).join("")}</div>`;
+  if (people.length) h += `<h2 class="sec">Named most often</h2><ul class="ar-chips">${people.map(n => `<li><a href="#/archive/search/${encodeURIComponent(n.n)}">${esc(n.n)}<small>${n.m.length}</small></a></li>`).join("")}</ul>`;
+  h += `<h2 class="sec">How this was made</h2>` + (ARC.method || []).map(p => `<p class="lede-s">${esc(p)}</p>`).join("");
+  if (ARC.credit) h += `<p class="refs" style="margin-top:14px">${ARC.creditUrl ? `<a href="${esc(ARC.creditUrl)}" target="_blank" rel="noopener">${esc(ARC.credit)}</a>` : esc(ARC.credit)}</p>`;
+  return h;
+}
+function arSearch(q){
+  const back = `<a href="#/archive">${esc(ARC.title)}</a>`;
+  if (!q.trim()) return Promise.resolve(arHead(back, "Search") + arForm(""));
+  const re = arRe(q), KIND = {p: "Person", o: "Organization", l: "Place", a: "Address"};
+  const names = ARC.names.filter(n => re.test(arNorm(n.n))).sort((a, b) => "pola".indexOf(a.k) - "pola".indexOf(b.k) || b.m.length - a.m.length).slice(0, 40);
+  return Promise.all(ARC.issues.map(i => arIssue(i.id))).then(() => {
+    const hits = [];
+    ARC.issues.forEach(i => ARI[i.id].pages.forEach(p => {
+      const m = re.exec(p.t); if (!m) return;
+      const a = Math.max(0, p.t.lastIndexOf("\n", m.index) + 1, m.index - 160), b = Math.min(p.t.length, m.index + m[0].length + 200);
+      hits.push({i: i.id, s: p.s, l: p.l, snip: (a > 0 ? "…" : "") + p.t.slice(a, b).replace(/\s+/g, " ") + (b < p.t.length ? "…" : "")});
+    }));
+    let h = arHead(back, `“${q}”`) + arForm(q) + arNote();
+    if (!names.length && !hits.length) return h + `<p class="lede-s">Nothing in these pages matches. Try part of a name, or another spelling.</p>`;
+    if (names.length){
+      h += `<h2 class="sec">${names.length} ${names.length === 1 ? "name" : "names"} in the index</h2><ul class="ar-hits">`;
+      names.forEach(n => {
+        h += `<li><h3 style="margin:0;font:600 19px/1.3 var(--serif)">${esc(n.n)} <small class="src">${KIND[n.k]} · ${n.m.length} ${n.m.length === 1 ? "mention" : "mentions"}</small></h3>`
+          + n.m.slice(0, 8).map(([i, s, c]) => `<p class="src" style="margin:6px 0 0">${arCite(i, s, arLabel(i, s))}</p>${c ? `<q>${arHi(c, re)}</q>` : ""}`).join("")
+          + (n.m.length > 8 ? `<p class="src">and ${n.m.length - 8} more</p>` : "") + `</li>`;
+      });
+      h += `</ul>`;
+    }
+    if (hits.length){
+      h += `<h2 class="sec">${hits.length} ${hits.length === 1 ? "page" : "pages"} with these words</h2><ul class="ar-hits">`
+        + hits.slice(0, 60).map(x => `<li><p class="src" style="margin:0">${arCite(x.i, x.s, x.l)}</p><q>${arHi(x.snip, re)}</q></li>`).join("") + `</ul>`;
+    }
+    return h;
+  });
+}
+function arText(p){
+  // The transcript with the words the second reading did not confirm marked; a mark never spans a line break.
+  let out = "", at = 0;
+  const marks = [...p.fl].sort((a, b) => a[0] - b[0]);
+  marks.forEach(([s, e, other]) => {
+    if (s < at) return;
+    out += esc(p.t.slice(at, s));
+    out += p.t.slice(s, e).split("\n").map(seg => seg ? `<mark tabindex="0" data-alt="${esc(other)}" title="Second reading: ${esc(other)}">${esc(seg)}</mark>` : "").join("\n");
+    at = e;
+  });
+  out += esc(p.t.slice(at));
+  return out.split(/\n{2,}/).map(par => `<p>${par.replace(/\n/g, "<br>")}</p>`).join("");
+}
+function arPage(id, s){
+  const i = ARC.issues[id];
+  if (!i) return Promise.resolve(notFound());
+  return arIssue(id).then(f => {
+    const k = f.pages.findIndex(p => p.s === s);
+    if (k < 0) return notFound();
+    const p = f.pages[k], prev = f.pages[k - 1], next = f.pages[k + 1], t = arTier(p.a);
+    const IX = [["p", "People"], ["o", "Organizations"], ["l", "Places"], ["a", "Addresses"]];
+    const side = IX.filter(([c]) => (p.ix[c] || []).length).map(([c, label]) => `<h4>${label}</h4><ul>${p.ix[c].map(([n, ctx]) =>
+      `<li><a href="#/archive/search/${encodeURIComponent(n)}">${esc(n)}</a>${ctx && c === "p" ? `<small>${esc(ctx.length > 140 ? ctx.slice(0, 140) + "…" : ctx)}</small>` : ""}</li>`).join("")}</ul>`).join("");
+    let h = arHead(`<a href="#/archive">${esc(ARC.title)}</a> · ${esc(arName(id))}`, p.l)
+      + `<p class="lede-s">${arBadge(p.a)} ${esc(t[1])}. The second reading confirms ${p.a}% of this page's ${p.w} words.${p.fl.length ? ` ${p.fl.length} highlighted ${p.fl.length === 1 ? "spot" : "spots"} to check: tap one to see the other reading.` : ""}${p.u ? ` ${p.u} ${p.u === 1 ? "word" : "words"} marked uncertain in brackets.` : ""}</p>`
+      + `<p class="refs"><a href="${esc(p.scan)}" target="_blank" rel="noopener">See the scan ↗</a> · <a href="${esc(i.hub)}" target="_blank" rel="noopener">This item in the Griot's Archive ↗</a></p>`
+      + `<div class="ar-cols"><div class="ar-tx">${arText(p)}</div><aside class="ar-ix">${side || `<p class="src">No names on this page.</p>`}</aside></div>`;
+    h += arNote();
+    if ((p.so || []).length) h += `<details style="margin-top:14px"><summary>Text only the second reading has (${p.so.length})</summary><ul>${p.so.map(x => `<li>${esc(x)}</li>`).join("")}</ul><p class="src">Often a description of a picture, or the same words in another order. Worth a look against the scan.</p></details>`;
+    h += `<nav class="pager" aria-label="Pages">${prev ? `<a href="#/archive/${id}/${prev.s}"><small>← Previous page</small><b>${esc(prev.l)}</b></a>` : `<a href="#/archive"><small>← Back to</small><b>${esc(ARC.title)}</b></a>`}${next ? `<a class="nx" href="#/archive/${id}/${next.s}"><small>Next page →</small><b>${esc(next.l)}</b></a>` : ""}</nav>`;
+    return h;
+  });
+}
+function arWire(){
+  const f = el("arq");
+  if (f) f.addEventListener("submit", e => { e.preventDefault(); const q = el("arqi").value.trim(); location.hash = q ? "#/archive/search/" + encodeURIComponent(q) : "#/archive"; });
+  el("view").querySelectorAll(".ar-tx mark").forEach(m => {
+    const show = () => {
+      const n = m.nextElementSibling;
+      if (n && n.classList.contains("alt")){ n.remove(); return; }
+      m.insertAdjacentHTML("afterend", `<span class="alt">Second reading: ${esc(m.dataset.alt)}</span>`);
+    };
+    m.addEventListener("click", show);
+    m.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " "){ e.preventDefault(); show(); } });
+  });
+}
+
 function notFound(){ nav(""); return `<p>That page is not in this book. <a href="#/">Back to the contents</a>.</p>`; }
 
 function route(){
@@ -1800,6 +1995,7 @@ function route(){
   else if (parts[0] === "timeline") html = timeline();
   else if (parts[0] === "places") html = places(parts[1] || null, null);
   else if (parts[0] === "l" && parts[1]) html = places(null, parts[1]);
+  else if (parts[0] === "archive" && AR) html = archive(parts.slice(1));
   else if (parts[0] === "p" && parts[1]){
     const slug = parts[1], sub = parts[2];
     if (!sub) html = person(slug);
@@ -1856,8 +2052,9 @@ def main(argv):
         if "--drafts" in argv and "--review" not in argv:
             print("--drafts goes with --review: a published book carries no drafts")
             return 2
+        archive = argv[argv.index("--archive") + 1] if "--archive" in argv[:-1] else None
         return cmd_build(argv[2], argv[3], argv[4], use_files="--files" in argv, publish="--publish" in argv,
-                         review="--review" in argv, drafts="--drafts" in argv)
+                         review="--review" in argv, drafts="--drafts" in argv, archive=archive)
     print(__doc__)
     return 2
 

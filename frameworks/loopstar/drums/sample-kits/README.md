@@ -1,10 +1,13 @@
 # LoopStar recorded drum kits
 
 The iPhone LoopStar offers these kits to subscribers (Creator, Pro, Admin), next to its synth kits.
-The app reads `index.json`, fetches a kit's WAV files from this folder the first time it is picked,
-and keeps them on the device. Don't edit the WAVs or `index.json` by hand: change
-`../sample-kits.config.json` and run `python3 frameworks/loopstar/drums/tools/build_sample_kits.py
---app-fallback <the app's loopstar_sample_kits_fallback.json>`.
+Each kit is ONE file on our download bucket, `https://storage.googleapis.com/mchatai-downloads/loopstar/kits/`
+(where the Mac's instruments and pack audio live): every hit back to back, 0.1 s apart, so playing the
+file auditions the kit. `index.json` here lists each kit's URL, sha256 and where each hit sits; the app
+fetches a kit the first time it is picked, keeps it only if the sha256 matches, and keeps it on the
+device. No audio goes into git (`frameworks/loopstar/**/*.wav` is ignored on purpose). To change a kit,
+edit `../sample-kits.config.json` and run
+`python3 frameworks/loopstar/drums/tools/build_sample_kits.py --upload --app-fallback <the app's loopstar_sample_kits_fallback.json>`.
 
 ## Sources and licences
 
