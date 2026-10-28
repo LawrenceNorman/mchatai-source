@@ -83,6 +83,14 @@ chapter you wrote that nobody has touched; every other change is a `storymaker.p
 they accept or reject. A decision only the author can make (which episode, a rule, a licence
 question, a picture) is an open loop (`assistant.openLoop`), not a line buried in a report.
 
+**A war told as a book** (a campaign: `history/domains/pivotal-history/campaign.md`). When the
+author asks for a whole war as one book, each campaign season is a story and the campaign's file
+(`history/domains/pivotal-history/campaigns/<id>.json`) lists them. The scout covers every season
+he has not already got, in one scout job, and its report is the book's outline. Show him the
+outline and the proposed question for the whole book, open a loop for his approval, and **stop**.
+After he approves, the seasons move as above, one at a time in episode order, since each plan reads
+the seasons before it. Caesar in Gaul (`caesar-in-gaul`, asked for 2026-10-28) is the first.
+
 ## When the author asks what's going on
 
 Answer from the files. Run `python3 history/tools/stories_status.py stories`: each story's stage,

@@ -5,6 +5,19 @@ new story is told in voice v2: its `project.json` says `"domain": "pivotal-histo
 `"voice": 2` (the author accepted v2 on Alesia's second telling, 2026-10-20). The second line is
 what turns on §2a, §10–§13 below; without it the gates hold the story to the first voice.
 
+A story whose `project.json` names a `campaign` is one season of a war told as a book. Read
+`campaign.md` and the campaign's file (`campaigns/<id>.json`) before your job's own steps: they
+change the scout's aliases and cast, what the plan reads first, and what the report holds.
+
+## scout
+
+For a campaign (`campaign.md` §2 and §4): every season in the campaign file without a `story` is a
+candidate, already chosen by the author, so the report recommends none. Each season's folder is the
+file's `slug`, and its `project.json` carries `campaign` and `episode`. Up to four seasons at once,
+one subagent each, as `jobs/scout.md` says; then the edge re-check, one fresh reader per season; then
+the cast alignment of `campaign.md` §2, one reader over every dossier. The report is the book's
+outline (`campaign.md` §4), written with `aiwrite.createDoc`.
+
 ## plan
 
 Read `storytelling.md` (the five moves) with the voice, before you plan.
