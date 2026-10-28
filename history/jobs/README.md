@@ -87,8 +87,11 @@ account, so say those in dollars.
 | chapters | the same (five chapters, an afterword and the introduction) | 58M, 52M of them on the strongest model | $46.28 |
 | finish | the same | 23.8M | $9.90 |
 | scout | the first Black Seattle scout, ten candidates, before its rules (2026-10-02) | about 100M | (not measured) |
+| scout | Caesar in Gaul, eight campaign seasons, 2026-10-28 (dossiers and re-checks; one job hung on an app restart, and a second finished the last four re-checks, the cast alignment and the outline) | about 83M: 69M and 13.8M, from the session logs | (not reported) |
 | podcast | a few verb calls | small | the voice: about $0.13 for a 5-minute episode (OpenAI tts-1-hd, $30 per million characters) |
 | video | a few dozen tool calls and one model pass over the episode's lines | not yet measured | the voice again, as for the podcast |
+| promo | Alesia episode 1, 2026-10-22 (two cards, a 32-second clip, four posts, four rows queued), 4 minutes | not reported (listJobs gives dollars only) | $1.31 |
+| promo | Alesia episodes 2–6 in one job, 2026-10-22 (the same for each), 14 minutes | not reported | $5.32, about $1.06 an episode |
 
 A chapter's cost follows the number of chapters, not their length: each chapter's writer and
 auditor came to about 7M tokens whether it ran 300 words or 900 (PLAYBOOK, Cost).

@@ -321,10 +321,14 @@ def existing_rows(shim, queue, prefix):
         res = r.get("result") or {}
         if failed(r):
             raise RuntimeError(f"the queue could not be read: {failed(r)}")
-        rows += res.get("rows") or []
-        if not res.get("nextOffset"):
+        page = res.get("rows") or []
+        rows += page
+        # With `match`, the ledger still answers a nextOffset after the last matching row, and the
+        # same one again for an empty page: stop on an empty page or an offset that does not move.
+        nxt = res.get("nextOffset")
+        if not page or not nxt or nxt <= offset:
             return {str(x.get("ID") or ""): x for x in rows}
-        offset = res["nextOffset"]
+        offset = nxt
 
 
 def cmd_queue(project, n, dry_run=False):
