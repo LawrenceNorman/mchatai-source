@@ -1,5 +1,5 @@
 {
-  "$schema_comment": "Phase RX — server-side allowlist for /proxy/fetch. The Cloud Function fetches this file from this git repo at boot + on a 5-minute TTL refresh. Adding a new API = git PR here, no Cloud Function redeploy. Each entry: hostname (no scheme), optional pathPrefix (must startsWith), notes (free-form, served back to debugging clients).",
+  "$schema_comment": "Phase RX — server-side allowlist for /proxy/fetch. The Cloud Function fetches this file from this git repo at boot + on a 5-minute TTL refresh. Adding a new API = git PR here, no Cloud Function redeploy. Each entry: hostname (no scheme), optional pathPrefix (must startsWith), optional methods (default [\"GET\"]; add \"POST\" to relay form-encoded or JSON bodies up to 64 KB), optional cache (default true; false answers no-store, for per-user APIs), notes (free-form, served back to debugging clients).",
   "$schema_version": 1,
   "hosts": [
     {
@@ -80,6 +80,13 @@
       "hostname": "upload.wikimedia.org",
       "pathPrefix": "/wikipedia/",
       "notes": "Wikimedia image binaries. The en.wikipedia.org action API returns thumbnail URLs on this host, so an app that fetches a Wikipedia photo needs BOTH entries — the API call to look the photo up, and this one to download the bytes."
+    },
+    {
+      "hostname": "dev.sirqul.com",
+      "pathPrefix": "/api/",
+      "methods": ["GET", "POST"],
+      "cache": false,
+      "notes": "Sirqul developer API (sandbox). Every call needs the app's Application-Key and Application-Rest-Key; send them as POST form fields so they never appear in a URL. Writes (scores, accounts, wallet) are POST-only on Sirqul's side."
     }
   ]
 }
