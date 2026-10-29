@@ -61,6 +61,10 @@ path), and open a loop for what only he decides.
   in the FOREGROUND (`run_in_background: false`), several at once in one message where the page
   says so, and never end your turn while one runs: an idle session is closed, and it is not woken
   when its background subagents finish.
+- Run a tool in the foreground and read its output. Never wait for one with `pgrep -f "<its
+  command>"`: the pattern matches the waiting shell's own command line, so the loop never ends.
+  Caesar in Gaul, 2026-10-29: two finishes hung that way, on `cite.py land` and `editor.py verify`.
+  If you must wait, wait on its PID (`$!`) or on a file it writes when done.
 - Ask each subagent for a report of a few lines. The files hold the rest.
 - Never publish anything, accept StoryMaker suggestions, approve an illustration (`images.py
   illustrate`, `images.py approve`), set `portraitNone`, change `voice.md` or a domain's rules, or
