@@ -46,6 +46,11 @@ Every rule of `scout.md` holds. What changes:
 - **The outcome** is the season's own (`scout.md` §2.2). Its `phrases` never include a word every
   season shares.
 
+- **One world for the whole war.** The seasons share one world pool, `stories/_world/<campaign
+  id>/` (`history/jobs/world.md`), named in each season's `project.json` as `"world"`. A fact one
+  season tells, no other season tells again (`context_repeat`): who the Gauls were belongs to the
+  season that first needs it.
+
 ## 3. Planning and writing a season
 
 - **Read the earlier seasons first.** The plan reads `plan.json` of every earlier season that has

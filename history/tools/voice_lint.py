@@ -232,6 +232,8 @@ def chapter_findings(project, n):
     if not book_scope and n_words and era_words / n_words > t["eraShareMax"]:
         out.append(finding("era_share", "hard",
                            f"era context is {100 * era_words / n_words:.0f}% of the chapter (cap {100 * t['eraShareMax']:.0f}%) — the person is the subject"))
+    import world
+    out += world.chapter_findings(project, n, claims, t)
 
     # §10 — the ceiling the plan computed, and the relative floor.
     pc = project.plan_chapter(n) or {}

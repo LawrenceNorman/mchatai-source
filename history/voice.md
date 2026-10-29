@@ -164,6 +164,28 @@ with that week: period context lets the reader stand in the year. It is welcome 
 (every era sentence is a claim of kind `era`), and it serves the person by appearing where the
 person meets it. At most 30% of a chapter. [era_share]
 
+**The world around the story.** The author, 2026-10-28: *"bringing up relevant time-capsule items
+would help bring the reader back to that period, be accurate (and verifyable) … we don't want to over
+do this or become overly repeatitive about it over the course of the book) just drop a few factual
+nuggets here and there"*, and *"a few sentences or a paragraph here and there every page or two or
+three might help pull the reader into the time."* When a story's `project.json` names a `world`
+pool (`tools/world.py`, `jobs/world.md`), its plan gives each body chapter one to three of the
+pool's facts (thresholds `context`), each at the moment the chapter reaches it:
+
+- **Tied to the moment.** A newspaper editor's chapter gets why the city had so many papers; a
+  bridge gets how it was built; a wound gets what a surgeon could do about it. Never a fact the
+  moment does not call for. [context_unplaced]
+- **Plain and grounded.** A sentence or two, a short paragraph at most, in the chapter's own
+  plain words, with a figure a reader can hold. Then the story goes on. [context_long]
+- **Its own time.** Say when a fact holds if it is not the story's year ("a century later, Pliny
+  wrote …", "archaeologists found …"). A fact from another age, told as if it were this one, is
+  invented. The pool's `when` says which.
+- **Once a book.** Each fact is told once, and in a war told in seasons, once across them all.
+  [context_twice, context_repeat]
+- **Claims like any other.** Each is a claim of kind `era` with `"about": "<fact id>"` and a
+  verbatim quote from the fact's source, which `world.py adopt` copied into the story. It counts
+  toward the era cap. [context_missing]
+
 ## 10. Length is a ceiling the sources earn
 
 - The dossier sets the story's ceiling and the plan sets each chapter's. Write what the

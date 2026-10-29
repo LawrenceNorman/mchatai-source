@@ -18,7 +18,7 @@ some). Read that, not the tools' source.
 
 **Models.** The work that writes prose or judges facts runs in subagents pinned to the strongest
 model (`history/agents/`: `history-chapter-writer`, `history-auditor`, `history-editor`,
-`history-edge-rechecker`; design
+`history-edge-rechecker`, `history-world-gatherer`, `history-world-checker`; design
 D8). The thread running a story only plans from the dossier, hands out work, runs the gates and
 lands, so it may run on a lighter model, and so may `history-picture-placer`, which
 `images.py check` gates. A writer on the lighter model was measured on one chapter of Sam

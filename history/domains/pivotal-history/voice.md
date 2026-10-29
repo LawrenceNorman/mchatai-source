@@ -206,6 +206,26 @@ whom, each a claim of kind `era`. An episode needs orientation the chapter that 
 give, so the 30% cap is measured over the book's chapters, not each one (`eraShareScope: book`;
 `gate.py story`), and the introduction's orientation is not counted. [era_share]
 
+The world pool (history/voice.md §9) is how a reader is seated in the time. The author, on Caesar in
+Gaul, 2026-10-28: *"What are living conditions like? What is the average life span like. What
+happened if you got sick or injured. What kind of technology were you surrounded with and what
+impacts did it have? What cultural customs would we find different? Who were the Gauls? Were they
+proto-French? … The romans seemed to be incredible builders they made roads and used the wheel …
+explaining factually where they took things to another level might help us understand the advantages
+they had or even if they had tools that the gauls did not use?? … what differentiates them from us vs
+the gauls vs even earlier times."* So an episode's pool is weighted toward:
+
+- **What each side had that the other did not**, and where it came from: the edge's own technology
+  set against what came before it. This is where a world fact serves the episode's question.
+- **How it differs from us**: a day's food, a lifespan, a wound, light, distance, writing.
+- **Who a people were and what became of them**, plainly: their language, their name for
+  themselves, and the line (or the lack of one) to the people who live there now.
+
+Ancient writers who describe customs (Caesar's own Book VI, Strabo, Diodorus, Polybius on the
+Roman army, Celsus on medicine, Vitruvius on building) are sources like any other: say whose
+word it is, and when they wrote. A modern finding (an excavation, a skeleton study, an estimate of
+lifespan) is said as modern and attributed, never told as something the people of the time knew.
+
 ## 8. The ledger: forces, shown in action
 
 The story's ledger (`plan.json` `ledger`, fields from `story/schemas/campaign.json`) tracks what

@@ -543,6 +543,9 @@ def validate_plan(project, write):
                             **({"targetWords": target} if target else {}),
                             "computedAt": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds")}
         save_json(project.path("plan.json"), plan)
+    # voice.md §9: the world around the story, from the story's world pool, told once a book.
+    import world
+    out += world.plan_findings(project, chapters, t)
     # Every chapter costs a writer and an auditor, about 7M tokens whatever its length: the tier-B
     # stories planned five chapters of 280-560 words and cost as much as the book-length ones
     # (2026-10-05). A short chapter is better merged with its neighbour.

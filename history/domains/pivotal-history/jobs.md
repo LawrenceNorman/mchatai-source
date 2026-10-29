@@ -45,8 +45,15 @@ Read `storytelling.md` (the five moves) with the voice, before you plan.
    - At most one short immersive (L1) passage, noted `"l1"` in the chapter where the main account
      is densest.
    - An `endNote` when the story stops before the record does.
+   - **The world around it** (history/voice.md §9, this domain's voice §7), when `project.json`
+     names a `world` pool: each body chapter's `context`, one to three of the pool's facts
+     (`[{"fact": "w12", "at": "<the moment it belongs to>"}]`, about one a page or two or three,
+     thresholds `context`), each picked for a moment the chapter reaches. Prefer what this story's
+     edge and its sides make vivid; take each fact once (`world.py list stories/_world/<id> --stories
+     stories` shows what other seasons told). Then `python3 history/tools/world.py adopt
+     stories/_world/<id> stories/<slug> <ids…>`.
 3. `richness.py plan stories/<slug>` until it exits 0 with no `question_missing`, `turn_missing`,
-   `observations_count`, `observation_incomplete`, `cast_*` or `plan_unknown_cast` left.
+   `observations_count`, `observation_incomplete`, `cast_*`, `plan_unknown_cast` or `context_*` left.
 
 ## chapters
 
@@ -70,6 +77,10 @@ quoted only in clean spans; which is Wikipedia, facts only and never its sentenc
 > - §4: a figure only one side gives is attributed to that side by name, and two sources that
 >   disagree are both given, never averaged.
 > - §5: peoples by their own names.
+> - history/voice.md §9: tell each world fact plan.json gives your chapter in `context`, where its
+>   `at` says, in a sentence or two (a short paragraph at most), as claims of kind `era` with
+>   `"about": "<fact id>"` and the fact's quote. Say when it holds if it is not this year, and whose
+>   word it is. Then go on with the story.
 > Run `python3 history/tools/storytelling.py writer stories/<slug> <n>` to see which sentences are
 > your own, and `python3 history/tools/gate.py chapter stories/<slug> <n>` until it exits 0.
 
@@ -94,6 +105,26 @@ quoted only in clean spans; which is Wikipedia, facts only and never its sentenc
   entry in plan.intro.introduces. NO outcome: dossier.json `outcome` lists the events that resolve
   the episode and the phrases that would give it away, and `gate.py intro` fails an introduction
   that uses them. No immersive passage."
+
+## context
+
+The pass for a story written before its world pool existed (`history/jobs/world.md`, Telling the
+facts). The brief gives the story and the pool.
+
+1. Add `"world": "<id>"` to `project.json` if it lacks it. Pick each body chapter's `context` as the
+   plan step above says, reading each chapter's text to choose the moment (`at`), then `world.py
+   adopt` and `richness.py plan stories/<slug>` until no `context_*` is left.
+2. One `history-chapter-writer` per chapter (in the foreground, up to four at once), with the domain
+   line and this: "REVISE chapters/NN.json, do not rewrite it. Tell only the world facts plan.json
+   gives this chapter in `context`, each where its `at` says, in a sentence or two, as claims of kind
+   `era` with `about` set to the fact's id. Change nothing else, except a sentence you must bend to
+   let the fact in." Then its `history-auditor`, then `gate.py chapter` until it exits 0.
+3. If the story had landed: `cite.py book`, then `cite.py land` (it replaces each part the author has
+   not edited, and leaves his), then `gate.py story` until it exits 0. A part he edited is reported,
+   with the facts it would have told.
+
+**Report:** each chapter's facts (id and the sentence that tells it), the gates, what landed again
+and what was left for the author.
 
 ## finish
 

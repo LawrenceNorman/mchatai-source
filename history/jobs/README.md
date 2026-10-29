@@ -12,6 +12,7 @@ domain, and `history/domains/<domain>/jobs.md` has a section per kind it adds to
 | Job | Starts when | Hands over |
 |---|---|---|
 | [scout](scout.md) | the author names a period, a place or a kind of edge | candidates with dossiers, and the table he picks from |
+| [world](world.md) | a story (or a war's seasons) needs the time it happened in | a pool of sourced period facts the plan hands out |
 | [plan](plan.md) | he picked a story | plan.json, the StoryMaker project and its outline |
 | [chapters](chapters.md) | the plan is done | every chapter and the introduction, audited and gated |
 | [finish](finish.md) | the chapters are done | the pictures, the opening, the book in StoryMaker, the editor's letter |

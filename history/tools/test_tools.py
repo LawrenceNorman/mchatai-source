@@ -3879,6 +3879,93 @@ class Publishing(VoiceTwoCase):
         self.assertTrue(before <= after, "the story's words add to the rest")
 
 
+class WorldPool(FixtureCase):
+    """The world around the story (voice.md §9): a pool of sourced period facts, picked by the plan,
+    told once, checked at the chapter (the author, 2026-10-28)."""
+    QUOTE = "In that decade the city printed more newspapers than any town of its size in the West"
+
+    def setUp(self):
+        super().setUp()
+        import world
+        self.world = world
+        self.pool_dir = os.path.join(self.tmp, "_world", "demo")
+        os.makedirs(os.path.join(self.pool_dir, "sources"))
+        _hw.save_json(os.path.join(self.pool_dir, "project.json"), {"pool": True})
+        with open(os.path.join(self.pool_dir, "sources", "s1.txt"), "w", encoding="utf-8") as fh:
+            fh.write("A history of the press. " + self.QUOTE + ", and most of them were small.\n")
+        _hw.save_json(os.path.join(self.pool_dir, "sources", "index.json"), [
+            {"id": "s1", "url": "https://example.org/press", "title": "The press", "publisher": "Example",
+             "kind": "book", "license": "pd", "file": "sources/s1.txt"}])
+        _hw.save_json(os.path.join(self.pool_dir, "world.json"), {"id": "demo", "facts": [
+            {"id": "w1", "topic": "news and records", "what": "The city printed many newspapers.",
+             "when": "the 1890s", "source": "s1", "evidence": self.QUOTE, "fits": ["an editor's desk"]}]})
+        self.pool = _hw.Project(self.pool_dir)
+        meta = _hw.load_json(self.project.path("project.json"))
+        meta["world"] = "demo"
+        _hw.save_json(self.project.path("project.json"), meta)
+
+    def set_picks(self, picks_by_chapter):
+        plan = self.project.plan
+        for ch in plan["chapters"]:
+            ch["context"] = picks_by_chapter.get(ch["n"], [])
+        _hw.save_json(self.project.path("plan.json"), plan)
+
+    def plan_rules(self):
+        t = _hw.thresholds(self.project)
+        return self.rules(self.world.plan_findings(self.project, self.project.plan["chapters"], t))
+
+    def test_check_refuses_a_fact_its_quote_does_not_carry(self):
+        self.assertEqual(self.world.cmd_check(self.pool), 0)
+        data = _hw.load_json(self.pool.path("world.json"))
+        data["facts"].append({"id": "w2", "topic": "news and records", "what": "x", "when": "",
+                              "source": "s1", "evidence": "words that the source never printed anywhere at all"})
+        _hw.save_json(self.pool.path("world.json"), data)
+        self.assertEqual(self.world.cmd_check(self.pool), 1)
+
+    def test_adopt_copies_a_source_once_and_the_plan_accepts_the_pick(self):
+        self.set_picks({1: [{"fact": "w1", "at": "the editor's desk"}]})
+        self.assertIn("context_not_adopted", self.plan_rules())
+        got = self.world.adopt(self.pool, self.project, ["w1"])
+        again = self.world.adopt(self.pool, self.project, ["w1"])
+        self.assertEqual(got[0][1], again[0][1], "a source the story has, by url, is reused")
+        self.assertIn(self.QUOTE, self.project.source_text(got[0][1]))
+        self.assertEqual(self.plan_rules(), set())
+
+    def test_a_fact_is_told_once_in_a_book_and_once_across_a_pool(self):
+        self.world.adopt(self.pool, self.project, ["w1"])
+        self.set_picks({1: [{"fact": "w1", "at": "x"}], 2: [{"fact": "w1", "at": "y"}]})
+        self.assertIn("context_twice", self.plan_rules())
+        self.set_picks({1: [{"fact": "w9", "at": "x"}]})
+        self.assertIn("context_unknown", self.plan_rules())
+        other = os.path.join(self.tmp, "other-story")
+        shutil.copytree(self.root, other)
+        o = _hw.Project(other)
+        ch = o.chapter(1)
+        ch["claims"][0] = dict(ch["claims"][0], kind="era", about="w1")
+        _hw.save_json(o.chapter_path(1), ch)
+        self.set_picks({1: [{"fact": "w1", "at": "x"}]})
+        self.assertIn("context_repeat", self.plan_rules())
+
+    def test_the_chapter_must_tell_its_pick(self):
+        self.world.adopt(self.pool, self.project, ["w1"])
+        self.set_picks({1: [{"fact": "w1", "at": "x"}]})
+        t = _hw.thresholds(self.project)
+        claims = self.project.chapter(1)["claims"]
+        self.assertIn("context_missing", self.rules(self.world.chapter_findings(self.project, 1, claims, t)))
+        told = claims + [{"id": "cw1", "kind": "era", "about": "w1", "text": "The city printed many papers.",
+                          "source": "s1", "evidence": self.QUOTE}]
+        self.assertNotIn("context_missing", self.rules(self.world.chapter_findings(self.project, 1, told, t)))
+        self.set_picks({})
+        self.assertIn("context_unplanned",
+                      self.rules(self.world.chapter_findings(self.project, 1, told, t), hard_only=False))
+
+    def test_a_story_without_a_pool_is_untouched(self):
+        meta = _hw.load_json(self.project.path("project.json"))
+        meta.pop("world")
+        _hw.save_json(self.project.path("project.json"), meta)
+        self.assertEqual(self.plan_rules(), set())
+
+
 class CampaignBook(unittest.TestCase):
     """A war told as a book reads its seasons in order under short part titles (campaign.md §5)."""
 
