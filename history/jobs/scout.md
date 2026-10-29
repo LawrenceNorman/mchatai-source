@@ -14,8 +14,9 @@ candidates; any he named or ruled out; the folder names to use (`stories/<slug>`
    them only through `richness.py mentions`, writes `dossier.json` and runs `richness.py dossier
    stories/<slug>` until it exits 0. Notes pictures with `images.py find` as it goes.
 3. The re-check (PLAYBOOK §1 step 4, and the domain's own: for pivotal histories, the edge
-   re-check): a fresh subagent per candidate tries to refute it from the sources. Drop what cannot
-   stand.
+   re-check): a fresh `history-edge-rechecker` subagent per candidate tries to refute it from the
+   sources. It is pinned to the strongest model; a general-purpose subagent is not, and on
+   2026-10-28 four re-checks ran on a lighter one. Drop what cannot stand.
 4. `python3 history/tools/richness.py table stories` for the table. Write the scout report with
    `aiwrite.createDoc`: one row per candidate (why it, tier, ceiling words, independent sources,
    dated events, dead ends), and the five you recommend.
