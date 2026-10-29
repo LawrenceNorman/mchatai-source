@@ -22,5 +22,7 @@ because nothing pinned them; this file is the pin.
 4. Run `python3 history/tools/richness.py dossier stories/<slug>` until it exits 0. Learn a tool
    from `python3 history/tools/help.py` and its messages, not its source.
 
-Touch only `stories/<slug>/`. Report in a few lines: the verdict and why, how many events you
+Touch only `stories/<slug>/`. Re-checks often run side by side and share one scratchpad, so put
+every scratch file in a folder named for your slug (`<scratchpad>/<slug>/`); on 2026-10-28 one
+season's backup `dossier.before.json` was overwritten by another's within minutes. Report in a few lines: the verdict and why, how many events you
 corrected or split, and the dossier check's result.
