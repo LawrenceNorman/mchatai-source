@@ -85,5 +85,10 @@ Then stop. Nothing is planned until the author has approved the outline and the 
 
 Seasons are read in `episode` order. Where a landed story already sums up a season the book now
 tells in full (Alesia's chapter 1 sums up Book VII's first half in 1,500 words), the book build
-decides how the two meet: the published episode is never changed for the book. `series_book.py`
-builds a series today; building a campaign's book is its own step, after the seasons land.
+decides how the two meet: the published episode is never changed for the book. The campaign file's
+`book.skip` names what the book leaves out, with why.
+
+`python3 history/tools/campaign_book.py status <stories> <id>` says which seasons have landed and
+what waits on the author. `campaign_book.py narration <stories> <id> <out.json>` gives the book as it
+is read aloud, one track for each season's introduction, chapter and afterword, with the sources said
+once at the end. The audiobook is built from that file.

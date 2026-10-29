@@ -3879,5 +3879,29 @@ class Publishing(VoiceTwoCase):
         self.assertTrue(before <= after, "the story's words add to the rest")
 
 
+class CampaignBook(unittest.TestCase):
+    """A war told as a book reads its seasons in order under short part titles (campaign.md §5)."""
+
+    def test_part_titles_and_spoken_ranges(self):
+        import campaign_book
+        camp = {"title": "Caesar in Gaul"}
+        self.assertEqual(campaign_book.short_title(camp, {"when": "58 BC",
+                         "subject": "Caesar in Gaul, 58 BC: the Helvetii and Ariovistus"}),
+                         "58 BC: The Helvetii and Ariovistus")
+        self.assertEqual(campaign_book.short_title(camp, {"when": "52 BC", "subject": "The Siege of Alesia"}),
+                         "52 BC: The Siege of Alesia", "a landed story keeps its own title, after the year")
+        self.assertEqual(campaign_book.said("Part nine. 51–50 BC: Uxellodunum."), "Part nine. 51 to 50 BC: Uxellodunum.")
+
+    def test_the_campaign_file_reads_in_episode_order(self):
+        import campaign_book
+        camp = campaign_book.campaign("caesar-in-gaul")
+        eps = [s["episode"] for s in camp["seasons"]]
+        self.assertEqual(eps, sorted(eps))
+        slugs = [s.get("story") or s.get("slug") for s in camp["seasons"]]
+        self.assertEqual(len(slugs), len(set(slugs)))
+        for slug, titles in (camp.get("book") or {}).get("skip", {}).items():
+            self.assertIn(slug, slugs, "book.skip names a season of this campaign")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=1)

@@ -75,7 +75,25 @@ def parts(project, use_files):
     return [(p["kind"], p["title"], p["text"]) for p in got], origin
 
 
-def build(project, use_files=False):
+def source_names(project):
+    """The publishers of the sources the book cites, in citation order, Wikipedia left out."""
+    import cite
+    names = []
+    for sid in cite.cited_sources(project, cite.book_numbers(project)):
+        rec = project.sources.get(sid) or {}
+        name = (rec.get("publisher") or "").split("(")[0].strip()
+        if name and name not in names and name.lower() != "wikipedia":
+            names.append(name)
+    return names
+
+
+def sources_line(names):
+    return "This book is told from " + (", ".join(names[:-1]) + " and " + names[-1] if len(names) > 1 else names[0]) \
+        + ". Every source is listed, with its notes, in the written book."
+
+
+def build(project, use_files=False, credit=True):
+    """credit=False leaves the spoken sources line off, for a book that says it once for all its stories."""
     import cite
     c = cfg(project)
     meta = load_json(project.path("project.json"), {}) or {}
@@ -106,17 +124,9 @@ def build(project, use_files=False):
     if not k and episodes:                               # no introduction: the title opens the first episode
         episodes[0]["lines"] = first + episodes[0]["lines"]
     # The book's sources, said once at the end (the Notes and Sources are not read).
-    srcs = cite.cited_sources(project, cite.book_numbers(project))
-    names = []
-    for sid in srcs:
-        rec = project.sources.get(sid) or {}
-        name = (rec.get("publisher") or "").split("(")[0].strip()
-        if name and name not in names and name.lower() != "wikipedia":
-            names.append(name)
-    if names:
-        credit = "This book is told from " + (", ".join(names[:-1]) + " and " + names[-1] if len(names) > 1 else names[0]) \
-            + ". Every source is listed, with its notes, in the written book."
-        episodes[-1]["lines"].append({"text": spoken(credit, c["say"])})
+    names = source_names(project)
+    if names and credit:
+        episodes[-1]["lines"].append({"text": spoken(sources_line(names), c["say"])})
     model = "tts-1-hd" if c["hd"] else "tts-1"
     rate = float(c["usdPerMillionChars"].get(model, 30.0))
     total = 0
