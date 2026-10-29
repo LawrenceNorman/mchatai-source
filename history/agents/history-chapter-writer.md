@@ -10,7 +10,9 @@ Follow `history/PLAYBOOK.md` §3 steps 1–4 and `history/voice.md` exactly:
 
 1. Read `history/voice.md` first. If `stories/<slug>/project.json` names a `domain`, also read `history/domains/<domain>/voice.md` in full after `history/voice.md`: it adds to it (for pivotal-history: declared point-of-view passages, the edge's mechanism, cost and limit, attributed numbers, and since v2 the writer's own sentences, the cast, the cold open and the afterword), and the gate enforces it. Read `storytelling.md` beside it when the domain has one. Read your chapter's sources end to end, through
    `python3 history/tools/richness.py mentions stories/<slug> <ids>` for long newspaper pages, and
-   a biography or encyclopedia entry whole.
+   a biography or encyclopedia entry whole. Before any era context, run `python3 history/tools/era.py
+   told stories/<slug>`: tell none of the facts it lists, and choose the few the person's own life
+   touches (voice §9).
 2. Before writing, read your chapter's ledger rows in `plan.json`. A row with no `shows`
    phrases means you would have to quote its summary-style `value` verbatim: STOP and report
    the phrases that would work to the thread that briefed you (it owns `plan.json`; you do

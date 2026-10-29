@@ -61,6 +61,13 @@ whose numbers say how long, and what shape, that story can be.
      then `./mchatai raw '{"command":"applet","applet":"aiweb","verb":"getCurrentPage"}' | python3 history/tools/fetch.py text stories/<slug> --url <url> --publisher <P> --kind <K> --license <L>`.
    - A local copy of a public record (a PDF or text you already have): `fetch.py file`, with the
      URL it is published at.
+   - A partner archive's pages (2026-10-28: the Griot's Archive, Black publications of
+     1909–1930): when `stories/<slug>/archive-leads.json` exists, read it. Each page that names the
+     person has its sentence, its address on the archive's site, the scan, and the command that
+     adds it as a source (`fetch.py text`, a primary source in the public domain). The
+     transcripts are two AI readings, not yet proofread: open the scan before a quote carries a
+     date or a number. The same pages are in the long list's `archive` field for anyone not yet
+     in a story.
    - Read what you fetched through
      `python3 history/tools/richness.py mentions stories/<slug>`: the passages around each
      mention of the person, which are exactly the words the tier counts. Open a whole file only
@@ -155,7 +162,8 @@ background subagents finish; the Armada's chapters stage (2026-10-19) lost two a
 that way.
 
 1. Read `voice.md` again. Read every source the chapter's events cite, end to end; the human
-   story is often past the halfway mark of a document.
+   story is often past the halfway mark of a document. Run `python3 history/tools/era.py told
+   stories/<slug>` for the era facts the series' other stories already tell (voice §9).
 2. Write `chapters/NN.json` (`schemas/chapter.schema.json`): the prose, and one claim per
    specific fact with a verbatim quote of at least 8 words from the claimed source. Era
    context is claims of kind `era`; quoted words are claims of kind `quote`. Give every claim

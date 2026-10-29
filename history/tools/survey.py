@@ -14,6 +14,17 @@ evidence of who they are. No model is called.
   survey.py show <out-dir> [--line N]
                  the list by era, with the history line drawn N years back (default: the
                  series' `historyLineYears`)
+  survey.py archive <out-dir> <register-dir> <archive-url>
+                 add a partner archive's pages to the people already on the list (below);
+                 `run` does the same with --archive <register-dir> --archive-url <url>
+
+A partner archive (2026-10-28, the Griot's Archive: transcribed publications of 1909–1930) adds
+`archive` to a person already on the list: the pages that name them, each with its sentence and
+address, and the archive's publishers. The pairing comes from the archive's register
+(<register-dir>/matches.json, people.json): only a pairing confirmed from the sentences counts,
+never a name alone. It never adds a person: a name the archive holds and the list does not stays
+on the archive's own research list until a dossier finds more (the author, 2026-10-28: "if all I
+have is a very brief single source bio ... that doesn't mean adding that name to the long list").
 
 Sources (series.json `survey.sources`, each optional):
   historylink-topic  {topicId}  biographies filed under a HistoryLink topic ("Surname, Given
@@ -803,7 +814,48 @@ def fame_year(v):
     return int(m.group(1)) if m else None
 
 
-def cmd_run(series_id, out_dir, stories_dir=None, roadmap=(), fame_dir=None, guide_pack=None):
+def add_archive(people, register_dir, url):
+    """`archive` on each listed person the archive's register confirms (see the module notes)."""
+    matches = load_json(os.path.join(register_dir, "matches.json"), []) or []
+    reg = {p["pid"]: p for p in load_json(os.path.join(register_dir, "people.json"), []) or []}
+    base = url.rstrip("/") + "/"
+    found = {}
+    for m in matches:
+        if m.get("same") == "yes" and m.get("pid") in reg:
+            found.setdefault(m["longList"], []).append(reg[m["pid"]])
+    n = 0
+    for p in people:
+        p.pop("archive", None)
+        rows = found.get(p["name"])
+        if not rows:
+            continue
+        ms = sorted((x for r in rows for x in r["mentions"]), key=lambda x: (x["year"], x["issue"], x["sheet"]))
+        p["archive"] = {"site": "The Griot's Archive, transcribed (not yet proofread)", "url": base,
+                        "names": sorted({s for r in rows for s in r["spellings"]}),
+                        "publishers": sorted({pub for r in rows for pub in r["publishers"]}),
+                        "count": len(ms),
+                        "pages": [{"title": x["title"], "date": x["date"], "label": x["label"],
+                                   "url": f"{base}#/archive/{x['issue']}/{x['sheet']}", "quote": x["context"]}
+                                  for x in ms[:20]]}
+        n += 1
+    return n
+
+
+def cmd_archive(out_dir, register_dir, url):
+    path = os.path.join(out_dir, "survey.json")
+    data = load_json(path, None)
+    if not data:
+        print("no survey.json: run first")
+        return 2
+    n = add_archive(data["people"], register_dir, url)
+    data["archive"] = {"url": url, "added": datetime.date.today().isoformat(), "people": n}
+    save_json(path, data)
+    print(f"{n} of {len(data['people'])} people on the list are named in the archive → {path}")
+    return 0
+
+
+def cmd_run(series_id, out_dir, stories_dir=None, roadmap=(), fame_dir=None, guide_pack=None, archive=None,
+            archive_url=None):
     series = next((s for s in (load_json(os.path.join(HISTORY, "series.json"), {}) or {}).get("series", [])
                    if s.get("id") == series_id), None)
     cfg = (series or {}).get("survey")
@@ -858,6 +910,8 @@ def cmd_run(series_id, out_dir, stories_dir=None, roadmap=(), fame_dir=None, gui
         # When their life in the place began, from the lens: a Seattle-born life from its birth year.
         p["seattleFrom"] = lens.get("from") or (p["born"] if lens.get("born") and p.get("born") else None)
     people.sort(key=lambda p: (p.get("notableFrom") or (p["born"] + 30 if p["born"] else 9999), p["name"]))
+    if archive and archive_url:
+        log(f"archive: {add_archive(people, archive, archive_url)} people named in it")
     save_json(os.path.join(out_dir, "survey.json"), {
         "series": series_id, "generated": datetime.date.today().isoformat(),
         "historyLineYears": series.get("historyLineYears"), "placeTerms": place_terms,
@@ -894,7 +948,10 @@ def main(argv):
         return argv[argv.index(name) + 1] if name in argv and argv.index(name) + 1 < len(argv) else None
     if len(argv) >= 4 and argv[1] == "run":
         roadmap = [n.strip() for n in (flag("--roadmap") or "").split(";") if n.strip()]
-        return cmd_run(argv[2], argv[3], flag("--stories"), roadmap, flag("--fame"), flag("--guide"))
+        return cmd_run(argv[2], argv[3], flag("--stories"), roadmap, flag("--fame"), flag("--guide"),
+                       flag("--archive"), flag("--archive-url"))
+    if len(argv) >= 5 and argv[1] == "archive":
+        return cmd_archive(argv[2], argv[3], argv[4])
     if len(argv) >= 3 and argv[1] == "show":
         return cmd_show(argv[2], int(flag("--line")) if flag("--line") else None)
     print(__doc__)

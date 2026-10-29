@@ -1,7 +1,7 @@
 ---
 id: history-story-voice
-version: 4
-updated: 2026-10-03
+version: 5
+updated: 2026-10-28
 appliesTo: long-form narrative-nonfiction history stories written by the History Writer
 derivedFrom: the Seattle Landmarks narration rules, version 8
 enforcedBy: history/lint-rules.json + history/tools/gate.py
@@ -157,12 +157,27 @@ literacy, licences), household, residence and legal status, each a dated row wit
   event that changes the people around the subject, or the city turning under them. The gate
   reports it as a note, not a defect.
 
-## 9. Era context: the time, sourced and capped
+## 9. Era context: a few facts from the person's world, sourced, told once
 
 What the street looked like, what a day's wage bought, who held office, what the papers led
 with that week: period context lets the reader stand in the year. It is welcome when sourced
 (every era sentence is a claim of kind `era`), and it serves the person by appearing where the
-person meets it. At most 30% of a chapter. [era_share]
+person meets it.
+
+- **Choose the fact the person's life touches.** Two kinds serve: the street (the place in that
+  year) and the forces that shaped the person's world: the technology of their trade, the
+  migrations that brought people west, the law, a war, the economy. An editor's chapter can say
+  why the city had so many papers then and what the presses of the day made possible; an
+  arrival can say what was drawing Black families to the Northwest that decade, when a source
+  ties it to the person's own move or years. A fact that does not touch the person stays out.
+- **A few, not a layer.** A fact is a sentence or two, then the story returns to the person.
+  Most chapters need one or two; past four sentences the lint leaves a note. [era_nuggets] At
+  most 30% of a chapter. [era_share]
+- **Told once in a series.** A series is read as one book. Before writing era context, run
+  `python3 history/tools/era.py told stories/<slug>`: a fact another story already tells is not
+  told again. Refer to it in a phrase, or choose another. [era_repeat]
+- A period detail is as sourced as every other fact (§2): a claim with its quote, never colour
+  from memory.
 
 **The world around the story.** The author, 2026-10-28: *"bringing up relevant time-capsule items
 would help bring the reader back to that period, be accurate (and verifyable) … we don't want to over
@@ -271,6 +286,17 @@ and it does not count against a chapter's three pictures.
 ---
 
 ## Change log
+
+**v5 — 2026-10-28.** Lawrence: "bring in relevant facts that pertain to the context of the
+individual … if they were editor of a paper then some history about why there were so many
+newspapers at that time … what were the forces of Black migration … just drop a few factual
+nuggets here and there … we don't want to over do this or become overly repetitive about it
+over the course of the book." §9 now asks for the fact the person's own life touches, a few
+sentences of it (era_nuggets, a note past `eraSentencesMax`), and never one another story of
+the series tells (era_repeat; `tools/era.py told` lists them for the writer). Measured on the
+twenty published Black Seattle stories: 17 of 112 chapters carry more than four era sentences,
+and 18 era facts are told twice, the 1889 fire and the Pioneer Square settlement among them.
+Both rules are notes, so no published story fails its gate; era_share stays the hard cap.
 
 **v4.2 — 2026-10-04.** Lawrence: "in the introduction there is no title in it so it takes a
 little bit to understand who we are talking about". The first page now carries the title (§13).

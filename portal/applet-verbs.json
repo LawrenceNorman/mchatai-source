@@ -3921,6 +3921,91 @@
           }
         }
       },
+      "setvoice": {
+        "kind": "modify",
+        "summary": "The voice leveller: evens out the recording's voice (compression, lower room noise between phrases) and brings it to a loudness target, so a quiet webcam voice plays at YouTube's level. The preview and the export play the levelled voice; the recording itself is never changed.",
+        "required": [
+          "id"
+        ],
+        "optional": [
+          "preset",
+          "targetLUFS",
+          "compression",
+          "noiseReductionDB",
+          "enabled"
+        ],
+        "notes": "With no options it turns the leveller on at the default preset. preset is gentle | podcast | strong (content: harness/autoedit/autoedit-config.json voice_leveller). Knobs: targetLUFS (-24 to -10; YouTube plays at -14), compression (0 = off to 1 = heavy), noiseReductionDB (0 to 18). enabled: false plays the voice as recorded again. Waits for the levelled voice (a few seconds for 20 minutes) and returns result.voice with what was measured (inputLUFS, outputLUFS, peakDB, averageCompressionDB). Export after it to get the levelled file.",
+        "example": {
+          "command": "applet",
+          "applet": "aividrecorder",
+          "verb": "setVoice",
+          "args": {
+            "id": "<project id>",
+            "preset": "podcast"
+          }
+        }
+      },
+      "setcards": {
+        "kind": "modify",
+        "summary": "Intro and outro cards: a title card the export puts before the video and one after it (an optional logo, a title, a subtitle and a footer line such as a web address, on a dark gradient, fading in and out). The preview plays the video without them; the export adds them.",
+        "required": [
+          "id"
+        ],
+        "optional": [
+          "intro",
+          "outro"
+        ],
+        "notes": "intro and outro are each false (off) or an object with any of title, subtitle, footer, seconds (1 to 15), logo (\"app\" for this app's icon, \"none\", or a picture's path), sound (an audio file's path, or \"none\") and soundGainDB. A card not named is left as it is; a new one starts with the project title (intro) or \"Thanks for watching\" (outro). Returns result.cardPictures, each card drawn at the export's frame as a PNG, so you can look before exporting. Look: content harness/autoedit/autoedit-config.json bumpers.",
+        "example": {
+          "command": "applet",
+          "applet": "aividrecorder",
+          "verb": "setCards",
+          "args": {
+            "id": "<project id>",
+            "intro": {
+              "title": "mChatAI+",
+              "subtitle": "for macOS",
+              "footer": "mchatai.com",
+              "logo": "app"
+            },
+            "outro": {
+              "title": "mChatAI+ for macOS",
+              "footer": "mchatai.com",
+              "logo": "app"
+            }
+          }
+        }
+      },
+      "blur": {
+        "kind": "modify",
+        "summary": "Blur private details in the export. Reads the words on the screen recording on this Mac (about a frame a second through the kept video) and blurs emails, phone numbers, money, home folders and keys, plus words you name (their whole line). Areas can also be set by hand. The preview greys each area while it shows; if the blur can't be drawn, the export fails rather than ship unblurred.",
+        "required": [
+          "id"
+        ],
+        "optional": [
+          "terms",
+          "builtIns",
+          "find",
+          "regions",
+          "clear",
+          "disable",
+          "enable"
+        ],
+        "notes": "terms: a list (or one comma-separated string) of words to hide. builtIns (default true): content's patterns (harness/autoedit/autoedit-config.json blur). find: true reads the screen and replaces the areas found last time (hand-set ones stay); it takes a few minutes for a 10-minute video. regions: [{start, end, x, y, w, h, reason, timeline}] where x/y/w/h are a share of the screen's frame from its top left and timeline is \"edited\" (default, the exported video's clock) or \"recording\". clear: found | hand | all. disable / enable: reasons as listed in result.blur.byReason (e.g. \"money\", \"“Sirqul”\"). Returns result.blurSpots with each area's edited-time span and rect.",
+        "example": {
+          "command": "applet",
+          "applet": "aividrecorder",
+          "verb": "blur",
+          "args": {
+            "id": "<project id>",
+            "terms": [
+              "Acme Corp",
+              "Jane Doe"
+            ],
+            "find": true
+          }
+        }
+      },
       "narrate": {
         "kind": "modify",
         "summary": "A voice-over. With no narration yet it re-voices the recording's own transcript, each line where it was said; `script` reads your text instead. With a narration already there it renders it in a new voice, and the earlier voice stays as a rendition. The video is never touched.",

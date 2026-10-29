@@ -8,7 +8,9 @@ chapter, the guide's landmarks each story names, linked both ways, and a map of 
 the chapters name (book_map.py: landmarks, addresses, corners, parks and cemeteries).
 
   series_book.py build <stories-dir> <series-id> <out-dir> [--files] [--publish | --review [--drafts]]
-                       [--archive <dir>]                  also carry a transcribed archive (see below)
+                       [--archive <dir> | --archive-url <url>]   a transcribed archive (see below)
+  series_book.py archive <archive-dir> <out-dir> [--book <url> <title>] [--publish]
+                                                        the archive as a site of its own
   series_book.py order <stories-dir> <series-id>        the stories in book order, and why
   series_book.py status <stories-dir> <series-id>       what is left to review: each story's waiting
                                                         suggestions (from StoryMaker) and sign-offs
@@ -45,6 +47,12 @@ each page's agreement score, every name and where it appears) and the issue-<n>.
 names (each page's transcript, the words to check, its index), copied to resources/archive/
 and fetched only when a reader opens the section. Its wording is the archive's own, in
 archive.json; the section is in the top bar only when archive.json says "nav": true.
+
+`archive` builds the same section as a site of its own (2026-10-28: the 1909–1930 publications
+outgrew the book's 16 MB deploy), its home the archive's front page, --book linking back to the
+book, kept out of search engines without --publish. A book built with --archive-url <url> puts
+"Archive ↗" in its top bar and sends its old #/archive/... addresses there, so links already
+shared keep working. An issue's id is its place in the archive's order, which only grows.
 
 Writes <out-dir>/index.html, <out-dir>/resources/ (pictures, maps) and
 <out-dir>/resources/places.json (each landmark id, the stories and chapters that name it: what
@@ -880,16 +888,53 @@ def copy_archive(src, out, problems):
         return None
     dst = os.path.join(out, "resources", "archive")
     os.makedirs(dst, exist_ok=True)
-    for name in ["archive.json"] + [i["file"] for i in meta["issues"]]:
+    files = [f for i in meta["issues"] if i for f in (i.get("files") or [i["file"]])] + (meta.get("nameFiles") or [])
+    for name in ["archive.json"] + files:
         if not os.path.isfile(os.path.join(src, name)):
             problems.append(f"--archive {src}: {name} is missing")
             continue
         shutil.copyfile(os.path.join(src, name), os.path.join(dst, name))
     return {"title": meta.get("title") or "Archive", "nav": bool(meta.get("nav")),
-            "src": "resources/archive/archive.json"}
+            "src": "resources/archive/archive.json", "credit": meta.get("credit", ""),
+            "creditUrl": meta.get("creditUrl", "") if safe_url(meta.get("creditUrl", "")) else ""}
 
 
-def cmd_build(stories_dir, series_id, out, use_files=False, publish=False, review=False, drafts=False, archive=None):
+def cmd_archive(src, out, book_url=None, book_title=None, publish=False):
+    """The archive as a site of its own: its front page is the archive's, linking back to the book."""
+    res = os.path.join(out, "resources")
+    if os.path.isdir(res):
+        if set(os.listdir(res)) - {"archive"}:
+            print(f"{res} holds more than an archive: choose another out-dir")
+            return 2
+        shutil.rmtree(res)
+    problems = []
+    arc = copy_archive(src, out, problems)
+    if not arc:
+        print("\n".join(problems))
+        return 2
+    meta = load_json(os.path.join(src, "archive.json"), {})
+    arc["standalone"] = True
+    if book_url and safe_url(book_url):
+        arc["book"] = {"url": book_url, "title": book_title or "The book"}
+    data = {"pics": {}, "parts": [], "stories": {}, "order": [], "places": {}, "map": None, "archive": arc,
+            "book": {"title": arc["title"], "subtitle": meta.get("kicker", ""), "noun": ["life", "lives"],
+                     "channels": {}, "place": "", "intro": " ".join(meta.get("about") or [])[:300], "companion": {},
+                     "canonical": "", "generated": datetime.date.today().isoformat(), "publish": publish,
+                     "reviewCopy": False}}
+    with open(os.path.join(out, "index.html"), "w", encoding="utf-8") as fh:
+        fh.write(page(data))
+    files, total, over = hosted_caps(out)
+    c = meta.get("counts") or {}
+    print(f"archive: {c.get('publications', len(meta.get('issues') or []))} publications, {c.get('pages', '?')} pages, "
+          f"{c.get('people', '?')} people → {out}; hosted copy: {files} text files, {total:,} bytes")
+    problems += [f"over the deploy's cap: {o}" for o in over]
+    for p in problems:
+        print(f"  problem: {p}")
+    return 1 if problems else 0
+
+
+def cmd_build(stories_dir, series_id, out, use_files=False, publish=False, review=False, drafts=False, archive=None,
+              archive_url=None):
     entry, place = series_entry(series_id)
     if not entry or not entry.get("book"):
         print(f"series.json has no `book` block for {series_id!r}")
@@ -995,6 +1040,11 @@ def cmd_build(stories_dir, series_id, out, use_files=False, publish=False, revie
     }
     if archive:
         data["archive"] = copy_archive(archive, out, problems)
+    elif archive_url:
+        if safe_url(archive_url):
+            data["archive"] = {"title": "Archive", "nav": True, "url": archive_url}
+        else:
+            problems.append(f"--archive-url {archive_url!r} is not a web address")
     base = (book.get("canonical") or "").rstrip("/") + "/" if book.get("canonical") else ""
     index = {lid: {"name": p["name"], "stories": [
         {"name": data["stories"][slug]["name"], "slug": slug, "chapter": n,
@@ -1307,13 +1357,25 @@ const REVIEW_NOTE = B.reviewCopy
   : "";
 document.title = B.title;
 const AR = D.archive || null;
+// The archive: in the book (AR.src), on a site of its own (AR.standalone), or elsewhere (AR.url).
+const ARSOLO = !!(AR && AR.standalone);
 function nav(cur){
+  if (ARSOLO){
+    el("nav").innerHTML = `<a href="#/"${cur==="archive"?' aria-current="page"':""}>Publications</a><a href="#/archive/search">Search</a>`
+      + (AR.book ? `<a href="${esc(AR.book.url)}" target="_blank" rel="noopener">${esc(AR.book.title)} ↗</a>` : "");
+    return;
+  }
   const items = [["#/","Contents","home"],["#/timeline","Timeline","timeline"],["#/places","Places","places"]]
-    .concat(AR && AR.nav ? [["#/archive","Archive","archive"]] : []);
+    .concat(AR && AR.nav && !AR.url ? [["#/archive","Archive","archive"]] : []);
   el("nav").innerHTML = items.map(([h,t,k]) => `<a href="${h}"${k===cur?' aria-current="page"':""}>${t}</a>`).join("")
+    + (AR && AR.nav && AR.url ? `<a href="${esc(AR.url)}" target="_blank" rel="noopener">${esc(AR.title || "Archive")} ↗</a>` : "")
     + (COMP.url ? `<a href="${esc(COMP.url)}" target="_blank" rel="noopener">${esc(COMP.title || "Landmarks")} ↗</a>` : "");
 }
-el("foot").innerHTML = `<p>Every story here is told from the public record. Each paragraph's sources are numbered after it and listed with the story, and every picture is credited in its caption.</p>`
+el("foot").innerHTML = ARSOLO
+  ? (AR.credit ? `<p>${AR.creditUrl ? `<a href="${esc(AR.creditUrl)}" target="_blank" rel="noopener">${esc(AR.credit)}</a>` : esc(AR.credit)}</p>` : "")
+    + (AR.book ? `<p>A companion to <a href="${esc(AR.book.url)}" target="_blank" rel="noopener">${esc(AR.book.title)}</a>.</p>` : "")
+    + `<p>Built ${esc(B.generated)}.</p>`
+  : `<p>Every story here is told from the public record. Each paragraph's sources are numbered after it and listed with the story, and every picture is credited in its caption.</p>`
   + (COMP.url ? `<p>Places named in the stories link to <a href="${esc(COMP.url)}" target="_blank" rel="noopener">${esc(COMP.title || "the landmark guide")}</a>.</p>` : "")
   + `<p>Built ${esc(B.generated)}.</p>`;
 
@@ -1858,19 +1920,24 @@ function places(only, focus){
 }
 
 // ── the archive (--archive): a partner archive's transcribed pages, fetched when opened ──
-let ARC = null;
+let ARC = null, ARN = null;
 const ARI = {};
 const arGet = f => fetch(AR.src.replace(/[^/]+$/, f)).then(r => r.ok ? r.json() : Promise.reject(r.status));
 const arLoad = () => ARC ? Promise.resolve(ARC) : arGet("archive.json").then(j => (ARC = j));
-const arIssue = id => ARI[id] ? Promise.resolve(ARI[id]) : arGet(ARC.issues[id].file).then(j => (ARI[id] = j));
+// A large issue, and the list of names, come in parts (a hosted file is at most 2 MB).
+const arIssue = id => ARI[id] ? Promise.resolve(ARI[id])
+  : Promise.all((ARC.issues[id].files || [ARC.issues[id].file]).map(arGet)).then(fs => (ARI[id] = {slug: fs[0].slug, pages: fs.flatMap(f => f.pages)}));
+const arNames = () => ARN ? Promise.resolve(ARN)
+  : ARC.nameFiles ? Promise.all(ARC.nameFiles.map(arGet)).then(fs => (ARN = fs.flat())) : Promise.resolve(ARN = ARC.names || []);
+const arIssues = () => ARC.issues.filter(Boolean);
 const arTier = a => ARC.tiers.find(t => a >= t[0]) || ARC.tiers[ARC.tiers.length - 1];
 const arBadge = a => `<span class="conf ${arTier(a)[2]}">${a.toFixed(a === 100 ? 0 : 1)}%</span>`;
 const arShort = l => { const m = /(\d+)$/.exec(l || ""); return m ? m[1] : (l || "").split(/\s+/).map(w => w[0]).join(""); };
 const arNorm = s => String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
 // "Grosse" finds "Grose": every letter may repeat, so a doubled or single letter matches either.
 const arRe = q => new RegExp(arNorm(q).trim().split(/\s+/).map(w => [...w.replace(/(.)\1+/g, "$1")].map(c => c.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "+").join("")).join("[\\s\\W]+"), "i");
-// An issue's name, with its date unless the title already carries it ("…November 1909").
-const arName = i => { const x = ARC.issues[i]; return x.date && !x.title.includes(x.date) ? `${x.title}, ${x.date}` : x.title; };
+// An issue's name, with its date unless the title already carries its year ("…November 1909", "…August 25th, 1917").
+const arName = i => { const x = ARC.issues[i], y = /\d{4}/.exec(x.date || ""); return x.date && !(y && x.title.includes(y[0])) ? `${x.title}, ${x.date}` : x.title; };
 const arCite = (i, s, l) => `<a href="#/archive/${i}/${s}">${esc(arName(i))}, ${esc(l)}</a>`;
 const arNote = () => ARC.contentNote ? `<p class="refs">${esc(ARC.contentNote)}</p>` : "";
 const arLabel = (i, s) => ((ARC.issues[i].pages.find(p => p.s === s) || {}).l) || `Sheet ${s}`;
@@ -1882,7 +1949,7 @@ function archive(parts){
   arLoad().then(() => parts[0] === "search" ? arSearch(decodeURIComponent(parts.slice(1).join("/")))
                     : /^\d+$/.test(parts[0] || "") && /^\d+$/.test(parts[1] || "") ? arPage(+parts[0], +parts[1])
                     : arHome())
-    .then(h => { if (location.hash !== want) return; el("view").innerHTML = h; arWire(); document.title = `${ARC.title} · ${B.title}`; })
+    .then(h => { if (location.hash !== want) return; el("view").innerHTML = h; arWire(); document.title = ARSOLO ? ARC.title : `${ARC.title} · ${B.title}`; })
     .catch(() => { if (location.hash === want) el("view").innerHTML = `<p>The archive could not be loaded. <a href="#/archive">Try again</a>.</p>`; });
   return `<p class="lede-s">Opening the archive…</p>`;
 }
@@ -1893,10 +1960,10 @@ function arForm(q){
   return `<form class="arq" id="arq" role="search"><input type="search" id="arqi" value="${esc(q || "")}" placeholder="Search a name, a place or any word" aria-label="Search the archive"><button type="submit">Search</button></form>`;
 }
 function arHome(){
-  const people = ARC.names.filter(n => n.k === "p" && n.m.length > 1).slice(0, 24);
+  const people = ARC.top || ARC.names.filter(n => n.k === "p" && n.m.length > 1).slice(0, 24).map(n => ({n: n.n, c: n.m.length}));
   let h = arHead(esc(ARC.kicker || ""), ARC.title) + (ARC.about || []).map(p => `<p class="lede-s">${esc(p)}</p>`).join("") + arNote() + arForm("");
   h += `<h2 class="sec">Publications</h2>`;
-  ARC.issues.forEach(i => {
+  (ARC.shown || arIssues().map(i => i.id)).map(id => ARC.issues[id]).forEach(i => {
     h += `<section class="ar-issue"><h3>${esc(i.title)}</h3>
       <p class="when">${esc(i.date)} · ${i.pages.length} pages · ${arBadge(i.mean)} of words confirmed by both readings</p>
       ${i.note ? `<p>${esc(i.note)}</p>` : ""}
@@ -1904,7 +1971,7 @@ function arHome(){
       <p class="refs"><a href="${esc(i.hub)}" target="_blank" rel="noopener">This item in the Griot's Archive ↗</a></p></section>`;
   });
   h += `<div class="ar-legend">${ARC.tiers.map(t => `<span><span class="conf ${t[2]}">${t[0] ? t[0] + "%+" : "below"}</span> ${esc(t[1])}</span>`).join("")}</div>`;
-  if (people.length) h += `<h2 class="sec">Named most often</h2><ul class="ar-chips">${people.map(n => `<li><a href="#/archive/search/${encodeURIComponent(n.n)}">${esc(n.n)}<small>${n.m.length}</small></a></li>`).join("")}</ul>`;
+  if (people.length) h += `<h2 class="sec">Named most often</h2><ul class="ar-chips">${people.map(n => `<li><a href="#/archive/search/${encodeURIComponent(n.n)}">${esc(n.n)}<small>${n.c}</small></a></li>`).join("")}</ul>`;
   h += `<h2 class="sec">How this was made</h2>` + (ARC.method || []).map(p => `<p class="lede-s">${esc(p)}</p>`).join("");
   if (ARC.credit) h += `<p class="refs" style="margin-top:14px">${ARC.creditUrl ? `<a href="${esc(ARC.creditUrl)}" target="_blank" rel="noopener">${esc(ARC.credit)}</a>` : esc(ARC.credit)}</p>`;
   return h;
@@ -1912,17 +1979,11 @@ function arHome(){
 function arSearch(q){
   const back = `<a href="#/archive">${esc(ARC.title)}</a>`;
   if (!q.trim()) return Promise.resolve(arHead(back, "Search") + arForm(""));
-  const re = arRe(q), KIND = {p: "Person", o: "Organization", l: "Place", a: "Address"};
-  const names = ARC.names.filter(n => re.test(arNorm(n.n))).sort((a, b) => "pola".indexOf(a.k) - "pola".indexOf(b.k) || b.m.length - a.m.length).slice(0, 40);
-  return Promise.all(ARC.issues.map(i => arIssue(i.id))).then(() => {
-    const hits = [];
-    ARC.issues.forEach(i => ARI[i.id].pages.forEach(p => {
-      const m = re.exec(p.t); if (!m) return;
-      const a = Math.max(0, p.t.lastIndexOf("\n", m.index) + 1, m.index - 160), b = Math.min(p.t.length, m.index + m[0].length + 200);
-      hits.push({i: i.id, s: p.s, l: p.l, snip: (a > 0 ? "…" : "") + p.t.slice(a, b).replace(/\s+/g, " ") + (b < p.t.length ? "…" : "")});
-    }));
+  const re = arRe(q), KIND = {p: "Person", o: "Organization", l: "Place", a: "Address"}, want = location.hash;
+  // The names come first; the pages' full text (every transcript, several MB) fills in after.
+  return arNames().then(NM => {
+    const names = NM.filter(n => re.test(arNorm(n.n))).sort((a, b) => "pola".indexOf(a.k) - "pola".indexOf(b.k) || b.m.length - a.m.length).slice(0, 40);
     let h = arHead(back, `“${q}”`) + arForm(q) + arNote();
-    if (!names.length && !hits.length) return h + `<p class="lede-s">Nothing in these pages matches. Try part of a name, or another spelling.</p>`;
     if (names.length){
       h += `<h2 class="sec">${names.length} ${names.length === 1 ? "name" : "names"} in the index</h2><ul class="ar-hits">`;
       names.forEach(n => {
@@ -1932,10 +1993,22 @@ function arSearch(q){
       });
       h += `</ul>`;
     }
-    if (hits.length){
-      h += `<h2 class="sec">${hits.length} ${hits.length === 1 ? "page" : "pages"} with these words</h2><ul class="ar-hits">`
-        + hits.slice(0, 60).map(x => `<li><p class="src" style="margin:0">${arCite(x.i, x.s, x.l)}</p><q>${arHi(x.snip, re)}</q></li>`).join("") + `</ul>`;
-    }
+    h += `<div id="arhits"><p class="lede-s">Searching the pages…</p></div>`;
+    Promise.all(arIssues().map(i => arIssue(i.id))).then(() => {
+      const hits = [];
+      (ARC.shown || arIssues().map(i => i.id)).map(id => ARC.issues[id]).forEach(i => ARI[i.id].pages.forEach(p => {
+        const m = re.exec(p.t); if (!m) return;
+        const a = Math.max(0, p.t.lastIndexOf("\n", m.index) + 1, m.index - 160), b = Math.min(p.t.length, m.index + m[0].length + 200);
+        hits.push({i: i.id, s: p.s, l: p.l, snip: (a > 0 ? "…" : "") + p.t.slice(a, b).replace(/\s+/g, " ") + (b < p.t.length ? "…" : "")});
+      }));
+      const box = el("arhits");
+      if (!box || location.hash !== want) return;
+      box.innerHTML = hits.length
+        ? `<h2 class="sec">${hits.length} ${hits.length === 1 ? "page" : "pages"} with these words</h2><ul class="ar-hits">`
+          + hits.slice(0, 60).map(x => `<li><p class="src" style="margin:0">${arCite(x.i, x.s, x.l)}</p><q>${arHi(x.snip, re)}</q></li>`).join("") + `</ul>`
+          + (hits.length > 60 ? `<p class="src">The first 60 pages are shown. Add a word to narrow the search.</p>` : "")
+        : names.length ? "" : `<p class="lede-s">Nothing in these pages matches. Try part of a name, or another spelling.</p>`;
+    }).catch(() => { const box = el("arhits"); if (box) box.innerHTML = `<p class="src">The pages could not be searched just now.</p>`; });
     return h;
   });
 }
@@ -1991,7 +2064,10 @@ function notFound(){ nav(""); return `<p>That page is not in this book. <a href=
 function route(){
   const parts = (location.hash || "#/").replace(/^#\/?/, "").split("/").filter(Boolean);
   let html, hit = null;
-  if (!parts.length) html = home();
+  // The archive moved to a site of its own: an address shared before then opens the same page there.
+  if (AR && AR.url && parts[0] === "archive"){ location.replace(AR.url.replace(/#.*$/, "") + location.hash); return; }
+  if (ARSOLO) html = !parts.length ? archive([]) : parts[0] === "archive" ? archive(parts.slice(1)) : notFound();
+  else if (!parts.length) html = home();
   else if (parts[0] === "timeline") html = timeline();
   else if (parts[0] === "places") html = places(parts[1] || null, null);
   else if (parts[0] === "l" && parts[1]) html = places(null, parts[1]);
@@ -2053,8 +2129,15 @@ def main(argv):
             print("--drafts goes with --review: a published book carries no drafts")
             return 2
         archive = argv[argv.index("--archive") + 1] if "--archive" in argv[:-1] else None
+        archive_url = argv[argv.index("--archive-url") + 1] if "--archive-url" in argv[:-1] else None
+        if archive and archive_url:
+            print("--archive or --archive-url, not both")
+            return 2
         return cmd_build(argv[2], argv[3], argv[4], use_files="--files" in argv, publish="--publish" in argv,
-                         review="--review" in argv, drafts="--drafts" in argv, archive=archive)
+                         review="--review" in argv, drafts="--drafts" in argv, archive=archive, archive_url=archive_url)
+    if len(argv) >= 4 and argv[1] == "archive":
+        book = argv[argv.index("--book") + 1:argv.index("--book") + 3] if "--book" in argv[:-2] else [None, None]
+        return cmd_archive(argv[2], argv[3], book[0], book[1], publish="--publish" in argv)
     print(__doc__)
     return 2
 

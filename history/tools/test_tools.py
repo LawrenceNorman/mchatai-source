@@ -397,6 +397,76 @@ class Structure(FixtureCase):
         self.assertIn("ledger_quote_unverified", self.rules(richness.validate_plan(self.project, write=False)))
 
 
+class EraContext(FixtureCase):
+    """voice §9 (2026-10-28): a few era facts the person's life touches, and none another story of
+    the series already tells. Both are notes; era_share stays the hard cap."""
+
+    FIRE = "The Great Harbor Fire of 1889 had burned the waterfront the year before she arrived."
+
+    def setUp(self):
+        super().setUp()
+        import era
+        self.era = era
+        self.other = os.path.join(self.tmp, "other")
+        shutil.copytree(FIXTURE, self.other)
+        meta = _hw.load_json(os.path.join(self.other, "project.json"))
+        meta["slug"] = "other-fixture"
+        _hw.save_json(os.path.join(self.other, "project.json"), meta)
+        other = _hw.Project(self.other)
+        ch = other.chapter(1)
+        ch["claims"].append({"id": "e1", "kind": "era", "source": "s1", "text": self.FIRE,
+                             "evidence": "the Great Harbor Fire of 1889 burned the whole of the waterfront"})
+        ch["claims"].append({"id": "e2", "kind": "era", "source": "s1",
+                             "text": "Between 1889 and 1891 the Madison Street cable line was laid to the lake.",
+                             "evidence": "the Madison Street cable line was laid between 1889 and 1891"})
+        _hw.save_json(other.chapter_path(1), ch)
+
+    def add_era(self, text, anchor=None, n=1):
+        ch = self.project.chapter(n)
+        ch["text"] += " " + text
+        ch["claims"].append({"id": f"e{len(ch['claims'])}", "kind": "era", "source": "s1", "text": text,
+                             "anchor": anchor or " ".join(text.split()[:5]), "evidence": text})
+        _hw.save_json(self.project.chapter_path(n), ch)
+
+    def era_rules(self, n=1):
+        return [f for f in voice_lint.chapter_findings(self.project, n) if f["rule"].startswith("era_")]
+
+    def test_told_lists_the_other_stories_era_facts_not_this_ones(self):
+        rows = self.era.told(self.project)
+        self.assertEqual({r["story"] for r in rows}, {"other-fixture"})
+        self.assertIn(self.FIRE, [r["text"] for r in rows])
+
+    def test_a_fact_another_story_tells_is_a_note(self):
+        self.add_era("Harbor Town was rebuilding after the Great Harbor Fire of 1889 when she came.")
+        found = self.era_rules()
+        self.assertEqual([f["rule"] for f in found], ["era_repeat"])
+        self.assertEqual(found[0]["severity"], "soft")
+        self.assertIn("other-fixture, chapter 1", found[0]["message"])
+
+    def test_a_different_fact_that_shares_a_year_is_not_a_repeat(self):
+        # Measured on the Black Seattle book: two different cable lines, one year in common.
+        self.add_era("A cable line up South Eleventh Street was built in 1891.")
+        self.assertEqual(self.era_rules(), [])
+
+    def test_more_than_a_few_era_sentences_is_a_note_not_a_failure(self):
+        for k in range(5):
+            self.add_era(f"In 190{k} the town council paved {k + 2} more blocks of Front Street.", f"the town council paved {k + 2}")
+        found = self.era_rules()
+        self.assertIn("era_nuggets", [f["rule"] for f in found])
+        self.assertNotIn("era_nuggets", self.rules(voice_lint.chapter_findings(self.project, 1)))
+
+    def test_a_domain_can_leave_era_sentences_uncounted(self):
+        for k in range(5):
+            self.add_era(f"In 190{k} the town council paved {k + 2} more blocks of Front Street.", f"the town council paved {k + 2}")
+        t = dict(_hw.thresholds(self.project), eraSentencesMax=None)
+        real = self.era.thresholds
+        self.era.thresholds = lambda project=None: t
+        try:
+            self.assertNotIn("era_nuggets", [f["rule"] for f in self.era.chapter_findings(self.project, 1)])
+        finally:
+            self.era.thresholds = real
+
+
 class Richness(FixtureCase):
     def test_counts_come_from_fetched_sources(self):
         computed, problems = richness.compute(self.project)
@@ -2057,6 +2127,53 @@ class SeriesBook(FixtureCase):
         self.assertEqual(code, 2, out)
         self.assertTrue(os.path.exists(os.path.join(self.out, "resources", "keep.txt")))
 
+    def archive_dir(self):
+        """A partner archive as build_web.py writes it: an issue in two parts, the names apart."""
+        d = os.path.join(self.tmp, "archive-src")
+        os.makedirs(d)
+        page = {"s": 1, "l": "Page 1", "a": 99.0, "w": 3, "u": 0, "t": "Mrs. Edith Fixture", "fl": [], "so": [], "ix": {}}
+        _hw.save_json(os.path.join(d, "issue-0-1.json"), {"slug": "x", "pages": [page]})
+        _hw.save_json(os.path.join(d, "issue-0-2.json"), {"slug": "x", "pages": [dict(page, s=2)]})
+        _hw.save_json(os.path.join(d, "names-1.json"), [{"n": "Edith Fixture", "k": "p", "m": [[0, 1, "Mrs. Edith Fixture"]]}])
+        _hw.save_json(os.path.join(d, "archive.json"), {
+            "title": "Fixture Archive", "credit": "Scans: Fixture Society", "creditUrl": "https://example.org/society",
+            "tiers": [[98, "Agree", "hi"], [0, "Check", "lo"]],
+            "issues": [{"id": 0, "title": "Fixture Weekly", "date": "1901", "files": ["issue-0-1.json", "issue-0-2.json"],
+                        "pages": [{"s": 1, "l": "Page 1", "a": 99.0}]}],
+            "shown": [0], "top": [], "nameFiles": ["names-1.json"]})
+        return d
+
+    def test_the_archive_is_a_site_of_its_own_that_links_back_to_the_book(self):
+        import contextlib
+        import io
+        out = os.path.join(self.tmp, "archive-web")
+        with contextlib.redirect_stdout(io.StringIO()) as buf:
+            code = self.sb.cmd_archive(self.archive_dir(), out, "https://example.org/book/", "Fixture Lives")
+        self.assertEqual(code, 0, buf.getvalue())
+        self.assertEqual(sorted(os.listdir(os.path.join(out, "resources", "archive"))),
+                         ["archive.json", "issue-0-1.json", "issue-0-2.json", "names-1.json"])
+        page = read(os.path.join(out, "index.html"))
+        data = json.loads(re.search(r'<script id="data" type="application/json">(.*?)</script>', page, re.S)
+                          .group(1).replace("<\\/", "</"))
+        self.assertTrue(data["archive"]["standalone"])
+        self.assertEqual(data["archive"]["book"], {"url": "https://example.org/book/", "title": "Fixture Lives"})
+        self.assertEqual(data["stories"], {})
+        self.assertIn('<meta name="robots" content="noindex">', page)      # unproofread: out of search engines
+
+    def test_a_book_sends_its_old_archive_addresses_to_the_archives_own_site(self):
+        import contextlib
+        import io
+        with contextlib.redirect_stdout(io.StringIO()) as buf:
+            code = self.sb.cmd_build(self.tmp, "fixture", self.out, use_files=True,
+                                     archive_url="https://example.org/archive/")
+        self.assertEqual(code, 0, buf.getvalue())
+        self.assertEqual(self.data()["archive"], {"title": "Archive", "nav": True, "url": "https://example.org/archive/"})
+        self.assertFalse(os.path.exists(os.path.join(self.out, "resources", "archive")))
+        self.assertIn('if (AR && AR.url && parts[0] === "archive"){ location.replace(', read(os.path.join(self.out, "index.html")))
+        with contextlib.redirect_stdout(io.StringIO()) as buf:
+            self.sb.cmd_build(self.tmp, "fixture", self.out, use_files=True, archive_url="javascript:alert(1)")
+        self.assertIn("is not a web address", buf.getvalue())
+
     def test_render_pictures_landmarks_and_each_paragraphs_sources(self):
         ctx = {"picture": lambda url, alt: "resources/img/x.jpg"}
         md = ("The house at [518 14th Avenue East](https://mchatai.com/seattle-landmarks/#/l/SL-0648) stood.\n\n"
@@ -2150,6 +2267,33 @@ class Survey(unittest.TestCase):
     def setUp(self):
         import survey
         self.sv = survey
+
+    def test_an_archive_adds_its_pages_to_people_on_the_list_and_never_adds_a_person(self):
+        d = tempfile.mkdtemp()
+        try:
+            reg = os.path.join(d, "register")
+            os.makedirs(reg)
+            page = {"issue": 0, "sheet": 9, "year": 1909, "title": "Fixture Weekly", "date": "1909", "label": "Page 9",
+                    "context": "12. NETTIE J. ASBERRY. Teacher of Piano Forte."}
+            _hw.save_json(os.path.join(reg, "people.json"), [
+                {"pid": "p1", "spellings": ["NETTIE J. ASBERRY"], "publishers": ["Cayton"], "mentions": [page]},
+                {"pid": "p2", "spellings": ["H. Harris"], "publishers": ["Cayton"], "mentions": [dict(page, sheet=11)]},
+                {"pid": "p3", "spellings": ["B. F. Tutt"], "publishers": ["Cayton"], "mentions": [dict(page, sheet=15)]}])
+            _hw.save_json(os.path.join(reg, "matches.json"), [
+                {"pid": "p1", "longList": "Nettie Craig Asberry", "same": "yes"},
+                {"pid": "p2", "longList": "Homer Harris", "same": "no"}])      # born 1916: a name alone is not him
+            _hw.save_json(os.path.join(d, "survey.json"), {"people": [{"name": "Nettie Craig Asberry"}, {"name": "Homer Harris"}]})
+            import contextlib
+            import io
+            with contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(self.sv.cmd_archive(d, reg, "https://example.org/archive"), 0)
+            people = _hw.load_json(os.path.join(d, "survey.json"))["people"]
+            self.assertEqual([p["name"] for p in people], ["Nettie Craig Asberry", "Homer Harris"])   # Tutt is not added
+            self.assertEqual(people[0]["archive"]["pages"][0]["url"], "https://example.org/archive/#/archive/0/9")
+            self.assertEqual(people[0]["archive"]["pages"][0]["quote"], page["context"])
+            self.assertNotIn("archive", people[1])
+        finally:
+            shutil.rmtree(d, ignore_errors=True)
 
     def test_the_place_lens_tells_a_life_here_from_a_visit(self):
         # Lawrence, 2026-10-08: "people who lived and worked in Seattle (not just people who passed

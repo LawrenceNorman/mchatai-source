@@ -22,5 +22,126 @@
   "llm_prompt": {
     "system": "You are a precise video editor. You are given a speaker's transcript as a numbered list of words. Some are flagged as candidate filler words (marked with *). Return ONLY the indices that are TRUE disfluencies (meaningless filler / false starts) — never words that carry meaning in context (e.g. 'like' in a comparison, 'right' as agreement, 'so' as a connector).",
     "user_template": "Transcript words (index: word), candidates flagged with *:\n{{TRANSCRIPT}}\n\nRespond with JSON only: {\"filler_indices\": [<indices to remove>]}"
+  },
+
+  "_screen_activity_notes": "A pause is cut only where the screen is also still, so a demo keeps the stretches where an agent works on screen. Frames are compared grey at analysis_width, samples_per_sec times a second; a pixel counts as changed past pixel_delta (0-255), and the screen counts as moving when changed_fraction of pixels change. Calibrated 2026-10-28 on a 20-minute Workbench demo: changes are mostly exactly zero or large, and 0.001-0.005 all keep about the same, so 0.002 sits in the flat middle. Changing samples_per_sec, analysis_width or pixel_delta makes each recording measure again once; the other values apply instantly.",
+
+  "screen_activity": {
+    "enabled": true,
+    "samples_per_sec": 2,
+    "analysis_width": 320,
+    "pixel_delta": 16,
+    "changed_fraction": 0.002,
+    "pad_sec": 0.75,
+    "min_still_cut_sec": 1.0
+  },
+
+  "_voice_leveller_notes": "The Video Recorder's voice chain: rumble filter (highpass_hz) -> background-noise expander (starts gate_above_floor_db over the measured room noise; a preset's noise_reduction_db is the most it lowers) -> compressor (threshold relative to the voice's own loudness, light_threshold_db at compression 0 to heavy_threshold_db at 1; ratio 1:1 to heavy_ratio) -> make-up gain to target_lufs as played -> true-peak limiter at ceiling_db. YouTube plays uploads at about -14 LUFS and never turns a quiet one up. Calibrated 2026-10-28 on a 20-minute webcam-mic demo (-30.4 LUFS in): every preset measured -14.0 LUFS / -1.0 dBTP in ffmpeg ebur128; Podcast cut the phrase-to-phrase spread of real speech from 9.7 dB to 5.6 dB. Changing `chain` re-renders every levelled voice once; presets apply to projects that pick them afresh.",
+
+  "voice_leveller": {
+    "default_preset": "podcast",
+    "presets": [
+      {
+        "id": "gentle",
+        "label": "Gentle",
+        "target_lufs": -14,
+        "compression": 0.25,
+        "noise_reduction_db": 4
+      },
+      {
+        "id": "podcast",
+        "label": "Podcast",
+        "target_lufs": -14,
+        "compression": 0.5,
+        "noise_reduction_db": 8
+      },
+      {
+        "id": "strong",
+        "label": "Strong",
+        "target_lufs": -14,
+        "compression": 0.8,
+        "noise_reduction_db": 12
+      }
+    ],
+    "targets": [
+      {
+        "label": "YouTube",
+        "lufs": -14
+      },
+      {
+        "label": "Podcast",
+        "lufs": -16
+      }
+    ],
+    "chain": {
+      "highpass_hz": 80,
+      "detector_ms": 10,
+      "attack_ms": 8,
+      "release_ms": 160,
+      "knee_db": 6,
+      "heavy_ratio": 6,
+      "light_threshold_db": -2,
+      "heavy_threshold_db": -12,
+      "gate_above_floor_db": 8,
+      "gate_ratio": 2.5,
+      "gate_attack_ms": 3,
+      "gate_release_ms": 150,
+      "gate_lookahead_ms": 10,
+      "ceiling_db": -1.0,
+      "limiter_release_ms": 80,
+      "max_makeup_db": 30
+    }
+  },
+
+  "_bumpers_notes": "Video Recorder intro and outro cards (AIVidBumpers.swift, 2026-10-28). The export adds the cards around the finished video. The words are the user's (the intro starts with the project title, the outro with outro_title). Colours are #RRGGBB or #RRGGBBAA. Lengths are clamped to 1-15 s, fades to 0-2 s, zoom (how far the card drifts in over its length) to 0-0.15. The Swift fallback in AIVidAutoEditConfig matches these values.",
+
+  "bumpers": {
+    "intro_seconds": 3.0,
+    "outro_seconds": 5.0,
+    "outro_title": "Thanks for watching",
+    "style": {
+      "background_top": "#151A24",
+      "background_bottom": "#07090D",
+      "glow": "#3B82F655",
+      "title_color": "#FFFFFF",
+      "subtitle_color": "#C3CAD6",
+      "footer_color": "#6CB4FF",
+      "fade_in_sec": 0.5,
+      "fade_out_sec": 0.5,
+      "zoom": 0.03
+    }
+  },
+
+  "_blur_notes": "Video Recorder Blur (AIVidBlurScanner.swift, 2026-10-28). Find reads the screen recording on the user's Mac (Vision) once per step_sec through the kept video (every move_step_sec where more than move_changed_fraction of the screen changes, from the project's screen-motion measure), at max_frame_width at most (4096: the recording's own size; at 1920 a 3456-wide recording's sidebar titles misread, measured 2026-10-28), and blurs what each pattern matches (just the matched words, grown by pad of their height) plus the user's own words (their whole line). A pattern that doesn't compile (NSRegularExpression) is skipped. Reads are joined into tracks: a spot that stays put is held over missed reads for up to bridge_sec; a spot that moved between two reads is blurred over the whole path between its two places. Clamps: step 0.25-5 s, move step 0.1 s to step, moving share 0.0005-0.5, bridge 0-15 s, width 960-4096, pad 0-2. The Swift fallback matches.",
+
+  "blur": {
+    "step_sec": 1.0,
+    "move_step_sec": 0.25,
+    "move_changed_fraction": 0.01,
+    "bridge_sec": 4.0,
+    "max_frame_width": 4096,
+    "pad": 0.35,
+    "patterns": [
+      {
+        "label": "email address",
+        "regex": "[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}"
+      },
+      {
+        "label": "phone number",
+        "regex": "\\(?\\b\\d{3}\\)?[-.\\s]\\d{3}[-.\\s]\\d{4}\\b"
+      },
+      {
+        "label": "money",
+        "regex": "\\$\\s?\\d[\\d,]*(\\.\\d+)?"
+      },
+      {
+        "label": "home folder",
+        "regex": "/Users/[A-Za-z0-9._-]+|-Users-[A-Za-z0-9._]+"
+      },
+      {
+        "label": "key",
+        "regex": "\\b(sk-[A-Za-z0-9_-]{8,}|AIza[0-9A-Za-z_-]{20,}|ghp_[A-Za-z0-9]{20,}|xox[abp]-[A-Za-z0-9-]{10,})"
+      }
+    ]
   }
 }

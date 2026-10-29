@@ -21,6 +21,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from _hw import (Project, finding, lint_rules, norm, quoted_spans, report,  # noqa: E402
                  sentence_around, strip_quoted, thresholds, words)
+import era  # noqa: E402
 
 
 def compiled_rules(origin=None, project=None):
@@ -232,6 +233,8 @@ def chapter_findings(project, n):
     if not book_scope and n_words and era_words / n_words > t["eraShareMax"]:
         out.append(finding("era_share", "hard",
                            f"era context is {100 * era_words / n_words:.0f}% of the chapter (cap {100 * t['eraShareMax']:.0f}%) — the person is the subject"))
+    # §9 — a few facts, and none the series has already told (notes; tools/era.py).
+    out += era.chapter_findings(project, n)
     import world
     out += world.chapter_findings(project, n, claims, t)
 
