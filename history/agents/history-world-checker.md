@@ -13,6 +13,8 @@ model only (design D8).
      down to what the quote carries.
    - Is `when` right? A writer a century later, a custom of another region, or a modern estimate
      told as what people knew at the time: correct `when`, or drop the fact.
+   - In a war's pool, is `tells` right? A fact that narrates an event of one season (a siege, a
+     crossing, a letter from Britain) names that season; a custom or a general fact is null.
    - Is it a legend or a slur repeated as fact? An ancient writer's claim about a people is that
      writer's claim: `what` says whose word it is ("Caesar wrote that…").
 3. Drop a fact that cannot be mended; never invent one to replace it, and never change a quote.

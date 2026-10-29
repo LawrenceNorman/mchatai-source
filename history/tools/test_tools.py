@@ -3959,6 +3959,31 @@ class WorldPool(FixtureCase):
         self.assertIn("context_unplanned",
                       self.rules(self.world.chapter_findings(self.project, 1, told, t), hard_only=False))
 
+    def test_a_season_never_tells_a_later_seasons_event(self):
+        """2026-10-29: the 57 BC pass told 54 BC's siege of Quintus Cicero's camp; no check caught it."""
+        season_root = os.path.join(self.tmp, "gaul-57bc")
+        shutil.copytree(self.root, season_root)
+        self.project = _hw.Project(season_root)
+        meta = _hw.load_json(self.project.path("project.json"))
+        meta["campaign"] = "caesar-in-gaul"
+        _hw.save_json(self.project.path("project.json"), meta)
+        data = _hw.load_json(self.pool.path("world.json"))
+        data["facts"][0]["tells"] = "54 BC"
+        _hw.save_json(self.pool.path("world.json"), data)
+        self.world.adopt(self.pool, self.project, ["w1"])
+        self.set_picks({1: [{"fact": "w1", "at": "x"}]})
+        self.assertIn("context_later_season", self.plan_rules())
+        t = _hw.thresholds(self.project)
+        told = self.project.chapter(1)["claims"] + [{"id": "cw1", "kind": "era", "about": "w1", "text": "x",
+                                                     "source": "s1", "evidence": self.QUOTE}]
+        self.assertIn("context_later_season", self.rules(self.world.chapter_findings(self.project, 1, told, t)))
+        data["facts"][0]["tells"] = "58 BC"          # an earlier season's event is a callback, welcome
+        _hw.save_json(self.pool.path("world.json"), data)
+        self.assertNotIn("context_later_season", self.plan_rules())
+        data["facts"][0]["tells"] = None             # a custom any season may tell
+        _hw.save_json(self.pool.path("world.json"), data)
+        self.assertNotIn("context_later_season", self.plan_rules())
+
     def test_a_story_without_a_pool_is_untouched(self):
         meta = _hw.load_json(self.project.path("project.json"))
         meta.pop("world")

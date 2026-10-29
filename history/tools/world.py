@@ -24,11 +24,12 @@ might help pull the reader into the time", "accurate (and verifyable)", "we don'
 this or become overly repeatitive about it over the course of the book".
 """
 import os
+import re
 import shutil
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from _hw import Project, finding, load_json, norm, save_json, thresholds, words  # noqa: E402
+from _hw import HISTORY, Project, finding, load_json, norm, save_json, thresholds, words  # noqa: E402
 
 
 def pool_facts(pool):
@@ -75,6 +76,18 @@ def cmd_check(pool):
     for ids in dup.values():
         if len(ids) > 1:
             problems.append(f"{', '.join(map(str, ids))}: the same quote carries more than one fact")
+    # A war's pool (stories/_world/<campaign id>): a fact whose `when` names a year of the war must
+    # say whether it tells an event of that season (`tells`: "54 BC") or a custom any season may
+    # tell (`tells`: null). The 57 BC pass told 54 BC's siege of Quintus Cicero's camp (2026-10-29).
+    camp = load_json(os.path.join(HISTORY, "domains", (load_json(pool.path("project.json"), {}) or {}).get("domain")
+                                  or "pivotal-history", "campaigns", f"{os.path.basename(pool.root)}.json"), None)
+    if camp:
+        years = {bc_year(s.get("when")) for s in camp.get("seasons") or []} - {None}
+        for f in facts:
+            named = {int(y) for y in re.findall(r"\b(\d+)\s*(?:[–-]\s*\d+\s*)?BC\b", f.get("when") or "")}
+            if named & years and "tells" not in f:
+                problems.append(f"{f.get('id')}: `when` names a year of the war ({f.get('when')}); set `tells` to the "
+                                "season of the event it tells (\"54 BC\"), or null for a custom any season may tell")
     counts = {k: 0 for k in known}
     for f in facts:
         counts[f.get("topic")] = counts.get(f.get("topic"), 0) + 1
@@ -120,6 +133,36 @@ def planned(stories, pool_id):
     return out
 
 
+def bc_year(text):
+    """The first year in "54 BC", "51–50 BC" or 54 as a number of years BC, else None."""
+    if isinstance(text, (int, float)):
+        return int(text)
+    m = re.search(r"\d+", str(text or ""))
+    return int(m.group()) if m else None
+
+
+def campaign_of(project):
+    """(campaign file, this story's season) for a story that is one season of a war, else (None, None)."""
+    meta = load_json(project.path("project.json"), {}) or {}
+    cid = meta.get("campaign")
+    if not cid:
+        return None, None
+    camp = load_json(os.path.join(HISTORY, "domains", meta.get("domain") or "pivotal-history", "campaigns",
+                                  f"{cid}.json"), None)
+    if not camp:
+        return None, None
+    slug = os.path.basename(project.root)
+    season = next((s for s in camp.get("seasons") or [] if slug in (s.get("slug"), s.get("story"))), None)
+    return camp, season
+
+
+def later_season(fact, season):
+    """A fact that tells an event of the war (`tells`, its season's year) later than this season: it
+    would tell a later season's story early (campaign.md §3: never tell how a later season ends)."""
+    told, here = bc_year(fact.get("tells")), bc_year((season or {}).get("when"))
+    return told is not None and here is not None and told < here
+
+
 def story_pool(project):
     """(pool Project, pool id) for a story whose project.json names a `world`, else (None, None)."""
     pid = (load_json(project.path("project.json"), {}) or {}).get("world")
@@ -157,6 +200,7 @@ def plan_findings(project, chapters, t):
                 if slug != me:
                     elsewhere.setdefault(fid, set()).add(slug)
     adopted = {norm(project.source_text(sid) or "") for sid in project.sources}
+    _, season = campaign_of(project)
     seen = {}
     for ch in chapters:
         picks = ch.get("context") or []
@@ -175,6 +219,10 @@ def plan_findings(project, chapters, t):
                 out.append(finding("context_repeat", "hard", f"world fact {fid} is already told or planned in "
                                    f"{', '.join(sorted(elsewhere[fid]))}: pick another (the author: not \"overly "
                                    "repeatitive about it over the course of the book\")"))
+            if later_season(f, season):
+                out.append(finding("context_later_season", "hard",
+                                   f"world fact {fid} tells an event of {f.get('tells')}, a later season than this "
+                                   f"one ({season.get('when')}): it would tell that season's story early. Pick another"))
             if not str(p.get("at") or "").strip():
                 out.append(finding("context_unplaced", "soft", f"chapter {ch.get('n')}'s pick {fid} has no `at`: the "
                                    "moment in the chapter it belongs to, where the reader meets it"))
@@ -215,7 +263,13 @@ def chapter_findings(project, n, claims, t):
                                f"plan.json gives this chapter world fact {fid} and no claim of kind `era` has `\"about\": "
                                f"\"{fid}\"`: tell it where the plan's `at` says, in a sentence or two (voice.md §9)"))
     cap = c.get("maxWordsPerPick", 90)
+    facts = {f.get("id"): f for f in pool_facts(pool)}
+    _, season = campaign_of(project)
     for fid, cls in told.items():
+        if later_season(facts.get(fid) or {}, season):
+            out.append(finding("context_later_season", "hard",
+                               f"this chapter tells world fact {fid}, an event of {facts[fid].get('tells')}, a later "
+                               f"season than {season.get('when')}: cut it and tell the plan's replacement"))
         if fid not in picks:
             out.append(finding("context_unplanned", "soft",
                                f"an era claim is about world fact {fid}, which the plan did not give this chapter: "

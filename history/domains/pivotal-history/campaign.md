@@ -62,7 +62,9 @@ Every rule of `scout.md` holds. What changes:
   be someone's first. For an entry an earlier season met, the introduction is a reminder of one
   clause, with its `cast` claim like any other.
 - **Never tell how a later season ends.** Alesia, Uxellodunum and Vercingetorix's fate belong to
-  their own seasons, and the reader of an early season must not have them given away. A writer's
+  their own seasons, and the reader of an early season must not have them given away. That holds
+  for world facts too: one whose `tells` is a later season is refused (`context_later_season`;
+  the 57 BC pass, 2026-10-29, told 54 BC's siege of Quintus Cicero's camp). A writer's
   sentence may look ahead without telling an outcome ("the Arverni had not yet been heard from").
 - **The afterwords.** Each season's afterword weighs that season's sources. The war's end (what
   came after the last season) belongs to the last season's afterword, or to the book's own, as the

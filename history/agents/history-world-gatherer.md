@@ -21,6 +21,8 @@ They are judged as facts, so you run on the strongest model (design D8).
    when it was written or found>", "source": "<pool source id>", "evidence": "<verbatim, 8+ words>",
    "fits": ["<moments a chapter might reach it at: a bridge, a wound, winter quarters>"]}`.
    A fact from another age is still welcome when its `when` says so ("Pliny, a century later").
+   In a war's pool, add `"tells"`: the season whose event the fact narrates ("54 BC"), or null for
+   a custom any season may tell.
    Never a fact the quote does not carry, and never two facts on one quote.
 4. Aim for the count your brief gives, spread across your topics, the striking over the routine:
    what would surprise a reader today, what one side had that the other did not.

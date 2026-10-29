@@ -14,6 +14,10 @@ time and place, and the author's words on what he wants a reader to learn (quote
    `"pool": true`, an empty `world.json` (`{"id": "<id>", "facts": []}`) and `sources/`. Add
    `"world": "<id>"` to the `project.json` of every story the brief names. Install the subagents if
    the workdir lacks them (PLAYBOOK, Models).
+   For a war told in seasons, each fact also says `tells`: the season whose event it narrates
+   (`"54 BC"`: the siege of Quintus Cicero's camp), or `null` for a custom any season may tell
+   (the Druids' courts). A season never tells a later season's event (`context_later_season`), and
+   `world.py check` asks for `tells` wherever a fact's `when` names a year of the war.
 2. **Gather** (one `history-world-gatherer` subagent per group of topics, up to four at once, in the
    foreground). Split thresholds `world.topics` among them, give each a block of ids (w1–w49,
    w50–w99, …) and a count. The pool needs about three facts for every one its chapters will tell,
