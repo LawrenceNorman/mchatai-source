@@ -70,6 +70,36 @@ def said(text):
     return re.sub(r"(\d+)\s*[–—-]\s*(\d+)", r"\1 to \2", text)
 
 
+TENS = "zero ten twenty thirty forty fifty sixty seventy eighty ninety".split()
+
+
+def number_words(n):
+    """1–99 in words; a year past 999 as two pairs (“fifteen eighty-eight”), as it is read aloud."""
+    if n >= 1000:
+        hi, lo = divmod(n, 100)
+        return number_words(hi) + " " + ("hundred" if lo == 0 else ("oh " if lo < 10 else "") + number_words(lo))
+    if n >= 100:
+        hi, lo = divmod(n, 100)
+        return f"{NUMBERS[hi]} hundred" + (f" and {number_words(lo)}" if lo else "")
+    if n <= 20:
+        return NUMBERS[n]
+    tens, ones = divmod(n, 10)
+    return TENS[tens] + (f"-{NUMBERS[ones]}" if ones else "")
+
+
+def spoken_heading(word, title):
+    """“Part five. Fifty-four BC. Britain again, …”. Easton read a numeral before “BC” at the head of a
+    line as “By 4 Porn BC” and voiced a colon as a pause it then lost its place in; spelled out, a
+    year reads cleanly (the Caesar in Gaul audiobook, 2026-10-29)."""
+    m = re.match(r"(\d+)(?:\s*[–—-]\s*(\d+))?\s*(BC|AD|BCE|CE)?\s*:\s*(.*)", title)
+    if not m:
+        return said(f"Part {word}. {title}.")
+    a, b, era, rest = m.groups()
+    years = number_words(int(a)) + (f" to {number_words(int(b))}" if b else "")
+    years = years[:1].upper() + years[1:]
+    return f"Part {word}. {years}{' ' + era if era else ''}. {rest}."
+
+
 def cmd_status(stories, cid):
     import cite
     import series_book
@@ -112,7 +142,7 @@ def cmd_narration(stories, cid, out_path, use_files):
                 continue
             lines = [dict(x, text=said(x["text"])) for x in ep["lines"][1:]]   # the first is the heading
             if i == 0:
-                track = {"title": f"{title} · {ep['title']}", "spoken": said(f"Part {word}. {title}."),
+                track = {"title": f"{title} · {ep['title']}", "spoken": spoken_heading(word, title),
                          "partStart": True}
             else:
                 track = {"title": ep["title"], "spoken": said(f"{ep['title']}.")}

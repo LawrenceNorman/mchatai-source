@@ -4147,6 +4147,13 @@ class CampaignBook(unittest.TestCase):
         self.assertEqual(campaign_book.short_title(camp, {"when": "52 BC", "subject": "The Siege of Alesia"}),
                          "52 BC: The Siege of Alesia", "a landed story keeps its own title, after the year")
         self.assertEqual(campaign_book.said("Part nine. 51–50 BC: Uxellodunum."), "Part nine. 51 to 50 BC: Uxellodunum.")
+        # Easton garbled "Part five. 54 BC." as "By 4 Porn BC"; a heading spells its years out.
+        self.assertEqual(campaign_book.spoken_heading("five", "54 BC: Britain again"),
+                         "Part five. Fifty-four BC. Britain again.")
+        self.assertEqual(campaign_book.spoken_heading("nine", "51–50 BC: Uxellodunum and the end of the war"),
+                         "Part nine. Fifty-one to fifty BC. Uxellodunum and the end of the war.")
+        self.assertEqual(campaign_book.spoken_heading("two", "1588: The Armada"), "Part two. Fifteen eighty-eight. The Armada.")
+        self.assertEqual(campaign_book.spoken_heading("one", "The Siege"), "Part one. The Siege.")
 
     def test_the_campaign_file_reads_in_episode_order(self):
         import campaign_book
