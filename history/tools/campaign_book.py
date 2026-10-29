@@ -99,7 +99,7 @@ def cmd_narration(stories, cid, out_path, use_files):
     if missing:
         print(f"not every season has landed: {', '.join(missing)}")
         return 1
-    tracks, names, skipped = [], [], []
+    tracks, names, skipped, say = [], [], [], {}
     for part, (s, p, _) in enumerate(rows, start=1):
         slug = os.path.basename(p.root)
         data = narration.build(p, use_files, credit=False)
@@ -121,6 +121,7 @@ def cmd_narration(stories, cid, out_path, use_files):
         for n in narration.source_names(p):
             if n not in names:
                 names.append(n)
+        say.update(narration.cfg(p)["say"])
         print(f"  part {part}: {slug} — {len(data['episodes'])} tracks, read from {data['origin']}")
     unknown = [f"{k}: {t}" for k, ts in skip.items() for t in ts if f"{k}: {t}" not in skipped]
     if unknown:
@@ -128,7 +129,7 @@ def cmd_narration(stories, cid, out_path, use_files):
         return 1
     out = {"campaign": cid, "title": camp["title"], "subtitle": camp.get("subtitle", ""),
            "question": camp.get("question", ""), "tracks": tracks, "skipped": skipped,
-           "sourcesLine": said(narration.sources_line(names)) if names else "",
+           "sourcesLine": said(narration.spoken(narration.sources_line(names), say)) if names else "",
            "words": sum(t["words"] for t in tracks)}
     save_json(out_path, out)
     print(f"{len(tracks)} tracks, {out['words']:,} words (~{out['words'] / 150 / 60:.1f} h at 150 a minute)"
