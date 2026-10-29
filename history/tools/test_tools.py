@@ -3586,7 +3586,15 @@ class EpisodeBook(VoiceTwoCase):
                                  {"text": "Water Street was the town", "chapter": 1, "shows": ["Water Street"]}]
         self.edit_plan(fill)
         notes = {f["rule"] for f in richness.validate_plan(self.project, write=False)}
-        self.assertFalse(notes & {"question_missing", "turn_missing", "observations_count", "observation_incomplete"}, notes)
+        self.assertFalse(notes & {"question_missing", "turn_missing", "observations_count", "observation_incomplete",
+                                  "question_long"}, notes)
+
+        def wordy(p):
+            p["question"] = ("How did one Roman proconsul take all of Gaul in eight years, and in each year how much of the "
+                             "winning was his edge, how much was fortune, and how much was the Gauls' own divisions?")
+        self.edit_plan(wordy)
+        notes = {f["rule"] for f in richness.validate_plan(self.project, write=False)}
+        self.assertIn("question_long", notes)
 
     def test_the_editor_reads_for_plain_words_and_landed_observations(self):
         import editor

@@ -607,6 +607,11 @@ def story_shape_findings(project, chapters, events, t):
     plan = project.plan or {}
     if shape.get("question") and not str(plan.get("question") or "").strip():
         out.append(finding("question_missing", "soft", "the plan has no `question`: the one the book answers, which the introduction asks (domain voice §10)"))
+    cap = shape.get("questionMaxWords")
+    if cap and len(str(plan.get("question") or "").split()) > cap:
+        out.append(finding("question_long", "soft",
+                           f"the plan's `question` runs {len(str(plan['question']).split())} words; keep it one short line of "
+                           f"{cap} or fewer, the way the author would ask it aloud (domain thresholds `plan`)", plan["question"]))
     if shape.get("turns"):
         flat = [str(c.get("n")) for c in chapters if c.get("role") != "afterword" and not str(c.get("turn") or "").strip()]
         if flat:

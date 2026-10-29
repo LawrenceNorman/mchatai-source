@@ -73,8 +73,8 @@ any season is planned:
 2. For each season: its span, the edge and the re-check's verdict, tier and ceiling words, the
    commander's own words about it, the cast it meets first, and the turn that leads into the next
    season.
-3. The book's question, proposed in one sentence, for the author to approve or change. It goes into
-   the campaign file's `question` only when he has.
+3. The book's question, proposed as one short line in the author's voice (16 words at most), for him
+   to approve or change. It goes into the campaign file's `question` only when he has.
 4. Seasons in doubt, each with the proposal of §2.
 5. The writing cost, in tokens, from the measured stages (`jobs/README.md`, Cost): about 89M a
    season at Alesia's size, and the total.

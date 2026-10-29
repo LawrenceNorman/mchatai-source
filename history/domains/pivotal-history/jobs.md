@@ -28,7 +28,10 @@ Read `storytelling.md` (the five moves) with the voice, before you plan.
    mentions --terms`) and `aliases` (the other names the chapters may use). Then `python3
    history/tools/storytelling.py cast stories/<slug>`.
 2. **plan.json**, besides PLAYBOOK §2:
-   - `question`: the one the book answers, which the introduction asks.
+   - `question`: the one the book answers, which the introduction asks. One short line in the author's
+     voice, the way he would ask it aloud (16 words at most; `question_long`). The author, 2026-10-28:
+     "Way too wordy, please put questions like this in my voice". For a campaign season, it serves the
+     campaign file's `question`.
    - Few, full body chapters (each costs a writer and an auditor, about 7M tokens, whatever its
      length), then the afterword as the last chapter (`"role": "afterword"`, no events).
    - Each chapter: a concrete title, its span, events, ledger rows (`campaign.*`), `summary`,
