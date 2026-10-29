@@ -15,7 +15,8 @@ What the book changes, it takes from the campaign file's `book` block, never fro
   - `skip`: {"<slug>": ["<chapter title>", ...]}: chapters a published episode carries that the book
     tells in full elsewhere (Alesia's chapter 1 sums up the 52 BC rising, which season 7 tells). The
     published episode is not changed.
-  - Each season's spoken sources line is said once for the whole book, at its end.
+  - Each season's spoken sources line is said once for the whole book, at its end: the campaign
+    file's `book.sourcesLine` when it has one, else the publishers the seasons cite.
 
 Seasons not yet landed are listed under `missing`; `narration` refuses to write a book with any.
 """
@@ -129,7 +130,9 @@ def cmd_narration(stories, cid, out_path, use_files):
         return 1
     out = {"campaign": cid, "title": camp["title"], "subtitle": camp.get("subtitle", ""),
            "question": camp.get("question", ""), "tracks": tracks, "skipped": skipped,
-           "sourcesLine": said(narration.spoken(narration.sources_line(names), say)) if names else "",
+           # The campaign file's own line wins: a world fact's source names a website as its publisher.
+           "sourcesLine": said(narration.spoken(book.get("sourcesLine") or narration.sources_line(names), say))
+           if (book.get("sourcesLine") or names) else "",
            "words": sum(t["words"] for t in tracks)}
     save_json(out_path, out)
     print(f"{len(tracks)} tracks, {out['words']:,} words (~{out['words'] / 150 / 60:.1f} h at 150 a minute)"
