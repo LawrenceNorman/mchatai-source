@@ -99,3 +99,8 @@ decides how the two meet: the published episode is never changed for the book. T
 what waits on the author. `campaign_book.py narration <stories> <id> <out.json>` gives the book as it
 is read aloud, one track for each season's introduction, chapter and afterword, with the sources said
 once at the end. The audiobook is built from that file.
+
+On the series' site (`series_book.py build`, PLAYBOOK §6) a campaign is one entry of the contents:
+its title, span and question, then its published seasons in `episode` order, filed into the part its
+first season falls in. A season's page names its place in the war ("Caesar in Gaul, part 3 of 9").
+Each season is still published on the author's word, recorded in its own `project.json` `review`.

@@ -70,7 +70,7 @@ import sys
 import urllib.parse
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from _hw import HISTORY, Project, load_json  # noqa: E402
+from _hw import DOMAINS, HISTORY, Project, load_json  # noqa: E402
 from cite import find_shim, sentences, storymaker  # noqa: E402
 import book_map  # noqa: E402
 
@@ -811,8 +811,33 @@ def part_for(year, parts):
     return len(parts) - 1 if parts else 0
 
 
-def order_key(story):
-    return (story["arrived"] if story["arrived"] is not None else 9999, story["born"] or 9999, story["name"])
+def order_key(story, campaigns=None):
+    """A story by the year its subject arrived; a campaign's season at its campaign's first year,
+    then in episode order, so the war reads as one run of the book."""
+    c = (campaigns or {}).get(story.get("campaign"))
+    if c:
+        return (c["start"] if c["start"] is not None else 9999, 9999, c["title"], story["episode"])
+    return (story["arrived"] if story["arrived"] is not None else 9999, story["born"] or 9999, story["name"], 0)
+
+
+def campaigns_of(series_id):
+    """{story folder: (campaign, season)} from every campaign file of the series (a domain's
+    campaigns/<id>.json, domains/pivotal-history/campaign.md): one war told as a book of seasons. A
+    season names its folder by `story` (a telling already published: Alesia's) or by `slug`."""
+    out = {}
+    if not os.path.isdir(DOMAINS):
+        return out
+    for dom in sorted(os.listdir(DOMAINS)):
+        folder = os.path.join(DOMAINS, dom, "campaigns")
+        if not os.path.isdir(folder):
+            continue
+        for name in sorted(os.listdir(folder)):
+            camp = load_json(os.path.join(folder, name), None) if name.endswith(".json") else None
+            if not isinstance(camp, dict) or camp.get("series") != series_id:
+                continue
+            for season in camp.get("seasons", []):
+                out[season.get("story") or season["slug"]] = (camp, season)
+    return out
 
 
 def companion_names(book):
@@ -956,11 +981,19 @@ def cmd_build(stories_dir, series_id, out, use_files=False, publish=False, revie
         shutil.rmtree(res)
     os.makedirs(os.path.join(out, "resources"), exist_ok=True)
     problems, stories, held, pool = [], [], [], {}
+    # A war told in seasons (campaign.md) is one entry of the contents, its seasons in episode order and
+    # filed into the part its first season falls in: "Caesar in Gaul", Alesia's telling its eighth part.
+    from campaign_book import short_title
+    seasons, campaigns = campaigns_of(series_id), {}
     for project in projects:
         story = build_story(project, shim, use_files, out, place, problems, pool, entry.get("survey") or {})
         if story is None:
             continue
         story["media"] = story_media(project)
+        hit = seasons.get(os.path.basename(project.root))
+        if hit:
+            camp, season = hit
+            story.update(campaign=camp["id"], episode=season["episode"], label=short_title(camp, season))
         # The author may publish on his own review (book.communityReviewWaived, 2026-10-11).
         why = publishable(story, community=not review and not book.get("communityReviewWaived"))
         if (publish or review) and why and not (review and drafts):
@@ -970,13 +1003,26 @@ def cmd_build(stories_dir, series_id, out, use_files=False, publish=False, revie
         # A review copy's readers need what it waits on, not where that is recorded.
         story["draftWhy"] = [re.sub(r"\s*\([^)]*\)", "", w) for w in why] if review else why
         stories.append(story)
-    stories.sort(key=order_key)
+    files = {camp["id"]: camp for camp, _ in seasons.values()}
+    for st in stories:
+        if st.get("campaign"):
+            camp = files[st["campaign"]]
+            c = campaigns.setdefault(st["campaign"], {
+                "title": camp.get("title", ""), "subtitle": camp.get("subtitle", ""), "span": camp.get("span", ""),
+                "question": camp.get("question", ""), "seasons": len(camp.get("seasons", [])), "stories": [],
+                "start": None})
+            if st["arrived"] is not None and (c["start"] is None or st["arrived"] < c["start"]):
+                c["start"] = st["arrived"]
+    stories.sort(key=lambda st: order_key(st, campaigns))
+    for st in stories:
+        if st.get("campaign"):
+            campaigns[st["campaign"]]["stories"].append(st["slug"])
     parts_cfg = book.get("parts", [])
     parts = [{"title": p.get("title", ""), "from": p.get("from"), "to": p.get("to"), "stories": []} for p in parts_cfg]
     if not parts:
         parts = [{"title": "", "from": None, "to": None, "stories": []}]
     for s in stories:
-        i = part_for(s["arrived"], parts_cfg)
+        i = part_for(campaigns[s["campaign"]]["start"] if s.get("campaign") else s["arrived"], parts_cfg)
         parts[i]["stories"].append(s["slug"])
         # Where this part's people arrived, when it is not the series' place: the Bushes arrived
         # "on Puget Sound" in 1845, six years before Seattle began.
@@ -1035,6 +1081,7 @@ def cmd_build(stories_dir, series_id, out, use_files=False, publish=False, revie
                                              "portraitPermission")}
                     for s in stories},
         "order": [s["slug"] for s in stories],
+        "campaigns": {k: {f: v for f, v in c.items() if f != "start"} for k, c in campaigns.items()},
         "places": places,
         "map": the_map,
     }
@@ -1169,6 +1216,16 @@ h1{font:600 clamp(30px,5vw,44px)/1.1 var(--serif);margin:0;letter-spacing:-.01em
 .person .when{margin:3px 0 0;font-size:13px;color:var(--muted)}
 .person .sum{margin:8px 0 0;font:15.5px/1.5 var(--serif)}
 .person .len{margin:8px 0 0;font-size:12.5px;color:var(--muted)}
+.people .campaign{grid-column:1/-1;background:var(--panel);border:1px solid var(--line);border-radius:12px}
+.campaign>.person{border:0;background:none;height:auto}
+.seasons{list-style:none;margin:0;padding:0 14px 10px;columns:2 22rem;column-gap:22px}
+.seasons li{break-inside:avoid}
+.seasons a{display:grid;grid-template-columns:1.4em minmax(0,1fr) auto;gap:10px;align-items:baseline;padding:8px 0;
+  border-top:1px solid var(--line);text-decoration:none;color:var(--ink)}
+.seasons a:hover .st{color:var(--accent)}
+.seasons .sn{font:600 12.5px/1 var(--sans);color:var(--mark);font-variant-numeric:tabular-nums}
+.seasons .st{font:16.5px/1.35 var(--serif)}
+.seasons small{font-size:12.5px;color:var(--muted);white-space:nowrap}
 .ph{width:92px;height:112px;border-radius:8px;object-fit:cover;object-position:center 22%;background:var(--accent-soft);display:block}
 .mono{width:92px;height:112px;border-radius:8px;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;
   font:600 30px/1 var(--serif)}
@@ -1344,7 +1401,7 @@ footer p{margin:0 0 6px;max-width:44rem}
 <script id="data" type="application/json">__DATA__</script>
 <script>
 const D = JSON.parse(document.getElementById("data").textContent);
-const B = D.book, S = D.stories, ORDER = D.order;
+const B = D.book, S = D.stories, ORDER = D.order, C = D.campaigns || {};
 const el = id => document.getElementById(id);
 const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const ORD = ["One","Two","Three","Four","Five","Six","Seven","Eight","Nine","Ten"];
@@ -1398,23 +1455,42 @@ function partLabel(i){
 function chapLink(slug, n){ return `#/p/${slug}` + (n ? `/${n}` : ""); }
 function chapName(s, n){ return n === 0 ? "Introduction" : (s.chapters[n-1] || {}).title || ""; }
 
+function reading(mins){ return mins >= 90 ? `about ${Math.round(mins/60)} hours of reading` : `${mins} minutes of reading`; }
+// A war told in seasons (campaign.md): one entry, its seasons listed under it in episode order.
+function campaignEntry(id){
+  const c = C[id], ks = c.stories, first = S[ks[0]];
+  const nCh = ks.reduce((a,k) => a + S[k].chapters.length, 0), mins = ks.reduce((a,k) => a + S[k].minutes, 0);
+  const n = ks.length < c.seasons ? `${ks.length} of ${c.seasons} parts` : `${ks.length} parts`;
+  return `<li class="campaign"><a class="person" href="#/p/${ks[0]}">${portrait(first.portrait ? first : {name: c.title})}<div>
+      <h3>${esc(c.title)}</h3>
+      <p class="when">${c.span ? esc(c.span) + " · " : ""}a book in ${n}</p>
+      ${c.subtitle ? `<p class="sum">${esc(c.subtitle)}.${c.question ? " " + esc(c.question) : ""}</p>` : ""}
+      <p class="len">${nCh} chapters · ${reading(mins)}</p>
+    </div></a>
+    <ol class="seasons">${ks.map(k => { const s = S[k]; return `<li><a href="#/p/${k}"><span class="sn">${s.episode}</span><span class="st">${esc(s.label || s.name)}</span><small>${s.minutes} min${s.draft ? " · draft" : ""}</small></a></li>`; }).join("")}</ol></li>`;
+}
+
 function home(){
   nav("home");
   const nStories = ORDER.length, nCh = ORDER.reduce((a,k) => a + S[k].chapters.length, 0);
   const mins = ORDER.reduce((a,k) => a + S[k].minutes, 0);
-  const hours = mins >= 90 ? `about ${Math.round(mins/60)} hours of reading` : `${mins} minutes of reading`;
+  const entries = new Set(ORDER.map(k => S[k].campaign || k)).size;
+  const what = entries === 1 && S[ORDER[0]].campaign ? `${nStories} parts`
+    : `${entries} ${entries === 1 ? B.noun[0] : B.noun[1]}`;
   let h = `<section class="cover">
     ${COMP.title ? `<p class="kicker">A companion to ${esc(COMP.title)}</p>` : ""}
     <h1>${esc(B.title)}</h1>
     ${B.subtitle ? `<p class="sub">${esc(B.subtitle)}</p>` : ""}
     ${B.intro ? `<p class="lede">${esc(B.intro)}</p>` : ""}
-    <p class="meta">${nStories} ${nStories === 1 ? B.noun[0] : B.noun[1]} · ${nCh} chapters · ${hours}</p>
+    <p class="meta">${what} · ${nCh} chapters · ${reading(mins)}</p>
     ${channelLinks()}
   </section>`;
   D.parts.forEach((p, i) => {
-    const L = partLabel(i);
+    const L = partLabel(i), seen = new Set();
     h += `<section class="part"><h2>${L.n ? `<span class="pn">${L.n}</span>` : ""}${esc(L.t)}${L.y ? `<span class="yrs">${L.y}</span>` : ""}</h2>
-      <ol class="people">${p.stories.map(k => { const s = S[k]; return `<li><a class="person" href="#/p/${k}">${portrait(s)}<div>
+      <ol class="people">${p.stories.map(k => { const s = S[k];
+        if (s.campaign && C[s.campaign]){ if (seen.has(s.campaign)) return ""; seen.add(s.campaign); return campaignEntry(s.campaign); }
+        return `<li><a class="person" href="#/p/${k}">${portrait(s)}<div>
         <h3>${esc(s.name)}</h3>
         <p class="when">${s.when ? esc(s.when) : `${s.bornHere ? `Born in ${esc(B.place || "the city")}` : s.arrived ? `Arrived ${s.arrived}` : ""}${s.arrived && s.years ? " · " : ""}${esc(s.years)}`}</p>
         ${s.summary ? `<p class="sum">${esc(s.summary)}</p>` : ""}
@@ -1431,7 +1507,8 @@ function person(slug){
   const toc = s.chapters.map((c, n) => `<li><a href="${chapLink(slug, n+1)}">${esc(c.name || c.title)}${c.start ? `<span>${c.start}${c.end && c.end !== c.start ? "–" + c.end : ""}</span>` : ""}</a></li>`).join("");
   return `<article class="story"><header${s.portrait ? ' class="lead"' : ""}>
     ${s.portrait ? `<img class="hero" data-src="${esc(s.portrait)}" alt="${esc(s.name)}">` : ""}
-    <p class="kicker"><a href="#/">${esc(B.title)}</a>${L.t ? ` · ${esc(L.n ? L.n + ": " : "")}${esc(L.t)}` : ""}</p>
+    <p class="kicker"><a href="#/">${esc(B.title)}</a>${s.campaign && C[s.campaign] ? ` · ${esc(C[s.campaign].title)}, part ${s.episode} of ${C[s.campaign].seasons}`
+      : L.t ? ` · ${esc(L.n ? L.n + ": " : "")}${esc(L.t)}` : ""}</p>
     <h1>${esc(s.name)}</h1>
     <p class="years">${s.when ? esc(s.when) : ""}${s.when ? "" : esc(s.years)}${s.when ? "" : s.bornHere ? `${s.years ? " · " : ""}born in ${esc(B.place || "the city")}` : s.arrived ? `${s.years ? " · " : ""}arrived ${esc(s.arrivedIn || "in " + (B.place || "the city"))} ${s.arrived}` : ""}</p>
     ${draftNote(s)}

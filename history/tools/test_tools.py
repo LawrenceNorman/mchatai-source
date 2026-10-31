@@ -3020,7 +3020,7 @@ class EpisodeOpening(DomainCase):
         self.assertIn("portrait_missing", self.rules(images.portrait_findings(self.project)))
 
 
-class EpisodeBook(DomainCase):
+class EpisodeSeries(DomainCase):
     """A domain's series is a book like any other (the author, 2026-10-18: 'keep going so we can
     eventually make a complete book'): its title block, its order, its date."""
 
@@ -3054,6 +3054,21 @@ class EpisodeBook(DomainCase):
         parts = _hw.series_entry("pivotal-histories")[0]["book"]["parts"]
         self.assertEqual(parts[series_book.part_for(-214, parts)]["title"], "The ancient world")
         self.assertEqual(parts[series_book.part_for(1942, parts)]["title"], "The twentieth century")
+
+    def test_a_campaign_is_one_run_of_the_book(self):
+        import series_book
+        seasons = series_book.campaigns_of("pivotal-histories")
+        self.assertEqual(seasons["alesia-52bc-2"][1]["episode"], 8, "a published telling joins its war by `story`")
+        self.assertEqual(seasons["gaul-58bc"][0]["id"], "caesar-in-gaul")
+        camps = {"caesar-in-gaul": {"start": -58, "title": "Caesar in Gaul"}}
+        alesia = {"arrived": -52, "born": None, "name": "The Siege of Alesia", "campaign": "caesar-in-gaul", "episode": 8}
+        rising = {"arrived": -52, "born": None, "name": "Vercingetorix's rising", "campaign": "caesar-in-gaul", "episode": 7}
+        end = {"arrived": -51, "born": None, "name": "Uxellodunum", "campaign": "caesar-in-gaul", "episode": 9}
+        syracuse = {"arrived": -214, "born": None, "name": "The Siege of Syracuse"}
+        midway = {"arrived": 1942, "born": None, "name": "The Battle of Midway"}
+        got = sorted([midway, end, alesia, syracuse, rising], key=lambda s: series_book.order_key(s, camps))
+        self.assertEqual([s["name"] for s in got], ["The Siege of Syracuse", "Vercingetorix's rising", "The Siege of Alesia",
+                                                    "Uxellodunum", "The Battle of Midway"])
 
     def test_a_life_keeps_its_arrival(self):
         import series_book
