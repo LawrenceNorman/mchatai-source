@@ -3872,6 +3872,9 @@ class Publishing(VoiceTwoCase):
         publish.record(self.project, 1, "podcast", ["url=https://mchatai.com/u/a/ep1/", "published=2026-10-21"])
         m = series_book.story_media(self.project)
         self.assertEqual((m[0]["video"], m[0]["audio"]), ("https://youtu.be/x1", "https://mchatai.com/u/a/ep1/"))
+        publish.record(self.project, 1, "podcast", ["spotify=https://open.spotify.com/episode/x1"])
+        self.assertEqual(series_book.story_media(self.project)[0]["audio"], "https://open.spotify.com/episode/x1",
+                         "the episode on Spotify, a player anyone can open, before its feed file")
         publish.record(self.project, 1, "podcast", ["unpublished=2026-10-22"])
         self.assertEqual(series_book.story_media(self.project)[0]["audio"], "", "a taken-down episode is not linked")
 

@@ -753,7 +753,10 @@ def story_media(project):
         r = pub.get(str(ep.get("n"))) or {}
         v, a = r.get("video") or {}, r.get("podcast") or {}
         video = v.get("url", "") if v.get("uploaded") and safe_url(v.get("url", "")) else ""
-        audio = a.get("url", "") if a.get("published") and not a.get("unpublished") and safe_url(a.get("url", "")) else ""
+        # The episode on Spotify when it is there (2026-10-30, the author: the feed "is just an rss xml
+        # file and not playable … publish on spotify and then link to those episodes").
+        page = a.get("spotify") if safe_url(a.get("spotify", "")) else a.get("url", "")
+        audio = page if a.get("published") and not a.get("unpublished") and safe_url(page) else ""
         if video or audio:
             out.append({"n": ep.get("n"), "title": ep.get("title", ""), "minutes": round(ep.get("minutes") or 0),
                         "video": video, "audio": audio})
@@ -1528,8 +1531,10 @@ function ext(url, label){ return `<a href="${esc(url)}" target="_blank" rel="noo
 function channelLinks(){
   const c = B.channels || {}, l = [];
   if (c.youtube) l.push(ext(c.youtube, "Watch on YouTube"));
+  if (c.spotify) l.push(ext(c.spotify, "Listen on Spotify"));
   if (c.podcast) l.push(ext(c.podcast, "Listen to the podcast"));
-  if (c.podcastFeed) l.push(ext(c.podcastFeed, "Podcast feed (RSS)"));
+  // A feed is for podcast apps, not for reading: shown only when there is nowhere to listen.
+  if (c.podcastFeed && !c.spotify && !c.podcast) l.push(ext(c.podcastFeed, "Podcast feed (RSS)"));
   return l.length ? `<p class="channels">${l.join(" · ")}</p>` : "";
 }
 function watchList(s){
