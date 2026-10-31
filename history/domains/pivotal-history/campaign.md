@@ -25,6 +25,11 @@ Every rule of `scout.md` holds. What changes:
 - **The main account is the commander's own.** For Caesar in Gaul it is the Commentaries, one book a
   year (the campaign file's `commentaries`). Mark it `ownWords`, with `ownWordsSpan` running from
   that year's book's first sentence to its last, quoted from the fetched text.
+- **When no commander's account survives** (Hannibal's War: the histories written in Hannibal's camp
+  are lost), the main accounts are the campaign file's `mainAccounts`, the historians nearest the
+  events. They are not `ownWords`. A season is marked `ownWords` only for a participant's words a
+  source quotes at length and says it copies (a letter, a treaty), with `ownWordsSpan` around just
+  those words. Without one, the season has no immersive (L1) passage.
 - **Aliases are the season's places and peoples** (the campaign file's `aliases`, and any the
   sources add). Never the commander or the state ("Caesar", "Rome", "the Gauls"): those words fill
   the whole war, and `wordsAboutSubject` would count all of it for every season.
