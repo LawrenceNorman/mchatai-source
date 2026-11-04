@@ -23,8 +23,10 @@ deck exists, update it".
    search could take the wrong thing (a ship named *Gaul* is not the Gauls; a 1799 siege of Acre is
    not this one). Then `visuals.py things stories/<slug> <n> --check` until it says CLEAN.
 4. `python3 history/tools/visuals.py find stories/<slug> <n>`: Commons pictures for what the story's
-   own pictures do not cover. Free licences only, wide enough for video, each captioned from its
-   own record. A lookup is made once and kept.
+   own pictures do not cover, and more pictures of a person the episode names on three lines or
+   more, so the lines that name them take turns between pictures instead of showing one again and
+   again. Free licences only, wide enough for video, each captioned from its own record, a person's
+   from the story's own years first. A lookup is made once and kept.
 5. `visuals.py beats stories/<slug> <n>`, then `visuals.py check stories/<slug>` until it exits 0.
    `check` holds each caption to its own record; it cannot tell whether the picture is the right
    subject for its line. So **look at every Commons beat's picture against its line** (open the file
@@ -57,7 +59,8 @@ deck exists, update it".
 
 **Updating an episode that has a video** (the author's changes, or the tools improved): the lines
 and the pictures already found stay. Put any picture he rejected in `video/broll-rejected.json`, run
-`find` only if he asked for a new picture, then from step 5: `beats`, `check`, `sheet`, `deck.py plan
+`find` (it asks Commons only what it has never asked, so it is cheap, and an improved tool may have
+more to ask), then from step 5: `beats`, `check`, `sheet`, `deck.py plan
 --beats`, `deck.py push --into <the episode's deck>`, `aividrecorder.updateFromDeck {id}` (only changed
 slides are drawn again, and a line that did not change keeps its voice), `export`, `description`,
 `publish.py record`. Report what changed on screen, slide by slide.

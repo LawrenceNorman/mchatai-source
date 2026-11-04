@@ -54,6 +54,8 @@ def cfg(project):
     v = thresholds(project).get("video") or {}
     b = v.get("beatSeconds") or {}
     return {"min": b.get("min", 5), "target": b.get("target", 9), "max": b.get("max", 15),
+            "holdMax": b.get("holdMax", 2 * b.get("max", 15)),
+            "morePicturesAfterLines": v.get("morePicturesAfterLines", 3),
             "openingSeconds": v.get("openingSeconds", 30), "openingMax": v.get("openingMax", 7),
             "charsPerSecond": v.get("charsPerSecond", 15.0), "minPictureWidth": v.get("minPictureWidth", 1000),
             "videoWidth": v.get("pictureFetchWidth", 2400), "perSubject": v.get("commonsPerSubject", 2),
@@ -476,8 +478,10 @@ def likeness(project, name, guard=None):
         if r.get("portraitOnly"):
             continue
         # What the picture IS: the caption up to its first full stop or relative clause. "A bust of
-        # Julius Caesar, who led the Roman legions" is Caesar, never the legions.
-        subject = re.split(r"[.;]|,\s*(?:who|which|whose|where)\b|\s+who\s", r.get("caption") or "")[0]
+        # Julius Caesar, who led the Roman legions" is Caesar, never the legions. An initial's full
+        # stop is not the end: "Edwin T. Layton, who advised Nimitz" is Layton (2026-11-04, Midway:
+        # it was read as "Edwin T", and Layton's own picture never showed).
+        subject = re.split(r"(?<!\b[A-Z])\.|;|,\s*(?:who|which|whose|where)\b|\s+who\s", r.get("caption") or "")[0]
         if pat.search(subject) and not (guard and guard(r)):
             return r
     return None
@@ -711,7 +715,15 @@ def story_words(project):
     return {w for w in out if len(w) >= 4 and w not in UNIT_STOP}
 
 
-def relevance(rec, words_, context=(), story=()):
+def story_years(project):
+    """The years the story's events fall in, (first, last), from the dossier's dated events; None
+    before the year 1000 or with no dates (a Commons record's year could not be told from them)."""
+    ys = [int(m.group(1)) for e in ((project.dossier or {}).get("events") or [])
+          for m in [YEAR.match(str(e.get("date") or ""))] if m]
+    return (min(ys), max(ys)) if ys else None
+
+
+def relevance(rec, words_, context=(), story=(), years=None):
     text = record_text(rec)
     score = sum(2 for w in words_ if norm(w) in text)
     # Of this story first: its own names count most (a carnyx found in Gaul before a reenactor
@@ -723,12 +735,21 @@ def relevance(rec, words_, context=(), story=()):
         score -= 4                     # a caption in a script most viewers cannot read
     if year_of(rec):
         score += 1
+        # Taken in the story's own years first (2026-11-04: a second Nimitz for Midway came back as two
+        # 1951 Truman photographs, the category's first files).
+        if years and years[0] <= int(year_of(rec)) <= years[1]:
+            score += 3
     if maker(rec):
         score += 1
     return score
 
 
-def lookup(project, query, subject, c, context=None, skip=(), match=None):
+# Never a likeness of a person: a poster that quotes them, their grave, their ashes (2026-11-04, Midway's
+# Yamamoto: "I am looking forward to dictating peace…", his ashes, his remains on Musashi, his grave).
+NOT_A_LIKENESS = re.compile(r"\b(?:poster|propaganda|graves?|gravestone|headstone|tomb|ashes|remains|funeral|cenotaph)\b", re.I)
+
+
+def lookup(project, query, subject, c, context=None, skip=(), match=None, person=False):
     """Checked Commons candidates for one query, best first: free, wide enough, captioned from their
     own record, OF the subject (and of this story, for a search), and not a file in `skip` (the
     book's own pictures, the author's rejections)."""
@@ -750,6 +771,7 @@ def lookup(project, query, subject, c, context=None, skip=(), match=None):
     context_ws = context if context is not None else context_words(project)
     story_ws = story_words(project)
     subject_ws = subject_words(subject, query, match, context_ws)
+    years = story_years(project)
     is_category = query.lower().startswith("category:")
     for t, rec in info.items():
         if not rec.get("allowed") or rec.get("title") in skip:
@@ -758,6 +780,8 @@ def lookup(project, query, subject, c, context=None, skip=(), match=None):
             continue
         if other_event(rec, story_ws):
             continue
+        if person and NOT_A_LIKENESS.search(" ".join(str(rec.get(k) or "") for k in ("title", "objectName", "description"))):
+            continue
         if (rec.get("width") or 0) < c["minPictureWidth"] or not str(rec.get("mime") or "").startswith("image/"):
             continue
         if "svg" in str(rec.get("mime") or ""):
@@ -765,7 +789,7 @@ def lookup(project, query, subject, c, context=None, skip=(), match=None):
         rec["caption"] = caption_from_record(rec)
         if caption_problems(rec["caption"], rec):
             continue
-        rec["score"] = relevance(rec, want, context_ws, story_ws)
+        rec["score"] = relevance(rec, want, context_ws, story_ws, years)
         keep.append(rec)
     return sorted(keep, key=lambda r: -r["score"])
 
@@ -857,25 +881,41 @@ def download(project, rec, bid):
 
 
 def needs(project, n):
-    """What episode n needs from Commons: [(subject key, queries, why)], each subject once."""
-    _, _, _, items = episode(project, n)
+    """What episode n needs from Commons: [(subject key, queries, why)], each subject once.
+
+    A person the story has a picture of needs none, unless (2026-11-04, Midway episode 1) that picture
+    is held back for a later episode (Yamamoto's portrait says he ordered the withdrawal, so
+    episode 1 had no picture of him and held Nimitz's over his lines), or the episode names them on
+    `morePicturesAfterLines` lines or more: one picture of Nimitz showed nine times."""
+    c = cfg(project)
+    _, ep, _, items = episode(project, n)
     th = things_for(project, n)
     terms = glossary(project)
     rows = (cast(project), places(project))
     kinds = {e["name"]: e["kind"] for e, _ in rows[0]}
-    out, seen = [], set()
+    ep_ch, outcome, spoils = episode_chapter(project, ep), outcome_chapters(project), spoiler_words(project)
+    held_back = lambda r: too_early(r, ep_ch, outcome, spoils)
+    years = story_years(project)
+    lines = []
     for it in spoken_items(items):
         found = mentions(project, it["text"], th.get(it["i"], ()), rows)
         if it["kind"] == "who" and it["name"] in kinds:
             # A Who's who row by the cast's own name: the narration may say it otherwise
             # ("Napoleon the Third" for "Napoleon III").
             found = [{"type": kinds[it["name"]], "key": it["name"], "text": it["name"]}] + found
+        lines.append(found)
+    named = {}
+    for found in lines:
+        for key in {m.get("key") for m in found if m["type"] in ("person", "people")}:
+            named[key] = named.get(key, 0) + 1
+    out, seen = [], set()
+    for found in lines:
         for m in found:
             key = m.get("key")
             if not key or key in seen:
                 continue
             if m["type"] in ("person", "people"):
-                if likeness(project, key):
+                if likeness(project, key, held_back) and named.get(key, 0) < c["morePicturesAfterLines"]:
                     continue
                 bare = re.sub(r"\s*\(.*?\)\s*", " ", key).strip()
                 bare = re.sub(r"^the\s+", "", bare, flags=re.I)
@@ -885,6 +925,8 @@ def needs(project, n):
                     # portraits often sit in a sub-category, so a search for them too.
                     spellings = [bare] + re.findall(r"\(([^)]+)\)", key)
                     qs = [f"Category:{x}" for x in spellings] + [f"{x} portrait" for x in spellings] + qs
+                    if years:                         # them in the story's own years, first
+                        qs = [f"{bare} {years[0]}"] + qs
                 if qs:
                     names = [bare] + re.findall(r"\(([^)]+)\)", key) if m["type"] == "person" else None
                     out.append((key, qs, m["type"], names))
@@ -921,7 +963,7 @@ def cmd_find(project, n, limit=None):
             break
         got = []
         for q in queries:
-            for r in lookup(project, q, key, c, context, skip, match):
+            for r in lookup(project, q, key, c, context, skip, match, person=why == "person"):
                 if (key, r["title"]) in have or r["title"] in {g["title"] for g in got}:
                     continue
                 if near_copy(r, got) or near_copy(r, [x for x in rows if x.get("key") == key]):
@@ -1059,13 +1101,27 @@ def plan_beats(project, n):
     def cap():
         return c["openingMax"] if t < c["openingSeconds"] else c["max"]
 
+    def room(limit):
+        return beats[-1]["seconds"] + seconds(text, c) <= limit
+
+    def same_again(mat):
+        """The picture just up, shown again as a new beat: it stays up instead, one longer showing,
+        until `holdMax`. The author, 2026-11-04: Nimitz on four beats in a row "visually looks really
+        repetitive"; show it once. Never the title card: the picture without its title is a change."""
+        last = beats[-1]["material"] if beats else {}
+        return bool(mat.get("file")) and mat.get("file") == last.get("file") and "title" not in last \
+            and room(c["holdMax"])
+
     opening_file = next((it["rec"].get("file") for it in items if it["kind"] == "open" and it.get("rec")), None)
     cast_names = {e["name"].casefold(): e["name"] for e, _ in rows[0]}
 
+    def rank(r):
+        uses = sum(1 for b in beats if b["material"].get("file") == r.get("file"))
+        unreadable = bool(re.search(r"[^\x00-\u024f\s\W]", r.get("caption") or ""))
+        return (unreadable, uses)                 # a caption the viewer can read first
+
     def least_used(options):
-        uses = lambda r: sum(1 for b in beats if b["material"].get("file") == r.get("file"))
-        unreadable = lambda r: bool(re.search(r"[^\x00-\u024f\s\W]", r.get("caption") or ""))
-        return min(options, key=lambda r: (unreadable(r), uses(r)))   # a caption the viewer can read first
+        return min(options, key=rank)
 
     def last_seen(f):
         return max([k for k, b in enumerate(beats) if b["material"].get("file") == f] or [-1])
@@ -1077,19 +1133,22 @@ def plan_beats(project, n):
         2. the episode's ground: the story's maps and its own pictures of the place, the least
            recently shown, never the one just up (and nothing that shows the ending too early);
         3. the picture just up, with a new move."""
+        prev = beats[-1]["material"].get("file") if beats else None
         for m in ms:
             if m["type"] in ("person", "people"):
+                # Every picture of them, the story's own first: the one shown least recently, never
+                # the one just up while there is another (2026-11-04: one Nimitz, nine times).
                 rec, got = like(m["key"]), rolls(m["key"])
-                if rec:
-                    return picture_material(project, rec, "story"), f"held on {m['key']}, whom the line names"
-                if got:
-                    return picture_material(project, least_used(got), "commons"), f"held on {m['key']}, whom the line names"
+                options = ([picture_material(project, rec, "story")] if rec else []) + \
+                          [picture_material(project, r, "commons") for r in sorted(got, key=rank)]
+                if options:
+                    fresh = [o for o in options if o.get("file") != prev] or options
+                    return min(fresh, key=lambda o: last_seen(o.get("file"))), f"held on {m['key']}, whom the line names"
             if m["type"] == "place":
                 r = map_for(project, m["key"])
                 if r:
                     return picture_material(project, r, "map"), f"held on the map: {m['key']}"
         import cite
-        prev = beats[-1]["material"].get("file") if beats else None
         ground = [picture_material(project, r, "map") for r in cite.map_records(project).values()]
         ground += [picture_material(project, r, "story") for r in story_pictures(project)
                    if not r.get("portraitOnly") and not guard(r)
@@ -1187,7 +1246,9 @@ def plan_beats(project, n):
                 last_fact = t
         if choice:
             mat, why, title = choice
-            if beats and beats[-1]["material"] == mat and beats[-1]["seconds"] + seconds(text, c) <= cap() and not title:
+            if beats and beats[-1]["material"] == mat and not title and room(cap()):
+                extend(it)
+            elif not title and same_again(mat):
                 extend(it)
             else:
                 start(mat, it, why, title)
@@ -1201,7 +1262,10 @@ def plan_beats(project, n):
             again = dict(again or beats[-1]["material"])
             again.pop("title", None)
             again.pop("subtitle", None)           # the opening picture again is not the title card again
-            start(again, it, why or "held: the picture again, a new move")
+            if same_again(again):
+                extend(it)
+            else:
+                start(again, it, why or "held: the picture again, a new move")
         else:
             start(card("title", title=meta.get("subject") or ""), it, "nothing to show yet")
     # The end card: one spoken line pointing on (series navigation, not history), held for YouTube's

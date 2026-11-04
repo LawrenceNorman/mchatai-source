@@ -3443,9 +3443,42 @@ class VisualBeats(VoiceTwoCase):
                 self.assertIn(data["episodes"][ep["n"]]["title"], extra[0]["text"], "the end card names the next part")
             order = [i for b in d["beats"] for i in b["lines"]]
             self.assertEqual(order, list(range(len(order))), "every line in exactly one beat, in order")
-            cap = visuals.cfg(self.project)["max"]
+            hold = visuals.cfg(self.project)["holdMax"]
             for b in d["beats"]:
-                self.assertTrue(len(b["lines"]) == 1 or b["seconds"] <= cap, b)
+                self.assertTrue(len(b["lines"]) == 1 or b["seconds"] <= hold, b)
+            # The picture just up is never shown again as the next beat while it has room: one longer
+            # showing (the author, 2026-11-04, of Nimitz on four beats in a row).
+            for a, b in zip(d["beats"], d["beats"][1:]):
+                f = a["material"].get("file")
+                if f and f == b["material"].get("file") and "title" not in a["material"]:
+                    self.assertGreater(a["seconds"] + b["seconds"], hold, (a, b))
+
+    def test_a_person_has_more_than_one_picture_and_never_a_poster(self):
+        """2026-11-04, Midway episode 1: one photograph of Nimitz on nine beats. The caption reader cut
+        "Edwin T. Layton, who…" at the initial; a picture held back for a later episode still counted as
+        the person's picture, so Commons was never asked; and a person's search came back with posters,
+        a grave and his remains, or 1951 photographs for a 1942 story."""
+        import visuals
+        self.edit_dossier(people=[{"name": "Edith T. Fixture", "who": "The first president.", "aliases": ["Fixture"]}])
+        os.makedirs(self.project.path("images"), exist_ok=True)
+        with open(self.project.path("images", "img1.jpg"), "wb") as fh:
+            fh.write(b"jpg")
+        _hw.save_json(self.project.path("images", "index.json"), [{
+            "id": "img1", "file": "images/img1.jpg", "chapter": 1, "title": "File:Fixture.jpg",
+            "caption": "Edith T. Fixture, who ran the reading room, about 1901."}])
+        self.assertEqual((visuals.likeness(self.project, "Edith T. Fixture") or {}).get("id"), "img1",
+                         "an initial's full stop does not end what the picture is")
+        for bad in ("What do You Say, America? A poster with the admiral's photograph",
+                    "Yamamoto's ashes on Musashi", "Raymond A. Spruance headstone", "with the remains of the admiral"):
+            self.assertRegex(bad, visuals.NOT_A_LIKENESS)
+        self.assertNotRegex("Admiral Chester W. Nimitz pins the Navy Cross on Doris Miller", visuals.NOT_A_LIKENESS)
+        rec = {"title": "File:Adm Nimitz.jpg", "description": "Admiral Nimitz", "artist": "USN", "date": "1942"}
+        later = dict(rec, date="1951")
+        self.assertEqual(visuals.relevance(rec, ["Nimitz"], years=(1942, 1942))
+                         - visuals.relevance(later, ["Nimitz"], years=(1942, 1942)), 3,
+                         "a picture from the story's own years ranks first")
+        self.assertEqual(visuals.relevance(rec, ["Nimitz"]), visuals.relevance(later, ["Nimitz"]),
+                         "a story with no dated events ranks as before")
 
     def test_a_line_is_read_for_what_it_could_show(self):
         import visuals
