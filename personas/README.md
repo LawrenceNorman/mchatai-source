@@ -20,10 +20,13 @@ field notes: `mchatai_macOS/docs/PERSONA_PACKS_ARCHITECTURE.md` (Phase EX).
   <out>` and deploy the folder with the hub `deploy` verb from mChatAI+ (`plain: true`);
   the pack's `companion.url` is that address.
 - `<id>/icon.png` — optional hub icon (chat uses the SF symbol in `icon`).
+- `preinstalled: true` — in the Chat picker until the person removes it (the original six);
+  every other chat pack is listed under "Get more" and joins the picker when they Get it
+  (EX.7). A persona pack inside a hub mini-app they installed joins the picker by itself.
 
 Build the hub bundle: `python3 miniapps/on-device-chat/tools/build.py <id> <out-dir>`.
 
 Rules: `name` is the identity saved chats use — never change it, add the old one to
-`aliases`. A dropped persona is `retired: true`, not deleted. No personas in Swift. A pack
-whose answers depend on its notes keeps `surfaces.chat: false` until ChatView injects
-chunks (EX.2). Nothing financial beyond the Money Check-In demo; no health advice.
+`aliases`. A dropped persona is `retired: true`, not deleted. No personas in Swift. Since
+EX.2 ChatView picks notes from `chunks.json` per turn (the page's rules; the shared fixture
+in `_tests/` pins both). Nothing financial beyond the Money Check-In demo; no health advice.
