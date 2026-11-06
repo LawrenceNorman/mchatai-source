@@ -1,6 +1,6 @@
 {
   "packID": "card-games",
-  "version": 10,
+  "version": 11,
   "displayName": "Card Game Guidelines",
   "description": "Quality rules for poker, blackjack, solitaire, and other card games.",
   "categories": [
@@ -716,7 +716,20 @@
         "WRONG: `@media(max-width:520px){.card{width:44px}}` while `.tableau-col{min-width:60px}` stays",
         "WRONG: `.controls{position:absolute;bottom:60px}` above a hand that sits at the bottom of the table"
       ]
+    },
+    {
+      "id": "cg-hearts-ai",
+      "rule": "Hearts computer seats MUST use entities.hearts-ai: `const ai = new HeartsAI()`, then `ai.chooseCard({ hand, legal, trick, played, me, pointsTaken })` on each turn and `ai.choosePass(hand)` for the pass. Your rules code supplies `legal` (the cards it allows now) and `played` (cards from finished tricks this hand). An AI written by hand MUST do all of these: (1) shed high cards while it is safe: on the first trick, when it plays last to a trick with no points, and when every card it can follow with wins anyway (then play the HIGHEST, never the lowest); (2) duck with the HIGHEST card that still loses; (3) drop the Q♠ on a K♠ or A♠ and never win a trick with the Q♠; (4) keep the K♠/A♠ out of spade tricks while the Q♠ is unseen, and lead low spades to force it out when it holds none of Q/K/A♠; (5) when it can't follow suit, discard the Q♠, then the K♠/A♠, then its most dangerous high card, never its lowest; (6) pass the Q♠/K♠/A♠ unless four low spades guard them, then high hearts and cards from short suits, keeping low hearts; (7) defend against a moon shot: while another seat could still take all 26 (this seat has no points and at most one other seat has any), keep its highest heart if no more than two hearts above it are out, never pass or discard that heart, and duck under it rather than with it; once one other seat has every point so far (3 or more), take any trick that seat is winning with points, give that seat no points when void (if only hearts are left, give the smallest), and dump a point card on a trick that seat has already lost.",
+      "why": "2026-11-04, Lawrence on the live Hub Hearts: the computer 'will play a bunch of low cards at first and then start playing high cards in the middle of the game and end up eating the queen of spades pretty easily.' Its AI led low, followed low when every card it held would win, and discarded its lowest card when void, so its high cards piled up until the middle of the hand. In 8,000 simulated hands (two seats each, seats swapped halfway) HeartsAI took 4.6 points per hand and the Q♠ in 15% of hands; the old AI took 8.8 points and the Q♠ in 35% (an even share is 25%). 2026-11-05, Lawrence the next day: 'Now hearts just let me pretty easily shoot the moon... It allowed me to just discard my low cards until I could pretty easily shoot the moon.' Moon defense waited until the shooter had 8 points, by when the computers had spent their high cards on early pointless tricks, and a void seat holding only hearts threw its highest heart, the one card that could stop the moon. A simulated human who ducks early then takes every trick shot the moon in 30% of hands (22% for one who just wins every trick); with rule (7) both fall to 2%, and HeartsAI still takes 4.7 points per hand to the old AI's 8.6.",
+      "severity": "important",
+      "appliesTo": "card-games",
+      "examples": [
+        "GOOD: `if (!under.length) return s.last ? highest(pool) : ...` (every card wins: spend the high one while the trick is safe)",
+        "BAD: `if (safe.length) return highestOf(safe); return lowestOf(sameSuit)` (keeps the A and K for later, when they win the Q♠)",
+        "BAD: void in the led suit with no hearts or Q♠ left: `return lowestOf(legal)` (throws away the 2 and keeps the K)",
+        "BAD: void, holding only Q♥ 4♥ 3♥ with A♥ and K♥ gone, the shooter winning: `return highest(hearts)` (throws the Q♥, the only card left that could take a heart from them; give the 3♥)"
+      ]
     }
   ],
-  "_last_updated": "2026-10-13"
+  "_last_updated": "2026-11-05"
 }

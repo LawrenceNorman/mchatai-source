@@ -1,6 +1,6 @@
 {
   "packID": "responsive-frontend",
-  "version": 2,
+  "version": 3,
   "displayName": "Responsive (Both) Frontend Guidelines",
   "description": "Quality rules for mini-apps and webSPAs that must look great on BOTH mobile (375×812) AND desktop (1280×800) without two separate codebases. Apply when the user selects target-device='Both (responsive)'. Focus on mobile-first CSS that progressively enhances at desktop breakpoints, fluid typography, hybrid touch+mouse input, and test-at-both-widths discipline. Sibling pack to mobile-frontend (mobile-only) and frontend-skill (generic). Pack selection is additive: Both → responsive-frontend + frontend-skill.",
   "categories": [
@@ -152,6 +152,20 @@
         "GOOD: .layout { width: 100%; display: grid; grid-template-columns: minmax(0,1fr) 260px; gap: 12px; }",
         "BAD: .layout { display: grid; grid-template-columns: minmax(0,1fr) 260px; margin: 0 auto; } /* no width → 1fr collapses to content-min on desktop */",
         "Diagnostic: at desktop width, if the main column is a thin sliver while a fixed-px sidebar looks correct, inspect the computed grid-template-columns — a 1fr that resolved to a tiny px value means the grid container width is indefinite. Fix with width:100% (or a definite max-width + width:100%)."
+      ]
+    },
+    {
+      "id": "res-012",
+      "rule": "A grid or flex box INSIDE a fixed-width column (a 240–300px sidebar such as a game's Action panel) MUST let its children shrink: give the grid `grid-template-columns: minmax(0,1fr)` (or give its children `min-width: 0`). A grid with no column template makes one implicit column as wide as its widest child's minimum content. A range slider or a row of buttons then sets that width, the content runs past the panel, and the panel's `overflow: hidden` cuts off the last buttons. Check desktop widths of 900–1100px, where the sidebar is narrowest next to its contents.",
+      "why": "2026-11-04, Heads-Up Hold'em on the live Hub: `.controls{display:grid;gap:9px}` sat in a 260px panel. The bet slider's minimum width made the implicit column 320px, so Raise and the right end of the slider were cut off. The 4-player build of the same game already had `grid-template-columns:minmax(0,1fr)`; that one declaration fixed it (Fold, Call, Raise and All In wrap to two rows inside the 258px panel).",
+      "severity": "important",
+      "appliesTo": [
+        "miniApp",
+        "fullStackApp"
+      ],
+      "examples": [
+        "GOOD: .panel { width: 260px; overflow: hidden } .controls { display: grid; gap: 9px; grid-template-columns: minmax(0,1fr) }",
+        "BAD: .controls { display: grid; gap: 9px } /* implicit column grows to the widest child; overflow:hidden on the panel clips it */"
       ]
     }
   ]
