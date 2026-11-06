@@ -23,7 +23,9 @@ chunks_file = os.path.join(pack_dir, "chunks.json")
 if os.path.exists(chunks_file) and not (pack.get("knowledge") or {}).get("chunks"):
     pack["knowledge"] = {"chunks": json.load(open(chunks_file))}
 html = open(os.path.join(here, "..", "index.html")).read()
-block = '<script id="persona-pack" type="application/json">\n' + json.dumps(pack, indent=2, ensure_ascii=False).replace("</", "<\\/") + '\n</script>'
+# A pack with many notes is written compactly: the hosted page is one file and every byte ships.
+pretty = len(json.dumps(pack, ensure_ascii=False)) < 60_000
+block = '<script id="persona-pack" type="application/json">\n' + json.dumps(pack, indent=2 if pretty else None, separators=None if pretty else (",", ":"), ensure_ascii=False).replace("</", "<\\/") + '\n</script>'
 html, n = re.subn(r'<script id="persona-pack" type="application/json">.*?</script>', lambda _: block, html, count=1, flags=re.S)
 assert n == 1, "persona-pack block not found"
 html = html.replace("<title>On-device chat</title>", f"<title>{pack['name']}</title>", 1)
