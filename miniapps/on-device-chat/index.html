@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>Money Check-In</title>
+<style>
+  :root {
+    --bg: #f6f5f2;
+    --surface: #ffffff;
+    --text: #1d1d1f;
+    --muted: #6b6b70;
+    --border: #e3e1dc;
+    --accent: #2f6f5e;
+    --accent-text: #ffffff;
+    --user-bubble: #2f6f5e;
+    --user-text: #ffffff;
+    --bot-bubble: #ffffff;
+    --note: #8a5a00;
+    --note-bg: #fff4dc;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #141416;
+      --surface: #1f1f22;
+      --text: #f2f2f4;
+      --muted: #9a9aa2;
+      --border: #303034;
+      --accent: #5fb39b;
+      --accent-text: #0d1f1a;
+      --user-bubble: #2f6f5e;
+      --user-text: #ffffff;
+      --bot-bubble: #232327;
+      --note: #f0c36b;
+      --note-bg: #2d2516;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); color: var(--text);
+    font: 16px/1.45 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif; }
+  /* Pinned to the visible area; fitToViewport() resizes it around the keyboard. */
+  #app { position: fixed; top: 0; left: 0; right: 0; height: 100%; display: flex; flex-direction: column;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left); }
+
+  header { display: flex; align-items: center; gap: 12px; padding: 12px 16px;
+    border-bottom: 1px solid var(--border); background: var(--surface); }
+  header .titles { flex: 1; min-width: 0; }
+  header h1 { margin: 0; font-size: 17px; font-weight: 650; }
+  .pill { display: inline-flex; align-items: center; gap: 6px; margin-top: 2px;
+    font-size: 12px; color: var(--muted); }
+  .pill .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
+  button { font: inherit; cursor: pointer; }
+  .ghost { border: 1px solid var(--border); background: transparent; color: var(--text);
+    border-radius: 999px; padding: 6px 12px; font-size: 14px; }
+  .primary { border: 0; background: var(--accent); color: var(--accent-text);
+    border-radius: 12px; padding: 10px 16px; font-weight: 600; }
+  .primary:disabled { opacity: .45; cursor: default; }
+
+  #messages { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 10px;
+    -webkit-overflow-scrolling: touch; }
+  .msg { max-width: 85%; padding: 10px 14px; border-radius: 18px; white-space: pre-wrap; word-wrap: break-word; }
+  .msg.user { align-self: flex-end; background: var(--user-bubble); color: var(--user-text); border-bottom-right-radius: 6px; }
+  .msg.bot { align-self: flex-start; background: var(--bot-bubble); border: 1px solid var(--border); border-bottom-left-radius: 6px; }
+  .msg.note { align-self: center; max-width: 95%; background: var(--note-bg); color: var(--note);
+    font-size: 14px; border-radius: 12px; text-align: center; }
+  .typing { align-self: flex-start; color: var(--muted); font-size: 14px; padding: 4px 6px; }
+
+  .welcome { margin: auto 0 8px; text-align: center; color: var(--muted); padding: 0 8px; }
+  .welcome h2 { color: var(--text); font-size: 20px; margin: 0 0 6px; }
+  .welcome p { margin: 0 auto 16px; max-width: 34em; font-size: 15px; }
+  .starters { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+  .starters button { border: 1px solid var(--border); background: var(--surface); color: var(--text);
+    border-radius: 14px; padding: 8px 12px; font-size: 14px; text-align: left; }
+
+  form { display: flex; gap: 8px; align-items: flex-end; padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+    border-top: 1px solid var(--border); background: var(--surface); }
+  textarea { flex: 1; resize: none; max-height: 140px; min-height: 42px; padding: 10px 12px;
+    border: 1px solid var(--border); border-radius: 14px; background: var(--bg); color: var(--text);
+    font: inherit; font-size: 16px; }
+  textarea:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  /* The home-indicator inset is under the keyboard while it's open. */
+  body.keyboard form { padding-bottom: 10px; }
+
+  /* Environment screens (checking / not in the app / model unavailable) */
+  .gate { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center; padding: 32px 24px; gap: 12px; }
+  .gate .icon { width: 56px; height: 56px; border-radius: 16px; background: var(--surface);
+    border: 1px solid var(--border); display: grid; place-items: center; font-size: 28px; }
+  .gate h2 { margin: 4px 0 0; font-size: 20px; }
+  .gate p { margin: 0; max-width: 30em; color: var(--muted); }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div class="titles">
+      <h1 id="title"></h1>
+      <div class="pill"><span class="dot"></span><span id="badge">On-device · Apple Intelligence</span></div>
+    </div>
+    <button class="ghost" id="newChat" hidden>New chat</button>
+  </header>
+
+  <section class="gate" id="gate">
+    <div class="icon" id="gateIcon">⏳</div>
+    <h2 id="gateTitle">Checking this device…</h2>
+    <p id="gateBody"></p>
+    <button class="primary" id="gateRetry" hidden>Check again</button>
+  </section>
+
+  <main id="messages" hidden></main>
+
+  <form id="composer" hidden>
+    <textarea id="input" rows="1" placeholder="Type how you're feeling…" enterkeyhint="send"></textarea>
+    <button class="primary" id="send" type="submit" disabled>Send</button>
+  </form>
+</div>
+
+<script>
+// ─── CONFIG: everything that makes this chat bespoke lives here ───────────────
+// Copy this file, change CONFIG, and you have a different private chat mini-app.
+const CONFIG = {
+  title: "Money Check-In",
+  welcomeTitle: "How are you feeling about money today?",
+  welcomeBody: "A private space to think out loud. This chat runs on Apple's on-device model: nothing you type leaves this device, and nothing is saved when you close it.",
+  placeholder: "Type how you're feeling…",
+  system: [
+    "You are Money Check-In, a warm, calm companion for reflecting on money and the feelings that come with it.",
+    "Help the person notice and name their feelings, habits and values around money, and think through small next steps they choose for themselves.",
+    "Ask at most one gentle question at a time. Keep replies short: two to five sentences, plain language, no lists unless asked.",
+    "You are not a financial adviser or a therapist. Never recommend specific investments, financial products, or tax or legal actions. For big financial decisions, suggest talking with a qualified professional.",
+    "If the person mentions a crisis, self-harm, or not feeling safe, respond with care and encourage them to call or text 988 in the US, or their local emergency number."
+  ].join(" "),
+  starters: [
+    "I feel anxious every time I check my bank account.",
+    "I keep overspending when I'm stressed.",
+    "Help me think through a purchase I'm unsure about.",
+    "What's one small money habit I could try this week?"
+  ],
+  // Added to the end of every turn: a small on-device model follows the last
+  // instruction it reads far better than one in the system prompt.
+  turnReminder: "Reply in two to four short sentences of plain language, with at most one gentle question.",
+  // Safety net when it runs long anyway: show at most this many sentences.
+  maxSentences: 5,
+  temperature: 0.6,
+  maxTokens: 300,
+  // Shown when the page is opened outside the mChatAI iOS app.
+  outsideAppTitle: "Open this in the mChatAI app",
+  outsideAppBody: "Money Check-In runs on Apple's on-device model, so your words never leave your device. It works only inside the mChatAI app on an iPhone 15 Pro or later, or an iPad with Apple Intelligence."
+};
+// ──────────────────────────────────────────────────────────────────────────────
+
+const $ = (id) => document.getElementById(id);
+const els = {
+  title: $("title"), badge: $("badge"), newChat: $("newChat"),
+  gate: $("gate"), gateIcon: $("gateIcon"), gateTitle: $("gateTitle"), gateBody: $("gateBody"), gateRetry: $("gateRetry"),
+  messages: $("messages"), composer: $("composer"), input: $("input"), send: $("send")
+};
+els.title.textContent = CONFIG.title;
+els.input.placeholder = CONFIG.placeholder;
+document.title = CONFIG.title;
+
+// Conversation lives in memory only — closing the mini-app clears it.
+let history = [];          // [{role: "user"|"assistant", text}]
+let contextSize = 4096;    // tokens; replaced by what the device reports
+let busy = false;
+
+// ─── Environment detection ────────────────────────────────────────────────────
+// mchatai.com's web bridges define window.mChatAI but never `llm`, and older
+// mChatAI builds have llm.generate without llm.info. Only a current mChatAI iOS
+// build answers llm.info().
+function withTimeout(promise, ms) {
+  return Promise.race([promise, new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), ms))]);
+}
+
+async function detectEnvironment() {
+  showGate("⏳", "Checking this device…", "", false);
+  // Inside an mChatAI app (iPhone, iPad or Mac) the web view has the app's
+  // native message channel; a browser, including mchatai.com, never does.
+  const inApp = !!(window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.mChatAI);
+  const llm = window.mChatAI && window.mChatAI.llm;
+  if (!inApp) {
+    return showGate("📱", CONFIG.outsideAppTitle, CONFIG.outsideAppBody, false);
+  }
+  if (!(navigator.maxTouchPoints > 0)) {
+    return showGate("📱", "Open this on your iPhone or iPad",
+      CONFIG.title + " runs in mChatAI on iPhone and iPad, where Apple's on-device model is available to mini-apps.", false);
+  }
+  if (!llm || typeof llm.info !== "function") {
+    return showGate("⬆️", "Coming in the next mChatAI update",
+      "This version of mChatAI can't reach Apple's on-device model yet. Update mChatAI when the next version is out, then open this again.", false);
+  }
+  let info;
+  try {
+    info = await withTimeout(llm.info(), 4000);
+  } catch (e) {
+    const why = String((e && e.message) || e || "").replace(/^\[[a-z_]+\]\s*/, "");
+    return showGate("⚙️", "Apple's on-device model isn't reachable here",
+      why === "timeout" ? "mChatAI didn't answer. Check again in a moment." : why, true);
+  }
+  const od = (info && info.onDevice) || {};
+  if (!od.available) {
+    const retry = od.status !== "deviceNotEligible";
+    return showGate(od.status === "deviceNotEligible" ? "🚫" : "⚙️",
+      od.headline || "Apple Intelligence unavailable", od.message || "", retry);
+  }
+  if (od.contextSize) contextSize = od.contextSize;
+  showChat();
+}
+
+function showGate(icon, title, body, retry) {
+  els.gate.hidden = false;
+  els.messages.hidden = true;
+  els.composer.hidden = true;
+  els.newChat.hidden = true;
+  els.gateIcon.textContent = icon;
+  els.gateTitle.textContent = title;
+  els.gateBody.textContent = body;
+  els.gateRetry.hidden = !retry;
+}
+
+function showChat() {
+  els.gate.hidden = true;
+  els.messages.hidden = false;
+  els.composer.hidden = false;
+  els.newChat.hidden = false;
+  if (!history.length) renderWelcome();
+}
+
+els.gateRetry.addEventListener("click", detectEnvironment);
+
+// ─── Rendering ────────────────────────────────────────────────────────────────
+function renderWelcome() {
+  els.messages.innerHTML = "";
+  const box = document.createElement("div");
+  box.className = "welcome";
+  const h = document.createElement("h2"); h.textContent = CONFIG.welcomeTitle;
+  const p = document.createElement("p"); p.textContent = CONFIG.welcomeBody;
+  const chips = document.createElement("div"); chips.className = "starters";
+  CONFIG.starters.forEach((s) => {
+    const b = document.createElement("button");
+    b.type = "button"; b.textContent = s;
+    b.addEventListener("click", () => send(s));
+    chips.appendChild(b);
+  });
+  box.append(h, p, chips);
+  els.messages.appendChild(box);
+}
+
+function addBubble(kind, text) {
+  const welcome = els.messages.querySelector(".welcome");
+  if (welcome) welcome.remove();
+  const div = document.createElement("div");
+  div.className = "msg " + kind;
+  // The model sometimes answers in Markdown; show it as plain, readable text.
+  div.textContent = kind === "bot" ? tidy(text) : text;
+  els.messages.appendChild(div);
+  scrollToEnd();
+  return div;
+}
+
+function scrollToEnd() { els.messages.scrollTop = els.messages.scrollHeight; }
+
+// ─── Talking to the model ─────────────────────────────────────────────────────
+// The bridge is stateless, so each turn carries the recent conversation. Keep it
+// inside the device's context window (roughly 3 characters per token, leaving
+// room for the instructions and the reply); the oldest turns drop first.
+function buildPrompt(turns, latest) {
+  const budget = Math.max(1500, (contextSize - CONFIG.maxTokens - 300) * 3 - CONFIG.system.length);
+  const lines = [];
+  let used = latest.length;
+  for (let i = turns.length - 1; i >= 0; i--) {
+    const line = (turns[i].role === "user" ? "Person: " : "You: ") + turns[i].text;
+    if (used + line.length > budget) break;
+    lines.unshift(line);
+    used += line.length;
+  }
+  const said = (lines.length ? "Conversation so far:\n" + lines.join("\n") + "\n\nThe person now says: " : "The person says: ") + latest;
+  return said + "\n\n" + CONFIG.turnReminder;
+}
+
+// Streams when the app supports it (onText gets the reply so far); older
+// builds only have generate(), which answers all at once.
+async function ask(turns, latest, onText) {
+  const llm = window.mChatAI.llm;
+  const options = {
+    provider: "apple",
+    system: CONFIG.system,
+    temperature: CONFIG.temperature,
+    maxTokens: CONFIG.maxTokens
+  };
+  const prompt = buildPrompt(turns, latest);
+  return typeof llm.stream === "function" ? llm.stream(prompt, options, onText) : llm.generate(prompt, options);
+}
+
+// The first `max` sentences, once there are that many; otherwise the text as is.
+function clipSentences(text, max) {
+  const re = /[^.!?]*[.!?]+["'”’)\]]*\s*/g;
+  let end = 0, count = 0;
+  while (count < max && re.exec(text)) { end = re.lastIndex; count++; }
+  return count >= max ? text.slice(0, end).trim() : text;
+}
+
+function tidy(text) {
+  return clipSentences(text, CONFIG.maxSentences).replace(/\*\*(.+?)\*\*/g, "$1").replace(/^\s*[-*] /gm, "• ");
+}
+
+function codeOf(err) {
+  const m = /^\[([a-z_]+)\]/.exec(String((err && err.message) || err || ""));
+  return m ? m[1] : "";
+}
+
+async function send(text) {
+  text = (text || "").trim();
+  if (!text || busy) return;
+  busy = true;
+  setComposerEnabled();
+  addBubble("user", text);
+  const typing = document.createElement("div");
+  typing.className = "typing"; typing.textContent = "Thinking on your device…";
+  els.messages.appendChild(typing); scrollToEnd();
+
+  const prior = history.slice();
+  history.push({ role: "user", text });
+  // The reply bubble appears with the first words and grows as they arrive.
+  let bubble = null;
+  const onText = (soFar) => {
+    if (!soFar) return;
+    if (!bubble) { typing.remove(); bubble = addBubble("bot", soFar); return; }
+    bubble.textContent = tidy(soFar);
+    scrollToEnd();
+  };
+  try {
+    let result;
+    try {
+      result = await ask(prior, text, onText);
+    } catch (err) {
+      if (codeOf(err) !== "context_exceeded") throw err;
+      // Too long for the on-device window: keep only the last exchange and retry once.
+      if (bubble) { bubble.remove(); bubble = null; }
+      result = await ask(prior.slice(-2), text, onText);
+      addBubble("note", "Earlier messages were trimmed to fit the on-device model.");
+    }
+    const reply = tidy(((result && result.text) || "").trim()) || "…";
+    history.push({ role: "assistant", text: reply });
+    typing.remove();
+    if (bubble) { bubble.textContent = reply; scrollToEnd(); } else { addBubble("bot", reply); }
+  } catch (err) {
+    typing.remove();
+    if (bubble) bubble.remove();
+    history.pop();
+    const message = String((err && err.message) || err).replace(/^\[[a-z_]+\]\s*/, "");
+    addBubble("note", message || "Something went wrong. Try again.");
+  } finally {
+    busy = false;
+    setComposerEnabled();
+  }
+}
+
+function setComposerEnabled() {
+  els.send.disabled = busy || !els.input.value.trim();
+}
+
+els.composer.addEventListener("submit", (e) => {
+  e.preventDefault();
+  const text = els.input.value;
+  els.input.value = "";
+  autosize();
+  send(text);
+});
+els.input.addEventListener("input", () => { autosize(); setComposerEnabled(); });
+// Return always sends. Shift isn't a reliable "new line" signal on iOS: in the
+// simulator, Return arrived with shiftKey set after any capital letter. WebKit also delivers the
+// line break as a beforeinput even after keydown's preventDefault, so both paths
+// submit; the second finds the box empty and does nothing.
+els.input.addEventListener("keydown", (e) => {
+  if (e.key !== "Enter" || e.isComposing) return;
+  e.preventDefault();
+  els.composer.requestSubmit();
+});
+els.input.addEventListener("beforeinput", (e) => {
+  const lineBreak = e.inputType === "insertLineBreak" || e.inputType === "insertParagraph" ||
+    (e.inputType === "insertText" && e.data === "\n");
+  if (!lineBreak) return;
+  e.preventDefault();
+  els.composer.requestSubmit();
+});
+els.newChat.addEventListener("click", () => {
+  if (busy) return;
+  history = [];
+  renderWelcome();
+});
+
+function autosize() {
+  els.input.style.height = "auto";
+  els.input.style.height = Math.min(els.input.scrollHeight, 140) + "px";
+}
+
+// Keep the header and the composer on screen while the iOS keyboard is open.
+// The keyboard shrinks the visual viewport and WebKit scrolls it by offsetTop
+// to reveal the text box; sizing #app to the visual viewport without moving it
+// by offsetTop is what pushed the header off the top and left a gap below.
+// "Keyboard open" compares with the tallest height seen at this width: inside
+// mChatAI the whole web view shrinks too, so innerHeight can't tell.
+let fullHeight = 0, fullWidth = 0;
+function fitToViewport() {
+  const vv = window.visualViewport;
+  if (!vv) return;
+  if (vv.width !== fullWidth) { fullWidth = vv.width; fullHeight = 0; }
+  fullHeight = Math.max(fullHeight, vv.height);
+  const app = document.getElementById("app");
+  app.style.height = vv.height + "px";
+  app.style.transform = "translateY(" + vv.offsetTop + "px)";
+  document.body.classList.toggle("keyboard", fullHeight - vv.height > 120);
+  scrollToEnd();
+}
+if (window.visualViewport) {
+  window.visualViewport.addEventListener("resize", fitToViewport);
+  window.visualViewport.addEventListener("scroll", fitToViewport);
+  fitToViewport();
+}
+window.addEventListener("resize", fitToViewport);
+
+// Bridges are injected at document start, but give a late server bridge a beat.
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", detectEnvironment);
+} else {
+  detectEnvironment();
+}
+</script>
+</body>
+</html>
