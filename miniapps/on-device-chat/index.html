@@ -46,6 +46,7 @@
   .msg.note { align-self: center; max-width: 95%; background: var(--note-bg); color: var(--note);
     font-size: 14px; border-radius: 12px; text-align: center; }
   .typing { align-self: flex-start; color: var(--muted); font-size: 14px; padding: 4px 6px; }
+  .msg .speak { border: 0; background: transparent; padding: 0 0 0 8px; font-size: 16px; vertical-align: middle; cursor: pointer; }
 
   .welcome { margin: auto 0 8px; text-align: center; color: var(--muted); padding: 0 8px; }
   .welcome h2 { color: var(--text); font-size: 20px; margin: 0 0 6px; }
@@ -200,6 +201,10 @@ let contextSize = 4096;    // tokens; replaced by what the device reports
 let busy = false;
 let remember = false;
 let chunks = null;         // [{id, keywords[], text}] once knowledge is loaded
+// With a native session the model keeps its own transcript; the page sends
+// only the new line (plus notes). Older builds get the conversation in the prompt.
+let nativeSession = null;
+let sessionPrimed = false;
 
 const bridge = () => window.mChatAI || {};
 const inApp = () => !!(window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.mChatAI);
@@ -237,6 +242,7 @@ async function detectEnvironment() {
       od.headline || "Apple Intelligence unavailable", od.message || "", retry);
   }
   if (od.contextSize) contextSize = od.contextSize;
+  if (od.sessions && PACK.session !== false) nativeSession = PACK.id + "-" + Math.random().toString(36).slice(2, 8);
   await loadPackFromSource();
   await restoreMemory();
   showChat();
@@ -316,11 +322,20 @@ function addBubble(kind, text) {
   const div = document.createElement("div");
   div.className = "msg " + kind;
   // The model sometimes answers in Markdown; show it as plain, readable text.
-  div.textContent = kind === "bot" ? tidy(text) : text;
+  const span = document.createElement("span"); span.className = "text";
+  span.textContent = kind === "bot" ? tidy(text) : text;
+  div.appendChild(span);
+  // A language pack reads replies aloud with the system voice (pack.speech).
+  if (kind === "bot" && PACK.speech && bridge().tts && typeof bridge().tts.speak === "function") {
+    const b = document.createElement("button"); b.className = "speak"; b.type = "button"; b.title = "Listen"; b.setAttribute("aria-label", "Listen"); b.textContent = "🔊";
+    b.addEventListener("click", () => { bridge().tts.speak(span.textContent, { language: PACK.speech.language, rate: PACK.speech.rate }).catch(() => {}); });
+    div.appendChild(b);
+  }
   els.messages.appendChild(div);
   scrollToEnd();
   return div;
 }
+function setBubbleText(bubble, text) { const s = bubble.querySelector(".text"); if (s) s.textContent = text; else bubble.textContent = text; }
 
 function scrollToEnd() { els.messages.scrollTop = els.messages.scrollHeight; }
 
@@ -435,18 +450,46 @@ function pickChunks(query, maxChars) {
 function buildPrompt(turns, latest) {
   const notes = pickChunks(latest, Math.max(600, Math.min(1500, (contextSize - CONFIG.maxTokens - 400) * 3 * 0.3)));
   const budget = Math.max(1200, (contextSize - CONFIG.maxTokens - 300) * 3 - CONFIG.system.length - notes.join("").length);
+  // A pack with `roles` ({user, assistant}) gets a named transcript that ends
+  // on the character's label, so a small model writes the next line instead
+  // of echoing the last one.
+  const roles = PACK.roles || null;
+  const userLabel = roles ? roles.user : "Person", botLabel = roles ? roles.assistant : "You";
   const lines = [];
   let used = latest.length;
   for (let i = turns.length - 1; i >= 0; i--) {
-    const line = (turns[i].role === "user" ? "Person: " : "You: ") + turns[i].text;
+    const line = (turns[i].role === "user" ? userLabel : botLabel) + ": " + turns[i].text;
     if (used + line.length > budget) break;
     lines.unshift(line);
     used += line.length;
   }
   let prompt = "";
-  if (notes.length) prompt += "Reference notes (use only these facts for factual claims; if the answer isn't here, say so plainly):\n- " + notes.join("\n- ") + "\n\n";
+  if (notes.length) prompt += ((CONFIG.knowledge && CONFIG.knowledge.preamble) || "Reference notes (use only these facts for factual claims; if the answer isn't here, say so plainly):") + "\n- " + notes.join("\n- ") + "\n\n";
+  if (roles) {
+    prompt += CONFIG.turnReminder + "\n\n" + lines.join("\n") + (lines.length ? "\n" : "") + userLabel + ": " + latest + "\n" + botLabel + ":";
+    return prompt;
+  }
   prompt += (lines.length ? "Conversation so far:\n" + lines.join("\n") + "\n\nThe person now says: " : "The person says: ") + latest;
   return prompt + "\n\n" + CONFIG.turnReminder;
+}
+
+// A pack with `coach` gets a second, single-purpose call after each turn
+// (e.g. "correct this Spanish"); the answer shows as a small note. One job
+// per call is what a small on-device model does well.
+async function coachNote(text) {
+  const c = PACK.coach; if (!c || !c.prompt) return;
+  try {
+    // The pack's notes help a small model correct what it wouldn't know on its own.
+    const notes = pickChunks(text, 500);
+    const body = (notes.length ? "Notes:\n- " + notes.join("\n- ") + "\n\n" : "") + c.prompt.replace("{text}", text);
+    const r = await bridge().llm.generate(body, {
+      provider: "apple", system: c.system || "", temperature: 0.1, maxTokens: c.maxTokens || 60 });
+    let out = ((r && r.text) || "").trim().replace(/^«|»$/g, "").trim();
+    if (!out || /^ok[.!]?$/i.test(out)) return;
+    if (out.replace(/[.!?¡¿\s]/g, "").toLowerCase() === text.replace(/[.!?¡¿\s]/g, "").toLowerCase()) return;
+    if (out.length > text.length * 3 + 40) return;
+    addBubble("note", (c.label || "") + " «" + out + "»");
+  } catch (e) {}
 }
 
 // Streams when the app supports it (onText gets the reply so far); older
@@ -454,8 +497,12 @@ function buildPrompt(turns, latest) {
 async function ask(turns, latest, onText) {
   const llm = bridge().llm;
   const options = { provider: "apple", system: CONFIG.system, temperature: CONFIG.temperature, maxTokens: CONFIG.maxTokens };
-  const prompt = buildPrompt(turns, latest);
-  return typeof llm.stream === "function" ? llm.stream(prompt, options, onText) : llm.generate(prompt, options);
+  if (nativeSession) options.session = nativeSession;
+  // A primed native session already holds the earlier turns; after a restore
+  // from memory (or a reset) the first call carries them once.
+  const prompt = buildPrompt(nativeSession && sessionPrimed ? [] : turns, latest);
+  const p = typeof llm.stream === "function" ? llm.stream(prompt, options, onText) : llm.generate(prompt, options);
+  return p.then((r) => { if (nativeSession) sessionPrimed = true; return r; });
 }
 
 // The first `max` sentences, once there are that many; otherwise the text as is.
@@ -490,7 +537,7 @@ async function send(text) {
   const onText = (soFar) => {
     if (!soFar) return;
     if (!bubble) { typing.remove(); bubble = addBubble("bot", soFar); return; }
-    bubble.textContent = tidy(soFar);
+    setBubbleText(bubble, tidy(soFar));
     scrollToEnd();
   };
   try {
@@ -499,16 +546,21 @@ async function send(text) {
       result = await ask(prior, text, onText);
     } catch (err) {
       if (codeOf(err) !== "context_exceeded") throw err;
-      // Too long for the on-device window: keep only the last exchange and retry once.
+      // Too long for the on-device window: keep only the last exchange and retry once
+      // (a native session was dropped by the app; it starts over with that recap).
       if (bubble) { bubble.remove(); bubble = null; }
+      sessionPrimed = false;
       result = await ask(prior.slice(-2), text, onText);
       addBubble("note", "Earlier messages were trimmed to fit the on-device model.");
     }
-    const reply = tidy(((result && result.text) || "").trim()) || "…";
+    let raw = ((result && result.text) || "").trim();
+    if (PACK.roles) raw = raw.replace(new RegExp("^" + PACK.roles.assistant + "\\s*:\\s*"), "").replace(new RegExp("\\n" + PACK.roles.user + "\\s*:[\\s\\S]*$"), "").trim();
+    const reply = tidy(raw) || "…";
     history.push({ role: "assistant", text: reply });
     typing.remove();
-    if (bubble) { bubble.textContent = reply; scrollToEnd(); } else { addBubble("bot", reply); }
+    if (bubble) { setBubbleText(bubble, reply); scrollToEnd(); } else { addBubble("bot", reply); }
     saveMemory();
+    await coachNote(text);
   } catch (err) {
     typing.remove();
     if (bubble) bubble.remove();
@@ -551,6 +603,8 @@ els.newChat.addEventListener("click", async () => {
   if (busy) return;
   history = [];
   await forgetMemory();
+  if (nativeSession && bridge().llm && typeof bridge().llm.reset === "function") { try { await bridge().llm.reset({ session: nativeSession }); } catch (e) {} }
+  sessionPrimed = false;
   renderWelcome();
 });
 
