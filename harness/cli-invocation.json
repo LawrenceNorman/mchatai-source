@@ -84,7 +84,7 @@
     "description": "Fail fast before session planning if required CLI binary or credential is missing. Keeps failures deterministic and avoids launching long-running sessions that cannot succeed."
   },
   "cliVersionPolicy": {
-    "_comment": "Read by mChatAIShell (minimum/npmPackage: dev-session npm auto-upgrade below `minimum`) AND by mChatAI+ Phase CU (CLIUpdateService). mChatAI+ shows an Update button beside the Workbench CLI chip when the installed version is below `recommended`, offers Update & Restart on a failed turn whose text contains a `needsUpdatePatterns` entry, and starts new sessions on `interactiveMapping.<cli>.preferredModel` only when the installed version meets `modelMinimums` for it. Do NOT raise `minimum` for claude: it installs natively, and the shell's npm auto-upgrade would add a second copy. Raise `recommended` instead.",
+    "_comment": "Read by mChatAIShell (minimum/npmPackage: dev-session npm auto-upgrade below `minimum`) AND by mChatAI+ Phase CU (CLIUpdateService). mChatAI+ shows an Update button beside the Workbench CLI chip when the installed version is below `recommended`, offers Update & Restart on a failed turn whose text contains a `needsUpdatePatterns` entry, and starts new sessions on `interactiveMapping.<cli>.preferredModel` only when the installed version meets `modelMinimums` for it. Do NOT raise `minimum` for claude: it installs natively, and the shell's npm auto-upgrade would add a second copy. Raise `recommended` instead. mChatAI+ also runs `loginStatusCommand` at launch and every 6 hours (CLILoginExpiryWatch); when the date under `loginExpiryField` is `loginWarnDays` or fewer days away it opens one Waiting-on-you loop with `loginWarning` ({date} and {when} are filled in). The field needs claude 2.1.318+; on an older CLI the check finds no date and does nothing.",
     "claude": {
       "minimum": "2.1.80",
       "recommended": "2.1.308",
@@ -97,7 +97,15 @@
       },
       "needsUpdatePatterns": [
         "does not support this model; version"
-      ]
+      ],
+      "loginStatusCommand": "claude auth status --json",
+      "loginExpiryField": "loginExpiresAt",
+      "loginWarnDays": 10,
+      "loginWarning": {
+        "title": "Sign in to Claude Code again before {date}",
+        "note": "Claude Code's sign-in on this Mac ends {date} ({when}). After that, Routines, assistants' scheduled runs and Workbench sessions that use Claude Code stop until you sign in again. To renew it, open Terminal and run: claude auth login",
+        "link": ""
+      }
     },
     "codex": {
       "minimum": "0.114.0",
