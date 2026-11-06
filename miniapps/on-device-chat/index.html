@@ -4,36 +4,18 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
-<title>Money Check-In</title>
+<title>On-device chat</title>
 <style>
   :root {
-    --bg: #f6f5f2;
-    --surface: #ffffff;
-    --text: #1d1d1f;
-    --muted: #6b6b70;
-    --border: #e3e1dc;
-    --accent: #2f6f5e;
-    --accent-text: #ffffff;
-    --user-bubble: #2f6f5e;
-    --user-text: #ffffff;
-    --bot-bubble: #ffffff;
-    --note: #8a5a00;
-    --note-bg: #fff4dc;
+    --bg: #f6f5f2; --surface: #ffffff; --text: #1d1d1f; --muted: #6b6b70; --border: #e3e1dc;
+    --accent: #2f6f5e; --accent-text: #ffffff; --user-bubble: #2f6f5e; --user-text: #ffffff;
+    --bot-bubble: #ffffff; --note: #8a5a00; --note-bg: #fff4dc; --scrim: rgba(0,0,0,.35);
   }
   @media (prefers-color-scheme: dark) {
     :root {
-      --bg: #141416;
-      --surface: #1f1f22;
-      --text: #f2f2f4;
-      --muted: #9a9aa2;
-      --border: #303034;
-      --accent: #5fb39b;
-      --accent-text: #0d1f1a;
-      --user-bubble: #2f6f5e;
-      --user-text: #ffffff;
-      --bot-bubble: #232327;
-      --note: #f0c36b;
-      --note-bg: #2d2516;
+      --bg: #141416; --surface: #1f1f22; --text: #f2f2f4; --muted: #9a9aa2; --border: #303034;
+      --accent: #5fb39b; --accent-text: #0d1f1a; --user-bubble: #2f6f5e; --user-text: #ffffff;
+      --bot-bubble: #232327; --note: #f0c36b; --note-bg: #2d2516; --scrim: rgba(0,0,0,.55);
     }
   }
   * { box-sizing: border-box; }
@@ -43,16 +25,15 @@
   #app { position: fixed; top: 0; left: 0; right: 0; height: 100%; display: flex; flex-direction: column;
     padding: env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left); }
 
-  header { display: flex; align-items: center; gap: 12px; padding: 12px 16px;
+  header { display: flex; align-items: center; gap: 10px; padding: 12px 16px;
     border-bottom: 1px solid var(--border); background: var(--surface); }
   header .titles { flex: 1; min-width: 0; }
-  header h1 { margin: 0; font-size: 17px; font-weight: 650; }
-  .pill { display: inline-flex; align-items: center; gap: 6px; margin-top: 2px;
-    font-size: 12px; color: var(--muted); }
+  header h1 { margin: 0; font-size: 17px; font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pill { display: inline-flex; align-items: center; gap: 6px; margin-top: 2px; font-size: 12px; color: var(--muted); }
   .pill .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
   button { font: inherit; cursor: pointer; }
   .ghost { border: 1px solid var(--border); background: transparent; color: var(--text);
-    border-radius: 999px; padding: 6px 12px; font-size: 14px; }
+    border-radius: 999px; padding: 6px 12px; font-size: 14px; white-space: nowrap; }
   .primary { border: 0; background: var(--accent); color: var(--accent-text);
     border-radius: 12px; padding: 10px 16px; font-weight: 600; }
   .primary:disabled { opacity: .45; cursor: default; }
@@ -70,8 +51,10 @@
   .welcome h2 { color: var(--text); font-size: 20px; margin: 0 0 6px; }
   .welcome p { margin: 0 auto 16px; max-width: 34em; font-size: 15px; }
   .starters { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
-  .starters button { border: 1px solid var(--border); background: var(--surface); color: var(--text);
+  .starters button, .chips button { border: 1px solid var(--border); background: var(--surface); color: var(--text);
     border-radius: 14px; padding: 8px 12px; font-size: 14px; text-align: left; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 14px; }
+  .chips button { font-size: 13px; color: var(--accent); border-color: var(--accent); background: transparent; }
 
   form { display: flex; gap: 8px; align-items: flex-end; padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
     border-top: 1px solid var(--border); background: var(--surface); }
@@ -84,21 +67,70 @@
 
   /* Environment screens (checking / not in the app / model unavailable) */
   .gate { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
-    text-align: center; padding: 32px 24px; gap: 12px; }
+    text-align: center; padding: 32px 24px; gap: 12px; overflow-y: auto; }
   .gate .icon { width: 56px; height: 56px; border-radius: 16px; background: var(--surface);
     border: 1px solid var(--border); display: grid; place-items: center; font-size: 28px; }
   .gate h2 { margin: 4px 0 0; font-size: 20px; }
   .gate p { margin: 0; max-width: 30em; color: var(--muted); }
+  .gate .links { margin-top: 10px; display: flex; flex-direction: column; gap: 6px; }
+  .gate .links a { color: var(--accent); }
+
+  /* "More" sheet: the pack's links, publications and proposals */
+  #sheet { position: fixed; inset: 0; background: var(--scrim); display: flex; align-items: flex-end; z-index: 10; }
+  #sheet .panel { width: 100%; max-height: 70%; overflow-y: auto; background: var(--surface);
+    border-radius: 18px 18px 0 0; padding: 14px 16px calc(16px + env(safe-area-inset-bottom)); }
+  #sheet h3 { margin: 10px 0 6px; font-size: 13px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+  #sheet .row { display: flex; align-items: center; gap: 10px; width: 100%; padding: 12px 4px; border: 0;
+    border-bottom: 1px solid var(--border); background: transparent; color: var(--text); text-align: left; }
+  #sheet .row .sub { display: block; font-size: 13px; color: var(--muted); }
+  #sheet .row.toggle input { margin-left: auto; transform: scale(1.2); }
+  #sheet .close { margin-top: 12px; width: 100%; }
   [hidden] { display: none !important; }
 </style>
 </head>
 <body>
+<!-- The pack this page runs. tools/build.py replaces this block for another persona;
+     ?pack=<id> loads one from mchatai-source instead (inside the app, DEBUG use). -->
+<script id="persona-pack" type="application/json">
+{
+  "id": "money-check-in",
+  "name": "Money Check-In",
+  "icon": "dollarsign.circle",
+  "tagline": "A private place to think out loud about money.",
+  "category": "companions",
+  "prompt": "You are Money Check-In, a warm, calm companion for reflecting on money and the feelings that come with it. Help the person notice and name their feelings, habits and values around money, and think through small next steps they choose for themselves. Ask at most one gentle question at a time. Keep replies short: two to five sentences, plain language, no lists unless asked. You are not a financial adviser or a therapist. Never recommend specific investments, financial products, or tax or legal actions. For big financial decisions, suggest talking with a qualified professional. If the person mentions a crisis, self-harm, or not feeling safe, respond with care and encourage them to call or text 988 in the US, or their local emergency number.",
+  "greeting": { "enabled": false, "hint": null },
+  "starters": [
+    "I feel anxious every time I check my bank account.",
+    "I keep overspending when I'm stressed.",
+    "Help me think through a purchase I'm unsure about.",
+    "What's one small money habit I could try this week?"
+  ],
+  "turnReminder": "Reply in two to four short sentences of plain language, with at most one gentle question.",
+  "maxSentences": 5,
+  "language": "en",
+  "model": "on-device-only",
+  "welcome": {
+    "title": "How are you feeling about money today?",
+    "body": "A private space to think out loud. This chat runs on Apple's on-device model: nothing you type leaves this device, and nothing is saved when you close it."
+  },
+  "placeholder": "Type how you're feeling…",
+  "knowledge": null,
+  "companion": null,
+  "hooks": { "explainers": [], "publications": [], "actions": [] },
+  "surfaces": { "chat": false, "miniapp": true },
+  "retired": false,
+  "version": 1
+}
+</script>
+
 <div id="app">
   <header>
     <div class="titles">
       <h1 id="title"></h1>
       <div class="pill"><span class="dot"></span><span id="badge">On-device · Apple Intelligence</span></div>
     </div>
+    <button class="ghost" id="more" hidden>More</button>
     <button class="ghost" id="newChat" hidden>New chat</button>
   </header>
 
@@ -107,89 +139,88 @@
     <h2 id="gateTitle">Checking this device…</h2>
     <p id="gateBody"></p>
     <button class="primary" id="gateRetry" hidden>Check again</button>
+    <div class="links" id="gateLinks"></div>
   </section>
 
   <main id="messages" hidden></main>
 
   <form id="composer" hidden>
-    <textarea id="input" rows="1" placeholder="Type how you're feeling…" enterkeyhint="send"></textarea>
+    <textarea id="input" rows="1" placeholder="Type a message…" enterkeyhint="send"></textarea>
     <button class="primary" id="send" type="submit" disabled>Send</button>
   </form>
 </div>
 
+<div id="sheet" hidden><div class="panel" id="sheetPanel"></div></div>
+
 <script>
-// ─── CONFIG: everything that makes this chat bespoke lives here ───────────────
-// Copy this file, change CONFIG, and you have a different private chat mini-app.
-const CONFIG = {
-  title: "Money Check-In",
-  welcomeTitle: "How are you feeling about money today?",
-  welcomeBody: "A private space to think out loud. This chat runs on Apple's on-device model: nothing you type leaves this device, and nothing is saved when you close it.",
-  placeholder: "Type how you're feeling…",
-  system: [
-    "You are Money Check-In, a warm, calm companion for reflecting on money and the feelings that come with it.",
-    "Help the person notice and name their feelings, habits and values around money, and think through small next steps they choose for themselves.",
-    "Ask at most one gentle question at a time. Keep replies short: two to five sentences, plain language, no lists unless asked.",
-    "You are not a financial adviser or a therapist. Never recommend specific investments, financial products, or tax or legal actions. For big financial decisions, suggest talking with a qualified professional.",
-    "If the person mentions a crisis, self-harm, or not feeling safe, respond with care and encourage them to call or text 988 in the US, or their local emergency number."
-  ].join(" "),
-  starters: [
-    "I feel anxious every time I check my bank account.",
-    "I keep overspending when I'm stressed.",
-    "Help me think through a purchase I'm unsure about.",
-    "What's one small money habit I could try this week?"
-  ],
-  // Added to the end of every turn: a small on-device model follows the last
-  // instruction it reads far better than one in the system prompt.
-  turnReminder: "Reply in two to four short sentences of plain language, with at most one gentle question.",
-  // Safety net when it runs long anyway: show at most this many sentences.
-  maxSentences: 5,
-  temperature: 0.6,
-  maxTokens: 300,
-  // Shown when the page is opened outside the mChatAI iOS app.
-  outsideAppTitle: "Open this in the mChatAI app",
-  outsideAppBody: "Money Check-In runs on Apple's on-device model, so your words never leave your device. It works only inside the mChatAI app on an iPhone 15 Pro or later, or an iPad with Apple Intelligence."
-};
-// ──────────────────────────────────────────────────────────────────────────────
+// ─── The pack ────────────────────────────────────────────────────────────────
+let PACK = JSON.parse(document.getElementById("persona-pack").textContent);
+function cfg() {
+  return {
+    title: PACK.name,
+    welcomeTitle: (PACK.welcome && PACK.welcome.title) || PACK.tagline || PACK.name,
+    welcomeBody: (PACK.welcome && PACK.welcome.body) ||
+      "This chat runs on Apple's on-device model: nothing you type leaves this device.",
+    placeholder: PACK.placeholder || "Type a message…",
+    system: PACK.prompt,
+    starters: PACK.starters || [],
+    turnReminder: PACK.turnReminder || "Reply in a few short sentences.",
+    maxSentences: PACK.maxSentences || 6,
+    temperature: typeof PACK.temperature === "number" ? PACK.temperature : 0.6,
+    maxTokens: PACK.maxTokens || 300,
+    hooks: PACK.hooks || {},
+    companion: PACK.companion || null,
+    knowledge: PACK.knowledge || null,
+    memory: PACK.memory || null,
+    outsideAppTitle: "Open this in the mChatAI app",
+    outsideAppBody: PACK.name + " runs on Apple's on-device model, so your words never leave your device. It works only inside the mChatAI app on an iPhone 15 Pro or later, or an iPad with Apple Intelligence."
+  };
+}
+let CONFIG = cfg();
 
 const $ = (id) => document.getElementById(id);
 const els = {
-  title: $("title"), badge: $("badge"), newChat: $("newChat"),
-  gate: $("gate"), gateIcon: $("gateIcon"), gateTitle: $("gateTitle"), gateBody: $("gateBody"), gateRetry: $("gateRetry"),
-  messages: $("messages"), composer: $("composer"), input: $("input"), send: $("send")
+  title: $("title"), badge: $("badge"), more: $("more"), newChat: $("newChat"),
+  gate: $("gate"), gateIcon: $("gateIcon"), gateTitle: $("gateTitle"), gateBody: $("gateBody"), gateRetry: $("gateRetry"), gateLinks: $("gateLinks"),
+  messages: $("messages"), composer: $("composer"), input: $("input"), send: $("send"),
+  sheet: $("sheet"), sheetPanel: $("sheetPanel")
 };
-els.title.textContent = CONFIG.title;
-els.input.placeholder = CONFIG.placeholder;
-document.title = CONFIG.title;
 
-// Conversation lives in memory only — closing the mini-app clears it.
+function applyPack() {
+  CONFIG = cfg();
+  els.title.textContent = CONFIG.title;
+  els.input.placeholder = CONFIG.placeholder;
+  document.title = CONFIG.title;
+}
+applyPack();
+
+// Conversation lives in memory only, unless the pack offers "remember" and the person turns it on.
 let history = [];          // [{role: "user"|"assistant", text}]
 let contextSize = 4096;    // tokens; replaced by what the device reports
 let busy = false;
+let remember = false;
+let chunks = null;         // [{id, keywords[], text}] once knowledge is loaded
 
-// ─── Environment detection ────────────────────────────────────────────────────
-// mchatai.com's web bridges define window.mChatAI but never `llm`, and older
-// mChatAI builds have llm.generate without llm.info. Only a current mChatAI iOS
-// build answers llm.info().
+const bridge = () => window.mChatAI || {};
+const inApp = () => !!(window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.mChatAI);
 function withTimeout(promise, ms) {
   return Promise.race([promise, new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), ms))]);
 }
 
+// ─── Environment detection ────────────────────────────────────────────────────
 async function detectEnvironment() {
   showGate("⏳", "Checking this device…", "", false);
-  // Inside an mChatAI app (iPhone, iPad or Mac) the web view has the app's
-  // native message channel; a browser, including mchatai.com, never does.
-  const inApp = !!(window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.mChatAI);
-  const llm = window.mChatAI && window.mChatAI.llm;
-  if (!inApp) {
-    return showGate("📱", CONFIG.outsideAppTitle, CONFIG.outsideAppBody, false);
+  const llm = bridge().llm;
+  if (!inApp()) {
+    return showGate("📱", CONFIG.outsideAppTitle, CONFIG.outsideAppBody, false, true);
   }
   if (!(navigator.maxTouchPoints > 0)) {
     return showGate("📱", "Open this on your iPhone or iPad",
-      CONFIG.title + " runs in mChatAI on iPhone and iPad, where Apple's on-device model is available to mini-apps.", false);
+      CONFIG.title + " runs in mChatAI on iPhone and iPad, where Apple's on-device model is available to mini-apps.", false, true);
   }
   if (!llm || typeof llm.info !== "function") {
     return showGate("⬆️", "Coming in the next mChatAI update",
-      "This version of mChatAI can't reach Apple's on-device model yet. Update mChatAI when the next version is out, then open this again.", false);
+      "This version of mChatAI can't reach Apple's on-device model yet. Update mChatAI when the next version is out, then open this again.", false, true);
   }
   let info;
   try {
@@ -206,18 +237,46 @@ async function detectEnvironment() {
       od.headline || "Apple Intelligence unavailable", od.message || "", retry);
   }
   if (od.contextSize) contextSize = od.contextSize;
+  await loadPackFromSource();
+  await restoreMemory();
   showChat();
+  loadKnowledge();
 }
 
-function showGate(icon, title, body, retry) {
+// A DEBUG `?pack=<id>` loads a pack from mchatai-source; otherwise the page
+// refreshes its own pack's wording from source when it can (silently).
+async function loadPackFromSource() {
+  const content = bridge().content;
+  if (!content || typeof content.get !== "function") return;
+  const wanted = new URLSearchParams(location.search).get("pack") || PACK.id;
+  try {
+    const r = await withTimeout(content.get("personas/" + wanted + "/persona.json"), 4000);
+    const fresh = JSON.parse(r.text);
+    if (fresh && fresh.id === wanted && fresh.prompt) {
+      if (wanted !== PACK.id || (fresh.version || 0) >= (PACK.version || 0)) { PACK = fresh; applyPack(); }
+    }
+  } catch (e) { /* offline, not published yet, or an older app: the inline pack stands */ }
+}
+
+function showGate(icon, title, body, retry, offerLinks) {
   els.gate.hidden = false;
   els.messages.hidden = true;
   els.composer.hidden = true;
   els.newChat.hidden = true;
+  els.more.hidden = true;
   els.gateIcon.textContent = icon;
   els.gateTitle.textContent = title;
   els.gateBody.textContent = body;
   els.gateRetry.hidden = !retry;
+  els.gateLinks.innerHTML = "";
+  // Outside the app the chat can't run, but the pack's reading list still can.
+  if (offerLinks) {
+    const links = [].concat(CONFIG.companion ? [CONFIG.companion] : [], CONFIG.hooks.explainers || []);
+    links.filter(l => l && l.url).forEach(l => {
+      const a = document.createElement("a"); a.href = l.url; a.target = "_blank"; a.rel = "noopener";
+      a.textContent = l.title || l.url; els.gateLinks.appendChild(a);
+    });
+  }
 }
 
 function showChat() {
@@ -225,7 +284,8 @@ function showChat() {
   els.messages.hidden = false;
   els.composer.hidden = false;
   els.newChat.hidden = false;
-  if (!history.length) renderWelcome();
+  els.more.hidden = !hasMoreItems();
+  if (!history.length) renderWelcome(); else { els.messages.innerHTML = ""; history.forEach(t => addBubble(t.role === "user" ? "user" : "bot", t.text)); }
 }
 
 els.gateRetry.addEventListener("click", detectEnvironment);
@@ -237,14 +297,16 @@ function renderWelcome() {
   box.className = "welcome";
   const h = document.createElement("h2"); h.textContent = CONFIG.welcomeTitle;
   const p = document.createElement("p"); p.textContent = CONFIG.welcomeBody;
-  const chips = document.createElement("div"); chips.className = "starters";
+  const starters = document.createElement("div"); starters.className = "starters";
   CONFIG.starters.forEach((s) => {
     const b = document.createElement("button");
     b.type = "button"; b.textContent = s;
     b.addEventListener("click", () => send(s));
-    chips.appendChild(b);
+    starters.appendChild(b);
   });
-  box.append(h, p, chips);
+  box.append(h, p, starters);
+  const chips = hookChips();
+  if (chips) box.appendChild(chips);
   els.messages.appendChild(box);
 }
 
@@ -262,12 +324,117 @@ function addBubble(kind, text) {
 
 function scrollToEnd() { els.messages.scrollTop = els.messages.scrollHeight; }
 
+// ─── Hooks: the pack's links, publications and proposals ─────────────────────
+function hookItems() {
+  const b = bridge(), app = b.app || {}, cal = b.calendar || {};
+  const canWeb = typeof app.openWeb === "function", canNav = typeof app.navigate === "function", canCal = typeof cal.propose === "function";
+  const items = [];
+  if (CONFIG.companion && CONFIG.companion.url && canWeb)
+    items.push({ group: "Companion", title: CONFIG.companion.title || "More on this", sub: "Opens in AI Web", run: () => app.openWeb({ url: CONFIG.companion.url }) });
+  (CONFIG.hooks.explainers || []).forEach(l => { if (l.url && canWeb)
+    items.push({ group: "Learn more", title: l.title || l.url, sub: l.sub || "Opens in AI Web", run: () => app.openWeb({ url: l.url }) }); });
+  (CONFIG.hooks.publications || []).forEach(p => { if (p.applet && canNav)
+    items.push({ group: "In mChatAI", title: p.title || p.applet, sub: p.sub || "", run: () => app.navigate(Object.assign({ applet: p.applet }, p.extras || {})) }); });
+  (CONFIG.hooks.actions || []).forEach(a => { if (a.type === "calendar.propose" && canCal)
+    items.push({ group: "Proposals", title: a.label || a.title || "Add to calendar", sub: a.sub || "Opens the New Event sheet; you decide", run: () => proposeEvent(a) }); });
+  return items;
+}
+function hasMoreItems() { return hookItems().length > 0 || !!(CONFIG.memory && CONFIG.memory.optIn && bridge().storage); }
+
+function hookChips() {
+  const items = hookItems().slice(0, 3);
+  if (!items.length) return null;
+  const row = document.createElement("div"); row.className = "chips";
+  items.forEach(it => { const b = document.createElement("button"); b.type = "button"; b.textContent = it.title; b.addEventListener("click", it.run); row.appendChild(b); });
+  return row;
+}
+
+function proposeEvent(a) {
+  const start = new Date();
+  start.setDate(start.getDate() + (a.daysFromNow || 1));
+  start.setHours(a.hour != null ? a.hour : 9, a.minute || 0, 0, 0);
+  return bridge().calendar.propose({
+    title: a.title || CONFIG.title, notes: a.notes || "", start: start.toISOString(),
+    durationMinutes: a.durationMinutes || 15, repeat: a.repeat || null, location: a.location || null
+  }).then(r => { if (r && r.saved) addBubble("note", "Added to your calendar."); }).catch(() => {});
+}
+
+function openSheet() {
+  const panel = els.sheetPanel; panel.innerHTML = "";
+  let lastGroup = null;
+  hookItems().forEach(it => {
+    if (it.group !== lastGroup) { const h = document.createElement("h3"); h.textContent = it.group; panel.appendChild(h); lastGroup = it.group; }
+    const b = document.createElement("button"); b.className = "row"; b.type = "button";
+    const t = document.createElement("span"); t.textContent = it.title;
+    if (it.sub) { const s = document.createElement("span"); s.className = "sub"; s.textContent = it.sub; t.appendChild(s); }
+    b.appendChild(t); b.addEventListener("click", () => { closeSheet(); it.run(); }); panel.appendChild(b);
+  });
+  if (CONFIG.memory && CONFIG.memory.optIn && bridge().storage) {
+    const h = document.createElement("h3"); h.textContent = "Memory"; panel.appendChild(h);
+    const row = document.createElement("label"); row.className = "row toggle";
+    const t = document.createElement("span"); t.textContent = "Remember this chat between visits";
+    const s = document.createElement("span"); s.className = "sub"; s.textContent = "Saved only on this device. Turn off to forget it."; t.appendChild(s);
+    const cb = document.createElement("input"); cb.type = "checkbox"; cb.checked = remember;
+    cb.addEventListener("change", async () => { remember = cb.checked; if (!remember) await forgetMemory(); else await saveMemory(); });
+    row.append(t, cb); panel.appendChild(row);
+  }
+  const close = document.createElement("button"); close.className = "ghost close"; close.type = "button"; close.textContent = "Close";
+  close.addEventListener("click", closeSheet); panel.appendChild(close);
+  els.sheet.hidden = false;
+}
+function closeSheet() { els.sheet.hidden = true; }
+els.more.addEventListener("click", openSheet);
+els.sheet.addEventListener("click", (e) => { if (e.target === els.sheet) closeSheet(); });
+
+// ─── Memory (opt-in, on this device only) ────────────────────────────────────
+const MEMORY_KEY = "chat." + PACK.id;
+async function restoreMemory() {
+  const st = bridge().storage; if (!st || !(CONFIG.memory && CONFIG.memory.optIn)) return;
+  try {
+    const raw = await withTimeout(st.get(MEMORY_KEY), 2000);
+    if (raw) { const saved = JSON.parse(raw); if (Array.isArray(saved.history)) { history = saved.history; remember = true; } }
+  } catch (e) {}
+}
+async function saveMemory() {
+  const st = bridge().storage; if (!st || !remember) return;
+  try { await st.set(MEMORY_KEY, { history: history.slice(-40), savedAt: Date.now() }); } catch (e) {}
+}
+async function forgetMemory() {
+  const st = bridge().storage; if (!st) return;
+  try { await st.remove(MEMORY_KEY); } catch (e) {}
+}
+
+// ─── Knowledge: small chunks, picked by keywords, inside the context window ──
+async function loadKnowledge() {
+  const k = CONFIG.knowledge; if (!k) return;
+  if (Array.isArray(k.chunks)) { chunks = k.chunks; return; }
+  const content = bridge().content;
+  if (k.path && content && typeof content.get === "function") {
+    try { const r = await withTimeout(content.get(k.path), 6000); const parsed = JSON.parse(r.text); chunks = Array.isArray(parsed) ? parsed : parsed.chunks || null; } catch (e) {}
+  }
+}
+const STOP = new Set("the a an and or of to in on for with is are was were be been it this that these those i me my you your we our they them how what why when where which who do does did can could should would will about from as at by not".split(" "));
+function terms(text) { return (text.toLowerCase().match(/[a-zà-ÿ0-9]{3,}/g) || []).filter(w => !STOP.has(w)); }
+function pickChunks(query, maxChars) {
+  if (!chunks || !chunks.length) return [];
+  const q = new Set(terms(query)); if (!q.size) return [];
+  const scored = chunks.map(c => {
+    let s = 0; const kw = (c.keywords || []).map(x => String(x).toLowerCase());
+    q.forEach(t => { if (kw.some(k => k.includes(t))) s += 2; if ((c.text || "").toLowerCase().includes(t)) s += 1; });
+    return { c, s };
+  }).filter(x => x.s > 0).sort((a, b) => b.s - a.s);
+  const out = []; let used = 0;
+  for (const { c } of scored) { const t = c.text || ""; if (used + t.length > maxChars) continue; out.push(t); used += t.length; if (out.length >= 3) break; }
+  return out;
+}
+
 // ─── Talking to the model ─────────────────────────────────────────────────────
 // The bridge is stateless, so each turn carries the recent conversation. Keep it
 // inside the device's context window (roughly 3 characters per token, leaving
-// room for the instructions and the reply); the oldest turns drop first.
+// room for the instructions, the notes and the reply); the oldest turns drop first.
 function buildPrompt(turns, latest) {
-  const budget = Math.max(1500, (contextSize - CONFIG.maxTokens - 300) * 3 - CONFIG.system.length);
+  const notes = pickChunks(latest, Math.max(600, Math.min(1500, (contextSize - CONFIG.maxTokens - 400) * 3 * 0.3)));
+  const budget = Math.max(1200, (contextSize - CONFIG.maxTokens - 300) * 3 - CONFIG.system.length - notes.join("").length);
   const lines = [];
   let used = latest.length;
   for (let i = turns.length - 1; i >= 0; i--) {
@@ -276,20 +443,17 @@ function buildPrompt(turns, latest) {
     lines.unshift(line);
     used += line.length;
   }
-  const said = (lines.length ? "Conversation so far:\n" + lines.join("\n") + "\n\nThe person now says: " : "The person says: ") + latest;
-  return said + "\n\n" + CONFIG.turnReminder;
+  let prompt = "";
+  if (notes.length) prompt += "Reference notes (use only these facts for factual claims; if the answer isn't here, say so plainly):\n- " + notes.join("\n- ") + "\n\n";
+  prompt += (lines.length ? "Conversation so far:\n" + lines.join("\n") + "\n\nThe person now says: " : "The person says: ") + latest;
+  return prompt + "\n\n" + CONFIG.turnReminder;
 }
 
 // Streams when the app supports it (onText gets the reply so far); older
 // builds only have generate(), which answers all at once.
 async function ask(turns, latest, onText) {
-  const llm = window.mChatAI.llm;
-  const options = {
-    provider: "apple",
-    system: CONFIG.system,
-    temperature: CONFIG.temperature,
-    maxTokens: CONFIG.maxTokens
-  };
+  const llm = bridge().llm;
+  const options = { provider: "apple", system: CONFIG.system, temperature: CONFIG.temperature, maxTokens: CONFIG.maxTokens };
   const prompt = buildPrompt(turns, latest);
   return typeof llm.stream === "function" ? llm.stream(prompt, options, onText) : llm.generate(prompt, options);
 }
@@ -301,11 +465,9 @@ function clipSentences(text, max) {
   while (count < max && re.exec(text)) { end = re.lastIndex; count++; }
   return count >= max ? text.slice(0, end).trim() : text;
 }
-
 function tidy(text) {
   return clipSentences(text, CONFIG.maxSentences).replace(/\*\*(.+?)\*\*/g, "$1").replace(/^\s*[-*] /gm, "• ");
 }
-
 function codeOf(err) {
   const m = /^\[([a-z_]+)\]/.exec(String((err && err.message) || err || ""));
   return m ? m[1] : "";
@@ -346,6 +508,7 @@ async function send(text) {
     history.push({ role: "assistant", text: reply });
     typing.remove();
     if (bubble) { bubble.textContent = reply; scrollToEnd(); } else { addBubble("bot", reply); }
+    saveMemory();
   } catch (err) {
     typing.remove();
     if (bubble) bubble.remove();
@@ -358,9 +521,7 @@ async function send(text) {
   }
 }
 
-function setComposerEnabled() {
-  els.send.disabled = busy || !els.input.value.trim();
-}
+function setComposerEnabled() { els.send.disabled = busy || !els.input.value.trim(); }
 
 els.composer.addEventListener("submit", (e) => {
   e.preventDefault();
@@ -386,9 +547,10 @@ els.input.addEventListener("beforeinput", (e) => {
   e.preventDefault();
   els.composer.requestSubmit();
 });
-els.newChat.addEventListener("click", () => {
+els.newChat.addEventListener("click", async () => {
   if (busy) return;
   history = [];
+  await forgetMemory();
   renderWelcome();
 });
 
