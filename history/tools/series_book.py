@@ -9,7 +9,14 @@ the chapters name (book_map.py: landmarks, addresses, corners, parks and cemeter
 
   series_book.py build <stories-dir> <series-id> <out-dir> [--files] [--publish | --review [--drafts]]
                        [--archive <dir> | --archive-url <url>]   a transcribed archive (see below)
+                       [--export <book.json>]   also the book's data as JSON, with each picture's file
+                                                under <out-dir>, for an ebook or print edition
+                                                (mchatai_macOS scripts/library/build_history_ebook.py)
   series_book.py archive <archive-dir> <out-dir> [--book <url> <title>] [--publish]
+  series_book.py narration <stories-dir> <series-id> <out.json> [--files]
+                       the whole book read aloud, as tracks for the Library's audiobook builder
+                       (mchatai_macOS scripts/library/history_book_source.py): every story in the
+                       book's order, read back from StoryMaker, a track per introduction and chapter
                                                         the archive as a site of its own
   series_book.py order <stories-dir> <series-id>        the stories in book order, and why
   series_book.py status <stories-dir> <series-id>       what is left to review: each story's waiting
@@ -70,7 +77,7 @@ import sys
 import urllib.parse
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from _hw import DOMAINS, HISTORY, Project, load_json  # noqa: E402
+from _hw import DOMAINS, HISTORY, Project, load_json, save_json, words  # noqa: E402
 from cite import find_shim, sentences, storymaker  # noqa: E402
 import book_map  # noqa: E402
 
@@ -792,7 +799,9 @@ def landed_projects(stories_dir, series_id):
     for name in sorted(os.listdir(stories_dir)):
         root = os.path.join(stories_dir, name)
         meta = load_json(os.path.join(root, "project.json"), None)
-        if isinstance(meta, dict) and meta.get("series") == series_id and \
+        # project.json `alsoIn` puts a story in a second book too (2026-11-05: George Bush and Nettie Asberry
+        # open Black Washington as well as telling their part of Black Seattle)
+        if isinstance(meta, dict) and (meta.get("series") == series_id or series_id in (meta.get("alsoIn") or [])) and \
                 os.path.isfile(os.path.join(root, "book", "manifest.json")):
             out.append(Project(root))
     # A story told again (project.json `tellingOf`: Alesia's second telling, 2026-10-19) stands in
@@ -871,6 +880,57 @@ def cmd_order(stories_dir, series_id):
     return 0
 
 
+def cmd_narration(stories_dir, series_id, out_path, use_files=False):
+    """The book as one audiobook (2026-10-30, Black Seattle Vol 1: "an audio book version at the end with
+    my Ollama Easton voice reading it"): the stories in the book's order (cmd_order), each read back
+    from StoryMaker by narration.py, so the author's edits are what is heard. A track per introduction
+    and chapter; a story's first track says its name, and the first story of a part says the part
+    first. The Notes and Sources are not read: one line at the end says where they are."""
+    import narration
+    from campaign_book import NUMBERS, said
+    entry, place = series_entry(series_id)
+    if not entry or not entry.get("book"):
+        print(f"series.json has no `book` block for {series_id!r}")
+        return 2
+    book = entry["book"]
+    parts = book.get("parts", [])
+    rows = []
+    for project in landed_projects(stories_dir, series_id):
+        meta = load_json(project.path("project.json"), {}) or {}
+        year, _ = arrival(project, place)
+        life = (project.dossier or {}).get("lifespan") or {}
+        name = meta.get("subject") or meta.get("name") or (project.dossier or {}).get("subject") or os.path.basename(project.root)
+        rows.append((year if year is not None else 9999, year_of(life.get("born")) or 9999, name, project))
+    rows.sort(key=lambda r: r[:3])
+    tracks, last_part = [], None
+    for year, _, name, project in rows:
+        slug = os.path.basename(project.root)
+        data = narration.build(project, use_files, credit=False)
+        i = part_for(year if year != 9999 else None, parts) if parts else 0
+        opens_part = parts and i != last_part
+        word = NUMBERS[i + 1] if i + 1 < len(NUMBERS) else str(i + 1)
+        for k, ep in enumerate(data["episodes"]):
+            lines = [dict(x, text=said(x["text"])) for x in ep["lines"][1:]]   # the first is the heading
+            if k == 0:
+                head = (f"Part {word}. {parts[i]['title']}. " if opens_part else "") + f"{name}."
+                track = {"title": f"{name} · {ep['title']}", "spoken": said(head), "partStart": bool(opens_part)}
+            else:
+                # A colon in a heading is said as a stop: Easton voiced one as a pause it then lost its
+                # place in (Caesar in Gaul, 2026-10-29); "Clay County to the Columbia: why he went north".
+                track = {"title": ep["title"], "spoken": said(f"{ep['title']}.").replace(": ", ". ")}
+            track.update({"part": i + 1, "story": slug, "lines": lines, "words": sum(words(x["text"]) for x in lines)})
+            tracks.append(track)
+        last_part = i
+        print(f"  {when_label(year) if year != 9999 else '????':>7}  {name:<28} {len(data['episodes'])} tracks, read from {data['origin']}")
+    out = {"series": series_id, "title": book.get("title") or entry.get("title"), "subtitle": book.get("subtitle", ""),
+           "tracks": tracks,
+           "sourcesLine": "The sources for every life in this book are listed after it in the written edition.",
+           "words": sum(t["words"] for t in tracks)}
+    save_json(out_path, out)
+    print(f"{len(tracks)} tracks, {out['words']:,} words (~{out['words'] / 150 / 60:.1f} h at 150 a minute) → {out_path}")
+    return 0
+
+
 def cmd_status(stories_dir, series_id):
     """One line per landed story: suggestions waiting in StoryMaker, parts the author edited, and
     the sign-offs project.json records. "Is everything reviewed?" without opening each project
@@ -917,12 +977,17 @@ def copy_archive(src, out, problems):
     dst = os.path.join(out, "resources", "archive")
     os.makedirs(dst, exist_ok=True)
     files = [f for i in meta["issues"] if i for f in (i.get("files") or [i["file"]])] + (meta.get("nameFiles") or [])
+    # Lists of people drawn from the archive and the book's research (archive.json `lists`, 2026-11-02:
+    # the Quarter Century Club of 1917 and the long list, for the archive's partner to see)
+    lists = [x for x in meta.get("lists") or [] if isinstance(x, dict) and x.get("id") and x.get("file")]
+    files += [x["file"] for x in lists]
     for name in ["archive.json"] + files:
         if not os.path.isfile(os.path.join(src, name)):
             problems.append(f"--archive {src}: {name} is missing")
             continue
         shutil.copyfile(os.path.join(src, name), os.path.join(dst, name))
     return {"title": meta.get("title") or "Archive", "nav": bool(meta.get("nav")),
+            "lists": [{"id": x["id"], "nav": x.get("nav") or x.get("title") or x["id"]} for x in lists],
             "src": "resources/archive/archive.json", "credit": meta.get("credit", ""),
             "creditUrl": meta.get("creditUrl", "") if safe_url(meta.get("creditUrl", "")) else ""}
 
@@ -962,7 +1027,7 @@ def cmd_archive(src, out, book_url=None, book_title=None, publish=False):
 
 
 def cmd_build(stories_dir, series_id, out, use_files=False, publish=False, review=False, drafts=False, archive=None,
-              archive_url=None):
+              archive_url=None, export=None):
     entry, place = series_entry(series_id)
     if not entry or not entry.get("book"):
         print(f"series.json has no `book` block for {series_id!r}")
@@ -1076,6 +1141,7 @@ def cmd_build(stories_dir, series_id, out, use_files=False, publish=False, revie
                  "noun": book.get("storyNoun") or ["life", "lives"], "channels": channels,
                  "place": place,
                  "intro": book.get("intro", ""), "companion": book.get("companion") or {},
+                 "links": [x for x in book.get("links") or [] if isinstance(x, dict) and x.get("title") and safe_url(x.get("url") or "")],
                  "canonical": book.get("canonical", "") if publish else "", "generated": generated,
                  "publish": publish, "reviewCopy": review},
         "parts": [p for p in parts if p["stories"]],
@@ -1108,6 +1174,14 @@ def cmd_build(stories_dir, series_id, out, use_files=False, publish=False, revie
                   fh, ensure_ascii=False, indent=1)
     with open(os.path.join(out, "index.html"), "w", encoding="utf-8") as fh:
         fh.write(page(data))
+    if export:
+        # The same book as data, for an ebook or a print edition (2026-10-30, Black Seattle Vol 1): the
+        # stories as the page shows them, their parts in order, and the series' own settings.
+        with open(export, "w", encoding="utf-8") as fh:
+            json.dump(dict(data, out=os.path.abspath(out), series=series_id,
+                           nonCommercial=bool(book.get("nonCommercial")), permissionPictures=by_permission),
+                      fh, ensure_ascii=False, indent=1)
+        print(f"export: {export}")
     if publish or review:
         files, total, over = hosted_caps(out)
         print(f"hosted copy: {files} text files, {total:,} bytes ({len(pics)} pictures as text)")
@@ -1367,6 +1441,13 @@ sup.src a:hover{color:var(--accent)}
 .ar-chips{list-style:none;margin:8px 0 0;padding:0;display:flex;flex-wrap:wrap;gap:6px}
 .ar-chips a{display:block;font-size:14px;padding:3px 10px;border:1px solid var(--line);border-radius:999px;background:var(--panel);text-decoration:none;color:var(--ink)}
 .ar-chips a small{color:var(--muted);margin-left:4px;font-variant-numeric:tabular-nums}
+.ar-lists{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:10px}
+.ar-lists a{display:block;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--panel);text-decoration:none;color:var(--ink)}
+.ar-lists b{font:600 18px/1.3 var(--serif)}.ar-lists span{display:block;color:var(--muted);font-size:14.5px;margin-top:2px}
+.ar-row{padding:12px 0;border-bottom:1px solid var(--line);max-width:46rem}
+.ar-row h3{font:600 18px/1.3 var(--serif);margin:0}.ar-row h3 small{font:400 14px var(--sans);color:var(--muted);margin-left:6px}
+.ar-row p{margin:5px 0 0}.ar-row q{font-style:italic}.ar-row .lbl{font-size:13px;color:var(--muted);margin-right:6px}
+.ar-row .tags{font-size:13.5px;color:var(--muted)}.ar-row .links{font-size:14px;display:flex;flex-wrap:wrap;gap:4px 14px}
 .ar-cols{display:grid;grid-template-columns:minmax(0,1fr) 17rem;gap:28px;margin-top:18px}
 .ar-cols>*{min-width:0}
 .ar-tx{font:17px/1.6 var(--serif)}
@@ -1422,6 +1503,7 @@ const ARSOLO = !!(AR && AR.standalone);
 function nav(cur){
   if (ARSOLO){
     el("nav").innerHTML = `<a href="#/"${cur==="archive"?' aria-current="page"':""}>Publications</a><a href="#/archive/search">Search</a>`
+      + (AR.lists || []).map(l => `<a href="#/archive/${esc(l.id)}"${cur==="list:"+l.id?' aria-current="page"':""}>${esc(l.nav)}</a>`).join("")
       + (AR.book ? `<a href="${esc(AR.book.url)}" target="_blank" rel="noopener">${esc(AR.book.title)} ↗</a>` : "");
     return;
   }
@@ -1429,7 +1511,8 @@ function nav(cur){
     .concat(AR && AR.nav && !AR.url ? [["#/archive","Archive","archive"]] : []);
   el("nav").innerHTML = items.map(([h,t,k]) => `<a href="${h}"${k===cur?' aria-current="page"':""}>${t}</a>`).join("")
     + (AR && AR.nav && AR.url ? `<a href="${esc(AR.url)}" target="_blank" rel="noopener">${esc(AR.title || "Archive")} ↗</a>` : "")
-    + (COMP.url ? `<a href="${esc(COMP.url)}" target="_blank" rel="noopener">${esc(COMP.title || "Landmarks")} ↗</a>` : "");
+    + (COMP.url ? `<a href="${esc(COMP.url)}" target="_blank" rel="noopener">${esc(COMP.title || "Landmarks")} ↗</a>` : "")
+    + (B.links || []).map(x => `<a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.title)} ↗</a>`).join("");
 }
 el("foot").innerHTML = ARSOLO
   ? (AR.credit ? `<p>${AR.creditUrl ? `<a href="${esc(AR.creditUrl)}" target="_blank" rel="noopener">${esc(AR.credit)}</a>` : esc(AR.credit)}</p>` : "")
@@ -1437,6 +1520,7 @@ el("foot").innerHTML = ARSOLO
     + `<p>Built ${esc(B.generated)}.</p>`
   : `<p>Every story here is told from the public record. Each paragraph's sources are numbered after it and listed with the story, and every picture is credited in its caption.</p>`
   + (COMP.url ? `<p>Places named in the stories link to <a href="${esc(COMP.url)}" target="_blank" rel="noopener">${esc(COMP.title || "the landmark guide")}</a>.</p>` : "")
+  + ((B.links || []).length ? `<p>See also ${(B.links).map(x => `<a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.title)}</a>`).join(", ")}.</p>` : "")
   + `<p>Built ${esc(B.generated)}.</p>`;
 
 function partOf(slug){ return D.parts.findIndex(p => p.stories.includes(slug)); }
@@ -2026,9 +2110,10 @@ const arLabel = (i, s) => ((ARC.issues[i].pages.find(p => p.s === s) || {}).l) |
 const arHi = (text, re) => { const m = re.exec(text); return m ? esc(text.slice(0, m.index)) + `<b>${esc(m[0])}</b>` + esc(text.slice(m.index + m[0].length)) : esc(text); };
 
 function archive(parts){
-  nav("archive");
+  const list = (AR.lists || []).find(l => l.id === parts[0]);
+  nav(list ? "list:" + list.id : "archive");
   const want = location.hash;
-  arLoad().then(() => parts[0] === "search" ? arSearch(decodeURIComponent(parts.slice(1).join("/")))
+  arLoad().then(() => list ? arList(list.id) : parts[0] === "search" ? arSearch(decodeURIComponent(parts.slice(1).join("/")))
                     : /^\d+$/.test(parts[0] || "") && /^\d+$/.test(parts[1] || "") ? arPage(+parts[0], +parts[1])
                     : arHome())
     .then(h => { if (location.hash !== want) return; el("view").innerHTML = h; arWire(); document.title = ARSOLO ? ARC.title : `${ARC.title} · ${B.title}`; })
@@ -2044,19 +2129,39 @@ function arForm(q){
 function arHome(){
   const people = ARC.top || ARC.names.filter(n => n.k === "p" && n.m.length > 1).slice(0, 24).map(n => ({n: n.n, c: n.m.length}));
   let h = arHead(esc(ARC.kicker || ""), ARC.title) + (ARC.about || []).map(p => `<p class="lede-s">${esc(p)}</p>`).join("") + arNote() + arForm("");
+  if ((ARC.lists || []).length) h += `<h2 class="sec">People</h2><ul class="ar-lists">${ARC.lists.map(l => `<li><a href="#/archive/${esc(l.id)}"><b>${esc(l.title)}</b>${l.blurb ? `<span>${esc(l.blurb)}</span>` : ""}</a></li>`).join("")}</ul>`;
   h += `<h2 class="sec">Publications</h2>`;
   (ARC.shown || arIssues().map(i => i.id)).map(id => ARC.issues[id]).forEach(i => {
     h += `<section class="ar-issue"><h3>${esc(i.title)}</h3>
       <p class="when">${esc(i.date)} · ${i.pages.length} pages · ${arBadge(i.mean)} of words confirmed by both readings</p>
       ${i.note ? `<p>${esc(i.note)}</p>` : ""}
       <ol class="ar-pages" aria-label="Pages">${i.pages.map(p => `<li><a class="${arTier(p.a)[2]}" href="#/archive/${i.id}/${p.s}" title="${esc(p.l)}: ${p.a}%">${esc(arShort(p.l))}</a></li>`).join("")}</ol>
-      <p class="refs"><a href="${esc(i.hub)}" target="_blank" rel="noopener">This item in the Griot's Archive ↗</a></p></section>`;
+      <p class="refs"><a href="${esc(i.hub)}" target="_blank" rel="noopener">${esc(i.hubLabel || "This item in the Griot's Archive")} ↗</a></p></section>`;
   });
   h += `<div class="ar-legend">${ARC.tiers.map(t => `<span><span class="conf ${t[2]}">${t[0] ? t[0] + "%+" : "below"}</span> ${esc(t[1])}</span>`).join("")}</div>`;
   if (people.length) h += `<h2 class="sec">Named most often</h2><ul class="ar-chips">${people.map(n => `<li><a href="#/archive/search/${encodeURIComponent(n.n)}">${esc(n.n)}<small>${n.c}</small></a></li>`).join("")}</ul>`;
   h += `<h2 class="sec">How this was made</h2>` + (ARC.method || []).map(p => `<p class="lede-s">${esc(p)}</p>`).join("");
   if (ARC.credit) h += `<p class="refs" style="margin-top:14px">${ARC.creditUrl ? `<a href="${esc(ARC.creditUrl)}" target="_blank" rel="noopener">${esc(ARC.credit)}</a>` : esc(ARC.credit)}</p>`;
   return h;
+}
+// A list of people (archive.json `lists`): groups of rows, each a name, its quotes or one plain line, tags and links.
+function arList(id){
+  const meta = ARC.lists.find(l => l.id === id);
+  return arGet(meta.file).then(L => {
+    const back = `<a href="#/archive">${esc(ARC.title)}</a>`;
+    const link = ([t, u]) => /^#\//.test(u) ? `<a href="${esc(u)}">${esc(t)}</a>`
+      : /^https:\/\//.test(u) ? `<a href="${esc(u)}" target="_blank" rel="noopener">${esc(t)}</a>` : "";
+    const row = r => `<article class="ar-row" data-q="${esc([r.name, r.aka].concat(r.quotes.map(q => q[1]), r.tags).join(" ").toLowerCase())}">
+      <h3>${esc(r.name)}${r.aka ? `<small>${esc(r.aka)}</small>` : ""}</h3>
+      ${r.quotes.map(([l, t]) => r.plain ? `<p>${esc(t)}</p>` : `<p>${l ? `<span class="lbl">${esc(l)}</span>` : ""}<q>${esc(t)}</q></p>`).join("")}
+      ${r.tags.length ? `<p class="tags">${r.tags.map(esc).join(" · ")}</p>` : ""}
+      ${r.links.length ? `<p class="links">${r.links.map(link).join("")}</p>` : ""}</article>`;
+    const n = L.groups.reduce((a, g) => a + g.rows.length, 0);
+    return arHead(back, L.title) + (L.intro || []).map(p => `<p class="lede-s">${esc(p)}</p>`).join("") + arNote()
+      + `<form class="arq" id="arlf" role="search"><input type="search" id="arlq" placeholder="Find a name or a word in these ${n}" aria-label="Find in this list"></form>`
+      + L.groups.map(g => `<section class="ar-grp"><h2 class="sec">${esc(g.title)}</h2>${g.note ? `<p class="lede-s">${esc(g.note)}</p>` : ""}${g.rows.map(row).join("")}</section>`).join("")
+      + `<p class="refs" id="arlnone" hidden>No one in this list matches.</p>`;
+  });
 }
 function arSearch(q){
   const back = `<a href="#/archive">${esc(ARC.title)}</a>`;
@@ -2119,7 +2224,7 @@ function arPage(id, s){
       `<li><a href="#/archive/search/${encodeURIComponent(n)}">${esc(n)}</a>${ctx && c === "p" ? `<small>${esc(ctx.length > 140 ? ctx.slice(0, 140) + "…" : ctx)}</small>` : ""}</li>`).join("")}</ul>`).join("");
     let h = arHead(`<a href="#/archive">${esc(ARC.title)}</a> · ${esc(arName(id))}`, p.l)
       + `<p class="lede-s">${arBadge(p.a)} ${esc(t[1])}. The second reading confirms ${p.a}% of this page's ${p.w} words.${p.fl.length ? ` ${p.fl.length} highlighted ${p.fl.length === 1 ? "spot" : "spots"} to check: tap one to see the other reading.` : ""}${p.u ? ` ${p.u} ${p.u === 1 ? "word" : "words"} marked uncertain in brackets.` : ""}</p>`
-      + `<p class="refs"><a href="${esc(p.scan)}" target="_blank" rel="noopener">See the scan ↗</a> · <a href="${esc(i.hub)}" target="_blank" rel="noopener">This item in the Griot's Archive ↗</a></p>`
+      + `<p class="refs"><a href="${esc(p.scan)}" target="_blank" rel="noopener">See the scan ↗</a> · <a href="${esc(i.hub)}" target="_blank" rel="noopener">${esc(i.hubLabel || "This item in the Griot's Archive")} ↗</a></p>`
       + `<div class="ar-cols"><div class="ar-tx">${arText(p)}</div><aside class="ar-ix">${side || `<p class="src">No names on this page.</p>`}</aside></div>`;
     h += arNote();
     if ((p.so || []).length) h += `<details style="margin-top:14px"><summary>Text only the second reading has (${p.so.length})</summary><ul>${p.so.map(x => `<li>${esc(x)}</li>`).join("")}</ul><p class="src">Often a description of a picture, or the same words in another order. Worth a look against the scan.</p></details>`;
@@ -2128,6 +2233,18 @@ function arPage(id, s){
   });
 }
 function arWire(){
+  const lf = el("arlf"), lq = el("arlq");
+  if (lf) lf.addEventListener("submit", e => e.preventDefault());
+  if (lq) lq.addEventListener("input", () => {
+    const t = lq.value.trim().toLowerCase();
+    let shown = 0;
+    el("view").querySelectorAll(".ar-grp").forEach(g => {
+      let any = 0;
+      g.querySelectorAll(".ar-row").forEach(r => { const ok = !t || r.dataset.q.includes(t); r.hidden = !ok; if (ok) any++; });
+      g.hidden = !any; shown += any;
+    });
+    el("arlnone").hidden = shown > 0;
+  });
   const f = el("arq");
   if (f) f.addEventListener("submit", e => { e.preventDefault(); const q = el("arqi").value.trim(); location.hash = q ? "#/archive/search/" + encodeURIComponent(q) : "#/archive"; });
   el("view").querySelectorAll(".ar-tx mark").forEach(m => {
@@ -2215,8 +2332,12 @@ def main(argv):
         if archive and archive_url:
             print("--archive or --archive-url, not both")
             return 2
+        export = argv[argv.index("--export") + 1] if "--export" in argv[:-1] else None
         return cmd_build(argv[2], argv[3], argv[4], use_files="--files" in argv, publish="--publish" in argv,
-                         review="--review" in argv, drafts="--drafts" in argv, archive=archive, archive_url=archive_url)
+                         review="--review" in argv, drafts="--drafts" in argv, archive=archive, archive_url=archive_url,
+                         export=export)
+    if len(argv) >= 5 and argv[1] == "narration":
+        return cmd_narration(argv[2], argv[3], argv[4], use_files="--files" in argv)
     if len(argv) >= 4 and argv[1] == "archive":
         book = argv[argv.index("--book") + 1:argv.index("--book") + 3] if "--book" in argv[:-2] else [None, None]
         return cmd_archive(argv[2], argv[3], book[0], book[1], publish="--publish" in argv)

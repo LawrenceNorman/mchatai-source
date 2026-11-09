@@ -1,0 +1,66 @@
+{
+  "category": "slide-diagrams",
+  "version": 1,
+  "description": "Diagrams for the AI Slides `diagram` layout (Phase DG). The text form is a Mermaid flowchart subset with comment directives — see wizard/prompts/slides.deck.md §Diagrams for the grammar. `starter` is what Insert ▸ Diagram places; `examples` are the four diagrams rebuilt from the 2026-11-05 whiteboard deck, used as the acceptance fixtures (DiagramTextCodecTests / DiagramLayoutTests read this file) and as reference material for prompt work. Structure only: no coordinate anywhere.",
+  "starter": {
+    "title": "How it works",
+    "text": "flowchart LR\na[\"First<br>where it starts\"] --> b[\"Then<br>what happens next\"]:::strong --> c[\"Result<br>what comes out\"]:::good\n"
+  },
+  "examples": [
+    {
+      "id": "settings",
+      "title": "Settings: one resolver, every screen asks it",
+      "layout": "flow",
+      "caption": "",
+      "text": "flowchart LR\nuser[\"User<br>the Settings app\"] --> res\nadmin[\"Admin (MDM)<br>Allow Siri AI · allow while locked · …\"] --> res\nparent[\"Parent<br>Screen Time\"] --> res\nelig[\"Eligibility<br>region · age · language · device\"]:::muted --> res\nsetup[\"Setup choices<br>made at first run, even years ago\"]:::muted --> res\nres[\"One resolver<br>precedence + the reason — one source of truth that every screen and Siri itself ask\"]:::strong\nres --> rt[\"Siri at runtime<br>does only what the effective setting allows\"]:::ink\nres ==> ui[\"The Settings screen<br>On or off — or greyed with one plain sentence why: “Managed by your organization” · “Not available in your region yet”\"]:::accent\n%% callout res: \"Compliance bugs are usually two screens disagreeing about the same rule.\"\n%% callout ui: \"The bug customers report: a grey toggle with no explanation.\":::bad\n",
+      "expect": {
+        "nodes": 8,
+        "edges": 7,
+        "groups": 0,
+        "callouts": 2
+      }
+    },
+    {
+      "id": "stages",
+      "title": "Six stages, one settings layer",
+      "layout": "rows",
+      "caption": "Every Siri setting and every privacy question belongs to one stage",
+      "text": "flowchart LR\n%% layout: rows\n%% row: trigger, capture, recog, understand, action, response\n%% row: band\n%% row: setup, user, admin, parent\ntrigger[\"Trigger<br>two-pass wake detector · speaker profile\"] ==> capture[\"Capture<br>request audio — kept only with the opt-in\"] ==> recog[\"Recognition<br>speech → text on the device\"] ==> understand[\"Understanding<br>Siri AI, on device or in PCC\"]:::strong ==> action[\"Action<br>Apple features + apps' App Intents\"] ==> response[\"Response<br>spoken, on screen, or both\"]\nband[\"Settings layer<br>what Siri may hear, read and do — per user · per device · per region\"]:::accent\ntrigger -.- band\ncapture -.- band\nrecog -.- band\nunderstand -.- band\naction -.- band\nresponse -.- band\nsetup[\"Setup Assistant<br>voice enrollment · Improve Siri opt-in\"] --> band\nuser[\"User<br>the Settings app\"] --> band\nadmin[\"Admin<br>MDM: 6 Siri keys\"] --> band\nparent[\"Parent<br>Screen Time\"] --> band\n",
+      "expect": {
+        "nodes": 11,
+        "edges": 15,
+        "groups": 0,
+        "callouts": 0,
+        "rows": 3
+      }
+    },
+    {
+      "id": "first20",
+      "title": "Siri reads the first twenty, then stops",
+      "layout": "rows",
+      "caption": "",
+      "text": "flowchart LR\n%% layout: rows\n%% row: read, cut\n%% row: quote\n%% row: enum, str, res\nsubgraph read [\"What Siri read: items 1–20\"]\n    %% columns: 5\n    s1[\"Chat<br>#1\"]:::accent\n    s2[\"Hands Free<br>#2\"]:::accent\n    s3[\"For You<br>#3\"]:::accent\n    s4[\"AI Write<br>#4\"]:::accent\n    s5[\"AI ToDo<br>#5\"]:::accent\n    s6[\"DreamSnap<br>#6\"]:::accent\n    s7[\"Web AI<br>#7\"]:::accent\n    s8[\"AI Audio<br>#8\"]:::accent\n    s9[\"LoopStar<br>#9\"]:::accent\n    s10[\"Podcasts<br>#10\"]:::accent\n    s11[\"AI Music<br>#11\"]:::accent\n    s12[\"AI Radio<br>#12\"]:::accent\n    s13[\"Audio Books<br>#13\"]:::accent\n    s14[\"AI Reader<br>#14\"]:::accent\n    s15[\"Wikipedia<br>#15\"]:::accent\n    s16[\"AI News<br>#16\"]:::accent\n    s17[\"Map Guide<br>#17\"]:::accent\n    s18[\"Weather<br>#18\"]:::accent\n    s19[\"Calendar<br>#19\"]:::accent\n    s20[\"Contacts<br>#20\"]:::accent\nend\nclass read accent\nsubgraph cut [\"Siri said these don't exist\"]\n    %% columns: 2\n    x0[\"✗ Health<br>#21 — first one cut\"]:::bad\n    x1[\"✗ StoryMaker\"]:::bad\n    x2[\"✗ Hub\"]:::bad\n    x3[\"✗ Agents\"]:::bad\n    x4[\"✗ Settings\"]:::bad\n    x5[\"✗ AI Feed\"]:::bad\nend\nclass cut bad\nx2 -. \"Hub opened For You instead\" .-> s3\nquote[\"Siri: “mChatAI doesn't have a Health applet. The available options include Chat, Hands Free, For You … Calendar, and Contacts.” — exactly items 1 to 20, in order\"]:::ghost\nenum[\"Before: hand Siri the full list<br>EnumerableEntityQuery returns all 33\"]:::bad\nstr[\"After: make Siri search by name<br>EntityStringQuery only — entities(matching:)\"]:::good\nres[\"✓ All six opened on the next run<br>Health · StoryMaker · Hub · Agents · Settings · Health and Fitness\"]:::good\nenum == \"fix\" ==> str\nstr --> res\n%% callout: \"Filed as FB25456041 · Ask: document the limit, warn in the Integration Advisor, or fall back to search\"\n",
+      "expect": {
+        "nodes": 30,
+        "edges": 3,
+        "groups": 2,
+        "callouts": 1,
+        "rows": 3
+      }
+    },
+    {
+      "id": "evalloop",
+      "title": "The Siri eval loop",
+      "layout": "rows",
+      "caption": "",
+      "text": "flowchart LR\n%% layout: rows\n%% row: p1, p2, p3, p4\n%% row: nv, _, ours, tri\n%% row: fb, _, _, theirs\np1[\"prompts.json — 108 rows<br>What the person says, and what Siri must do: calls · finds · on screen · says · must not call\"]:::accent ==> p2[\"Tiers<br>Smoke: 16 rows, the gate on every build · Full table: a quarter a day · No app name: measured, not gated\"] ==> p3[\"Siri Evaluations on an iPad mini<br>Real Siri runs every turn and speaks · device unlocked · daily budget\"]:::strong ==> p4[\"Verdicts per row<br>intents · found entities · on screen · Siri's words\"]\np4 ==> tri[\"Row failed? Check the test first<br>The battery row was the test's mistake\"]:::accent\ntri -- \"ours\" --> ours[\"App's bug → fix it<br>rebuild, re-run on the device the same day\"]:::good\ntri -- \"platform's\" --> theirs[\"Platform's → Feedback report<br>6 filed Nov 5\"]:::ink\nours -- \"re-grade\" --> p3\nnv[\"Every new verb ships with 3 rows<br>1. Open the same screen by name — catches stolen phrasings<br>2. “my” + the kind of thing — catches empty searches<br>3. A two-turn on-screen row\"] --> p1\nfb[\"Keep a fixed-phrase fallback<br>exact App Shortcut phrases still work if the model's routing shifts next beta\"]:::muted\n",
+      "expect": {
+        "nodes": 9,
+        "edges": 8,
+        "groups": 0,
+        "callouts": 0,
+        "rows": 3
+      }
+    }
+  ]
+}

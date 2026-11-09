@@ -117,6 +117,24 @@ for j in jobs:
     if j.get("taskCategory") not in ("coding", "research", "creative", "analysis", "simple", "planning"):
         problems.append(f"job {j.get('id')}: taskCategory not one of AgentModelRouter.TaskCategory")
 
+# Lesson packs (lessons/<lang>.json): per-turn context for a downloaded model (TLTurnContext / LocalLLM flywheel).
+for path in sorted((ROOT / "lessons").glob("*.json")):
+    try:
+        pack = json.loads(path.read_text(encoding="utf-8"))
+    except Exception as e:  # noqa: BLE001
+        problems.append(f"lessons/{path.name}: {e}")
+        continue
+    for lv in levels:
+        if lv.get("id") not in pack.get("levels", {}) or not pack["levels"][lv["id"]].get("notes"):
+            problems.append(f"lessons/{path.name}: no notes for level {lv.get('id')}")
+    unique(pack.get("topics", []), f"lessons/{path.name} topics")
+    for t in pack.get("topics", []):
+        if not t.get("focus") or not t.get("match") or not t.get("words", {}).get("novice"):
+            problems.append(f"lessons/{path.name} topic {t.get('id')}: needs focus, match and words.novice")
+        short = [m for m in t.get("match", []) if len(m) < 3]
+        if short:
+            problems.append(f"lessons/{path.name} topic {t.get('id')}: stems under 3 letters match too much: {short}")
+
 csv_counts = {}
 for path in sorted((ROOT / "wordlists").glob("*/*.csv")):
     with path.open(encoding="utf-8", newline="") as f:

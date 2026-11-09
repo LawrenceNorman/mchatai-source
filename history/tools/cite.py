@@ -32,6 +32,11 @@ written and a narration reads it aloud unchanged.
   cite.py land    <project> [--dry]        book/ into StoryMaker through ./mchatai: creates what
                                            is missing, replaces what changed (never the author's),
                                            reads every chapter back
+  cite.py suggest <project> --since <dir> [--dry] [--label L] [--why W]
+                                           a chapter the author has edited, where book/ now says
+                                           more than <dir> (a copy of book/ taken before the pass):
+                                           each changed or added paragraph offered as one
+                                           storymaker.proposeSuggestion (land never replaces his)
   cite.py outline <project>                plan.json's chapters (title, `summary`) as StoryMaker's
                                            outline through ./mchatai, with no shell quoting to break
   cite.py adopt   <project>                after the author's review: review/NN.txt (each chapter
@@ -1266,6 +1271,78 @@ def cmd_outline(project):
     return 0
 
 
+def paragraph_changes(old, new):
+    """[(find, replacement)] that turn the author's text `old` into `new`, a paragraph at a time: a
+    changed run of paragraphs is one change, and an added one is offered with the paragraph before it
+    (or after it, at the start), so every `find` is the author's own words."""
+    import difflib
+    a = [p for p in re.split(r"\n\s*\n", old.strip()) if p.strip()]
+    b = [p for p in re.split(r"\n\s*\n", new.strip()) if p.strip()]
+    out = []
+    for op, i1, i2, j1, j2 in difflib.SequenceMatcher(None, a, b, autojunk=False).get_opcodes():
+        if op == "equal":
+            continue
+        if op == "replace":
+            out.append(("\n\n".join(a[i1:i2]), "\n\n".join(b[j1:j2])))
+        elif op == "insert":
+            if i1 > 0:
+                out.append((a[i1 - 1], "\n\n".join([a[i1 - 1]] + b[j1:j2])))
+            elif a:
+                out.append((a[0], "\n\n".join(b[j1:j2] + [a[0]])))
+        elif op == "delete":
+            keep = a[i1 - 1] if i1 > 0 else (a[i2] if i2 < len(a) else "")
+            gone = "\n\n".join(a[i1:i2])
+            out.append(((keep + "\n\n" + gone) if i1 > 0 else (gone + "\n\n" + keep), keep))
+    return out
+
+
+def cmd_suggest(project, since, dry=False, label=None, why=None):
+    """The chapters the author has edited, offered again where book/ has changed since: a context
+    pass told a neighbour or a fact of the time in his chapter (2026-10-30, Black Seattle). `land`
+    never replaces his text, so each changed or added paragraph goes as one suggestion he accepts
+    or rejects in StoryMaker. A change whose words are not exactly once in his text is listed, not
+    sent. Only what changed since `since` (book/ copied before the pass) is offered: a story's book/
+    and his text can already differ (a caption he edited), and that is not this pass's to offer
+    (William Grose, 2026-10-30). Run `cite.py book` first."""
+    man = load_json(project.path("book", "manifest.json"), None)
+    meta = load_json(project.path("project.json"), {}) or {}
+    pid, shim = meta.get("storymakerProject"), find_shim(project)
+    if not man or not pid or not shim:
+        print("needs book/manifest.json (cite.py book), project.json storymakerProject and a ./mchatai shim")
+        return 2
+    sent = listed = 0
+    for c in man.get("chapters", []):
+        cid = (c.get("storymaker") or {}).get("chapterID") or (meta.get("introChapterID") if c.get("n") == 0 else None)
+        if not cid:
+            continue
+        with open(project.path(c["file"]), encoding="utf-8") as fh:
+            new = fh.read()
+        before = os.path.join(since, os.path.basename(c["file"]))
+        base = open(before, encoding="utf-8").read() if os.path.exists(before) else ""
+        if not base or base.strip() == new.strip():
+            continue
+        cur = ((storymaker(shim, "getChapter", projectID=pid, chapterID=cid).get("result") or {}).get("text") or "")
+        for find, rep in paragraph_changes(base, new):
+            if cur.count(find) != 1:
+                listed += 1
+                print(f"  {c.get('title')}: NOT SENT, its words are not exactly once in the author's text: {find[:90]!r}")
+                continue
+            if dry:
+                print(f"  {c.get('title')}: would offer {len(find)} -> {len(rep)} characters: {rep[:110]!r}")
+                sent += 1
+                continue
+            r = storymaker(shim, "proposeSuggestion", project=pid, chapter=cid, find=find, replacement=rep,
+                           label=label or "Book rebuilt", rationale=why or "The book now says more here (cite.py suggest).")
+            if r.get("status") == "ok":
+                sent += 1
+                print(f"  {c.get('title')}: offered {len(find)} -> {len(rep)} characters")
+            else:
+                listed += 1
+                print(f"  {c.get('title')}: NOT SENT — {(r.get('error') or '')[:160]}")
+    print(f"suggest: {sent} {'would be ' if dry else ''}offered, {listed} not sent")
+    return 1 if listed else 0
+
+
 def cmd_land(project, dry=False):
     """Land book/ in StoryMaker: the second story pasted 5,235 words through its own thread, each
     chapter one shell argument, and apostrophes broke the quoting (2026-10-04). This makes the
@@ -1592,6 +1669,12 @@ def main(argv):
         return cmd_settle(project, argv[3])
     if cmd == "land":
         return cmd_land(project, dry="--dry" in argv)
+    if cmd == "suggest":
+        flag = lambda k: argv[argv.index(k) + 1] if k in argv[:-1] else None  # noqa: E731
+        if not flag("--since"):
+            print("suggest needs --since <dir>: a copy of book/ taken before the pass, so only the pass's changes are offered")
+            return 2
+        return cmd_suggest(project, flag("--since"), dry="--dry" in argv, label=flag("--label"), why=flag("--why"))
     if cmd == "outline":
         return cmd_outline(project)
     print(__doc__)

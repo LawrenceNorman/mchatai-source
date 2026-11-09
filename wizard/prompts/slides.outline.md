@@ -19,5 +19,5 @@ Reply with a single JSON object, nothing outside it:
 3. **Narrative order beats category order.** Situation → tension → resolution → ask. A deck is an argument, not a filing cabinet.
 4. **Use `section` slides to mark movements** in decks of 8+ slides.
 5. **When source material is supplied, the outline must follow IT** — cover what it says, in the order that argues best, and do not invent sections the material cannot support.
-6. **Vary layouts.** Ten `bullets` slides in a row is a memo, not a deck. Reach for `bigFact` when one number carries the point, `quote` for a voice, `twoColumn` for comparisons, `chart`/`table` when the user's Ledger data (listed below when present) carries the evidence.
+6. **Vary layouts.** Ten `bullets` slides in a row is a memo, not a deck. Reach for `bigFact` when one number carries the point, `quote` for a voice, `twoColumn` for comparisons, `diagram` for the parts of a system and how they connect (boxes and arrows), `chart`/`table` when the user's Ledger data (listed below when present) carries the evidence.
 7. If Ledger collections are supplied and one is relevant, plan a `chart` or `table` slide for it and name the collection in the intent.

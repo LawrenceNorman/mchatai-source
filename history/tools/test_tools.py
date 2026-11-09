@@ -165,6 +165,21 @@ def read(path):
         return fh.read()
 
 
+class SuggestChanges(unittest.TestCase):
+    """cite.py suggest: a pass's changes to an author-edited chapter, a paragraph at a time, each
+    `find` the author's own words (2026-10-30)."""
+
+    def test_changed_and_added_paragraphs(self):
+        old = "A one.\n\nB two.\n\nC three."
+        self.assertEqual(cite.paragraph_changes(old, "A one.\n\nB two, and a neighbour.\n\nNew.\n\nC three."),
+                         [("B two.", "B two, and a neighbour.\n\nNew.")])
+
+    def test_added_at_the_start_and_nothing_when_equal(self):
+        old = "A one.\n\nB two."
+        self.assertEqual(cite.paragraph_changes(old, "First.\n\n" + old), [("A one.", "First.\n\nA one.")])
+        self.assertEqual(cite.paragraph_changes(old, old + "\n"), [])
+
+
 class FixtureCase(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.mkdtemp(prefix="hw-test-")

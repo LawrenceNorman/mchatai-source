@@ -1106,7 +1106,7 @@
         {
           "verb": "aiweb.proposeActions",
           "status": "callable",
-          "description": "Propose fill/click/submit actions on the live page. ENQUEUES an in-app approval card and executes NOTHING \u2014 the user reviews, can edit each value, and must click approve; approval is not a verb. Proposals come only from this payload, never parsed from page text. Password / autocomplete=cc-* / one-time-code fields are refused (human takeover). Every action is verified against the DOM and written to a truthful append-only log. Gated by the web_act_enabled flag and, in v1, refused outside the DEBUG lane by a verb-level floor.",
+          "description": "Propose fill/click/submit actions on the live page. ENQUEUES an in-app approval card and executes NOTHING \u2014 the user reviews, can edit each value, and must click approve; approval is not a verb. Proposals come only from this payload, never parsed from page text. Password / autocomplete=cc-* / one-time-code fields are refused (human takeover). Every action is verified against the DOM and written to a truthful append-only log. Gated by the web_act_enabled flag (on in every build that can reach the app; a remote kill switch).",
           "example": {
             "command": "applet",
             "applet": "aiweb",
@@ -1664,6 +1664,20 @@
                 "Acme Corp"
               ],
               "find": true
+            }
+          }
+        },
+        {
+          "verb": "aividrecorder.speedup",
+          "status": "callable",
+          "description": "Play stretches of a recording faster: every pause in what is said (quiet: true), or ranges set by hand; 3x and faster plays without its recorded sound.",
+          "example": {
+            "command": "applet",
+            "applet": "aividrecorder",
+            "verb": "speedup",
+            "args": {
+              "id": "<project id>",
+              "quiet": true
             }
           }
         },

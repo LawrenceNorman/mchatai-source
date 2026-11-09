@@ -3,6 +3,8 @@
 Mounts at `/svc/slides-pptx/*` in the mChatAIShell sidecar. The app sends the deck already
 interpreted (theme + brand resolved, charts resolved to numbers); this module only draws it.
 Positions mirror AISlides/SlideRenderView.swift in its 1920×1080 design space.
+Phase DG.7: a `diagram` slide arrives with its geometry resolved (boxes, lines, labels, colours) and is
+drawn as native shapes, text boxes and freeform lines with arrowheads — every one editable.
 """
 
 from __future__ import annotations
@@ -173,7 +175,13 @@ def _bullets(slide, ctx: Ctx, x, y, w, h, lines: list[str], size: float = 38, co
     frame.word_wrap = True
     frame.margin_left = frame.margin_right = frame.margin_top = frame.margin_bottom = 0
     first = True
-    items = ([("heading", heading)] if heading else []) + [("bullet", line) for line in lines[:8]]
+    # Every saved line is drawn: up to eight at the layout's size, then smaller type and tighter gaps
+    # (the same tiers as the app's renderer — lines past the eighth used to be dropped here too).
+    n = len(lines)
+    factor = 1.0 if n <= 8 else 0.9 if n <= 10 else 0.8 if n <= 12 else 0.7 if n <= 15 else 0.6
+    size = round(size * factor)
+    gap = round(30 * factor)
+    items = ([("heading", heading)] if heading else []) + [("bullet", line) for line in lines]
     for kind, line in items:
         paragraph = frame.paragraphs[0] if first else frame.add_paragraph()
         first = False
@@ -188,7 +196,7 @@ def _bullets(slide, ctx: Ctx, x, y, w, h, lines: list[str], size: float = 38, co
             run.font.color.rgb = _rgb(ctx.accent if (is_heading or link) else (color or ctx.fg))
             if link:
                 run.hyperlink.address = link
-        paragraph.space_after = _pt(26 if kind == "heading" else 30)
+        paragraph.space_after = _pt(26 if kind == "heading" else gap)
         if kind == "bullet":
             p_pr = paragraph._p.get_or_add_pPr()
             p_pr.set("marL", str(_emu(37)))
@@ -604,6 +612,151 @@ def _layout_image_grid(slide, s, ctx):
             _picture(slide, ctx, ref, MARGIN + i * (cell_w + gap), top, cell_w, area_h)
 
 
+
+# --------------------------------------------------------------------------- diagrams (Phase DG.7)
+
+
+def _outline(shape, color: str, width_px: float, dashed: bool = False):
+    """A visible outline on a shape `_rect`/`_oval` left bare."""
+    from pptx.enum.dml import MSO_LINE_DASH_STYLE
+    shape.line.color.rgb = _rgb(color)
+    shape.line.width = _pt(width_px)
+    if dashed:
+        shape.line.dash_style = MSO_LINE_DASH_STYLE.DASH
+
+
+def _arrowheads(shape, start: bool, end: bool):
+    """Triangle heads on a line or freeform (python-pptx has no API for them)."""
+    from pptx.oxml.ns import qn
+    from lxml import etree
+    ln = shape.line._get_or_add_ln()
+    for present, tag in ((start, "a:headEnd"), (end, "a:tailEnd")):
+        if not present:
+            continue
+        node = etree.SubElement(ln, qn(tag))
+        node.set("type", "triangle")
+        node.set("w", "med")
+        node.set("len", "med")
+
+
+def _node_text(slide, ctx: Ctx, x, y, w, h, label: str, detail: Optional[str], sizes: dict, colors: dict):
+    """A node's words: the label (display font, bold) over the detail (body font), both centred,
+    the block centred in the box — one editable text box per node."""
+    from pptx.enum.text import MSO_ANCHOR, PP_ALIGN
+    box = slide.shapes.add_textbox(_emu(x), _emu(y), _emu(w), _emu(h))
+    frame = box.text_frame
+    frame.word_wrap = True
+    frame.margin_left = frame.margin_right = _emu(14)
+    frame.margin_top = frame.margin_bottom = _emu(8)
+    frame.vertical_anchor = MSO_ANCHOR.MIDDLE
+    paragraph = frame.paragraphs[0]
+    paragraph.alignment = PP_ALIGN.CENTER
+    for chunk, r_bold, r_italic, r_code, link in _runs(label):
+        run = paragraph.add_run()
+        run.text = chunk
+        run.font.size = _pt(sizes.get("label", 26))
+        run.font.bold = True
+        run.font.italic = r_italic
+        run.font.name = "Menlo" if r_code else ctx.display
+        run.font.color.rgb = _rgb(colors.get("label"), ctx.fg)
+        if link:
+            run.hyperlink.address = link
+    if detail:
+        for i, line in enumerate(str(detail).split("\n")):
+            paragraph = frame.add_paragraph()
+            paragraph.alignment = PP_ALIGN.CENTER
+            if i == 0:
+                paragraph.space_before = _pt(6)
+            for chunk, r_bold, r_italic, r_code, link in _runs(line):
+                run = paragraph.add_run()
+                run.text = chunk
+                run.font.size = _pt(sizes.get("detail", 19))
+                run.font.bold = r_bold
+                run.font.italic = r_italic
+                run.font.name = "Menlo" if r_code else ctx.body
+                run.font.color.rgb = _rgb(colors.get("detail"), ctx.muted)
+                if link:
+                    run.hyperlink.address = link
+    return box
+
+
+def _layout_diagram(slide, s, ctx):
+    """Boxes, arrows, groups and callouts from geometry the app already resolved (every colour a
+    hex, every point in design px): this module only draws. A diagram slide with no geometry (an
+    older app, or an empty diagram) falls back to the picture the app sent, if any, else the title."""
+    _title(slide, ctx, s.get("title"))
+    diagram = s.get("diagram")
+    if not isinstance(diagram, dict) or not diagram.get("nodes"):
+        if s.get("image"):
+            top = 210 if s.get("title") else MARGIN
+            _picture(slide, ctx, s["image"], MARGIN, top, DESIGN_W - 2 * MARGIN,
+                     DESIGN_H - top - MARGIN - (64 if s.get("caption") else 0))
+        if s.get("caption"):
+            _text_box(slide, ctx, MARGIN, DESIGN_H - MARGIN - 50, DESIGN_W - 2 * MARGIN, 50, s["caption"], 28, ctx.muted)
+        return
+    sizes = diagram.get("tier") or {}
+    # Groups first (underneath), then boxes, then lines on top, then badges and callouts.
+    for group in diagram.get("groups") or []:
+        fill = group.get("fill")
+        shape = _rect(slide, group["x"], group["y"], group["w"], group["h"], fill or ctx.background,
+                      radius=True, alpha=group.get("fillAlpha") if fill else 0)
+        shape.adjustments[0] = min(0.5, 18.0 / max(1.0, min(group["w"], group["h"])))
+        _outline(shape, group.get("stroke") or ctx.muted, 2.5, dashed=bool(group.get("dashed", True)))
+        if group.get("title"):
+            _text_box(slide, ctx, group["x"] + 18, group["y"] + 8, group["w"] - 36, 28,
+                      str(group["title"]).upper(), sizes.get("groupTitle", 17), group.get("titleColor") or ctx.muted,
+                      bold=True)
+    for node in diagram.get("nodes") or []:
+        x, y, w, h = node["x"], node["y"], node["w"], node["h"]
+        fill = node.get("fill")
+        shape = _rect(slide, x, y, w, h, fill or ctx.background, radius=True,
+                      alpha=node.get("fillAlpha") if fill else 0)
+        shape.adjustments[0] = min(0.5, float(node.get("radius", 12)) / max(1.0, min(w, h)))
+        if node.get("stroke"):
+            _outline(shape, node["stroke"], 2.5, dashed=bool(node.get("dashed")))
+        _node_text(slide, ctx, x, y, w, h, node.get("label") or "", node.get("detail"), sizes,
+                   {"label": node.get("labelColor"), "detail": node.get("detailColor")})
+    for edge in diagram.get("edges") or []:
+        points = [(float(p[0]), float(p[1])) for p in (edge.get("points") or []) if len(p) == 2]
+        if len(points) < 2:
+            continue
+        # The stroke stops short of a head so the tip, not the line, touches the box.
+        drawn = list(points)
+        head = 14.0
+        if edge.get("headEnd"):
+            (ax, ay), (bx, by) = drawn[-2], drawn[-1]
+            length = max(1.0, ((bx - ax) ** 2 + (by - ay) ** 2) ** 0.5)
+            drawn[-1] = (bx - (bx - ax) / length * head * 0.5, by - (by - ay) / length * head * 0.5)
+        builder = slide.shapes.build_freeform(_emu(drawn[0][0]), _emu(drawn[0][1]), scale=1.0)
+        builder.add_line_segments([(_emu(px), _emu(py)) for px, py in drawn[1:]], close=False)
+        line = builder.convert_to_shape()
+        line.fill.background()
+        line.shadow.inherit = False
+        _outline(line, edge.get("color") or ctx.fg, 3.0, dashed=bool(edge.get("dashed")))
+        _arrowheads(line, bool(edge.get("headStart")), bool(edge.get("headEnd")))
+        if edge.get("label") and edge.get("labelW"):
+            lx, ly, lw, lh = edge["labelX"], edge["labelY"], edge["labelW"], edge["labelH"]
+            pill = _rect(slide, lx, ly, lw, lh, ctx.background, radius=True)
+            pill.adjustments[0] = 0.5
+            _text_box(slide, ctx, lx, ly + 2, lw, lh - 4, edge["label"], sizes.get("edgeLabel", 20),
+                      edge.get("color") or ctx.fg, italic=True, align="center")
+    for node in diagram.get("nodes") or []:
+        badge = node.get("badge")
+        if badge not in ("check", "cross"):
+            continue
+        d = 38.0
+        disc = _oval(slide, node["x"] + node["w"] - d * 0.78, node["y"] - d * 0.32, d, node.get("badgeColor") or ctx.accent)
+        _fill_text(disc.text_frame, "\u2713" if badge == "check" else "\u2717", ctx, 22,
+                   node.get("badgeInk") or ctx.accent_contrast, bold=True, align="center")
+        disc.text_frame.margin_left = disc.text_frame.margin_right = 0
+        disc.text_frame.margin_top = disc.text_frame.margin_bottom = 0
+    for callout in diagram.get("callouts") or []:
+        _text_box(slide, ctx, callout["x"], callout["y"], callout["w"], callout["h"], callout["text"],
+                  sizes.get("callout", 22), callout.get("color") or ctx.muted, italic=True)
+    if s.get("caption"):
+        _text_box(slide, ctx, MARGIN, DESIGN_H - MARGIN - 50, DESIGN_W - 2 * MARGIN, 50, s["caption"], 28, ctx.muted)
+
+
 LAYOUTS = {
     "title": _layout_title,
     "section": _layout_section,
@@ -621,12 +774,13 @@ LAYOUTS = {
     "steps": _layout_steps,
     "timeline": _layout_timeline,
     "imageGrid": _layout_image_grid,
+    "diagram": _layout_diagram,
 }
 
 # Which python-pptx default-template layout carries a real title placeholder for each.
 PLACEHOLDER_LAYOUT = {"title": 0}
 TITLE_ONLY = {"section", "bullets", "twoColumn", "imageLeft", "imageRight", "chart", "table", "stats", "steps",
-              "timeline", "imageGrid", "blank"}
+              "timeline", "imageGrid", "blank", "diagram"}
 
 
 def _background(slide, s, ctx):
@@ -736,7 +890,8 @@ def info():
         version = getattr(pptx, "__version__", "unknown")
     except ImportError:
         version = None
-    return {"service": "slides-pptx", "python_pptx": version, "layouts": sorted(LAYOUTS)}
+    return {"service": "slides-pptx", "version": "0.2.1", "python_pptx": version, "layouts": sorted(LAYOUTS),
+            "features": ["diagram"]}
 
 
 @router.post("/prepare")

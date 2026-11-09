@@ -29,16 +29,20 @@ Throughout, `<CACHE>` means this folder:
 
 ## Step 1 — Turn on the portal
 
-mChatAI+ only listens for commands when you ask it to. Quit the app, then
-relaunch it this way:
+mChatAI+ only listens for commands when you ask it to. In mChatAI+, open
+Settings → Coding Assistant and turn on **Allow terminal commands**, or click
+**Allow** when a Workbench conversation asks. It starts listening right away and
+stays on. (Older versions need you to quit and reopen mChatAI+ once after
+turning it on.)
+
+You can also turn it on for one run from Terminal:
 
 ```bash
 open -a mChatAI --args --mchatai-tunnel
 ```
 
-That's it — the app looks and works exactly as usual, it just also accepts
-commands now. (You can add this to a Login Item or a shell alias if you want it
-every time.)
+Either way the app looks and works exactly as usual; it just also accepts
+commands now.
 
 ## Step 2 — Add the `mchatai` command
 
@@ -121,7 +125,7 @@ mchatai status            # what the app is working on right now
 | What you see | What it means |
 |---|---|
 | `mChatAI+ is not running` | Open the app. |
-| `app is not listening` | Relaunch with `open -a mChatAI --args --mchatai-tunnel` (Step 1). |
+| `app is not listening` | Turn on Settings → Coding Assistant → Allow terminal commands (Step 1). |
 | `portal content missing` | Open mChatAI+ and let it sync, or run `mchatai raw '{"command":"refreshMchataisourceCache"}'`. |
 | `no response after Ns` | The app is busy building something. Wait, or pass a longer `--wait 300`. |
 | A build says it failed but the app looks fine | Sometimes true — the checker is stricter on tool-style apps than game-style ones. Open it and judge for yourself. |

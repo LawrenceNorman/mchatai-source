@@ -1,17 +1,116 @@
 {
-  "version": 1,
-  "_comment": "Pins the note retrieval rules on both sides: the on-device chat page (miniapps/on-device-chat/index.html pickChunks; run tools/test_retrieval.py) and the iOS app (PersonaNoteRetrieval; PersonaNotesTests). Each case picks notes for `query` from `<pack>/chunks.json` with the on-device budget (1500 chars, 3 notes). `expectFirst`: the first note's id. `expectAll`: every id must be among the picks. `expectWithinTop`: the id is among the first N. `expectGroup`: every pick's group/story. `expectExcludes`: none of these ids. `progressBefore`/`expectProgress`: the gate's reader position before and after the query.",
-  "cases": [
-    { "pack": "ask-the-era", "query": "What was Caesar's edge at Alesia?", "expectFirst": "alesia-52bc-2-evidence-1", "expectGroup": "alesia-52bc-2" },
-    { "pack": "ask-the-era", "query": "How many miles of works did the Romans build?", "expectFirst": "alesia-52bc-2-04" },
-    { "pack": "ask-the-era", "query": "Why did the Spanish Armada fail?", "expectFirst": "armada-1588-edge", "expectGroup": "armada-1588" },
-    { "pack": "ask-the-era", "query": "How did codebreaking decide Midway?", "expectFirst": "midway-1942-2-edge" },
-    { "pack": "mchatai-help", "query": "Where do I get the Android app?", "expectFirst": "downloads-03" },
-    { "pack": "mchatai-help", "query": "Do my chats sync between Mac and iPhone?", "expectFirst": "downloads-02" },
-    { "pack": "mchatai-help", "query": "How do I chat with no API key?", "expectFirst": "getting-started-02" },
-    { "pack": "mchatai-help", "query": "How do I add my own persona?", "expectWithinTop": { "id": "feature-chat-04", "n": 2 } },
-    { "pack": "book-club-gatsby", "query": "I just finished chapter 3", "progressBefore": null, "expectAll": ["ch3"], "expectExcludes": ["ch4", "ch9"], "expectProgress": 3 },
-    { "pack": "book-club-gatsby", "query": "What did you think of the man in the library?", "progressBefore": 3, "expectAll": ["ch3"], "expectExcludes": ["ch4", "ch5"] },
-    { "pack": "book-club-gatsby", "query": "Tell me about the valley of ashes", "progressBefore": 1, "expectExcludes": ["ch2", "people-valley"] }
-  ]
+ "version": 1,
+ "_comment": "Pins the note retrieval rules on both sides: the on-device chat page (miniapps/on-device-chat/index.html pickChunks; run tools/test_retrieval.py) and the iOS app (PersonaNoteRetrieval; PersonaNotesTests). Each case picks notes for `query` from `<pack>/chunks.json` with the on-device budget (1500 chars, 3 notes). `expectFirst`: the first note's id. `expectAll`: every id must be among the picks. `expectWithinTop`: the id is among the first N. `expectGroup`: every pick's group/story. `expectExcludes`: none of these ids. `progressBefore`/`expectProgress`: the gate's reader position before and after the query.",
+ "cases": [
+  {
+   "pack": "ask-the-era",
+   "query": "What was Caesar's edge at Alesia?",
+   "expectFirst": "alesia-52bc-2-evidence-1",
+   "expectGroup": "alesia-52bc-2"
+  },
+  {
+   "pack": "ask-the-era",
+   "query": "How many miles of works did the Romans build?",
+   "expectFirst": "alesia-52bc-2-04"
+  },
+  {
+   "pack": "ask-the-era",
+   "query": "Why did the Spanish Armada fail?",
+   "expectFirst": "armada-1588-edge",
+   "expectGroup": "armada-1588"
+  },
+  {
+   "pack": "ask-the-era",
+   "query": "How did codebreaking decide Midway?",
+   "expectFirst": "midway-1942-2-edge"
+  },
+  {
+   "pack": "mchatai-help",
+   "query": "Where do I get the Android app?",
+   "expectFirst": "downloads-03"
+  },
+  {
+   "pack": "mchatai-help",
+   "query": "Do my chats sync between Mac and iPhone?",
+   "expectFirst": "downloads-02"
+  },
+  {
+   "pack": "mchatai-help",
+   "query": "How do I chat with no API key?",
+   "expectFirst": "getting-started-02"
+  },
+  {
+   "pack": "mchatai-help",
+   "query": "How do I add my own persona?",
+   "expectWithinTop": {
+    "id": "feature-chat-04",
+    "n": 2
+   }
+  },
+  {
+   "pack": "book-club-gatsby",
+   "query": "I just finished chapter 3",
+   "progressBefore": null,
+   "expectAll": [
+    "ch3"
+   ],
+   "expectExcludes": [
+    "ch4",
+    "ch9"
+   ],
+   "expectProgress": 3
+  },
+  {
+   "pack": "book-club-gatsby",
+   "query": "What did you think of the man in the library?",
+   "progressBefore": 3,
+   "expectAll": [
+    "ch3"
+   ],
+   "expectExcludes": [
+    "ch4",
+    "ch5"
+   ]
+  },
+  {
+   "pack": "book-club-gatsby",
+   "query": "Tell me about the valley of ashes",
+   "progressBefore": 1,
+   "expectExcludes": [
+    "ch2",
+    "people-valley"
+   ]
+  },
+  {
+   "pack": "field-guide",
+   "query": "How do I make stream water safe to drink?",
+   "expectWithinTop": {
+    "id": "water-boil",
+    "n": 3
+   }
+  },
+  {
+   "pack": "field-guide",
+   "query": "How much bleach per gallon?",
+   "expectFirst": "water-bleach-amounts"
+  },
+  {
+   "pack": "field-guide",
+   "query": "How do I start a fire without matches?",
+   "expectWithinTop": {
+    "id": "fire-flint-steel",
+    "n": 3
+   }
+  },
+  {
+   "pack": "field-guide",
+   "query": "How much water should I store per person?",
+   "expectFirst": "water-how-much"
+  },
+  {
+   "pack": "field-guide",
+   "query": "Will boiling remove chemicals from flood water?",
+   "expectFirst": "water-limits-distill"
+  }
+ ]
 }

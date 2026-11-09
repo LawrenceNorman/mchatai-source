@@ -1,0 +1,891 @@
+{
+ "version": 1,
+ "language": "es",
+ "_comment": "Lesson notes for a small on-device tutor model, chosen each turn (docs/LOCAL_LLM_SPECIALIST_EVIDENCE.md, LocalLLM/flywheel). levels[].notes is the grammar the reply should use; a topic is picked from the learner's last two lines by `match` (accent-free word prefixes) and contributes its focus line and up to `wordsPerTurn` words for the level. Rendered into {{lessonNotes}} of a catalog entry's instructions. Authored for this pack, CC0.",
+ "wordsPerTurn": 10,
+ "levels": {
+  "novice": {
+   "notes": "Grammar for A1–A2: present tense (soy, tengo, me gusta, vivo) and plans with voy a + verb. One or two sentences, each 3 to 8 words, and only one question: ¿Qué...?, ¿Dónde...?, ¿Te gusta...? or ¿Prefieres... o...?"
+  },
+  "intermediate": {
+   "notes": "Grammar for B1: present, past (fui, comí, era) and future (voy a, iré). Natural sentences of up to 15 words. If the learner made one clear mistake, say that phrase correctly inside your reply without pointing it out."
+  },
+  "advanced": {
+   "notes": "Level B2–C1: speak naturally; idioms are fine. At most three sentences."
+  }
+ },
+ "topics": [
+  {
+   "id": "greetings",
+   "title": "Saying hello",
+   "focus": "Getting to know each other.",
+   "match": [
+    "hola",
+    "buenos",
+    "buenas",
+    "llamo",
+    "encantad",
+    "gusto",
+    "saludos"
+   ],
+   "words": {
+    "novice": [
+     "hola",
+     "me llamo",
+     "mucho gusto",
+     "encantado",
+     "¿qué tal?",
+     "bien",
+     "muy bien",
+     "más o menos",
+     "cansado",
+     "contento",
+     "¿y tú?",
+     "¿de dónde eres?"
+    ],
+    "intermediate": [
+     "de buen humor",
+     "preocupado",
+     "emocionado",
+     "agotado"
+    ]
+   }
+  },
+  {
+   "id": "food",
+   "title": "Food and cooking",
+   "focus": "Food and cooking: share a simple dish or habit from where you live.",
+   "match": [
+    "comid",
+    "comer",
+    "desayun",
+    "almuerz",
+    "cena",
+    "cocin",
+    "receta",
+    "plato",
+    "restaurant",
+    "hambre",
+    "fruta",
+    "verdura",
+    "pan",
+    "pasta",
+    "paella",
+    "tarta",
+    "postre",
+    "arroz",
+    "pollo",
+    "pescado",
+    "ensalada",
+    "sopa",
+    "cafe",
+    "zumo",
+    "jugo",
+    "queso",
+    "tomate",
+    "mole",
+    "taco",
+    "gamba"
+   ],
+   "words": {
+    "novice": [
+     "la comida",
+     "el desayuno",
+     "la cena",
+     "el pan",
+     "el arroz",
+     "el pollo",
+     "la ensalada",
+     "la fruta",
+     "el queso",
+     "la sopa",
+     "cocinar",
+     "comer",
+     "rico",
+     "delicioso",
+     "el plato"
+    ],
+    "intermediate": [
+     "la receta",
+     "los ingredientes",
+     "picante",
+     "probar",
+     "el sabor",
+     "hornear",
+     "el postre",
+     "la cocina casera"
+    ]
+   }
+  },
+  {
+   "id": "family",
+   "title": "Family",
+   "focus": "Family: ask about the people they mention by name.",
+   "match": [
+    "familia",
+    "herman",
+    "padre",
+    "madre",
+    "papa",
+    "mama",
+    "hijo",
+    "hija",
+    "hijos",
+    "espos",
+    "marido",
+    "abuel",
+    "prim",
+    "sobrin",
+    "novi",
+    "bebe"
+   ],
+   "words": {
+    "novice": [
+     "la familia",
+     "el hermano",
+     "la hermana",
+     "el padre",
+     "la madre",
+     "el hijo",
+     "la hija",
+     "los abuelos",
+     "el primo",
+     "mayor",
+     "menor",
+     "vivir",
+     "juntos"
+    ],
+    "intermediate": [
+     "llevarse bien",
+     "parecerse a",
+     "criar",
+     "los parientes",
+     "cuidar",
+     "la boda"
+    ]
+   }
+  },
+  {
+   "id": "work",
+   "title": "Work",
+   "focus": "Work: what they do, their day, how they feel about it.",
+   "match": [
+    "trabaj",
+    "oficina",
+    "jefe",
+    "compañer",
+    "empresa",
+    "profesion",
+    "empleo",
+    "enfermer",
+    "medic",
+    "profesor",
+    "diseñad",
+    "ingenier",
+    "turno",
+    "sueldo",
+    "reunion",
+    "tienda"
+   ],
+   "words": {
+    "novice": [
+     "el trabajo",
+     "la oficina",
+     "el jefe",
+     "los compañeros",
+     "trabajar",
+     "empezar",
+     "terminar",
+     "cansado",
+     "difícil",
+     "fácil",
+     "el horario",
+     "ganar"
+    ],
+    "intermediate": [
+     "la reunión",
+     "el turno de noche",
+     "exigente",
+     "el proyecto",
+     "el sueldo",
+     "la entrevista",
+     "quedarse hasta tarde"
+    ]
+   }
+  },
+  {
+   "id": "plans",
+   "title": "Weekend and plans",
+   "focus": "Plans: what, when and with whom.",
+   "match": [
+    "fin",
+    "semana",
+    "sabado",
+    "domingo",
+    "viernes",
+    "plan",
+    "planes",
+    "salir",
+    "quedar",
+    "visitar",
+    "vamos",
+    "voy"
+   ],
+   "words": {
+    "novice": [
+     "el fin de semana",
+     "el sábado",
+     "el domingo",
+     "salir",
+     "el plan",
+     "visitar",
+     "descansar",
+     "los amigos",
+     "ir a",
+     "quedarse en casa",
+     "divertido"
+    ],
+    "intermediate": [
+     "quedar con",
+     "tener ganas de",
+     "aprovechar",
+     "organizar",
+     "el puente"
+    ]
+   }
+  },
+  {
+   "id": "travel",
+   "title": "Travel",
+   "focus": "Travel: places, transport and what they want to see.",
+   "match": [
+    "viaj",
+    "vacacion",
+    "avion",
+    "aeropuerto",
+    "hotel",
+    "maleta",
+    "turista",
+    "billete",
+    "boleto",
+    "pais",
+    "ciudad",
+    "mexico",
+    "chile",
+    "españa",
+    "oaxaca",
+    "cancun",
+    "yucatan"
+   ],
+   "words": {
+    "novice": [
+     "el viaje",
+     "viajar",
+     "el avión",
+     "el hotel",
+     "la maleta",
+     "las vacaciones",
+     "el billete",
+     "el país",
+     "la ciudad",
+     "conocer",
+     "visitar",
+     "el mapa"
+    ],
+    "intermediate": [
+     "reservar",
+     "el vuelo",
+     "el pasaporte",
+     "recorrer",
+     "la excursión",
+     "hacer turismo"
+    ]
+   }
+  },
+  {
+   "id": "weather",
+   "title": "Weather and the beach",
+   "focus": "The weather: compare it with the weather where you live.",
+   "match": [
+    "tiempo",
+    "lluev",
+    "lluvia",
+    "sol",
+    "calor",
+    "frio",
+    "nieve",
+    "nubl",
+    "viento",
+    "clima",
+    "playa",
+    "paraguas",
+    "temperatura",
+    "mar"
+   ],
+   "words": {
+    "novice": [
+     "el sol",
+     "la lluvia",
+     "llover",
+     "el calor",
+     "el frío",
+     "el viento",
+     "la playa",
+     "el mar",
+     "nublado",
+     "hace buen tiempo",
+     "hace calor",
+     "hace frío",
+     "el paraguas"
+    ],
+    "intermediate": [
+     "el pronóstico",
+     "húmedo",
+     "la tormenta",
+     "despejado",
+     "el protector solar"
+    ]
+   }
+  },
+  {
+   "id": "pets",
+   "title": "Pets",
+   "focus": "Pets: names, ages and what they like.",
+   "match": [
+    "perr",
+    "gato",
+    "gata",
+    "mascota",
+    "pajaro",
+    "pez",
+    "peces",
+    "caball",
+    "conejo",
+    "veterinari",
+    "pasear"
+   ],
+   "words": {
+    "novice": [
+     "el perro",
+     "el gato",
+     "la mascota",
+     "pasear",
+     "jugar",
+     "dormir",
+     "comer",
+     "pequeño",
+     "grande",
+     "bonito",
+     "el parque",
+     "simpático"
+    ],
+    "intermediate": [
+     "el veterinario",
+     "adoptar",
+     "cariñoso",
+     "travieso",
+     "sacar a pasear"
+    ]
+   }
+  },
+  {
+   "id": "shopping",
+   "title": "Shopping",
+   "focus": "Shopping: what they bought, colours and prices.",
+   "match": [
+    "compr",
+    "ropa",
+    "camis",
+    "zapat",
+    "pantal",
+    "vestido",
+    "precio",
+    "caro",
+    "cara",
+    "barato",
+    "regalo",
+    "mercado",
+    "supermercado"
+   ],
+   "words": {
+    "novice": [
+     "comprar",
+     "la tienda",
+     "la ropa",
+     "la camisa",
+     "los zapatos",
+     "caro",
+     "barato",
+     "el precio",
+     "el regalo",
+     "el color",
+     "azul",
+     "rojo",
+     "el mercado",
+     "el supermercado"
+    ],
+    "intermediate": [
+     "las rebajas",
+     "probarse",
+     "la talla",
+     "devolver",
+     "ir de compras",
+     "el centro comercial"
+    ]
+   }
+  },
+  {
+   "id": "sport",
+   "title": "Sport and exercise",
+   "focus": "Sport and exercise: what they do and how often.",
+   "match": [
+    "deport",
+    "futbol",
+    "corr",
+    "gimnasio",
+    "nad",
+    "bici",
+    "ciclis",
+    "tenis",
+    "baloncesto",
+    "entren",
+    "partido",
+    "maraton",
+    "ejercicio",
+    "yoga"
+   ],
+   "words": {
+    "novice": [
+     "el deporte",
+     "el fútbol",
+     "correr",
+     "nadar",
+     "la bicicleta",
+     "el gimnasio",
+     "el partido",
+     "jugar",
+     "el equipo",
+     "ganar",
+     "el ejercicio",
+     "caminar"
+    ],
+    "intermediate": [
+     "entrenar",
+     "la carrera",
+     "el maratón",
+     "estar en forma",
+     "las piernas",
+     "agotado"
+    ]
+   }
+  },
+  {
+   "id": "music",
+   "title": "Music",
+   "focus": "Music: what they like to listen to or play.",
+   "match": [
+    "music",
+    "cancion",
+    "canta",
+    "guitarra",
+    "piano",
+    "concierto",
+    "banda",
+    "baila",
+    "escuch",
+    "toco"
+   ],
+   "words": {
+    "novice": [
+     "la música",
+     "la canción",
+     "cantar",
+     "bailar",
+     "la guitarra",
+     "el piano",
+     "el concierto",
+     "escuchar",
+     "tocar",
+     "favorito",
+     "la banda"
+    ],
+    "intermediate": [
+     "el ritmo",
+     "la letra",
+     "el grupo",
+     "en directo",
+     "componer"
+    ]
+   }
+  },
+  {
+   "id": "stories",
+   "title": "Films, series and books",
+   "focus": "Films, series and books: what it is about and whether they like it.",
+   "match": [
+    "pelicula",
+    "cine",
+    "serie",
+    "libro",
+    "novela",
+    "leer",
+    "leyendo",
+    "autor",
+    "netflix",
+    "television",
+    "tele"
+   ],
+   "words": {
+    "novice": [
+     "la película",
+     "el cine",
+     "la serie",
+     "el libro",
+     "leer",
+     "ver",
+     "la historia",
+     "interesante",
+     "aburrido",
+     "triste",
+     "divertido",
+     "el final"
+    ],
+    "intermediate": [
+     "la novela",
+     "el personaje",
+     "la trama",
+     "recomendar",
+     "el autor",
+     "emocionante"
+    ]
+   }
+  },
+  {
+   "id": "home",
+   "title": "Home and neighbourhood",
+   "focus": "Home and neighbourhood: where they live and what is nearby.",
+   "match": [
+    "casa",
+    "piso",
+    "apartamento",
+    "barrio",
+    "ciudad",
+    "vivo",
+    "vivir",
+    "habitacion",
+    "jardin",
+    "mudar",
+    "mudanza",
+    "vecin",
+    "calle"
+   ],
+   "words": {
+    "novice": [
+     "la casa",
+     "el piso",
+     "el barrio",
+     "la ciudad",
+     "vivir",
+     "la calle",
+     "el parque",
+     "cerca",
+     "lejos",
+     "grande",
+     "pequeño",
+     "el vecino",
+     "tranquilo"
+    ],
+    "intermediate": [
+     "mudarse",
+     "el alquiler",
+     "las afueras",
+     "el centro",
+     "ruidoso",
+     "acogedor"
+    ]
+   }
+  },
+  {
+   "id": "routine",
+   "title": "Daily routine",
+   "focus": "Daily routine: times of day and what comes next.",
+   "match": [
+    "levant",
+    "despert",
+    "ducha",
+    "acuest",
+    "temprano",
+    "rutina",
+    "hora",
+    "horas"
+   ],
+   "words": {
+    "novice": [
+     "levantarse",
+     "ducharse",
+     "desayunar",
+     "ir al trabajo",
+     "volver",
+     "la mañana",
+     "la tarde",
+     "la noche",
+     "temprano",
+     "tarde",
+     "dormir",
+     "a las siete"
+    ],
+    "intermediate": [
+     "acostarse",
+     "madrugar",
+     "la rutina",
+     "el despertador",
+     "la siesta"
+    ]
+   }
+  },
+  {
+   "id": "health",
+   "title": "Health",
+   "focus": "Health: how they feel; be kind and simple, never give medical advice.",
+   "match": [
+    "salud",
+    "enferm",
+    "dolor",
+    "duele",
+    "cabeza",
+    "gripe",
+    "estres",
+    "hospital",
+    "farmacia",
+    "medicina",
+    "duermo",
+    "dormir"
+   ],
+   "words": {
+    "novice": [
+     "el médico",
+     "la salud",
+     "enfermo",
+     "el dolor",
+     "me duele",
+     "la cabeza",
+     "cansado",
+     "descansar",
+     "el hospital",
+     "la farmacia",
+     "beber agua",
+     "mejor"
+    ],
+    "intermediate": [
+     "el estrés",
+     "relajarse",
+     "la cita",
+     "dormir bien",
+     "hacer ejercicio"
+    ]
+   }
+  },
+  {
+   "id": "transport",
+   "title": "Getting around",
+   "focus": "Getting around: how they travel each day.",
+   "match": [
+    "autobus",
+    "bus",
+    "tren",
+    "metro",
+    "coche",
+    "carro",
+    "conduc",
+    "manej",
+    "trafico",
+    "estacion",
+    "taxi"
+   ],
+   "words": {
+    "novice": [
+     "el autobús",
+     "el tren",
+     "el metro",
+     "el coche",
+     "el taxi",
+     "la estación",
+     "ir a pie",
+     "la parada",
+     "rápido",
+     "lento",
+     "llegar"
+    ],
+    "intermediate": [
+     "el atasco",
+     "conducir",
+     "perder el tren",
+     "el transporte público",
+     "el trayecto"
+    ]
+   }
+  },
+  {
+   "id": "hobbies",
+   "title": "Free time",
+   "focus": "Free time: what they enjoy and how they started.",
+   "match": [
+    "hobby",
+    "aficion",
+    "pint",
+    "dibuj",
+    "foto",
+    "jardin",
+    "juego",
+    "videojuego",
+    "ajedrez",
+    "pasatiempo",
+    "libre"
+   ],
+   "words": {
+    "novice": [
+     "el tiempo libre",
+     "pintar",
+     "dibujar",
+     "la foto",
+     "el jardín",
+     "jugar",
+     "el juego",
+     "leer",
+     "me gusta",
+     "los domingos",
+     "relajarse"
+    ],
+    "intermediate": [
+     "la afición",
+     "aficionado a",
+     "sacar fotos",
+     "la jardinería",
+     "dedicar tiempo"
+    ]
+   }
+  },
+  {
+   "id": "study",
+   "title": "Studying",
+   "focus": "Studying: their classes and learning Spanish.",
+   "match": [
+    "estudi",
+    "clase",
+    "profesor",
+    "profesora",
+    "escuela",
+    "universidad",
+    "examen",
+    "español",
+    "espanol",
+    "aprend",
+    "idioma",
+    "verbo",
+    "deberes",
+    "tarea"
+   ],
+   "words": {
+    "novice": [
+     "estudiar",
+     "la clase",
+     "el profesor",
+     "la profesora",
+     "la escuela",
+     "la universidad",
+     "aprender",
+     "el español",
+     "el examen",
+     "la palabra",
+     "practicar"
+    ],
+    "intermediate": [
+     "el idioma",
+     "la gramática",
+     "mejorar",
+     "equivocarse",
+     "los deberes",
+     "la pronunciación"
+    ]
+   }
+  },
+  {
+   "id": "celebrations",
+   "title": "Celebrations",
+   "focus": "Celebrations: who, when and how they celebrate.",
+   "match": [
+    "cumpleaños",
+    "cumpleanos",
+    "fiesta",
+    "regalo",
+    "celebr",
+    "boda",
+    "navidad",
+    "invit",
+    "aniversario"
+   ],
+   "words": {
+    "novice": [
+     "el cumpleaños",
+     "la fiesta",
+     "el regalo",
+     "la tarta",
+     "celebrar",
+     "invitar",
+     "los amigos",
+     "cumplir años",
+     "bailar",
+     "feliz"
+    ],
+    "intermediate": [
+     "la boda",
+     "el aniversario",
+     "sorprender",
+     "la sorpresa",
+     "organizar una fiesta"
+    ]
+   }
+  },
+  {
+   "id": "outdoors",
+   "title": "Nature and the outdoors",
+   "focus": "The outdoors: places they like to walk or visit.",
+   "match": [
+    "montaña",
+    "sierra",
+    "andes",
+    "camin",
+    "senderismo",
+    "campo",
+    "bosque",
+    "rio",
+    "lago",
+    "acampar",
+    "camping",
+    "naturaleza"
+   ],
+   "words": {
+    "novice": [
+     "la montaña",
+     "el campo",
+     "el río",
+     "el lago",
+     "caminar",
+     "el árbol",
+     "la naturaleza",
+     "el aire",
+     "bonito",
+     "acampar",
+     "la mochila"
+    ],
+    "intermediate": [
+     "hacer senderismo",
+     "la ruta",
+     "la cumbre",
+     "la excursión",
+     "el paisaje"
+    ]
+   }
+  }
+ ]
+}
