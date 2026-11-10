@@ -1,0 +1,22 @@
+{
+  "id": "arxiv",
+  "title": "arXiv",
+  "summary": "The open archive of physics, mathematics, computer science and AI preprints.",
+  "adapter": "feed",
+  "search": {
+    "urlTemplate": "https://export.arxiv.org/api/query?search_query={terms}&start=0&max_results={max}&sortBy=relevance",
+    "terms": {
+      "prefix": "all:",
+      "joiner": "+AND+",
+      "minLength": 3,
+      "relaxOnEmpty": true,
+      "stopWords": ["the", "and", "for", "with", "about", "paper", "papers", "running", "run", "using", "use", "build", "building", "deploy", "deploying", "find", "finding", "how", "that", "this", "into"]
+    }
+  },
+  "item": {"urlTemplate": "https://export.arxiv.org/api/query?id_list={id}"},
+  "idStrip": ["http://arxiv.org/abs/", "https://arxiv.org/abs/", "arXiv:"],
+  "linkTemplate": "https://arxiv.org/abs/{id}",
+  "pdfTemplate": "https://arxiv.org/pdf/{id}",
+  "attribution": "Thank you to arXiv for use of its open access interoperability.",
+  "_note": "Search words are ANDed because arXiv's `all:a b` is an OR; relaxOnEmpty drops the least specific lowercase word until something matches, never a name like iOS."
+}

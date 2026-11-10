@@ -1,0 +1,24 @@
+{
+  "id": "summarizePageToDocument",
+  "title": "Summarize a page into AI Write",
+  "summary": "Reads a web page, summarizes it with the on-device model, and saves the summary with the page's address as a new AI Write document. A fixed chain: no planner decides anything.",
+  "whenToUse": "Use when the person wants to keep the gist of a page they are reading.",
+  "arguments": [
+    {"name": "url", "type": "string", "required": true, "description": "The page's address"}
+  ],
+  "reason": false,
+  "inputs": [],
+  "outputs": ["Document"],
+  "steps": [
+    {"id": "page", "capability": "web.readPage", "with": {"url": "${args.url}"}},
+    {"id": "gist", "capability": "text.summarize", "with": {"text": "${page.result.text}", "style": "notes", "maxWords": "200"}},
+    {"id": "doc", "capability": "aiwrite.createDocument", "with": {"title": "${page.result.title}", "markdown": "# ${page.result.title}\n\nSource: ${page.result.url}\n\n${gist.result.text}"}}
+  ],
+  "output": {"summary": "Saved a summary of “${page.result.title}”", "open": "${doc.result.link}"},
+  "safetyClass": "write",
+  "network": true,
+  "example": "Summarize this page into AI Write",
+  "releaseLanes": ["debug", "developerID"],
+  "appIntent": true,
+  "recipe": true
+}

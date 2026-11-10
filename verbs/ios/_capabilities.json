@@ -1,0 +1,236 @@
+{
+  "_schema": "mchatai-source/verbs/ios/_capabilities.json — the Swift atoms the iOS app implements (Shared/OnDeviceAgent/AgentCapabilityRegistry.swift), one record each. A verb binds ONE capability (`capability`) or composes several (`steps`); content can never name one that is not here, and the app's drift test (AgentVerbCatalogTests) fails when this list and the Swift registry disagree. `safetyClass`: read < write < dangerous; a verb must declare at least the highest class of what it uses. `result` lists the fields a later step may bind as ${<step>.result.<field>}.",
+  "version": "2026.11.09.1",
+  "capabilities": [
+    {
+      "id": "research.search",
+      "summary": "Searches one research source (a source pack or one of the person's own) and returns up to eight items.",
+      "arguments": [
+        {
+          "name": "query",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "source",
+          "type": "string",
+          "noun": "Source",
+          "required": false
+        }
+      ],
+      "output": "Paper",
+      "many": true,
+      "result": [
+        "items",
+        "count",
+        "source",
+        "query"
+      ],
+      "safetyClass": "read",
+      "network": true
+    },
+    {
+      "id": "research.readItem",
+      "summary": "Fetches one item's full record (title, authors, date, abstract, link) from the source it came from, or reads its page when the source has no item lookup.",
+      "arguments": [
+        {
+          "name": "id",
+          "type": "string",
+          "noun": "Paper",
+          "required": true
+        },
+        {
+          "name": "source",
+          "type": "string",
+          "noun": "Source",
+          "required": false
+        }
+      ],
+      "output": "Paper",
+      "result": [
+        "id",
+        "title",
+        "authors",
+        "year",
+        "summary",
+        "url",
+        "source",
+        "text"
+      ],
+      "safetyClass": "read",
+      "network": true
+    },
+    {
+      "id": "web.readPage",
+      "summary": "Loads a web address and returns the page's title and visible text (a PDF address is read as a PDF).",
+      "arguments": [
+        {
+          "name": "url",
+          "type": "string",
+          "required": true
+        }
+      ],
+      "output": "WebPage",
+      "result": [
+        "url",
+        "title",
+        "text",
+        "words"
+      ],
+      "safetyClass": "read",
+      "network": true
+    },
+    {
+      "id": "pdf.extractText",
+      "summary": "Downloads a PDF and returns its text page by page, reading scanned pages with on-device OCR.",
+      "arguments": [
+        {
+          "name": "url",
+          "type": "string",
+          "required": true
+        }
+      ],
+      "output": "Text",
+      "result": [
+        "text",
+        "words",
+        "pages"
+      ],
+      "safetyClass": "read",
+      "network": true
+    },
+    {
+      "id": "text.summarize",
+      "summary": "Summarizes text with the on-device model in the style asked for (notes, a paragraph, a spoken script) within a word budget.",
+      "arguments": [
+        {
+          "name": "text",
+          "type": "string",
+          "noun": "Text",
+          "required": true
+        },
+        {
+          "name": "style",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "maxWords",
+          "type": "int",
+          "required": false
+        }
+      ],
+      "output": "Text",
+      "result": [
+        "text",
+        "words"
+      ],
+      "safetyClass": "read",
+      "network": false,
+      "styles": {
+        "notes": "Write short notes on the text: the main points as a Markdown bullet list, in plain words, using only what the text says.",
+        "paragraph": "Write one clear paragraph that says what the text is and what it concludes, using only what the text says.",
+        "script": "Write a spoken script about the text in plain sentences, to be read aloud: no headings, no Markdown, no lists, using only what the text says."
+      }
+    },
+    {
+      "id": "aiwrite.createDocument",
+      "summary": "Creates a document in AI Write on this device and returns its id and link.",
+      "arguments": [
+        {
+          "name": "title",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "markdown",
+          "type": "string",
+          "required": true
+        }
+      ],
+      "output": "Document",
+      "result": [
+        "id",
+        "title",
+        "words",
+        "link"
+      ],
+      "safetyClass": "write",
+      "network": false
+    },
+    {
+      "id": "aiwrite.readDocument",
+      "summary": "Returns an AI Write document's title and text by its id or title; on a miss, lists the closest titles instead of failing (invariant R2).",
+      "arguments": [
+        {
+          "name": "ref",
+          "type": "string",
+          "noun": "Document",
+          "required": true
+        }
+      ],
+      "output": "Document",
+      "result": [
+        "id",
+        "title",
+        "text",
+        "words",
+        "link"
+      ],
+      "safetyClass": "read",
+      "network": false
+    },
+    {
+      "id": "podcast.createEpisode",
+      "summary": "Reads a script aloud with the system voice and saves it as an episode in the Podcasts library on this device.",
+      "arguments": [
+        {
+          "name": "title",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "script",
+          "type": "string",
+          "noun": "Text",
+          "required": true
+        }
+      ],
+      "output": "Episode",
+      "result": [
+        "id",
+        "title",
+        "seconds",
+        "link"
+      ],
+      "safetyClass": "write",
+      "network": false
+    },
+    {
+      "id": "audio.transcribe",
+      "summary": "Transcribes an audio file on this device with Apple's on-device speech model in the language given.",
+      "arguments": [
+        {
+          "name": "file",
+          "type": "string",
+          "noun": "File",
+          "required": true
+        },
+        {
+          "name": "language",
+          "type": "string",
+          "required": false
+        }
+      ],
+      "output": "Transcript",
+      "result": [
+        "text",
+        "language",
+        "words",
+        "seconds"
+      ],
+      "safetyClass": "read",
+      "network": false
+    }
+  ]
+}

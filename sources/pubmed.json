@@ -1,0 +1,19 @@
+{
+  "id": "pubmed",
+  "title": "PubMed",
+  "summary": "Biomedical and life-science literature from the US National Library of Medicine.",
+  "adapter": "json",
+  "search": {
+    "urlTemplate": "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&retmode=json&retmax={max}&term={query}",
+    "idsPath": "esearchresult.idlist",
+    "details": {
+      "urlTemplate": "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?db=pubmed&retmode=json&id={ids}",
+      "itemsPath": "result",
+      "orderPath": "result.uids"
+    }
+  },
+  "item": {"urlTemplate": "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&id={id}&rettype=abstract&retmode=text", "format": "text"},
+  "fields": {"id": "uid", "title": "title", "summary": "fulljournalname", "year": "pubdate", "authors": "authors[].name"},
+  "linkTemplate": "https://pubmed.ncbi.nlm.nih.gov/{id}/",
+  "attribution": "Data from PubMed, US National Library of Medicine."
+}

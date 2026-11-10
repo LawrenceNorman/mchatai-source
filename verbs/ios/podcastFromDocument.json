@@ -1,0 +1,24 @@
+{
+  "id": "podcastFromDocument",
+  "title": "Podcast from a document",
+  "summary": "Reads an AI Write document, turns it into a 250 to 400 word spoken script with the on-device model, and saves the script as a podcast episode. A fixed chain: no planner decides anything.",
+  "whenToUse": "Use when the person wants to listen to something they already have in AI Write.",
+  "arguments": [
+    {"name": "document", "type": "string", "noun": "Document", "required": true, "description": "The document's id, or words from its title"}
+  ],
+  "reason": false,
+  "inputs": ["Document"],
+  "outputs": ["Episode"],
+  "steps": [
+    {"id": "doc", "capability": "aiwrite.readDocument", "with": {"ref": "${args.document}"}},
+    {"id": "script", "capability": "text.summarize", "with": {"text": "${doc.result.text}", "style": "script", "maxWords": "380"}},
+    {"id": "episode", "capability": "podcast.createEpisode", "with": {"title": "${doc.result.title}", "script": "${script.result.text}"}}
+  ],
+  "output": {"summary": "Made “${doc.result.title}” into an episode", "open": "${episode.result.link}"},
+  "safetyClass": "write",
+  "network": false,
+  "example": "Make a podcast from my document about local language models",
+  "releaseLanes": ["debug", "developerID"],
+  "appIntent": true,
+  "recipe": true
+}
