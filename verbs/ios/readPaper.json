@@ -1,7 +1,7 @@
 {
   "id": "readPaper",
-  "title": "Read a paper",
-  "summary": "Fetches one item's title, authors, date, abstract and link by the id a search returned, from the source it came from.",
+  "title": "Read an item",
+  "summary": "Fetches one item a search found (a paper, a study or an article): its title, authors, date, text or abstract and link, from the source it came from.",
   "whenToUse": "Use after a search, on the single best match: the one whose title and abstract are really about the topic, not the first result.",
   "arguments": [
     {
@@ -9,7 +9,7 @@
       "type": "string",
       "noun": "Paper",
       "required": true,
-      "description": "The id from the search, such as 2410.15285 (arXiv) or the item's address"
+      "description": "The item's id or address from the search, or its number in the list, such as 2"
     },
     {
       "name": "source",
@@ -38,9 +38,13 @@
   "aliases": {
     "arxivID": "id"
   },
-  "_note": "`aliases` keeps the AG.2 argument name working: a planner that learned `arxivID` still lands on `id`.",
+  "_note": "`aliases` keeps the AG.2 argument name working: a planner that learned `arxivID` still lands on `id`. Phase AV.11 (2026-11-10): offered whenever the chat has a numbered list from an earlier turn, so 'write up 2' can read item 2.",
   "routeWords": [
     "paper",
-    "arxiv"
-  ]
+    "arxiv",
+    "item",
+    "article",
+    "story"
+  ],
+  "routeOnList": true
 }

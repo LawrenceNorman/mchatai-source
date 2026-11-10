@@ -1,8 +1,8 @@
 {
   "id": "searchPapers",
-  "title": "Search a research source",
-  "summary": "Searches a research source for items on a topic and lists up to eight with their id, year and a line of summary. The source is arXiv unless the agent or the person names another (Semantic Scholar, OpenAlex, PubMed, Hacker News, or a site from My sources).",
-  "whenToUse": "Use first when the person wants a paper, a study or a post on a topic. Pick the source that fits the topic when more than one is offered.",
+  "title": "Search its sources",
+  "summary": "Searches this agent's sources for items on a topic. With no source named it searches all of them at once and returns one list, ranked by how well each item matches the words; the person then chooses by number.",
+  "whenToUse": "Use first when the person wants papers, studies, articles, posts or news on a topic. Name one source only when the person did.",
   "arguments": [
     {
       "name": "query",
@@ -15,7 +15,7 @@
       "type": "string",
       "noun": "Source",
       "required": false,
-      "description": "Which source to search: one of the ids this agent lists, such as arxiv or semanticscholar. Leave empty for the agent's first source."
+      "description": "One source, only when the person named it, such as pubmed. Use all, or leave it empty, to search every source this agent has."
     }
   ],
   "reason": true,
@@ -28,18 +28,23 @@
   "capability": "research.search",
   "safetyClass": "read",
   "network": true,
-  "example": "Find a recent paper about speech recognition on phones",
+  "example": "Go get me a bunch of recent AI research papers about small language models",
   "releaseLanes": [
     "debug",
     "developerID"
   ],
   "appIntent": false,
-  "_note": "Phase AV.0: the id stays `searchPapers` so the packs and the tool name the planner learned keep working; the source is now an argument, not a fact in Swift (the AG.2 verb searched arXiv only).",
+  "_note": "Phase AV.0: the id stays `searchPapers` so the packs and the tool name the planner learned keep working; the source is now an argument, not a fact in Swift (the AG.2 verb searched arXiv only). Phase AV.10 (2026-11-10): no source named means every source at once, merged and ranked.",
   "routeWords": [
     "paper",
     "papers",
     "study",
     "studies",
-    "preprint"
+    "preprint",
+    "research",
+    "news",
+    "stories",
+    "articles",
+    "headlines"
   ]
 }

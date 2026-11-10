@@ -1,0 +1,47 @@
+{
+  "id": "makeAgent",
+  "title": "Make an agent",
+  "summary": "Makes a new agent of the person's own on this device from what they want it to do. The app picks its steps, finds the feeds of any sites they named and saves it; they switch to it from the agent pill or the link in the reply.",
+  "whenToUse": "Use only when the person asks for an agent of their own that they can come back to, such as 'make me an agent that turns Seattle news into a podcast'. Do not use it to do a task once.",
+  "arguments": [
+    {
+      "name": "purpose",
+      "type": "string",
+      "required": true,
+      "description": "What the agent should do, in the person's own words, such as 'turn Seattle news into a short daily podcast'"
+    },
+    {
+      "name": "name",
+      "type": "string",
+      "required": false,
+      "description": "A short name for it, two or three words, such as 'Seattle News'"
+    },
+    {
+      "name": "sites",
+      "type": "string",
+      "required": false,
+      "description": "Sites the person named, separated by commas, such as 'thestranger.com, publicola.com'. Only sites they said; never add your own."
+    }
+  ],
+  "reason": true,
+  "inputs": [
+    "Text"
+  ],
+  "outputs": [
+    "Agent"
+  ],
+  "capability": "agents.create",
+  "safetyClass": "write",
+  "network": true,
+  "example": "Make me an agent that turns Seattle news into a short daily podcast",
+  "releaseLanes": [
+    "debug",
+    "developerID"
+  ],
+  "appIntent": false,
+  "routeWords": [
+    "agent",
+    "agents"
+  ],
+  "_note": "Phase AV.12 (2026-11-10): agents are made by saying so. The model fills three blanks; code picks the steps and checks every site before it becomes a source."
+}

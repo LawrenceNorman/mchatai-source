@@ -35,18 +35,21 @@ def main(argv):
         print('\n'.join(found)); return 1
     compiled_sources = sv.compiled(sources)
     styles = next((c.get('styles') or {} for c in caps['capabilities'] if c['id'] == 'text.summarize'), {})
+    template = v.agent_template(caps)
     compiled = v.compiled_verbs(verbs)
     if '--check' in argv:
-        found = v.compiled_problems(verbs)
+        found = v.compiled_problems(verbs, caps=caps)
         print('\n'.join(found) if found else 'compiled copy is current')
         return 1 if found else 0
     index_path = v.PERSONAS / '_index.json'
     index = json.loads(index_path.read_text())
-    if index.get('verbs') == compiled and index.get('sources') == compiled_sources and index.get('textStyles') == styles:
+    if index.get('verbs') == compiled and index.get('sources') == compiled_sources and index.get('textStyles') == styles \
+            and index.get('agentTemplate') == template:
         print('compiled copy already current'); return 0
     index['verbs'] = compiled
     index['sources'] = compiled_sources
     index['textStyles'] = styles
+    index['agentTemplate'] = template
     index['version'] = next_version(index.get('version'))
     index_path.write_text(json.dumps(index, indent=1, ensure_ascii=False) + '\n')
     out = {

@@ -45,8 +45,8 @@ def problems(index, folder=None, source_ids=None):
             if not isinstance(agent, dict):
                 found.append(f'{where}: agent must be an object'); continue
             ids = agent.get('verbs') or []
-            if not ids:
-                found.append(f'{where}: agent.verbs is empty')
+            if not ids and agent.get('catalogVerbs') is not True:
+                found.append(f'{where}: agent.verbs is empty (allowed only with catalogVerbs: true, where the router picks)')
             unknown = [v for v in ids if v not in verb_ids]
             if unknown:
                 found.append(f'{where}: agent.verbs not in the index verbs: {unknown}')
@@ -65,6 +65,8 @@ def problems(index, folder=None, source_ids=None):
                     unknown = [x for x in sources if x not in source_ids]
                     if unknown:
                         found.append(f'{where}: agent.sources not in sources/_index.json: {unknown}')
+            if 'catalogVerbs' in agent and not isinstance(agent['catalogVerbs'], bool):
+                found.append(f'{where}: agent.catalogVerbs must be true or false')
             if len(ids) > 6:
                 found.append(f'{where}: an agent offers at most 6 verbs per session (the router picks from the catalog; {len(ids)} named)')
             if not p.get('starters'):
@@ -79,6 +81,11 @@ def problems(index, folder=None, source_ids=None):
                 if record != mine:
                     diff = sorted(k for k in set(record) | set(mine) if record.get(k) != mine.get(k))
                     found.append(f'{where}: persona.json differs from the index record in {diff}')
+    template = index.get('agentTemplate')
+    if template is not None and source_ids is not None:
+        unknown = [x for x in template.get('sources') or [] if x not in source_ids]
+        if unknown:
+            found.append(f'agentTemplate.sources not in sources/_index.json: {unknown}')
     return found
 
 
@@ -98,7 +105,7 @@ def compiled_verb_problems(personas_dir):
     import validate_verbs as vv
     nouns, caps, verbs = vv.load_catalog(verbs_dir / 'ios')
     found = vv.problems(nouns, caps, verbs)
-    return found or vv.compiled_problems(verbs, personas_dir)
+    return found or vv.compiled_problems(verbs, personas_dir, caps=caps)
 
 
 def main(argv):

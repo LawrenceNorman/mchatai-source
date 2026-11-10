@@ -1,6 +1,6 @@
 {
  "_schema": "mchatai-source/personas/_index.json — every persona pack's record, minus knowledge chunks. The iOS app fetches this one file (PersonaCatalogStore); a pack's own persona.json must stay identical to its entry here. Design: mchatai_macOS/docs/PERSONA_PACKS_ARCHITECTURE.md. `verbs` (since 2026.11.09): the actions a pack with an `agent` block may call, copied from `_verbs.json` so one fetch serves the chat. `sources` and `textStyles` (since Phase AV): compiled from sources/*.json and verbs/ios/_capabilities.json by verbs/build_index.py.",
- "version": "2026.11.09.6",
+ "version": "2026.11.10.2",
  "personas": [
   {
    "id": "general-assistant",
@@ -667,6 +667,67 @@
    "version": 1
   },
   {
+   "id": "agent",
+   "legacyPersonaID": null,
+   "name": "Agent",
+   "aliases": [],
+   "icon": "sparkles",
+   "tagline": "Gets things done on this device, step by step: finds papers and articles, reads pages, summarizes, and writes documents and podcasts. Ask it to make an agent of your own.",
+   "category": "do",
+   "prompt": "You are an agent that runs entirely on the person's iPhone or iPad and gets things done with the steps you are given. Do only what the person asks in this message. When they ask you to find things, search and stop: the app shows them the ranked list and they choose. When they name items from an earlier list by number, read those by number. When they ask for an agent of their own, make it with their words and only the sites they named. Never invent facts the steps did not return. Answer in at most three sentences.",
+   "greeting": {
+    "enabled": true,
+    "hint": "In one sentence, say you can find papers and articles, read pages, summarize and make documents and podcasts on this device, or make them an agent of their own, and ask what they want done."
+   },
+   "starters": [
+    "Go get me a bunch of recent AI research papers about small language models on phones.",
+    "Make me an agent that turns Seattle news into a short daily podcast.",
+    "Summarize https://www.apple.com/newsroom/ in five bullet points."
+   ],
+   "turnReminder": "Do only what this message asks.",
+   "maxSentences": 3,
+   "temperature": 0.2,
+   "maxTokens": 900,
+   "language": "en",
+   "model": "any",
+   "welcome": {
+    "title": "Agent",
+    "body": "Say what you want done. It finds papers and articles, reads pages, summarizes, and writes documents and podcasts on this device; only searches and page reads go online. Ask it to make an agent of your own, then tell that agent which sites to read."
+   },
+   "placeholder": "What should I do?",
+   "roles": {
+    "user": "You",
+    "assistant": "Agent"
+   },
+   "knowledge": null,
+   "companion": null,
+   "hooks": {
+    "explainers": [],
+    "publications": [],
+    "actions": []
+   },
+   "agent": {
+    "verbs": [],
+    "planner": "apple",
+    "localPlannerAllowed": false,
+    "mustRun": [],
+    "sources": [
+     "arxiv",
+     "openalex",
+     "pubmed",
+     "hackernews"
+    ],
+    "confirm": "never",
+    "catalogVerbs": true
+   },
+   "surfaces": {
+    "chat": true,
+    "miniapp": false
+   },
+   "retired": false,
+   "version": 1
+  },
+  {
    "id": "paper-podcaster",
    "legacyPersonaID": null,
    "name": "Paper Podcaster",
@@ -749,6 +810,46 @@
   }
  ],
  "verbs": [
+  {
+   "appIntent": false,
+   "arguments": [
+    {
+     "name": "site",
+     "type": "string",
+     "required": true,
+     "description": "The site's address as the person said it, such as thestranger.com"
+    }
+   ],
+   "capability": "agents.addSource",
+   "example": "Also read thestranger.com",
+   "id": "addSource",
+   "inputs": [
+    "Text"
+   ],
+   "network": true,
+   "outputs": [
+    "Source"
+   ],
+   "reason": true,
+   "releaseLanes": [
+    "debug",
+    "developerID"
+   ],
+   "routeOnSite": true,
+   "routeWords": [
+    "follow",
+    "source",
+    "sources",
+    "site",
+    "sites",
+    "feed",
+    "feeds"
+   ],
+   "safetyClass": "write",
+   "summary": "Finds a site's news feed from its address, such as thestranger.com, and adds it to the sources this agent searches.",
+   "title": "Add a site to this agent",
+   "whenToUse": "Use when the person names a site this agent should read or follow."
+  },
   {
    "appIntent": false,
    "arguments": [
@@ -861,6 +962,52 @@
    "summary": "Downloads a PDF and returns its text page by page; scanned pages are read with on-device OCR.",
    "title": "Read a PDF",
    "whenToUse": "Use when the person points at a PDF (a paper's full text, a report, a form) and wants what is in it."
+  },
+  {
+   "appIntent": false,
+   "arguments": [
+    {
+     "name": "purpose",
+     "type": "string",
+     "required": true,
+     "description": "What the agent should do, in the person's own words, such as 'turn Seattle news into a short daily podcast'"
+    },
+    {
+     "name": "name",
+     "type": "string",
+     "required": false,
+     "description": "A short name for it, two or three words, such as 'Seattle News'"
+    },
+    {
+     "name": "sites",
+     "type": "string",
+     "required": false,
+     "description": "Sites the person named, separated by commas, such as 'thestranger.com, publicola.com'. Only sites they said; never add your own."
+    }
+   ],
+   "capability": "agents.create",
+   "example": "Make me an agent that turns Seattle news into a short daily podcast",
+   "id": "makeAgent",
+   "inputs": [
+    "Text"
+   ],
+   "network": true,
+   "outputs": [
+    "Agent"
+   ],
+   "reason": true,
+   "releaseLanes": [
+    "debug",
+    "developerID"
+   ],
+   "routeWords": [
+    "agent",
+    "agents"
+   ],
+   "safetyClass": "write",
+   "summary": "Makes a new agent of the person's own on this device from what they want it to do. The app picks its steps, finds the feeds of any sites they named and saves it; they switch to it from the agent pill or the link in the reply.",
+   "title": "Make an agent",
+   "whenToUse": "Use only when the person asks for an agent of their own that they can come back to, such as 'make me an agent that turns Seattle news into a podcast'. Do not use it to do a task once."
   },
   {
    "appIntent": true,
@@ -1003,7 +1150,7 @@
      "type": "string",
      "noun": "Paper",
      "required": true,
-     "description": "The id from the search, such as 2410.15285 (arXiv) or the item's address"
+     "description": "The item's id or address from the search, or its number in the list, such as 2"
     },
     {
      "name": "source",
@@ -1028,14 +1175,55 @@
     "debug",
     "developerID"
    ],
+   "routeOnList": true,
    "routeWords": [
     "paper",
-    "arxiv"
+    "arxiv",
+    "item",
+    "article",
+    "story"
    ],
    "safetyClass": "read",
-   "summary": "Fetches one item's title, authors, date, abstract and link by the id a search returned, from the source it came from.",
-   "title": "Read a paper",
+   "summary": "Fetches one item a search found (a paper, a study or an article): its title, authors, date, text or abstract and link, from the source it came from.",
+   "title": "Read an item",
    "whenToUse": "Use after a search, on the single best match: the one whose title and abstract are really about the topic, not the first result."
+  },
+  {
+   "appIntent": false,
+   "arguments": [
+    {
+     "name": "source",
+     "type": "string",
+     "noun": "Source",
+     "required": true,
+     "description": "The source to stop searching, by its id or name, such as hackernews"
+    }
+   ],
+   "capability": "agents.removeSource",
+   "example": "Stop using Hacker News",
+   "id": "removeSource",
+   "inputs": [
+    "Source"
+   ],
+   "network": false,
+   "outputs": [
+    "Source"
+   ],
+   "reason": true,
+   "releaseLanes": [
+    "debug",
+    "developerID"
+   ],
+   "routeWords": [
+    "remove",
+    "unfollow",
+    "drop",
+    "stop"
+   ],
+   "safetyClass": "write",
+   "summary": "Takes a source off the list this agent searches: a site the person added is removed, a built-in one is hidden for this agent only.",
+   "title": "Stop searching a source",
+   "whenToUse": "Use when the person says to stop using, drop or remove a source."
   },
   {
    "appIntent": false,
@@ -1051,11 +1239,11 @@
      "type": "string",
      "noun": "Source",
      "required": false,
-     "description": "Which source to search: one of the ids this agent lists, such as arxiv or semanticscholar. Leave empty for the agent's first source."
+     "description": "One source, only when the person named it, such as pubmed. Use all, or leave it empty, to search every source this agent has."
     }
    ],
    "capability": "research.search",
-   "example": "Find a recent paper about speech recognition on phones",
+   "example": "Go get me a bunch of recent AI research papers about small language models",
    "id": "searchPapers",
    "inputs": [
     "Source"
@@ -1074,12 +1262,17 @@
     "papers",
     "study",
     "studies",
-    "preprint"
+    "preprint",
+    "research",
+    "news",
+    "stories",
+    "articles",
+    "headlines"
    ],
    "safetyClass": "read",
-   "summary": "Searches a research source for items on a topic and lists up to eight with their id, year and a line of summary. The source is arXiv unless the agent or the person names another (Semantic Scholar, OpenAlex, PubMed, Hacker News, or a site from My sources).",
-   "title": "Search a research source",
-   "whenToUse": "Use first when the person wants a paper, a study or a post on a topic. Pick the source that fits the topic when more than one is offered."
+   "summary": "Searches this agent's sources for items on a topic. With no source named it searches all of them at once and returns one list, ranked by how well each item matches the words; the person then chooses by number.",
+   "title": "Search its sources",
+   "whenToUse": "Use first when the person wants papers, studies, articles, posts or news on a topic. Name one source only when the person did."
   },
   {
    "appIntent": true,
@@ -1384,5 +1577,27 @@
   "notes": "Write short notes on the text: the main points as a Markdown bullet list, in plain words, using only what the text says.",
   "paragraph": "Write one clear paragraph that says what the text is and what it concludes, using only what the text says.",
   "script": "Write a spoken script about the text in plain sentences, to be read aloud: no headings, no Markdown, no lists, using only what the text says."
+ },
+ "agentTemplate": {
+  "prompt": "You are {name}, an agent the person made on their iPhone or iPad. What you are for, in their words: {purpose}. Use your steps to do it, and do only what the person asks in each message. When a search finds several items and the person has not said which to use, stop and let them choose from the list. Never invent facts the steps did not return. Answer in at most three sentences.",
+  "always": [
+   "searchPapers",
+   "readPaper"
+  ],
+  "starters": {
+   "searchPapers": "What's new today?",
+   "summarizeText": "Summarize the top three for me.",
+   "createDocument": "Write up the best one in AI Write.",
+   "createPodcast": "Make a short podcast episode from the top stories."
+  },
+  "sources": [
+   "arxiv",
+   "openalex",
+   "pubmed",
+   "hackernews"
+  ],
+  "confirm": "never",
+  "icon": "sparkles",
+  "namePrompt": "Give a short name, two or three words, for an agent that will {purpose}. Reply with the name only."
  }
 }

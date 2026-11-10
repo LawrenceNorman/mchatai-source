@@ -118,6 +118,13 @@ def verb_problems(verb, caps_by_id, noun_ids):
         found.append(f'{where}: routeWords must be single lowercase words (the router compares whole words)')
     if verb.get('routeOnAddress') and 'url' not in arg_names:
         found.append(f'{where}: routeOnAddress needs an argument called url')
+    if verb.get('routeOnSite') and 'site' not in arg_names:
+        found.append(f'{where}: routeOnSite needs an argument called site')
+    if verb.get('routeOnList') and 'id' not in arg_names:
+        found.append(f'{where}: routeOnList needs an argument called id (the number of an item in the list)')
+    for flag in ('routeOnAddress', 'routeOnSite', 'routeOnList'):
+        if flag in verb and not isinstance(verb[flag], bool):
+            found.append(f'{where}: {flag} must be true or false')
     lanes = verb.get('releaseLanes')
     if lanes is not None and (not isinstance(lanes, list) or not set(lanes) <= LANES):
         found.append(f'{where}: releaseLanes must be a subset of {sorted(LANES)}')
@@ -208,6 +215,46 @@ def problems(nouns, caps, verbs):
             found.append(f"verb {v.get('id')}: duplicate id")
         seen.add(v.get('id'))
         found.extend(verb_problems(v, caps_by_id, noun_ids))
+    found.extend(template_problems(caps, {v.get('id') for v in verbs}))
+    return found
+
+
+def agent_template(caps):
+    """How a new agent is filled in (Phase AV.12): the `template` of the agents.create capability, without notes."""
+    t = next((c.get('template') for c in caps.get('capabilities') or [] if c.get('id') == 'agents.create'), None)
+    return {k: v for k, v in t.items() if not k.startswith('_')} if isinstance(t, dict) else None
+
+
+def template_problems(caps, verb_ids):
+    if not any(c.get('id') == 'agents.create' for c in caps.get('capabilities') or []):
+        return []
+    t = agent_template(caps)
+    where = 'capability agents.create template'
+    if t is None:
+        return [f'{where}: missing (a new agent needs its role, steps and starters from content)']
+    found = []
+    prompt = t.get('prompt') or ''
+    if '{name}' not in prompt or '{purpose}' not in prompt:
+        found.append(f'{where}: prompt must contain {{name}} and {{purpose}}')
+    always = t.get('always') or []
+    unknown = [x for x in always if x not in verb_ids]
+    if unknown:
+        found.append(f'{where}: always names unknown steps {unknown}')
+    if len(always) > 6:
+        found.append(f'{where}: always names more than six steps')
+    starters = t.get('starters') or {}
+    if not isinstance(starters, dict) or not starters:
+        found.append(f'{where}: starters must map step ids to a sentence')
+    else:
+        bad = [k for k in starters if k not in verb_ids]
+        if bad:
+            found.append(f'{where}: starters name unknown steps {bad}')
+    if 'namePrompt' in t and '{purpose}' not in (t.get('namePrompt') or ''):
+        found.append(f'{where}: namePrompt must contain {{purpose}}')
+    if t.get('confirm', 'never') not in ('never', 'writes', 'plan'):
+        found.append(f'{where}: confirm must be never, writes or plan')
+    if not isinstance(t.get('sources', []), list):
+        found.append(f'{where}: sources must be a list of source ids')
     return found
 
 
@@ -236,9 +283,12 @@ def compiled_verbs(verbs):
     return [{k: v for k, v in sorted(verb.items()) if not k.startswith('_')} for verb in sorted(verbs, key=lambda v: v['id'])]
 
 
-def compiled_problems(verbs, personas_dir=PERSONAS):
+def compiled_problems(verbs, personas_dir=PERSONAS, caps=None):
     found = []
     want = compiled_verbs(verbs)
+    index_path = personas_dir / '_index.json'
+    if caps is not None and index_path.exists() and json.loads(index_path.read_text()).get('agentTemplate') != agent_template(caps):
+        found.append('personas/_index.json: agentTemplate differs from verbs/ios/_capabilities.json; run verbs/build_index.py')
     for name in ('_verbs.json', '_index.json'):
         path = personas_dir / name
         if not path.exists():
@@ -254,7 +304,7 @@ def main(argv):
     nouns, caps, verbs = load_catalog()
     found = problems(nouns, caps, verbs) + eval_problems(verbs)
     if '--compiled' in argv and not found:
-        found.extend(compiled_problems(verbs))
+        found.extend(compiled_problems(verbs, caps=caps))
     for line in found:
         print(line)
     if not found:
