@@ -20,6 +20,11 @@ PLACEHOLDERS = {'target', 'native', 'levelLabel', 'levelCEFR', 'maxSentences', '
 STATUSES = {'preview', 'released', 'retired'}
 ACCESS = {'subscriber', 'free'}
 RUNTIMES = {'coreai', 'mlx'}
+# What the entry is for; the apps route an entry to a surface by task, never by name (Phase WH, 2026-11-09).
+TASKS = {'conversation', 'transcription', 'embedding', 'vision-language', 'image-generation'}
+# Where the app may offer the model. Each surface knows how to use one task.
+SURFACES = {'transcription', 'handsfree', 'touchlanguage', 'search', 'aiweb', 'images'}
+RECOMMENDATION_KEYS = {'useWhen', 'preferBuiltInWhen', 'languagesBest', 'surfaces', 'windowSeconds', 'runningMemoryGB'}
 BUCKET_HINTS = ('gs://', 'storage.googleapis.com', 'storage.cloud.google.com', 'firebasestorage')
 V1_REQUIRED = ('id', 'releaseID', 'version', 'displayName', 'task', 'languages', 'baseModel')
 V1_ASSET = ('id', 'platform', 'architecture', 'url', 'archiveSizeBytes', 'installedSizeBytes', 'sha256',
@@ -57,6 +62,31 @@ def problems(catalog, private=False):
             if name not in PLACEHOLDERS:
                 found.append(f'{where}: unknown instructions placeholder {{{{{name}}}}}')
         if version == 2:
+            if model.get('task') not in TASKS:
+                found.append(f"{where}: task must be one of {sorted(TASKS)}")
+            rec = model.get('recommendation')
+            if rec is not None:
+                if not isinstance(rec, dict):
+                    found.append(f'{where}: recommendation must be an object')
+                else:
+                    unknown = set(rec) - RECOMMENDATION_KEYS
+                    if unknown:
+                        found.append(f'{where}: recommendation has unknown keys {sorted(unknown)}')
+                    use_when = rec.get('useWhen')
+                    if not isinstance(use_when, str) or not use_when.strip() or len(use_when) > 200:
+                        found.append(f'{where}: recommendation.useWhen is one plain sentence (1–200 characters)')
+                    prefer = rec.get('preferBuiltInWhen')
+                    if prefer is not None and (not isinstance(prefer, str) or len(prefer) > 200):
+                        found.append(f'{where}: recommendation.preferBuiltInWhen is one plain sentence (up to 200 characters)')
+                    surfaces = rec.get('surfaces')
+                    if surfaces is not None and (not isinstance(surfaces, list) or not surfaces or not set(surfaces) <= SURFACES):
+                        found.append(f'{where}: recommendation.surfaces must be a non-empty subset of {sorted(SURFACES)}')
+                    best = rec.get('languagesBest')
+                    if best is not None and (not isinstance(best, list) or not all(isinstance(c, str) and 2 <= len(c) <= 5 for c in best)):
+                        found.append(f'{where}: recommendation.languagesBest is a list of language codes')
+                    for key in ('windowSeconds', 'runningMemoryGB'):
+                        if key in rec and not (isinstance(rec[key], (int, float)) and rec[key] > 0):
+                            found.append(f'{where}: recommendation.{key} must be a positive number')
             if model.get('releaseStatus') and model['releaseStatus'] not in STATUSES:
                 found.append(f"{where}: releaseStatus must be one of {sorted(STATUSES)}")
             if model.get('access') and model['access'] not in ACCESS:

@@ -34,3 +34,19 @@ does every web page inside it (AI Web, the Preview pane). They can't.
 - **Check the page, not the action.** After any upload, read the page for an
   error before moving on. An action that reports success doesn't prove the bytes
   arrived.
+
+### GitHub and web pages
+
+- **To read GitHub, use the Git Browser verbs**: `listIssues`, `getIssue` and
+  `listChecks`. They use this Mac's saved GitHub sign-in, so private repositories
+  work too, and `gh` may not be signed in. For example:
+  `./mchatai raw '{"command":"applet","applet":"gitbrowser","verb":"listIssues","args":{"workDir":"<local clone>","state":"all"}}' --wait 30`
+  Pass `repo` as `owner/name`, or `workDir` as a local clone. The `getState` verb
+  lists the repositories opened in the app, so use it rather than searching the
+  person's folders for one.
+- **To show the person a web page, use AI Web**: applet `aiweb`, verb `openPage`,
+  with `url` in `args`. The page opens inside this app, where they are signed in.
+  Never use the `open` command for a web link, because that takes them out of the
+  app.
+- **To post to GitHub**, open the page in AI Web and use `proposeActions`. The
+  person approves each step on a card.

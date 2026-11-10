@@ -67,6 +67,23 @@ class ValidateCatalogTests(unittest.TestCase):
         self.assertTrue(any('duplicate' in p for p in found))
         self.assertTrue(any('{{dialect}}' in p for p in found))
 
+    def test_v2_task_vocabulary_and_recommendation(self):
+        bad = copy.deepcopy(ENTRY); bad['task'] = 'speech'
+        self.assertTrue(any('task must be one of' in p for p in v.problems(catalog(bad))))
+        speech = copy.deepcopy(ENTRY)
+        speech.update({'id': 'parakeet-tdt-0.6b-v3', 'task': 'transcription', 'languages': ['es', 'de', 'fr'],
+                       'category': 'speech', 'applets': ['transcription'], 'instructions': None})
+        speech['assets'][0]['url'] = 'mchatai-model://parakeet-tdt-0.6b-v3/0.1.0-stock-6bit/ios-arm64-coreai-6bit'
+        speech['recommendation'] = {'useWhen': 'Transcribing Spanish or another European language.',
+                                    'preferBuiltInWhen': 'English: the built-in transcriber is more accurate.',
+                                    'languagesBest': ['es', 'de', 'fr'], 'surfaces': ['transcription', 'handsfree'],
+                                    'windowSeconds': 20, 'runningMemoryGB': 1.7}
+        self.assertEqual(v.problems(catalog(speech)), [])
+        for broken, needle in (({'useWhen': ''}, 'useWhen'), ({'useWhen': 'x', 'surfaces': ['podcasts']}, 'surfaces'),
+                               ({'useWhen': 'x', 'extra': 1}, 'unknown keys'), ({'useWhen': 'x', 'windowSeconds': 0}, 'windowSeconds')):
+            e = copy.deepcopy(speech); e['recommendation'] = broken
+            self.assertTrue(any(needle in p for p in v.problems(catalog(e))), needle)
+
 
 if __name__ == '__main__':
     unittest.main()
