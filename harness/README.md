@@ -54,6 +54,22 @@ Local providers (Ollama) do NOT have a JSON file — their model list is enumera
 live via `OllamaService.fetchInstalledModelNames()` so installed-but-not-pulled
 models reflect ground truth without a content PR.
 
+## On-device model cards (`mlx-catalog.json`)
+
+The models mChatAI+ can download and run inside the app with MLX, with no Ollama or other
+server. Each card lists a Hugging Face repo, the exact revision to download, and every file's
+size and SHA-256. The app checks each file against its SHA-256 before it loads the model, so a
+card whose files changed upstream fails to install. Nothing is changed until the card is.
+
+A card also carries what it measured on a real Mac (`measured`): peak memory, load time and
+tokens per second. The app uses peak memory to say whether a model fits the Mac it runs on.
+`templateContext` holds chat-template switches. For example, `enable_thinking: false` stops
+Qwen3 and SmolLM3 from writing out their reasoning.
+
+Only official releases converted by `mlx-community` are listed. A card is published only after
+it has been measured. The cards are generated and measured with the app's own tools, so edit
+them there and regenerate rather than editing this file by hand.
+
 ## Loading order (mirrors wisdom + prompts)
 
 1. Live cache:     `~/Library/Application Support/mChatAI/source-cache/mchatai-source/harness/...`
