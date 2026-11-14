@@ -374,10 +374,21 @@ def cast_findings(project, n, ch):
     anc = anchored(ch, spans)
     out = []
     n = int(n)
+    # A name inside a longer cast name is that longer entry's mention, not its own ("credit" in "credit union",
+    # 2026-11-14): every entry's matches are collected first, and a match lying inside a longer match of another
+    # entry does not count.
+    covers = [(mm.start(), mm.end(), e["name"]) for e in entries for mm in key_pattern(e["keys"]).finditer(text)]
+
+    def first_own(e):
+        for mm in key_pattern(e["keys"]).finditer(text):
+            a, b = mm.start(), mm.end()
+            if not any(name != e["name"] and s0 <= a and b <= s1 and (s1 - s0) > (b - a) for s0, s1, name in covers):
+                return mm
+        return None
+
     for e in entries:
         where = assigned.get(e["name"]) or []
-        rx = key_pattern(e["keys"])
-        m = rx.search(text)
+        m = first_own(e)
         if n in where:
             if not m:
                 out.append(finding("cast_unintroduced", "hard",

@@ -1656,6 +1656,30 @@ class GlossarySurnames(unittest.TestCase):
             shutil.rmtree(tmp, ignore_errors=True)
 
 
+class NestedCastNames(unittest.TestCase):
+    """A glossary term inside a longer term ("credit" in "credit union") is not a mention of its own."""
+
+    def test_shorter_term_inside_longer_term_is_not_before_intro(self):
+        tmp = tempfile.mkdtemp(prefix="hw-nested-")
+        try:
+            _hw.save_json(os.path.join(tmp, "project.json"), {"slug": "x", "domain": "explainer", "voice": 2})
+            _hw.save_json(os.path.join(tmp, "dossier.json"), {"people": [
+                {"name": "credit union", "aliases": [], "who": "a bank owned by its members"},
+                {"name": "credit", "aliases": [], "who": "borrowing now, paying later"}]})
+            _hw.save_json(os.path.join(tmp, "plan.json"), {"chapters": [
+                {"n": 3, "title": "Banks", "introduces": ["credit union"], "plannedWords": 1000},
+                {"n": 4, "title": "Credit", "introduces": ["credit"], "plannedWords": 1000}]})
+            import storytelling
+            ch = {"text": "A credit union is a bank its members own. Your credit union insures deposits too.", "claims": []}
+            rules = [f["message"] for f in storytelling.cast_findings(_hw.Project(tmp), 3, ch) if f["rule"] == "cast_before_intro"]
+            self.assertEqual(rules, [])
+            ch2 = {"text": "A credit union is a bank. Credit is borrowing now.", "claims": []}
+            rules = [f["message"] for f in storytelling.cast_findings(_hw.Project(tmp), 3, ch2) if f["rule"] == "cast_before_intro"]
+            self.assertEqual(len(rules), 1)
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
+
+
 class QuizCheck(unittest.TestCase):
     """quiz.py: the request carries the chapter's claims; the offline check holds a saved set to the chapter."""
 
