@@ -19,9 +19,12 @@ pack = json.load(open(os.path.join(pack_dir, "persona.json")))
 if not pack.get("surfaces", {}).get("miniapp", False):
     sys.exit(f"{pack_id}: surfaces.miniapp is false")
 # chunks.json rides along inline when present, so the bundle works offline on first open.
+# Only `chunks` is added: the rest of the pack's knowledge block (gate, preamble,
+# retrieval, path) is kept as written, or a chapter-gated pack's hub copy would
+# put every chapter's notes in play on an offline first open.
 chunks_file = os.path.join(pack_dir, "chunks.json")
 if os.path.exists(chunks_file) and not (pack.get("knowledge") or {}).get("chunks"):
-    pack["knowledge"] = {"chunks": json.load(open(chunks_file))}
+    pack["knowledge"] = dict(pack.get("knowledge") or {}, chunks=json.load(open(chunks_file)))
 html = open(os.path.join(here, "..", "index.html")).read()
 # A pack with many notes is written compactly: the hosted page is one file and every byte ships.
 pretty = len(json.dumps(pack, ensure_ascii=False)) < 60_000
