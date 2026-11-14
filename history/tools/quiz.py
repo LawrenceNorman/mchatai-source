@@ -40,6 +40,7 @@ def request_payload(project, n, count=10, types=("mc", "short"), require_claim=F
     meta = load_json(project.path("project.json"), {}) or {}
     plan_ch = project.plan_chapter(n) or {}
     claims = [{"id": str(c["id"]), "text": c.get("text", ""), "evidence": c.get("evidence", ""),
+               "anchor": c.get("anchor", "") if isinstance(c.get("anchor"), str) else "",
                "source": str(c.get("source", "")) or None} for c in chapter_claims(ch)]
     title = plan_ch.get("title") or ch.get("title") or f"Chapter {n}"
     return {
