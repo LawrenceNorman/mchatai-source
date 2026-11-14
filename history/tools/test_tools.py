@@ -1639,6 +1639,23 @@ class Portraits(FixtureCase):
                 images.parse_crop(bad)
 
 
+class GlossarySurnames(unittest.TestCase):
+    """An explainer's glossary term does not lend its last word as a surname (cast.surnames: false)."""
+
+    def test_last_word_is_not_a_key_in_the_explainer(self):
+        tmp = tempfile.mkdtemp(prefix="hw-surname-")
+        try:
+            _hw.save_json(os.path.join(tmp, "project.json"), {"slug": "x", "domain": "explainer"})
+            _hw.save_json(os.path.join(tmp, "dossier.json"), {"people": [{"name": "Foundation Models", "aliases": [], "who": "a framework"}]})
+            import storytelling
+            keys = storytelling.cast_entries(_hw.Project(tmp))[0]["keys"]
+            self.assertEqual(keys, ["Foundation Models"])
+            _hw.save_json(os.path.join(tmp, "project.json"), {"slug": "x"})
+            self.assertIn("Models", storytelling.cast_entries(_hw.Project(tmp))[0]["keys"])
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
+
+
 class QuizCheck(unittest.TestCase):
     """quiz.py: the request carries the chapter's claims; the offline check holds a saved set to the chapter."""
 

@@ -1,0 +1,101 @@
+{
+  "version": 1,
+  "updated": "2026-11-14",
+  "_source_of_truth": "mchatai-source/history/cloud-writer.json",
+  "_comment": "The History Writer's chapter stage on platform models (tools/cloud_writer.py): writer, gates, an independent audit, revise, with every model call through mChatAI's compute-proxy and billed to the signed-in account's compute tokens (1 token = $0.01), instead of Claude Code subagents. Roles name a model from llm-catalog/providers/<provider>.json; the request SHAPE for each comes from llm-catalog/request-shapes.json (tools/cloud_models.shape_for), so no model id or family test lives in code. Edit here to change a model, a budget or a prompt with no code change.",
+  "proxyUrl": "https://api.mchatai.com",
+  "_proxyUrl": "compute-proxy. The env COMPUTE_PROXY_URL overrides it (a staging proxy).",
+  "timeoutSeconds": 900,
+  "_timeoutSeconds": "A whole exchange. A reasoning model writing a 2,400-word chapter with 30 claims thinks for minutes before the first byte.",
+  "roles": {
+    "writer": {
+      "provider": "anthropic",
+      "model": "claude-opus-5.5",
+      "maxOutputTokens": 32000,
+      "prompt": "agents/history-chapter-writer.md",
+      "reasoningEffort": "low"
+    },
+    "auditor": {
+      "provider": "anthropic",
+      "model": "claude-opus-5.5",
+      "maxOutputTokens": 16000,
+      "prompt": "agents/history-auditor.md",
+      "reasoningEffort": "low"
+    },
+    "gatherer": {
+      "provider": "anthropic",
+      "model": "claude-sonnet-5.5",
+      "maxOutputTokens": 16000,
+      "reasoningEffort": "low"
+    }
+  },
+  "_roles": "maxOutputTokens includes a reasoning model's thinking, and only tokens used are billed, so budgets are generous: an empty reply with finish_reason 'length' means raise it here. The auditor is a SEPARATE call with its own instructions: it sees the chapter, the dossier facts and the sources, never the writer's reply or reasoning (D8: audits on a frontier model only). Optional per role: temperature (sent only where the request shape accepts it, 0 when the role names none, as web-api's learningModels.js does), reasoningEffort (sent only where accepted).",
+  "maxRounds": 4,
+  "_maxRounds": "Writer calls per chapter: the first draft and its revisions, for the gate's hard findings or the audit's blocking items. PLAYBOOK §3: about three passes; a chapter that cannot pass after three repair rounds is marked blocked and goes to the author as a question.",
+  "chapterBudgetTokens": 400,
+  "_chapterBudgetTokens": "Compute tokens one chapter's write run may spend (writer, revisions and audits; a gather run has its own cap of the same size). Before each call the run adds the largest earlier call of the same role to what it has spent; if that would pass the cap it stops and says so. `--budget` raises it for one run.",
+  "retries": {
+    "count": 2,
+    "backoffSeconds": [
+      5,
+      20
+    ]
+  },
+  "_retries": "429 and 5xx (and a dropped connection) are retried this many times, waiting Retry-After when the proxy sends it. 402 is never retried: it is the account (insufficient_tokens, sign_in_required).",
+  "tokenRefreshMinutes": 50,
+  "_tokenRefreshMinutes": "A Firebase ID token lives an hour; the session file's token is refreshed when it is older than this, and on any 401.",
+  "excerptChars": 500,
+  "_excerptChars": "Sized to keep the writer's request under compute-proxy's 200 KB body limit (a 69-fact chapter at 1,500 and 40,000 was 202 KB, 2026-11-14). The writer and the auditor read each cited source as excerpts of sources/<id>.txt: this many characters either side of each fact's evidence quote and of the first mention of each glossary term the chapter introduces (overlapping excerpts are merged).",
+  "maxExcerptCharsPerSource": 8000,
+  "gatherChunkChars": 120000,
+  "_gatherChunkChars": "A source longer than this is gathered in parts, at paragraph breaks; each part is one gatherer call. Evidence is still checked against the whole source.",
+  "writerThresholds": [
+    "minQuoteWords",
+    "verbatimCopyWindowWords",
+    "eraShareMax",
+    "writer",
+    "boxes",
+    "readability",
+    "cast",
+    "glossary",
+    "pov",
+    "pictures",
+    "targetOverrun"
+  ],
+  "_writerThresholds": "The thresholds keys the writer is shown, as _hw.thresholds(project) resolves them for the project's domain; `boxes` includes the plan's overrides (explainer.box_config).",
+  "prompts": {
+    "writerPreface": [
+      "You are running as one model call on mChatAI's platform, with no tools: you cannot open files or run commands. Everything the instructions below tell you to read is in the user message: the base voice, the domain's voice when the story has a domain, the thresholds the gate holds you to, your chapter's plan entry, the glossary, the dossier's facts for your chapter, and excerpts of the sources they cite (sources/<id>.txt as fetched, the same text the gate checks quotes against). Where the instructions say to run a tool, the caller runs gate.py on your reply and sends its findings back to you. Place no pictures.",
+      "",
+      "Reply with ONLY the chapter: one JSON object matching history/schemas/chapter.schema.json, with no prose before or after it and no code fence:",
+      "{\"chapter\": <n>, \"title\": \"...\", \"text\": \"...\", \"claims\": [{\"id\": \"c1\", \"text\": \"...\", \"source\": \"<source id>\", \"anchor\": \"...\", \"evidence\": \"...\", \"kind\": \"fact|era|quote|cast|scale\", \"about\": \"<glossary name, for a cast claim>\"}]}",
+      "`text` is plain prose with paragraphs separated by a blank line. Each claim's `evidence` is copied character for character from ONE excerpt, at least minQuoteWords words, and its `source` is that excerpt's id. When the thresholds have `boxes`, the chapter carries every box `boxes.required` lists: a paragraph that is exactly its title, followed by its body.",
+      "",
+      "Your instructions follow."
+    ],
+    "write": "Write chapter {n}, “{title}”, from this brief. Reply with ONLY the chapter JSON object.",
+    "revise": "The gate (history/tools/gate.py chapter) ran on your chapter and found the HARD violations above. Revise: fix the cause, not the wording. A sentence that narrates the record is deleted, never softened; a number no source gave is removed or sourced. Reply with the whole revised chapter as ONLY the JSON object.",
+    "notJson": "Your last reply could not be read as the chapter JSON ({error}). Reply with the whole chapter as ONLY the JSON object, no prose and no code fence.",
+    "auditRevise": "An independent auditor who did not write the chapter read it against the dossier and the sources and flagged the items above as blocking. Repair only what is flagged, keep the rest as it is, and verify any claim a repair adds like every other (evidence copied from an excerpt). Reply with the whole revised chapter as ONLY the JSON object.",
+    "auditorPreface": [
+      "You are running as one model call on mChatAI's platform, with no tools: you cannot open files, fetch URLs or run commands, and you do not edit the chapter. The user message carries the voices, the dossier's facts for the chapter, excerpts of the sources it cites (sources/<id>.txt as fetched), the chapter (chapters/NN.json), and its sentences marked W (the writer's own: it anchors no claim) or with the ids of the claims each anchors, as storytelling.py writer marks them. The gate has already run and passed: every claim's evidence is verbatim in its source.",
+      "",
+      "Follow your instructions' steps 1 and 2 on what you are given; a re-fetch is not possible here. Where they say to repair, report instead. Reply with ONLY one JSON object, no prose and no code fence:",
+      "{\"blocking\": [{\"sentence\": \"<the sentence, copied exactly>\", \"problem\": \"<what is wrong, and why>\", \"fix\": \"<the repair>\"}], \"notes\": [\"<what the author should see that blocks nothing>\"]}",
+      "`blocking` is what you would have repaired. An empty `blocking` list means the chapter may ship.",
+      "",
+      "Your instructions follow."
+    ],
+    "audit": "Audit chapter {n}, “{title}”. Reply with ONLY the JSON object.",
+    "gatherer": [
+      "You gather the facts one chapter of a History Writer story stands on, from ONE source, as dossier events (history/schemas/dossier.schema.json `events`). They are judged as facts: a gatherer may miss a fact but never add one (design D8). You run as one model call with no tools. The user message carries the chapter's plan entry, the glossary terms it introduces, the facts the dossier already has for it, and the source's fetched text (sources/<id>.txt), whole or one part of it.",
+      "",
+      "For each fact in this text that the chapter's summary needs (a number, a date, a result, a documented behaviour, or what a term the chapter introduces is), give one event:",
+      "{\"what\": \"<the fact in one plain sentence of your own, saying no more than the quote>\", \"evidence\": \"<a verbatim contiguous quote of at least {minQuoteWords} words from the text, copied character for character>\", \"date\": \"<when the source says it, or when the fact holds: at least a year>\", \"lifeStage\": \"<the book's part, named as the dossier's facts name it>\"}",
+      "Never a fact the quote does not carry, never two facts on one quote, never a fact the dossier already has, and never {verbatimCopyWindowWords} or more of the source's words in a row in `what`.",
+      "",
+      "Reply with ONLY {\"events\": [...]}, no prose and no code fence. An empty list is a fine answer."
+    ]
+  },
+  "_reasoningEffort": "Opus 5.5 thinks at effort medium by default and its thinking counts against maxOutputTokens; at medium a chapter brief thought past compute-proxy's 32,000-token cap twice and returned no text (2026-11-14). The roles run at low effort; raise one here if a role's work gets shallow."
+}

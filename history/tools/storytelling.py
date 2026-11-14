@@ -122,6 +122,9 @@ def cast_entries(project):
     kind}. `keys` are the names a chapter may use for the entry: the name, a name in brackets
     ("Vergasillaunus (Vercassivellaunus)"), the surname of a person's full name, and `aliases`."""
     d = project.dossier or {}
+    # A person's surname stands for them ("Caesar"); a glossary term's last word does not ("Foundation Models" is
+    # not every "models"). A domain whose cast is a glossary turns the surname rule off (cast.surnames: false).
+    surnames = (thresholds(project).get("cast") or {}).get("surnames", True)
     out = []
     for kind, rows in (("person", d.get("people") or []), ("people", d.get("peoples") or [])):
         for r in rows:
@@ -130,7 +133,7 @@ def cast_entries(project):
                 continue
             keys = [re.sub(r"\s*\(.*?\)\s*", " ", name).strip()]
             keys += re.findall(r"\(([^)]+)\)", name)
-            if kind == "person":
+            if kind == "person" and surnames:
                 parts = keys[0].split()
                 if len(parts) > 1 and len(parts[-1]) > 3:
                     keys.append(parts[-1])

@@ -19,7 +19,9 @@
       "acceptsTemperature": false,
       "acceptsResponseFormat": false,
       "acceptsReasoningEffort": false,
-      "_notes": "2026-11-14, probed through compute-proxy: claude-opus-4.8, every claude-*-5 and 5.5 (opus, sonnet, haiku) and claude-fable-5.1 answer 400 '`temperature` is deprecated for this model'; claude-sonnet-4.6 still accepts it. No `provider`, so it also covers Claude reached through mChatAI Cloud or OpenRouter (whose alias maps to OpenAI). Prefixes catch sonnet/haiku/fable 5.x and opus 4.8; the family rule catches every future claude-opus major."
+      "_notes": "2026-11-14, probed through compute-proxy: claude-opus-4.8, every claude-*-5 and 5.5 (opus, sonnet, haiku) and claude-fable-5.1 answer 400 '`temperature` is deprecated for this model'; claude-sonnet-4.6 still accepts it. No `provider`, so it also covers Claude reached through mChatAI Cloud or OpenRouter (whose alias maps to OpenAI). Prefixes catch sonnet/haiku/fable 5.x and opus 4.8; the family rule catches every future claude-opus major.",
+      "effortParameter": "output_config.effort",
+      "_effortNotes": "Claude 4.7+ and 5.x control thinking depth only with output_config.effort (low|medium|high|xhigh|max; Opus 5.5 and Haiku 5.5 default medium). Thinking cannot be disabled on Opus 5.5, and its tokens count against max_tokens: a long task at the default effort can think past a 32k cap and return no text (2026-11-14). Clients that know this field send output_config: {effort}; others ignore it."
     },
     {
       "id": "openai-o1",
