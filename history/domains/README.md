@@ -14,3 +14,4 @@ not exist is an error.
 | Domain | What it tells |
 |---|---|
 | `pivotal-history` | Pivotal episodes decided by a tactical, scientific, technical or logistic edge |
+| `explainer` | Science and technology explainers: one idea taught from zero to a practitioner's depth, every number sourced, measured or computed |

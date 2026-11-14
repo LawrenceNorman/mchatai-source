@@ -20,8 +20,10 @@ Each source becomes sources/<id>.txt plus a record in sources/index.json. Do NOT
 own web-fetch tool for sources: it returns a summary written by a model, and a verbatim quote
 cannot be checked against a summary.
 
-kind:    primary | government | archive | encyclopedia | news | book | community | clue-only
-license: pd | cc-by | facts-only | clue-only      (when in doubt: facts-only)
+kind:    primary | government | archive | encyclopedia | news | book | community | paper | documentation |
+         measurement | clue-only
+license: pd | cc-by | own | facts-only | clue-only      (when in doubt: facts-only; own: the project's own
+         measurement or printout)
 """
 import argparse
 import datetime
@@ -44,8 +46,11 @@ from html.parser import HTMLParser
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from _hw import Project, clean_source_text, load_json, save_json, words  # noqa: E402
 
-KINDS = ["primary", "government", "archive", "encyclopedia", "news", "book", "community", "clue-only"]
-LICENSES = ["pd", "cc-by", "facts-only", "clue-only"]
+# paper, documentation and measurement serve an explainer (domains/explainer): a research paper, a vendor's
+# documentation, and a measurement or printout the project made itself, whose licence is `own`.
+KINDS = ["primary", "government", "archive", "encyclopedia", "news", "book", "community", "paper", "documentation",
+         "measurement", "clue-only"]
+LICENSES = ["pd", "cc-by", "own", "facts-only", "clue-only"]
 UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0) AppleWebKit/605.1.15 "
       "(KHTML, like Gecko) Version/17.0 Safari/605.1.15")
 MIN_WORDS = 50
@@ -407,6 +412,13 @@ def cmd_fetch(project, args, hops=0):
         if text is None:
             raise Refused(f"{args.url} returned JSON with no text field — it is an index or an API reply, "
                           "not a document. Read it to find the document, then fetch the document itself")
+        page = docc_page_url(args.url)
+        if page:
+            # Cite the page a reader opens, not the data it is drawn from.
+            extra["dataURL"] = args.url
+            args.url = page
+            if not args.title:
+                extra["title"] = text.split("\n", 1)[0]
         return record(project, args, text, raw, ".json", extra)
     title, text = html_to_text(body)
     target = meta_refresh_target(body, final)
@@ -430,6 +442,9 @@ def json_text(body):
         data = json.loads(body)
     except ValueError:
         return None
+    if isinstance(data, dict) and "primaryContentSections" in data or isinstance(data, dict) and (
+            "abstract" in data and "references" in data and "identifier" in data):
+        return docc_text(data)
     best = None
 
     def walk(o):
@@ -447,6 +462,86 @@ def json_text(body):
     if best is None:
         best = fields_text(data)
     return best
+
+
+DOCC_DATA = re.compile(r"^(https?://developer\.apple\.com)/tutorials/data/(documentation/[^?#]+?)\.json$")
+
+
+def docc_page_url(url):
+    """developer.apple.com/documentation/… for the render JSON it is drawn from, else None."""
+    m = DOCC_DATA.match(url or "")
+    return f"{m.group(1)}/{m.group(2)}" if m else None
+
+
+def docc_text(data):
+    """Apple's documentation as text, from a DocC page's render JSON
+    (developer.apple.com/tutorials/data/documentation/….json). The page at /documentation/… is drawn
+    by script from this JSON, so a plain fetch of it reads nothing; and the JSON splits every sentence
+    into inline fragments, so saved raw it would never hold an eight-word quote (an explainer's
+    sources, 2026-11-10). Title, abstract, declaration, discussion, asides, lists, tables, then each
+    topic's children with their one-line abstracts."""
+    refs = data.get("references") or {}
+
+    def inline(items):
+        out = []
+        for it in items or []:
+            t = it.get("type")
+            if t == "text":
+                out.append(it.get("text", ""))
+            elif t == "codeVoice":
+                out.append(it.get("code", ""))
+            elif t == "reference":
+                r = refs.get(it.get("identifier"), {})
+                out.append(it.get("overridingTitle") or r.get("title") or "")
+            elif t == "link":
+                out.append(it.get("title") or it.get("destination") or "")
+            elif it.get("inlineContent"):
+                out.append(inline(it.get("inlineContent")))
+        return "".join(out)
+
+    def blocks(items):
+        out = []
+        for b in items or []:
+            k = b.get("type")
+            if k == "paragraph":
+                out.append(inline(b.get("inlineContent")))
+            elif k == "heading":
+                out.append(b.get("text", ""))
+            elif k in ("unorderedList", "orderedList"):
+                out += ["- " + " ".join(blocks(li.get("content"))) for li in b.get("items") or []]
+            elif k == "aside":
+                body = " ".join(blocks(b.get("content")))
+                out.append(f"{b.get('name') or (b.get('style') or '').title()}: {body}".lstrip(": "))
+            elif k == "codeListing":
+                out.append("\n".join(b.get("code") or []))
+            elif k == "table":
+                for row in b.get("rows") or []:
+                    out.append(" | ".join(" ".join(blocks(cell)) for cell in row))
+            elif k == "termList":
+                for it in b.get("items") or []:
+                    term = inline((it.get("term") or {}).get("inlineContent"))
+                    out.append(f"{term}: {' '.join(blocks((it.get('definition') or {}).get('content')))}")
+            elif b.get("content"):
+                out += blocks(b.get("content"))
+        return [x for x in out if x.strip()]
+
+    parts = [(data.get("metadata") or {}).get("title", "")]
+    parts.append(inline(data.get("abstract")))
+    for sec in data.get("primaryContentSections") or []:
+        kind = sec.get("kind")
+        if kind == "declarations":
+            parts += ["".join(t.get("text", "") for t in d.get("tokens") or []) for d in sec.get("declarations") or []]
+        elif kind == "parameters":
+            parts += [f"{p.get('name')}: {' '.join(blocks(p.get('content')))}" for p in sec.get("parameters") or []]
+        elif kind == "content":
+            parts += blocks(sec.get("content"))
+    for topic in data.get("topicSections") or []:
+        parts.append(topic.get("title", ""))
+        for ident in topic.get("identifiers") or []:
+            r = refs.get(ident, {})
+            summary = inline(r.get("abstract"))
+            parts.append(f"{r.get('title', '')}: {summary}" if summary else r.get("title", ""))
+    return "\n\n".join(p.strip() for p in parts if p and p.strip())
 
 
 def fields_text(data):

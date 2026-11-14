@@ -474,6 +474,9 @@ GROUPS = [("Newspapers", lambda r: newspaper_page(r) is not None),
           ("Articles and later reporting", lambda r: (r.get("kind") or "") == "news"),
           ("Books", lambda r: (r.get("kind") or "") == "book"),
           ("Encyclopedias and reference works", lambda r: (r.get("kind") or "") == "encyclopedia"),
+          ("Papers", lambda r: (r.get("kind") or "") == "paper"),
+          ("Documentation", lambda r: (r.get("kind") or "") == "documentation"),
+          ("Our own measurements", lambda r: (r.get("kind") or "") == "measurement"),
           ("Other", lambda r: True)]
 
 

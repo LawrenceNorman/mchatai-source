@@ -521,7 +521,16 @@ def validate_plan(project, write):
         out.append(finding("target_over_ceiling", "hard",
                            f"plan.targetWords {target!r} must be a positive number no larger than the dossier's ceiling of {story} words"))
         target = None
-    if write and allotted:
+    planned_total = 0
+    if t.get("chapterShare") == "planned":
+        body = [ch for ch in chapters if ch.get("role") != "afterword"]
+        if all(isinstance(ch.get("plannedWords"), (int, float)) and ch["plannedWords"] > 0 for ch in body):
+            planned_total = sum(ch["plannedWords"] for ch in body)
+        else:
+            out.append(finding("planned_words_missing", "hard",
+                               "this domain shares the book's ceiling by each chapter's planned length: give every chapter "
+                               "a positive `plannedWords`"))
+    if write and (allotted or planned_total):
         for ch in chapters:
             if ch.get("role") == "afterword":
                 # The afterword takes no share of the story's events or its ceiling: it has its own
@@ -530,7 +539,10 @@ def validate_plan(project, write):
                 ch.pop("floorWords", None)
                 ch.pop("targetWords", None)
                 continue
-            share = len(ch.get("events", [])) / allotted
+            # An explainer (thresholds chapterShare "planned"): its explanation is the writer's, so a
+            # chapter's length is not earned by its count of facts. The book's ceiling is still the
+            # dossier's; it is shared by the lengths the planner gave each chapter (`plannedWords`).
+            share = ch["plannedWords"] / planned_total if planned_total else len(ch.get("events", [])) / allotted
             ch["ceilingWords"] = round(story * share)
             ch["floorWords"] = round(t["starvedFraction"] * (target or story) * share)
             if target:

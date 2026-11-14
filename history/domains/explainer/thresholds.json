@@ -1,0 +1,224 @@
+{
+  "version": 1,
+  "updated": "2026-11-10",
+  "_source_of_truth": "mchatai-source/history/domains/explainer/thresholds.json",
+  "_comment": "Overlay on history/thresholds.json for a project whose project.json says \"domain\": \"explainer\": a science or technology explainer written by the History Writer's engine (domains/explainer/voice.md). Each key here REPLACES the base key of the same name; every other base key holds (minQuoteWords, verbatimCopyWindowWords, sourceRatio, the editor). Read by tools/_hw.thresholds(project). First calibrations: the pilot chapter measures them.",
+  "eventEvidenceRequired": true,
+  "_eventEvidenceRequired": "Every dossier event (for an explainer, a FACT: a number, a date, a result, a documented behaviour) carries a verbatim quote that richness.py checks, so a gatherer on a cheaper model can miss a fact but cannot add one (design D8).",
+  "biographyMinLifeStages": 99,
+  "_biographyMinLifeStages": "An explainer is never a biography. Its facts carry a `lifeStage` naming the book's part they serve (seeing, talking, the machine), so the mode comes out episode or ensemble and never biography.",
+  "episodeWindowYears": 100,
+  "episodeWindowShare": 0.0,
+  "encyclopediaPublishers": [
+    "Wikipedia",
+    "Encyclopaedia Britannica"
+  ],
+  "_encyclopediaPublishers": "Summaries of other work. A fact a reader may check comes from the paper, the documentation or the measurement itself.",
+  "licenceCleanClasses": [
+    "pd",
+    "cc-by",
+    "own"
+  ],
+  "_licenceCleanClasses": "`own` is a measurement or a printout the project made itself (a report from the author's own device, a script's output). It may be quoted and reused like a free source.",
+  "tiers": [
+    {
+      "id": "A",
+      "label": "book-length",
+      "words": [
+        30000,
+        70000
+      ],
+      "chapters": [
+        12,
+        24
+      ],
+      "requires": {
+        "independentSources": 15,
+        "beyondEncyclopedias": 10,
+        "datedEvents": 60,
+        "lifeStages": 3,
+        "ownWords": 0,
+        "wordsAboutSubject": 50000
+      }
+    },
+    {
+      "id": "B",
+      "label": "short book",
+      "words": [
+        8000,
+        30000
+      ],
+      "chapters": [
+        4,
+        12
+      ],
+      "requires": {
+        "independentSources": 6,
+        "beyondEncyclopedias": 3,
+        "datedEvents": 20,
+        "lifeStages": 2,
+        "ownWords": 0,
+        "wordsAboutSubject": 13400
+      }
+    },
+    {
+      "id": "C",
+      "label": "primer",
+      "words": [
+        1500,
+        8000
+      ],
+      "chapters": [
+        1,
+        4
+      ],
+      "requires": {
+        "independentSources": 2,
+        "beyondEncyclopedias": 1,
+        "datedEvents": 6,
+        "lifeStages": 1,
+        "ownWords": 0,
+        "wordsAboutSubject": 2500
+      }
+    }
+  ],
+  "_tiers": "An explainer earns its length from its sources the way a history does: wordsAboutSubject is each tier's floor over sourceRatio. ownWords is 0 because there is no participant to quote; datedEvents counts the dossier's facts (a fact needs no calendar date when its source has one).",
+  "subjectIsPerson": false,
+  "_subjectIsPerson": "The subject is an idea, not a person, so the first-name rule does not apply. A person named in the book (a paper's author) keeps the base name rule through the audit.",
+  "opening": {
+    "kind": "ground"
+  },
+  "_opening": "An explainer opens on the THING it explains, the way an episode opens on its ground: a real picture of the object or the example the book follows (a botanical plate of the two plants a classifier tells apart; a photograph of the machine). It reuses the episode's slot and checks: images.py opening, and gate.py story refuses a caption that does not name the thing by one of the dossier's `place` names, which for an explainer are the names of the thing the book opens on.",
+  "pov": {
+    "modes": [
+      "L0"
+    ]
+  },
+  "_pov": "No immersive passages: an explainer has no scene to place the reader in. The reader is addressed directly in the writer's own sentences instead (voice.md §2).",
+  "writer": {
+    "maxShare": 0.8,
+    "afterwordMaxShare": 0.9,
+    "minSentences": 1,
+    "exemptRules": [
+      "flourish",
+      "stage_direction",
+      "source_framing",
+      "present_tense_now",
+      "pronoun_opens_paragraph"
+    ],
+    "specificIgnoreValues": [
+      1,
+      2
+    ],
+    "feelingVerbs": [
+      "felt",
+      "feared",
+      "dreaded",
+      "hoped",
+      "longed",
+      "worried",
+      "despaired",
+      "panicked",
+      "prayed"
+    ],
+    "feelingStates": [
+      "afraid",
+      "frightened",
+      "terrified",
+      "proud",
+      "angry",
+      "furious",
+      "ashamed",
+      "elated",
+      "horrified",
+      "anxious",
+      "despairing"
+    ]
+  },
+  "_writer": "voice.md §2. An explainer is mostly the writer's own sentences: the explanation, the analogy, the walk through a worked example. They anchor no claim and so they add no fact: every number, name and month in one must be stated by an anchored sentence of the same chapter or be a glossary entry (writer_specific). maxShare is therefore high; the anchored sentences are the facts the explanation stands on. exemptRules: inside the writer's own sentences an explainer speaks in the present tense and gives directions ('draw a box'); a fact sentence keeps every base rule. specificIgnoreValues: one and two, which an explanation uses as words ('one pass', 'two engines'). The feeling lists keep the rule against giving a real person a feeling no source records, without catching 'the model wanted' style shorthand, which the audit handles.",
+  "intro": {
+    "hidesOutcome": false,
+    "eraCap": false,
+    "requiresQuestion": true
+  },
+  "_intro": "The introduction states the book's question (a writer's sentence ending in '?') and the promise of the answer. There is no ending to keep: an explainer gives the destination away on page one.",
+  "eraShareScope": "book",
+  "eraSentencesMax": null,
+  "cast": {
+    "required": true,
+    "nameMinLength": 2,
+    "beforeIntroSeverity": "hard"
+  },
+  "_cast": "voice.md §4, the glossary as the cast. The dossier's terms (people[] for the people a chapter names, peoples[] unused) are introduced in the chapter the plan assigns, in the paragraph of the first mention, with a claim of kind `cast` defining them; cite.py book renders them as the Glossary page. A term used before the chapter that defines it is hard (beforeIntroSeverity): a reader meets every word defined.",
+  "pictures": {
+    "minPerChapter": 1,
+    "exemptRoles": [
+      "afterword"
+    ]
+  },
+  "_pictures": "Every chapter carries at least one picture: its 'Draw it' diagram, a real photograph or plate, or a printout.",
+  "readability": {
+    "maxAvgSentenceWords": 20,
+    "gradeRange": [
+      8,
+      12
+    ]
+  },
+  "_readability": "Plain words read aloud. Technical words are long, so the grade runs high where the sentences are short; 20 words a sentence on average keeps it speakable.",
+  "afterword": {
+    "words": [
+      300,
+      2500
+    ]
+  },
+  "plan": {
+    "question": true,
+    "questionMaxWords": 16,
+    "turns": true,
+    "observations": [
+      0,
+      6
+    ]
+  },
+  "_plan": "The book's question in the author's voice, one short line; each chapter's turn (what the reader wants to know next). Observations are the book's big ideas, landed where they are taught (zero to six).",
+  "boxes": {
+    "required": [
+      "The picture",
+      "Say it out loud",
+      "Draw it",
+      "From my platform",
+      "Check yourself"
+    ],
+    "exemptRoles": [
+      "afterword",
+      "intro"
+    ],
+    "spokenBox": "Say it out loud",
+    "spokenWords": [
+      55,
+      95
+    ],
+    "questionsBox": "Check yourself",
+    "questions": 3
+  },
+  "_boxes": "voice.md §5, tools/explainer.py, the fixed boxes every chapter carries, each a paragraph that is exactly its title followed by its body. A project's plan.boxes overrides any key. spokenWords: about thirty seconds at about 150 words a minute, said aloud. questions: the 'Check yourself' box asks this many questions, each followed by its full answer. No title carries a number: the number gate would ask every chapter to source it.",
+  "audio": {
+    "provider": "Ollama",
+    "voice": "Easton",
+    "learnerVoice": "Harper",
+    "channel": null,
+    "paragraphPause": 0.8,
+    "headingPause": 1.4,
+    "maxEpisodeMinutes": 38,
+    "say": {}
+  },
+  "_audio": "Free local voices only (the author's standing rule): Easton reads the audiobook and is the podcast's Teacher; Harper is the Learner. channel is null: nothing is published without the author. say: how the voice reads a written form (acronyms spaced, numbers in words), applied to the narration and never to the book.",
+  "glossary": {
+    "allow": [
+      "OK"
+    ]
+  },
+  "_glossary": "voice.md §4, tools/explainer.py: every technical name or acronym in the prose (a word with two or more capitals) is a glossary entry or an alias of one (acronym_undefined). allow: names no reader needs defined, for every explainer; a project adds its own in plan.glossaryAllow (iPhone-style product names, the author's own app).",
+  "chapterShare": "planned",
+  "_chapterShare": "tools/richness.py plan: the dossier earns the book's ceiling (sourceRatio over the words about the subject) as in any story, but an explainer's chapter is mostly explanation, so the ceiling is shared by each chapter's `plannedWords` rather than by its count of facts (which gave the first explainer's opening chapter, two facts and a whole idea, 532 words)."
+}

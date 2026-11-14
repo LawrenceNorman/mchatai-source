@@ -23,6 +23,7 @@ import _hw  # noqa: E402
 import checks  # noqa: E402
 import cite  # noqa: E402
 import gate  # noqa: E402
+import quiz  # noqa: E402
 import quotes  # noqa: E402
 import richness  # noqa: E402
 import voice_lint  # noqa: E402
@@ -1638,6 +1639,53 @@ class Portraits(FixtureCase):
                 images.parse_crop(bad)
 
 
+class QuizCheck(unittest.TestCase):
+    """quiz.py: the request carries the chapter's claims; the offline check holds a saved set to the chapter."""
+
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp(prefix="hw-quiz-")
+        for d in ("chapters", "sources", "quiz"):
+            os.makedirs(os.path.join(self.tmp, d))
+        evidence = "the cache keeps the keys and values computed for earlier tokens"
+        self.text = "The KV cache keeps the keys and values of every earlier token, so the model does not recompute them for each new token."
+        _hw.save_json(os.path.join(self.tmp, "project.json"), {"slug": "demo-book", "subject": "Demo Book"})
+        _hw.save_json(os.path.join(self.tmp, "chapters", "01.json"), {"text": self.text, "claims": [
+            {"id": "c1", "text": self.text, "source": "s1", "evidence": evidence, "kind": "fact"}]})
+        _hw.save_json(os.path.join(self.tmp, "sources", "index.json"), [{"id": "s1", "file": "sources/s1.txt"}])
+        with open(os.path.join(self.tmp, "sources", "s1.txt"), "w") as fh:
+            fh.write(f"In practice {evidence}, which saves work.")
+        self.q = {"id": "q1", "type": "mc", "question": "What does the KV cache save?",
+                  "options": ["Recomputing earlier keys and values", "Reading weights", "Tokenizing", "Sampling"],
+                  "correctAnswer": "Recomputing earlier keys and values",
+                  "source": {"claimId": "c1", "quote": "keeps the keys and values of every earlier token"},
+                  "validation": {"checks": ["structure", "grounded", "blind_open_book", "claim"]}}
+
+    def tearDown(self):
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def save(self, *questions):
+        _hw.save_json(os.path.join(self.tmp, "quiz", "01.json"), {"schema": "quiz-set.v2", "id": "qs-1", "title": "t", "questions": list(questions)})
+        return [f["rule"] for f in quiz.quiz_findings(_hw.Project(self.tmp), 1) if f["severity"] == "hard"]
+
+    def test_request_carries_claims(self):
+        body = quiz.request_payload(_hw.Project(self.tmp), 1, count=5, types=("mc",), require_claim=True)
+        self.assertEqual(body["source"]["claims"][0]["id"], "c1")
+        self.assertTrue(body["source"]["requireClaim"])
+        self.assertEqual(body["work"], "demo-book")
+
+    def test_clean_set_passes_and_each_defect_is_named(self):
+        self.assertEqual(self.save(self.q), [])
+        moved = json.loads(json.dumps(self.q)); moved["source"]["quote"] = "a sentence the chapter no longer has in it"
+        self.assertEqual(self.save(moved), ["quiz_quote_unverified"])
+        stray = json.loads(json.dumps(self.q)); stray["source"]["claimId"] = "c9"
+        self.assertEqual(self.save(stray), ["quiz_claim_unknown"])
+        unchecked = json.loads(json.dumps(self.q)); unchecked["validation"]["checks"] = ["structure"]
+        self.assertEqual(self.save(unchecked), ["quiz_unchecked"])
+        with open(os.path.join(self.tmp, "sources", "s1.txt"), "w") as fh:
+            fh.write("The source was replaced by something else entirely.")
+        self.assertEqual(self.save(self.q), ["quiz_claim_source_changed"])
+
+
 class BookMap(unittest.TestCase):
     """book_map.py: the places a book's chapters name, pinned where the record allows (2026-10-08,
     "a places POI map that relates to each person")."""
@@ -2814,6 +2862,153 @@ class DomainOverlay(DomainCase):
         self.set_domain("no-such-domain")
         with self.assertRaises(SystemExit):
             _hw.thresholds(self.project)
+
+
+EXPLAINER = os.path.join(_hw.DOMAINS, "explainer")
+
+
+class ExplainerDomain(DomainCase):
+    """domains/explainer: the engine's fact sentences unchanged, the explanation the writer's own."""
+
+    def setUp(self):
+        super().setUp()
+        self.set_domain("explainer")
+        p = self.project.path("project.json")
+        meta = json.loads(read(p))
+        meta["voice"] = 2
+        _hw.save_json(p, meta)
+
+    def found(self, text, hard_only=True):
+        return self.rules(voice_lint.phrase_findings(text, voice_lint.compiled_rules(project=self.project)), hard_only)
+
+    def test_it_reads_its_overlay_and_keeps_every_base_rule(self):
+        t = _hw.thresholds(self.project)
+        self.assertEqual(t["pov"]["modes"], ["L0"])
+        self.assertEqual(t["writer"]["maxShare"], 0.8)
+        self.assertEqual(t["minQuoteWords"], _hw.thresholds()["minQuoteWords"])
+        base = {r["id"] for r in _hw.lint_rules()}
+        mine = {r["id"] for r in _hw.lint_rules(self.project)}
+        self.assertTrue(base < mine)
+        self.assertNotIn("reader_address", mine)            # an explainer talks to its reader
+
+    def test_hype_is_hard_and_shorthand_for_a_mind_is_a_note(self):
+        self.assertIn("hype_label", self.found("Attention was a game-changer for translation."))
+        self.assertIn("hype_label", self.found("The Neural Engine is magic."))
+        self.assertIn("dismissive_easy", self.found("Obviously the kernel is reused.", hard_only=False))
+        self.assertIn("model_mind", self.found("The model knows what a leaf is.", hard_only=False))
+        self.assertEqual(self.found("The model computes a score for each class."), set())
+
+    def test_a_writers_sentence_may_teach_but_adds_no_number(self):
+        anchor = "Mrs. Fixture came to Harbor Town"
+        self.chapter("Mrs. Fixture came to Harbor Town from Ohio in 1890.\n\n"
+                     "Think of a stencil sliding over the photo. You draw a box for each step.",
+                     anchors=[anchor])
+        self.assertEqual({f["rule"] for f in self.voice() if f["severity"] == "hard"}, set())
+        self.chapter("Mrs. Fixture came to Harbor Town from Ohio in 1890.\n\n"
+                     "Think of a stencil sliding over the photo, about 33 times a second.",
+                     anchors=[anchor])
+        self.assertIn("writer_specific", {f["rule"] for f in self.voice()})
+
+    def test_its_own_measurements_are_a_source_kind_and_a_clean_licence(self):
+        import fetch
+        self.assertIn("measurement", fetch.KINDS)
+        self.assertIn("paper", fetch.KINDS)
+        self.assertIn("own", fetch.LICENSES)
+        self.assertIn("own", _hw.thresholds(self.project)["licenceCleanClasses"])
+        self.assertIn("Our own measurements", [g[0] for g in cite.GROUPS])
+
+    def test_apples_documentation_is_read_from_its_render_json_as_whole_sentences(self):
+        import fetch
+        data = {"metadata": {"title": "alwaysDiscardsLateVideoFrames"}, "identifier": {"url": "doc://x"},
+                "abstract": [{"type": "text", "text": "Indicates whether to drop video frames if they arrive late."}],
+                "primaryContentSections": [
+                    {"kind": "declarations", "declarations": [{"tokens": [{"text": "var "}, {"text": "alwaysDiscardsLateVideoFrames"},
+                                                                          {"text": ": Bool"}]}]},
+                    {"kind": "content", "content": [
+                        {"type": "heading", "text": "Discussion"},
+                        {"type": "paragraph", "inlineContent": [
+                            {"type": "text", "text": "When the value of this property is "}, {"type": "codeVoice", "code": "true"},
+                            {"type": "text", "text": ", the "}, {"type": "reference", "identifier": "doc://out"},
+                            {"type": "text", "text": " immediately discards frames that arrive while the dispatch queue is busy."}]},
+                        {"type": "aside", "style": "note", "content": [{"type": "paragraph", "inlineContent": [
+                            {"type": "text", "text": "The default value is true."}]}]}]}],
+                "references": {"doc://out": {"title": "AVCaptureVideoDataOutput"}}}
+        text = fetch.json_text(json.dumps(data))
+        self.assertIn("When the value of this property is true, the AVCaptureVideoDataOutput immediately discards", text)
+        self.assertIn("var alwaysDiscardsLateVideoFrames: Bool", text)
+        self.assertIn("Note: The default value is true.", text)
+        self.assertEqual(text.split("\n", 1)[0], "alwaysDiscardsLateVideoFrames")
+        self.assertEqual(fetch.docc_page_url("https://developer.apple.com/tutorials/data/documentation/coreai/model.json"),
+                         "https://developer.apple.com/documentation/coreai/model")
+        self.assertIsNone(fetch.docc_page_url("https://example.org/data.json"))
+
+    def glossary(self, terms, assign, allow=()):
+        d = self.project.dossier
+        d["people"] = terms
+        _hw.save_json(self.project.path("dossier.json"), d)
+        plan = self.project.plan
+        for c in plan.get("chapters", []):
+            c["introduces"] = [name for name, n in assign.items() if int(c.get("n")) == n]
+        plan["glossaryAllow"] = list(allow)
+        _hw.save_json(self.project.path("plan.json"), plan)
+        self.project = _hw.Project(self.project.root)
+
+    def test_every_technical_name_is_a_glossary_entry(self):
+        import explainer
+        self.glossary([{"name": "graphics processing unit", "aliases": ["GPU"], "who": "a chip of many small cores"}],
+                      {"graphics processing unit": 3}, allow=["iPhone"])
+        text = "The GPU and the other GPUs on an iPhone run the ViT and the NPU's kernels."
+        found = [f["message"] for f in explainer.term_findings(self.project, 3, {"text": text})]
+        self.assertEqual(len(found), 2)
+        self.assertTrue(any("'ViT'" in m for m in found) and any("'NPU'" in m for m in found))
+
+    def test_a_term_used_before_the_chapter_that_defines_it_is_hard(self):
+        import storytelling
+        self.glossary([{"name": "kernel", "who": "a small grid of weights"}], {"kernel": 2})
+        found = storytelling.cast_findings(self.project, 1, {"text": "A kernel slides over the photo."})
+        self.assertEqual([(f["rule"], f["severity"]) for f in found], [("cast_before_intro", "hard")])
+
+    def test_every_chapter_carries_its_boxes(self):
+        import explainer
+        spoken = " ".join(["word"] * 70)
+        good = ("Prose first.\n\nThe picture\n\nA stencil.\n\nSay it out loud\n\n" + spoken + "\n\nDraw it\n\nA box.\n\n"
+                "From my platform\n\nOn my iPad, a number.\n\nCheck yourself\n\nWhat is a kernel? A grid of weights.\n\n"
+                "Why is it cheap? It is reused.\n\nWhat slides? The kernel.")
+        self.assertEqual(explainer.box_findings(self.project, 3, {"text": good}), [])
+        short = good.replace(spoken, "Too short to say.")
+        self.assertEqual([f["rule"] for f in explainer.box_findings(self.project, 3, {"text": short})], ["box_spoken_length"])
+        rules = [f["rule"] for f in explainer.box_findings(self.project, 3, {"text": good.replace("Draw it\n\nA box.\n\n", "")
+                                                                                     .replace(" The kernel.", "")})]
+        self.assertEqual(rules, ["box_missing", "box_questions"])
+
+    def test_the_books_ceiling_is_shared_by_planned_length_not_by_facts(self):
+        plan = self.project.plan
+        for c, words_ in zip(plan["chapters"], (3000, 1000)):
+            c["plannedWords"] = words_
+        _hw.save_json(self.project.path("plan.json"), plan)
+        self.project = _hw.Project(self.project.root)
+        story = (self.project.dossier.get("computed") or {}).get("ceilingWords")
+        if not story:
+            self.skipTest("the fixture dossier has no computed ceiling")
+        richness.validate_plan(self.project, write=True)
+        got = [c["ceilingWords"] for c in _hw.Project(self.project.root).plan["chapters"]]
+        self.assertEqual(got, [round(story * 0.75), round(story * 0.25)])
+        del plan["chapters"][0]["plannedWords"]
+        _hw.save_json(self.project.path("plan.json"), plan)
+        rules = {f["rule"] for f in richness.validate_plan(_hw.Project(self.project.root), write=False)}
+        self.assertIn("planned_words_missing", rules)
+
+    def test_every_rule_the_domain_voice_names_is_enforced(self):
+        voice = read(os.path.join(EXPLAINER, "voice.md"))
+        named = set()
+        for bracket in re.findall(r"\[([a-z_, A-Za-z.0-9]+)\]", voice):
+            named |= set(re.findall(r"\b[a-z0-9]+(?:_[a-z0-9]+)+\b", bracket))
+        named.add("readability")
+        rule_ids = {r["id"] for r in _hw.lint_rules(self.project)}
+        tools = "".join(read(os.path.join(HERE, f))
+                        for f in os.listdir(HERE) if f.endswith(".py") and f != "test_tools.py")
+        missing = sorted(n for n in named if n not in rule_ids and f'"{n}"' not in tools)
+        self.assertEqual(missing, [])
 
 
 class OldDates(unittest.TestCase):

@@ -5,13 +5,15 @@
   gate.py intro   <project>       the introduction (chapters/00.json): the same, minus what needs a plan,
                                   plus its length (thresholds.introWords)
   gate.py story   <project>       every chapter, plus the story-level checks
+  gate.py quiz    <project> <n>   the chapter's quiz (quiz/NN.json) still quotes it and passed the blind check
 
 An episode (a domain whose thresholds ask: domains/pivotal-history/voice.md v2) also gets the
 writer's own sentences checked in every chapter (writer_*), its cast introduced at the first
 meeting (cast_*), a cold-open introduction that asks its question and keeps the ending
 (intro_question_missing, intro_spoils_outcome), a picture in every chapter (picture_floor) and its
 era context capped over the book. `storytelling.py writer <project> <n>` shows which sentences are
-the writer's.
+the writer's. An explainer (domains/explainer) also gets its glossary and fixed boxes checked
+(explainer.py: acronym_undefined, box_*).
 
 Exit 0 only when no HARD finding remains. Fix the CAUSE, not the wording: a sentence that
 narrates the record is deleted, never softened; a number no source gave is removed or sourced.
@@ -26,7 +28,9 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import checks  # noqa: E402
 import cite  # noqa: E402
+import explainer  # noqa: E402
 import images  # noqa: E402
+import quiz  # noqa: E402
 import quotes  # noqa: E402
 import richness  # noqa: E402
 import storytelling  # noqa: E402
@@ -44,7 +48,8 @@ def chapter_findings(project, n):
             + checks.growth_findings(project, n)
             + checks.correction_findings(project, n)
             + cite.anchor_findings(project, n)
-            + storytelling.cast_findings(project, n, project.chapter(n) or {}))
+            + storytelling.cast_findings(project, n, project.chapter(n) or {})
+            + explainer.chapter_findings(project, n, project.chapter(n) or {}))
 
 
 def intro_findings(project):
@@ -59,7 +64,8 @@ def intro_findings(project):
     # An episode's cold open (domain voice §10): it asks the book's question, introduces the cast it
     # meets, and keeps the ending. Each is off unless the domain asks for it.
     out += (storytelling.question_findings(project, ch, voice_lint.pov_findings(project, ch, ch.get("text", ""), thresholds(project))[0])
-            + storytelling.outcome_findings(project, ch) + storytelling.cast_findings(project, 0, ch))
+            + storytelling.outcome_findings(project, ch) + storytelling.cast_findings(project, 0, ch)
+            + explainer.chapter_findings(project, 0, ch))
     lo, hi = thresholds(project).get("introWords", [200, 600])
     n = words(ch.get("text", ""))
     if n > hi:
@@ -99,6 +105,8 @@ def main(argv):
         return report(f"gate ch{argv[3]}", chapter_findings(project, argv[3]))
     if len(argv) >= 3 and argv[1] == "intro":
         return report("gate intro", intro_findings(Project(argv[2])))
+    if len(argv) >= 4 and argv[1] == "quiz":
+        return report(f"gate quiz ch{argv[3]}", quiz.quiz_findings(Project(argv[2]), argv[3]))
     if len(argv) >= 3 and argv[1] == "story":
         return report("gate story", story_findings(Project(argv[2])))
     print(__doc__)

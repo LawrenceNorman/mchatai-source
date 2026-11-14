@@ -390,7 +390,8 @@ def cast_findings(project, n, ch):
                                    f"(the dossier's line: {e['who'][:80]!r}) (voice.md §11)", spans[next(
                                        i for i, x in enumerate(spans) if x[2] <= m.start() < x[3])][4][:200]))
         elif where and m and n < min(where):
-            out.append(finding("cast_before_intro", "soft",
+            # An explainer defines a term before any chapter uses it (domains/explainer/voice.md §4).
+            out.append(finding("cast_before_intro", (t.get("cast") or {}).get("beforeIntroSeverity", "soft"),
                                f"{e['name']} is named here, before chapter {min(where)} introduces them: introduce them at the "
                                "first meeting, or move the introduction (voice.md §11)"))
     return out

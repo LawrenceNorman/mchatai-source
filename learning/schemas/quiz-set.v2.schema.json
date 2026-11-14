@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mchatai.com/schemas/quiz-set.v2.json",
+  "title": "Quiz set v2 (Phase QL.1 / ED)",
+  "description": "A superset of the Quiznect applet's QuiznectQuestion (id, question, options, correctAnswer, explanation, url, tags, topic, difficulty), so the applet keeps reading it. Readers skip a question whose type they do not know; an unknown field never fails a set.",
+  "type": "object",
+  "required": ["schema", "id", "title", "questions"],
+  "properties": {
+    "schema": { "const": "quiz-set.v2" },
+    "id": { "type": "string" },
+    "title": { "type": "string" },
+    "work": { "type": ["string", "null"], "description": "The book or source this set tests (slug), when there is one." },
+    "chapter": { "type": ["string", "integer", "null"] },
+    "unlocksAfter": { "type": ["string", "integer", "null"], "description": "Spoiler gate: show only after this chapter." },
+    "grounding": { "enum": ["source", "model"], "description": "source = every question quotes the supplied text; model = written from general knowledge, kept only when two model families agree." },
+    "createdAt": { "type": "string" },
+    "contentHash": { "type": "string" },
+    "warnings": { "type": "array", "items": { "type": "string" } },
+    "questions": { "type": "array", "items": { "$ref": "#/$defs/question" } }
+  },
+  "$defs": {
+    "question": {
+      "type": "object",
+      "required": ["id", "type", "question"],
+      "properties": {
+        "id": { "type": "string" },
+        "type": { "enum": ["mc", "tf", "order", "short", "essay", "spoken"] },
+        "question": { "type": "string" },
+        "options": { "type": "array", "items": { "type": "string" } },
+        "correctAnswer": { "type": "string" },
+        "explanation": { "type": "string" },
+        "url": { "type": ["string", "null"] },
+        "tags": { "type": "array", "items": { "type": "string" } },
+        "topic": { "type": ["string", "null"] },
+        "difficulty": { "enum": ["easy", "medium", "hard"] },
+        "concept": { "type": "string" },
+        "level": { "enum": ["remember", "understand", "apply", "analyze"] },
+        "source": {
+          "type": "object",
+          "properties": {
+            "chapter": { "type": ["string", "integer", "null"] },
+            "claimId": { "type": ["string", "null"] },
+            "sourceId": { "type": ["string", "null"] },
+            "quote": { "type": "string" }
+          }
+        },
+        "rubric": { "type": "array", "items": { "type": "object", "required": ["point"], "properties": { "point": { "type": "string" }, "quote": { "type": "string" } } } },
+        "modelAnswer": { "type": "string" },
+        "validation": {
+          "type": "object",
+          "properties": {
+            "checks": { "type": "array", "items": { "type": "string" } },
+            "writer": { "type": "string" },
+            "checker": { "type": "string" },
+            "answerableWithoutSource": { "type": ["boolean", "null"] },
+            "date": { "type": "string" }
+          }
+        }
+      }
+    }
+  }
+}
