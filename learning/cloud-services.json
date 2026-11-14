@@ -1,12 +1,13 @@
 {
+  "_budgets": "maxOutputTokens includes a reasoning model's thinking: Gemini 4 and GPT-6 think before they answer, and an 8,000 budget came back empty on a 25-claim chapter (2026-11-14). Only tokens used are billed.",
   "_comment": "Phase ED: the mchatai.com education services (web-api /v1/learn/*). Roles name a model from llm-catalog/providers/<provider>.json, called through compute-proxy and billed to the signed-in user's compute tokens. Edit here to change a model, a limit or a prompt with no redeploy; web-api reloads this every 5 minutes. The checker must be a different provider family from the writer, so one model never grades its own questions (tools/check_services.py enforces it).",
   "_parked": "2026-11-14: the Anthropic roles (Opus 5.5 writer and essay grader, Sonnet 5.5 answer grader, Gemini 3.8 Flash checker) wait until compute-proxy's Anthropic key has credit (it answers \"credit balance is too low\"). Flip them back here; no redeploy.",
   "version": 1,
   "roles": {
-    "quizWriter":   { "provider": "google",    "model": "gemini-4-argon",    "temperature": 0.4, "maxOutputTokens": 8000, "prompt": "learning/prompts/quiz-writer.md" },
-    "quizChecker":  { "provider": "openai",    "model": "gpt-6-luna",        "temperature": 0,   "maxOutputTokens": 4000, "prompt": "learning/prompts/quiz-checker.md" },
-    "answerGrader": { "provider": "google",    "model": "gemini-3.8-flash",  "temperature": 0,   "maxOutputTokens": 1500, "prompt": "learning/prompts/grade-answer.md" },
-    "essayGrader":  { "provider": "google",    "model": "gemini-4-argon",    "temperature": 0,   "maxOutputTokens": 2500, "prompt": "learning/prompts/grade-answer.md" }
+    "quizWriter":   { "provider": "google",    "model": "gemini-4-argon",    "temperature": 0.4, "maxOutputTokens": 16000, "prompt": "learning/prompts/quiz-writer.md" },
+    "quizChecker":  { "provider": "openai",    "model": "gpt-6-luna",        "temperature": 0,   "maxOutputTokens": 12000, "prompt": "learning/prompts/quiz-checker.md" },
+    "answerGrader": { "provider": "google",    "model": "gemini-3.8-flash",  "temperature": 0,   "maxOutputTokens": 6000, "prompt": "learning/prompts/grade-answer.md" },
+    "essayGrader":  { "provider": "google",    "model": "gemini-4-argon",    "temperature": 0,   "maxOutputTokens": 8000, "prompt": "learning/prompts/grade-answer.md" }
   },
   "limits": {
     "maxSourceChars": 60000,
