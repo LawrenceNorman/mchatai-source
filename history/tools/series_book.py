@@ -61,6 +61,11 @@ book, kept out of search engines without --publish. A book built with --archive-
 "Archive ↗" in its top bar and sends its old #/archive/... addresses there, so links already
 shared keep working. An issue's id is its place in the archive's order, which only grows.
 
+A quiz under each chapter (Phase QL.4, opt-in): with project.json "quizOnPage": true, or the series'
+book "quizOnPage": true, a chapter whose quiz/NN.json is a quiz set v2 (quiz.py) shows it under its
+text, headed "Check yourself", as the quiz-block web component (frameworks/web-components/ui/learning/
+QuizBlock.js). Without the flag or the files the page is unchanged, byte for byte.
+
 Writes <out-dir>/index.html, <out-dir>/resources/ (pictures, maps) and
 <out-dir>/resources/places.json (each landmark id, the stories and chapters that name it: what
 the landmark guide reads to link back).
@@ -646,7 +651,77 @@ def hosted_caps(out):
     return files, total, over
 
 
-def build_story(project, shim, use_files, out, place, problems, pool, lens=None):
+# ── a quiz under each chapter ────────────────────────────────────────────────
+# Phase QL.4 (mchatai_macOS/docs/QUIZNECT_LEARNING_LAYER_PLAN.md §5 item 1): a chapter with a quiz set v2
+# at quiz/NN.json (quiz.py) shows it under its text, headed "Check yourself", as the quiz-block web
+# component (frameworks/web-components/ui/learning/QuizBlock.js, inlined into the page). Opt-in: the
+# story's project.json "quizOnPage": true, or the series' book block "quizOnPage": true (a story's own
+# false then leaves it out). Without the flag, or without quiz files, the page is byte for byte as before.
+QUIZ_TYPES = {"mc", "tf", "short", "essay", "spoken"}
+QUIZ_PAGE_FIELDS = ("id", "type", "question", "options", "correctAnswer", "explanation", "concept", "level",
+                    "difficulty", "source", "rubric", "modelAnswer")     # what the block reads; not the gates' record
+QUIZ_BLOCK = os.path.join("ui", "learning", "QuizBlock.js")
+
+
+def quiz_on_page(meta, book):
+    own = (meta or {}).get("quizOnPage")
+    return own if isinstance(own, bool) else (book or {}).get("quizOnPage") is True
+
+
+def quiz_block_source():
+    """The component's file: beside history/ in mchatai-source (a Workbench's history link resolved to
+    it), else the Workbench's own web-components link."""
+    source = os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
+    for base in (os.path.join(source, "frameworks", "web-components"),
+                 os.path.join(os.path.dirname(HISTORY), "frameworks", "web-components"),
+                 os.path.join(os.path.dirname(HISTORY), "web-components")):
+        if os.path.isfile(os.path.join(base, QUIZ_BLOCK)):
+            return os.path.join(base, QUIZ_BLOCK)
+    return None
+
+
+def chapter_numbers(project, rows):
+    """Each page chapter's number in the project (chapters/NN.json, quiz/NN.json): the one its title has
+    in book/manifest.json, else its place when the page has as many chapters as the manifest (a chapter
+    the author renamed in StoryMaker). A Who's who, or a chapter the author added, has none."""
+    man = load_json(project.path("book", "manifest.json"), {}) or {}
+    numbered = [c for c in man.get("chapters", []) if isinstance(c.get("n"), int) and c["n"] > 0]
+    by_title = {key(c.get("title") or ""): c["n"] for c in numbered}
+    got = [by_title.get(key(r["title"])) for r in rows]
+    if len(rows) == len(numbered):
+        got = [n if n is not None or numbered[i]["n"] in got else numbered[i]["n"] for i, n in enumerate(got)]
+    return got
+
+
+def page_quiz(project, n, slug, problems):
+    """quiz/NN.json as the page carries it: the set (or the service's whole reply, its `set`), with only
+    the questions a reader can answer here and only the fields the block reads. None when there is none."""
+    rel = f"quiz/{int(n):02d}.json"
+    path = project.path("quiz", f"{int(n):02d}.json")
+    if not os.path.isfile(path):
+        return None
+    try:
+        raw = load_json(path)
+    except (OSError, ValueError) as e:
+        problems.append(f"{slug}: {rel} cannot be read ({type(e).__name__})")
+        return None
+    qs = raw.get("set") if isinstance(raw, dict) and isinstance(raw.get("set"), dict) else raw
+    if not isinstance(qs, dict) or qs.get("schema") != "quiz-set.v2" or not isinstance(qs.get("questions"), list):
+        problems.append(f"{slug}: {rel} is not a quiz-set.v2 set")
+        return None
+    questions = [{k: q[k] for k in QUIZ_PAGE_FIELDS if k in q} for q in qs["questions"]
+                 if isinstance(q, dict) and q.get("type") in QUIZ_TYPES and q.get("question")]
+    if not questions:
+        return None
+    # The learner record keys each answer by set id (web-api: letters, digits and hyphens, at most 80).
+    sid = str(qs.get("id") or "")
+    if not re.fullmatch(r"[A-Za-z0-9-]{1,80}", sid):
+        sid = re.sub(r"[^A-Za-z0-9-]+", "-", f"{slug}-ch{int(n):02d}").strip("-")[:80]
+    return {"schema": "quiz-set.v2", "id": sid, "title": qs.get("title") or "", "work": qs.get("work") or slug,
+            "chapter": qs.get("chapter", int(n)), "questions": questions}
+
+
+def build_story(project, shim, use_files, out, place, problems, pool, lens=None, book=None):
     meta = load_json(project.path("project.json"), {}) or {}
     dossier = project.dossier or {}
     life = dossier.get("lifespan") or {}
@@ -699,6 +774,11 @@ def build_story(project, shim, use_files, out, place, problems, pool, lens=None)
             places.setdefault(lid, []).append(n)
         # Every place the chapter's words name, for the map (the author's text, as the page shows it).
         map_places += [(n, x) for x in book_map.chapter_places(plain(text), place, lens, born, died)]
+    if quiz_on_page(meta, book):
+        for row, n in zip(chapters, chapter_numbers(project, chapters)):
+            quiz = page_quiz(project, n, slug, problems) if n else None
+            if quiz:
+                row["quiz"] = quiz
     sources = next((parse_sources(p["text"]) for p in parts if p["kind"] == "sources"), [])
     subject = meta.get("subject") or meta.get("name") or dossier.get("subject") or slug
     # The author's pick (project.json "portrait": an image id, {"image": id, "crop": [left, top,
@@ -1054,7 +1134,7 @@ def cmd_build(stories_dir, series_id, out, use_files=False, publish=False, revie
     from campaign_book import short_title
     seasons, campaigns = campaigns_of(series_id), {}
     for project in projects:
-        story = build_story(project, shim, use_files, out, place, problems, pool, entry.get("survey") or {})
+        story = build_story(project, shim, use_files, out, place, problems, pool, entry.get("survey") or {}, book)
         if story is None:
             continue
         story["media"] = story_media(project)
@@ -1133,6 +1213,18 @@ def cmd_build(stories_dir, series_id, out, use_files=False, publish=False, revie
         # text with a script-like pattern in them (2026-10-09, resources/places/SL-0094-guide.jpg).
         for sub in ("img", "places"):
             shutil.rmtree(os.path.join(out, "resources", sub), ignore_errors=True)
+    quiz_js, quizzed = None, sum(1 for s in stories for c in s["chapters"] if c.get("quiz"))
+    if quizzed:
+        src = quiz_block_source()
+        if src:
+            with open(src, encoding="utf-8") as fh:
+                quiz_js = fh.read()
+        else:
+            problems.append(f"quizOnPage: the quiz-block component is missing (frameworks/web-components/{QUIZ_BLOCK}), "
+                            "so no chapter shows its quiz")
+            for s in stories:
+                for c in s["chapters"]:
+                    c.pop("quiz", None)
     client = load_json(os.path.join(os.path.dirname(os.path.abspath(out)), "client.json"), {}) or {}
     channels = {k: v for k, v in (client.get("media") or {}).items() if isinstance(v, str) and safe_url(v)}
     data = {
@@ -1173,7 +1265,9 @@ def cmd_build(stories_dir, series_id, out, use_files=False, publish=False, revie
                    "places": index},
                   fh, ensure_ascii=False, indent=1)
     with open(os.path.join(out, "index.html"), "w", encoding="utf-8") as fh:
-        fh.write(page(data))
+        fh.write(page(data, quiz_js))
+    if quiz_js:
+        print(f"quizzes: {quizzed} chapter(s) show a quiz under their text (\"Check yourself\")")
     if export:
         # The same book as data, for an ebook or a print edition (2026-10-30, Black Seattle Vol 1): the
         # stories as the page shows them, their parts in order, and the series' own settings.
@@ -1214,16 +1308,53 @@ def cmd_build(stories_dir, series_id, out, use_files=False, publish=False, revie
 
 # ── the page ─────────────────────────────────────────────────────────────────
 
-def page(data):
+def page(data, quiz_js=None):
     book = data["book"]
     desc = book.get("subtitle") or book.get("intro", "")[:160]
     payload = json.dumps(data, ensure_ascii=False, separators=(",", ":")).replace("</", "<\\/")
     canonical = book.get("canonical") or ""
-    return (TEMPLATE.replace("__TITLE__", esc(book["title"]))
-            .replace("__DESC__", esc(desc))
-            .replace("__CANONICAL__", f'<link rel="canonical" href="{esc(canonical)}">' if canonical else "")
-            .replace("__ROBOTS__", "" if book.get("publish") else '<meta name="robots" content="noindex">')
-            .replace("__DATA__", payload))
+    html_ = (TEMPLATE.replace("__TITLE__", esc(book["title"]))
+             .replace("__DESC__", esc(desc))
+             .replace("__CANONICAL__", f'<link rel="canonical" href="{esc(canonical)}">' if canonical else "")
+             .replace("__ROBOTS__", "" if book.get("publish") else '<meta name="robots" content="noindex">')
+             .replace("__DATA__", payload))
+    if not quiz_js:
+        return html_
+    # Only a book with a chapter quiz carries the block: after the page's own script, so route() has drawn
+    # the chapter before the quiz mounts under it.
+    head, _, tail = html_.rpartition("</body>")
+    return head + QUIZ_MOUNT.replace("__QUIZJS__", quiz_js.replace("</", "<\\/")) + "</body>" + tail
+
+
+QUIZ_MOUNT = r"""<style>
+.quiz-sec{margin-top:34px}
+.quiz-sec h2{margin:0 0 12px;font:600 22px/1.3 var(--serif)}
+quiz-block{--quiz-accent:var(--accent);--quiz-bg:var(--panel);--quiz-text:var(--ink);--quiz-muted:var(--muted);
+  --quiz-line:var(--line);--quiz-ok:var(--ok);--quiz-ok-soft:var(--ok-soft);--quiz-bad:var(--bad);--quiz-bad-soft:var(--bad-soft);
+  --quiz-on-accent:var(--ground);--quiz-radius:12px;--quiz-font:16px/1.5 var(--sans)}
+</style>
+<script>__QUIZJS__</script>
+<script>
+// A chapter's quiz under its text (series_book.py, Phase QL.4). Runs after route() on every page change.
+function quizMount(){
+  const parts = (location.hash || "#/").replace(/^#\/?/, "").split("/").filter(Boolean);
+  if (parts[0] !== "p" || !/^\d+$/.test(parts[2] || "") || +parts[2] === 0) return;
+  const s = S[parts[1]], c = s && s.chapters[+parts[2] - 1];
+  const prose = document.querySelector("#view article.story > .prose");
+  if (!c || !c.quiz || !prose || !window.customElements || !customElements.get("quiz-block")) return;
+  const sec = document.createElement("section"), h = document.createElement("h2"), qb = document.createElement("quiz-block");
+  sec.className = "quiz-sec";
+  sec.setAttribute("aria-labelledby", "quiz-h");
+  h.id = "quiz-h";
+  h.textContent = "Check yourself";
+  qb.quizSet = c.quiz;
+  sec.append(h, qb);
+  prose.after(sec);
+}
+window.addEventListener("hashchange", quizMount);
+quizMount();
+</script>
+"""
 
 
 TEMPLATE = r"""<!doctype html>

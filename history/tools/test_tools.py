@@ -2341,6 +2341,159 @@ class SeriesBook(FixtureCase):
         self.assertEqual(self.sb.arrival(self.project, "Seattle")[0], 1944)
 
 
+class QuizOnPage(FixtureCase):
+    """series_book.py: a chapter's quiz/NN.json (a quiz set v2) under its text as the quiz-block component,
+    only when the story or the book opts in (Phase QL.4). Without the flag or the files, the page is byte
+    for byte what it was. The fixture is SeriesBook's, set up here without rerunning its tests."""
+
+    ENTRY = SeriesBook.ENTRY
+    SET = {"schema": "quiz-set.v2", "id": "qs-fixture-1", "title": "Edith Fixture · Water Street", "chapter": 1,
+           "questions": [
+               {"id": "q1", "type": "mc", "question": "Where did Edith Fixture buy her lot in 1893?",
+                "options": ["On Water Street", "On Mill Street", "Beside the church", "In Ohio"],
+                "correctAnswer": "On Water Street", "explanation": "Her letter to her sister says so.",
+                "concept": "the Water Street lot", "source": {"chapter": 1, "quote": "I have bought the lot on Water Street"},
+                "validation": {"checks": ["structure", "grounded", "blind_open_book"]}, "tags": ["lot"]},
+               {"id": "q2", "type": "short", "question": "What did the men at the mill tell her?",
+                "rubric": [{"point": "That a woman could not keep a house of twenty boarders."}],
+                "modelAnswer": "They said a woman could not keep a house of twenty boarders.", "concept": "the doubters"},
+               {"id": "q3", "type": "order", "question": "A kind of question the page cannot play yet."}]}
+
+    def setUp(self):
+        super().setUp()
+        built_book_and_fake_storymaker(self)
+        import maps
+        import series_book
+        self.sb = series_book
+        self.entry = json.loads(json.dumps(self.ENTRY))
+        self._entry = series_book.series_entry
+        series_book.series_entry = lambda sid: (self.entry if sid == "fixture" else None, "Seattle")
+        self.out = os.path.join(self.tmp, "web")
+        self._basemap = maps.basemap
+        maps.basemap = lambda project, source=None: ({"streets": [], "water": [], "hoods": []}, "fixture")
+
+    def tearDown(self):
+        import maps
+        maps.basemap = self._basemap
+        self.sb.series_entry = self._entry
+        super().tearDown()
+
+    build = SeriesBook.build
+    data = SeriesBook.data
+
+    def page(self):
+        return read(os.path.join(self.out, "index.html"))
+
+    def flag(self, value):
+        meta = _hw.load_json(self.project.path("project.json"))
+        if value is None:
+            meta.pop("quizOnPage", None)
+        else:
+            meta["quizOnPage"] = value
+        _hw.save_json(self.project.path("project.json"), meta)
+
+    def save_quiz(self, n, body):
+        path = self.project.path("quiz", f"{n:02d}.json")
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w", encoding="utf-8") as fh:
+            fh.write(body if isinstance(body, str) else json.dumps(body))
+
+    def chapters(self):
+        return self.data()["stories"]["edith-fixture"]["chapters"]
+
+    def test_without_the_flag_or_the_files_the_page_is_unchanged(self):
+        code, out = self.build(files=True)
+        self.assertEqual(code, 0, out)
+        before = self.page()
+        self.assertNotIn("quiz-block", before)
+        self.save_quiz(1, self.SET)                     # a quiz file, no flag
+        self.assertEqual(self.build(files=True)[0], 0)
+        self.assertEqual(self.page(), before)
+        os.remove(self.project.path("quiz", "01.json"))
+        self.flag(True)                                 # the flag, no quiz file
+        self.assertEqual(self.build(files=True)[0], 0)
+        self.assertEqual(self.page(), before)
+
+    def test_opted_in_a_chapter_shows_its_quiz_under_its_text(self):
+        self.save_quiz(1, {"ok": True, "set": self.SET, "report": {}})    # the service's whole reply reads too
+        self.flag(True)
+        code, out = self.build(files=True)
+        self.assertEqual(code, 0, out)
+        self.assertIn("quizzes: 1 chapter(s)", out)
+        chs = self.chapters()
+        quiz = chs[0]["quiz"]
+        self.assertEqual((quiz["schema"], quiz["id"]), ("quiz-set.v2", "qs-fixture-1"))
+        self.assertEqual([q["id"] for q in quiz["questions"]], ["q1", "q2"], "a type the block cannot play stays off")
+        self.assertNotIn("validation", quiz["questions"][0])
+        self.assertEqual(quiz["questions"][0]["source"]["quote"], "I have bought the lot on Water Street")
+        self.assertNotIn("quiz", chs[1], "chapter 2 has no quiz file")
+        page = self.page()
+        self.assertIn('customElements.define("quiz-block"', page)
+        self.assertIn("Check yourself", page)
+        # The component's own comments mention </script>: inlined, they must not close the page's script,
+        # so the whole component is one script element, after the page's own.
+        from html.parser import HTMLParser
+
+        class Scripts(HTMLParser):
+            def __init__(self):
+                super().__init__()
+                self.bodies, self.inside = [], False
+
+            def handle_starttag(self, tag, attrs):
+                if tag == "script":
+                    self.inside = True
+                    self.bodies.append("")
+
+            def handle_endtag(self, tag):
+                if tag == "script":
+                    self.inside = False
+
+            def handle_data(self, data):
+                if self.inside:
+                    self.bodies[-1] += data
+        parsed = Scripts()
+        parsed.feed(page)
+        whole = [i for i, b in enumerate(parsed.bodies)
+                 if 'customElements.define("quiz-block"' in b and "// END mchatai-web-components: ui.quiz-block" in b]
+        self.assertEqual(len(parsed.bodies), 4, "data, the page's script, the component, its mount")
+        self.assertEqual(whole, [2])
+
+    def test_the_book_opts_in_and_a_story_may_opt_out(self):
+        self.save_quiz(2, dict(self.SET, id=None, chapter=2))
+        self.entry["book"]["quizOnPage"] = True
+        self.assertEqual(self.build(files=True)[0], 0)
+        quiz = self.chapters()[1]["quiz"]
+        self.assertEqual(quiz["id"], "edith-fixture-ch02", "a set without a usable id gets the chapter's")
+        self.flag(False)
+        self.assertEqual(self.build(files=True)[0], 0)
+        self.assertNotIn("quiz", self.chapters()[1])
+        self.assertNotIn("quiz-block", self.page())
+
+    def test_a_broken_quiz_file_or_a_missing_component_is_a_problem(self):
+        self.flag(True)
+        self.save_quiz(1, "{not json")
+        self.save_quiz(2, {"title": "a v1 quiz", "questions": []})
+        code, out = self.build(files=True)
+        self.assertEqual(code, 0, "a draft still builds, and says so")
+        self.assertIn("quiz/01.json cannot be read", out)
+        self.assertIn("quiz/02.json is not a quiz-set.v2 set", out)
+        self.assertNotIn("quiz-block", self.page())
+        self.save_quiz(1, self.SET)
+        with mock.patch.object(self.sb, "quiz_block_source", return_value=None):
+            code, out = self.build(files=True)
+        self.assertIn("the quiz-block component is missing", out)
+        self.assertNotIn("quiz", self.chapters()[0])
+        self.assertNotIn("quiz-block", self.page())
+
+    def test_a_chapter_is_matched_by_its_title_then_by_its_place(self):
+        titles = [c["title"] for c in _hw.load_json(self.project.path("book", "manifest.json"))["chapters"] if c.get("n")]
+        self.assertEqual(self.sb.chapter_numbers(self.project, [{"title": t} for t in titles]), [1, 2])
+        self.assertEqual(self.sb.chapter_numbers(self.project, [{"title": "Renamed by the author"}, {"title": titles[1]}]),
+                         [1, 2])
+        self.assertEqual(self.sb.chapter_numbers(self.project, [{"title": "Who's who"}, {"title": titles[0]},
+                                                                {"title": titles[1]}]), [None, 1, 2])
+
+
 class Survey(unittest.TestCase):
     """survey.py: the long list's pure parts. Leads, not members (2026-10-05)."""
 
