@@ -1,16 +1,32 @@
 {
   "_source_of_truth": "llm-catalog/request-shapes.json",
-  "_last_updated": "2026-09-03",
+  "_last_updated": "2026-11-14",
   "_purpose": "What SHAPE of chat-completions request each model family accepts. The shipped mChatAI+ binary carries a frozen fallback (ModelRequestShapes.fallback in Swift); the runtime reads this file so a provider shipping a new family — which is what broke every OpenAI call on 2026-09-03 when gpt-5.6-luna rejected 'max_tokens' — is a same-day PR plus refreshMchataisourceCache, not an App Store cycle.",
   "_why_this_is_content": "The MODEL is already content: role-models.json and llm-catalog/providers/*.json pick which SKU a request uses, and openai.json already lists 70 gpt-5/o-series models. A one-line content change can therefore select a model the binary has never heard of. The rule for how to TALK to that model has to travel the same way, or content can break a shipped build with no way to fix it but a revert.",
-
   "_matching": "Rules are tried IN ORDER; the first whose provider matches and whose `modelPrefix` OR `minMajorVersion` matches wins. `modelPrefix` is a literal prefix on the lowercased model id. `family` + `minMajorVersion` matches ids like '<family>-<N>...' where N >= minMajorVersion, so a version nobody has released yet is still covered.",
-
   "rules": [
+    {
+      "id": "anthropic-no-temperature",
+      "modelPrefix": [
+        "claude-opus-4.8",
+        "claude-sonnet-5",
+        "claude-haiku-5",
+        "claude-fable"
+      ],
+      "family": "claude-opus",
+      "minMajorVersion": 5,
+      "tokenParameter": "max_tokens",
+      "acceptsTemperature": false,
+      "acceptsResponseFormat": false,
+      "acceptsReasoningEffort": false,
+      "_notes": "2026-11-14, probed through compute-proxy: claude-opus-4.8, every claude-*-5 and 5.5 (opus, sonnet, haiku) and claude-fable-5.1 answer 400 '`temperature` is deprecated for this model'; claude-sonnet-4.6 still accepts it. No `provider`, so it also covers Claude reached through mChatAI Cloud or OpenRouter (whose alias maps to OpenAI). Prefixes catch sonnet/haiku/fable 5.x and opus 4.8; the family rule catches every future claude-opus major."
+    },
     {
       "id": "openai-o1",
       "provider": "OpenAI",
-      "modelPrefix": ["o1"],
+      "modelPrefix": [
+        "o1"
+      ],
       "tokenParameter": "max_completion_tokens",
       "acceptsTemperature": false,
       "acceptsResponseFormat": false,
@@ -22,7 +38,11 @@
     {
       "id": "openai-reasoning",
       "provider": "OpenAI",
-      "modelPrefix": ["o3", "o4", "o5"],
+      "modelPrefix": [
+        "o3",
+        "o4",
+        "o5"
+      ],
       "tokenParameter": "max_completion_tokens",
       "acceptsTemperature": false,
       "acceptsResponseFormat": false,
@@ -34,7 +54,9 @@
     {
       "id": "openai-gpt4.1",
       "provider": "OpenAI",
-      "modelPrefix": ["gpt-4.1"],
+      "modelPrefix": [
+        "gpt-4.1"
+      ],
       "tokenParameter": "max_completion_tokens",
       "acceptsTemperature": false,
       "acceptsResponseFormat": true,
@@ -59,7 +81,12 @@
     {
       "id": "openai-legacy-chat",
       "provider": "OpenAI",
-      "modelPrefix": ["gpt-4o", "gpt-4-", "gpt-4", "gpt-3.5"],
+      "modelPrefix": [
+        "gpt-4o",
+        "gpt-4-",
+        "gpt-4",
+        "gpt-3.5"
+      ],
       "tokenParameter": "max_tokens",
       "acceptsTemperature": true,
       "acceptsResponseFormat": true,
@@ -68,7 +95,9 @@
     {
       "id": "anthropic",
       "provider": "Anthropic",
-      "modelPrefix": ["claude"],
+      "modelPrefix": [
+        "claude"
+      ],
       "tokenParameter": "max_tokens",
       "acceptsTemperature": true,
       "acceptsResponseFormat": false,
@@ -78,7 +107,9 @@
     {
       "id": "google",
       "provider": "Google",
-      "modelPrefix": ["gemini"],
+      "modelPrefix": [
+        "gemini"
+      ],
       "tokenParameter": "maxOutputTokens",
       "acceptsTemperature": true,
       "acceptsResponseFormat": false,
@@ -86,17 +117,60 @@
       "_notes": "Google nests generationConfig; the token key lives there, not at the top level."
     }
   ],
-
   "_outputTokenCaps": "A CEILING on the completion budget, which is a different question from which KEY the budget travels under. AIHarness.maxCompletionTokens used to answer it with nine hasPrefix/contains tests compiled into the binary — over-spec 400s, under-spec truncates, and either way the only fix was a release. Rules are tried in order; `modelContains` rather than `modelPrefix` where the id arrives namespaced (bedrock 'anthropic.claude-...', openrouter 'anthropic/claude-...'). Numbers are deliberately CONSERVATIVE: a cap below the model's real limit costs a truncation the wizard already recovers from, a cap above it costs a hard 400.",
   "outputTokenCaps": {
     "rules": [
-      { "provider": "OpenAI", "modelPrefix": ["o1", "o3"], "maxOutputTokens": 100000 },
-      { "provider": "OpenAI", "modelPrefix": ["o4-mini"], "maxOutputTokens": 65536 },
-      { "provider": "OpenAI", "modelPrefix": ["gpt-4.1"], "maxOutputTokens": 32768 },
-      { "provider": "OpenAI", "modelPrefix": ["gpt-4o"], "maxOutputTokens": 16384 },
-      { "provider": "Anthropic", "modelContains": ["claude-opus-4"], "maxOutputTokens": 32000 },
-      { "provider": "Anthropic", "modelContains": ["claude-sonnet-4-5"], "maxOutputTokens": 64000 },
-      { "provider": "Anthropic", "modelContains": ["claude-3-5-sonnet", "claude-3-5-haiku"], "maxOutputTokens": 8192 }
+      {
+        "provider": "OpenAI",
+        "modelPrefix": [
+          "o1",
+          "o3"
+        ],
+        "maxOutputTokens": 100000
+      },
+      {
+        "provider": "OpenAI",
+        "modelPrefix": [
+          "o4-mini"
+        ],
+        "maxOutputTokens": 65536
+      },
+      {
+        "provider": "OpenAI",
+        "modelPrefix": [
+          "gpt-4.1"
+        ],
+        "maxOutputTokens": 32768
+      },
+      {
+        "provider": "OpenAI",
+        "modelPrefix": [
+          "gpt-4o"
+        ],
+        "maxOutputTokens": 16384
+      },
+      {
+        "provider": "Anthropic",
+        "modelContains": [
+          "claude-opus-4"
+        ],
+        "maxOutputTokens": 32000
+      },
+      {
+        "provider": "Anthropic",
+        "modelContains": [
+          "claude-sonnet-4-5"
+        ],
+        "maxOutputTokens": 64000
+      },
+      {
+        "provider": "Anthropic",
+        "modelContains": [
+          "claude-3-5-sonnet",
+          "claude-3-5-haiku"
+        ],
+        "maxOutputTokens": 8192
+      }
     ],
     "providerDefaults": {
       "OpenAI": 16384,
@@ -110,13 +184,11 @@
     },
     "fallbackDefault": 8000
   },
-
   "_providerAliases": "A proxy speaks its upstream's dialect. mChatAI Cloud and Azure OpenAI both serve OpenAI SKUs through an OpenAI-shaped endpoint, and the app's provider DISPLAY NAME ('mChatAI Cloud') matches no rule, so without this a Cloud user on gpt-5.6-luna falls to the default shape and 400s — the exact failure this file exists to stop. The literal name is tried first, so naming a proxy directly in `rules` still wins. Vertex AI and Amazon Bedrock are deliberately absent: they host models from more than one upstream, so a single alias would be a lie.",
   "providerAliases": {
     "Azure OpenAI": "OpenAI",
     "mChatAI Cloud": "OpenAI"
   },
-
   "default": {
     "tokenParameter": "max_tokens",
     "acceptsTemperature": true,
