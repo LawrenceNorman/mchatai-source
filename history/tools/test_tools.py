@@ -23,6 +23,7 @@ import _hw  # noqa: E402
 import checks  # noqa: E402
 import cite  # noqa: E402
 import gate  # noqa: E402
+import products  # noqa: E402
 import quiz  # noqa: E402
 import quotes  # noqa: E402
 import richness  # noqa: E402
@@ -1678,6 +1679,62 @@ class NestedCastNames(unittest.TestCase):
             self.assertEqual(len(rules), 1)
         finally:
             shutil.rmtree(tmp, ignore_errors=True)
+
+
+class ProductsCheck(unittest.TestCase):
+    """products.py: podcast and slide requests from a chapter, and the offline check that keeps them true to it."""
+
+    TEXT = "A 1% yearly fee on $100,000 grows over 20 years. The first step is to read the fee table."
+
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp(prefix="hw-products-")
+        for d in ("chapters", "podcast", "slides"):
+            os.makedirs(os.path.join(self.tmp, d))
+        _hw.save_json(os.path.join(self.tmp, "project.json"), {"slug": "demo-book"})
+        _hw.save_json(os.path.join(self.tmp, "chapters", "01.json"), {"text": self.TEXT})
+        self.script = {"schema": "podcast-script.v1", "title": "Fees", "mustSay": ["Education, not advice, as of 2026."],
+                       "sections": [{"heading": "Fees", "lines": [
+                           {"id": "L1", "speaker": "teacher", "text": "A 1% yearly fee on 100,000 dollars grows over 20 years."},
+                           {"id": "L2", "speaker": "teacher", "text": "Education, not advice, as of 2026."}]}],
+                       "validation": {"checks": ["speakers", "numbers", "lines_supported"]}}
+        self.deck = {"schema": "slide-deck.v1", "title": "Fees", "slides": [
+            {"id": "S1", "heading": "Fees compound", "bullets": [{"id": "S1.b1", "text": "1% a year"}], "notes": "",
+             "diagram": 'flowchart LR\n  a["Read the fee table"] --> b["20 years"]'}],
+                     "validation": {"checks": ["structure", "numbers", "items_supported"]}}
+
+    def tearDown(self):
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def rules(self):
+        return [f["rule"] for f in products.product_findings(_hw.Project(self.tmp), 1) if f["severity"] == "hard"]
+
+    def test_the_number_rule_matches_the_service(self):
+        src = "A 1% fee on $100,000 over 20 years. Ranges of 6-12 months. About 0.5 of it. Costs €5. Fell to -3. Three thousand."
+        got = lambda s: [t for _, t in products.numbers_not_in_source([("x", s)], src)]  # noqa: E731
+        self.assertEqual(got("A 1% fee on 100,000 dollars, 6-12 months, 0.5, €5, -3, three thousand"), [])
+        self.assertEqual(got("$100k"), ["$100"])
+        self.assertEqual(got(".5 of it, or -20"), [".5", "-20"])
+        self.assertEqual(got("£5 or $5"), ["£5", "$5"])
+        self.assertEqual(got("hundreds of thousands, the fortieth, twofold, ½"), ["½", "hundreds", "thousands", "fortieth", "twofold"])
+
+    def test_requests_carry_the_chapter_and_the_authors_sentences(self):
+        body = products.request_payload(_hw.Project(self.tmp), 1, "podcast", 5, ["Education, not advice."])
+        self.assertEqual((body["minutes"], body["mustSay"], body["source"]["text"]), (5, ["Education, not advice."], self.TEXT))
+        self.assertEqual(products.request_payload(_hw.Project(self.tmp), 1, "slides")["slides"], 10)
+
+    def test_a_saved_product_is_held_to_the_chapter(self):
+        self.assertEqual(self.rules(), [], "nothing saved is a soft note only")
+        _hw.save_json(os.path.join(self.tmp, "podcast", "01.json"), {"ok": True, "script": self.script})
+        _hw.save_json(os.path.join(self.tmp, "slides", "01.json"), self.deck)
+        self.assertEqual(self.rules(), [], "2026 is in the author's own sentence, not the chapter's")
+        _hw.save_json(os.path.join(self.tmp, "chapters", "01.json"), {"text": self.TEXT.replace("20 years", "a lifetime")})
+        self.assertEqual(sorted(set(self.rules())), ["podcast_number_gone", "slides_number_gone"],
+                         "the chapter dropped 20 years: the script and the deck's diagram still say it")
+        unchecked = dict(self.script, validation={"checks": ["speakers"]})
+        _hw.save_json(os.path.join(self.tmp, "chapters", "01.json"), {"text": self.TEXT})
+        _hw.save_json(os.path.join(self.tmp, "podcast", "01.json"), unchecked)
+        self.assertEqual(self.rules(), ["podcast_unchecked"])
+        self.assertEqual(gate.main(["gate.py", "products", self.tmp, "1"]), 1)
 
 
 class QuizCheck(unittest.TestCase):

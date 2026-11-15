@@ -6,6 +6,8 @@
                                   plus its length (thresholds.introWords)
   gate.py story   <project>       every chapter, plus the story-level checks
   gate.py quiz    <project> <n>   the chapter's quiz (quiz/NN.json) still quotes it and passed the blind check
+  gate.py products <project> <n>  its podcast/NN.json and slides/NN.json passed the service's check, and every
+                                  number in them is still a number of the chapter (products.py)
 
 An episode (a domain whose thresholds ask: domains/pivotal-history/voice.md v2) also gets the
 writer's own sentences checked in every chapter (writer_*), its cast introduced at the first
@@ -31,6 +33,7 @@ import cite  # noqa: E402
 import explainer  # noqa: E402
 import images  # noqa: E402
 import quiz  # noqa: E402
+import products  # noqa: E402
 import quotes  # noqa: E402
 import richness  # noqa: E402
 import storytelling  # noqa: E402
@@ -107,6 +110,8 @@ def main(argv):
         return report("gate intro", intro_findings(Project(argv[2])))
     if len(argv) >= 4 and argv[1] == "quiz":
         return report(f"gate quiz ch{argv[3]}", quiz.quiz_findings(Project(argv[2]), argv[3]))
+    if len(argv) >= 4 and argv[1] == "products":
+        return report(f"gate products ch{argv[3]}", products.product_findings(Project(argv[2]), argv[3]))
     if len(argv) >= 3 and argv[1] == "story":
         return report("gate story", story_findings(Project(argv[2])))
     print(__doc__)
