@@ -40,6 +40,15 @@ if pw or pc:
     p = cfg.get("podcast") or {}
     if not 1 <= p.get("minMinutes", 0) <= p.get("defaultMinutes", 0) <= p.get("maxMinutes", 0) <= 60:
         problems.append("podcast: minMinutes <= defaultMinutes <= maxMinutes <= 60")
+sw, sc = cfg["roles"].get("slidesWriter"), cfg["roles"].get("slidesChecker")
+if sw or sc:
+    if not (sw and sc):
+        problems.append("slidesWriter and slidesChecker come as a pair")
+    elif sw.get("provider") == sc.get("provider"):
+        problems.append("slidesChecker must be a different provider family from slidesWriter")
+    s = cfg.get("slides") or {}
+    if not 2 <= s.get("minSlides", 0) <= s.get("defaultSlides", 0) <= s.get("maxSlides", 0) <= 40:
+        problems.append("slides: 2 <= minSlides <= defaultSlides <= maxSlides <= 40")
 limits = cfg.get("limits", {})
 if not 1 <= limits.get("defaultQuestions", 0) <= limits.get("maxQuestions", 0):
     problems.append("limits: defaultQuestions must be between 1 and maxQuestions")

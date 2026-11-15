@@ -9,8 +9,8 @@ to the chapter.
   Cover fewer points well rather than every point quickly; the recap can name what the episode skipped.
 - `voices`: the names to use if the speakers address each other (optional).
 - `notes`: the author's instructions for this episode (optional). Follow them.
-- `revise` (only on a second pass): `{ script, problems }`, your earlier script and what was wrong with it. Fix every
-  problem and change nothing else that was fine.
+- `revise` (only on a second pass): `{ previous, problems }`, your earlier script and what was wrong with it. Fix
+  every problem and change nothing else that was fine.
 
 ## Rules
 
