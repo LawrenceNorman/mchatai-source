@@ -23,7 +23,19 @@ Library:
 A 429 or 5xx is retried twice with backoff; a 402 raises ModelError with the proxy's type
 (insufficient_tokens, sign_in_required); an empty reply cut off by its budget raises ModelError
 `output_budget`, naming the role whose maxOutputTokens to raise.
+
+Grant mode (a server job billing a user through an ED.6 capped grant, EDUCATION_CLOUD_SERVICES.md §7):
+when the env MCHATAI_GRANT names a grant id, every call carries `x-mchatai-grant: <id>` and
+`authorization: Bearer <Google-signed OIDC ID token>` instead of a user's session. The token is minted
+for the audience MCHATAI_GRANT_AUDIENCE (compute-proxy's GRANT_AUDIENCE; the proxy URL when unset) by
+the Cloud Run metadata server, as the job's service account, and cached until five minutes before it
+expires. Off Google Cloud, MCHATAI_GOOGLE_ID_TOKEN supplies one for testing (`gcloud auth
+print-identity-token --impersonate-service-account=… --audiences=…`). A grant call always sets
+max_tokens (the proxy caps a grant call's cost by it; a shape that takes max_completion_tokens gets
+both, equal), never streams and asks for one completion. A 402 grant_exhausted, grant_revoked or
+grant_expired stops the run with what the user must do; book_job.py pauses the job on it.
 """
+import base64
 import json
 import os
 import re
@@ -40,6 +52,15 @@ from _hw import HISTORY, load_json  # noqa: E402
 CONFIG = os.path.join(HISTORY, "cloud-writer.json")
 SHAPES = os.path.join(os.path.dirname(HISTORY), "llm-catalog", "request-shapes.json")
 REFRESH_URL = "https://securetoken.googleapis.com/v1/token"
+METADATA_IDENTITY_URL = ("http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/"
+                         "default/identity")
+# compute-proxy's grants.cjs GRANT_ID_RE: Firestore reserves ids matching __.*__.
+GRANT_ID_RE = re.compile(r"(?!__.*__$)[A-Za-z0-9_-]{1,128}")
+
+# Error codes a job waits out rather than fails on: the user approves more tokens, a new grant, or buys
+# tokens, and the job resumes from its checkpoint. And codes a rerun may clear on its own.
+PAUSE_CODES = frozenset({"grant_exhausted", "grant_revoked", "grant_expired", "insufficient_tokens"})
+RETRYABLE_CODES = frozenset({"model_unavailable", "rate_limited", "identity_unavailable"})
 
 
 class ModelError(Exception):
@@ -122,13 +143,17 @@ def shape_for(shapes, provider, model):
     return first(provider) or (alias and first(shapes["providerAliases"][alias])) or shapes.get("default") or {}
 
 
-def build_body(role, system, user, shape, max_output_tokens=None):
-    """The OpenAI-style body compute-proxy takes, shaped for the role's model."""
+def build_body(role, system, user, shape, max_output_tokens=None, grant=False):
+    """The OpenAI-style body compute-proxy takes, shaped for the role's model. A grant call (`grant`)
+    always carries max_tokens too, the bound the proxy reserves the call's cost by, and leaves `n`
+    unset (one completion)."""
     body = {"model": role["model"],
             "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}],
             "stream": False}
     key = "max_completion_tokens" if shape.get("tokenParameter") == "max_completion_tokens" else "max_tokens"
     body[key] = int(max_output_tokens or role.get("maxOutputTokens") or 2000)
+    if grant:
+        body["max_tokens"] = body[key]
     if shape.get("acceptsTemperature") is not False:
         t = role.get("temperature")
         body["temperature"] = 0 if t is None else t
@@ -256,12 +281,105 @@ class Session:
         os.chmod(self.path, 0o600)
 
 
+def jwt_expiry(token):
+    """The `exp` (epoch seconds) a JWT's payload claims, read without verifying it; None if unreadable.
+    The proxy verifies the token; this only decides when to mint the next one."""
+    try:
+        part = token.split(".")[1]
+        claims = json.loads(base64.urlsafe_b64decode(part + "=" * (-len(part) % 4)))
+        exp = claims.get("exp")
+        return float(exp) if isinstance(exp, (int, float)) and not isinstance(exp, bool) else None
+    except (IndexError, ValueError, AttributeError, TypeError):
+        return None
+
+
+class GoogleIdentity:
+    """A grant job's identity for compute-proxy: a Google-signed OIDC ID token of the service account the
+    job runs as, minted for `audience` by the metadata server, or MCHATAI_GOOGLE_ID_TOKEN when set (a
+    token minted elsewhere, for testing off Google Cloud). The same two calls as Session: token() and,
+    after a 401, refresh()."""
+
+    def __init__(self, audience, transport=urllib_transport, clock=time.time, sleep=time.sleep,
+                 early_seconds=300, timeout=10, static_token=None, metadata_url=METADATA_IDENTITY_URL):
+        self.audience = audience
+        self.transport = transport
+        self.clock = clock
+        self.sleep = sleep
+        self.early = early_seconds
+        self.timeout = timeout
+        self.static = static_token if static_token is not None else os.environ.get("MCHATAI_GOOGLE_ID_TOKEN")
+        self.metadata_url = metadata_url
+        self._token, self._exp = None, 0.0
+        self.mints = 0
+
+    def token(self):
+        if self._token and self.clock() < self._exp - self.early:
+            return self._token
+        return self._mint()
+
+    def refresh(self):
+        """After a 401: a token from the environment cannot be renewed here, so that is the end."""
+        if self.static:
+            raise ModelError("auth_rejected", "compute-proxy refused the Google ID token in MCHATAI_GOOGLE_ID_TOKEN "
+                                              f"(401): it must be minted for the audience {self.audience!r} (one of "
+                                              "compute-proxy's GRANT_AUDIENCE) and be unexpired", status=401)
+        self._token, self._exp = None, 0.0
+        return self._mint()
+
+    def _mint(self):
+        now = self.clock()
+        if self.static:
+            exp = jwt_expiry(self.static)
+            if exp is not None and now >= exp:
+                raise ModelError("identity_expired", "the Google ID token in MCHATAI_GOOGLE_ID_TOKEN has expired: mint "
+                                                     "a new one (gcloud auth print-identity-token "
+                                                     "--impersonate-service-account=<the job's account> "
+                                                     f"--audiences={self.audience})")
+            self._token, self._exp = self.static, exp if exp is not None else now + 600
+            return self._token
+        url = self.metadata_url + "?" + urllib.parse.urlencode({"audience": self.audience, "format": "full"})
+        why = None
+        for attempt in range(3):
+            if attempt:
+                self.sleep(attempt * 2)
+            try:
+                status, _, raw = self.transport("GET", url, {"Metadata-Flavor": "Google"}, None, self.timeout)
+            except OSError as e:
+                why = f"could not reach the metadata server ({type(e).__name__})"
+                continue
+            tok = (raw.decode("utf-8", errors="replace") if isinstance(raw, bytes) else str(raw or "")).strip()
+            if status == 200 and tok.count(".") == 2:
+                self.mints += 1
+                exp = jwt_expiry(tok)
+                self._token, self._exp = tok, exp if exp is not None else now + 600
+                return self._token
+            why = f"the metadata server answered {status} for an ID token"
+            if status and status < 500:
+                break
+        raise ModelError("identity_unavailable", f"{why}. A grant job runs on Google Cloud as the service account on "
+                                                 "compute-proxy's GRANT_CALLERS; off it, set MCHATAI_GOOGLE_ID_TOKEN")
+
+
 # ── the client ───────────────────────────────────────────────────────────────
 
 _402 = {
     "insufficient_tokens": "the signed-in mChatAI account is out of compute tokens. Buy tokens, then rerun: the run "
                            "resumes from its files",
     "sign_in_required": "the session is not a signed-in mChatAI account. Sign in again and write a fresh session file",
+}
+_402_GRANT = {
+    "grant_exhausted": "the grant is used up (the compute tokens the user approved are spent, or this call's "
+                       "worst-case cost would pass them); the job pauses until the user approves more",
+    "grant_revoked": "the grant is revoked (the user cancelled the job); the job pauses",
+    "grant_expired": "the grant has expired; the job pauses until the user approves a new one",
+    "grant_not_found": "compute-proxy has no grant with this id (MCHATAI_GRANT)",
+    "grant_invalid": "the grant's record is malformed; web-api must create a new one",
+    "insufficient_tokens": "the user's account is out of compute tokens; the job pauses until they buy more",
+}
+_403_GRANT = {
+    "grant_caller_forbidden": "the job's service account is not on compute-proxy's GRANT_CALLERS (or its unique id "
+                              "is not on GRANT_CALLER_IDS)",
+    "grant_path_disabled": "compute-proxy's grant path is off (GRANT_CALLERS or GRANT_AUDIENCE is unset)",
 }
 
 
@@ -284,15 +402,24 @@ def _tokens(headers):
 
 class Client:
     def __init__(self, cfg=None, shapes=None, session=None, session_path=None, transport=urllib_transport,
-                 sleep=time.sleep, clock=time.time, proxy_url=None):
+                 sleep=time.sleep, clock=time.time, proxy_url=None, grant=None, audience=None):
+        """`grant` (default: the env MCHATAI_GRANT) bills an ED.6 grant as the job's Google identity;
+        without one, the signed-in session (MCHATAI_SESSION) is billed."""
         self.cfg = cfg or load_config()
         self.shapes = shapes if shapes is not None else load_shapes()
         self.transport = transport
         self.sleep = sleep
-        self.session = session or Session(session_path, transport=transport, clock=clock,
-                                          refresh_minutes=self.cfg.get("tokenRefreshMinutes", 50))
         self.proxy_url = (proxy_url or os.environ.get("COMPUTE_PROXY_URL") or self.cfg.get("proxyUrl")
                           or "https://api.mchatai.com").rstrip("/")
+        self.grant = str(grant if grant is not None else os.environ.get("MCHATAI_GRANT") or "").strip() or None
+        if self.grant and not GRANT_ID_RE.fullmatch(self.grant):
+            raise ModelError("bad_grant", "MCHATAI_GRANT is not a grant id (letters, digits, _ and -, at most 128)")
+        if self.grant:
+            audience = audience or os.environ.get("MCHATAI_GRANT_AUDIENCE") or self.proxy_url
+            self.session = session or GoogleIdentity(audience, transport=transport, clock=clock, sleep=sleep)
+        else:
+            self.session = session or Session(session_path, transport=transport, clock=clock,
+                                              refresh_minutes=self.cfg.get("tokenRefreshMinutes", 50))
         self.tally = {}
 
     def role(self, role):
@@ -313,7 +440,7 @@ class Client:
         r = self.role(role)
         stage = stage or r["name"]
         shape = shape_for(self.shapes, r.get("provider", ""), r["model"])
-        body = build_body(r, system, user, shape, max_output_tokens)
+        body = build_body(r, system, user, shape, max_output_tokens, grant=bool(self.grant))
         budget = body.get("max_completion_tokens") or body.get("max_tokens")
         data = json.dumps(body).encode("utf-8")
         retry = self.cfg.get("retries") or {}
@@ -323,6 +450,8 @@ class Client:
         attempt, refreshed = 0, False
         while True:
             headers = {"content-type": "application/json", "authorization": "Bearer " + self.session.token()}
+            if self.grant:
+                headers["x-mchatai-grant"] = self.grant
             try:
                 status, h, raw = self.transport("POST", url, headers, data, timeout)
             except OSError as e:
@@ -348,8 +477,22 @@ class Client:
                 err = err if isinstance(err, dict) else {}
                 if status == 402:
                     kind = err.get("type") or "insufficient_tokens"
-                    raise ModelError(kind, f"compute-proxy refused the call (402 {kind}): "
-                                           f"{_402.get(kind, 'the account cannot pay for this call')}", status=402)
+                    if self.grant:
+                        why = _402_GRANT.get(kind) or f"the grant cannot pay for this call ({err.get('message') or kind})"
+                    else:
+                        why = _402.get(kind, "the account cannot pay for this call")
+                    raise ModelError(kind, f"compute-proxy refused the call (402 {kind}): {why}", status=402)
+                if status in (401, 403) and self.grant:
+                    kind = err.get("type") or "auth_rejected"
+                    if kind in _403_GRANT:
+                        why = _403_GRANT[kind]
+                    elif status == 401:
+                        why = ("the job's Google ID token was refused after a fresh one was minted: its audience "
+                               f"({getattr(self.session, 'audience', None)!r}, MCHATAI_GRANT_AUDIENCE) must be one of "
+                               "compute-proxy's GRANT_AUDIENCE")
+                    else:
+                        why = str(err.get("message") or "")[:300]
+                    raise ModelError(kind, f"compute-proxy refused the grant call ({status} {kind}): {why}", status=status)
                 if status in (401, 403):
                     raise ModelError(err.get("type") or "auth_rejected",
                                      f"compute-proxy rejected the session ({status}) after a token refresh: sign in again",

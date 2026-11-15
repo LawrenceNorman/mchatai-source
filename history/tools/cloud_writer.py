@@ -751,9 +751,9 @@ def write_chapter(project, n, client, cfg=None, rounds=None, budget=None, gather
                                            {"blocking": len(verdict["blocking"])})
             ch = got or ch
     except Stop as e:
-        return finish(1, "stopped", str(e), ch)
+        return finish(1, "stopped", str(e), ch, stopCode=e.code)
     except ModelError as e:
-        return finish(1, "error", f"{e.code}: {e}", ch)
+        return finish(1, "error", f"{e.code}: {e}", ch, errorCode=e.code)
 
 
 def audit(run, cfg, parts, ch, n, system, k, cap, out):
@@ -838,6 +838,7 @@ def gather(project, n, source_ids, client, cfg=None, budget=None, fresh=False, o
                       "factsTheDossierHas": [{"id": e.get("id"), "what": e.get("what"), "lifeStage": e.get("lifeStage")}
                                              for e in have]})
     kept, dropped, done = [], [], set()
+    stopped = None   # {"code", "message"} when the run ends early (book_job.py reads it)
     recs = project.sources
     try:
         for sid in source_ids:
@@ -883,10 +884,10 @@ def gather(project, n, source_ids, client, cfg=None, budget=None, fresh=False, o
             done.add(sid)
     except Stop as e:
         out(f"gather ch{n:02d}: stopped — {e}")
-        code = 1
+        code, stopped = 1, {"code": e.code, "message": str(e), "kind": "stop"}
     except ModelError as e:
         out(f"gather ch{n:02d}: error — {e.code}: {e}")
-        code = 1
+        code, stopped = 1, {"code": e.code, "message": f"{e.code}: {e}", "kind": "model"}
     else:
         code = 0
 
@@ -902,7 +903,7 @@ def gather(project, n, source_ids, client, cfg=None, budget=None, fresh=False, o
         out(f"  dropped ({d.get('source')}): {d['reason']}" + (f" — {str(d.get('what'))[:90]!r}" if d.get("what") else ""))
     out(f"gather ch{n:02d}: kept {len(kept)}, dropped {len(dropped)} → {os.path.relpath(path, project.root)} "
         f"({run.spent():g} compute tokens on this chapter's gathering)")
-    return code, {"kept": kept, "dropped": dropped}
+    return code, {"kept": kept, "dropped": dropped, **({"error": stopped} if stopped else {})}
 
 
 # ── command line ─────────────────────────────────────────────────────────────
