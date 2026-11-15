@@ -2518,6 +2518,101 @@ class QuizOnPage(FixtureCase):
                                                                 {"title": titles[1]}]), [None, 1, 2])
 
 
+class PodcastOnPage(QuizOnPage):
+    """ED.8: a chapter's checked podcast script under its text, read by the reader's own browser voices."""
+    # The quiz tests run once, in QuizOnPage; this class reuses only its fixture and helpers.
+    test_opted_in_a_chapter_shows_its_quiz_under_its_text = None
+    test_the_book_opts_in_and_a_story_may_opt_out = None
+    test_a_broken_quiz_file_or_a_missing_component_is_a_problem = None
+    test_a_chapter_is_matched_by_its_title_then_by_its_place = None
+    SCRIPT = {"schema": "podcast-script.v1", "id": "pod-1", "title": "Water Street",
+              "sections": [{"heading": "Hook", "lines": [
+                  {"id": "L1", "speaker": "teacher", "text": "She bought the lot on Water Street."},
+                  {"id": "L2", "speaker": "learner", "text": "Why there?"},
+                  {"id": "L3", "speaker": "narrator", "text": "A speaker the player does not voice."}]}],
+              "text": "TEACHER: …", "validation": {"checks": ["speakers", "numbers", "lines_supported"]}}
+
+    def pflag(self, value):
+        meta = _hw.load_json(self.project.path("project.json"))
+        meta["podcastOnPage"] = value
+        _hw.save_json(self.project.path("project.json"), meta)
+
+    def save_podcast(self, n, body):
+        path = self.project.path("podcast", f"{n:02d}.json")
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w", encoding="utf-8") as fh:
+            fh.write(body if isinstance(body, str) else json.dumps(body))
+
+    def scripts(self):
+        from html.parser import HTMLParser
+
+        class Scripts(HTMLParser):
+            def __init__(self):
+                super().__init__()
+                self.bodies, self.inside = [], False
+
+            def handle_starttag(self, tag, attrs):
+                if tag == "script":
+                    self.inside = True
+                    self.bodies.append("")
+
+            def handle_endtag(self, tag):
+                if tag == "script":
+                    self.inside = False
+
+            def handle_data(self, data):
+                if self.inside:
+                    self.bodies[-1] += data
+        parsed = Scripts()
+        parsed.feed(self.page())
+        return parsed.bodies
+
+    def test_without_the_flag_or_the_files_the_page_is_unchanged(self):
+        code, out = self.build(files=True)
+        self.assertEqual(code, 0, out)
+        before = self.page()
+        self.save_podcast(1, self.SCRIPT)               # a podcast file, no flag
+        self.assertEqual(self.build(files=True)[0], 0)
+        self.assertEqual(self.page(), before)
+        self.assertNotIn("podcast-player", before)
+
+    def test_opted_in_a_chapter_can_be_listened_to(self):
+        self.save_podcast(1, {"ok": True, "script": self.SCRIPT, "report": {}})   # the service's whole reply reads too
+        self.pflag(True)
+        code, out = self.build(files=True)
+        self.assertEqual(code, 0, out)
+        self.assertIn("podcasts: 1 chapter(s)", out)
+        pod = self.chapters()[0]["podcast"]
+        self.assertEqual([l["speaker"] for l in pod["sections"][0]["lines"]], ["teacher", "learner"], "only the two voices")
+        self.assertNotIn("validation", pod)
+        self.assertNotIn("podcast", self.chapters()[1])
+        page = self.page()
+        self.assertIn("Listen to this chapter", page)
+        bodies = self.scripts()
+        self.assertEqual(len(bodies), 4, "data, the page's script, the component, its mount")
+        self.assertIn('customElements.define("podcast-player"', bodies[2])
+        self.assertIn("// END mchatai-web-components: ui.podcast-player", bodies[2])
+
+    def test_an_unchecked_script_is_refused_and_both_mount_in_order(self):
+        self.pflag(True)
+        self.flag(True)
+        self.save_podcast(1, dict(self.SCRIPT, validation={"checks": ["speakers"]}))
+        code, out = self.build(files=True)
+        self.assertIn("is not a checked podcast-script.v1", out)
+        self.assertNotIn("podcast-player", self.page())
+        self.save_podcast(1, self.SCRIPT)
+        self.save_quiz(1, self.SET)
+        self.assertEqual(self.build(files=True)[0], 0)
+        bodies = self.scripts()
+        self.assertEqual(len(bodies), 6, "data, page, quiz component + mount, podcast component + mount")
+        self.assertIn('customElements.define("quiz-block"', bodies[2])
+        self.assertIn('customElements.define("podcast-player"', bodies[4])
+        with mock.patch.object(self.sb, "podcast_player_source", return_value=None):
+            code, out = self.build(files=True)
+        self.assertIn("the podcast-player component is missing", out)
+        self.assertNotIn("podcast", self.chapters()[0])
+
+
 class Survey(unittest.TestCase):
     """survey.py: the long list's pure parts. Leads, not members (2026-10-05)."""
 

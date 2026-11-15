@@ -721,6 +721,57 @@ def page_quiz(project, n, slug, problems):
             "chapter": qs.get("chapter", int(n)), "questions": questions}
 
 
+# ── the chapter as a podcast ─────────────────────────────────────────────────
+# Phase ED.8 (mchatai_macOS/docs/EDUCATION_CLOUD_SERVICES.md): a chapter with a CHECKED two-voice script at
+# podcast/NN.json (the service's podcast-script.v1, or its whole reply) shows "Listen to this chapter" under its
+# text, as the podcast-player web component (frameworks/web-components/ui/learning/PodcastPlayer.js, inlined): the
+# reader's own browser voices read it, free. Opt-in like the quiz: project.json "podcastOnPage": true, or the
+# series' book block. A script that did not pass the service's line check is refused, never shown.
+PODCAST_PLAYER = os.path.join("ui", "learning", "PodcastPlayer.js")
+PODCAST_SPEAKERS = {"teacher", "learner"}
+
+
+def podcast_on_page(meta, book):
+    own = (meta or {}).get("podcastOnPage")
+    return own if isinstance(own, bool) else (book or {}).get("podcastOnPage") is True
+
+
+def podcast_player_source():
+    quiz = quiz_block_source()
+    if quiz:
+        path = os.path.join(os.path.dirname(quiz), os.path.basename(PODCAST_PLAYER))
+        if os.path.isfile(path):
+            return path
+    return None
+
+
+def page_podcast(project, n, slug, problems):
+    """podcast/NN.json as the page carries it: title and the spoken lines, only from a checked script."""
+    rel = f"podcast/{int(n):02d}.json"
+    path = project.path("podcast", f"{int(n):02d}.json")
+    if not os.path.isfile(path):
+        return None
+    try:
+        raw = load_json(path)
+    except (OSError, ValueError) as e:
+        problems.append(f"{slug}: {rel} cannot be read ({type(e).__name__})")
+        return None
+    sc = raw.get("script") if isinstance(raw, dict) and isinstance(raw.get("script"), dict) else raw
+    checks = ((sc or {}).get("validation") or {}).get("checks") or [] if isinstance(sc, dict) else []
+    if not isinstance(sc, dict) or sc.get("schema") != "podcast-script.v1" or "lines_supported" not in checks:
+        problems.append(f"{slug}: {rel} is not a checked podcast-script.v1 (the service's line check must have passed)")
+        return None
+    sections = []
+    for sec in sc.get("sections") or []:
+        lines = [{"speaker": l["speaker"], "text": l["text"]} for l in (sec or {}).get("lines") or []
+                 if isinstance(l, dict) and l.get("speaker") in PODCAST_SPEAKERS and isinstance(l.get("text"), str) and l["text"].strip()]
+        if lines:
+            sections.append({"heading": str(sec.get("heading") or ""), "lines": lines})
+    if not sections:
+        return None
+    return {"schema": "podcast-script.v1", "title": str(sc.get("title") or ""), "sections": sections}
+
+
 def build_story(project, shim, use_files, out, place, problems, pool, lens=None, book=None):
     meta = load_json(project.path("project.json"), {}) or {}
     dossier = project.dossier or {}
@@ -779,6 +830,11 @@ def build_story(project, shim, use_files, out, place, problems, pool, lens=None,
             quiz = page_quiz(project, n, slug, problems) if n else None
             if quiz:
                 row["quiz"] = quiz
+    if podcast_on_page(meta, book):
+        for row, n in zip(chapters, chapter_numbers(project, chapters)):
+            pod = page_podcast(project, n, slug, problems) if n else None
+            if pod:
+                row["podcast"] = pod
     sources = next((parse_sources(p["text"]) for p in parts if p["kind"] == "sources"), [])
     subject = meta.get("subject") or meta.get("name") or dossier.get("subject") or slug
     # The author's pick (project.json "portrait": an image id, {"image": id, "crop": [left, top,
@@ -1225,6 +1281,18 @@ def cmd_build(stories_dir, series_id, out, use_files=False, publish=False, revie
             for s in stories:
                 for c in s["chapters"]:
                     c.pop("quiz", None)
+    podcast_js, voiced = None, sum(1 for s in stories for c in s["chapters"] if c.get("podcast"))
+    if voiced:
+        src = podcast_player_source()
+        if src:
+            with open(src, encoding="utf-8") as fh:
+                podcast_js = fh.read()
+        else:
+            problems.append(f"podcastOnPage: the podcast-player component is missing (frameworks/web-components/{PODCAST_PLAYER}), "
+                            "so no chapter shows its podcast")
+            for s in stories:
+                for c in s["chapters"]:
+                    c.pop("podcast", None)
     client = load_json(os.path.join(os.path.dirname(os.path.abspath(out)), "client.json"), {}) or {}
     channels = {k: v for k, v in (client.get("media") or {}).items() if isinstance(v, str) and safe_url(v)}
     data = {
@@ -1265,9 +1333,11 @@ def cmd_build(stories_dir, series_id, out, use_files=False, publish=False, revie
                    "places": index},
                   fh, ensure_ascii=False, indent=1)
     with open(os.path.join(out, "index.html"), "w", encoding="utf-8") as fh:
-        fh.write(page(data, quiz_js))
+        fh.write(page(data, quiz_js, podcast_js))
     if quiz_js:
         print(f"quizzes: {quizzed} chapter(s) show a quiz under their text (\"Check yourself\")")
+    if podcast_js:
+        print(f"podcasts: {voiced} chapter(s) can be listened to under their text (\"Listen to this chapter\")")
     if export:
         # The same book as data, for an ebook or a print edition (2026-10-30, Black Seattle Vol 1): the
         # stories as the page shows them, their parts in order, and the series' own settings.
@@ -1308,7 +1378,7 @@ def cmd_build(stories_dir, series_id, out, use_files=False, publish=False, revie
 
 # ── the page ─────────────────────────────────────────────────────────────────
 
-def page(data, quiz_js=None):
+def page(data, quiz_js=None, podcast_js=None):
     book = data["book"]
     desc = book.get("subtitle") or book.get("intro", "")[:160]
     payload = json.dumps(data, ensure_ascii=False, separators=(",", ":")).replace("</", "<\\/")
@@ -1318,12 +1388,16 @@ def page(data, quiz_js=None):
              .replace("__CANONICAL__", f'<link rel="canonical" href="{esc(canonical)}">' if canonical else "")
              .replace("__ROBOTS__", "" if book.get("publish") else '<meta name="robots" content="noindex">')
              .replace("__DATA__", payload))
-    if not quiz_js:
+    if not quiz_js and not podcast_js:
         return html_
-    # Only a book with a chapter quiz carries the block: after the page's own script, so route() has drawn
-    # the chapter before the quiz mounts under it.
+    # Only a book with a chapter quiz (or podcast) carries the component: after the page's own script, so route()
+    # has drawn the chapter before it mounts under it. The podcast mounts after the quiz, so it sits between the
+    # text and "Check yourself".
     head, _, tail = html_.rpartition("</body>")
-    return head + QUIZ_MOUNT.replace("__QUIZJS__", quiz_js.replace("</", "<\\/")) + "</body>" + tail
+    mounts = QUIZ_MOUNT.replace("__QUIZJS__", quiz_js.replace("</", "<\\/")) if quiz_js else ""
+    if podcast_js:
+        mounts += PODCAST_MOUNT.replace("__PODJS__", podcast_js.replace("</", "<\\/"))
+    return head + mounts + "</body>" + tail
 
 
 QUIZ_MOUNT = r"""<style>
@@ -1353,6 +1427,36 @@ function quizMount(){
 }
 window.addEventListener("hashchange", quizMount);
 quizMount();
+</script>
+"""
+
+
+PODCAST_MOUNT = r"""<style>
+.pod-sec{margin-top:34px}
+.pod-sec h2{margin:0 0 12px;font:600 22px/1.3 var(--serif)}
+podcast-player{--pod-accent:var(--accent);--pod-bg:var(--panel);--pod-text:var(--ink);--pod-muted:var(--muted);
+  --pod-line:var(--line);--pod-on-accent:var(--ground);--pod-radius:12px;--pod-font:16px/1.5 var(--sans)}
+</style>
+<script>__PODJS__</script>
+<script>
+// A chapter's podcast under its text (series_book.py, Phase ED.8). Runs after route() on every page change.
+function podcastMount(){
+  const parts = (location.hash || "#/").replace(/^#\/?/, "").split("/").filter(Boolean);
+  if (parts[0] !== "p" || !/^\d+$/.test(parts[2] || "") || +parts[2] === 0) return;
+  const s = S[parts[1]], c = s && s.chapters[+parts[2] - 1];
+  const prose = document.querySelector("#view article.story > .prose");
+  if (!c || !c.podcast || !prose || !window.customElements || !customElements.get("podcast-player")) return;
+  const sec = document.createElement("section"), h = document.createElement("h2"), pp = document.createElement("podcast-player");
+  sec.className = "pod-sec";
+  sec.setAttribute("aria-labelledby", "pod-h");
+  h.id = "pod-h";
+  h.textContent = "Listen to this chapter";
+  pp.script = c.podcast;
+  sec.append(h, pp);
+  prose.after(sec);
+}
+window.addEventListener("hashchange", podcastMount);
+podcastMount();
 </script>
 """
 
