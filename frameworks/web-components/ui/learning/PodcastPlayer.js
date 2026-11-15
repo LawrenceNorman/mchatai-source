@@ -97,6 +97,16 @@
         if (Object.prototype.hasOwnProperty.call(this, p)) { const v = this[p]; delete this[p]; this[p] = v; }
       }
       if (this._data) return this._render();
+      // Loaded in <head>, the element connects before the parser reaches its inline JSON child: wait for it.
+      if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", () => this._load(), { once: true });
+        return;
+      }
+      this._load();
+    }
+
+    _load() {
+      if (this._data) return this._render();
       const inline = this.querySelector('script[type="application/json"]');
       if (inline) { try { this.script = JSON.parse(inline.textContent); return; } catch (_) { /* fall through */ } }
       const src = this.getAttribute("src");

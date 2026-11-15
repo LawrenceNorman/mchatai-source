@@ -279,6 +279,11 @@ ul.points .st{font-weight:700}
       }
       if (this._started) return;
       this._started = true;
+      // Loaded in <head>, the element connects before the parser reaches its inline JSON child: wait for it.
+      if (this._raw === undefined && document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", () => this._load(), { once: true });
+        return;
+      }
       this._load();
     }
 
