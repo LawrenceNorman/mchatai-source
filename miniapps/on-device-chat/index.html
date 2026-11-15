@@ -86,6 +86,19 @@
   #sheet .row .sub { display: block; font-size: 13px; color: var(--muted); }
   #sheet .row.toggle input { margin-left: auto; transform: scale(1.2); }
   #sheet .close { margin-top: 12px; width: 100%; }
+  /* A pack's quiz (pack.quiz), played in <quiz-block>, and the agent's visible steps (hooks.actions "steps.draft"). */
+  #quizView { position: fixed; inset: 0; background: var(--bg); z-index: 11; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+  #quizView .qpanel { max-width: 680px; margin: 0 auto; padding: 14px 16px 40px; }
+  #quizView h2 { font-size: 18px; margin: 10px 0 4px; }
+  #quizView .sub { color: var(--muted); font-size: 14px; margin: 0 0 12px; }
+  #quizView .set { display: block; width: 100%; text-align: left; margin: 8px 0; padding: 12px 14px; border-radius: 12px;
+    border: 1px solid var(--border); background: var(--surface); color: var(--text); font: inherit; }
+  quiz-block { --quiz-accent: var(--accent); --quiz-bg: var(--surface); --quiz-text: var(--text); --quiz-muted: var(--muted);
+    --quiz-line: var(--border); --quiz-on-accent: var(--accent-text); }
+  .steps { list-style: none; margin: 4px 0 0; padding: 0; font-size: 13px; color: var(--muted); }
+  .steps li::before { content: "○ "; }
+  .steps li.done::before { content: "✓ "; color: var(--accent); }
+  .steps li.fail::before { content: "✕ "; color: var(--note); }
   [hidden] { display: none !important; }
 </style>
 </head>
@@ -152,10 +165,12 @@
 </div>
 
 <div id="sheet" hidden><div class="panel" id="sheetPanel"></div></div>
+<div id="quizView" hidden><div class="qpanel" id="quizPanel"></div></div>
 
 <script>
 // ─── The pack ────────────────────────────────────────────────────────────────
 let PACK = JSON.parse(document.getElementById("persona-pack").textContent);
+function keepsNothing() { return String(PACK.retention || "").trim().toLowerCase() === "none"; }
 function cfg() {
   return {
     title: PACK.name,
@@ -172,7 +187,8 @@ function cfg() {
     hooks: PACK.hooks || {},
     companion: PACK.companion || null,
     knowledge: PACK.knowledge || null,
-    memory: PACK.memory || null,
+    // Phase FL.7: a pack with retention "none" keeps nothing, so it never offers "remember" (the app refuses the write too).
+    memory: keepsNothing() ? null : (PACK.memory || null),
     outsideAppTitle: "Open this in the mChatAI app",
     outsideAppBody: PACK.name + " runs on Apple's on-device model, so your words never leave your device. It works only inside the mChatAI app on an iPhone 15 Pro or later, or an iPad with Apple Intelligence."
   };
@@ -192,6 +208,7 @@ function applyPack() {
   els.title.textContent = CONFIG.title;
   els.input.placeholder = CONFIG.placeholder;
   document.title = CONFIG.title;
+  els.badge.textContent = keepsNothing() ? "On-device · nothing is kept" : "On-device · Apple Intelligence";
 }
 applyPack();
 
@@ -247,6 +264,14 @@ async function detectEnvironment() {
   await restoreMemory();
   showChat();
   loadKnowledge();
+  loadQuiz().then(() => { if (!els.composer.hidden) els.more.hidden = !hasMoreItems(); });
+}
+
+// A quiz named by path (pack.quiz.path, a quiz.json of sets beside the pack) when the bundle carries none inline.
+async function loadQuiz() {
+  const q = PACK.quiz; if (!q || Array.isArray(q.sets) || !q.path) return;
+  const content = bridge().content; if (!content || typeof content.get !== "function") return;
+  try { const r = await withTimeout(content.get(q.path), 6000); const parsed = JSON.parse(r.text); q.sets = Array.isArray(parsed) ? parsed : parsed.sets || null; } catch (e) {}
 }
 
 // A DEBUG `?pack=<id>` loads a pack from mchatai-source; otherwise the page
@@ -259,6 +284,9 @@ async function loadPackFromSource() {
     const r = await withTimeout(content.get("personas/" + wanted + "/persona.json"), 4000);
     const fresh = JSON.parse(r.text);
     if (fresh && fresh.id === wanted && fresh.prompt) {
+      // The bundle's inline quiz sets stand in for a source record that names only their path.
+      const inlineSets = wanted === PACK.id && PACK.quiz && PACK.quiz.sets;
+      if (fresh.quiz && !Array.isArray(fresh.quiz.sets) && inlineSets) fresh.quiz.sets = inlineSets;
       if (wanted !== PACK.id || (fresh.version || 0) >= (PACK.version || 0)) { PACK = fresh; applyPack(); }
     }
   } catch (e) { /* offline, not published yet, or an older app: the inline pack stands */ }
@@ -352,12 +380,16 @@ function hookItems() {
     items.push({ group: "In mChatAI", title: p.title || p.applet, sub: p.sub || "", run: () => app.navigate(Object.assign({ applet: p.applet }, p.extras || {})) }); });
   (CONFIG.hooks.actions || []).forEach(a => { if (a.type === "calendar.propose" && canCal)
     items.push({ group: "Proposals", title: a.label || a.title || "Add to calendar", sub: a.sub || "Opens the New Event sheet; you decide", run: () => proposeEvent(a) }); });
+  (CONFIG.hooks.actions || []).forEach(a => { if (a.type === "steps.draft" && b.llm && typeof b.llm.generate === "function")
+    items.push({ group: "On this device", title: a.label || "My next steps", sub: a.sub || "Drafted by Apple's on-device model from this chat", run: () => draftSteps(a), noChip: true }); });
+  if (hasQuiz())
+    items.push({ group: "Practice", title: (PACK.quiz && PACK.quiz.label) || "Quiz me", sub: (PACK.quiz && PACK.quiz.sub) || "Checked questions, played here", run: () => openQuiz() });
   return items;
 }
 function hasMoreItems() { return hookItems().length > 0 || !!(CONFIG.memory && CONFIG.memory.optIn && bridge().storage); }
 
 function hookChips() {
-  const items = hookItems().slice(0, 3);
+  const items = hookItems().filter(it => !it.noChip).slice(0, 3);
   if (!items.length) return null;
   const row = document.createElement("div"); row.className = "chips";
   items.forEach(it => { const b = document.createElement("button"); b.type = "button"; b.textContent = it.title; b.addEventListener("click", it.run); row.appendChild(b); });
@@ -398,6 +430,82 @@ function openSheet() {
   els.sheet.hidden = false;
 }
 function closeSheet() { els.sheet.hidden = true; }
+
+// ─── A pack's quiz: checked sets (quiz-set.v2), played in <quiz-block>, which the build inlines ─────────────
+function hasQuiz() {
+  return !!(PACK.quiz && Array.isArray(PACK.quiz.sets) && PACK.quiz.sets.length && window.customElements && customElements.get("quiz-block"));
+}
+function openQuiz(set) {
+  const view = $("quizView"), panel = $("quizPanel");
+  panel.innerHTML = "";
+  const back = document.createElement("button"); back.type = "button"; back.className = "ghost";
+  back.textContent = set ? "← All quizzes" : "← Back to the chat";
+  back.addEventListener("click", () => (set ? openQuiz() : (view.hidden = true)));
+  panel.appendChild(back);
+  const h = document.createElement("h2"); h.textContent = set ? set.title : (PACK.quiz.title || "Quiz me");
+  panel.appendChild(h);
+  if (!set) {
+    if (PACK.quiz.intro) { const p = document.createElement("p"); p.className = "sub"; p.textContent = PACK.quiz.intro; panel.appendChild(p); }
+    PACK.quiz.sets.forEach(s => {
+      const b = document.createElement("button"); b.type = "button"; b.className = "set";
+      b.textContent = s.title + " · " + s.questions.length + " questions";
+      b.addEventListener("click", () => openQuiz(s)); panel.appendChild(b);
+    });
+  } else {
+    const qb = document.createElement("quiz-block");
+    // A pack that keeps nothing keeps no quiz answers either.
+    if (keepsNothing() || PACK.quiz.noSave) qb.setAttribute("no-save", "");
+    qb.quizSet = set;
+    panel.appendChild(qb);
+  }
+  view.hidden = false;
+  view.scrollTop = 0;
+}
+
+// ─── An agent step on the device (hooks.actions "steps.draft") ───────────────
+// The on-device model reads this conversation, in memory, and drafts the next steps the person named. Each step of
+// the work shows as it happens; the result is theirs to copy, share or hear. Nothing is sent anywhere unless they
+// share it themselves.
+async function draftSteps(a) {
+  closeSheet();
+  if (busy) return;
+  const said = history.filter(t => t.role === "user");
+  if (!said.length) { addBubble("note", a.empty || "Talk for a moment first; then I can gather your next steps."); return; }
+  busy = true; setComposerEnabled();
+  const box = addBubble("note", (a.label || "My next steps") + ":");
+  const list = document.createElement("ul"); list.className = "steps"; box.appendChild(list);
+  const step = (text) => { const li = document.createElement("li"); li.textContent = text; list.appendChild(li); scrollToEnd(); return li; };
+  const read = step("Read this chat, on this device");
+  const transcript = history.map(t => (t.role === "user" ? "Person: " : "You: ") + t.text).join("\n");
+  read.className = "done";
+  const draft = step("Draft the steps with Apple's on-device model");
+  try {
+    const r = await bridge().llm.generate(transcript + "\n\n" + (a.prompt || "List the next steps the person said they would try, in their words, one per line. If they named none, reply NONE."),
+      { provider: "apple", system: a.system || "You list only what the person said, briefly. You never add advice.", temperature: 0.2, maxTokens: a.maxTokens || 160 });
+    const text = String((r && r.text) || "").trim();
+    draft.className = "done";
+    if (!text || /^none\b/i.test(text)) { addBubble("note", a.empty || "You haven't picked a next step yet. Tell me one small thing you'd like to try."); return; }
+    const out = text.split("\n").map(s => s.replace(/^\s*(?:[-*•]|\d+[.)])\s*/, "").trim()).filter(Boolean).slice(0, a.maxSteps || 3);
+    const steps = out.map((s, i) => (i + 1) + ". " + s).join("\n");
+    // Set directly: tidy() would count each "1." as a sentence and cut the list short.
+    const bubble = addBubble("bot", "");
+    bubble.querySelector(".text").textContent = steps;
+    bubble.style.whiteSpace = "pre-line";
+    const b = bridge(), row = document.createElement("div"); row.className = "chips";
+    const chip = (label, run) => { const c = document.createElement("button"); c.type = "button"; c.textContent = label; c.addEventListener("click", run); row.appendChild(c); };
+    const full = (a.title || CONFIG.title) + "\n" + steps;
+    if (b.clipboard && typeof b.clipboard.write === "function") chip("Copy", () => b.clipboard.write(full).then(() => addBubble("note", "Copied.")).catch(() => {}));
+    if (b.share && typeof b.share.send === "function") chip("Share…", () => b.share.send({ text: full }).catch(() => {}));
+    if (b.tts && typeof b.tts.speak === "function") chip("Read aloud", () => b.tts.speak(steps, { language: (PACK.speech && PACK.speech.language) || "en-US" }).catch(() => {}));
+    if (a.checkIn && b.calendar && typeof b.calendar.propose === "function") chip(a.checkIn.label || "Plan a check-in", () => proposeEvent(Object.assign({ notes: steps }, a.checkIn)));
+    if (row.childNodes.length) { els.messages.appendChild(row); scrollToEnd(); }
+  } catch (err) {
+    draft.className = "fail";
+    addBubble("note", String((err && err.message) || err).replace(/^\[[a-z_]+\]\s*/, "") || "The on-device model could not draft them just now.");
+  } finally {
+    busy = false; setComposerEnabled();
+  }
+}
 els.more.addEventListener("click", openSheet);
 els.sheet.addEventListener("click", (e) => { if (e.target === els.sheet) closeSheet(); });
 

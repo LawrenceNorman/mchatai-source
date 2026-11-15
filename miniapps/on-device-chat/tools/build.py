@@ -25,6 +25,11 @@ if not pack.get("surfaces", {}).get("miniapp", False):
 chunks_file = os.path.join(pack_dir, "chunks.json")
 if os.path.exists(chunks_file) and not (pack.get("knowledge") or {}).get("chunks"):
     pack["knowledge"] = dict(pack.get("knowledge") or {}, chunks=json.load(open(chunks_file)))
+# quiz.json (sets beside the pack) rides along inline too, so the quiz plays offline on first open.
+quiz_file = os.path.join(pack_dir, "quiz.json")
+if pack.get("quiz") and not pack["quiz"].get("sets") and os.path.exists(quiz_file):
+    q = json.load(open(quiz_file))
+    pack["quiz"] = dict(pack["quiz"], sets=q if isinstance(q, list) else q.get("sets", []))
 html = open(os.path.join(here, "..", "index.html")).read()
 # A pack with many notes is written compactly: the hosted page is one file and every byte ships.
 pretty = len(json.dumps(pack, ensure_ascii=False)) < 60_000
@@ -32,6 +37,12 @@ block = '<script id="persona-pack" type="application/json">\n' + json.dumps(pack
 html, n = re.subn(r'<script id="persona-pack" type="application/json">.*?</script>', lambda _: block, html, count=1, flags=re.S)
 assert n == 1, "persona-pack block not found"
 html = html.replace("<title>On-device chat</title>", f"<title>{pack['name']}</title>", 1)
+# A pack with a quiz gets the quiz-block component inline (frameworks/web-components/ui/learning/QuizBlock.js):
+# the hosted page is one file and plays offline.
+if (pack.get("quiz") or {}).get("sets"):
+    qb = os.path.join(source_root, "frameworks", "web-components", "ui", "learning", "QuizBlock.js")
+    code = open(qb).read().replace("</", "<\\/")
+    html = html.replace("</head>", f'<script id="quiz-block-js">{code}</script>\n</head>', 1)
 os.makedirs(out_dir, exist_ok=True)
 open(os.path.join(out_dir, "index.html"), "w").write(html)
 icon = os.path.join(pack_dir, "icon.png")

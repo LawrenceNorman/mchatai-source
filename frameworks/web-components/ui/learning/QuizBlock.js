@@ -22,6 +22,8 @@
 //                   (or a Promise of one) of a real, non-anonymous account, or null
 //   limit           show at most this many questions
 //   no-shuffle      keep the set's option order (by default options are shuffled, stably per question)
+//   no-save         keep no answers anywhere: not on the device, not in an account, no grading call (a space that
+//                   promises to keep nothing, such as an on-device persona pack with retention "none")
 // Properties: quizSet, tokenProvider (a function, as token-provider).
 // Without either, window.mchataiAuth?.getIdToken?.() is asked. With no token:
 //   - multiple choice and true/false work fully, offline;
@@ -468,6 +470,8 @@ ul.points .st{font-weight:700}
         ta.focus();
         return;
       }
+      // A space that keeps nothing never sends a written answer away to be graded.
+      if (this.hasAttribute("no-save")) return this._reveal(q, fb, "Your answer stays on this screen. Compare it with these.");
       const token = await this._token();
       if (!token) return this._reveal(q, fb, "Sign in to have your answer graded. Meanwhile, compare yours with these.");
       if (!q.rubric.length) return this._reveal(q, fb, "This question has no rubric to grade against. Compare yours with the model answer.");
@@ -600,6 +604,7 @@ ul.points .st{font-weight:700}
         detail.saved = where;
         this.dispatchEvent(new CustomEvent("quiz-complete", { bubbles: true, composed: true, detail }));
       };
+      if (this.hasAttribute("no-save")) { this._pending.splice(0); return say("Nothing is kept: your answers stay on this screen.", null); }
       if (!this._set.id) return say("This quiz has no id, so its answers are not saved.", null);
       if (!fresh.length) return say(this._savedText || "", null);
       if (this._saveLine) this._saveLine.textContent = "Saving your answers…";
