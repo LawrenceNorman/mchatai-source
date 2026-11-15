@@ -31,6 +31,15 @@ for name, role in cfg["roles"].items():
 writer, checker = cfg["roles"].get("quizWriter", {}), cfg["roles"].get("quizChecker", {})
 if writer.get("provider") == checker.get("provider"):
     problems.append("quizChecker must be a different provider family from quizWriter")
+pw, pc = cfg["roles"].get("podcastWriter"), cfg["roles"].get("podcastChecker")
+if pw or pc:
+    if not (pw and pc):
+        problems.append("podcastWriter and podcastChecker come as a pair")
+    elif pw.get("provider") == pc.get("provider"):
+        problems.append("podcastChecker must be a different provider family from podcastWriter")
+    p = cfg.get("podcast") or {}
+    if not 1 <= p.get("minMinutes", 0) <= p.get("defaultMinutes", 0) <= p.get("maxMinutes", 0) <= 60:
+        problems.append("podcast: minMinutes <= defaultMinutes <= maxMinutes <= 60")
 limits = cfg.get("limits", {})
 if not 1 <= limits.get("defaultQuestions", 0) <= limits.get("maxQuestions", 0):
     problems.append("limits: defaultQuestions must be between 1 and maxQuestions")

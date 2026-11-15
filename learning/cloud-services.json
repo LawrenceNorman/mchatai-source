@@ -3,10 +3,51 @@
   "_comment": "Phase ED: the mchatai.com education services (web-api /v1/learn/*). Roles name a model from llm-catalog/providers/<provider>.json, called through compute-proxy and billed to the signed-in user's compute tokens. Edit here to change a model, a limit or a prompt with no redeploy; web-api reloads this every 5 minutes. The checker must be a different provider family from the writer, so one model never grades its own questions (tools/check_services.py enforces it).",
   "version": 1,
   "roles": {
-    "quizWriter":   { "provider": "anthropic", "model": "claude-opus-5.5",   "temperature": 0.4, "maxOutputTokens": 16000, "prompt": "learning/prompts/quiz-writer.md" },
-    "quizChecker":  { "provider": "openai",    "model": "gpt-6-luna",        "temperature": 0,   "maxOutputTokens": 12000, "reasoningEffort": "low", "prompt": "learning/prompts/quiz-checker.md" },
-    "answerGrader": { "provider": "anthropic", "model": "claude-sonnet-5.5", "temperature": 0,   "maxOutputTokens": 6000, "prompt": "learning/prompts/grade-answer.md" },
-    "essayGrader":  { "provider": "anthropic", "model": "claude-opus-5.5",   "temperature": 0,   "maxOutputTokens": 8000, "prompt": "learning/prompts/grade-answer.md" }
+    "quizWriter": {
+      "provider": "anthropic",
+      "model": "claude-opus-5.5",
+      "temperature": 0.4,
+      "maxOutputTokens": 16000,
+      "prompt": "learning/prompts/quiz-writer.md"
+    },
+    "quizChecker": {
+      "provider": "openai",
+      "model": "gpt-6-luna",
+      "temperature": 0,
+      "maxOutputTokens": 12000,
+      "reasoningEffort": "low",
+      "prompt": "learning/prompts/quiz-checker.md"
+    },
+    "answerGrader": {
+      "provider": "anthropic",
+      "model": "claude-sonnet-5.5",
+      "temperature": 0,
+      "maxOutputTokens": 6000,
+      "prompt": "learning/prompts/grade-answer.md"
+    },
+    "essayGrader": {
+      "provider": "anthropic",
+      "model": "claude-opus-5.5",
+      "temperature": 0,
+      "maxOutputTokens": 8000,
+      "prompt": "learning/prompts/grade-answer.md"
+    },
+    "podcastWriter": {
+      "provider": "anthropic",
+      "model": "claude-opus-5.5",
+      "temperature": 0.6,
+      "maxOutputTokens": 16000,
+      "reasoningEffort": "low",
+      "prompt": "learning/prompts/podcast-writer.md"
+    },
+    "podcastChecker": {
+      "provider": "openai",
+      "model": "gpt-6-luna",
+      "temperature": 0,
+      "maxOutputTokens": 16000,
+      "reasoningEffort": "low",
+      "prompt": "learning/prompts/podcast-checker.md"
+    }
   },
   "limits": {
     "maxSourceChars": 60000,
@@ -20,8 +61,22 @@
   },
   "review": {
     "_comment": "Leitner boxes: a right answer moves the item up one box, a wrong one sends it to box 1. Days until the item is due again, per box.",
-    "boxDays": [1, 3, 7, 14, 30],
+    "boxDays": [
+      1,
+      3,
+      7,
+      14,
+      30
+    ],
     "wrongRetryMinutes": 10,
     "maxDue": 50
+  },
+  "podcast": {
+    "_comment": "ED.8 podcast scripts (web-api POST /v1/learn/podcasts/script). Audio is made on the listener's device with free local voices, not here.",
+    "minMinutes": 2,
+    "maxMinutes": 15,
+    "defaultMinutes": 8,
+    "wordsPerMinute": 150,
+    "lengthTolerance": 0.35
   }
 }
