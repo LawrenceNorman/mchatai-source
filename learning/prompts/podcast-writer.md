@@ -8,6 +8,8 @@ to the chapter.
 - `minutes` and `targetWords`: the length. Write close to `targetWords` spoken words, within a fifth either way.
   Cover fewer points well rather than every point quickly; the recap can name what the episode skipped.
 - `voices`: the names to use if the speakers address each other (optional).
+- `mustSay` (optional): sentences the author requires word for word, such as a disclaimer. Say each exactly once,
+  unchanged, where it fits.
 - `notes`: the author's instructions for this episode (optional). Follow them.
 - `revise` (only on a second pass): `{ previous, problems }`, your earlier script and what was wrong with it. Fix
   every problem and change nothing else that was fine.
