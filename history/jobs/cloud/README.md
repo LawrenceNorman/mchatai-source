@@ -42,8 +42,8 @@ user-authored compute, so it may run centrally (rule #2).
 ## Where the project lives
 
 Each book is a GCS prefix holding the project folder:
-`gs://<bucket>/books/<uid>/<slug>/` with `project.json`, `dossier.json`, `sources/`, `plan.json`, `chapters/` and
-`cloud/`.
+`gs://<bucket>/users/<uid>/<slug>/` with `project.json`, `dossier.json`, `sources/`, `plan.json`, `chapters/` and
+`cloud/`. Mounted at `/mnt/books`, that is `/mnt/books/users/<uid>/<slug>`.
 
 **A (recommended): mount the bucket.** Use Cloud Run's Cloud Storage volume (gcsfuse) at `/mnt/books`, with no
 sync step: the job reads and writes the prefix in place, so job.json is in GCS the moment it is written.
@@ -58,9 +58,9 @@ sync step: the job reads and writes the prefix in place, so job.json is in GCS t
 **B: sync in and out.** Not built. It needs `gcloud` in the image (a `google-cloud-cli` base) and a wrapper:
 
 ```
-gcloud storage rsync -r gs://B/books/U/S /work/S
+gcloud storage rsync -r gs://B/users/U/S /work/S
 python3 /app/history/tools/book_job.py run /work/S --plan /work/S/cloud/steps.json; code=$?
-gcloud storage rsync -r /work/S gs://B/books/U/S     # always, so job.json goes back
+gcloud storage rsync -r /work/S gs://B/users/U/S     # always, so job.json goes back
 exit $code
 ```
 
@@ -98,7 +98,7 @@ the job's own account and cached until five minutes before it expires. A 401 min
   - `roles/storage.objectUser` on the bucket, to write the plan and read job.json.
 - **Whoever deploys the job** needs `iam.serviceAccounts.actAs` on grant-runner.
 
-## How web-api would start it (design notes; the route is ED.11b, not built)
+## How web-api starts it (ED.11b: web-api `src/bookJobs.js`, built 2026-11-14, not deployed)
 
 1. **Quote.** The app shows "up to N compute tokens" for the plan.
    - The sum of the steps' budgets is the plan's ceiling, since each budget caps its chapter's run.
@@ -114,11 +114,13 @@ the job's own account and cached until five minutes before it expires. A 401 min
    ```
    POST https://run.googleapis.com/v2/projects/mchatai-2367e/locations/<region>/jobs/book-job:run
    {"overrides": {"taskCount": 1, "containerOverrides": [{
-      "args": ["run", "/mnt/books/<uid>/<slug>", "--plan", "/mnt/books/<uid>/<slug>/cloud/steps.json"],
-      "env": [{"name": "MCHATAI_GRANT", "value": "<grantId>"}, {"name": "MCHATAI_JOB_ID", "value": "<jobId>"}]}]}}
+      "args": ["run", "/mnt/books/users/<uid>/<slug>", "--plan", "/mnt/books/users/<uid>/<slug>/cloud/steps.json"],
+      "env": [{"name": "MCHATAI_GRANT", "value": "<grantId>"}, {"name": "MCHATAI_JOB_ID", "value": "<jobId>"},
+              {"name": "BOOK_PROJECT", "value": "gs://<bucket>/users/<uid>/<slug>/"}]}]}}
    ```
 
-   The response is an Operation naming the execution. Keep it on `learnJobs/{jobId}`.
+   The response is an Operation naming the execution. web-api keeps it on `bookJobs/{jobId}`. `BOOK_PROJECT` is
+   informational: `book_job.py` reads the project from its arguments.
 4. **Progress.** The app polls web-api. web-api reads job.json (status, compute tokens per step) and the
    execution's state.
 5. **Outcome.**
@@ -159,12 +161,12 @@ the job's own account and cached until five minutes before it expires. A 401 min
    A write step makes up to `rounds` writer calls plus its audits, each up to `timeoutSeconds` (900). Size
    `--task-timeout` for the plan, or run one execution per chapter.
 5. Smoke test:
-   1. Upload `history/fixtures/demo-project` to `books/test/demo`, with a one-step `cloud/steps.json`.
+   1. Upload `history/fixtures/demo-project` to `users/test/demo`, with a one-step `cloud/steps.json`.
    2. Create a small grant.
    3. Run the job:
 
       ```
-      gcloud run jobs execute book-job --args=run,/mnt/books/test/demo,--plan,/mnt/books/test/demo/cloud/steps.json --update-env-vars MCHATAI_GRANT=<id> --wait
+      gcloud run jobs execute book-job --args=run,/mnt/books/users/test/demo,--plan,/mnt/books/users/test/demo/cloud/steps.json --update-env-vars MCHATAI_GRANT=<id> --wait
       ```
 
    4. Check job.json, the grant's `spent`, and the `grant_charge` entries in `audit_log` with the jobId.

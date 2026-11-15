@@ -6,7 +6,7 @@
 # BuildKit reads Dockerfile.dockerignore beside this file, so only those two paths enter the image.
 #
 # Run (one execution = one `run`; the project is a mounted GCS prefix, README.md "Where the project lives"):
-#   book-job run /mnt/books/<uid>/<slug> --plan /mnt/books/<uid>/<slug>/cloud/steps.json
+#   book-job run /mnt/books/users/<uid>/<slug> --plan /mnt/books/users/<uid>/<slug>/cloud/steps.json
 FROM python:3.13-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
