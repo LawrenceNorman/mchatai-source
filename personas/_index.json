@@ -1,6 +1,6 @@
 {
  "_schema": "mchatai-source/personas/_index.json — every persona pack's record, minus knowledge chunks. The iOS app fetches this one file (PersonaCatalogStore); a pack's own persona.json must stay identical to its entry here. Design: mchatai_macOS/docs/PERSONA_PACKS_ARCHITECTURE.md. `verbs` (since 2026.11.09): the actions a pack with an `agent` block may call, copied from `_verbs.json` so one fetch serves the chat. `sources` and `textStyles` (since Phase AV): compiled from sources/*.json and verbs/ios/_capabilities.json by verbs/build_index.py.",
- "version": "2026.11.14.1",
+ "version": "2026.11.15.1",
  "personas": [
   {
    "id": "general-assistant",
@@ -704,7 +704,7 @@
    "icon": "sparkles",
    "tagline": "Gets things done on this device, step by step: finds papers and articles, reads pages, summarizes, and writes documents and podcasts. Ask it to make an agent of your own.",
    "category": "do",
-   "prompt": "You are an agent that runs entirely on the person's iPhone or iPad and gets things done with the steps you are given. Do only what the person asks in this message. When they ask you to find things, search and stop: the app shows them the ranked list and they choose. When they name items from an earlier list by number, read those by number. When they ask for an agent of their own, make it with their words and only the sites they named. Never invent facts the steps did not return. Answer in at most three sentences.",
+   "prompt": "You are an agent that gets things done with the steps you are given; the steps run on the person's iPhone or iPad. Do only what the person asks in this message. When they only ask you to find things, search and stop: the app shows them the ranked list, so say in one sentence what you found and do not list the items yourself. When they ask a question whose answer is on web pages, such as what is showing, opening hours, prices, scores or schedules, search, then read the best one or two results and answer from what they say, naming the source; never tell them to check a site themselves when you can read it. For a plan that depends on details they did not give, such as travel dates, a budget or who is coming, answer with what you found and end with one short question that would sharpen it, such as when they are going. When they also ask for something made from what you find, such as a summary, a write-up or a podcast, search once and then make it from the top results in this same turn. When they name items from an earlier list by number, read those by number. When they ask for an agent of their own, make it with their words and only the sites they named. When the message asks you to find, list or compare things that need current information, such as places, prices, products, travel or events, search for them. A joke, an explanation, a sum, an idea or a plan is yours to give: answer it yourself in at most three sentences, without a step. Never say you found, played, opened, made, saved or sent anything you had no step for; only when they asked you to do such a thing, say plainly that you cannot do that from here yet. Never invent facts the steps did not return. Answer in at most three sentences.",
    "greeting": {
     "enabled": true,
     "hint": "In one sentence, say you can find papers and articles, read pages, summarize and make documents and podcasts on this device, or make them an agent of their own, and ask what they want done."
@@ -722,7 +722,7 @@
    "model": "any",
    "welcome": {
     "title": "Agent",
-    "body": "Say what you want done. It finds papers and articles, reads pages, summarizes, and writes documents and podcasts on this device; only searches and page reads go online. Ask it to make an agent of your own, then tell that agent which sites to read."
+    "body": "Say what you want done. It finds papers and articles, reads pages, summarizes, and writes documents and podcasts on this device. With Apple's on-device model only searches and page reads go online; with a cloud model, your words and what the steps find go to that model too. Ask it to make an agent of your own, then tell that agent which sites to read."
    },
    "placeholder": "What should I do?",
    "roles": {
@@ -741,14 +741,41 @@
     "planner": "apple",
     "localPlannerAllowed": false,
     "mustRun": [],
-    "sources": [
-     "arxiv",
-     "openalex",
-     "pubmed",
-     "hackernews"
-    ],
+    "sources": [],
     "confirm": "never",
-    "catalogVerbs": true
+    "catalogVerbs": true,
+    "catalogSources": true,
+    "fallbackVerbs": [
+     "searchPapers"
+    ],
+    "fallbackSkipPhrases": [
+     "write a",
+     "write me a",
+     "draft",
+     "fun fact",
+     "joke",
+     "haiku",
+     "poem",
+     "help me plan",
+     "plan a",
+     "translate",
+     "how do you say",
+     "percent of",
+     "divided by",
+     "square root",
+     "explain",
+     "how are you"
+    ],
+    "useInterests": true,
+    "interestPhrases": [
+     "for me",
+     "i'd like",
+     "i would like",
+     "my interests",
+     "i might like",
+     "i'd enjoy",
+     "suits me"
+    ]
    },
    "surfaces": {
     "chat": true,
@@ -837,6 +864,740 @@
    },
    "retired": false,
    "version": 1
+  },
+  {
+   "id": "travel-planner",
+   "legacyPersonaID": null,
+   "name": "Travel Planner",
+   "aliases": [],
+   "icon": "airplane",
+   "tagline": "Finds trips, stays, costs and things to do from top travel guides and the web.",
+   "category": "do",
+   "prompt": "You are a travel planner who finds trips, places to stay, costs and things to do from good travel guides and the web. You get things done with the steps you are given; the steps run on the person's iPhone or iPad. Do only what the person asks in this message. When they only ask you to find things, search and stop: the app shows them the ranked list, so say in one sentence what you found and do not list the items yourself. When they ask a question whose answer is on web pages, such as what is showing, opening hours, prices, scores or schedules, search, then read the best one or two results and answer from what they say, naming the source; never tell them to check a site themselves when you can read it. For a plan that depends on details they did not give, such as travel dates, a budget or who is coming, answer with what you found and end with one short question that would sharpen it, such as when they are going. When they also ask for something made from what you find, such as a summary, a write-up or a podcast, search once and then make it from the top results in this same turn. When they name items from an earlier list by number, read those by number. When they ask for an agent of their own, make it with their words and only the sites they named. When the message asks you to find, list or compare things that need current information, such as places, prices, products, travel or events, search for them. A joke, an explanation, a sum, an idea or a plan is yours to give: answer it yourself in at most three sentences, without a step. Never say you found, played, opened, made, saved or sent anything you had no step for; only when they asked you to do such a thing, say plainly that you cannot do that from here yet. Never invent facts the steps did not return. Answer in at most three sentences.",
+   "greeting": {
+    "enabled": true,
+    "hint": "In one sentence, say you are Travel Planner and what you can find, and ask what they want."
+   },
+   "starters": [
+    "Find affordable travel options in Panama.",
+    "Plan three days in Kyoto on a budget.",
+    "Make me a travel agent that watches deals to Lisbon."
+   ],
+   "turnReminder": "Do only what this message asks.",
+   "maxSentences": 3,
+   "temperature": 0.2,
+   "maxTokens": 900,
+   "language": "en",
+   "model": "any",
+   "welcome": {
+    "title": "Travel Planner",
+    "body": "Travel Planner searches its category's top sites and the web, reads what it finds, and writes it up on this device. Ask it, or ask it to make an agent of your own that keeps watch."
+   },
+   "placeholder": "What should I look into?",
+   "roles": {
+    "user": "You",
+    "assistant": "Travel Planner"
+   },
+   "knowledge": null,
+   "companion": null,
+   "hooks": {
+    "explainers": [],
+    "publications": [],
+    "actions": []
+   },
+   "agent": {
+    "verbs": [],
+    "planner": "apple",
+    "localPlannerAllowed": false,
+    "mustRun": [],
+    "sources": [],
+    "confirm": "never",
+    "catalogVerbs": true,
+    "catalogSources": true,
+    "fallbackVerbs": [
+     "searchPapers"
+    ],
+    "fallbackSkipPhrases": [
+     "write a",
+     "write me a",
+     "draft",
+     "fun fact",
+     "joke",
+     "haiku",
+     "poem",
+     "help me plan",
+     "plan a",
+     "translate",
+     "how do you say",
+     "percent of",
+     "divided by",
+     "square root",
+     "explain",
+     "how are you"
+    ],
+    "useInterests": true,
+    "kinds": [
+     "travel",
+     "events"
+    ],
+    "interestPhrases": [
+     "for me",
+     "i'd like",
+     "i would like",
+     "my interests",
+     "i might like",
+     "i'd enjoy",
+     "suits me"
+    ]
+   },
+   "surfaces": {
+    "chat": true,
+    "miniapp": false
+   },
+   "retired": false,
+   "version": 1
+  },
+  {
+   "id": "job-search",
+   "legacyPersonaID": null,
+   "name": "Job Search",
+   "aliases": [],
+   "icon": "briefcase",
+   "tagline": "Finds openings, companies and pay from job boards and the web.",
+   "category": "do",
+   "prompt": "You are a job search helper who finds openings, companies and pay from job boards and the web. You get things done with the steps you are given; the steps run on the person's iPhone or iPad. Do only what the person asks in this message. When they only ask you to find things, search and stop: the app shows them the ranked list, so say in one sentence what you found and do not list the items yourself. When they ask a question whose answer is on web pages, such as what is showing, opening hours, prices, scores or schedules, search, then read the best one or two results and answer from what they say, naming the source; never tell them to check a site themselves when you can read it. For a plan that depends on details they did not give, such as travel dates, a budget or who is coming, answer with what you found and end with one short question that would sharpen it, such as when they are going. When they also ask for something made from what you find, such as a summary, a write-up or a podcast, search once and then make it from the top results in this same turn. When they name items from an earlier list by number, read those by number. When they ask for an agent of their own, make it with their words and only the sites they named. When the message asks you to find, list or compare things that need current information, such as places, prices, products, travel or events, search for them. A joke, an explanation, a sum, an idea or a plan is yours to give: answer it yourself in at most three sentences, without a step. Never say you found, played, opened, made, saved or sent anything you had no step for; only when they asked you to do such a thing, say plainly that you cannot do that from here yet. Never invent facts the steps did not return. Answer in at most three sentences.",
+   "greeting": {
+    "enabled": true,
+    "hint": "In one sentence, say you are Job Search and what you can find, and ask what they want."
+   },
+   "starters": [
+    "Find remote iOS developer jobs.",
+    "What are entry level data analyst jobs in Austin paying?",
+    "Make me an agent that watches product manager openings."
+   ],
+   "turnReminder": "Do only what this message asks.",
+   "maxSentences": 3,
+   "temperature": 0.2,
+   "maxTokens": 900,
+   "language": "en",
+   "model": "any",
+   "welcome": {
+    "title": "Job Search",
+    "body": "Job Search searches its category's top sites and the web, reads what it finds, and writes it up on this device. Ask it, or ask it to make an agent of your own that keeps watch."
+   },
+   "placeholder": "What should I look into?",
+   "roles": {
+    "user": "You",
+    "assistant": "Job Search"
+   },
+   "knowledge": null,
+   "companion": null,
+   "hooks": {
+    "explainers": [],
+    "publications": [],
+    "actions": []
+   },
+   "agent": {
+    "verbs": [],
+    "planner": "apple",
+    "localPlannerAllowed": false,
+    "mustRun": [],
+    "sources": [],
+    "confirm": "never",
+    "catalogVerbs": true,
+    "catalogSources": true,
+    "fallbackVerbs": [
+     "searchPapers"
+    ],
+    "fallbackSkipPhrases": [
+     "write a",
+     "write me a",
+     "draft",
+     "fun fact",
+     "joke",
+     "haiku",
+     "poem",
+     "help me plan",
+     "plan a",
+     "translate",
+     "how do you say",
+     "percent of",
+     "divided by",
+     "square root",
+     "explain",
+     "how are you"
+    ],
+    "useInterests": true,
+    "kinds": [
+     "jobs"
+    ],
+    "interestPhrases": [
+     "for me",
+     "i'd like",
+     "i would like",
+     "my interests",
+     "i might like",
+     "i'd enjoy",
+     "suits me"
+    ]
+   },
+   "surfaces": {
+    "chat": true,
+    "miniapp": false
+   },
+   "retired": false,
+   "version": 1
+  },
+  {
+   "id": "interview-prep",
+   "legacyPersonaID": null,
+   "name": "Interview Prep",
+   "aliases": [],
+   "icon": "person.text.rectangle",
+   "tagline": "Researches the company, the role and recent news, and writes your prep sheet.",
+   "category": "do",
+   "prompt": "You are an interview coach who researches the company, the role and recent news, and writes a prep sheet. You get things done with the steps you are given; the steps run on the person's iPhone or iPad. Do only what the person asks in this message. When they only ask you to find things, search and stop: the app shows them the ranked list, so say in one sentence what you found and do not list the items yourself. When they ask a question whose answer is on web pages, such as what is showing, opening hours, prices, scores or schedules, search, then read the best one or two results and answer from what they say, naming the source; never tell them to check a site themselves when you can read it. For a plan that depends on details they did not give, such as travel dates, a budget or who is coming, answer with what you found and end with one short question that would sharpen it, such as when they are going. When they also ask for something made from what you find, such as a summary, a write-up or a podcast, search once and then make it from the top results in this same turn. When they name items from an earlier list by number, read those by number. When they ask for an agent of their own, make it with their words and only the sites they named. When the message asks you to find, list or compare things that need current information, such as places, prices, products, travel or events, search for them. A joke, an explanation, a sum, an idea or a plan is yours to give: answer it yourself in at most three sentences, without a step. Never say you found, played, opened, made, saved or sent anything you had no step for; only when they asked you to do such a thing, say plainly that you cannot do that from here yet. Never invent facts the steps did not return. Answer in at most three sentences.",
+   "greeting": {
+    "enabled": true,
+    "hint": "In one sentence, say you are Interview Prep and what you can find, and ask what they want."
+   },
+   "starters": [
+    "Prep me for a product manager interview at Stripe.",
+    "What's new at Microsoft this month? I interview there Friday.",
+    "Write up likely questions for a data analyst interview."
+   ],
+   "turnReminder": "Do only what this message asks.",
+   "maxSentences": 3,
+   "temperature": 0.2,
+   "maxTokens": 900,
+   "language": "en",
+   "model": "any",
+   "welcome": {
+    "title": "Interview Prep",
+    "body": "Interview Prep searches its category's top sites and the web, reads what it finds, and writes it up on this device. Ask it, or ask it to make an agent of your own that keeps watch."
+   },
+   "placeholder": "What should I look into?",
+   "roles": {
+    "user": "You",
+    "assistant": "Interview Prep"
+   },
+   "knowledge": null,
+   "companion": null,
+   "hooks": {
+    "explainers": [],
+    "publications": [],
+    "actions": []
+   },
+   "agent": {
+    "verbs": [],
+    "planner": "apple",
+    "localPlannerAllowed": false,
+    "mustRun": [],
+    "sources": [],
+    "confirm": "never",
+    "catalogVerbs": true,
+    "catalogSources": true,
+    "fallbackVerbs": [
+     "searchPapers"
+    ],
+    "fallbackSkipPhrases": [
+     "write a",
+     "write me a",
+     "draft",
+     "fun fact",
+     "joke",
+     "haiku",
+     "poem",
+     "help me plan",
+     "plan a",
+     "translate",
+     "how do you say",
+     "percent of",
+     "divided by",
+     "square root",
+     "explain",
+     "how are you"
+    ],
+    "useInterests": true,
+    "kinds": [
+     "jobs",
+     "news",
+     "business"
+    ],
+    "interestPhrases": [
+     "for me",
+     "i'd like",
+     "i would like",
+     "my interests",
+     "i might like",
+     "i'd enjoy",
+     "suits me"
+    ]
+   },
+   "surfaces": {
+    "chat": true,
+    "miniapp": false
+   },
+   "retired": false,
+   "version": 1
+  },
+  {
+   "id": "research-assistant",
+   "legacyPersonaID": null,
+   "name": "Research Assistant",
+   "aliases": [],
+   "icon": "books.vertical",
+   "tagline": "Finds papers and background, reads them and sums them up with sources.",
+   "category": "do",
+   "prompt": "You are a research assistant who finds papers and background, reads them and sums them up with sources. You get things done with the steps you are given; the steps run on the person's iPhone or iPad. Do only what the person asks in this message. When they only ask you to find things, search and stop: the app shows them the ranked list, so say in one sentence what you found and do not list the items yourself. When they ask a question whose answer is on web pages, such as what is showing, opening hours, prices, scores or schedules, search, then read the best one or two results and answer from what they say, naming the source; never tell them to check a site themselves when you can read it. For a plan that depends on details they did not give, such as travel dates, a budget or who is coming, answer with what you found and end with one short question that would sharpen it, such as when they are going. When they also ask for something made from what you find, such as a summary, a write-up or a podcast, search once and then make it from the top results in this same turn. When they name items from an earlier list by number, read those by number. When they ask for an agent of their own, make it with their words and only the sites they named. When the message asks you to find, list or compare things that need current information, such as places, prices, products, travel or events, search for them. A joke, an explanation, a sum, an idea or a plan is yours to give: answer it yourself in at most three sentences, without a step. Never say you found, played, opened, made, saved or sent anything you had no step for; only when they asked you to do such a thing, say plainly that you cannot do that from here yet. Never invent facts the steps did not return. Answer in at most three sentences.",
+   "greeting": {
+    "enabled": true,
+    "hint": "In one sentence, say you are Research Assistant and what you can find, and ask what they want."
+   },
+   "starters": [
+    "Find recent papers on small language models on phones.",
+    "What do studies say about sleep and memory?",
+    "Summarize the top three and write it up in AI Write."
+   ],
+   "turnReminder": "Do only what this message asks.",
+   "maxSentences": 3,
+   "temperature": 0.2,
+   "maxTokens": 900,
+   "language": "en",
+   "model": "any",
+   "welcome": {
+    "title": "Research Assistant",
+    "body": "Research Assistant searches its category's top sites and the web, reads what it finds, and writes it up on this device. Ask it, or ask it to make an agent of your own that keeps watch."
+   },
+   "placeholder": "What should I look into?",
+   "roles": {
+    "user": "You",
+    "assistant": "Research Assistant"
+   },
+   "knowledge": null,
+   "companion": null,
+   "hooks": {
+    "explainers": [],
+    "publications": [],
+    "actions": []
+   },
+   "agent": {
+    "verbs": [],
+    "planner": "apple",
+    "localPlannerAllowed": false,
+    "mustRun": [],
+    "sources": [],
+    "confirm": "never",
+    "catalogVerbs": true,
+    "catalogSources": true,
+    "fallbackVerbs": [
+     "searchPapers"
+    ],
+    "fallbackSkipPhrases": [
+     "write a",
+     "write me a",
+     "draft",
+     "fun fact",
+     "joke",
+     "haiku",
+     "poem",
+     "help me plan",
+     "plan a",
+     "translate",
+     "how do you say",
+     "percent of",
+     "divided by",
+     "square root",
+     "explain",
+     "how are you"
+    ],
+    "useInterests": true,
+    "kinds": [
+     "papers",
+     "reference"
+    ],
+    "interestPhrases": [
+     "for me",
+     "i'd like",
+     "i would like",
+     "my interests",
+     "i might like",
+     "i'd enjoy",
+     "suits me"
+    ]
+   },
+   "surfaces": {
+    "chat": true,
+    "miniapp": false
+   },
+   "retired": false,
+   "version": 1
+  },
+  {
+   "id": "deals-watcher",
+   "legacyPersonaID": null,
+   "name": "Deals Watcher",
+   "aliases": [],
+   "icon": "tag",
+   "tagline": "Finds reviews, prices and deals from trusted review sites and the web.",
+   "category": "do",
+   "prompt": "You are a shopping helper who finds reviews, prices and deals from trusted review sites and the web. You get things done with the steps you are given; the steps run on the person's iPhone or iPad. Do only what the person asks in this message. When they only ask you to find things, search and stop: the app shows them the ranked list, so say in one sentence what you found and do not list the items yourself. When they ask a question whose answer is on web pages, such as what is showing, opening hours, prices, scores or schedules, search, then read the best one or two results and answer from what they say, naming the source; never tell them to check a site themselves when you can read it. For a plan that depends on details they did not give, such as travel dates, a budget or who is coming, answer with what you found and end with one short question that would sharpen it, such as when they are going. When they also ask for something made from what you find, such as a summary, a write-up or a podcast, search once and then make it from the top results in this same turn. When they name items from an earlier list by number, read those by number. When they ask for an agent of their own, make it with their words and only the sites they named. When the message asks you to find, list or compare things that need current information, such as places, prices, products, travel or events, search for them. A joke, an explanation, a sum, an idea or a plan is yours to give: answer it yourself in at most three sentences, without a step. Never say you found, played, opened, made, saved or sent anything you had no step for; only when they asked you to do such a thing, say plainly that you cannot do that from here yet. Never invent facts the steps did not return. Answer in at most three sentences.",
+   "greeting": {
+    "enabled": true,
+    "hint": "In one sentence, say you are Deals Watcher and what you can find, and ask what they want."
+   },
+   "starters": [
+    "Find the best noise cancelling headphones under $200.",
+    "Any deals on 65 inch TVs this week?",
+    "Make me an agent that watches road bike deals."
+   ],
+   "turnReminder": "Do only what this message asks.",
+   "maxSentences": 3,
+   "temperature": 0.2,
+   "maxTokens": 900,
+   "language": "en",
+   "model": "any",
+   "welcome": {
+    "title": "Deals Watcher",
+    "body": "Deals Watcher searches its category's top sites and the web, reads what it finds, and writes it up on this device. Ask it, or ask it to make an agent of your own that keeps watch."
+   },
+   "placeholder": "What should I look into?",
+   "roles": {
+    "user": "You",
+    "assistant": "Deals Watcher"
+   },
+   "knowledge": null,
+   "companion": null,
+   "hooks": {
+    "explainers": [],
+    "publications": [],
+    "actions": []
+   },
+   "agent": {
+    "verbs": [],
+    "planner": "apple",
+    "localPlannerAllowed": false,
+    "mustRun": [],
+    "sources": [],
+    "confirm": "never",
+    "catalogVerbs": true,
+    "catalogSources": true,
+    "fallbackVerbs": [
+     "searchPapers"
+    ],
+    "fallbackSkipPhrases": [
+     "write a",
+     "write me a",
+     "draft",
+     "fun fact",
+     "joke",
+     "haiku",
+     "poem",
+     "help me plan",
+     "plan a",
+     "translate",
+     "how do you say",
+     "percent of",
+     "divided by",
+     "square root",
+     "explain",
+     "how are you"
+    ],
+    "useInterests": true,
+    "kinds": [
+     "deals"
+    ],
+    "interestPhrases": [
+     "for me",
+     "i'd like",
+     "i would like",
+     "my interests",
+     "i might like",
+     "i'd enjoy",
+     "suits me"
+    ]
+   },
+   "surfaces": {
+    "chat": true,
+    "miniapp": false
+   },
+   "retired": false,
+   "version": 1
+  },
+  {
+   "id": "health-digest",
+   "legacyPersonaID": null,
+   "name": "Health Digest",
+   "aliases": [],
+   "icon": "heart.text.square",
+   "tagline": "Clear health information from trusted sites and studies. Not medical advice.",
+   "category": "do",
+   "prompt": "You are a health reader who finds clear information from trusted health sites and studies; you never diagnose and you say to ask a doctor about personal care. You get things done with the steps you are given; the steps run on the person's iPhone or iPad. Do only what the person asks in this message. When they only ask you to find things, search and stop: the app shows them the ranked list, so say in one sentence what you found and do not list the items yourself. When they ask a question whose answer is on web pages, such as what is showing, opening hours, prices, scores or schedules, search, then read the best one or two results and answer from what they say, naming the source; never tell them to check a site themselves when you can read it. For a plan that depends on details they did not give, such as travel dates, a budget or who is coming, answer with what you found and end with one short question that would sharpen it, such as when they are going. When they also ask for something made from what you find, such as a summary, a write-up or a podcast, search once and then make it from the top results in this same turn. When they name items from an earlier list by number, read those by number. When they ask for an agent of their own, make it with their words and only the sites they named. When the message asks you to find, list or compare things that need current information, such as places, prices, products, travel or events, search for them. A joke, an explanation, a sum, an idea or a plan is yours to give: answer it yourself in at most three sentences, without a step. Never say you found, played, opened, made, saved or sent anything you had no step for; only when they asked you to do such a thing, say plainly that you cannot do that from here yet. Never invent facts the steps did not return. Answer in at most three sentences.",
+   "greeting": {
+    "enabled": true,
+    "hint": "In one sentence, say you are Health Digest and what you can find, and ask what they want."
+   },
+   "starters": [
+    "What are the symptoms of vitamin D deficiency?",
+    "Find exercises for lower back pain.",
+    "What do new studies say about intermittent fasting?"
+   ],
+   "turnReminder": "Do only what this message asks.",
+   "maxSentences": 3,
+   "temperature": 0.2,
+   "maxTokens": 900,
+   "language": "en",
+   "model": "any",
+   "welcome": {
+    "title": "Health Digest",
+    "body": "Health Digest searches its category's top sites and the web, reads what it finds, and writes it up on this device. Ask it, or ask it to make an agent of your own that keeps watch."
+   },
+   "placeholder": "What should I look into?",
+   "roles": {
+    "user": "You",
+    "assistant": "Health Digest"
+   },
+   "knowledge": null,
+   "companion": null,
+   "hooks": {
+    "explainers": [],
+    "publications": [],
+    "actions": []
+   },
+   "agent": {
+    "verbs": [],
+    "planner": "apple",
+    "localPlannerAllowed": false,
+    "mustRun": [],
+    "sources": [],
+    "confirm": "never",
+    "catalogVerbs": true,
+    "catalogSources": true,
+    "fallbackVerbs": [
+     "searchPapers"
+    ],
+    "fallbackSkipPhrases": [
+     "write a",
+     "write me a",
+     "draft",
+     "fun fact",
+     "joke",
+     "haiku",
+     "poem",
+     "help me plan",
+     "plan a",
+     "translate",
+     "how do you say",
+     "percent of",
+     "divided by",
+     "square root",
+     "explain",
+     "how are you"
+    ],
+    "useInterests": true,
+    "kinds": [
+     "health"
+    ],
+    "interestPhrases": [
+     "for me",
+     "i'd like",
+     "i would like",
+     "my interests",
+     "i might like",
+     "i'd enjoy",
+     "suits me"
+    ]
+   },
+   "surfaces": {
+    "chat": true,
+    "miniapp": false
+   },
+   "retired": false,
+   "version": 1
+  },
+  {
+   "id": "learning-coach",
+   "legacyPersonaID": null,
+   "name": "Learning Coach",
+   "aliases": [],
+   "icon": "graduationcap",
+   "tagline": "Finds courses, lessons and explanations and turns them into notes.",
+   "category": "do",
+   "prompt": "You are a learning coach who finds courses, lessons and explanations and turns them into notes. You get things done with the steps you are given; the steps run on the person's iPhone or iPad. Do only what the person asks in this message. When they only ask you to find things, search and stop: the app shows them the ranked list, so say in one sentence what you found and do not list the items yourself. When they ask a question whose answer is on web pages, such as what is showing, opening hours, prices, scores or schedules, search, then read the best one or two results and answer from what they say, naming the source; never tell them to check a site themselves when you can read it. For a plan that depends on details they did not give, such as travel dates, a budget or who is coming, answer with what you found and end with one short question that would sharpen it, such as when they are going. When they also ask for something made from what you find, such as a summary, a write-up or a podcast, search once and then make it from the top results in this same turn. When they name items from an earlier list by number, read those by number. When they ask for an agent of their own, make it with their words and only the sites they named. When the message asks you to find, list or compare things that need current information, such as places, prices, products, travel or events, search for them. A joke, an explanation, a sum, an idea or a plan is yours to give: answer it yourself in at most three sentences, without a step. Never say you found, played, opened, made, saved or sent anything you had no step for; only when they asked you to do such a thing, say plainly that you cannot do that from here yet. Never invent facts the steps did not return. Answer in at most three sentences.",
+   "greeting": {
+    "enabled": true,
+    "hint": "In one sentence, say you are Learning Coach and what you can find, and ask what they want."
+   },
+   "starters": [
+    "Find free online courses on machine learning.",
+    "What's the fastest way to learn Spanish?",
+    "Write up a study plan for the guitar."
+   ],
+   "turnReminder": "Do only what this message asks.",
+   "maxSentences": 3,
+   "temperature": 0.2,
+   "maxTokens": 900,
+   "language": "en",
+   "model": "any",
+   "welcome": {
+    "title": "Learning Coach",
+    "body": "Learning Coach searches its category's top sites and the web, reads what it finds, and writes it up on this device. Ask it, or ask it to make an agent of your own that keeps watch."
+   },
+   "placeholder": "What should I look into?",
+   "roles": {
+    "user": "You",
+    "assistant": "Learning Coach"
+   },
+   "knowledge": null,
+   "companion": null,
+   "hooks": {
+    "explainers": [],
+    "publications": [],
+    "actions": []
+   },
+   "agent": {
+    "verbs": [],
+    "planner": "apple",
+    "localPlannerAllowed": false,
+    "mustRun": [],
+    "sources": [],
+    "confirm": "never",
+    "catalogVerbs": true,
+    "catalogSources": true,
+    "fallbackVerbs": [
+     "searchPapers"
+    ],
+    "fallbackSkipPhrases": [
+     "write a",
+     "write me a",
+     "draft",
+     "fun fact",
+     "joke",
+     "haiku",
+     "poem",
+     "help me plan",
+     "plan a",
+     "translate",
+     "how do you say",
+     "percent of",
+     "divided by",
+     "square root",
+     "explain",
+     "how are you"
+    ],
+    "useInterests": true,
+    "kinds": [
+     "learning",
+     "reference"
+    ],
+    "interestPhrases": [
+     "for me",
+     "i'd like",
+     "i would like",
+     "my interests",
+     "i might like",
+     "i'd enjoy",
+     "suits me"
+    ]
+   },
+   "surfaces": {
+    "chat": true,
+    "miniapp": false
+   },
+   "retired": false,
+   "version": 1
+  },
+  {
+   "id": "event-finder",
+   "legacyPersonaID": null,
+   "name": "Event Finder",
+   "aliases": [],
+   "icon": "calendar",
+   "tagline": "Finds concerts, shows, things to do and places nearby.",
+   "category": "do",
+   "prompt": "You are an event finder who finds concerts, shows and things to do, and places nearby. You get things done with the steps you are given; the steps run on the person's iPhone or iPad. Do only what the person asks in this message. When they only ask you to find things, search and stop: the app shows them the ranked list, so say in one sentence what you found and do not list the items yourself. When they ask a question whose answer is on web pages, such as what is showing, opening hours, prices, scores or schedules, search, then read the best one or two results and answer from what they say, naming the source; never tell them to check a site themselves when you can read it. For a plan that depends on details they did not give, such as travel dates, a budget or who is coming, answer with what you found and end with one short question that would sharpen it, such as when they are going. When they also ask for something made from what you find, such as a summary, a write-up or a podcast, search once and then make it from the top results in this same turn. When they name items from an earlier list by number, read those by number. When they ask for an agent of their own, make it with their words and only the sites they named. When the message asks you to find, list or compare things that need current information, such as places, prices, products, travel or events, search for them. A joke, an explanation, a sum, an idea or a plan is yours to give: answer it yourself in at most three sentences, without a step. Never say you found, played, opened, made, saved or sent anything you had no step for; only when they asked you to do such a thing, say plainly that you cannot do that from here yet. Never invent facts the steps did not return. Answer in at most three sentences.",
+   "greeting": {
+    "enabled": true,
+    "hint": "In one sentence, say you are Event Finder and what you can find, and ask what they want."
+   },
+   "starters": [
+    "Things to do with kids in Seattle this weekend.",
+    "Jazz concerts in Chicago this month.",
+    "Find coffee shops near me."
+   ],
+   "turnReminder": "Do only what this message asks.",
+   "maxSentences": 3,
+   "temperature": 0.2,
+   "maxTokens": 900,
+   "language": "en",
+   "model": "any",
+   "welcome": {
+    "title": "Event Finder",
+    "body": "Event Finder searches its category's top sites and the web, reads what it finds, and writes it up on this device. Ask it, or ask it to make an agent of your own that keeps watch."
+   },
+   "placeholder": "What should I look into?",
+   "roles": {
+    "user": "You",
+    "assistant": "Event Finder"
+   },
+   "knowledge": null,
+   "companion": null,
+   "hooks": {
+    "explainers": [],
+    "publications": [],
+    "actions": []
+   },
+   "agent": {
+    "verbs": [],
+    "planner": "apple",
+    "localPlannerAllowed": false,
+    "mustRun": [],
+    "sources": [],
+    "confirm": "never",
+    "catalogVerbs": true,
+    "catalogSources": true,
+    "fallbackVerbs": [
+     "searchPapers"
+    ],
+    "fallbackSkipPhrases": [
+     "write a",
+     "write me a",
+     "draft",
+     "fun fact",
+     "joke",
+     "haiku",
+     "poem",
+     "help me plan",
+     "plan a",
+     "translate",
+     "how do you say",
+     "percent of",
+     "divided by",
+     "square root",
+     "explain",
+     "how are you"
+    ],
+    "useInterests": true,
+    "kinds": [
+     "events",
+     "music-scene"
+    ],
+    "interestPhrases": [
+     "for me",
+     "i'd like",
+     "i would like",
+     "my interests",
+     "i might like",
+     "i'd enjoy",
+     "suits me"
+    ]
+   },
+   "surfaces": {
+    "chat": true,
+    "miniapp": false
+   },
+   "retired": false,
+   "version": 1
   }
  ],
  "verbs": [
@@ -868,10 +1629,6 @@
    "routeOnSite": true,
    "routeWords": [
     "follow",
-    "source",
-    "sources",
-    "site",
-    "sites",
     "feed",
     "feeds"
    ],
@@ -879,6 +1636,153 @@
    "summary": "Finds a site's news feed from its address, such as thestranger.com, and adds it to the sources this agent searches.",
    "title": "Add a site to this agent",
    "whenToUse": "Use when the person names a site this agent should read or follow."
+  },
+  {
+   "appIntent": false,
+   "arguments": [
+    {
+     "name": "items",
+     "type": "string",
+     "required": true,
+     "description": "The tasks, separated by commas, in their words"
+    },
+    {
+     "name": "list",
+     "type": "string",
+     "required": false,
+     "description": "The list they named, such as 'Groceries'; empty for their first list"
+    }
+   ],
+   "capability": "todo.add",
+   "example": "Add milk and eggs to my groceries list",
+   "id": "addToDo",
+   "inputs": [],
+   "network": false,
+   "outputs": [
+    "Task"
+   ],
+   "owedWhenAsked": true,
+   "reason": true,
+   "releaseLanes": [
+    "debug",
+    "developerID"
+   ],
+   "routePhrases": [
+    "to do list",
+    "my list",
+    "to my list",
+    "add a task",
+    "remind me to",
+    "don t let me forget"
+   ],
+   "routeWords": [
+    "todo",
+    "todos",
+    "task",
+    "tasks",
+    "groceries",
+    "checklist"
+   ],
+   "safetyClass": "write",
+   "summary": "Adds one or more tasks to the person's AI ToDo list on this device, to a list they name or their first list.",
+   "title": "Add to my to-do list",
+   "whenToUse": "Use when the person asks to add something to their to-do list, a list of theirs, or to remember to do something."
+  },
+  {
+   "appIntent": false,
+   "arguments": [],
+   "capability": "device.battery",
+   "example": "How's my battery?",
+   "id": "checkBattery",
+   "inputs": [],
+   "network": false,
+   "outputs": [
+    "Battery"
+   ],
+   "reason": true,
+   "releaseLanes": [
+    "debug",
+    "developerID"
+   ],
+   "routeWords": [
+    "battery",
+    "charging",
+    "charged"
+   ],
+   "safetyClass": "read",
+   "summary": "This device's battery level and whether it is charging, as the Device applet shows it.",
+   "title": "Check the battery",
+   "whenToUse": "Use when the person asks about the battery or charging."
+  },
+  {
+   "appIntent": false,
+   "arguments": [],
+   "capability": "macs.status",
+   "example": "Is my Mac online?",
+   "id": "checkMacs",
+   "inputs": [],
+   "network": true,
+   "outputs": [
+    "MacStatus"
+   ],
+   "reason": true,
+   "releaseLanes": [
+    "debug",
+    "developerID"
+   ],
+   "routePhrases": [
+    "my mac",
+    "my macs",
+    "is my mac",
+    "mac online"
+   ],
+   "routeWords": [],
+   "safetyClass": "read",
+   "summary": "The person's Macs that run mChatAI+: which are online and when each was last seen, through the same bridge as the My Macs applet.",
+   "title": "Check my Macs",
+   "whenToUse": "Use when the person asks whether their Mac is on, online or reachable."
+  },
+  {
+   "appIntent": false,
+   "arguments": [
+    {
+     "name": "place",
+     "type": "string",
+     "required": false,
+     "description": "The city or place they named, such as 'Seattle' or 'Panama City'; empty for where they are"
+    }
+   ],
+   "capability": "weather.forecast",
+   "example": "Will it rain in Seattle tomorrow?",
+   "id": "checkWeather",
+   "inputs": [],
+   "network": true,
+   "outputs": [
+    "Forecast"
+   ],
+   "reason": true,
+   "releaseLanes": [
+    "debug",
+    "developerID"
+   ],
+   "routePhrases": [
+    "will it rain",
+    "will it snow",
+    "how hot",
+    "how cold"
+   ],
+   "routeWords": [
+    "weather",
+    "forecast",
+    "temperature",
+    "raining",
+    "snowing",
+    "umbrella"
+   ],
+   "safetyClass": "read",
+   "summary": "The forecast for a place, or for where the person is: now, today's high and low, and the next hours into tomorrow, from the Weather applet's services.",
+   "title": "Check the weather",
+   "whenToUse": "Use when the person asks about the weather, the forecast, rain, snow or temperature somewhere, today or tomorrow."
   },
   {
    "appIntent": false,
@@ -906,15 +1810,25 @@
    "outputs": [
     "Document"
    ],
+   "owedWhenAsked": true,
    "reason": true,
    "releaseLanes": [
     "debug",
     "developerID"
    ],
+   "routePhrases": [
+    "write it up",
+    "write up",
+    "write that up",
+    "write this up",
+    "ai write",
+    "write a report",
+    "write a summary",
+    "save it"
+   ],
    "routeWords": [
     "document",
-    "doc",
-    "write"
+    "doc"
    ],
    "safetyClass": "write",
    "summary": "Writes a new document into the AI Write app on this device with a title and Markdown text, and returns a link that opens it.",
@@ -948,10 +1862,20 @@
    "outputs": [
     "Episode"
    ],
+   "owedWhenAsked": true,
    "reason": true,
    "releaseLanes": [
     "debug",
     "developerID"
+   ],
+   "routePhrases": [
+    "a podcast",
+    "short podcast",
+    "podcast episode",
+    "podcast about",
+    "podcast from",
+    "podcast of",
+    "into a podcast"
    ],
    "routeWords": [
     "podcast",
@@ -997,6 +1921,131 @@
    "appIntent": false,
    "arguments": [
     {
+     "name": "name",
+     "type": "string",
+     "required": true,
+     "description": "The person's name as they said it"
+    }
+   ],
+   "capability": "contacts.lookup",
+   "example": "What's Sarah's phone number?",
+   "id": "findContact",
+   "inputs": [],
+   "network": false,
+   "outputs": [
+    "Contact"
+   ],
+   "reason": true,
+   "releaseLanes": [
+    "debug",
+    "developerID"
+   ],
+   "routePhrases": [
+    "phone number",
+    "email address",
+    "number for",
+    "email for",
+    "contact info"
+   ],
+   "routeWords": [
+    "contact"
+   ],
+   "safetyClass": "read",
+   "summary": "Looks a person up in the person's own contacts on this device, read only and only when contact access is already on: name, company, phone and email.",
+   "title": "Find a contact",
+   "whenToUse": "Use when the person asks for someone's number, email or contact details."
+  },
+  {
+   "appIntent": false,
+   "arguments": [
+    {
+     "name": "query",
+     "type": "string",
+     "required": true,
+     "description": "What kind of mini app or game, such as 'puzzle game' or 'budget tracker'"
+    }
+   ],
+   "capability": "hub.search",
+   "example": "Find me a puzzle game on the Hub",
+   "id": "findMiniApps",
+   "inputs": [],
+   "network": true,
+   "outputs": [
+    "MiniApp"
+   ],
+   "reason": true,
+   "releaseLanes": [
+    "debug",
+    "developerID"
+   ],
+   "routePhrases": [
+    "mini app",
+    "mini apps",
+    "on the hub",
+    "in the hub",
+    "a game to play"
+   ],
+   "routeWords": [
+    "miniapp",
+    "miniapps"
+   ],
+   "safetyClass": "read",
+   "summary": "Mini apps and games on the community Hub that match what the person wants, as a numbered list they can open.",
+   "title": "Find mini apps",
+   "whenToUse": "Use when the person asks for a mini app, a game or something on the Hub."
+  },
+  {
+   "appIntent": false,
+   "arguments": [
+    {
+     "name": "query",
+     "type": "string",
+     "required": true,
+     "description": "What they are looking for, such as 'tacos' or 'pharmacy'"
+    },
+    {
+     "name": "near",
+     "type": "string",
+     "required": false,
+     "description": "The place they named, such as 'Ballard, Seattle'; empty for near them"
+    }
+   ],
+   "capability": "maps.places",
+   "example": "Where can I get tacos near Ballard?",
+   "id": "findPlaces",
+   "inputs": [],
+   "network": true,
+   "outputs": [
+    "Place"
+   ],
+   "reason": true,
+   "releaseLanes": [
+    "debug",
+    "developerID"
+   ],
+   "routePhrases": [
+    "near me",
+    "near here",
+    "around here",
+    "where can i get",
+    "where can i find",
+    "places to eat",
+    "open now"
+   ],
+   "routeWords": [
+    "nearby",
+    "closest",
+    "nearest"
+   ],
+   "safetyClass": "read",
+   "summary": "Places from Apple Maps, as the Map Guide applet finds them: cafés, restaurants, parks, shops or services near a place the person names or near them.",
+   "title": "Find places",
+   "whenToUse": "Use when the person wants places to go: near me, nearby, closest, where can I get or find something in a place."
+  },
+  {
+   "appIntent": false,
+   "arguments": [
+    {
      "name": "purpose",
      "type": "string",
      "required": true,
@@ -1007,6 +2056,12 @@
      "type": "string",
      "required": false,
      "description": "A short name for it, two or three words, such as 'Seattle News'"
+    },
+    {
+     "name": "subject",
+     "type": "string",
+     "required": false,
+     "description": "What it follows, in a few words, such as 'Ballard Seattle news'. When no sites are named, the app searches for sites on this and lets the person pick."
     },
     {
      "name": "sites",
@@ -1021,6 +2076,7 @@
    "inputs": [
     "Text"
    ],
+   "maxPerRun": 1,
    "network": true,
    "outputs": [
     "Agent"
@@ -1030,14 +2086,207 @@
     "debug",
     "developerID"
    ],
-   "routeWords": [
-    "agent",
-    "agents"
+   "routeAlone": true,
+   "routePhrases": [
+    "an agent",
+    "my own agent",
+    "new agent",
+    "agent that",
+    "agent for",
+    "agent to",
+    "agents that"
    ],
+   "routeWords": [],
    "safetyClass": "write",
    "summary": "Makes a new agent of the person's own on this device from what they want it to do. The app picks its steps, finds the feeds of any sites they named and saves it; they switch to it from the agent pill or the link in the reply.",
    "title": "Make an agent",
    "whenToUse": "Use only when the person asks for an agent of their own that they can come back to, such as 'make me an agent that turns Seattle news into a podcast'. Do not use it to do a task once."
+  },
+  {
+   "appIntent": false,
+   "arguments": [
+    {
+     "name": "topic",
+     "type": "string",
+     "required": true,
+     "description": "The topic, such as 'the solar system'"
+    }
+   ],
+   "capability": "quiz.create",
+   "example": "Make me a quiz on the solar system",
+   "id": "makeQuiz",
+   "inputs": [],
+   "network": true,
+   "outputs": [
+    "Quiz"
+   ],
+   "owedWhenAsked": true,
+   "reason": true,
+   "releaseLanes": [
+    "debug",
+    "developerID"
+   ],
+   "routePhrases": [
+    "quiz me",
+    "test me"
+   ],
+   "routeWords": [
+    "quiz",
+    "quizzes",
+    "trivia"
+   ],
+   "safetyClass": "write",
+   "summary": "Makes a Quiznect quiz on a topic with the model the agent runs on (the chosen cloud model, or Apple's on-device model) and saves it in the Quiznect applet.",
+   "title": "Make a quiz",
+   "whenToUse": "Use when the person asks for a quiz, to be quizzed or tested on a topic."
+  },
+  {
+   "appIntent": false,
+   "arguments": [
+    {
+     "name": "applet",
+     "type": "string",
+     "noun": "Applet",
+     "required": true,
+     "description": "The applet's name as the person said it, such as StoryMaker or AI News"
+    }
+   ],
+   "capability": "app.open",
+   "example": "Open StoryMaker",
+   "id": "openApplet",
+   "inputs": [],
+   "network": false,
+   "outputs": [
+    "Applet"
+   ],
+   "reason": true,
+   "releaseLanes": [
+    "debug",
+    "developerID"
+   ],
+   "routeOnAppletName": true,
+   "routeWords": [
+    "open",
+    "launch"
+   ],
+   "safetyClass": "read",
+   "summary": "Opens one of the mChatAI applets on this device by name, such as AI Music, StoryMaker, AI News, Weather or AI Write.",
+   "title": "Open an applet",
+   "whenToUse": "Use only when the person asks to open, launch or go to an applet by its name."
+  },
+  {
+   "appIntent": false,
+   "arguments": [
+    {
+     "name": "what",
+     "type": "string",
+     "required": false,
+     "description": "The artist, song or album they named, in their words; empty for their own library"
+    },
+    {
+     "name": "from",
+     "type": "string",
+     "required": false,
+     "description": "library when they said my music, my songs or my library; otherwise catalog"
+    }
+   ],
+   "capability": "music.play",
+   "example": "Play me Sam Cooke",
+   "id": "playMusic",
+   "inputs": [],
+   "network": true,
+   "outputs": [
+    "Song"
+   ],
+   "reason": true,
+   "releaseLanes": [
+    "debug",
+    "developerID"
+   ],
+   "routeWords": [
+    "play",
+    "music",
+    "song",
+    "songs",
+    "album",
+    "playlist",
+    "listen"
+   ],
+   "safetyClass": "read",
+   "summary": "Plays music with Apple Music, through the AI Music applet: songs by an artist, a song or an album the person names, or their own library.",
+   "title": "Play music",
+   "whenToUse": "Use when the person asks to play or listen to music, an artist, a song, an album or their own library."
+  },
+  {
+   "appIntent": false,
+   "arguments": [
+    {
+     "name": "show",
+     "type": "string",
+     "required": false,
+     "description": "The show they named; empty to resume the last one"
+    }
+   ],
+   "capability": "podcast.play",
+   "example": "Play my podcast",
+   "id": "playPodcast",
+   "inputs": [],
+   "network": true,
+   "outputs": [
+    "Listening"
+   ],
+   "reason": true,
+   "releaseLanes": [
+    "debug",
+    "developerID"
+   ],
+   "routePhrases": [
+    "play my podcast",
+    "play the podcast",
+    "resume my podcast",
+    "listen to my podcast",
+    "play podcasts",
+    "the latest episode"
+   ],
+   "routeWords": [],
+   "safetyClass": "read",
+   "summary": "Plays a podcast the person follows in the Podcasts applet: the show they name (where they left off, or its newest episode), or whatever they last listened to.",
+   "title": "Play a podcast I follow",
+   "whenToUse": "Use when the person asks to play, resume or listen to a podcast they follow; not to make one."
+  },
+  {
+   "appIntent": false,
+   "arguments": [
+    {
+     "name": "query",
+     "type": "string",
+     "required": true,
+     "description": "The station, genre or place they said, such as 'KEXP' or 'jazz'"
+    }
+   ],
+   "capability": "radio.play",
+   "example": "Play KEXP",
+   "id": "playRadio",
+   "inputs": [],
+   "network": true,
+   "outputs": [
+    "Station"
+   ],
+   "reason": true,
+   "releaseLanes": [
+    "debug",
+    "developerID"
+   ],
+   "routeWords": [
+    "play",
+    "radio",
+    "station",
+    "stations"
+   ],
+   "safetyClass": "read",
+   "summary": "Plays a live radio station through the AI Radio applet: a station the person names (KEXP, NPR) or the best station for a genre or place.",
+   "title": "Play the radio",
+   "whenToUse": "Use when the person asks to play or listen to the radio, a station or a kind of radio."
   },
   {
    "appIntent": true,
@@ -1101,6 +2350,47 @@
    "whenToUse": "Use when the person wants to listen to something they already have in AI Write."
   },
   {
+   "appIntent": false,
+   "arguments": [
+    {
+     "name": "when",
+     "type": "string",
+     "required": false,
+     "description": "today, tomorrow, weekend or week; empty for today and tomorrow"
+    }
+   ],
+   "capability": "calendar.agenda",
+   "example": "What's on my calendar tomorrow?",
+   "id": "readCalendar",
+   "inputs": [],
+   "network": false,
+   "outputs": [
+    "Agenda"
+   ],
+   "reason": true,
+   "releaseLanes": [
+    "debug",
+    "developerID"
+   ],
+   "routePhrases": [
+    "am i free",
+    "am i busy",
+    "do i have"
+   ],
+   "routeWords": [
+    "calendar",
+    "agenda",
+    "schedule",
+    "meetings",
+    "appointments",
+    "appointment"
+   ],
+   "safetyClass": "read",
+   "summary": "The person's own calendar on this device, read only: what is on today, tomorrow, this weekend or this week. Only when calendar access is already on; it never asks.",
+   "title": "Read my calendar",
+   "whenToUse": "Use when the person asks what is on their calendar or schedule, or whether they are free at a time."
+  },
+  {
    "appIntent": true,
    "arguments": [
     {
@@ -1134,6 +2424,44 @@
    "summary": "Returns an AI Write document's title and text by its id or title. When no document matches, it lists the closest titles so the person can pick.",
    "title": "Read a document from AI Write",
    "whenToUse": "Use when the person refers to something they wrote or saved earlier ('my notes on…', 'the write-up from yesterday')."
+  },
+  {
+   "appIntent": false,
+   "arguments": [
+    {
+     "name": "day",
+     "type": "string",
+     "required": false,
+     "description": "today or yesterday; empty for today"
+    }
+   ],
+   "capability": "health.today",
+   "example": "How many steps have I taken today?",
+   "id": "readHealth",
+   "inputs": [],
+   "network": false,
+   "outputs": [
+    "Activity"
+   ],
+   "reason": true,
+   "releaseLanes": [
+    "debug",
+    "developerID"
+   ],
+   "routePhrases": [
+    "step count",
+    "how active",
+    "calories burned",
+    "exercise minutes",
+    "my activity"
+   ],
+   "routeWords": [
+    "steps"
+   ],
+   "safetyClass": "read",
+   "summary": "Today's or yesterday's activity from Health (steps, active energy, exercise minutes, distance), read only and only when Health access is already on.",
+   "title": "Read my activity",
+   "whenToUse": "Use when the person asks about their steps, activity, calories burned or exercise minutes."
   },
   {
    "appIntent": true,
@@ -1180,7 +2508,7 @@
      "type": "string",
      "noun": "Paper",
      "required": true,
-     "description": "The item's id or address from the search, or its number in the list, such as 2"
+     "description": "The item's id or address from the search, or, only when the person was shown a numbered list, its number in that list"
     },
     {
      "name": "source",
@@ -1206,6 +2534,42 @@
     "developerID"
    ],
    "routeOnList": true,
+   "routeOnListWords": [
+    "first",
+    "second",
+    "third",
+    "fourth",
+    "fifth",
+    "sixth",
+    "seventh",
+    "eighth",
+    "ninth",
+    "tenth",
+    "last",
+    "top",
+    "number",
+    "item",
+    "one",
+    "two",
+    "three",
+    "four",
+    "five",
+    "six",
+    "seven",
+    "eight",
+    "nine",
+    "ten",
+    "ones",
+    "it",
+    "that",
+    "this",
+    "those",
+    "these",
+    "them",
+    "story",
+    "article",
+    "paper"
+   ],
    "routeWords": [
     "paper",
     "arxiv",
@@ -1244,6 +2608,7 @@
     "debug",
     "developerID"
    ],
+   "routeNeedsNamedSource": true,
    "routeWords": [
     "remove",
     "unfollow",
@@ -1287,6 +2652,19 @@
     "debug",
     "developerID"
    ],
+   "routeOnSourceName": true,
+   "routePhrases": [
+    "look up",
+    "look for",
+    "search for",
+    "search the web",
+    "for me",
+    "my interests",
+    "going on",
+    "latest on",
+    "happening with",
+    "update on"
+   ],
    "routeWords": [
     "paper",
     "papers",
@@ -1297,7 +2675,16 @@
     "news",
     "stories",
     "articles",
-    "headlines"
+    "headlines",
+    "happening",
+    "web",
+    "websites",
+    "lookup",
+    "find",
+    "showtimes",
+    "showing",
+    "movies",
+    "movie"
    ],
    "safetyClass": "read",
    "summary": "Searches this agent's sources for items on a topic. With no source named it searches all of them at once and returns one list, ranked by how well each item matches the words; the person then chooses by number.",
@@ -1395,6 +2782,7 @@
    "outputs": [
     "Text"
    ],
+   "owedWhenAsked": true,
    "reason": true,
    "releaseLanes": [
     "debug",
@@ -1469,6 +2857,9 @@
    "item": {
     "urlTemplate": "https://export.arxiv.org/api/query?id_list={id}"
    },
+   "kinds": [
+    "papers"
+   ],
    "linkTemplate": "https://arxiv.org/abs/{id}",
    "pdfTemplate": "https://arxiv.org/pdf/{id}",
    "search": {
@@ -1507,6 +2898,552 @@
    "title": "arXiv"
   },
   {
+   "adapter": "site",
+   "attribution": "Results by DuckDuckGo, from caranddriver.com, motortrend.com, edmunds.com, electrek.co, insideevs.com, iihs.org, fueleconomy.gov, kbb.com, consumerreports.org, plugshare.com.",
+   "id": "cat-cars",
+   "kinds": [
+    "cars"
+   ],
+   "links": {
+    "skipHosts": [
+     "duckduckgo.com"
+    ],
+    "unwrapParam": "uddg",
+    "challengeText": "bots use DuckDuckGo too",
+    "fallbackSource": "news-gnews-local"
+   },
+   "search": {
+    "urlTemplate": "https://html.duckduckgo.com/html/?q={query}%20(site%3Acaranddriver.com%20OR%20site%3Amotortrend.com%20OR%20site%3Aedmunds.com%20OR%20site%3Aelectrek.co%20OR%20site%3Ainsideevs.com%20OR%20site%3Aiihs.org%20OR%20site%3Afueleconomy.gov%20OR%20site%3Akbb.com%20OR%20site%3Aconsumerreports.org%20OR%20site%3Aplugshare.com)",
+    "recent": {
+     "day": "&df=d",
+     "week": "&df=w",
+     "month": "&df=m"
+    }
+   },
+   "summary": "Cars and EVs: a web search limited to caranddriver.com, motortrend.com, edmunds.com, electrek.co and 6 more.",
+   "title": "Cars and EVs (top sites)"
+  },
+  {
+   "adapter": "site",
+   "attribution": "Results by DuckDuckGo, from nytimes.com/wirecutter, rtings.com, consumerreports.org, slickdeals.net, tomsguide.com, cnet.com, pcmag.com, outdoorgearlab.com, theverge.com, engadget.com.",
+   "id": "cat-deals",
+   "kinds": [
+    "deals"
+   ],
+   "links": {
+    "skipHosts": [
+     "duckduckgo.com"
+    ],
+    "unwrapParam": "uddg",
+    "challengeText": "bots use DuckDuckGo too",
+    "fallbackSource": "news-gnews-local"
+   },
+   "search": {
+    "urlTemplate": "https://html.duckduckgo.com/html/?q={query}%20(site%3Anytimes.com/wirecutter%20OR%20site%3Artings.com%20OR%20site%3Aconsumerreports.org%20OR%20site%3Aslickdeals.net%20OR%20site%3Atomsguide.com%20OR%20site%3Acnet.com%20OR%20site%3Apcmag.com%20OR%20site%3Aoutdoorgearlab.com%20OR%20site%3Atheverge.com%20OR%20site%3Aengadget.com)",
+    "recent": {
+     "day": "&df=d",
+     "week": "&df=w",
+     "month": "&df=m"
+    }
+   },
+   "summary": "Reviews and deals: a web search limited to nytimes.com/wirecutter, rtings.com, consumerreports.org, slickdeals.net and 6 more.",
+   "title": "Reviews and deals (top sites)"
+  },
+  {
+   "adapter": "site",
+   "attribution": "Results by DuckDuckGo, from vulture.com, rottentomatoes.com, imdb.com, whats-on-netflix.com, justwatch.com, variety.com, ign.com, polygon.com, metacritic.com, avclub.com.",
+   "id": "cat-entertainment",
+   "kinds": [
+    "entertainment"
+   ],
+   "links": {
+    "skipHosts": [
+     "duckduckgo.com"
+    ],
+    "unwrapParam": "uddg",
+    "challengeText": "bots use DuckDuckGo too",
+    "fallbackSource": "news-gnews-local"
+   },
+   "search": {
+    "urlTemplate": "https://html.duckduckgo.com/html/?q={query}%20(site%3Avulture.com%20OR%20site%3Arottentomatoes.com%20OR%20site%3Aimdb.com%20OR%20site%3Awhats-on-netflix.com%20OR%20site%3Ajustwatch.com%20OR%20site%3Avariety.com%20OR%20site%3Aign.com%20OR%20site%3Apolygon.com%20OR%20site%3Ametacritic.com%20OR%20site%3Aavclub.com)",
+    "recent": {
+     "day": "&df=d",
+     "week": "&df=w",
+     "month": "&df=m"
+    }
+   },
+   "summary": "Movies, TV and games: a web search limited to vulture.com, rottentomatoes.com, imdb.com, whats-on-netflix.com and 6 more.",
+   "title": "Movies, TV and games (top sites)"
+  },
+  {
+   "adapter": "site",
+   "attribution": "Results by DuckDuckGo, from eventbrite.com, timeout.com, do206.com, parentmap.com, thestranger.com, secretseattle.co, allevents.in, songkick.com, bandsintown.com, meetup.com.",
+   "id": "cat-events",
+   "kinds": [
+    "events"
+   ],
+   "links": {
+    "skipHosts": [
+     "duckduckgo.com"
+    ],
+    "unwrapParam": "uddg",
+    "challengeText": "bots use DuckDuckGo too",
+    "fallbackSource": "news-gnews-local"
+   },
+   "search": {
+    "urlTemplate": "https://html.duckduckgo.com/html/?q={query}%20(site%3Aeventbrite.com%20OR%20site%3Atimeout.com%20OR%20site%3Ado206.com%20OR%20site%3Aparentmap.com%20OR%20site%3Athestranger.com%20OR%20site%3Asecretseattle.co%20OR%20site%3Aallevents.in%20OR%20site%3Asongkick.com%20OR%20site%3Abandsintown.com%20OR%20site%3Ameetup.com)",
+    "recent": {
+     "day": "&df=d",
+     "week": "&df=w",
+     "month": "&df=m"
+    }
+   },
+   "summary": "Events and things to do: a web search limited to eventbrite.com, timeout.com, do206.com, parentmap.com and 6 more.",
+   "title": "Events and things to do (top sites)"
+  },
+  {
+   "adapter": "site",
+   "attribution": "Results by DuckDuckGo, from usa.gov, travel.state.gov, irs.gov, ssa.gov, vote.gov, studentaid.gov, kingcounty.gov, seattle.gov, wa.gov, benefits.gov.",
+   "id": "cat-government",
+   "kinds": [
+    "government"
+   ],
+   "links": {
+    "skipHosts": [
+     "duckduckgo.com"
+    ],
+    "unwrapParam": "uddg",
+    "challengeText": "bots use DuckDuckGo too",
+    "fallbackSource": "news-gnews-local"
+   },
+   "search": {
+    "urlTemplate": "https://html.duckduckgo.com/html/?q={query}%20(site%3Ausa.gov%20OR%20site%3Atravel.state.gov%20OR%20site%3Airs.gov%20OR%20site%3Assa.gov%20OR%20site%3Avote.gov%20OR%20site%3Astudentaid.gov%20OR%20site%3Akingcounty.gov%20OR%20site%3Aseattle.gov%20OR%20site%3Awa.gov%20OR%20site%3Abenefits.gov)",
+    "recent": {
+     "day": "&df=d",
+     "week": "&df=w",
+     "month": "&df=m"
+    }
+   },
+   "summary": "Government services: a web search limited to usa.gov, travel.state.gov, irs.gov, ssa.gov and 6 more.",
+   "title": "Government services (top sites)"
+  },
+  {
+   "adapter": "site",
+   "attribution": "Results by DuckDuckGo, from mayoclinic.org, clevelandclinic.org, medlineplus.gov, cdc.gov, nih.gov, hopkinsmedicine.org, health.harvard.edu, healthline.com, nhs.uk, who.int.",
+   "id": "cat-health",
+   "kinds": [
+    "health"
+   ],
+   "links": {
+    "skipHosts": [
+     "duckduckgo.com"
+    ],
+    "unwrapParam": "uddg",
+    "challengeText": "bots use DuckDuckGo too",
+    "fallbackSource": "news-gnews-local"
+   },
+   "search": {
+    "urlTemplate": "https://html.duckduckgo.com/html/?q={query}%20(site%3Amayoclinic.org%20OR%20site%3Aclevelandclinic.org%20OR%20site%3Amedlineplus.gov%20OR%20site%3Acdc.gov%20OR%20site%3Anih.gov%20OR%20site%3Ahopkinsmedicine.org%20OR%20site%3Ahealth.harvard.edu%20OR%20site%3Ahealthline.com%20OR%20site%3Anhs.uk%20OR%20site%3Awho.int)",
+    "recent": {
+     "day": "&df=d",
+     "week": "&df=w",
+     "month": "&df=m"
+    }
+   },
+   "summary": "Health information: a web search limited to mayoclinic.org, clevelandclinic.org, medlineplus.gov, cdc.gov and 6 more.",
+   "title": "Health information (top sites)"
+  },
+  {
+   "adapter": "site",
+   "attribution": "Results by DuckDuckGo, from thisoldhouse.com, familyhandyman.com, bobvila.com, apartmenttherapy.com, thespruce.com, energy.gov, gardeners.com, almanac.com, houzz.com, hgtv.com.",
+   "id": "cat-home",
+   "kinds": [
+    "home"
+   ],
+   "links": {
+    "skipHosts": [
+     "duckduckgo.com"
+    ],
+    "unwrapParam": "uddg",
+    "challengeText": "bots use DuckDuckGo too",
+    "fallbackSource": "news-gnews-local"
+   },
+   "search": {
+    "urlTemplate": "https://html.duckduckgo.com/html/?q={query}%20(site%3Athisoldhouse.com%20OR%20site%3Afamilyhandyman.com%20OR%20site%3Abobvila.com%20OR%20site%3Aapartmenttherapy.com%20OR%20site%3Athespruce.com%20OR%20site%3Aenergy.gov%20OR%20site%3Agardeners.com%20OR%20site%3Aalmanac.com%20OR%20site%3Ahouzz.com%20OR%20site%3Ahgtv.com)",
+    "recent": {
+     "day": "&df=d",
+     "week": "&df=w",
+     "month": "&df=m"
+    }
+   },
+   "summary": "Home and garden: a web search limited to thisoldhouse.com, familyhandyman.com, bobvila.com, apartmenttherapy.com and 6 more.",
+   "title": "Home and garden (top sites)"
+  },
+  {
+   "adapter": "site",
+   "attribution": "Results by DuckDuckGo, from builtin.com, wellfound.com, remoteok.com, weworkremotely.com, usajobs.gov, themuse.com, dice.com, idealist.org, governmentjobs.com, workingnomads.com.",
+   "id": "cat-jobs",
+   "kinds": [
+    "jobs"
+   ],
+   "links": {
+    "skipHosts": [
+     "duckduckgo.com"
+    ],
+    "unwrapParam": "uddg",
+    "challengeText": "bots use DuckDuckGo too",
+    "fallbackSource": "news-gnews-local"
+   },
+   "search": {
+    "urlTemplate": "https://html.duckduckgo.com/html/?q={query}%20(site%3Abuiltin.com%20OR%20site%3Awellfound.com%20OR%20site%3Aremoteok.com%20OR%20site%3Aweworkremotely.com%20OR%20site%3Ausajobs.gov%20OR%20site%3Athemuse.com%20OR%20site%3Adice.com%20OR%20site%3Aidealist.org%20OR%20site%3Agovernmentjobs.com%20OR%20site%3Aworkingnomads.com)",
+    "recent": {
+     "day": "&df=d",
+     "week": "&df=w",
+     "month": "&df=m"
+    }
+   },
+   "summary": "Job boards: a web search limited to builtin.com, wellfound.com, remoteok.com, weworkremotely.com and 6 more.",
+   "title": "Job boards (top sites)"
+  },
+  {
+   "adapter": "site",
+   "attribution": "Results by DuckDuckGo, from coursera.org, khanacademy.org, edx.org, freecodecamp.org, mit.edu, duolingo.com, openculture.com, classcentral.com, justinguitar.com, codecademy.com.",
+   "id": "cat-learning",
+   "kinds": [
+    "learning"
+   ],
+   "links": {
+    "skipHosts": [
+     "duckduckgo.com"
+    ],
+    "unwrapParam": "uddg",
+    "challengeText": "bots use DuckDuckGo too",
+    "fallbackSource": "news-gnews-local"
+   },
+   "search": {
+    "urlTemplate": "https://html.duckduckgo.com/html/?q={query}%20(site%3Acoursera.org%20OR%20site%3Akhanacademy.org%20OR%20site%3Aedx.org%20OR%20site%3Afreecodecamp.org%20OR%20site%3Amit.edu%20OR%20site%3Aduolingo.com%20OR%20site%3Aopenculture.com%20OR%20site%3Aclasscentral.com%20OR%20site%3Ajustinguitar.com%20OR%20site%3Acodecademy.com)",
+    "recent": {
+     "day": "&df=d",
+     "week": "&df=w",
+     "month": "&df=m"
+    }
+   },
+   "summary": "Courses and learning: a web search limited to coursera.org, khanacademy.org, edx.org, freecodecamp.org and 6 more.",
+   "title": "Courses and learning (top sites)"
+  },
+  {
+   "adapter": "site",
+   "attribution": "Results by DuckDuckGo, from nerdwallet.com, bankrate.com, investopedia.com, consumerfinance.gov, irs.gov, fool.com, kiplinger.com, thepointsguy.com, morningstar.com, studentaid.gov.",
+   "id": "cat-money",
+   "kinds": [
+    "money"
+   ],
+   "links": {
+    "skipHosts": [
+     "duckduckgo.com"
+    ],
+    "unwrapParam": "uddg",
+    "challengeText": "bots use DuckDuckGo too",
+    "fallbackSource": "news-gnews-local"
+   },
+   "search": {
+    "urlTemplate": "https://html.duckduckgo.com/html/?q={query}%20(site%3Anerdwallet.com%20OR%20site%3Abankrate.com%20OR%20site%3Ainvestopedia.com%20OR%20site%3Aconsumerfinance.gov%20OR%20site%3Airs.gov%20OR%20site%3Afool.com%20OR%20site%3Akiplinger.com%20OR%20site%3Athepointsguy.com%20OR%20site%3Amorningstar.com%20OR%20site%3Astudentaid.gov)",
+    "recent": {
+     "day": "&df=d",
+     "week": "&df=w",
+     "month": "&df=m"
+    }
+   },
+   "summary": "Personal finance: a web search limited to nerdwallet.com, bankrate.com, investopedia.com, consumerfinance.gov and 6 more.",
+   "title": "Personal finance (top sites)"
+  },
+  {
+   "adapter": "site",
+   "attribution": "Results by DuckDuckGo, from fandango.com, amctheatres.com, regmovies.com, cinemark.com, landmarktheatres.com, atomtickets.com, moviefone.com, rottentomatoes.com, imdb.com, boxofficemojo.com.",
+   "id": "cat-movies",
+   "kinds": [
+    "movies"
+   ],
+   "links": {
+    "skipHosts": [
+     "duckduckgo.com"
+    ],
+    "unwrapParam": "uddg",
+    "challengeText": "bots use DuckDuckGo too",
+    "fallbackSource": "news-gnews-local"
+   },
+   "search": {
+    "urlTemplate": "https://html.duckduckgo.com/html/?q={query}%20(site%3Afandango.com%20OR%20site%3Aamctheatres.com%20OR%20site%3Aregmovies.com%20OR%20site%3Acinemark.com%20OR%20site%3Alandmarktheatres.com%20OR%20site%3Aatomtickets.com%20OR%20site%3Amoviefone.com%20OR%20site%3Arottentomatoes.com%20OR%20site%3Aimdb.com%20OR%20site%3Aboxofficemojo.com)",
+    "recent": {
+     "day": "&df=d",
+     "week": "&df=w",
+     "month": "&df=m"
+    }
+   },
+   "summary": "Movies and showtimes: a web search limited to fandango.com, amctheatres.com, regmovies.com, cinemark.com and 6 more.",
+   "title": "Movies and showtimes (top sites)"
+  },
+  {
+   "adapter": "site",
+   "attribution": "Results by DuckDuckGo, from pitchfork.com, kexp.org, npr.org/music, stereogum.com, rollingstone.com, songkick.com, bandsintown.com, allmusic.com, consequence.net, nme.com.",
+   "id": "cat-music-scene",
+   "kinds": [
+    "music-scene"
+   ],
+   "links": {
+    "skipHosts": [
+     "duckduckgo.com"
+    ],
+    "unwrapParam": "uddg",
+    "challengeText": "bots use DuckDuckGo too",
+    "fallbackSource": "news-gnews-local"
+   },
+   "search": {
+    "urlTemplate": "https://html.duckduckgo.com/html/?q={query}%20(site%3Apitchfork.com%20OR%20site%3Akexp.org%20OR%20site%3Anpr.org/music%20OR%20site%3Astereogum.com%20OR%20site%3Arollingstone.com%20OR%20site%3Asongkick.com%20OR%20site%3Abandsintown.com%20OR%20site%3Aallmusic.com%20OR%20site%3Aconsequence.net%20OR%20site%3Anme.com)",
+    "recent": {
+     "day": "&df=d",
+     "week": "&df=w",
+     "month": "&df=m"
+    }
+   },
+   "summary": "Music and concerts: a web search limited to pitchfork.com, kexp.org, npr.org/music, stereogum.com and 6 more.",
+   "title": "Music and concerts (top sites)"
+  },
+  {
+   "adapter": "site",
+   "attribution": "Results by DuckDuckGo, from wta.org, alltrails.com, nps.gov, recreation.gov, rei.com, outsideonline.com, onthesnow.com, hipcamp.com, fs.usda.gov, parks.wa.gov.",
+   "id": "cat-outdoors",
+   "kinds": [
+    "outdoors"
+   ],
+   "links": {
+    "skipHosts": [
+     "duckduckgo.com"
+    ],
+    "unwrapParam": "uddg",
+    "challengeText": "bots use DuckDuckGo too",
+    "fallbackSource": "news-gnews-local"
+   },
+   "search": {
+    "urlTemplate": "https://html.duckduckgo.com/html/?q={query}%20(site%3Awta.org%20OR%20site%3Aalltrails.com%20OR%20site%3Anps.gov%20OR%20site%3Arecreation.gov%20OR%20site%3Arei.com%20OR%20site%3Aoutsideonline.com%20OR%20site%3Aonthesnow.com%20OR%20site%3Ahipcamp.com%20OR%20site%3Afs.usda.gov%20OR%20site%3Aparks.wa.gov)",
+    "recent": {
+     "day": "&df=d",
+     "week": "&df=w",
+     "month": "&df=m"
+    }
+   },
+   "summary": "Outdoors and trails: a web search limited to wta.org, alltrails.com, nps.gov, recreation.gov and 6 more.",
+   "title": "Outdoors and trails (top sites)"
+  },
+  {
+   "adapter": "site",
+   "attribution": "Results by DuckDuckGo, from commonsensemedia.org, parentmap.com, healthychildren.org, zerotothree.org, scholastic.com, pbs.org/parents, understood.org, savingforcollege.com, verywellfamily.com, kidshealth.org.",
+   "id": "cat-parenting",
+   "kinds": [
+    "parenting"
+   ],
+   "links": {
+    "skipHosts": [
+     "duckduckgo.com"
+    ],
+    "unwrapParam": "uddg",
+    "challengeText": "bots use DuckDuckGo too",
+    "fallbackSource": "news-gnews-local"
+   },
+   "search": {
+    "urlTemplate": "https://html.duckduckgo.com/html/?q={query}%20(site%3Acommonsensemedia.org%20OR%20site%3Aparentmap.com%20OR%20site%3Ahealthychildren.org%20OR%20site%3Azerotothree.org%20OR%20site%3Ascholastic.com%20OR%20site%3Apbs.org/parents%20OR%20site%3Aunderstood.org%20OR%20site%3Asavingforcollege.com%20OR%20site%3Averywellfamily.com%20OR%20site%3Akidshealth.org)",
+    "recent": {
+     "day": "&df=d",
+     "week": "&df=w",
+     "month": "&df=m"
+    }
+   },
+   "summary": "Parenting and kids: a web search limited to commonsensemedia.org, parentmap.com, healthychildren.org, zerotothree.org and 6 more.",
+   "title": "Parenting and kids (top sites)"
+  },
+  {
+   "adapter": "site",
+   "attribution": "Results by DuckDuckGo, from akc.org, aspca.org, petmd.com, humanesociety.org, vcahospitals.com, thesprucepets.com, bringfido.com, petfinder.com, avma.org, catster.com.",
+   "id": "cat-pets",
+   "kinds": [
+    "pets"
+   ],
+   "links": {
+    "skipHosts": [
+     "duckduckgo.com"
+    ],
+    "unwrapParam": "uddg",
+    "challengeText": "bots use DuckDuckGo too",
+    "fallbackSource": "news-gnews-local"
+   },
+   "search": {
+    "urlTemplate": "https://html.duckduckgo.com/html/?q={query}%20(site%3Aakc.org%20OR%20site%3Aaspca.org%20OR%20site%3Apetmd.com%20OR%20site%3Ahumanesociety.org%20OR%20site%3Avcahospitals.com%20OR%20site%3Athesprucepets.com%20OR%20site%3Abringfido.com%20OR%20site%3Apetfinder.com%20OR%20site%3Aavma.org%20OR%20site%3Acatster.com)",
+    "recent": {
+     "day": "&df=d",
+     "week": "&df=w",
+     "month": "&df=m"
+    }
+   },
+   "summary": "Pets: a web search limited to akc.org, aspca.org, petmd.com, humanesociety.org and 6 more.",
+   "title": "Pets (top sites)"
+  },
+  {
+   "adapter": "site",
+   "attribution": "Results by DuckDuckGo, from redfin.com, realtor.com, apartmentlist.com, rent.com, nar.realtor, freddiemac.com, bankrate.com, inman.com, housingwire.com, consumerfinance.gov.",
+   "id": "cat-real-estate",
+   "kinds": [
+    "real-estate"
+   ],
+   "links": {
+    "skipHosts": [
+     "duckduckgo.com"
+    ],
+    "unwrapParam": "uddg",
+    "challengeText": "bots use DuckDuckGo too",
+    "fallbackSource": "news-gnews-local"
+   },
+   "search": {
+    "urlTemplate": "https://html.duckduckgo.com/html/?q={query}%20(site%3Aredfin.com%20OR%20site%3Arealtor.com%20OR%20site%3Aapartmentlist.com%20OR%20site%3Arent.com%20OR%20site%3Anar.realtor%20OR%20site%3Afreddiemac.com%20OR%20site%3Abankrate.com%20OR%20site%3Ainman.com%20OR%20site%3Ahousingwire.com%20OR%20site%3Aconsumerfinance.gov)",
+    "recent": {
+     "day": "&df=d",
+     "week": "&df=w",
+     "month": "&df=m"
+    }
+   },
+   "summary": "Housing and real estate: a web search limited to redfin.com, realtor.com, apartmentlist.com, rent.com and 6 more.",
+   "title": "Housing and real estate (top sites)"
+  },
+  {
+   "adapter": "site",
+   "attribution": "Results by DuckDuckGo, from seriouseats.com, bonappetit.com, smittenkitchen.com, budgetbytes.com, cooking.nytimes.com, epicurious.com, thekitchn.com, allrecipes.com, kingarthurbaking.com, food52.com.",
+   "id": "cat-recipes",
+   "kinds": [
+    "recipes"
+   ],
+   "links": {
+    "skipHosts": [
+     "duckduckgo.com"
+    ],
+    "unwrapParam": "uddg",
+    "challengeText": "bots use DuckDuckGo too",
+    "fallbackSource": "news-gnews-local"
+   },
+   "search": {
+    "urlTemplate": "https://html.duckduckgo.com/html/?q={query}%20(site%3Aseriouseats.com%20OR%20site%3Abonappetit.com%20OR%20site%3Asmittenkitchen.com%20OR%20site%3Abudgetbytes.com%20OR%20site%3Acooking.nytimes.com%20OR%20site%3Aepicurious.com%20OR%20site%3Athekitchn.com%20OR%20site%3Aallrecipes.com%20OR%20site%3Akingarthurbaking.com%20OR%20site%3Afood52.com)",
+    "recent": {
+     "day": "&df=d",
+     "week": "&df=w",
+     "month": "&df=m"
+    }
+   },
+   "summary": "Recipes and cooking: a web search limited to seriouseats.com, bonappetit.com, smittenkitchen.com, budgetbytes.com and 6 more.",
+   "title": "Recipes and cooking (top sites)"
+  },
+  {
+   "adapter": "site",
+   "attribution": "Results by DuckDuckGo, from nasa.gov, space.com, sciencenews.org, scientificamerican.com, nature.com, quantamagazine.org, newscientist.com, phys.org, nationalgeographic.com, noaa.gov.",
+   "id": "cat-science",
+   "kinds": [
+    "science"
+   ],
+   "links": {
+    "skipHosts": [
+     "duckduckgo.com"
+    ],
+    "unwrapParam": "uddg",
+    "challengeText": "bots use DuckDuckGo too",
+    "fallbackSource": "news-gnews-local"
+   },
+   "search": {
+    "urlTemplate": "https://html.duckduckgo.com/html/?q={query}%20(site%3Anasa.gov%20OR%20site%3Aspace.com%20OR%20site%3Asciencenews.org%20OR%20site%3Ascientificamerican.com%20OR%20site%3Anature.com%20OR%20site%3Aquantamagazine.org%20OR%20site%3Anewscientist.com%20OR%20site%3Aphys.org%20OR%20site%3Anationalgeographic.com%20OR%20site%3Anoaa.gov)",
+    "recent": {
+     "day": "&df=d",
+     "week": "&df=w",
+     "month": "&df=m"
+    }
+   },
+   "summary": "Science: a web search limited to nasa.gov, space.com, sciencenews.org, scientificamerican.com and 6 more.",
+   "title": "Science (top sites)"
+  },
+  {
+   "adapter": "site",
+   "attribution": "Results by DuckDuckGo, from theverge.com, arstechnica.com, macrumors.com, 9to5mac.com, engadget.com, wired.com, techcrunch.com, anandtech.com, tomshardware.com, huggingface.co.",
+   "id": "cat-tech",
+   "kinds": [
+    "tech"
+   ],
+   "links": {
+    "skipHosts": [
+     "duckduckgo.com"
+    ],
+    "unwrapParam": "uddg",
+    "challengeText": "bots use DuckDuckGo too",
+    "fallbackSource": "news-gnews-local"
+   },
+   "search": {
+    "urlTemplate": "https://html.duckduckgo.com/html/?q={query}%20(site%3Atheverge.com%20OR%20site%3Aarstechnica.com%20OR%20site%3Amacrumors.com%20OR%20site%3A9to5mac.com%20OR%20site%3Aengadget.com%20OR%20site%3Awired.com%20OR%20site%3Atechcrunch.com%20OR%20site%3Aanandtech.com%20OR%20site%3Atomshardware.com%20OR%20site%3Ahuggingface.co)",
+    "recent": {
+     "day": "&df=d",
+     "week": "&df=w",
+     "month": "&df=m"
+    }
+   },
+   "summary": "Tech reviews and news: a web search limited to theverge.com, arstechnica.com, macrumors.com, 9to5mac.com and 6 more.",
+   "title": "Tech reviews and news (top sites)"
+  },
+  {
+   "adapter": "site",
+   "attribution": "Results by DuckDuckGo, from lonelyplanet.com, ricksteves.com, nomadicmatt.com, cntraveler.com, travelandleisure.com, fodors.com, frommers.com, roughguides.com, atlasobscura.com, afar.com.",
+   "id": "cat-travel",
+   "kinds": [
+    "travel"
+   ],
+   "links": {
+    "skipHosts": [
+     "duckduckgo.com"
+    ],
+    "unwrapParam": "uddg",
+    "challengeText": "bots use DuckDuckGo too",
+    "fallbackSource": "news-gnews-local"
+   },
+   "search": {
+    "urlTemplate": "https://html.duckduckgo.com/html/?q={query}%20(site%3Alonelyplanet.com%20OR%20site%3Aricksteves.com%20OR%20site%3Anomadicmatt.com%20OR%20site%3Acntraveler.com%20OR%20site%3Atravelandleisure.com%20OR%20site%3Afodors.com%20OR%20site%3Afrommers.com%20OR%20site%3Aroughguides.com%20OR%20site%3Aatlasobscura.com%20OR%20site%3Aafar.com)",
+    "recent": {
+     "day": "&df=d",
+     "week": "&df=w",
+     "month": "&df=m"
+    }
+   },
+   "summary": "Travel guides: a web search limited to lonelyplanet.com, ricksteves.com, nomadicmatt.com, cntraveler.com and 6 more.",
+   "title": "Travel guides (top sites)"
+  },
+  {
+   "adapter": "site",
+   "attribution": "Results by DuckDuckGo.",
+   "id": "duckduckgo",
+   "kinds": [
+    "web"
+   ],
+   "links": {
+    "skipHosts": [
+     "duckduckgo.com"
+    ],
+    "unwrapParam": "uddg",
+    "challengeText": "bots use DuckDuckGo too",
+    "fallbackSource": "news-gnews-local"
+   },
+   "search": {
+    "urlTemplate": "https://html.duckduckgo.com/html/?q={query}",
+    "recent": {
+     "day": "&df=d",
+     "week": "&df=w",
+     "month": "&df=m"
+    }
+   },
+   "summary": "Searches the web through DuckDuckGo's plain-HTML results page, read on the person's own device in their browser session, one search per request.",
+   "title": "DuckDuckGo"
+  },
+  {
    "adapter": "json",
    "attribution": "Search by Algolia.",
    "fields": {
@@ -1518,6 +3455,9 @@
     "authors": "author"
    },
    "id": "hackernews",
+   "kinds": [
+    "tech"
+   ],
    "linkTemplate": "https://news.ycombinator.com/item?id={id}",
    "search": {
     "urlTemplate": "https://hn.algolia.com/api/v1/search?query={query}&tags=story&hitsPerPage={max}",
@@ -1525,6 +3465,589 @@
    },
    "summary": "Stories and discussion from the technology community, searched through Algolia.",
    "title": "Hacker News"
+  },
+  {
+   "adapter": "feed",
+   "attribution": "ABC News Australia",
+   "id": "news-abc-au",
+   "kinds": [
+    "news"
+   ],
+   "region": "au",
+   "search": {
+    "urlTemplate": "https://www.abc.net.au/news/feed/2942460/rss.xml"
+   },
+   "summary": "News from ABC News Australia, as in the AI News applet.",
+   "title": "ABC News Australia"
+  },
+  {
+   "adapter": "feed",
+   "attribution": "Al Jazeera",
+   "id": "news-aljazeera",
+   "kinds": [
+    "news",
+    "world"
+   ],
+   "search": {
+    "urlTemplate": "https://www.aljazeera.com/xml/rss/all.xml"
+   },
+   "summary": "World news from Al Jazeera, as in the AI News applet.",
+   "title": "Al Jazeera"
+  },
+  {
+   "adapter": "feed",
+   "attribution": "Ars Technica",
+   "id": "news-ars",
+   "kinds": [
+    "news",
+    "tech"
+   ],
+   "region": "us",
+   "search": {
+    "urlTemplate": "https://feeds.arstechnica.com/arstechnica/index"
+   },
+   "summary": "Tech news from Ars Technica, as in the AI News applet.",
+   "title": "Ars Technica"
+  },
+  {
+   "adapter": "feed",
+   "attribution": "BBC Business",
+   "id": "news-bbc-business",
+   "kinds": [
+    "news",
+    "business"
+   ],
+   "region": "uk",
+   "search": {
+    "urlTemplate": "https://feeds.bbci.co.uk/news/business/rss.xml"
+   },
+   "summary": "Business news from BBC Business, as in the AI News applet.",
+   "title": "BBC Business"
+  },
+  {
+   "adapter": "feed",
+   "attribution": "BBC Entertainment",
+   "id": "news-bbc-entertainment",
+   "kinds": [
+    "news",
+    "entertainment"
+   ],
+   "region": "uk",
+   "search": {
+    "urlTemplate": "https://feeds.bbci.co.uk/news/entertainment_and_arts/rss.xml"
+   },
+   "summary": "Entertainment news from BBC Entertainment, as in the AI News applet.",
+   "title": "BBC Entertainment"
+  },
+  {
+   "adapter": "feed",
+   "attribution": "BBC Health",
+   "id": "news-bbc-health",
+   "kinds": [
+    "news",
+    "health"
+   ],
+   "region": "uk",
+   "search": {
+    "urlTemplate": "https://feeds.bbci.co.uk/news/health/rss.xml"
+   },
+   "summary": "Health news from BBC Health, as in the AI News applet.",
+   "title": "BBC Health"
+  },
+  {
+   "adapter": "feed",
+   "attribution": "BBC Science",
+   "id": "news-bbc-science",
+   "kinds": [
+    "news",
+    "science"
+   ],
+   "region": "uk",
+   "search": {
+    "urlTemplate": "https://feeds.bbci.co.uk/news/science_and_environment/rss.xml"
+   },
+   "summary": "Science news from BBC Science, as in the AI News applet.",
+   "title": "BBC Science"
+  },
+  {
+   "adapter": "feed",
+   "attribution": "BBC Sport",
+   "id": "news-bbc-sport",
+   "kinds": [
+    "news",
+    "sports"
+   ],
+   "region": "uk",
+   "search": {
+    "urlTemplate": "https://feeds.bbci.co.uk/sport/rss.xml"
+   },
+   "summary": "Sports news from BBC Sport, as in the AI News applet.",
+   "title": "BBC Sport"
+  },
+  {
+   "adapter": "feed",
+   "attribution": "BBC Technology",
+   "id": "news-bbc-tech",
+   "kinds": [
+    "news",
+    "tech"
+   ],
+   "region": "uk",
+   "search": {
+    "urlTemplate": "https://feeds.bbci.co.uk/news/technology/rss.xml"
+   },
+   "summary": "Tech news from BBC Technology, as in the AI News applet.",
+   "title": "BBC Technology"
+  },
+  {
+   "adapter": "feed",
+   "attribution": "BBC Top Stories",
+   "id": "news-bbc-top",
+   "kinds": [
+    "news"
+   ],
+   "region": "uk",
+   "search": {
+    "urlTemplate": "https://feeds.bbci.co.uk/news/rss.xml"
+   },
+   "summary": "News from BBC Top Stories, as in the AI News applet.",
+   "title": "BBC Top Stories"
+  },
+  {
+   "adapter": "feed",
+   "attribution": "BBC World",
+   "id": "news-bbc-world",
+   "kinds": [
+    "news",
+    "world"
+   ],
+   "region": "uk",
+   "search": {
+    "urlTemplate": "https://feeds.bbci.co.uk/news/world/rss.xml"
+   },
+   "summary": "World news from BBC World, as in the AI News applet.",
+   "title": "BBC World"
+  },
+  {
+   "adapter": "feed",
+   "attribution": "CBC News",
+   "id": "news-cbc",
+   "kinds": [
+    "news"
+   ],
+   "region": "ca",
+   "search": {
+    "urlTemplate": "https://www.cbc.ca/cmlink/rss-topstories"
+   },
+   "summary": "News from CBC News, as in the AI News applet.",
+   "title": "CBC News"
+  },
+  {
+   "adapter": "feed",
+   "attribution": "CNBC Top News",
+   "id": "news-cnbc-top",
+   "kinds": [
+    "news",
+    "business"
+   ],
+   "region": "us",
+   "search": {
+    "urlTemplate": "https://www.cnbc.com/id/100003114/device/rss/rss.html"
+   },
+   "summary": "Business news from CNBC Top News, as in the AI News applet.",
+   "title": "CNBC Top News"
+  },
+  {
+   "adapter": "feed",
+   "attribution": "Deutsche Welle",
+   "id": "news-dw",
+   "kinds": [
+    "news",
+    "world"
+   ],
+   "region": "de",
+   "search": {
+    "urlTemplate": "https://rss.dw.com/rdf/rss-en-all"
+   },
+   "summary": "World news from Deutsche Welle, as in the AI News applet.",
+   "title": "Deutsche Welle"
+  },
+  {
+   "adapter": "feed",
+   "attribution": "ESPN",
+   "id": "news-espn-top",
+   "kinds": [
+    "news",
+    "sports"
+   ],
+   "region": "us",
+   "search": {
+    "urlTemplate": "https://www.espn.com/espn/rss/news"
+   },
+   "summary": "Sports news from ESPN, as in the AI News applet.",
+   "title": "ESPN"
+  },
+  {
+   "adapter": "feed",
+   "attribution": "France 24",
+   "id": "news-france24",
+   "kinds": [
+    "news",
+    "world"
+   ],
+   "region": "fr",
+   "search": {
+    "urlTemplate": "https://www.france24.com/en/rss"
+   },
+   "summary": "World news from France 24, as in the AI News applet.",
+   "title": "France 24"
+  },
+  {
+   "adapter": "feed",
+   "attribution": "Google News · Business",
+   "id": "news-gnews-business",
+   "kinds": [
+    "news",
+    "business"
+   ],
+   "region": "us",
+   "search": {
+    "urlTemplate": "https://news.google.com/rss/headlines/section/topic/BUSINESS?hl=en-US&gl=US&ceid=US:en"
+   },
+   "summary": "Business news from Google News · Business, as in the AI News applet.",
+   "title": "Google News · Business"
+  },
+  {
+   "adapter": "feed",
+   "attribution": "Google News · Entertainment",
+   "id": "news-gnews-entertainment",
+   "kinds": [
+    "news",
+    "entertainment"
+   ],
+   "region": "us",
+   "search": {
+    "urlTemplate": "https://news.google.com/rss/headlines/section/topic/ENTERTAINMENT?hl=en-US&gl=US&ceid=US:en"
+   },
+   "summary": "Entertainment news from Google News · Entertainment, as in the AI News applet.",
+   "title": "Google News · Entertainment"
+  },
+  {
+   "adapter": "feed",
+   "attribution": "Google News · Health",
+   "id": "news-gnews-health",
+   "kinds": [
+    "news",
+    "health"
+   ],
+   "region": "us",
+   "search": {
+    "urlTemplate": "https://news.google.com/rss/headlines/section/topic/HEALTH?hl=en-US&gl=US&ceid=US:en"
+   },
+   "summary": "Health news from Google News · Health, as in the AI News applet.",
+   "title": "Google News · Health"
+  },
+  {
+   "adapter": "feed",
+   "attribution": "Local Headlines",
+   "id": "news-gnews-local",
+   "kinds": [
+    "news",
+    "local"
+   ],
+   "outletSearch": "{query} site:{site}",
+   "region": "us",
+   "search": {
+    "urlTemplate": "https://news.google.com/rss/search?q={query}&hl=en-US&gl=US&ceid=US:en",
+    "recentQuery": {
+     "day": " when:2d",
+     "week": " when:7d",
+     "month": " when:1m"
+    }
+   },
+   "summary": "Local news from Local Headlines, as in the AI News applet.",
+   "title": "Local Headlines"
+  },
+  {
+   "adapter": "feed",
+   "attribution": "Google News · Science",
+   "id": "news-gnews-science",
+   "kinds": [
+    "news",
+    "science"
+   ],
+   "region": "us",
+   "search": {
+    "urlTemplate": "https://news.google.com/rss/headlines/section/topic/SCIENCE?hl=en-US&gl=US&ceid=US:en"
+   },
+   "summary": "Science news from Google News · Science, as in the AI News applet.",
+   "title": "Google News · Science"
+  },
+  {
+   "adapter": "feed",
+   "attribution": "Google News · Sports",
+   "id": "news-gnews-sports",
+   "kinds": [
+    "news",
+    "sports"
+   ],
+   "region": "us",
+   "search": {
+    "urlTemplate": "https://news.google.com/rss/headlines/section/topic/SPORTS?hl=en-US&gl=US&ceid=US:en"
+   },
+   "summary": "Sports news from Google News · Sports, as in the AI News applet.",
+   "title": "Google News · Sports"
+  },
+  {
+   "adapter": "feed",
+   "attribution": "Google News · Technology",
+   "id": "news-gnews-tech",
+   "kinds": [
+    "news",
+    "tech"
+   ],
+   "region": "us",
+   "search": {
+    "urlTemplate": "https://news.google.com/rss/headlines/section/topic/TECHNOLOGY?hl=en-US&gl=US&ceid=US:en"
+   },
+   "summary": "Tech news from Google News · Technology, as in the AI News applet.",
+   "title": "Google News · Technology"
+  },
+  {
+   "adapter": "feed",
+   "attribution": "Google News · World",
+   "id": "news-gnews-world",
+   "kinds": [
+    "news",
+    "world"
+   ],
+   "region": "us",
+   "search": {
+    "urlTemplate": "https://news.google.com/rss/headlines/section/topic/WORLD?hl=en-US&gl=US&ceid=US:en"
+   },
+   "summary": "World news from Google News · World, as in the AI News applet.",
+   "title": "Google News · World"
+  },
+  {
+   "adapter": "feed",
+   "attribution": "The Guardian",
+   "id": "news-guardian",
+   "kinds": [
+    "news",
+    "world"
+   ],
+   "region": "uk",
+   "search": {
+    "urlTemplate": "https://www.theguardian.com/world/rss"
+   },
+   "summary": "World news from The Guardian, as in the AI News applet.",
+   "title": "The Guardian"
+  },
+  {
+   "adapter": "feed",
+   "attribution": "The Guardian Sport",
+   "id": "news-guardian-sport",
+   "kinds": [
+    "news",
+    "sports"
+   ],
+   "region": "uk",
+   "search": {
+    "urlTemplate": "https://www.theguardian.com/uk/sport/rss"
+   },
+   "summary": "Sports news from The Guardian Sport, as in the AI News applet.",
+   "title": "The Guardian Sport"
+  },
+  {
+   "adapter": "feed",
+   "attribution": "The Hollywood Reporter",
+   "id": "news-hollywood-reporter",
+   "kinds": [
+    "news",
+    "entertainment"
+   ],
+   "region": "us",
+   "search": {
+    "urlTemplate": "https://www.hollywoodreporter.com/feed/"
+   },
+   "summary": "Entertainment news from The Hollywood Reporter, as in the AI News applet.",
+   "title": "The Hollywood Reporter"
+  },
+  {
+   "adapter": "feed",
+   "attribution": "Japan Times",
+   "id": "news-japantimes",
+   "kinds": [
+    "news"
+   ],
+   "region": "jp",
+   "search": {
+    "urlTemplate": "https://www.japantimes.co.jp/feed/"
+   },
+   "summary": "News from Japan Times, as in the AI News applet.",
+   "title": "Japan Times"
+  },
+  {
+   "adapter": "feed",
+   "attribution": "NASA",
+   "id": "news-nasa",
+   "kinds": [
+    "news",
+    "science"
+   ],
+   "region": "us",
+   "search": {
+    "urlTemplate": "https://www.nasa.gov/news-release/feed/"
+   },
+   "summary": "Science news from NASA, as in the AI News applet.",
+   "title": "NASA"
+  },
+  {
+   "adapter": "feed",
+   "attribution": "NDTV",
+   "id": "news-ndtv",
+   "kinds": [
+    "news"
+   ],
+   "region": "in",
+   "search": {
+    "urlTemplate": "https://feeds.feedburner.com/ndtvnews-top-stories"
+   },
+   "summary": "News from NDTV, as in the AI News applet.",
+   "title": "NDTV"
+  },
+  {
+   "adapter": "feed",
+   "attribution": "NPR News",
+   "id": "news-npr",
+   "kinds": [
+    "news"
+   ],
+   "region": "us",
+   "search": {
+    "urlTemplate": "https://feeds.npr.org/1001/rss.xml"
+   },
+   "summary": "News from NPR News, as in the AI News applet.",
+   "title": "NPR News"
+  },
+  {
+   "adapter": "feed",
+   "attribution": "NPR Technology",
+   "id": "news-npr-tech",
+   "kinds": [
+    "news",
+    "tech"
+   ],
+   "region": "us",
+   "search": {
+    "urlTemplate": "https://feeds.npr.org/1019/rss.xml"
+   },
+   "summary": "Tech news from NPR Technology, as in the AI News applet.",
+   "title": "NPR Technology"
+  },
+  {
+   "adapter": "feed",
+   "attribution": "The New York Times",
+   "id": "news-nyt",
+   "kinds": [
+    "news"
+   ],
+   "region": "us",
+   "search": {
+    "urlTemplate": "https://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml"
+   },
+   "summary": "News from The New York Times, as in the AI News applet.",
+   "title": "The New York Times"
+  },
+  {
+   "adapter": "feed",
+   "attribution": "Science News",
+   "id": "news-sciencemag",
+   "kinds": [
+    "news",
+    "science"
+   ],
+   "region": "us",
+   "search": {
+    "urlTemplate": "https://www.sciencenews.org/feed"
+   },
+   "summary": "Science news from Science News, as in the AI News applet.",
+   "title": "Science News"
+  },
+  {
+   "adapter": "feed",
+   "attribution": "TechCrunch",
+   "id": "news-techcrunch",
+   "kinds": [
+    "news",
+    "tech"
+   ],
+   "region": "us",
+   "search": {
+    "urlTemplate": "https://techcrunch.com/feed/"
+   },
+   "summary": "Tech news from TechCrunch, as in the AI News applet.",
+   "title": "TechCrunch"
+  },
+  {
+   "adapter": "feed",
+   "attribution": "Variety",
+   "id": "news-variety",
+   "kinds": [
+    "news",
+    "entertainment"
+   ],
+   "region": "us",
+   "search": {
+    "urlTemplate": "https://variety.com/feed/"
+   },
+   "summary": "Entertainment news from Variety, as in the AI News applet.",
+   "title": "Variety"
+  },
+  {
+   "adapter": "feed",
+   "attribution": "The Verge",
+   "id": "news-verge",
+   "kinds": [
+    "news",
+    "tech"
+   ],
+   "region": "us",
+   "search": {
+    "urlTemplate": "https://www.theverge.com/rss/index.xml"
+   },
+   "summary": "Tech news from The Verge, as in the AI News applet.",
+   "title": "The Verge"
+  },
+  {
+   "adapter": "feed",
+   "attribution": "Wired",
+   "id": "news-wired",
+   "kinds": [
+    "news",
+    "tech"
+   ],
+   "region": "us",
+   "search": {
+    "urlTemplate": "https://www.wired.com/feed/rss"
+   },
+   "summary": "Tech news from Wired, as in the AI News applet.",
+   "title": "Wired"
+  },
+  {
+   "adapter": "feed",
+   "attribution": "Wall Street Journal",
+   "id": "news-wsj",
+   "kinds": [
+    "news",
+    "world"
+   ],
+   "region": "us",
+   "search": {
+    "urlTemplate": "https://feeds.a.dj.com/rss/RSSWorldNews.xml"
+   },
+   "summary": "World news from Wall Street Journal, as in the AI News applet.",
+   "title": "Wall Street Journal"
   },
   {
    "adapter": "json",
@@ -1544,6 +4067,9 @@
    "item": {
     "urlTemplate": "https://api.openalex.org/works/{id}?select=id,doi,title,publication_year,authorships,abstract_inverted_index,primary_location"
    },
+   "kinds": [
+    "papers"
+   ],
    "search": {
     "urlTemplate": "https://api.openalex.org/works?search={query}&per-page={max}&select=id,doi,title,publication_year,authorships,abstract_inverted_index,primary_location",
     "itemsPath": "results"
@@ -1567,6 +4093,10 @@
     "urlTemplate": "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&id={id}&rettype=abstract&retmode=text",
     "format": "text"
    },
+   "kinds": [
+    "papers",
+    "medicine"
+   ],
    "linkTemplate": "https://pubmed.ncbi.nlm.nih.gov/{id}/",
    "search": {
     "urlTemplate": "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&retmode=json&retmax={max}&term={query}",
@@ -1595,12 +4125,36 @@
    "item": {
     "urlTemplate": "https://api.semanticscholar.org/graph/v1/paper/{id}?fields=title,abstract,year,authors,url,externalIds"
    },
+   "kinds": [
+    "papers"
+   ],
    "search": {
     "urlTemplate": "https://api.semanticscholar.org/graph/v1/paper/search?query={query}&limit={max}&fields=title,abstract,year,authors,url,externalIds",
     "itemsPath": "data"
    },
    "summary": "A scholarly search across every field, with abstracts.",
    "title": "Semantic Scholar"
+  },
+  {
+   "adapter": "json",
+   "attribution": "Content from Wikipedia, CC BY-SA.",
+   "fields": {
+    "id": "pageid",
+    "title": "title",
+    "summary": "snippet",
+    "year": "timestamp"
+   },
+   "id": "wikipedia",
+   "kinds": [
+    "reference"
+   ],
+   "linkTemplate": "https://en.wikipedia.org/?curid={id}",
+   "search": {
+    "urlTemplate": "https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch={query}&format=json&srlimit={max}&utf8=1",
+    "itemsPath": "query.search"
+   },
+   "summary": "The free encyclopedia: people, places, history and how things work, searched through Wikipedia's open API.",
+   "title": "Wikipedia"
   }
  ],
  "textStyles": {
@@ -1609,7 +4163,7 @@
   "script": "Write a spoken script about the text in plain sentences, to be read aloud: no headings, no Markdown, no lists, using only what the text says."
  },
  "agentTemplate": {
-  "prompt": "You are {name}, an agent the person made on their iPhone or iPad. What you are for, in their words: {purpose}. Use your steps to do it, and do only what the person asks in each message. When a search finds several items and the person has not said which to use, stop and let them choose from the list. Never invent facts the steps did not return. Answer in at most three sentences.",
+  "prompt": "You are {name}, an agent the person made on their iPhone or iPad. What you are for, in their words: {purpose}. Use your steps to do it, and do only what the person asks in each message. When a search finds several items and the person has not said which to use, stop: the app shows them the ranked list, so say in one sentence what you found and let them choose. When they ask for the top or best ones, use the first two or three without asking. When none of your steps fits the message, answer it yourself from what you know (a joke, an explanation, an idea or a plan is yours to give), and never say you found, played, opened, made, saved or sent anything you had no step for. Never invent facts the steps did not return. Answer in at most three sentences.",
   "always": [
    "searchPapers",
    "readPaper"
@@ -1618,16 +4172,539 @@
    "searchPapers": "What's new today?",
    "summarizeText": "Summarize the top three for me.",
    "createDocument": "Write up the best one in AI Write.",
-   "createPodcast": "Make a short podcast episode from the top stories."
+   "createPodcast": "Make a short podcast episode from the top three stories."
   },
-  "sources": [
-   "arxiv",
-   "openalex",
-   "pubmed",
-   "hackernews"
-  ],
+  "sources": [],
   "confirm": "never",
   "icon": "sparkles",
   "namePrompt": "Give a short name, two or three words, for an agent that will {purpose}. Reply with the name only."
+ },
+ "sourceKinds": {
+  "kinds": {
+   "papers": [
+    "paper",
+    "papers",
+    "research",
+    "preprint",
+    "preprints",
+    "study",
+    "studies",
+    "journal",
+    "journals",
+    "scholarly"
+   ],
+   "medicine": [
+    "medical",
+    "medicine",
+    "clinical",
+    "patients",
+    "disease",
+    "diseases"
+   ],
+   "tech": [
+    "tech",
+    "technology",
+    "startup",
+    "startups",
+    "programming",
+    "software",
+    "developer",
+    "developers",
+    "show hn",
+    "ask hn"
+   ],
+   "news": [
+    "articles",
+    "breaking",
+    "current events",
+    "happening",
+    "headline",
+    "headlines",
+    "latest news",
+    "local news",
+    "national news",
+    "news",
+    "stories",
+    "today's news",
+    "top stories",
+    "world news",
+    "going on",
+    "latest on",
+    "happening with",
+    "what s new with",
+    "update on",
+    "updates on"
+   ],
+   "world": [
+    "world",
+    "international",
+    "global",
+    "worldwide",
+    "abroad"
+   ],
+   "sports": [
+    "sports",
+    "sport",
+    "scores",
+    "nfl",
+    "nba",
+    "mlb",
+    "nhl",
+    "soccer",
+    "football",
+    "baseball",
+    "basketball"
+   ],
+   "science": [
+    "science",
+    "climate",
+    "environment",
+    "nasa",
+    "outer space",
+    "astronomy",
+    "spaceflight",
+    "space station"
+   ],
+   "entertainment": [
+    "entertainment",
+    "movies",
+    "movie",
+    "film",
+    "tv",
+    "television",
+    "celebrity",
+    "celebrities",
+    "hollywood"
+   ],
+   "business": [
+    "business",
+    "markets",
+    "market",
+    "stocks",
+    "economy",
+    "finance",
+    "financial"
+   ],
+   "health": [
+    "health",
+    "wellness",
+    "fitness",
+    "symptoms",
+    "treatment",
+    "treatments",
+    "exercises",
+    "vitamin",
+    "flu shot",
+    "nutrition",
+    "diet",
+    "back pain",
+    "sleep",
+    "doctor"
+   ],
+   "local": [
+    "local"
+   ],
+   "videos": [
+    "video",
+    "videos"
+   ],
+   "web": [
+    "web",
+    "websites",
+    "search the web",
+    "web search",
+    "online",
+    "look up",
+    "look it up"
+   ],
+   "jobs": [
+    "job",
+    "jobs",
+    "hiring",
+    "openings",
+    "careers",
+    "career",
+    "job search"
+   ],
+   "travel": [
+    "travel",
+    "trip",
+    "trips",
+    "flights",
+    "flight",
+    "hotels",
+    "hotel",
+    "itinerary",
+    "vacation",
+    "resorts"
+   ],
+   "deals": [
+    "deals",
+    "deal",
+    "on sale",
+    "coupon",
+    "coupons",
+    "discount",
+    "cheapest"
+   ],
+   "recipes": [
+    "recipe",
+    "recipes",
+    "cooking",
+    "dinner ideas"
+   ],
+   "events": [
+    "events",
+    "concerts",
+    "things to do",
+    "festival",
+    "festivals"
+   ],
+   "real-estate": [
+    "real estate",
+    "housing",
+    "homes for sale",
+    "rent",
+    "rental",
+    "rentals",
+    "mortgage",
+    "condos"
+   ],
+   "home": [
+    "home improvement",
+    "remodel",
+    "diy",
+    "repair",
+    "garden",
+    "gardening",
+    "plants",
+    "furnace",
+    "faucet"
+   ],
+   "cars": [
+    "car",
+    "cars",
+    "suv",
+    "suvs",
+    "electric car",
+    "vehicle",
+    "vehicles",
+    "ev charging"
+   ],
+   "pets": [
+    "dog",
+    "dogs",
+    "cat",
+    "cats",
+    "puppy",
+    "kitten",
+    "pet",
+    "pets"
+   ],
+   "parenting": [
+    "parenting",
+    "toddler",
+    "teens",
+    "summer camps",
+    "kids activities",
+    "screen time"
+   ],
+   "learning": [
+    "course",
+    "courses",
+    "lessons",
+    "tutorial",
+    "tutorials",
+    "classes",
+    "bootcamp",
+    "bootcamps",
+    "learn"
+   ],
+   "money": [
+    "savings",
+    "credit card",
+    "credit cards",
+    "investing",
+    "budgeting",
+    "taxes",
+    "tax deductions",
+    "retirement"
+   ],
+   "outdoors": [
+    "hike",
+    "hikes",
+    "hiking",
+    "trail",
+    "trails",
+    "camping",
+    "campgrounds",
+    "ski",
+    "kayak"
+   ],
+   "government": [
+    "passport",
+    "voter",
+    "voting",
+    "dmv",
+    "permit",
+    "benefits",
+    "social security",
+    "property tax"
+   ],
+   "music-scene": [
+    "album",
+    "albums",
+    "concert",
+    "concerts",
+    "band",
+    "bands",
+    "vinyl"
+   ],
+   "reference": [
+    "wikipedia",
+    "encyclopedia",
+    "history of",
+    "who was",
+    "biography",
+    "background on"
+   ],
+   "movies": [
+    "movies",
+    "movie",
+    "showtimes",
+    "showing",
+    "now playing",
+    "films",
+    "cinema",
+    "theaters",
+    "theatres",
+    "matinee"
+   ]
+  },
+  "personal": [
+   "news"
+  ],
+  "regions": {
+   "us": [
+    "national",
+    "american",
+    "america",
+    "united states",
+    "us news",
+    "u s"
+   ],
+   "uk": [
+    "uk",
+    "british",
+    "britain",
+    "england",
+    "london",
+    "united kingdom"
+   ],
+   "ca": [
+    "canada",
+    "canadian"
+   ],
+   "jp": [
+    "japan",
+    "japanese"
+   ],
+   "in": [
+    "india",
+    "indian"
+   ],
+   "au": [
+    "australia",
+    "australian"
+   ],
+   "fr": [
+    "france",
+    "french"
+   ],
+   "de": [
+    "germany",
+    "german"
+   ]
+  },
+  "nameFillers": [
+   "news",
+   "the",
+   "top",
+   "stories",
+   "headlines",
+   "today"
+  ],
+  "defaultKinds": [
+   "web"
+  ],
+  "siteFinder": {
+   "sources": [
+    "duckduckgo",
+    "news-gnews-local"
+   ],
+   "limit": 8,
+   "browse": [
+    {
+     "title": "Google",
+     "urlTemplate": "https://www.google.com/search?q={query}"
+    },
+    {
+     "title": "DuckDuckGo",
+     "urlTemplate": "https://duckduckgo.com/?q={query}"
+    }
+   ]
+  },
+  "webAlongside": [
+   "travel",
+   "jobs",
+   "deals",
+   "recipes",
+   "events",
+   "real-estate",
+   "health",
+   "home",
+   "cars",
+   "pets",
+   "parenting",
+   "learning",
+   "money",
+   "outdoors",
+   "government",
+   "music-scene",
+   "entertainment",
+   "movies"
+  ],
+  "unreadable": [
+   "tripadvisor.com",
+   "yelp.com",
+   "linkedin.com",
+   "glassdoor.com",
+   "indeed.com",
+   "zillow.com",
+   "facebook.com",
+   "instagram.com",
+   "x.com",
+   "twitter.com",
+   "reddit.com",
+   "expedia.com",
+   "booking.com"
+  ],
+  "answerShapes": [
+   {
+    "id": "times",
+    "_whenNote": "Phase AM.5g (2026-11-15): 'when' only as a question about now or later. Bare 'when' gave 'When did the trial that closed Pike Place to cars begin?' the times shape, and the reader told the model 'This page does not list the times asked for' right above the answer (April 2025).",
+    "words": [
+     "when does",
+     "when do",
+     "when is",
+     "when are",
+     "when will",
+     "when's",
+     "what time",
+     "times",
+     "showtimes",
+     "showing",
+     "playing",
+     "hours",
+     "opening hours",
+     "open on",
+     "open until",
+     "open today",
+     "open now",
+     "opens",
+     "closes",
+     "closing time",
+     "schedule",
+     "starts",
+     "kickoff",
+     "tonight"
+    ],
+    "pattern": "\\b\\d{1,2}(:\\d{2})?\\s?(am|pm|a\\.m\\.|p\\.m\\.)(?![a-z])",
+    "ignore": "\\b(19|20)\\d\\d\\b",
+    "maxLine": 160
+   },
+   {
+    "id": "prices",
+    "words": [
+     "price",
+     "prices",
+     "cost",
+     "costs",
+     "how much",
+     "fee",
+     "fees",
+     "fare",
+     "fares",
+     "rent",
+     "cheapest"
+    ],
+    "pattern": "[$€£¥]\\s?\\d|\\b\\d+(\\.\\d+)?\\s?(usd|dollars|euros|pounds|pesos)\\b"
+   },
+   {
+    "id": "scores",
+    "words": [
+     "score",
+     "scores",
+     "who won",
+     "won",
+     "beat",
+     "final"
+    ],
+    "pattern": "\\b\\d{1,3}\\s?[-–]\\s?\\d{1,3}\\b"
+   }
+  ],
+  "sharpen": {
+   "travel": "When are you going, and for how long?",
+   "events": "Which day or night works for you?",
+   "real-estate": "What is your budget, and how many bedrooms?",
+   "jobs": "Where are you looking, and is remote OK?",
+   "deals": "What is your budget?"
+  },
+  "sharpenUnless": "\\b(today|tonight|tomorrow|this (week|weekend|month)|next (week|weekend|month|year)|january|february|march|april|may|june|july|august|september|october|november|december|\\d{1,2}/\\d{1,2}|20\\d\\d|budget|\\$\\d)\\b",
+  "timeWindows": [
+   {
+    "id": "day",
+    "words": [
+     "today",
+     "tonight",
+     "tomorrow",
+     "this morning",
+     "this afternoon",
+     "this evening",
+     "right now",
+     "happening now"
+    ],
+    "maxAgeDays": 3
+   },
+   {
+    "id": "week",
+    "words": [
+     "this week",
+     "this weekend",
+     "next week",
+     "next weekend",
+     "latest",
+     "recent",
+     "recently",
+     "lately",
+     "what s new",
+     "news this week"
+    ],
+    "maxAgeDays": 8
+   },
+   {
+    "id": "month",
+    "words": [
+     "this month",
+     "next month"
+    ],
+    "maxAgeDays": 32
+   }
+  ]
+ },
+ "agentReading": {
+  "share": 0.025,
+  "minCharacters": 3000,
+  "maxCharacters": 20000
  }
 }

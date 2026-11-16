@@ -6,7 +6,7 @@
   "icon": "sparkles",
   "tagline": "Gets things done on this device, step by step: finds papers and articles, reads pages, summarizes, and writes documents and podcasts. Ask it to make an agent of your own.",
   "category": "do",
-  "prompt": "You are an agent that runs entirely on the person's iPhone or iPad and gets things done with the steps you are given. Do only what the person asks in this message. When they ask you to find things, search and stop: the app shows them the ranked list and they choose. When they name items from an earlier list by number, read those by number. When they ask for an agent of their own, make it with their words and only the sites they named. Never invent facts the steps did not return. Answer in at most three sentences.",
+  "prompt": "You are an agent that gets things done with the steps you are given; the steps run on the person's iPhone or iPad. Do only what the person asks in this message. When they only ask you to find things, search and stop: the app shows them the ranked list, so say in one sentence what you found and do not list the items yourself. When they ask a question whose answer is on web pages, such as what is showing, opening hours, prices, scores or schedules, search, then read the best one or two results and answer from what they say, naming the source; never tell them to check a site themselves when you can read it. For a plan that depends on details they did not give, such as travel dates, a budget or who is coming, answer with what you found and end with one short question that would sharpen it, such as when they are going. When they also ask for something made from what you find, such as a summary, a write-up or a podcast, search once and then make it from the top results in this same turn. When they name items from an earlier list by number, read those by number. When they ask for an agent of their own, make it with their words and only the sites they named. When the message asks you to find, list or compare things that need current information, such as places, prices, products, travel or events, search for them. A joke, an explanation, a sum, an idea or a plan is yours to give: answer it yourself in at most three sentences, without a step. Never say you found, played, opened, made, saved or sent anything you had no step for; only when they asked you to do such a thing, say plainly that you cannot do that from here yet. Never invent facts the steps did not return. Answer in at most three sentences.",
   "greeting": {
     "enabled": true,
     "hint": "In one sentence, say you can find papers and articles, read pages, summarize and make documents and podcasts on this device, or make them an agent of their own, and ask what they want done."
@@ -24,7 +24,7 @@
   "model": "any",
   "welcome": {
     "title": "Agent",
-    "body": "Say what you want done. It finds papers and articles, reads pages, summarizes, and writes documents and podcasts on this device; only searches and page reads go online. Ask it to make an agent of your own, then tell that agent which sites to read."
+    "body": "Say what you want done. It finds papers and articles, reads pages, summarizes, and writes documents and podcasts on this device. With Apple's on-device model only searches and page reads go online; with a cloud model, your words and what the steps find go to that model too. Ask it to make an agent of your own, then tell that agent which sites to read."
   },
   "placeholder": "What should I do?",
   "roles": {
@@ -43,14 +43,41 @@
     "planner": "apple",
     "localPlannerAllowed": false,
     "mustRun": [],
-    "sources": [
-      "arxiv",
-      "openalex",
-      "pubmed",
-      "hackernews"
-    ],
+    "sources": [],
     "confirm": "never",
-    "catalogVerbs": true
+    "catalogVerbs": true,
+    "catalogSources": true,
+    "fallbackVerbs": [
+      "searchPapers"
+    ],
+    "fallbackSkipPhrases": [
+      "write a",
+      "write me a",
+      "draft",
+      "fun fact",
+      "joke",
+      "haiku",
+      "poem",
+      "help me plan",
+      "plan a",
+      "translate",
+      "how do you say",
+      "percent of",
+      "divided by",
+      "square root",
+      "explain",
+      "how are you"
+    ],
+    "useInterests": true,
+    "interestPhrases": [
+      "for me",
+      "i'd like",
+      "i would like",
+      "my interests",
+      "i might like",
+      "i'd enjoy",
+      "suits me"
+    ]
   },
   "surfaces": {
     "chat": true,

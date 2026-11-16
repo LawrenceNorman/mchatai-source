@@ -10,6 +10,8 @@ from pathlib import Path
 
 PLANNERS = {'apple', 'local'}
 CONFIRM = {'plan', 'writes', 'never'}   # Phase AV.2: when the agent pauses for the person
+# Phase FL.7: `none` = a private companion keeps nothing (no saved chat, no pinned lines, no mini-app storage).
+RETENTION = {'default', 'none'}
 REQUIRED = ('id', 'name', 'prompt')
 VERB_REQUIRED = ('id', 'title', 'summary', 'arguments', 'example')
 
@@ -23,7 +25,8 @@ def problems(index, folder=None, source_ids=None):
     verb_ids = set()
     for v in verbs:
         for key in VERB_REQUIRED:
-            if v.get(key) in (None, '', []):
+            # A step that takes no input (the battery, My Macs) has an empty argument list; it must still have the key.
+            if v.get(key) is None or v.get(key) == '' or (v.get(key) == [] and key != 'arguments'):
                 found.append(f"verb {v.get('id', '?')}: missing {key}")
         if v.get('id') in verb_ids:
             found.append(f"verb {v['id']}: duplicate id")
@@ -40,6 +43,16 @@ def problems(index, folder=None, source_ids=None):
         if p.get('id') in seen:
             found.append(f'{where}: duplicate id')
         seen.add(p.get('id'))
+        if 'retention' in p:
+            retention = p['retention']
+            if not isinstance(retention, str) or retention not in RETENTION:
+                found.append(f"{where}: retention must be one of {sorted(RETENTION)}, not {retention!r}")
+            elif retention == 'none':
+                # The app treats a keep-nothing pack as on-device-only whatever `model` says; the record must say so itself.
+                if p.get('model') != 'on-device-only':
+                    found.append(f'{where}: retention "none" needs model "on-device-only"')
+                if (p.get('memory') or {}).get('optIn'):
+                    found.append(f'{where}: retention "none" cannot offer memory.optIn (nothing is kept)')
         agent = p.get('agent')
         if agent is not None:
             if not isinstance(agent, dict):
@@ -50,6 +63,12 @@ def problems(index, folder=None, source_ids=None):
             unknown = [v for v in ids if v not in verb_ids]
             if unknown:
                 found.append(f'{where}: agent.verbs not in the index verbs: {unknown}')
+            fallback = agent.get('fallbackVerbs') or []
+            if not isinstance(fallback, list) or any(v not in {x.get('id') for x in verbs} for v in fallback):
+                found.append(f'{where}: agent.fallbackVerbs must name verbs the index lists')
+            skip = agent.get('fallbackSkipPhrases') or []
+            if not isinstance(skip, list) or any(not isinstance(x, str) or x != x.lower() or not x.strip() for x in skip):
+                found.append(f'{where}: agent.fallbackSkipPhrases must be lowercase phrases')
             must = agent.get('mustRun') or []
             if not isinstance(must, list) or any(m not in ids for m in must):
                 found.append(f'{where}: agent.mustRun must be a subset of agent.verbs')
@@ -67,6 +86,8 @@ def problems(index, folder=None, source_ids=None):
                         found.append(f'{where}: agent.sources not in sources/_index.json: {unknown}')
             if 'catalogVerbs' in agent and not isinstance(agent['catalogVerbs'], bool):
                 found.append(f'{where}: agent.catalogVerbs must be true or false')
+            if 'catalogSources' in agent and not isinstance(agent['catalogSources'], bool):
+                found.append(f'{where}: agent.catalogSources must be true or false')
             if len(ids) > 6:
                 found.append(f'{where}: an agent offers at most 6 verbs per session (the router picks from the catalog; {len(ids)} named)')
             if not p.get('starters'):

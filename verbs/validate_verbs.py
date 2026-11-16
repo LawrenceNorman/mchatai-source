@@ -122,7 +122,16 @@ def verb_problems(verb, caps_by_id, noun_ids):
         found.append(f'{where}: routeOnSite needs an argument called site')
     if verb.get('routeOnList') and 'id' not in arg_names:
         found.append(f'{where}: routeOnList needs an argument called id (the number of an item in the list)')
-    for flag in ('routeOnAddress', 'routeOnSite', 'routeOnList'):
+    phrases = verb.get('routePhrases')
+    if phrases is not None and (not isinstance(phrases, list) or not all(isinstance(w, str) and re.fullmatch(r'[a-z0-9]+( [a-z0-9]+)+', w) for w in phrases)):
+        found.append(f'{where}: routePhrases must be lowercase phrases of two or more words')
+    list_words = verb.get('routeOnListWords')
+    if list_words is not None and (not verb.get('routeOnList') or not isinstance(list_words, list)
+                                   or not all(isinstance(w, str) and re.fullmatch(r'[a-z]+', w) for w in list_words)):
+        found.append(f'{where}: routeOnListWords needs routeOnList and a list of lowercase words')
+    if 'maxPerRun' in verb and (not isinstance(verb['maxPerRun'], int) or verb['maxPerRun'] < 1):
+        found.append(f'{where}: maxPerRun must be a whole number of at least 1')
+    for flag in ('routeOnAddress', 'routeOnSite', 'routeOnList', 'routeAlone', 'owedWhenAsked', 'routeOnSourceName', 'routeOnAppletName', 'routeNeedsNamedSource'):
         if flag in verb and not isinstance(verb[flag], bool):
             found.append(f'{where}: {flag} must be true or false')
     lanes = verb.get('releaseLanes')
@@ -216,6 +225,32 @@ def problems(nouns, caps, verbs):
         seen.add(v.get('id'))
         found.extend(verb_problems(v, caps_by_id, noun_ids))
     found.extend(template_problems(caps, {v.get('id') for v in verbs}))
+    found.extend(reading_problems(caps))
+    return found
+
+
+def agent_reading(caps):
+    """How much of a step's result a cloud planner reads (Phase AM.5b): the top-level `reading`, without notes."""
+    r = caps.get('reading')
+    return {k: v for k, v in r.items() if not k.startswith('_')} if isinstance(r, dict) else None
+
+
+def reading_problems(caps):
+    r = agent_reading(caps)
+    if r is None:
+        return []
+    found, where = [], '_capabilities.json reading'
+    share, low, high = r.get('share'), r.get('minCharacters'), r.get('maxCharacters')
+    if share is not None and not (isinstance(share, (int, float)) and 0 < share <= 0.25):
+        found.append(f'{where}: share must be a number above 0 and at most 0.25 (a part of the window), not {share!r}')
+    for name, value in (('minCharacters', low), ('maxCharacters', high)):
+        if value is not None and not (isinstance(value, int) and 900 <= value <= 200_000):
+            found.append(f'{where}: {name} must be a whole number of characters from 900 to 200000, not {value!r}')
+    if isinstance(low, int) and isinstance(high, int) and low > high:
+        found.append(f'{where}: minCharacters ({low}) is above maxCharacters ({high})')
+    unknown = set(r) - {'share', 'minCharacters', 'maxCharacters'}
+    if unknown:
+        found.append(f'{where}: unknown field(s) {sorted(unknown)} (the app reads share, minCharacters, maxCharacters)')
     return found
 
 
@@ -272,7 +307,10 @@ def eval_problems(verbs, folder=IOS):
         seen.add(g.get('id'))
         if not g.get('goal') or not g.get('pack') or not g.get('expect'):
             found.append(f'{where}: needs goal, pack and expect')
-        unknown = [x for x in (g.get('expect') or []) + (g.get('mustRun') or []) + (g.get('forbid') or []) if x not in ids]
+        then = g.get('then') or {}
+        if then and (not then.get('goal') or not then.get('expect')):
+            found.append(f'{where}: then needs goal and expect')
+        unknown = [x for x in (g.get('expect') or []) + (g.get('mustRun') or []) + (g.get('forbid') or []) + (then.get('expect') or []) if x not in ids]
         if unknown:
             found.append(f'{where}: unknown verbs {unknown}')
     return found
@@ -300,9 +338,37 @@ def compiled_problems(verbs, personas_dir=PERSONAS, caps=None):
     return found
 
 
+MAC_MAP = HERE / 'mac' / '_capability-map.json'
+APPLET_VERBS = HERE.parent / 'portal' / 'applet-verbs.json'
+
+
+def mac_map_problems(caps, map_path=MAC_MAP, applet_verbs=APPLET_VERBS):
+    """Phase AM.0: every iOS capability has a Mac row; a mapped one names a Mac applet verb that exists and renames only arguments the
+    iOS capability's verbs take; an unmapped one says why."""
+    if not map_path.exists():
+        return []
+    rows = json.loads(map_path.read_text()).get('capabilities', {})
+    mac = {a.lower(): {v.lower() for v in verbs if not v.startswith('_')}
+           for a, verbs in json.loads(applet_verbs.read_text()).get('applets', {}).items()}
+    ids = {c['id'] for c in caps.get('capabilities', [])}
+    found = [f'verbs/mac/_capability-map.json: capability {c} has no row' for c in sorted(ids - set(rows))]
+    found += [f'verbs/mac/_capability-map.json: {c} is not an iOS capability' for c in sorted(set(rows) - ids)]
+    for cap, row in rows.items():
+        applet, verb = row.get('applet'), row.get('verb')
+        if applet is None:
+            if not row.get('missing'):
+                found.append(f'verbs/mac/_capability-map.json: {cap} has no Mac verb and no `missing` reason')
+            continue
+        if verb is None or verb.lower() not in mac.get(applet.lower(), set()):
+            found.append(f'verbs/mac/_capability-map.json: {cap} → {applet} {verb}: no such Mac verb in portal/applet-verbs.json')
+        if row.get('each') and row['each'] not in (row.get('args') or {}):
+            found.append(f"verbs/mac/_capability-map.json: {cap}: `each` names {row['each']}, which `args` does not rename")
+    return found
+
+
 def main(argv):
     nouns, caps, verbs = load_catalog()
-    found = problems(nouns, caps, verbs) + eval_problems(verbs)
+    found = problems(nouns, caps, verbs) + eval_problems(verbs) + mac_map_problems(caps)
     if '--compiled' in argv and not found:
         found.extend(compiled_problems(verbs, caps=caps))
     for line in found:

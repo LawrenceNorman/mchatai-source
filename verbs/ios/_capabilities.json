@@ -1,6 +1,12 @@
 {
   "_schema": "mchatai-source/verbs/ios/_capabilities.json — the Swift atoms the iOS app implements (Shared/OnDeviceAgent/AgentCapabilityRegistry.swift), one record each. A verb binds ONE capability (`capability`) or composes several (`steps`); content can never name one that is not here, and the app's drift test (AgentVerbCatalogTests) fails when this list and the Swift registry disagree. `safetyClass`: read < write < dangerous; a verb must declare at least the highest class of what it uses. `result` lists the fields a later step may bind as ${<step>.result.<field>}.",
-  "version": "2026.11.10.1",
+  "version": "2026.11.14.1",
+  "reading": {
+    "_note": "Phase AM.5b: how much of one step's result (a page, a list) a cloud planner reads, from its model card's window (llm-catalog contextTokens, about 4 characters a token): share × window, never below minCharacters (also what a model with no card reads) nor above maxCharacters. Apple's on-device model always reads 3,000 (its 8,192-token window) and a downloaded Core AI model 900; those are the app's, not these. A page gets four fifths of it. The text protocol keeps every turn, so eight steps at the cap stay near a fifth of a 200K window.",
+    "share": 0.025,
+    "minCharacters": 3000,
+    "maxCharacters": 20000
+  },
   "capabilities": [
     {
       "id": "agents.addSource",
@@ -37,6 +43,11 @@
           "required": false
         },
         {
+          "name": "subject",
+          "type": "string",
+          "required": false
+        },
+        {
           "name": "sites",
           "type": "string",
           "required": false
@@ -53,7 +64,7 @@
       "network": true,
       "template": {
         "_note": "How a new agent is filled in. Swift replaces {name} and {purpose}; `always` steps come first, then the steps the purpose's words route to, at most six; `starters` are keyed by step id and kept for the steps the agent got; `sources` are what it searches until the person names sites. `namePrompt` names an agent made from the agent pill's field, where no planner supplied a name; the app keeps the answer only when it is a few plain words.",
-        "prompt": "You are {name}, an agent the person made on their iPhone or iPad. What you are for, in their words: {purpose}. Use your steps to do it, and do only what the person asks in each message. When a search finds several items and the person has not said which to use, stop and let them choose from the list. Never invent facts the steps did not return. Answer in at most three sentences.",
+        "prompt": "You are {name}, an agent the person made on their iPhone or iPad. What you are for, in their words: {purpose}. Use your steps to do it, and do only what the person asks in each message. When a search finds several items and the person has not said which to use, stop: the app shows them the ranked list, so say in one sentence what you found and let them choose. When they ask for the top or best ones, use the first two or three without asking. When none of your steps fits the message, answer it yourself from what you know (a joke, an explanation, an idea or a plan is yours to give), and never say you found, played, opened, made, saved or sent anything you had no step for. Never invent facts the steps did not return. Answer in at most three sentences.",
         "always": [
           "searchPapers",
           "readPaper"
@@ -62,14 +73,9 @@
           "searchPapers": "What's new today?",
           "summarizeText": "Summarize the top three for me.",
           "createDocument": "Write up the best one in AI Write.",
-          "createPodcast": "Make a short podcast episode from the top stories."
+          "createPodcast": "Make a short podcast episode from the top three stories."
         },
-        "sources": [
-          "arxiv",
-          "openalex",
-          "pubmed",
-          "hackernews"
-        ],
+        "sources": [],
         "confirm": "never",
         "icon": "sparkles",
         "namePrompt": "Give a short name, two or three words, for an agent that will {purpose}. Reply with the name only."
@@ -142,6 +148,25 @@
       "network": false
     },
     {
+      "id": "app.open",
+      "summary": "Opens one of the mChatAI applets by its name (AI Music, StoryMaker, AI News, Weather…), as the applet launcher would.",
+      "arguments": [
+        {
+          "name": "applet",
+          "type": "string",
+          "noun": "Applet",
+          "required": true
+        }
+      ],
+      "output": "Applet",
+      "result": [
+        "id",
+        "title"
+      ],
+      "safetyClass": "read",
+      "network": false
+    },
+    {
       "id": "audio.transcribe",
       "summary": "Transcribes an audio file on this device with Apple's on-device speech model in the language given.",
       "arguments": [
@@ -166,6 +191,30 @@
       ],
       "safetyClass": "read",
       "network": false
+    },
+    {
+      "id": "music.play",
+      "summary": "Plays music through the AI Music applet's Apple Music provider: songs found for an artist, song or album, or the person's own library, in the system music player.",
+      "arguments": [
+        {
+          "name": "what",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "from",
+          "type": "string",
+          "required": false
+        }
+      ],
+      "output": "Song",
+      "result": [
+        "title",
+        "artist",
+        "count"
+      ],
+      "safetyClass": "read",
+      "network": true
     },
     {
       "id": "pdf.extractText",
@@ -322,6 +371,215 @@
         "words"
       ],
       "safetyClass": "read",
+      "network": true
+    },
+    {
+      "id": "weather.forecast",
+      "summary": "The forecast from the Weather applet's services: a place the person names (geocoded on the device, Open-Meteo), or where they are when location is already on. Now, today's high and low, and the next hours into tomorrow.",
+      "arguments": [
+        {
+          "name": "place",
+          "type": "string",
+          "required": false
+        }
+      ],
+      "output": "Forecast",
+      "result": [
+        "place",
+        "temperature",
+        "condition",
+        "high",
+        "low"
+      ],
+      "safetyClass": "read",
+      "network": true
+    },
+    {
+      "id": "maps.places",
+      "summary": "Places from Apple Maps on the device (the Map Guide applet's search): what the person is looking for, near a place they name or near them. A numbered list with each place's address, kind and Apple Maps link.",
+      "arguments": [
+        {
+          "name": "query",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "near",
+          "type": "string",
+          "required": false
+        }
+      ],
+      "output": "Place",
+      "result": [
+        "count",
+        "first"
+      ],
+      "safetyClass": "read",
+      "network": true
+    },
+    {
+      "id": "calendar.agenda",
+      "summary": "The person's own calendar events on this device (the Calendar applet's), read only and only when calendar access is already on: today, tomorrow, the weekend or the next seven days.",
+      "arguments": [
+        {
+          "name": "when",
+          "type": "string",
+          "required": false
+        }
+      ],
+      "output": "Agenda",
+      "result": [
+        "count",
+        "range"
+      ],
+      "safetyClass": "read",
+      "network": false
+    },
+    {
+      "id": "todo.add",
+      "summary": "Adds tasks to the person's AI ToDo list on this device: one or more items, to a list they name (made if missing) or their first list. Synced with iCloud like any task they add by hand.",
+      "arguments": [
+        {
+          "name": "items",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "list",
+          "type": "string",
+          "required": false
+        }
+      ],
+      "output": "Task",
+      "result": [
+        "count",
+        "list"
+      ],
+      "safetyClass": "write",
+      "network": false
+    },
+    {
+      "id": "radio.play",
+      "summary": "Plays a live radio station through the AI Radio applet: a station the person names (KEXP, NPR) or the best station for a genre or place.",
+      "arguments": [
+        {
+          "name": "query",
+          "type": "string",
+          "required": true
+        }
+      ],
+      "output": "Station",
+      "result": [
+        "count"
+      ],
+      "safetyClass": "read",
+      "network": true
+    },
+    {
+      "id": "podcast.play",
+      "summary": "Plays a podcast the person follows in the Podcasts applet: the show they name (where they left off, or its newest episode), or whatever they last listened to.",
+      "arguments": [
+        {
+          "name": "show",
+          "type": "string",
+          "required": false
+        }
+      ],
+      "output": "Listening",
+      "result": [
+        "count"
+      ],
+      "safetyClass": "read",
+      "network": true
+    },
+    {
+      "id": "device.battery",
+      "summary": "This device's battery level and whether it is charging, as the Device applet shows it.",
+      "arguments": [],
+      "output": "Battery",
+      "result": [
+        "count"
+      ],
+      "safetyClass": "read",
+      "network": false
+    },
+    {
+      "id": "health.today",
+      "summary": "Today's or yesterday's activity from Health (steps, active energy, exercise minutes, distance), read only and only when Health access is already on.",
+      "arguments": [
+        {
+          "name": "day",
+          "type": "string",
+          "required": false
+        }
+      ],
+      "output": "Activity",
+      "result": [
+        "count"
+      ],
+      "safetyClass": "read",
+      "network": false
+    },
+    {
+      "id": "hub.search",
+      "summary": "Mini apps and games on the community Hub that match what the person wants, as a numbered list they can open.",
+      "arguments": [
+        {
+          "name": "query",
+          "type": "string",
+          "required": true
+        }
+      ],
+      "output": "MiniApp",
+      "result": [
+        "count"
+      ],
+      "safetyClass": "read",
+      "network": true
+    },
+    {
+      "id": "macs.status",
+      "summary": "The person's Macs that run mChatAI+: which are online and when each was last seen, through the same bridge as the My Macs applet.",
+      "arguments": [],
+      "output": "MacStatus",
+      "result": [
+        "count"
+      ],
+      "safetyClass": "read",
+      "network": true
+    },
+    {
+      "id": "contacts.lookup",
+      "summary": "Looks a person up in the person's own contacts on this device, read only and only when contact access is already on: name, company, phone and email.",
+      "arguments": [
+        {
+          "name": "name",
+          "type": "string",
+          "required": true
+        }
+      ],
+      "output": "Contact",
+      "result": [
+        "count"
+      ],
+      "safetyClass": "read",
+      "network": false
+    },
+    {
+      "id": "quiz.create",
+      "summary": "Makes a Quiznect quiz on a topic with the model the agent runs on (the chosen cloud model, or Apple's on-device model) and saves it in the Quiznect applet.",
+      "arguments": [
+        {
+          "name": "topic",
+          "type": "string",
+          "required": true
+        }
+      ],
+      "output": "Quiz",
+      "result": [
+        "count"
+      ],
+      "safetyClass": "write",
       "network": true
     }
   ]

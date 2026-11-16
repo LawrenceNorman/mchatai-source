@@ -1,0 +1,139 @@
+{
+  "_why": "Phase AM.0 (2026-11-14): the iOS agent's capabilities (verbs/ios/_capabilities.json) as the Mac's applet verbs (portal/applet-verbs.json), so a catalog agent runs on mChatAI+ with the Mac's own steps. `args` renames the iOS argument to the Mac one; `each` names an iOS argument that is a list run as one Mac call per item. A capability with `applet: null` has no Mac verb yet: `missing` says why and which phase adds it. Plan: mchatai_macOS/docs/MAC_AGENT_PORT_PLAN.md.",
+  "capabilities": {
+    "aiwrite.createDocument": {
+      "applet": "aiwrite",
+      "verb": "createdoc",
+      "args": {
+        "title": "title",
+        "markdown": "text"
+      }
+    },
+    "aiwrite.readDocument": {
+      "applet": "aiwrite",
+      "verb": "getdoc",
+      "args": {
+        "ref": "title"
+      }
+    },
+    "todo.add": {
+      "applet": "todo",
+      "verb": "addtask",
+      "args": {
+        "list": "project",
+        "items": "title"
+      },
+      "each": "items"
+    },
+    "calendar.agenda": {
+      "applet": "calendar",
+      "verb": "listevents",
+      "args": {
+        "when": "days"
+      },
+      "_note": "The adapter turns the iOS `when` (today, tomorrow, this week) into days ahead."
+    },
+    "maps.places": {
+      "applet": "mapguide",
+      "verb": "discoverplaces",
+      "args": {
+        "near": "place",
+        "query": "categories"
+      }
+    },
+    "hub.search": {
+      "applet": "hub",
+      "verb": "search",
+      "args": {
+        "query": "query"
+      }
+    },
+    "research.search": {
+      "applet": null,
+      "core": true,
+      "missing": "Runs in the agent core on both apps (sources/, AgentSources)."
+    },
+    "research.readItem": {
+      "applet": null,
+      "core": true,
+      "missing": "Runs in the agent core on both apps."
+    },
+    "text.summarize": {
+      "applet": null,
+      "core": true,
+      "missing": "A model call in the agent core."
+    },
+    "web.readPage": {
+      "applet": null,
+      "core": true,
+      "missing": "The agent's own off-screen reader (AM.3). AI Web's verbs move the person's visible AI Web pane."
+    },
+    "agents.create": {
+      "applet": null,
+      "core": true,
+      "missing": "His own agents, kept on the Mac (AM.5)."
+    },
+    "agents.addSource": {
+      "applet": null,
+      "core": true,
+      "missing": "AM.5."
+    },
+    "agents.removeSource": {
+      "applet": null,
+      "core": true,
+      "missing": "AM.5."
+    },
+    "app.open": {
+      "applet": null,
+      "missing": "Opens an applet through the Mac's own navigation (AM.5), not a verb."
+    },
+    "weather.forecast": {
+      "applet": null,
+      "missing": "WeatherKitService.fetchWeather has no verb (AM.7)."
+    },
+    "radio.play": {
+      "applet": null,
+      "missing": "AIRadioPlayerService.play(station:) has no verb (AM.7)."
+    },
+    "podcast.createEpisode": {
+      "applet": null,
+      "missing": "PodcastProjectManager has no verb; podcasts.* is open in APPLET_VERB_SCOPING (AM.7)."
+    },
+    "podcast.play": {
+      "applet": null,
+      "missing": "no podcasts verb (AM.7)."
+    },
+    "quiz.create": {
+      "applet": null,
+      "missing": "no Quiznect generator or verb on the Mac (AM.7)."
+    },
+    "music.play": {
+      "applet": null,
+      "missing": "no music verb (AM.7)."
+    },
+    "contacts.lookup": {
+      "applet": null,
+      "missing": "no contacts verb (AM.7)."
+    },
+    "health.today": {
+      "applet": null,
+      "missing": "no Health on the Mac (AM.7)."
+    },
+    "device.battery": {
+      "applet": null,
+      "missing": "no device verb (AM.7)."
+    },
+    "macs.status": {
+      "applet": null,
+      "missing": "this Mac is the Mac; Remote Workbench status is AM.7 (AM.7)."
+    },
+    "audio.transcribe": {
+      "applet": null,
+      "missing": "no transcription verb (AM.7)."
+    },
+    "pdf.extractText": {
+      "applet": null,
+      "missing": "no PDF verb (AM.7)."
+    }
+  }
+}

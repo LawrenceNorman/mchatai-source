@@ -29,13 +29,19 @@ def main(argv):
     found = v.problems(nouns, caps, verbs)
     if found:
         print('\n'.join(found)); return 1
-    sources = sv.load()
-    found = sv.problems(sources)
+    kinds = sv.load_kinds()
+    categories = sv.load_categories()
+    plain = sv.load()
+    sources = plain + sv.news_sources(kinds) + sv.category_sources(categories, next((s for s in plain if s['id'] == 'duckduckgo'), None))
+    found = (sv.problems(sources) + sv.kinds_problems(kinds, sources) + sv.region_problems(kinds, sources)
+             + sv.site_finder_problems(kinds, sources) + sv.category_problems(kinds, categories))
     if found:
         print('\n'.join(found)); return 1
     compiled_sources = sv.compiled(sources)
+    compiled_kinds = sv.compiled_kinds(kinds, categories)
     styles = next((c.get('styles') or {} for c in caps['capabilities'] if c['id'] == 'text.summarize'), {})
     template = v.agent_template(caps)
+    reading = v.agent_reading(caps)
     compiled = v.compiled_verbs(verbs)
     if '--check' in argv:
         found = v.compiled_problems(verbs, caps=caps)
@@ -44,12 +50,18 @@ def main(argv):
     index_path = v.PERSONAS / '_index.json'
     index = json.loads(index_path.read_text())
     if index.get('verbs') == compiled and index.get('sources') == compiled_sources and index.get('textStyles') == styles \
-            and index.get('agentTemplate') == template:
+            and index.get('agentTemplate') == template and index.get('sourceKinds') == compiled_kinds \
+            and index.get('agentReading') == reading:
         print('compiled copy already current'); return 0
     index['verbs'] = compiled
     index['sources'] = compiled_sources
     index['textStyles'] = styles
     index['agentTemplate'] = template
+    index['sourceKinds'] = compiled_kinds
+    if reading is None:
+        index.pop('agentReading', None)
+    else:
+        index['agentReading'] = reading
     index['version'] = next_version(index.get('version'))
     index_path.write_text(json.dumps(index, indent=1, ensure_ascii=False) + '\n')
     out = {

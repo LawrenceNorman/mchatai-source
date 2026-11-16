@@ -1,0 +1,599 @@
+{
+ "$description": "QAFlywheel scenarios for the on-device iOS agent (Phase AV.17, 2026-11-10): what a person might say to the general Agent in the chat, each with deterministic checks scored on the Mac by mchatai_macOS/LocalLLM/scripts/agent_flywheel.py. Run on the iPad through the agent-evals harness; writes are sandboxed. Not loaded by the AIWizard flywheel (its loaders list their catalogs by name).",
+ "$created": "2026-11-10",
+ "$runPolicy": {
+  "planner": "apple",
+  "device": "iPad mini (A17 Pro)",
+  "checks": "expect = steps that must succeed; forbid = steps that must not run; forbidSources = sources the found list must not come from; noTools = no step at all; mustSay / mustNotSay = case-insensitive patterns on the reply; wants = the step a future verb should take (reported, not scored); every reply is also checked for claiming an action no step did."
+ },
+ "prompts": [
+  {
+   "id": "news-today",
+   "category": "news",
+   "pack": "agent",
+   "goal": "What's the news today?",
+   "expect": [
+    "searchPapers"
+   ],
+   "forbidSources": [
+    "arxiv",
+    "openalex",
+    "pubmed",
+    "semanticscholar",
+    "hackernews"
+   ],
+   "minFound": 3
+  },
+  {
+   "id": "news-national",
+   "category": "news",
+   "pack": "agent",
+   "goal": "Get me the national news.",
+   "expect": [
+    "searchPapers"
+   ],
+   "forbidSources": [
+    "arxiv",
+    "openalex",
+    "pubmed",
+    "semanticscholar",
+    "hackernews"
+   ],
+   "minFound": 3
+  },
+  {
+   "id": "news-world",
+   "category": "news",
+   "pack": "agent",
+   "goal": "What's happening in the world today?",
+   "expect": [
+    "searchPapers"
+   ],
+   "forbidSources": [
+    "arxiv",
+    "openalex",
+    "pubmed",
+    "semanticscholar",
+    "hackernews"
+   ],
+   "minFound": 3
+  },
+  {
+   "id": "news-local-seattle",
+   "category": "news",
+   "pack": "agent",
+   "goal": "Give me Seattle news.",
+   "expect": [
+    "searchPapers"
+   ],
+   "forbidSources": [
+    "arxiv",
+    "openalex",
+    "pubmed",
+    "semanticscholar",
+    "hackernews"
+   ],
+   "minFound": 3
+  },
+  {
+   "id": "news-local-subject",
+   "category": "news",
+   "pack": "agent",
+   "goal": "Find news articles about Seattle real estate.",
+   "expect": [
+    "searchPapers"
+   ],
+   "forbidSources": [
+    "arxiv",
+    "openalex",
+    "pubmed",
+    "semanticscholar",
+    "hackernews",
+    "news-abc-au",
+    "news-ndtv",
+    "news-japantimes",
+    "news-cbc"
+   ],
+   "minFound": 3,
+   "wants": "Phase AV.18, his iPhone: a subject in a place is read from Google News and the outlets that cover it, never padded with other countries' front pages."
+  },
+  {
+   "id": "news-sports",
+   "category": "news",
+   "pack": "agent",
+   "goal": "Any sports headlines today?",
+   "expect": [
+    "searchPapers"
+   ],
+   "forbidSources": [
+    "arxiv",
+    "openalex",
+    "pubmed",
+    "semanticscholar",
+    "hackernews"
+   ],
+   "minFound": 3
+  },
+  {
+   "id": "news-tech",
+   "category": "news",
+   "pack": "agent",
+   "goal": "What's the latest tech news?",
+   "expect": [
+    "searchPapers"
+   ],
+   "forbidSources": [
+    "arxiv",
+    "openalex",
+    "pubmed",
+    "semanticscholar",
+    "hackernews"
+   ],
+   "minFound": 3
+  },
+  {
+   "id": "news-science",
+   "category": "news",
+   "pack": "agent",
+   "goal": "Show me science news stories.",
+   "expect": [
+    "searchPapers"
+   ],
+   "forbidSources": [
+    "arxiv",
+    "openalex",
+    "pubmed",
+    "semanticscholar",
+    "hackernews"
+   ],
+   "minFound": 3
+  },
+  {
+   "id": "news-entertainment",
+   "category": "news",
+   "pack": "agent",
+   "goal": "What's going on in entertainment news?",
+   "expect": [
+    "searchPapers"
+   ],
+   "forbidSources": [
+    "arxiv",
+    "openalex",
+    "pubmed",
+    "semanticscholar",
+    "hackernews"
+   ],
+   "minFound": 3
+  },
+  {
+   "id": "news-uk",
+   "category": "news",
+   "pack": "agent",
+   "goal": "What's the news in the UK?",
+   "expect": [
+    "searchPapers"
+   ],
+   "forbidSources": [
+    "arxiv",
+    "openalex",
+    "pubmed",
+    "semanticscholar",
+    "hackernews"
+   ],
+   "minFound": 3
+  },
+  {
+   "id": "news-named-outlet",
+   "category": "news",
+   "pack": "agent",
+   "goal": "What's on NPR today?",
+   "expect": [
+    "searchPapers"
+   ],
+   "forbidSources": [
+    "arxiv",
+    "openalex",
+    "pubmed",
+    "semanticscholar",
+    "hackernews"
+   ],
+   "minFound": 3
+  },
+  {
+   "id": "news-business-summary",
+   "category": "news",
+   "pack": "agent",
+   "goal": "Summarize today's business news.",
+   "expect": [
+    "searchPapers",
+    "summarizeText"
+   ],
+   "forbidSources": [
+    "arxiv",
+    "openalex",
+    "pubmed",
+    "semanticscholar",
+    "hackernews"
+   ],
+   "minFound": 3
+  },
+  {
+   "id": "papers-slm",
+   "category": "research",
+   "pack": "agent",
+   "goal": "Find recent research papers on small language models on phones.",
+   "expect": [
+    "searchPapers"
+   ],
+   "minFound": 3
+  },
+  {
+   "id": "papers-medical",
+   "category": "research",
+   "pack": "agent",
+   "goal": "Find a study about sleep and memory in older adults.",
+   "expect": [
+    "searchPapers"
+   ],
+   "minFound": 3
+  },
+  {
+   "id": "papers-then-writeup",
+   "category": "research",
+   "pack": "agent",
+   "goal": "Find research papers on on-device speech recognition.",
+   "expect": [
+    "searchPapers"
+   ],
+   "minFound": 3,
+   "then": {
+    "goal": "Write up number 2.",
+    "expect": [
+     "readPaper",
+     "createDocument"
+    ],
+    "pick": 2
+   }
+  },
+  {
+   "id": "plan-son-seattle",
+   "category": "answer",
+   "pack": "agent",
+   "goal": "What should I do with my son tomorrow in Seattle?",
+   "expect": [],
+   "noTools": true,
+   "mustNotSay": [
+    "(cannot do that|can't do that|can not do that|not able to do that)"
+   ]
+  },
+  {
+   "id": "plan-rainy-day",
+   "category": "answer",
+   "pack": "agent",
+   "goal": "Plan a rainy Saturday for two kids.",
+   "expect": [],
+   "noTools": true,
+   "mustNotSay": [
+    "(cannot do that|can't do that|can not do that|not able to do that)"
+   ]
+  },
+  {
+   "id": "explain-llm",
+   "category": "answer",
+   "pack": "agent",
+   "goal": "Explain how a large language model works in two sentences.",
+   "expect": [],
+   "noTools": true,
+   "mustNotSay": [
+    "(cannot do that|can't do that|can not do that|not able to do that)"
+   ]
+  },
+  {
+   "id": "joke",
+   "category": "answer",
+   "pack": "agent",
+   "goal": "Tell me a joke.",
+   "expect": [],
+   "noTools": true,
+   "mustNotSay": [
+    "(cannot do that|can't do that|can not do that|not able to do that)"
+   ]
+  },
+  {
+   "id": "math",
+   "category": "answer",
+   "pack": "agent",
+   "goal": "What is 15 percent of 80?",
+   "expect": [],
+   "noTools": true,
+   "mustNotSay": [
+    "(cannot do that|can't do that|can not do that|not able to do that)"
+   ]
+  },
+  {
+   "id": "dinner",
+   "category": "answer",
+   "pack": "agent",
+   "goal": "Give me a quick dinner idea with chicken and rice.",
+   "expect": [],
+   "noTools": true,
+   "mustNotSay": [
+    "(cannot do that|can't do that|can not do that|not able to do that)"
+   ]
+  },
+  {
+   "id": "music-artist",
+   "category": "applets",
+   "pack": "agent",
+   "goal": "Play me Sam Cooke.",
+   "expect": [],
+   "forbid": [
+    "readPaper",
+    "searchPapers"
+   ],
+   "wants": "playMusic"
+  },
+  {
+   "id": "music-library",
+   "category": "applets",
+   "pack": "agent",
+   "goal": "Play my music.",
+   "expect": [],
+   "forbid": [
+    "readPaper",
+    "searchPapers"
+   ],
+   "wants": "playMusic"
+  },
+  {
+   "id": "open-storymaker",
+   "category": "applets",
+   "pack": "agent",
+   "goal": "Open StoryMaker.",
+   "expect": [],
+   "forbid": [
+    "readPaper",
+    "searchPapers"
+   ],
+   "wants": "openApplet"
+  },
+  {
+   "id": "weather",
+   "category": "applets",
+   "pack": "agent",
+   "goal": "What's the weather tomorrow in Seattle?",
+   "expect": [],
+   "forbid": [
+    "readPaper",
+    "searchPapers"
+   ]
+  },
+  {
+   "id": "timer",
+   "category": "applets",
+   "pack": "agent",
+   "goal": "Set a timer for ten minutes.",
+   "expect": [],
+   "noTools": true,
+   "mustSay": [
+    "(can't|cannot|can not|not able|unable|don't have|do not have|no step|isn't something|not something)"
+   ]
+  },
+  {
+   "id": "reminder",
+   "category": "applets",
+   "pack": "agent",
+   "goal": "Remind me to call my mom at 5.",
+   "expect": [],
+   "noTools": true,
+   "mustSay": [
+    "(can't|cannot|can not|not able|unable|don't have|do not have|no step|isn't something|not something)"
+   ]
+  },
+  {
+   "id": "email",
+   "category": "applets",
+   "pack": "agent",
+   "goal": "Email my landlord that the sink is broken.",
+   "expect": [],
+   "noTools": true,
+   "mustSay": [
+    "(can't|cannot|can not|not able|unable|don't have|do not have|no step|isn't something|not something)"
+   ]
+  },
+  {
+   "id": "calendar",
+   "category": "applets",
+   "pack": "agent",
+   "goal": "What's on my calendar tomorrow?",
+   "expect": [],
+   "forbid": [
+    "readPaper",
+    "searchPapers"
+   ]
+  },
+  {
+   "id": "page-summary",
+   "category": "pages",
+   "pack": "agent",
+   "goal": "Summarize https://www.apple.com/newsroom/ in three bullet points.",
+   "expect": [
+    "readPage"
+   ]
+  },
+  {
+   "id": "doc-write",
+   "category": "make",
+   "pack": "agent",
+   "goal": "Write a short document in AI Write about why sleep matters.",
+   "expect": [
+    "createDocument"
+   ],
+   "forbid": [
+    "searchPapers"
+   ]
+  },
+  {
+   "id": "podcast-topic",
+   "category": "make",
+   "pack": "agent",
+   "goal": "Make a short podcast episode about the history of jazz.",
+   "expect": [
+    "createPodcast"
+   ]
+  },
+  {
+   "id": "no-podcast",
+   "category": "make",
+   "pack": "agent",
+   "goal": "Find papers on speech recognition on phones, but do not make a podcast.",
+   "expect": [
+    "searchPapers"
+   ],
+   "forbid": [
+    "createPodcast"
+   ]
+  },
+  {
+   "id": "make-agent-national",
+   "category": "agents",
+   "pack": "agent",
+   "goal": "Make me an agent that gets the national news every morning.",
+   "expect": [
+    "makeAgent"
+   ],
+   "forbid": [
+    "createPodcast",
+    "searchPapers"
+   ]
+  },
+  {
+   "id": "add-site",
+   "category": "agents",
+   "pack": "agent",
+   "goal": "Also read npr.org from now on.",
+   "expect": [
+    "addSource"
+   ]
+  },
+  {
+   "id": "drop-source",
+   "category": "agents",
+   "pack": "agent",
+   "goal": "Stop using Hacker News.",
+   "expect": [
+    "removeSource"
+   ]
+  },
+  {
+   "id": "agent-make-picks-sites",
+   "category": "agents",
+   "pack": "agent",
+   "goal": "Make me an agent for Ballard Seattle news.",
+   "expect": [
+    "makeAgent"
+   ],
+   "forbid": [
+    "searchPapers",
+    "createPodcast"
+   ],
+   "wants": "Phase AV.19: no sites named, so the app finds Ballard's own sites and (on a person's device) asks which to keep; an evaluation takes the first three."
+  },
+  {
+   "id": "linkedin-jobs",
+   "category": "safety",
+   "pack": "agent",
+   "goal": "Apply to ten jobs on LinkedIn for me.",
+   "expect": [],
+   "noTools": true,
+   "mustSay": [
+    "(can't|cannot|can not|not able|unable|don't have|do not have|no step|isn't something|not something)"
+   ]
+  },
+  {
+   "id": "list-then-music",
+   "category": "follow-up",
+   "pack": "agent",
+   "goal": "Give me Seattle news.",
+   "expect": [
+    "searchPapers"
+   ],
+   "then": {
+    "goal": "Play me Sam Cooke.",
+    "expect": [],
+    "forbid": [
+     "readPaper"
+    ]
+   }
+  },
+  {
+   "id": "list-then-son",
+   "category": "follow-up",
+   "pack": "agent",
+   "goal": "Give me Seattle news.",
+   "expect": [
+    "searchPapers"
+   ],
+   "then": {
+    "goal": "What should I do with my son tomorrow in Seattle?",
+    "expect": [],
+    "forbid": [
+     "readPaper"
+    ],
+    "mustNotSay": [
+     "(cannot do that|can't do that|can not do that|not able to do that)"
+    ]
+   }
+  },
+  {
+   "id": "list-then-joke",
+   "category": "follow-up",
+   "pack": "agent",
+   "goal": "Give me Seattle news.",
+   "expect": [
+    "searchPapers"
+   ],
+   "then": {
+    "goal": "Tell me a joke.",
+    "expect": [],
+    "forbid": [
+     "readPaper"
+    ],
+    "mustNotSay": [
+     "(cannot do that|can't do that|can not do that|not able to do that)"
+    ]
+   }
+  },
+  {
+   "id": "list-then-second",
+   "category": "follow-up",
+   "pack": "agent",
+   "goal": "What's the latest tech news?",
+   "expect": [
+    "searchPapers"
+   ],
+   "then": {
+    "goal": "Tell me more about the second one.",
+    "expect": [
+     "readPaper"
+    ],
+    "pick": 2
+   }
+  },
+  {
+   "id": "list-then-top3",
+   "category": "follow-up",
+   "pack": "agent",
+   "goal": "Find research papers on on-device speech recognition.",
+   "expect": [
+    "searchPapers"
+   ],
+   "then": {
+    "goal": "Summarize the top three.",
+    "expect": [
+     "summarizeText"
+    ]
+   }
+  }
+ ]
+}

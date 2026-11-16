@@ -94,11 +94,27 @@ class VerbCatalogTests(unittest.TestCase):
 
     def test_eval_goals_name_real_verbs(self):
         self.assertEqual(v.eval_problems(VERBS), [])
-        self.assertEqual(len(json.loads((v.IOS / '_evals' / 'goals.json').read_text())['goals']), 10)
+        self.assertEqual(len(json.loads((v.IOS / '_evals' / 'goals.json').read_text())['goals']), 18)
 
     def test_four_ag2_verbs_keep_their_ids(self):
         ids = {x['id'] for x in VERBS}
         self.assertTrue({'searchPapers', 'readPaper', 'createDocument', 'createPodcast'} <= ids)
+
+    def test_new_agent_template_must_name_its_blanks_and_known_steps(self):
+        caps = copy.deepcopy(CAPS)
+        t = next(c for c in caps['capabilities'] if c['id'] == 'agents.create')['template']
+        t['prompt'] = 'You are an agent.'
+        t['always'] = ['searchPapers', 'flyToTheMoon']
+        found = v.problems(NOUNS, caps, VERBS)
+        self.assertTrue(any('{name} and {purpose}' in p for p in found))
+        self.assertTrue(any('unknown steps' in p for p in found))
+
+    def test_route_flags_need_their_argument(self):
+        x = verb('readPage'); x['routeOnSite'] = True
+        y = verb('createDocument'); y['routeOnList'] = True
+        found = check([x, y])
+        self.assertTrue(any('routeOnSite needs an argument called site' in p for p in found))
+        self.assertTrue(any('routeOnList needs an argument called id' in p for p in found))
 
 
 if __name__ == '__main__':

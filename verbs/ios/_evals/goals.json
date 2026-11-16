@@ -1,124 +1,277 @@
 {
-  "_schema": "mchatai-source/verbs/ios/_evals/goals.json — the goal set for the on-device agent evals (Phase AV.7). `expect` = verbs that must have succeeded; `mustRun` = what the engine nudges for, per goal; `forbid` = verbs that must NOT have run (scored on the Mac from the report); `source` = searched first. Writes are sandboxed during an eval. Runner: mchatai_macOS/LocalLLM/scripts/agent_evals.sh.",
-  "version": "2026.11.09.1",
-  "goals": [
-    {
-      "id": "paper-doc-podcast",
-      "pack": "paper-podcaster",
-      "goal": "Find a paper about running local large language models on iOS, write it up as a document in AI Write, and turn that write-up into a short podcast episode.",
-      "expect": [
-        "searchPapers",
-        "readPaper",
-        "createDocument",
-        "createPodcast"
-      ],
-      "mustRun": [
-        "createDocument",
-        "createPodcast"
-      ]
-    },
-    {
-      "id": "paper-doc-only",
-      "pack": "paper-podcaster",
-      "goal": "Find a paper about on-device speech recognition on phones and write it up in AI Write.",
-      "expect": [
-        "searchPapers",
-        "readPaper",
-        "createDocument"
-      ],
-      "mustRun": [
-        "createDocument"
-      ]
-    },
-    {
-      "id": "paper-answer-only",
-      "pack": "paper-podcaster",
-      "goal": "Which recent paper on small language models for mobile devices would you pick, and why? Do not make a document or a podcast.",
-      "expect": [
-        "searchPapers"
-      ],
-      "forbid": [
-        "createDocument",
-        "createPodcast"
-      ]
-    },
-    {
-      "id": "source-pubmed",
-      "pack": "paper-podcaster",
-      "goal": "Search PubMed for studies on sleep and memory in older adults, read the best one and write it up in AI Write.",
-      "expect": [
-        "searchPapers",
-        "createDocument"
-      ],
-      "mustRun": [
-        "createDocument"
-      ],
-      "source": "pubmed"
-    },
-    {
-      "id": "source-openalex",
-      "pack": "paper-podcaster",
-      "goal": "Search OpenAlex for work on coral reef restoration, read the best match and write it up in AI Write.",
-      "expect": [
-        "searchPapers",
-        "createDocument"
-      ],
-      "mustRun": [
-        "createDocument"
-      ],
-      "source": "openalex"
-    },
-    {
-      "id": "source-hackernews",
-      "pack": "paper-podcaster",
-      "goal": "Search Hacker News for discussion of on-device language models and tell me which story looks most useful.",
-      "expect": [
-        "searchPapers"
-      ],
-      "source": "hackernews"
-    },
-    {
-      "id": "router-page",
-      "pack": "paper-podcaster",
-      "goal": "Read https://www.apple.com/newsroom/ and tell me the three main points.",
-      "expect": [
-        "readPage"
-      ]
-    },
-    {
-      "id": "router-pdf",
-      "pack": "paper-podcaster",
-      "goal": "Read the PDF at https://arxiv.org/pdf/2410.15285 and summarize its method in a few sentences.",
-      "expect": [
-        "extractPDF"
-      ]
-    },
-    {
-      "id": "podcast-only",
-      "pack": "paper-podcaster",
-      "goal": "Find a paper about battery life of on-device AI and make a short podcast about it. No document.",
-      "expect": [
-        "searchPapers",
-        "createPodcast"
-      ],
-      "mustRun": [
-        "createPodcast"
-      ],
-      "forbid": [
-        "createDocument"
-      ]
-    },
-    {
-      "id": "steer-source-by-name",
-      "pack": "paper-podcaster",
-      "goal": "Use Semantic Scholar to find a paper about federated learning on phones and write it up in AI Write.",
-      "expect": [
-        "searchPapers",
-        "createDocument"
-      ],
-      "mustRun": [
-        "createDocument"
-      ]
+ "_schema": "mchatai-source/verbs/ios/_evals/goals.json — the goal set for the on-device agent evals (Phase AV.7). `expect` = verbs that must have succeeded; `mustRun` = what the engine nudges for, per goal; `forbid` = verbs that must NOT have run (scored on the Mac from the report); `source` = searched first. Writes are sandboxed during an eval. Runner: mchatai_macOS/LocalLLM/scripts/agent_evals.sh.",
+ "version": "2026.11.10.3",
+ "goals": [
+  {
+   "id": "paper-doc-podcast",
+   "pack": "paper-podcaster",
+   "goal": "Find a paper about running local large language models on iOS, write it up as a document in AI Write, and turn that write-up into a short podcast episode.",
+   "expect": [
+    "searchPapers",
+    "readPaper",
+    "createDocument",
+    "createPodcast"
+   ],
+   "mustRun": [
+    "createDocument",
+    "createPodcast"
+   ]
+  },
+  {
+   "id": "paper-doc-only",
+   "pack": "paper-podcaster",
+   "goal": "Find a paper about on-device speech recognition on phones and write it up in AI Write.",
+   "expect": [
+    "searchPapers",
+    "readPaper",
+    "createDocument"
+   ],
+   "mustRun": [
+    "createDocument"
+   ]
+  },
+  {
+   "id": "paper-answer-only",
+   "pack": "paper-podcaster",
+   "goal": "Which recent paper on small language models for mobile devices would you pick, and why? Do not make a document or a podcast.",
+   "expect": [
+    "searchPapers"
+   ],
+   "forbid": [
+    "createDocument",
+    "createPodcast"
+   ]
+  },
+  {
+   "id": "source-pubmed",
+   "pack": "paper-podcaster",
+   "goal": "Search PubMed for studies on sleep and memory in older adults, read the best one and write it up in AI Write.",
+   "expect": [
+    "searchPapers",
+    "createDocument"
+   ],
+   "mustRun": [
+    "createDocument"
+   ],
+   "source": "pubmed"
+  },
+  {
+   "id": "source-openalex",
+   "pack": "paper-podcaster",
+   "goal": "Search OpenAlex for work on coral reef restoration, read the best match and write it up in AI Write.",
+   "expect": [
+    "searchPapers",
+    "createDocument"
+   ],
+   "mustRun": [
+    "createDocument"
+   ],
+   "source": "openalex"
+  },
+  {
+   "id": "source-hackernews",
+   "pack": "paper-podcaster",
+   "goal": "Search Hacker News for discussion of on-device language models and tell me which story looks most useful.",
+   "expect": [
+    "searchPapers"
+   ],
+   "source": "hackernews"
+  },
+  {
+   "id": "router-page",
+   "pack": "paper-podcaster",
+   "goal": "Read https://www.apple.com/newsroom/ and tell me the three main points.",
+   "expect": [
+    "readPage"
+   ]
+  },
+  {
+   "id": "router-pdf",
+   "pack": "paper-podcaster",
+   "goal": "Read the PDF at https://arxiv.org/pdf/2410.15285 and summarize its method in a few sentences.",
+   "expect": [
+    "extractPDF"
+   ]
+  },
+  {
+   "id": "podcast-only",
+   "pack": "paper-podcaster",
+   "goal": "Find a paper about battery life of on-device AI and make a short podcast about it. No document.",
+   "expect": [
+    "searchPapers",
+    "createPodcast"
+   ],
+   "mustRun": [
+    "createPodcast"
+   ],
+   "forbid": [
+    "createDocument"
+   ]
+  },
+  {
+   "id": "steer-source-by-name",
+   "pack": "paper-podcaster",
+   "goal": "Use Semantic Scholar to find a paper about federated learning on phones and write it up in AI Write.",
+   "expect": [
+    "searchPapers",
+    "createDocument"
+   ],
+   "mustRun": [
+    "createDocument"
+   ]
+  },
+  {
+   "id": "agent-bunch-then-pick",
+   "pack": "agent",
+   "goal": "Go get me a bunch of recent AI research papers about small language models on phones.",
+   "expect": [
+    "searchPapers"
+   ],
+   "forbid": [
+    "createDocument",
+    "createPodcast"
+   ],
+   "minFound": 5,
+   "minSources": 2,
+   "then": {
+    "goal": "Write up number 2 in AI Write.",
+    "expect": [
+     "readPaper",
+     "createDocument"
+    ],
+    "pick": 2
+   }
+  },
+  {
+   "id": "agent-make-seattle",
+   "pack": "agent",
+   "goal": "Make me an agent that turns Seattle news from thestranger.com, publicola.com and seattletimes.com into a short daily podcast.",
+   "expect": [
+    "makeAgent"
+   ],
+   "forbid": [
+    "createPodcast",
+    "createDocument"
+   ]
+  },
+  {
+   "id": "agent-add-site",
+   "pack": "agent",
+   "goal": "Also read thestranger.com from now on.",
+   "expect": [
+    "addSource"
+   ],
+   "forbid": [
+    "createPodcast",
+    "createDocument"
+   ]
+  },
+  {
+   "id": "agent-drop-source",
+   "pack": "agent",
+   "goal": "Stop using Hacker News.",
+   "expect": [
+    "removeSource"
+   ],
+   "forbid": [
+    "createPodcast",
+    "createDocument"
+   ]
+  },
+  {
+   "id": "agent-news-by-kind",
+   "pack": "agent",
+   "goal": "Get me the current news and summarize it.",
+   "_why": "2026-11-10 on the iPad: a news request searched arXiv, PubMed and Hacker News. News means the person's own sites.",
+   "expect": [
+    "searchPapers",
+    "summarizeText"
+   ],
+   "forbid": [
+    "createPodcast",
+    "createDocument"
+   ],
+   "sites": {
+    "The Stranger": "https://www.thestranger.com/feed/",
+    "PubliCola": "https://publicola.com/feed/"
+   },
+   "forbidSources": [
+    "arxiv",
+    "openalex",
+    "pubmed",
+    "semanticscholar",
+    "hackernews"
+   ],
+   "minFound": 5
+  },
+  {
+   "id": "agent-news-named-site",
+   "pack": "agent",
+   "goal": "Get me today's news from PubliCola.",
+   "_why": "A site the person added and named keeps the search to it.",
+   "expect": [
+    "searchPapers"
+   ],
+   "forbid": [
+    "createPodcast",
+    "createDocument"
+   ],
+   "sites": {
+    "The Stranger": "https://www.thestranger.com/feed/",
+    "PubliCola": "https://publicola.com/feed/"
+   },
+   "forbidSources": [
+    "arxiv",
+    "openalex",
+    "pubmed",
+    "semanticscholar",
+    "hackernews",
+    "my-the-stranger"
+   ],
+   "minFound": 3
+  },
+  {
+   "id": "agent-news-by-agent-name",
+   "pack": "agent",
+   "goal": "Give me Seattle news.",
+   "_why": "2026-11-10: said to the general Agent while the person had a Seattle News Podcast agent; it searched the paper archives.",
+   "expect": [
+    "searchPapers"
+   ],
+   "forbid": [
+    "createPodcast",
+    "createDocument"
+   ],
+   "otherAgent": {
+    "name": "Seattle News Podcast",
+    "sites": {
+     "The Stranger": "https://www.thestranger.com/feed/",
+     "PubliCola": "https://publicola.com/feed/",
+     "The Seattle Times": "https://www.seattletimes.com/feed/"
     }
-  ]
+   },
+   "forbidSources": [
+    "arxiv",
+    "openalex",
+    "pubmed",
+    "semanticscholar",
+    "hackernews"
+   ],
+   "minFound": 5,
+   "minSources": 2
+  },
+  {
+   "id": "agent-find-no-podcast",
+   "pack": "agent",
+   "goal": "Find recent papers on speech recognition on phones, but do not make a podcast.",
+   "_why": "AV.16: a step asked for by name is owed, so one turned down must not even be offered.",
+   "expect": [
+    "searchPapers"
+   ],
+   "forbid": [
+    "createPodcast"
+   ],
+   "minFound": 3
+  }
+ ]
 }

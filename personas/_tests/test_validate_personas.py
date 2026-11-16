@@ -62,6 +62,37 @@ class ValidatePersonasTests(unittest.TestCase):
         idx = copy.deepcopy(INDEX); idx['version'] = 'latest'
         self.assertTrue(any('version must be' in p for p in v.problems(idx)))
 
+    def test_an_agent_may_leave_its_steps_to_the_router(self):
+        idx = copy.deepcopy(INDEX)
+        pack = next(p for p in idx['personas'] if p['id'] == 'agent')
+        self.assertEqual(pack['agent']['verbs'], [])
+        self.assertEqual(v.problems(idx), [])
+        pack['agent']['catalogVerbs'] = False
+        self.assertTrue(any('agent.verbs is empty' in p for p in v.problems(idx)))
+
+    def test_retention_accepts_default_and_none(self):
+        # Phase FL.7: a private companion on the on-device model keeps nothing.
+        idx = copy.deepcopy(INDEX)
+        a, b = idx['personas'][0], idx['personas'][1]
+        a['retention'] = 'default'
+        b['retention'] = 'none'; b['model'] = 'on-device-only'; b.pop('memory', None)
+        self.assertEqual([p for p in v.problems(idx) if 'retention' in p], [])
+
+    def test_retention_rejects_other_values(self):
+        idx = copy.deepcopy(INDEX)
+        idx['personas'][0]['retention'] = 'forever'
+        self.assertTrue(any('retention must be one of' in p for p in v.problems(idx)))
+        idx['personas'][0]['retention'] = 7
+        self.assertTrue(any('retention must be one of' in p for p in v.problems(idx)))
+
+    def test_retention_none_must_be_on_device_only_and_offer_no_memory(self):
+        idx = copy.deepcopy(INDEX)
+        pack = idx['personas'][0]
+        pack['retention'] = 'none'; pack['model'] = 'any'; pack['memory'] = {'optIn': True}
+        found = v.problems(idx)
+        self.assertTrue(any('needs model "on-device-only"' in p for p in found))
+        self.assertTrue(any('cannot offer memory.optIn' in p for p in found))
+
 
 if __name__ == '__main__':
     unittest.main()
