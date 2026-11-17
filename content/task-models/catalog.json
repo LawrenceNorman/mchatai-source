@@ -1,5 +1,81 @@
 {
   "_comment": "Phase TM local specialist catalog. Public releases require the documented human review and device gate; the first candidate remains private until those results are recorded.",
-  "schemaVersion": 1,
-  "models": []
+  "schemaVersion": 2,
+  "models": [
+    {
+      "id": "touchlanguage-spanish-gemma4-e2b",
+      "releaseID": "0.1.0-stock-6bit",
+      "version": "0.1.0",
+      "displayName": "TouchLanguage Spanish",
+      "task": "conversation",
+      "languages": [
+        "es"
+      ],
+      "baseModel": "google/gemma-4-E2B-it@4adf15748de9e1a0097b6274cee9c15836c41c37",
+      "license": {
+        "spdx": "Apache-2.0",
+        "url": "https://www.apache.org/licenses/LICENSE-2.0"
+      },
+      "compatibility": {
+        "minimumIOS": "27.2",
+        "minimumMemoryGB": 8,
+        "testedDevices": [
+          {
+            "device": "iPad mini (A17 Pro)",
+            "os": "iOS 27.3",
+            "firstReplySeconds": 7.1,
+            "replySeconds": [
+              1.2,
+              1.6
+            ]
+          }
+        ]
+      },
+      "releaseStatus": "preview",
+      "assets": [
+        {
+          "id": "ios-arm64-coreai-6bit_palettized_mixed_experimental",
+          "platform": "ios",
+          "architecture": "arm64",
+          "url": "https://huggingface.co/mChatAI/touchlanguage-spanish-gemma4-e2b/resolve/44c77c5f7f1843cf829319fc3a16ddf5eafeeced/touchlanguage-spanish-gemma4-e2b-stock6-v0.1.0.zip",
+          "archiveSizeBytes": 4221077045,
+          "installedSizeBytes": 4221074835,
+          "sha256": "41921e1535cc58c48c97ffe599d979062d68e0846a352dc9146dc5b3b283bfeb",
+          "resourceTreeSHA256": "1a3a88da2df94d68f07f4b7e57cab837f74b55ebb2519db7c174f20befd66226",
+          "contextTokens": 4096,
+          "compression": "6bit_palettized_mixed_experimental",
+          "runtime": "coreai",
+          "compressionLabel": "compressed to 6-bit"
+        }
+      ],
+      "instructions": "You are {{personaName}}, a native {{target}} speaker from {{personaRegion}}: {{personaDetails}}\nYou are chatting out loud with a learner of {{target}} whose native language is {{native}}. Their level is {{levelLabel}} ({{levelCEFR}}). Their words reach you through speech recognition, so theirs have no punctuation and may have a wrong word.\n\nHow to reply:\n- Only {{target}}. If the learner asks for help in {{native}}, give the {{target}} words they need, then carry on in {{target}}.\n- At most {{maxSentences}} short sentences. First answer what they just said, then ask one easy question or invite them to say more.\n- Remember what they told you (names, places, plans) and use it. Never ask something they already answered.\n- {{levelInstruction}} {{correctionInstruction}}\n- Punctuate normally: commas between phrases, a period before your question. A voice reads your words and pauses only where you punctuate.\n- Plain spoken words only: no lists, emoji, brackets or name labels. Stay {{personaName}}; never say you are an AI.\n\n{{learnerNotes}}",
+      "access": "free",
+      "summary": "A Spanish conversation partner for TouchLanguage Talk that runs on your device, with no network.",
+      "description": "Google's Gemma 4 E2B, unchanged except for compression so it fits on an iPhone. Nothing in the weights is specific to Spanish: the tutoring comes from the TouchLanguage tutor prompt it receives every turn, which asks for short, level-appropriate replies that follow what you said and ask one question at a time. At the intermediate level it says a mistake back the right way instead of pointing it out, and it explains grammar only when you ask. Like any small model, it can miss a detail from earlier in a long conversation.",
+      "category": "languages",
+      "applets": [
+        "touchlanguage"
+      ],
+      "basedOn": "Based on Google Gemma 4 E2B (unmodified)",
+      "sample": [
+        {
+          "role": "learner",
+          "text": "Hola, quiero practicar español mientras preparo una cena."
+        },
+        {
+          "role": "model",
+          "text": "¡Qué bien! ¿Qué vas a cocinar esta noche?"
+        },
+        {
+          "role": "learner",
+          "text": "Voy a cocinar pasta con tomates. ¿Qué debo hacer primero?"
+        },
+        {
+          "role": "model",
+          "text": "Primero, calienta el agua para la pasta. ¿Necesitas ayuda con algún ingrediente?"
+        }
+      ],
+      "modelCardURL": "https://huggingface.co/mChatAI/touchlanguage-spanish-gemma4-e2b"
+    }
+  ]
 }

@@ -44,6 +44,18 @@ class ValidateCatalogTests(unittest.TestCase):
         self.assertTrue(v.problems(catalog(staged)))
         self.assertEqual(v.problems(catalog(staged), private=True), [])
 
+    def test_a_hugging_face_file_must_be_pinned_and_free(self):
+        pinned = 'https://huggingface.co/mchatai/touchlanguage-spanish-gemma4-e2b/resolve/' + 'd' * 40 + '/model.zip'
+        hosted = copy.deepcopy(ENTRY); hosted['assets'][0]['url'] = pinned
+        hosted['access'] = 'free'; hosted['modelCardURL'] = 'https://huggingface.co/mchatai/touchlanguage-spanish-gemma4-e2b'
+        self.assertEqual(v.problems(catalog(hosted)), [])
+        gated = copy.deepcopy(hosted); gated['access'] = 'subscriber'
+        self.assertTrue(any('access must be "free"' in p for p in v.problems(catalog(gated))))
+        branch = copy.deepcopy(hosted); branch['assets'][0]['url'] = pinned.replace('d' * 40, 'main')
+        self.assertTrue(any('pinned to a commit' in p for p in v.problems(catalog(branch))))
+        card = copy.deepcopy(hosted); card['modelCardURL'] = 'https://example.com/card'
+        self.assertTrue(any('modelCardURL' in p for p in v.problems(catalog(card))))
+
     def test_bucket_names_are_refused_anywhere(self):
         leaky = copy.deepcopy(ENTRY); leaky['description'] = 'bytes at gs://mchatai-user-projects/local-models/x'
         self.assertTrue(any('storage bucket' in p for p in v.problems(catalog(leaky))))

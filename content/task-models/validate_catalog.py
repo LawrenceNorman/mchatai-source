@@ -3,8 +3,11 @@
 
   python3 content/task-models/validate_catalog.py content/task-models/catalog.json [--private]
 
-`--private` is for the developer staging catalog: it allows http(s) asset URLs. The public catalog must
-address hosted assets by identity (`mchatai-model://<id>/<releaseID>/<assetID>`) and never name a bucket.
+`--private` is for the developer staging catalog: it allows http(s) asset URLs. The public catalog
+addresses an asset one of two ways, and never names a bucket:
+  - `mchatai-model://<id>/<releaseID>/<assetID>`, the identity web-api signs for subscribers (our bucket, our egress);
+  - a Hugging Face file pinned to one commit, `https://huggingface.co/<owner>/<repo>/resolve/<40-hex>/<file>`,
+    which is free to download, so the entry's access must be "free" (Phase LC.10, 2026-11-16).
 Exit status 0 = valid; problems are printed one per line."""
 import json
 import re
@@ -12,6 +15,10 @@ import sys
 from pathlib import Path
 
 HEX64 = re.compile(r'^[0-9a-f]{64}$')
+# A branch name (`resolve/main/`) would let the bytes change under a fixed sha256; only a commit pins them.
+HF_PINNED = re.compile(r'^https://huggingface\.co/[A-Za-z0-9][A-Za-z0-9._-]*/[A-Za-z0-9][A-Za-z0-9._-]*'
+                       r'/resolve/[0-9a-f]{40}/[A-Za-z0-9][A-Za-z0-9._/-]*$')
+HF_CARD = re.compile(r'^https://huggingface\.co/[A-Za-z0-9][A-Za-z0-9._-]*/[A-Za-z0-9][A-Za-z0-9._-]*$')
 SAFE_ID = re.compile(r'^[a-z0-9][a-z0-9._-]{0,127}$')
 # What TouchLanguageJobs.localInstructions renders; the last three are per-turn context (TLTurnContext).
 PLACEHOLDERS = {'target', 'native', 'levelLabel', 'levelCEFR', 'maxSentences', 'personaName', 'personaRegion',
@@ -93,6 +100,8 @@ def problems(catalog, private=False):
                 found.append(f"{where}: access must be one of {sorted(ACCESS)}")
             if not (model.get('license') or {}).get('url'):
                 found.append(f'{where}: missing license.url')
+            if model.get('modelCardURL') is not None and not HF_CARD.match(str(model['modelCardURL'])):
+                found.append(f'{where}: modelCardURL is the Hugging Face repo page (https://huggingface.co/<owner>/<repo>)')
             tested = (model.get('compatibility') or {}).get('testedDevices') or []
             if not tested:
                 found.append(f'{where}: compatibility.testedDevices is empty (list the device tests that passed)')
@@ -119,6 +128,12 @@ def problems(catalog, private=False):
             if url.startswith('mchatai-model://'):
                 if url != identity:
                     found.append(f'{at}: url must be {identity}')
+            elif url.startswith('https://huggingface.co/') and HF_PINNED.match(url):
+                if model.get('access') != 'free':
+                    found.append(f'{at}: a Hugging Face file is free to everyone, so access must be "free"')
+            elif url.startswith('https://huggingface.co/') and not private:
+                found.append(f'{at}: a Hugging Face url must be pinned to a commit '
+                             '(https://huggingface.co/<owner>/<repo>/resolve/<40-hex commit>/<file>)')
             elif not (private and re.match(r'^https?://', url)):
                 found.append(f'{at}: url must be {identity}' + ('' if private else ' (http(s) only with --private)'))
     return found
