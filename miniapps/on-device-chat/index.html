@@ -375,17 +375,31 @@ function showDoor(info) {
     learn.push(doorTile("📖", lib.label || "Read the book", lib.sub || "", () => doorRun(status, bridge().library.open({ item: lib.item }))));
   }
   const episodes = (PACK.media || []).filter(m => m.kind === "episode");
-  if (features.includes("episode")) episodes.forEach(m => {
-    const sub = [door.episodeSub || "", minutes(m.seconds)].filter(Boolean).join(" · ");
-    learn.push(doorTile("🎧", m.title, sub, () => {
-      doorSay(status, "Getting the episode…");
-      doorRun(status, p.episode({ id: m.id }), () => doorSay(status, "Playing in Podcasts.",
-        { text: "Open Podcasts", run: () => bridge().app.navigate({ applet: "Podcasts" }) }));
-    }));
-  });
+  const playEpisode = (m) => {
+    doorSay(status, "Getting the episode…");
+    doorRun(status, p.episode({ id: m.id }), () => doorSay(status, "Playing in Podcasts.",
+      { text: "Open Podcasts", run: () => bridge().app.navigate({ applet: "Podcasts" }) }));
+  };
+  if (features.includes("episode") && episodes.length === 1) {
+    const m = episodes[0];
+    learn.push(doorTile("🎧", m.title, [door.episodeSub || "", minutes(m.seconds)].filter(Boolean).join(" · "), () => playEpisode(m)));
+  } else if (features.includes("episode") && episodes.length > 1) {
+    // Phase FL.12: an episode per chapter is one tile that opens the list, as the quizzes do.
+    const list = document.createElement("div"); list.className = "chapters episodes"; list.hidden = true;
+    episodes.forEach(m => {
+      const b = document.createElement("button"); b.type = "button";
+      b.textContent = [m.chapter ? "Chapter " + m.chapter + ": " + m.title.replace(/^[^:]*:\s*/, "") : m.title, minutes(m.seconds)]
+        .filter(Boolean).join(" · ");
+      b.addEventListener("click", () => playEpisode(m));
+      list.appendChild(b);
+    });
+    learn.push(doorTile("🎧", door.episodesLabel || "Listen to an episode", door.episodesSub || door.episodeSub || "",
+      () => { list.hidden = !list.hidden; }));
+    learn.push(list);
+  }
   const sets = (PACK.quiz && PACK.quiz.sets) || [];
   if (features.includes("quiz") && sets.length) {
-    const list = document.createElement("div"); list.className = "chapters"; list.hidden = true;
+    const list = document.createElement("div"); list.className = "chapters quizzes"; list.hidden = true;
     sets.forEach(s => {
       const b = document.createElement("button"); b.type = "button";
       b.textContent = s.title + " · " + (s.questions || []).length + " questions";

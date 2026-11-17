@@ -1798,6 +1798,40 @@ class QuizCheck(unittest.TestCase):
             self.assertEqual(self.save(dict(self.q, question=stem)), [], stem)
 
 
+class PodcastOnThePlan(unittest.TestCase):
+    """podcast_cli.py: an episode script on the author's Claude Code plan (2026-11-17). No model is called here."""
+
+    def script(self, lines, heading="Check yourself"):
+        return {"title": "Fees", "sections": [{"heading": "Hook", "lines": lines}, {"heading": heading, "lines": [
+            {"speaker": "teacher", "text": "What does a fee take?"}, {"speaker": "teacher", "text": "Money from the return."}]}]}
+
+    def test_the_code_checks(self):
+        import podcast_cli
+        chapter = "A fee of 1.00% cost about $179,000 in one example. Three costs matter."
+        must = podcast_cli.MUST_SAY
+        good = [{"speaker": "teacher", "text": f"A 1.00% fee is not small. {must} It cost about $179,000 in the example."},
+                {"speaker": "learner", "text": "That much? From one fee?"},
+                {"speaker": "teacher", "text": "Yes. Three costs matter."}]
+        problems, words = podcast_cli.code_problems(self.script(good), chapter)
+        self.assertEqual(problems, [])
+        self.assertGreater(words["teacher"], words["learner"])
+        bad = [dict(good[0], text=good[0]["text"].replace("$179,000", "$180,000")), good[1],
+               {"speaker": "teacher", "text": "Four costs matter."}]
+        problems, _ = podcast_cli.code_problems(self.script(bad), chapter)
+        self.assertTrue(any('"$180,000"' in p for p in problems), problems)
+        self.assertTrue(any('"four"' in p for p in problems), problems)
+        twice = [dict(good[0], text=good[0]["text"] + " " + must), good[1], good[2]]
+        self.assertTrue(any("exactly once" in p for p in podcast_cli.code_problems(self.script(twice), chapter)[0]))
+        self.assertTrue(any("Check yourself" in p for p in podcast_cli.code_problems(self.script(good, "Quiz"), chapter)[0]))
+
+    def test_the_render_text_pauses_after_a_check_question(self):
+        import podcast_cli
+        text = podcast_cli.render_text(self.script([{"speaker": "teacher", "text": "Hello."}]), 7, "Money, Plainly")
+        self.assertIn("TEACHER: What does a fee take? [pause 2.5]", text)
+        self.assertIn("TEACHER: Money from the return.\n", text)
+        self.assertIn("## Hook", text)
+
+
 class QuizOnThePlan(unittest.TestCase):
     """quiz_cli.py: the service's steps on the author's Claude Code plan (2026-11-16). No model is called here."""
 

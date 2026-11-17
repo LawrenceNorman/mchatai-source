@@ -53,7 +53,9 @@ def json_in(text):
 
 def claude(prompt, model="opus", timeout=900):
     env = {k: v for k, v in os.environ.items() if k not in ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN")}
-    run = subprocess.run(["claude", "-p", "--output-format", "json", "--max-turns", "1", "--model", model],
+    # No tools: the whole input is in the prompt. With tools on, a writer sometimes reached for one (num_turns 2) and the
+    # one-turn session ended in error_max_turns with nothing written (podcast_cli, 2026-11-17).
+    run = subprocess.run(["claude", "-p", "--output-format", "json", "--max-turns", "1", "--tools", "", "--model", model],
                          input=prompt, capture_output=True, text=True, timeout=timeout, env=env)
     envelope = json.loads(run.stdout) if run.stdout.strip().startswith("{") else None
     if not envelope or envelope.get("is_error") or run.returncode != 0:
