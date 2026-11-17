@@ -600,8 +600,8 @@ function pickChunks(query, maxChars) {
 // The bridge is stateless, so each turn carries the recent conversation. Keep it
 // inside the device's context window (roughly 3 characters per token, leaving
 // room for the instructions, the notes and the reply); the oldest turns drop first.
-function buildPrompt(turns, latest) {
-  const notes = pickChunks(latest, Math.max(600, Math.min(1500, (contextSize - CONFIG.maxTokens - 400) * 3 * 0.3)));
+function buildPrompt(turns, latest, query) {
+  const notes = pickChunks(query || latest, Math.max(600, Math.min(1500, (contextSize - CONFIG.maxTokens - 400) * 3 * 0.3)));
   const budget = Math.max(1200, (contextSize - CONFIG.maxTokens - 300) * 3 - CONFIG.system.length - notes.join("").length);
   // A pack with `roles` ({user, assistant}) gets a named transcript that ends
   // on the character's label, so a small model writes the next line instead
@@ -648,13 +648,13 @@ async function coachNote(text) {
 
 // Streams when the app supports it (onText gets the reply so far); older
 // builds only have generate(), which answers all at once.
-async function ask(turns, latest, onText) {
+async function ask(turns, latest, onText, query) {
   const llm = bridge().llm;
   const options = { provider: "apple", system: CONFIG.system, temperature: CONFIG.temperature, maxTokens: CONFIG.maxTokens };
   if (nativeSession) options.session = nativeSession;
   // A primed native session already holds the earlier turns; after a restore
   // from memory (or a reset) the first call carries them once.
-  const prompt = buildPrompt(nativeSession && sessionPrimed ? [] : turns, latest);
+  const prompt = buildPrompt(nativeSession && sessionPrimed ? [] : turns, latest, query);
   const p = typeof llm.stream === "function" ? llm.stream(prompt, options, onText) : llm.generate(prompt, options);
   return p.then((r) => { if (nativeSession) sessionPrimed = true; return r; });
 }
@@ -668,6 +668,75 @@ function clipSentences(text, max) {
 }
 function tidy(text) {
   return clipSentences(text, CONFIG.maxSentences).replace(/\*\*(.+?)\*\*/g, "$1").replace(/^\s*[-*] /gm, "• ");
+}
+
+// ─── The pack's guard (Phase FL.10, as the app's Chat applies it) ─────────────
+// On his iPhone (11-16) the reply to "Yes" was the last reply again: the same
+// sentence, the same closing question. A pack without `guard` is untouched.
+function stemsOf(text) { return (text.toLowerCase().match(/\p{L}+/gu) || []).filter(w => w.length >= 4).map(w => w.slice(0, 5)); }
+function sentencesIn(line) { return line.split(/(?<=[.!?]["'”’)\]]*)\s+/).filter(s => s.trim()); }
+function lettersOf(text) { return (text.match(/\p{L}/gu) || []).join(""); }
+// Sentence by sentence: one the pack's patterns match (`drop`), one this reply
+// already said, and with `noRepeats` one an earlier reply said (five or more
+// longer words, four in five of them that sentence's) are dropped. `repeated`
+// (or `empty`) stands in when nothing is left; `shortNames` shortens a long
+// name the conversation already used.
+// `person`: what they just said; one of the pack's `restate` phrases ("in one
+// line", "say that again") asks for a repeat, and the repeat stands.
+function guardReply(text, earlier, person) {
+  const g = PACK.guard; if (!g) return text;
+  const patterns = (g.drop || []).map(p => { try { return new RegExp(p, "i"); } catch (e) { return null; } }).filter(Boolean);
+  const words = s => " " + s.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim() + " ";
+  const restating = (g.restate || []).some(p => words(p).trim() && words(person || "").includes(words(p)));
+  const said = g.noRepeats && !restating ? earlier.flatMap(r => r.split("\n").flatMap(sentencesIn)).map(s => new Set(stemsOf(s))).filter(s => s.size) : [];
+  const seen = new Set(); let repeat = false;
+  const lines = text.split("\n").map(line => sentencesIn(line).filter(s => {
+    const key = s.toLowerCase().replace(/[^\p{L}\p{N}]/gu, "");
+    if (key && seen.has(key)) return false;
+    seen.add(key);
+    if (patterns.some(re => re.test(s))) return false;
+    const w = stemsOf(s);
+    if (w.length >= 5 && said.some(set => w.filter(x => set.has(x)).length >= w.length * 0.8)) { repeat = true; return false; }
+    return true;
+  }).join(" "));
+  const out = lines.join("\n").replace(/\n{3,}/g, "\n\n").trim();
+  if (!out) return (repeat && g.repeated) || g.empty || text;
+  return shortenNames(out, g.shortNames || {}, earlier);
+}
+// The first use of a name in the conversation stands; later ones take the short
+// form. Names where one holds the other count as one; a capital only where a
+// sentence starts; a doubled article is made single.
+function shortenNames(text, names, earlier) {
+  const keys = Object.keys(names).filter(k => k && names[k]).sort((a, b) => b.length - a.length);
+  if (!keys.length) return text;
+  const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const before = earlier.join("\n").toLowerCase();
+  const used = new Set(keys.filter(k => before.includes(k.toLowerCase())));
+  const related = (a, b) => { const x = a.toLowerCase(), y = b.toLowerCase(); return x.includes(y) || y.includes(x); };
+  return text.replace(new RegExp(keys.map(esc).join("|"), "gi"), (found, offset) => {
+    const key = keys.find(k => k.toLowerCase() === found.toLowerCase());
+    if (!key) return found;
+    if (![...used].some(u => related(u, key))) { used.add(key); return found; }
+    let short = names[key];
+    const prev = text.slice(0, offset).replace(/\s+$/, "").slice(-1);
+    if (!prev || ".!?".includes(prev)) short = short.charAt(0).toUpperCase() + short.slice(1);
+    return short;
+  }).replace(/\b([Tt]he) [Tt]he\b/g, "$1");
+}
+// "Yes" (one of the pack's `offers.accept`) to the persona's own closing
+// question: the model is told which question (`guard.assent`), and the notes
+// are picked by it. A bare "Yes" got the last reply again.
+function assentTurn(said, prior) {
+  const g = PACK.guard, accept = (PACK.offers && PACK.offers.accept) || [];
+  if (!g || !g.assent) return null;
+  const norm = s => s.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+  if (!norm(said) || !accept.some(a => norm(a) === norm(said))) return null;
+  const last = prior.filter(t => t.role === "assistant").pop();
+  if (!last) return null;
+  const line = last.text.split("\n").filter(l => l.trim()).pop() || "";
+  const q = (sentencesIn(line).pop() || "").trim();
+  if (!q.endsWith("?")) return null;
+  return { prompt: g.assent.replace("{said}", said).replace("{question}", q), query: q };
 }
 function codeOf(err) {
   const m = /^\[([a-z_]+)\]/.exec(String((err && err.message) || err || ""));
@@ -685,6 +754,8 @@ async function send(text) {
   els.messages.appendChild(typing); scrollToEnd();
 
   const prior = history.slice();
+  const asked = assentTurn(text, prior);
+  const latest = asked ? asked.prompt : text, query = asked ? asked.query : undefined;
   history.push({ role: "user", text });
   noteProgress(text);
   // The reply bubble appears with the first words and grows as they arrive.
@@ -698,14 +769,14 @@ async function send(text) {
   try {
     let result;
     try {
-      result = await ask(prior, text, onText);
+      result = await ask(prior, latest, onText, query);
     } catch (err) {
       if (codeOf(err) !== "context_exceeded") throw err;
       // Too long for the on-device window: keep only the last exchange and retry once
       // (a native session was dropped by the app; it starts over with that recap).
       if (bubble) { bubble.remove(); bubble = null; }
       sessionPrimed = false;
-      result = await ask(prior.slice(-2), text, onText);
+      result = await ask(prior.slice(-2), latest, onText, query);
       addBubble("note", "Earlier messages were trimmed to fit the on-device model.");
     }
     let raw = ((result && result.text) || "").trim();
@@ -714,7 +785,13 @@ async function send(text) {
     const lines = raw.split("\n"); const same = (a, b) => a.trim().toLowerCase().replace(/[?.!\s]+$/, "") === b.trim().toLowerCase().replace(/[?.!\s]+$/, "");
     while (lines.length > 1 && same(lines[lines.length - 1], text)) lines.pop();
     raw = lines.join("\n").trim();
-    const reply = tidy(raw) || "…";
+    const reply = tidy(guardReply(raw, prior.filter(t => t.role === "assistant").map(t => t.text), text)) || "…";
+    // The native session holds the model's raw reply; left there, the model copies
+    // what the guard dropped. It starts over from what the person saw.
+    if (nativeSession && sessionPrimed && PACK.guard && lettersOf(reply) !== lettersOf(tidy(raw))) {
+      if (typeof bridge().llm.reset === "function") { try { await bridge().llm.reset({ session: nativeSession }); } catch (e) {} }
+      sessionPrimed = false;
+    }
     history.push({ role: "assistant", text: reply });
     typing.remove();
     if (bubble) { setBubbleText(bubble, reply); scrollToEnd(); } else { addBubble("bot", reply); }

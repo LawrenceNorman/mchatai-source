@@ -150,6 +150,18 @@ class ValidatePersonasTests(unittest.TestCase):
         self.companion(idx)['offers']['rules'][1]['say'] = 'x' * 141
         self.assertTrue(any('at most 140 characters' in p for p in v.problems(idx)))
 
+    def test_guard_repeat_name_and_assent_shapes(self):
+        # A malformed field drops the whole guard in the app, advice patterns and all.
+        self.assertEqual([p for p in v.problems(copy.deepcopy(INDEX)) if 'guard' in p], [])
+        for field, value, message in [('noRepeats', 'yes', 'guard.noRepeats must be true or false'),
+                                      ('shortNames', ['the handbook'], 'guard.shortNames must map'),
+                                      ('shortNames', {'Money, Plainly': ''}, 'guard.shortNames must map'),
+                                      ('assent', 'Yes. Answer it.', 'guard.assent must name {question}'),
+                                      ('repeated', '  ', 'guard.repeated must be a line of text')]:
+            idx = copy.deepcopy(INDEX)
+            self.companion(idx)['guard'][field] = value
+            self.assertTrue(any(message in p for p in v.problems(idx)), field)
+
     def test_every_note_of_a_companion_names_a_federal_source(self):
         """The pack's notes are generated (never hand-edited); "show me where that comes from" opens only what they carry."""
         notes = json.loads((HERE.parent / 'money-check-in' / 'chunks.json').read_text())

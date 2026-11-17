@@ -213,9 +213,21 @@ def pack_content_problems(where, p, folder):
     guard = p.get('guard')
     if guard is not None:
         drop = guard.get('drop') if isinstance(guard, dict) else None
-        for flag in ('numbersFromNotes', 'noLists'):
+        for flag in ('numbersFromNotes', 'noLists', 'noRepeats'):
             if isinstance(guard, dict) and flag in guard and not isinstance(guard[flag], bool):
                 found.append(f'{where}: guard.{flag} must be true or false')
+        # A malformed field drops the whole guard in the app (its advice patterns too), so each is checked here.
+        if isinstance(guard, dict):
+            for line in ('repeated', 'assent'):
+                if line in guard and (not isinstance(guard[line], str) or not guard[line].strip()):
+                    found.append(f'{where}: guard.{line} must be a line of text')
+            if isinstance(guard.get('assent'), str) and '{question}' not in guard['assent']:
+                found.append(f'{where}: guard.assent must name {{question}} (the question the person said yes to)')
+            if 'restate' in guard and not phrases_ok(guard['restate']):
+                found.append(f'{where}: guard.restate must be lowercase phrases (letters, digits, spaces)')
+            names = guard.get('shortNames')
+            if names is not None and (not isinstance(names, dict) or not all(isinstance(k, str) and k.strip() and isinstance(v, str) and v.strip() for k, v in names.items())):
+                found.append(f'{where}: guard.shortNames must map each long name to its short form (text to text)')
         if not isinstance(drop, list) or not drop or not str(guard.get('empty') or '').strip():
             found.append(f'{where}: guard needs drop (regular expressions) and the line shown when nothing is left (empty)')
         else:
