@@ -1798,6 +1798,24 @@ class QuizCheck(unittest.TestCase):
             self.assertEqual(self.save(dict(self.q, question=stem)), [], stem)
 
 
+class QuizOnThePlan(unittest.TestCase):
+    """quiz_cli.py: the service's steps on the author's Claude Code plan (2026-11-16). No model is called here."""
+
+    def test_reply_parsing_and_the_service_checks(self):
+        import quiz_cli
+        self.assertEqual(quiz_cli.json_in('Here:\n```json\n{"questions": [1]}\n```'), {"questions": [1]})
+        self.assertEqual(quiz_cli.json_in('{"results": []}'), {"results": []})
+        mc = {"type": "mc", "question": "Q?", "options": ["a", "b", "c", "d"], "correctAnswer": "b"}
+        self.assertIsNone(quiz_cli.structure_problem(mc))
+        self.assertEqual(quiz_cli.structure_problem(dict(mc, correctAnswer="e")), "structure")
+        self.assertEqual(quiz_cli.structure_problem(dict(mc, options=["a", "a", "b", "c"])), "structure")
+        text = "the cache keeps the keys and values of every earlier token so nothing is computed twice"
+        self.assertTrue(quiz_cli.grounded({"source": {"quote": "keeps the keys and values of every earlier token"}}, text))
+        self.assertFalse(quiz_cli.grounded({"source": {"quote": "keeps the keys"}}, text), "under eight words")
+        claim = {"id": "c1", "text": "The cache keeps the keys and values of every earlier token.", "evidence": "", "source": "s1"}
+        self.assertEqual(quiz_cli.claim_for("keeps the keys and values of every earlier token", [claim])["id"], "c1")
+
+
 class BookMap(unittest.TestCase):
     """book_map.py: the places a book's chapters name, pinned where the record allows (2026-10-08,
     "a places POI map that relates to each person")."""
