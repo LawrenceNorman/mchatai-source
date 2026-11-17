@@ -1242,7 +1242,7 @@ def cmd_outline(project):
     planning thread that typed setOutline's JSON into a shell string lost every apostrophe to
     the quoting (William Grose's plan, 2026-10-05). Titles come from the chapter files once they
     exist, summaries from plan.json (`summary`); a chapter with none keeps the summary StoryMaker
-    holds. Rows already linked to a landed chapter stay linked."""
+    holds. A plan with an `intro` gets its row first. Rows already linked to a landed chapter stay linked."""
     meta = load_json(project.path("project.json"), {}) or {}
     pid = meta.get("storymakerProject")
     if not pid:
@@ -1266,6 +1266,11 @@ def cmd_outline(project):
         if not c.get("summary"):
             missing.append(str(c.get("n")))
         rows.append({"title": title, "summary": summary, "linkedChapterID": cid})
+    intro = project.plan.get("intro")
+    if isinstance(intro, dict) and intro.get("title"):   # the introduction before the first chapter, as `land` puts it
+        ch0 = project.chapter(0) or {}
+        rows.insert(0, {"title": ch0.get("title") or intro["title"], "linkedChapterID": (ch0.get("storymaker") or {}).get("chapterID") or "",
+                        "summary": intro.get("summary") or held.get(intro["title"]) or ""})
     r = storymaker(shim, "setOutline", project=pid, chapters=rows)
     if r.get("status") != "ok":
         print(f"outline: NOT SET — {(r.get('error') or r.get('output') or '')[:300]}")

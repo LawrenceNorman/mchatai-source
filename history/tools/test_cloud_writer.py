@@ -410,6 +410,31 @@ class Gather(FixtureProject):
         self.assertNotIn("{minQuoteWords}", system)
         self.assertTrue(any("kept 1, dropped 4" in line for line in self.lines), self.lines)
 
+    def test_a_fact_that_defines_a_term_carries_about_and_the_plans_part(self):
+        plan = _hw.load_json(self.project.path("plan.json"))
+        plan["chapters"][0]["introduces"] = (plan["chapters"][0].get("introduces") or []) + ["Library Association"]
+        plan["chapters"][0]["lifeStage"] = "civic"
+        _hw.save_json(self.project.path("plan.json"), plan)
+        d = _hw.load_json(self.project.path("dossier.json"))
+        d.setdefault("people", []).append({"name": "Library Association", "aliases": [], "who": "the town's reading society"})
+        _hw.save_json(self.project.path("dossier.json"), d)
+        self.project = _hw.Project(self.project.root)
+        ev = {"what": "She won the Association's presidency at a Tuesday meeting.", "date": "1901", "lifeStage": "invented",
+              "evidence": "was elected president of the Ladies' Library Association at its meeting on Tuesday evening"}
+        for about, want in (("library association", "Library Association"), ("Harbor Town", None)):
+            net = FakeNet([reply(json.dumps({"events": [{**ev, "about": about}]}))])
+            code, res = cloud_writer.gather(self.project, 1, ["s1"], self.client(net), self.cfg, out=self.lines.append,
+                                            fresh=True)   # the same request would replay the first reply
+            self.assertEqual(code, 0, self.lines)
+            self.assertEqual((res["kept"][0].get("about"), res["kept"][0]["lifeStage"]), (want, "civic"))
+
+    def test_a_parts_range_gathers_only_those_parts(self):
+        self.cfg["gatherChunkChars"] = 200
+        net = FakeNet(lambda req: reply(json.dumps({"events": []})))
+        cloud_writer.gather(self.project, 1, ["s1"], self.client(net), self.cfg, out=self.lines.append, parts_range=(2, 2))
+        self.assertEqual(len(net.calls), 1)
+        self.assertIn("(part 2 of", net.calls[0]["body"]["messages"][1]["content"])
+
     def test_gathering_a_source_again_replaces_only_its_facts(self):
         path = self.project.path("dossier", "facts-cloud-ch01.json")
         _hw.save_json(path, {"events": [{"id": "old_s2", "sources": ["s2"], "what": "x", "evidence": "y"},
@@ -417,6 +442,121 @@ class Gather(FixtureProject):
         net = FakeNet([reply(json.dumps({"events": []}))])
         cloud_writer.gather(self.project, 1, ["s1"], self.client(net), self.cfg, out=self.lines.append)
         self.assertEqual([e["id"] for e in _hw.load_json(path)["events"]], ["old_s2"])
+
+
+class ReviserRole(FixtureProject):
+    """Plan §19.6: a revision the gate alone asks for goes to the reviser; the audit's to the writer."""
+    scripted, run_write = WriterLoop.scripted, WriterLoop.run_write
+
+    def test_gate_revisions_go_to_the_reviser_and_audit_revisions_to_the_writer(self):
+        flag = {"sentence": "It cost four hundred dollars.", "problem": "needs its date", "fix": "say 1893"}
+        net = self.scripted([self.bad, self.clean, self.clean],
+                            [{"blocking": [flag], "notes": []}, {"blocking": [], "notes": []}])
+        code, result = self.run_write(net)
+        self.assertEqual(code, 0, self.lines)
+        models = [c["body"]["model"] for c in net.calls]
+        writer, reviser = self.cfg["roles"]["writer"]["model"], self.cfg["roles"]["reviser"]["model"]
+        self.assertNotEqual(writer, reviser)
+        self.assertEqual(models, [writer, reviser, self.cfg["roles"]["auditor"]["model"], writer,
+                                 self.cfg["roles"]["auditor"]["model"]])
+        # the reviser carries the writer's own preface and instructions
+        self.assertEqual(self.asked[0][1], self.asked[1][1])
+
+    def test_without_the_key_every_revision_goes_to_the_writer(self):
+        self.cfg.pop("gateReviseRole")
+        net = self.scripted([self.bad, self.clean], [{"blocking": [], "notes": []}])
+        self.run_write(net)
+        writer = self.cfg["roles"]["writer"]["model"]
+        self.assertEqual([c["body"]["model"] for c in net.calls][:2], [writer, writer])
+
+
+class FakeCLI:
+    """`claude -p`: records each command, its stdin, env and the system prompt file; answers in turn."""
+
+    def __init__(self, answers):
+        self.answers, self.calls = list(answers), []
+
+    def __call__(self, cmd, stdin, env, cwd, timeout):
+        sysfile = cmd[cmd.index("--system-prompt-file") + 1]
+        with open(sysfile, encoding="utf-8") as fh:
+            self.calls.append({"cmd": cmd, "stdin": stdin, "env": env, "cwd": cwd, "system": fh.read()})
+        a = self.answers.pop(0)
+        return a if isinstance(a, tuple) else (0, json.dumps(a), "")
+
+
+def envelope(text, out_tokens=40, side=True, stop="end_turn"):
+    usage = {"claude-opus-5-5": {"inputTokens": 3, "outputTokens": out_tokens, "cacheReadInputTokens": 1000,
+                                 "cacheCreationInputTokens": 200}}
+    if side:   # the CLI's small side call on another model
+        usage = {"claude-haiku-5-5": {"inputTokens": 50, "outputTokens": 5}, **usage}
+    return {"type": "result", "is_error": False, "result": text, "stop_reason": stop,
+            "usage": {"input_tokens": 3, "output_tokens": out_tokens}, "modelUsage": usage}
+
+
+class ClaudeCodeBackend(Base):
+    def setUp(self):
+        super().setUp()
+        self.ccfg = cloud_models.load_config(backend="claude-code")
+
+    def test_the_overlay_keeps_the_base_fields_and_names_the_backend(self):
+        w = self.ccfg["roles"]["writer"]
+        self.assertEqual((self.ccfg["backend"], w["provider"]), ("claude-code", "claude-code"))
+        self.assertEqual(w["prompt"], self.cfg["roles"]["writer"]["prompt"])
+        self.assertEqual(w["maxOutputTokens"], self.cfg["roles"]["writer"]["maxOutputTokens"])
+        self.assertTrue(self.ccfg["chapterPlanBudgetTokens"])
+        self.assertNotIn("backend", cloud_models.load_config())   # no backend: the base, unchanged
+        self.assertIsInstance(cloud_models.make_client(self.ccfg), cloud_models.ClaudeCodeClient)
+
+    def test_a_call_is_one_tool_less_turn_on_the_plan(self):
+        cli = FakeCLI([envelope("hello")])
+        os.environ["ANTHROPIC_API_KEY"] = "sk-should-not-pass"
+        try:
+            r = cloud_models.ClaudeCodeClient(cfg=self.ccfg, run=cli, sleep=self.sleeps.append).chat(
+                "writer", "SYSTEM-MARK", "USER-MARK", stage="ch01.write")
+        finally:
+            os.environ.pop("ANTHROPIC_API_KEY", None)
+        call = cli.calls[0]
+        cmd = call["cmd"]
+        self.assertEqual(cmd[:2], [cmd[0], "-p"])
+        self.assertNotIn("--bare", cmd)
+        self.assertEqual(cmd[cmd.index("--tools") + 1], "")
+        self.assertIn("--strict-mcp-config", cmd)
+        self.assertEqual(cmd[cmd.index("--model") + 1], self.ccfg["roles"]["writer"]["model"])
+        self.assertEqual(cmd[cmd.index("--effort") + 1], self.ccfg["roles"]["writer"]["effort"])
+        self.assertNotIn("ANTHROPIC_API_KEY", call["env"])
+        self.assertEqual(call["env"]["CLAUDE_CODE_MAX_OUTPUT_TOKENS"], str(self.ccfg["roles"]["writer"]["maxOutputTokens"]))
+        self.assertEqual((call["system"], call["stdin"]), ("SYSTEM-MARK", "USER-MARK"))
+        self.assertFalse(os.path.exists(call["cwd"]))   # an empty folder, removed after the call
+        self.assertEqual((r["text"], r["tokensUsed"], r["model"]), ("hello", 0, "claude-opus-5-5"))
+        self.assertEqual(r["planTokens"], 3 + 40 + 1000 + 200 + 50 + 5)
+
+    def test_a_plan_limit_stops_at_once_and_other_failures_are_retried(self):
+        limit = (1, json.dumps({"is_error": True, "result": "You've hit your weekly limit · resets Nov 21"}), "")
+        cli = FakeCLI([limit])
+        with self.assertRaises(ModelError) as e:
+            cloud_models.ClaudeCodeClient(cfg=self.ccfg, run=cli, sleep=self.sleeps.append).chat("writer", "s", "u")
+        self.assertEqual((e.exception.code, len(cli.calls)), ("plan_limit", 1))
+        cli = FakeCLI([(1, "", "boom"), (1, "", "boom"), envelope("ok")])
+        r = cloud_models.ClaudeCodeClient(cfg=self.ccfg, run=cli, sleep=self.sleeps.append).chat("writer", "s", "u")
+        self.assertEqual((r["text"], len(cli.calls)), ("ok", 3))
+
+    def test_plan_tokens_reach_the_ledger_and_the_plan_budget_stops_a_run(self):
+        root = os.path.join(self.tmp, "project")
+        shutil.copytree(FIXTURE, root)
+        project = _hw.Project(root)
+        richness.validate_plan(project, write=True)
+        bad = _hw.load_json(os.path.join(FIXTURE, "chapters", "02.json"))
+        bad = {"chapter": 1, "title": "x", "text": bad["text"], "claims": bad["claims"]}
+        cfg = {**self.ccfg, "chapterPlanBudgetTokens": 2000}
+        cli = FakeCLI([envelope(json.dumps(bad))] * 5)
+        lines = []
+        code, result = cloud_writer.write_chapter(project, 1, cloud_models.ClaudeCodeClient(cfg=cfg, run=cli), cfg,
+                                                  out=lines.append)
+        self.assertEqual((code, result["stopCode"]), (1, "plan_budget"), lines)
+        self.assertEqual(len(cli.calls), 1)   # 1,298 used; another of the same size would pass 2,000
+        ledger = _hw.load_json(project.path("cloud", "ledger.json"))
+        self.assertEqual((ledger["total"], ledger["planTotal"]), (0, 1298))
+        self.assertEqual(ledger["calls"][0]["provider"], "claude-code")
 
 
 if __name__ == "__main__":

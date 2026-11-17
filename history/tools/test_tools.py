@@ -1534,6 +1534,14 @@ class LandBook(FixtureCase):
         self.assertEqual(rows[0]["summary"], "She buys the lot on Water Street, and the mill's men doubt her.")
         self.assertEqual(len(rows), len(plan["chapters"]))
         self.assertIn("no `summary` for chapter(s)", out.getvalue())
+        plan["intro"] = {"title": "The whole map, once", "summary": "Walk the map once."}   # an explainer's introduction
+        _hw.save_json(self.project.path("plan.json"), plan)
+        self.project = _hw.Project(self.project.root)
+        with contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(cite.cmd_outline(self.project), 0)
+        rows = _hw.load_json(self.state)["outline"]
+        self.assertEqual((len(rows), rows[0]["title"], rows[0]["summary"]),
+                         (len(plan["chapters"]) + 1, "The whole map, once", "Walk the map once."))
 
     def test_the_editors_suggestions_land_once(self):
         import contextlib
@@ -3392,6 +3400,48 @@ class ExplainerDomain(DomainCase):
         rules = [f["rule"] for f in explainer.box_findings(self.project, 3, {"text": good.replace("Draw it\n\nA box.\n\n", "")
                                                                                      .replace(" The kernel.", "")})]
         self.assertEqual(rules, ["box_missing", "box_questions"])
+
+    def test_the_map_box_names_a_piece_and_its_neighbour_in_any_ring(self):
+        import explainer
+        plan = self.project.plan
+        plan["route"] = {"inside": ["input", "tokens or patches", "embeddings", "logits"],
+                         "around": ["the person", "the app", "the harness", "the model", "tools and data"],
+                         "under": ["framework and runtime", "chips", "memory"],
+                         "loops": ["around"],
+                         "keys": {"tokens or patches": ["token", "tokens", "patches"], "the harness": ["harness"],
+                                  "tools and data": ["tool", "tools"], "the person": ["the person", "user"],
+                                  "chips": ["GPU", "chips"]}}
+        plan["boxes"] = {"required": ["Where we are", "Say it out loud", "Draw it", "From my platform", "Check yourself"],
+                         "whereBox": "Where we are"}
+        _hw.save_json(self.project.path("plan.json"), plan)
+        self.project = _hw.Project(self.project.root)
+        spoken = " ".join(["word"] * 70)
+
+        def chapter(where):
+            return ("Prose first.\n\nWhere we are\n\n" + where + "\n\nSay it out loud\n\n" + spoken + "\n\nDraw it\n\nA box.\n\n"
+                    "From my platform\n\nOn my iPad, a number.\n\nCheck yourself\n\nWhat is a kernel? A grid of weights.\n\n"
+                    "Why is it cheap? It is reused.\n\nWhat slides? The kernel.")
+
+        def rules(where, n=3):
+            return [f["rule"] for f in explainer.box_findings(self.project, n, {"text": chapter(where)})]
+
+        self.assertEqual(rules("The text became tokens; now each gets embeddings."), [])          # inside
+        self.assertEqual(rules("The harness hands the model its tool list."), [])                  # around
+        self.assertEqual(rules("The GPU waits on memory."), [])                                    # under
+        self.assertEqual(rules("The user starts it; the tools answer last."), [])                   # around's ends meet
+        self.assertEqual(rules("The harness is everything around the call."), ["where_we_are"])    # no neighbour
+        self.assertEqual(rules("A chapter about nothing on the map."), ["where_we_are"])
+        self.assertEqual(rules("Logits and memory, unrelated."), ["where_we_are"])                  # different rings
+        # The box is its first paragraph, not the chapter that follows it to the next box title.
+        self.assertEqual(rules("A chapter about nothing on the map.\n\nLater prose: tokens, then embeddings."),
+                         ["where_we_are"])
+        # A chapter whose plan entry lights a piece must name that piece.
+        plan["chapters"][0]["lights"] = ["the harness"]
+        _hw.save_json(self.project.path("plan.json"), plan)
+        self.project = _hw.Project(self.project.root)
+        n = plan["chapters"][0]["n"]
+        self.assertEqual(rules("The text became tokens; now each gets embeddings.", n), ["where_we_are"])
+        self.assertEqual(rules("The harness hands the model its tool list.", n), [])
 
     def test_the_books_ceiling_is_shared_by_planned_length_not_by_facts(self):
         plan = self.project.plan

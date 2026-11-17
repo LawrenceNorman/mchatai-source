@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated": "2026-11-14",
+  "updated": "2026-11-16",
   "_source_of_truth": "mchatai-source/history/cloud-writer.json",
   "_comment": "The History Writer's chapter stage on platform models (tools/cloud_writer.py): writer, gates, an independent audit, revise, with every model call through mChatAI's compute-proxy and billed to the signed-in account's compute tokens (1 token = $0.01), instead of Claude Code subagents. Roles name a model from llm-catalog/providers/<provider>.json; the request SHAPE for each comes from llm-catalog/request-shapes.json (tools/cloud_models.shape_for), so no model id or family test lives in code. Edit here to change a model, a budget or a prompt with no code change.",
   "proxyUrl": "https://api.mchatai.com",
@@ -13,6 +13,14 @@
       "model": "claude-opus-5.5",
       "maxOutputTokens": 32000,
       "prompt": "agents/history-chapter-writer.md",
+      "reasoningEffort": "low"
+    },
+    "reviser": {
+      "provider": "anthropic",
+      "model": "claude-sonnet-5.5",
+      "maxOutputTokens": 32000,
+      "prompt": "agents/history-chapter-writer.md",
+      "preface": "writerPreface",
       "reasoningEffort": "low"
     },
     "auditor": {
@@ -30,8 +38,10 @@
     }
   },
   "_roles": "maxOutputTokens includes a reasoning model's thinking, and only tokens used are billed, so budgets are generous: an empty reply with finish_reason 'length' means raise it here. The auditor is a SEPARATE call with its own instructions: it sees the chapter, the dossier facts and the sources, never the writer's reply or reasoning (D8: audits on a frontier model only). Optional per role: temperature (sent only where the request shape accepts it, 0 when the role names none, as web-api's learningModels.js does), reasoningEffort (sent only where accepted).",
-  "maxRounds": 4,
-  "_maxRounds": "Writer calls per chapter: the first draft and its revisions, for the gate's hard findings or the audit's blocking items. PLAYBOOK §3: about three passes; a chapter that cannot pass after three repair rounds is marked blocked and goes to the author as a question.",
+  "gateReviseRole": "reviser",
+  "_gateReviseRole": "Plan §19.6 lever: a revision asked for by the gate alone (an undefined acronym, an unanchored number, a box out of range) goes to this role, a cheaper model with the writer's own instructions and preface; the first write and every revision the audit asks for stay on the writer. Remove the key to send every revision to the writer. Kept only while the audit stays clean (measured on the FN.3b pilot).",
+  "maxRounds": 5,
+  "_maxRounds": "Writer calls per chapter: the first draft and up to four revisions (plan §19.6: cap the loop at four, then the session fixes what is left by hand against the gate), for the gate's hard findings or the audit's blocking items. A chapter that cannot pass is marked blocked and goes to the session, then to the author as a question.",
   "chapterBudgetTokens": 400,
   "_chapterBudgetTokens": "Compute tokens one chapter's write run may spend (writer, revisions and audits; a gather run has its own cap of the same size). Before each call the run adds the largest earlier call of the same role to what it has spent; if that would pass the cap it stops and says so. `--budget` raises it for one run.",
   "retries": {
@@ -92,12 +102,45 @@
       "You gather the facts one chapter of a History Writer story stands on, from ONE source, as dossier events (history/schemas/dossier.schema.json `events`). They are judged as facts: a gatherer may miss a fact but never add one (design D8). You run as one model call with no tools. The user message carries the chapter's plan entry, the glossary terms it introduces, the facts the dossier already has for it, and the source's fetched text (sources/<id>.txt), whole or one part of it.",
       "",
       "For each fact in this text that the chapter's summary needs (a number, a date, a result, a documented behaviour, or what a term the chapter introduces is), give one event:",
-      "{\"what\": \"<the fact in one plain sentence of your own, saying no more than the quote>\", \"evidence\": \"<a verbatim contiguous quote of at least {minQuoteWords} words from the text, copied character for character>\", \"date\": \"<when the source says it, or when the fact holds: at least a year>\", \"lifeStage\": \"<the book's part, named as the dossier's facts name it>\"}",
+      "{\"what\": \"<the fact in one plain sentence of your own, saying no more than the quote>\", \"evidence\": \"<a verbatim contiguous quote of at least {minQuoteWords} words from the text, copied character for character>\", \"date\": \"<when the source says it, or when the fact holds: at least a year>\", \"lifeStage\": \"<the book's part, named as the dossier's facts name it>\", \"about\": \"<only when the quote says what one of termsIntroduced is: that term's name exactly as given there; otherwise leave it out>\"}",
       "Never a fact the quote does not carry, never two facts on one quote, never a fact the dossier already has, and never {verbatimCopyWindowWords} or more of the source's words in a row in `what`.",
       "",
       "Reply with ONLY {\"events\": [...]}, no prose and no code fence. An empty list is a fine answer."
     ]
   },
   "_reasoningEffort": "Opus 5.5 thinks at effort medium by default and its thinking counts against maxOutputTokens; at medium a chapter brief thought past compute-proxy's 32,000-token cap twice and returned no text (2026-11-14). The roles run at low effort; raise one here if a role's work gets shallow.",
-  "_auditorPreface": "2026-11-14: across 11 chapters the audit found new blocking items on most passes and rarely converged; blocking is now defined as accuracy only, so a repair round can finish."
+  "_auditorPreface": "2026-11-14: across 11 chapters the audit found new blocking items on most passes and rarely converged; blocking is now defined as accuracy only, so a repair round can finish.",
+  "cliDefaultBackend": "claude-code",
+  "_cliDefaultBackend": "The backend cloud_writer.py's command line uses when neither --backend nor HISTORY_WRITER_BACKEND names one. Lawrence, 2026-11-16: his own book runs on his Claude Code plan, and compute tokens are spent only when he says so (--backend compute-proxy). book_job.py and anything else that calls load_config() without a backend keep compute-proxy.",
+  "backends": {
+    "_comment": "Overlays chosen by --backend or the env HISTORY_WRITER_BACKEND (cloud_models.load_config): roles merge field by field, other keys replace the base ones. compute-proxy is the base config itself.",
+    "compute-proxy": {},
+    "claude-code": {
+      "_comment": "cloud_models.ClaudeCodeClient: each call is one `claude -p` turn on the author's subscription, no tools, no MCP servers, in an empty folder, the role's prompt as the whole system prompt; never --bare and no ANTHROPIC_API_KEY. `model` is a Claude Code alias; `effort` is passed as --effort. No compute token is spent, so chapterBudgetTokens never stops a run; chapterPlanBudgetTokens does.",
+      "roles": {
+        "writer": {
+          "provider": "claude-code",
+          "model": "opus",
+          "effort": "low"
+        },
+        "reviser": {
+          "provider": "claude-code",
+          "model": "sonnet",
+          "effort": "low"
+        },
+        "auditor": {
+          "provider": "claude-code",
+          "model": "opus",
+          "effort": "low"
+        },
+        "gatherer": {
+          "provider": "claude-code",
+          "model": "sonnet",
+          "effort": "low"
+        }
+      },
+      "chapterPlanBudgetTokens": 3000000,
+      "_chapterPlanBudgetTokens": "Plan tokens (input, cache writes and reads, output, as the CLI reports them) one chapter's write run, or one chapter's gathering, may use before it stops, so a looping run cannot eat the author's week (memory feedback_usage_cap_needs_a_token_budget). --plan-budget raises it for one run."
+    }
+  }
 }

@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """Model calls through mChatAI's compute-proxy, billed to the signed-in account's compute tokens.
 
-  cloud_models.py ping [<role>]     one tiny call (20 output tokens) to prove the session and the role
+  cloud_models.py ping [<role>] [--backend claude-code]
+                                    one tiny call (20 output tokens) to prove the session and the role;
+                                    with --backend claude-code, that `claude -p` runs on the author's plan
 
 The session is a JSON file, {idToken, refreshToken, apiKey, at}, named by the env MCHATAI_SESSION
 (`at` is when the ID token was minted: epoch milliseconds, epoch seconds or ISO time). The ID token
@@ -76,12 +78,32 @@ class ModelError(Exception):
 
 # ── content ──────────────────────────────────────────────────────────────────
 
-def load_config(path=None):
+def load_config(path=None, backend=None):
+    """cloud-writer.json. `backend` (or the env HISTORY_WRITER_BACKEND) names an entry of its
+    `backends`: that entry's roles are laid over the base roles, field by field, and its other keys
+    over the base keys. With neither, the base config (compute-proxy) is returned unchanged."""
     path = path or os.environ.get("MCHATAI_CLOUD_WRITER") or CONFIG
     cfg = load_json(path)
     if not cfg or not isinstance(cfg.get("roles"), dict):
         raise SystemExit(f"{path} is missing or has no roles")
+    backend = backend or os.environ.get("HISTORY_WRITER_BACKEND")
+    if backend:
+        over = (cfg.get("backends") or {}).get(backend)
+        if not isinstance(over, dict):
+            raise SystemExit(f"{path} has no backend {backend!r} (it has {', '.join(cfg.get('backends') or {}) or 'none'})")
+        roles = {k: dict(v) for k, v in cfg["roles"].items()}
+        for k, v in (over.get("roles") or {}).items():
+            roles[k] = {**roles.get(k, {}), **v}
+        cfg = {**cfg, **{k: v for k, v in over.items() if k not in ("roles",) and not k.startswith("_")},
+               "roles": roles, "backend": backend}
     return cfg
+
+
+def make_client(cfg, **kw):
+    """The client for cfg's backend: Claude Code on the author's plan, or compute-proxy."""
+    if cfg.get("backend") == "claude-code":
+        return ClaudeCodeClient(cfg=cfg, **{k: v for k, v in kw.items() if k in ("run", "sleep")})
+    return Client(cfg=cfg, **kw)
 
 
 def load_shapes(path=None):
@@ -522,12 +544,113 @@ class Client:
                 "usage": j.get("usage")}
 
 
+# ── Claude Code: the author's own plan ───────────────────────────────────────
+
+# Env that would move a `claude -p` call off the author's subscription onto an API key.
+API_ENV = ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN")
+PLAN_LIMIT = re.compile(r"usage limit|weekly limit|hit your (?:weekly |session )?limit|limit (?:reached|resets)|"
+                        r"rate.?limit", re.I)
+
+
+def subprocess_run(cmd, stdin, env, cwd, timeout):
+    import subprocess
+    p = subprocess.run(cmd, input=stdin, capture_output=True, text=True, env=env, cwd=cwd, timeout=timeout)
+    return p.returncode, p.stdout, p.stderr
+
+
+class ClaudeCodeClient:
+    """The same calls as Client, made with Claude Code (`claude -p`) on the author's subscription
+    instead of compute-proxy: Lawrence, 2026-11-16, "Use my claude code subscription", after the
+    learning service had billed his compute tokens for his own book.
+
+    Each call is one turn with no tools and no MCP servers, in an empty folder (no CLAUDE.md, no
+    memory, no session saved), with the role's prompt as the whole system prompt. Never `--bare`,
+    and ANTHROPIC_API_KEY is removed: either would bill an API key. The model and effort are the
+    role's (`model` is a Claude Code alias such as opus or sonnet; content, never code).
+    `tokensUsed` is 0, since no compute token is spent; `planTokens` is what the turn used of the
+    plan (input, cache writes, cache reads and output, as the CLI reports them)."""
+
+    def __init__(self, cfg=None, run=subprocess_run, sleep=time.sleep):
+        self.cfg = cfg or load_config(backend="claude-code")
+        self.run = run
+        self.sleep = sleep
+        self.binary = os.environ.get("CLAUDE_BIN") or self.cfg.get("claudeBinary") or "claude"
+        self.tally = {}
+
+    role = Client.role
+
+    def _count(self, stage, plan):
+        t = self.tally.setdefault(stage, {"tokens": 0, "calls": 0, "planTokens": 0})
+        t["calls"] += 1
+        t["planTokens"] += int(plan or 0)
+
+    def command(self, r, system_file):
+        cmd = [self.binary, "-p", "--output-format", "json", "--max-turns", "1", "--model", str(r["model"]),
+               "--tools", "", "--strict-mcp-config", "--no-session-persistence", "--system-prompt-file", system_file]
+        effort = r.get("effort") or r.get("reasoningEffort")
+        if effort:
+            cmd += ["--effort", str(effort)]
+        return cmd
+
+    def chat(self, role, system, user, stage=None, max_output_tokens=None):
+        import tempfile
+        r = self.role(role)
+        stage = stage or r["name"]
+        env = {k: v for k, v in os.environ.items() if k not in API_ENV}
+        if max_output_tokens or r.get("maxOutputTokens"):
+            env["CLAUDE_CODE_MAX_OUTPUT_TOKENS"] = str(max_output_tokens or r["maxOutputTokens"])
+        retry = self.cfg.get("retries") or {}
+        tries, waits = int(retry.get("count", 2)), list(retry.get("backoffSeconds") or [5, 20])
+        timeout = self.cfg.get("timeoutSeconds", 900)
+        with tempfile.TemporaryDirectory(prefix="hw-claude-") as cwd:
+            system_file = os.path.join(cwd, "system.md")
+            with open(system_file, "w", encoding="utf-8") as fh:
+                fh.write(system)
+            attempt = 0
+            while True:
+                try:
+                    code, out, err = self.run(self.command(r, system_file), user, env, cwd, timeout)
+                except Exception as e:   # a timeout or a missing binary
+                    code, out, err = None, "", f"{type(e).__name__}: {e}"
+                env_json = _json(out.encode("utf-8")) if out and out.lstrip().startswith("{") else None
+                failed = code != 0 or not isinstance(env_json, dict) or env_json.get("is_error")
+                if not failed:
+                    break
+                said = str((env_json or {}).get("result") or err or out or "no output")[-400:]
+                if PLAN_LIMIT.search(said):
+                    raise ModelError("plan_limit", f"Claude Code refused the {r['name']} call: {said}")
+                if attempt < tries:
+                    self.sleep(waits[min(attempt, len(waits) - 1)] if waits else 1)
+                    attempt += 1
+                    continue
+                raise ModelError("cli_failed", f"claude -p failed for the {r['name']} role after {tries + 1} tries "
+                                               f"(exit {code}): {said}")
+        usage = env_json.get("usage") or {}
+        by_model = env_json.get("modelUsage") or {}
+        # Every model the turn used (the CLI may make a small side call on another model), else the main usage.
+        plan = sum(int(m.get(k) or 0) for m in by_model.values() if isinstance(m, dict)
+                   for k in ("inputTokens", "outputTokens", "cacheReadInputTokens", "cacheCreationInputTokens")) \
+            or sum(int(usage.get(k) or 0) for k in ("input_tokens", "cache_creation_input_tokens",
+                                                     "cache_read_input_tokens", "output_tokens"))
+        self._count(stage, plan)
+        text = env_json.get("result") or ""
+        finish = "length" if env_json.get("stop_reason") == "max_tokens" else (env_json.get("stop_reason") or "stop")
+        if not text.strip():
+            raise ModelError("empty_reply", f"the {r['name']} role ({r['model']}) on Claude Code returned no text "
+                                            f"(stop_reason {env_json.get('stop_reason')!r})")
+        # The model that wrote the reply: the one with the most output, not a side call's.
+        model = max(by_model, key=lambda k: int((by_model[k] or {}).get("outputTokens") or 0)) if by_model else r["model"]
+        return {"text": text, "finishReason": finish, "tokensUsed": 0, "planTokens": plan, "model": model,
+                "usage": usage}
+
+
 # ── command line ─────────────────────────────────────────────────────────────
 
 def main(argv):
     if len(argv) >= 2 and argv[1] == "ping":
-        role = argv[2] if len(argv) > 2 else "writer"
-        client = Client()
+        role = argv[2] if len(argv) > 2 and not argv[2].startswith("--") else "writer"
+        backend = argv[argv.index("--backend") + 1] if "--backend" in argv else None
+        client = make_client(load_config(backend=backend))
         try:
             r = client.chat(role, "Reply with the single word: ready.", "Are you there?", stage="ping", max_output_tokens=20)
         except ModelError as e:
@@ -538,7 +661,8 @@ def main(argv):
             print(f"ping {role}: {e.code}: {e}")
             return 1
         print(f"ping {role}: {r['model']} answered {r['text'].strip()[:40]!r} "
-              f"(finish {r['finishReason']}, {r['tokensUsed']} compute tokens)")
+              f"(finish {r['finishReason']}, {r['tokensUsed']} compute tokens"
+              + (f", {r['planTokens']:,} plan tokens)" if 'planTokens' in r else ")"))
         return 0
     print(__doc__)
     return 2

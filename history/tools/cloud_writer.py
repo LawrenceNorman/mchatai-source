@@ -1,11 +1,15 @@
 #!/usr/bin/env python3
-"""A chapter written on mChatAI's platform models: writer, gates, an independent audit, revise
-(PLAYBOOK §3), every model call through compute-proxy and billed to the signed-in account's
-compute tokens (cloud_models.py), instead of Claude Code subagents.
+"""A chapter written as single model calls: writer, gates, an independent audit, revise
+(PLAYBOOK §3), instead of Claude Code subagents. Two backends (cloud-writer.json `backends`):
+claude-code, each call one `claude -p` turn on the author's own subscription (the command line's
+default, cliDefaultBackend), and compute-proxy, every call billed to the signed-in account's
+compute tokens (cloud_models.py; book_job.py's server job).
 
-  cloud_writer.py write  <project> <n> [--rounds N] [--budget T] [--fresh] [--with-gathered]
-  cloud_writer.py gather <project> <n> --sources s72,s73 [--budget T] [--fresh]
+  cloud_writer.py write  <project> <n> [--rounds N] [--budget T] [--plan-budget P] [--fresh] [--with-gathered]
+  cloud_writer.py gather <project> <n> --sources s72,s73 [--parts 2-3] [--budget T] [--plan-budget P] [--fresh]
+  cloud_writer.py audit  <project> <n> [--plan-budget P]    one audit of the chapter as it stands
   cloud_writer.py brief  <project> <n> [--with-gathered]    print the writer's brief; no model call
+  any of them: --backend claude-code|compute-proxy (or the env HISTORY_WRITER_BACKEND)
 
 The session file is named by the env MCHATAI_SESSION. The roles, rounds, budget and prompts are
 content: history/cloud-writer.json. The writer's instructions are agents/history-chapter-writer.md
@@ -20,10 +24,12 @@ write   The writer gets the voices (history/voice.md and the domain's), the thre
         the chapter and the findings go back to it: fix the cause, not the wording. A clean chapter
         goes to the auditor, a separate call that sees the chapter, the facts and the same excerpts,
         never the writer's reply. Its blocking items go back to the writer for one revision, which
-        is gated and audited again. Done (exit 0, status "audited") when the gate has no hard
+        is gated and audited again. A revision the gate alone asks for goes to gateReviseRole (the
+        reviser, a cheaper model with the writer's instructions; plan §19.6), an audit's to the
+        writer. Done (exit 0, status "audited") when the gate has no hard
         finding and the audit no blocking item. At maxRounds the chapter is marked "blocked" and
         the run exits 1 with what is left; it also exits 1 before a call that would take the
-        chapter past chapterBudgetTokens.
+        chapter past chapterBudgetTokens (compute tokens) or chapterPlanBudgetTokens (plan tokens).
         --with-gathered adds dossier/facts-cloud-chNN.json's facts to the dossier's.
 
 gather  For each source, the gatherer extracts the facts chapter n's plan entry needs, as dossier
@@ -79,8 +85,9 @@ def strip_front_matter(md):
 
 
 def system_prompt(cfg, role):
-    """The role's preface from cloud-writer.json, then its agent instructions (front matter dropped)."""
-    preface = prompt_text(cfg["prompts"][f"{role}Preface"])
+    """The role's preface from cloud-writer.json (its `preface` key names another role's, as the
+    reviser takes the writer's), then its agent instructions (front matter dropped)."""
+    preface = prompt_text(cfg["prompts"][cfg["roles"][role].get("preface") or f"{role}Preface"])
     agent = strip_front_matter(read_text(os.path.join(HISTORY, cfg["roles"][role]["prompt"])))
     return preface.rstrip() + "\n\n---\n\n" + agent.strip() + "\n"
 
@@ -98,6 +105,15 @@ def jcompact(v, pad=""):
 
 def jblock(data):
     return "```json\n" + jcompact(data) + "\n```"
+
+
+def cost_text(res):
+    """A step's cost for the log line: replayed, compute tokens, or plan tokens on Claude Code."""
+    if res.get("replayed"):
+        return "replayed"
+    if "planTokens" in res:
+        return f"{res['planTokens']:,} plan tokens"
+    return f"{res['tokensUsed']} tokens"
 
 
 def hard(findings):
@@ -519,6 +535,7 @@ class Run:
         self.ordered = ordered
         self.visited = set()
         self.live_calls = 0
+        self.plan_cap = None   # --plan-budget for this run
 
     def file(self, name):
         return os.path.join(self.dir, name)
@@ -565,7 +582,20 @@ class Run:
     def spent(self):
         return round(sum(float((r.get("reply") or {}).get("tokensUsed") or 0) for r in self.requests()), 4)
 
+    def plan_spent(self):
+        return sum(int((r.get("reply") or {}).get("planTokens") or 0) for r in self.requests())
+
     def check_budget(self, role, cap):
+        plan_cap = int(self.plan_cap or self.cfg.get("chapterPlanBudgetTokens") or 0)
+        if plan_cap:
+            used = self.plan_spent()
+            # The largest earlier call of this role; for a role not yet called, the largest of any.
+            sizes = [(r.get("role"), int((r.get("reply") or {}).get("planTokens") or 0)) for r in self.requests()]
+            guess = max([t for who, t in sizes if who == role] or [t for _, t in sizes] or [0])
+            if used + guess > plan_cap:
+                raise Stop("plan_budget", f"chapter {self.n} has used {used:,} of its {plan_cap:,} plan tokens; another {role} "
+                                          f"call (the largest so far used {guess:,}) would pass it. Raise "
+                                          "chapterPlanBudgetTokens in history/cloud-writer.json, or rerun with --plan-budget")
         spent = self.spent()
         guess = max([float((r.get("reply") or {}).get("tokensUsed") or 0) for r in self.requests() if r.get("role") == role]
                     or [0])
@@ -627,35 +657,44 @@ class Run:
         with open(reply_path, "w", encoding="utf-8") as fh:
             fh.write(res["text"])
         req["reply"] = {"ok": True, "tokensUsed": res["tokensUsed"], "finishReason": res["finishReason"],
-                        "model": res.get("model"), "at": now_iso()}
+                        "model": res.get("model"), "at": now_iso(),
+                        **({"planTokens": res["planTokens"]} if "planTokens" in res else {})}
         save_json(req_path, req)
-        self.ledger(stage, step, r, res["tokensUsed"])
+        self.ledger(stage, step, r, res["tokensUsed"], res.get("planTokens"))
         return res
 
-    def ledger(self, stage, step, role, used):
+    def ledger(self, stage, step, role, used, plan=None):
         path = self.project.path("cloud", "ledger.json")
         led = load_json(path, {}) or {}
         led.setdefault("_comment", "Compute tokens (1 token = $0.01) every cloud_writer.py call was charged, per stage; "
-                                   "cumulative across runs.")
+                                   "cumulative across runs. planTokens: what a call on the claude-code backend used of "
+                                   "the author's Claude Code plan instead (no compute tokens).")
         key = f"ch{self.n:02d}.{stage}"
         st = led.setdefault("stages", {}).setdefault(key, {"tokens": 0, "calls": 0})
         st["tokens"] = round(st["tokens"] + float(used or 0), 4)
         st["calls"] += 1
         led["total"] = round(float(led.get("total") or 0) + float(used or 0), 4)
-        led.setdefault("calls", []).append({"at": now_iso(), "stage": key, "step": step, "role": role.get("name"),
-                                            "model": role.get("model"), "tokensUsed": used})
+        row = {"at": now_iso(), "stage": key, "step": step, "role": role.get("name"), "model": role.get("model"),
+               "tokensUsed": used}
+        if plan is not None:
+            st["planTokens"] = int(st.get("planTokens") or 0) + int(plan)
+            led["planTotal"] = int(led.get("planTotal") or 0) + int(plan)
+            row.update(provider=role.get("provider"), planTokens=int(plan))
+        led.setdefault("calls", []).append(row)
         led["updated"] = now_iso()
         save_json(path, led)
 
 
 # ── write ────────────────────────────────────────────────────────────────────
 
-def write_chapter(project, n, client, cfg=None, rounds=None, budget=None, gathered=False, fresh=False, out=print):
+def write_chapter(project, n, client, cfg=None, rounds=None, budget=None, gathered=False, fresh=False, out=print,
+                  plan_budget=None):
     """Write, gate, audit and revise chapter n. (exit code, result dict)."""
     import gate
     cfg = cfg or cloud_models.load_config()
     n = int(n)
     run = Run(project, n, client, cfg, out=out)
+    run.plan_cap = plan_budget
     max_rounds = int(rounds or cfg.get("maxRounds", 4))
     cap = float(budget or cfg.get("chapterBudgetTokens", 400))
     result = {"chapter": n, "status": None, "rounds": 0, "audits": 0}
@@ -664,11 +703,12 @@ def write_chapter(project, n, client, cfg=None, rounds=None, budget=None, gather
         if ch is not None and status in ("audited", "blocked"):
             ch["status"] = status
             save_json(project.chapter_path(n), ch)
-        result.update(status=status, reason=why, spent=run.spent(), liveCalls=run.live_calls, at=now_iso(), **extra)
+        result.update(status=status, reason=why, spent=run.spent(), planTokens=run.plan_spent(), liveCalls=run.live_calls,
+                      at=now_iso(), **extra)
         if os.path.isdir(run.dir):
             save_json(run.file("result.json"), result)
-        out(f"ch{n:02d}: {status} — {why} ({result['spent']:g} compute tokens on this chapter, "
-            f"{run.live_calls} live call(s) this run)")
+        out(f"ch{n:02d}: {status} — {why} ({result['spent']:g} compute tokens, {result['planTokens']:,} plan tokens on this "
+            f"chapter, {run.live_calls} live call(s) this run)")
         return code, result
 
     unshown = [r.get("id") for r in ledger_rows(project, n) if not r.get("shows")]
@@ -687,24 +727,28 @@ def write_chapter(project, n, client, cfg=None, rounds=None, budget=None, gather
     brief = writer_brief(parts)
     w_system, a_system = system_prompt(cfg, "writer"), system_prompt(cfg, "auditor")
 
-    def writer_round(rnd, tail, stage, sent):
+    # Plan §19.6: a revision the gate alone asks for goes to the cheaper reviser; the audit's go to the writer.
+    gate_role = cfg.get("gateReviseRole") if cfg.get("gateReviseRole") in cfg["roles"] else "writer"
+    systems = {"writer": w_system, gate_role: system_prompt(cfg, gate_role)}
+
+    def writer_round(rnd, tail, stage, sent, role="writer"):
         step = f"r{rnd:02d}-{stage}"
-        res = run.call(step, "writer", w_system, brief + "\n\n" + tail, stage, cap, sent)
+        res = run.call(step, role, systems[role], brief + "\n\n" + tail, stage, cap, {**sent, **({"role": role} if role != "writer" else {})})
         if res.get("finishReason") == "length":
-            raise Stop("output_budget", f"the writer's reply in {step} was cut off at its maxOutputTokens: raise "
-                                        "roles.writer.maxOutputTokens in history/cloud-writer.json")
+            raise Stop("output_budget", f"the {role}'s reply in {step} was cut off at its maxOutputTokens: raise "
+                                        f"roles.{role}.maxOutputTokens in history/cloud-writer.json")
         try:
             ch = as_chapter(parse_json_reply(res["text"], want=("text",)), n, title)
         except ValueError as e:
             found = [finding("reply_not_json", "hard", f"the writer's reply is not the chapter JSON: {e}")]
             save_json(run.file(f"{step}.gate.json"), found)
-            out(f"  {step}: {'replayed' if res.get('replayed') else str(res['tokensUsed']) + ' tokens'} · not JSON ({e})")
+            out(f"  {step}: {cost_text(res)} · not JSON ({e})")
             return None, found, str(e)
         save_json(project.chapter_path(n), ch)
         found = gate.chapter_findings(project, n)
         save_json(run.file(f"{step}.gate.json"), found)
         h = hard(found)
-        out(f"  {step}: {'replayed' if res.get('replayed') else str(res['tokensUsed']) + ' tokens'} · "
+        out(f"  {step}: {cost_text(res)} · "
             f"{len(ch['text'].split())} words, {len(ch['claims'])} claims · gate: "
             + (f"{len(h)} hard ({rule_counts(h)})" if h else "clean") + (f", {len(found) - len(h)} note(s)" if len(found) > len(h) else ""))
         return ch, found, None
@@ -725,7 +769,7 @@ def write_chapter(project, n, client, cfg=None, rounds=None, budget=None, gather
                 rnd += 1
                 result["rounds"] = rnd
                 got, found, err = writer_round(rnd, revise_tail(cfg, ch, found, n, err), "revise",
-                                               {"findings": [f["rule"] for f in h]})
+                                               {"findings": [f["rule"] for f in h]}, role=gate_role)
                 ch = got or ch
                 continue
             ch["status"] = "gated"
@@ -765,9 +809,46 @@ def audit(run, cfg, parts, ch, n, system, k, cap, out):
         out(f"  {step}: the auditor's reply is not JSON ({e})")
         return None
     save_json(run.file(f"{step}.audit.json"), verdict)
-    out(f"  {step}: {'replayed' if res.get('replayed') else str(res['tokensUsed']) + ' tokens'} · "
+    out(f"  {step}: {cost_text(res)} · "
         f"{len(verdict['blocking'])} blocking, {len(verdict['notes'])} note(s)")
     return verdict
+
+
+def audit_only(project, n, client, cfg=None, out=print, plan_budget=None):
+    """One independent audit of chapter n as it stands (after a revision made by hand against the
+    gate): refused while the gate has a hard finding. (exit code, verdict). The verdict goes to
+    cloud/chNN/aKK-audit.audit.json; a clean one marks the chapter audited."""
+    import gate
+    cfg = cfg or cloud_models.load_config()
+    n = int(n)
+    ch = project.chapter(n)
+    if not ch:
+        out(f"chapter {n} has no file")
+        return 2, None
+    h = hard(gate.chapter_findings(project, n))
+    if h:
+        out(f"ch{n:02d}: the gate has {len(h)} hard finding(s) ({rule_counts(h)}); fix them before an audit")
+        return 1, None
+    run = Run(project, n, client, cfg, out=out)
+    run.plan_cap = plan_budget
+    parts = run.brief(lambda: brief_parts(project, n, cfg, False), {"gathered": False})
+    done = [f for f in run.step_files() if re.match(r"a\d\d-audit\.request\.json$", f)]
+    k = len(done) + 1
+    try:
+        verdict = audit(run, cfg, parts, ch, n, system_prompt(cfg, "auditor"), k, float(cfg.get("chapterBudgetTokens", 400)), out)
+    except (Stop, ModelError) as e:
+        out(f"ch{n:02d}: audit stopped — {e}")
+        return 1, None
+    if verdict is None:
+        return 1, None
+    if not verdict["blocking"]:
+        ch["status"] = "audited"
+        save_json(project.chapter_path(n), ch)
+    for b in verdict["blocking"]:
+        out(f"  blocking: {json.dumps(b, ensure_ascii=False)[:400]}")
+    out(f"ch{n:02d}: audit {'clear' if not verdict['blocking'] else str(len(verdict['blocking'])) + ' blocking'} "
+        f"({run.plan_spent():,} plan tokens, {run.spent():g} compute tokens on this chapter)")
+    return (0 if not verdict["blocking"] else 1), verdict
 
 
 # ── gather ───────────────────────────────────────────────────────────────────
@@ -811,8 +892,10 @@ def event_problems(ev, flat, windows, t, seen):
     return out
 
 
-def gather(project, n, source_ids, client, cfg=None, budget=None, fresh=False, out=print):
-    """Gather chapter n's facts from each source. (exit code, {kept, dropped})."""
+def gather(project, n, source_ids, client, cfg=None, budget=None, fresh=False, out=print, plan_budget=None, parts_range=None):
+    """Gather chapter n's facts from each source. (exit code, {kept, dropped}). `parts_range` (first, last), 1-based,
+    gathers only those parts of each source (a long filing whose business section is one part); evidence is still
+    checked against the whole source."""
     import quotes
     cfg = cfg or cloud_models.load_config()
     n = int(n)
@@ -822,6 +905,7 @@ def gather(project, n, source_ids, client, cfg=None, budget=None, fresh=False, o
         return 2, {}
     t = thresholds(project)
     run = Run(project, n, client, cfg, sub="gather", ordered=False, out=out)
+    run.plan_cap = plan_budget
     if fresh:
         run.archive()
     cap = float(budget or cfg.get("chapterBudgetTokens", 400))
@@ -833,6 +917,11 @@ def gather(project, n, source_ids, client, cfg=None, budget=None, fresh=False, o
             for e in (project.dossier or {}).get("events", []) if e.get("evidence")}
     stage_names = [e.get("lifeStage") for e in have if e.get("lifeStage")]
     stage_default = max(set(stage_names), key=stage_names.count) if stage_names else None
+    # The plan's part for the chapter, when it names one, is every gathered fact's lifeStage: a gatherer may not invent one.
+    stage_plan = entry.get("lifeStage")
+    # A fact that says what a term the chapter introduces is carries `about` (the term, as the glossary names it), so
+    # the glossary page can cite it; any other `about` is dropped.
+    here = {g["name"].lower(): g["name"] for g in upto if g.get("introduceHere")}
     context = jblock({"chapter": {k: entry.get(k) for k in ("n", "title", "summary", "turn", "introduces") if entry.get(k)},
                       "termsIntroduced": [{"name": g["name"], "who": g["who"]} for g in upto if g.get("introduceHere")],
                       "factsTheDossierHas": [{"id": e.get("id"), "what": e.get("what"), "lifeStage": e.get("lifeStage")}
@@ -855,6 +944,8 @@ def gather(project, n, source_ids, client, cfg=None, budget=None, fresh=False, o
             parts = chunks(text, int(cfg.get("gatherChunkChars", 120000)))
             n_kept = 0
             for pi, part in enumerate(parts, 1):
+                if parts_range and not parts_range[0] <= pi <= parts_range[1]:
+                    continue
                 head = " · ".join(x for x in [sid, rec.get("title"), rec.get("publisher"), rec.get("kind"), rec.get("date")] if x)
                 user = (f"## Chapter {n} (plan.json)\n\n{context}\n\n## The source: {head}"
                         + (f" (part {pi} of {len(parts)})" if len(parts) > 1 else "") + f"\n\n{part}\n\n## What to do\n\n"
@@ -876,11 +967,12 @@ def gather(project, n, source_ids, client, cfg=None, budget=None, fresh=False, o
                         continue
                     n_kept += 1
                     row = {"id": f"cl{n:02d}_{sid}_{n_kept:02d}", "what": ev["what"].strip(), "sources": [sid],
-                           "evidence": ev["evidence"], "lifeStage": ev.get("lifeStage") or stage_default,
-                           "chapter": n, "date": str(ev.get("date") or rec.get("date") or "")}
+                           "evidence": ev["evidence"], "lifeStage": stage_plan or ev.get("lifeStage") or stage_default,
+                           "chapter": n, "date": str(ev.get("date") or rec.get("date") or ""),
+                           "about": here.get(str(ev.get("about") or "").strip().lower())}
                     kept.append({k2: v for k2, v in row.items() if v not in (None, "")})
                     seen[norm(ev["evidence"]).rstrip(" ,.")] = row["id"]
-                out(f"  {step}: {'replayed' if res.get('replayed') else str(res['tokensUsed']) + ' tokens'}")
+                out(f"  {step}: {cost_text(res)}")
             done.add(sid)
     except Stop as e:
         out(f"gather ch{n:02d}: stopped — {e}")
@@ -902,7 +994,7 @@ def gather(project, n, source_ids, client, cfg=None, budget=None, fresh=False, o
     for d in dropped:
         out(f"  dropped ({d.get('source')}): {d['reason']}" + (f" — {str(d.get('what'))[:90]!r}" if d.get("what") else ""))
     out(f"gather ch{n:02d}: kept {len(kept)}, dropped {len(dropped)} → {os.path.relpath(path, project.root)} "
-        f"({run.spent():g} compute tokens on this chapter's gathering)")
+        f"({run.spent():g} compute tokens, {run.plan_spent():,} plan tokens on this chapter's gathering)")
     return code, {"kept": kept, "dropped": dropped, **({"error": stopped} if stopped else {})}
 
 
@@ -917,26 +1009,39 @@ def _flag(argv, name, default=None):
 
 
 def main(argv):
-    if len(argv) >= 4 and argv[1] in ("write", "gather", "brief"):
+    if len(argv) >= 4 and argv[1] in ("write", "gather", "brief", "audit"):
         project, n = Project(argv[2]), int(argv[3])
-        cfg = cloud_models.load_config()
+        base = cloud_models.load_config()
+        backend = _flag(argv, "--backend") or os.environ.get("HISTORY_WRITER_BACKEND") or base.get("cliDefaultBackend")
+        cfg = cloud_models.load_config(backend=backend) if backend and backend != "compute-proxy" else base
         if argv[1] == "brief":
             parts = brief_parts(project, n, cfg, "--with-gathered" in argv)
             print(writer_brief(parts))
             for note in parts["notes"]:
                 print(f"note: {note}", file=sys.stderr)
             return 0
-        client = cloud_models.Client(cfg=cfg)
+        print(f"backend: {cfg.get('backend') or 'compute-proxy'}"
+              + (" (the author's Claude Code plan; no compute tokens)" if cfg.get("backend") == "claude-code"
+                 else " (compute tokens, billed to the signed-in account)"))
+        client = cloud_models.make_client(cfg)
         budget = _flag(argv, "--budget")
+        plan_budget = _flag(argv, "--plan-budget")
+        plan_budget = int(plan_budget) if plan_budget else None
         if argv[1] == "write":
             code, _ = write_chapter(project, n, client, cfg, rounds=_flag(argv, "--rounds"), budget=budget,
-                                    gathered="--with-gathered" in argv, fresh="--fresh" in argv)
+                                    gathered="--with-gathered" in argv, fresh="--fresh" in argv, plan_budget=plan_budget)
+            return code
+        if argv[1] == "audit":
+            code, _ = audit_only(project, n, client, cfg, plan_budget=plan_budget)
             return code
         ids = [s.strip() for s in (_flag(argv, "--sources") or "").split(",") if s.strip()]
         if not ids:
             print("gather needs --sources s72,s73,...")
             return 2
-        code, _ = gather(project, n, ids, client, cfg, budget=budget, fresh="--fresh" in argv)
+        pr = _flag(argv, "--parts")
+        pr = tuple(int(x) for x in pr.split("-")) if pr and "-" in pr else ((int(pr), int(pr)) if pr else None)
+        code, _ = gather(project, n, ids, client, cfg, budget=budget, fresh="--fresh" in argv, plan_budget=plan_budget,
+                         parts_range=pr)
         return code
     print(__doc__)
     return 2

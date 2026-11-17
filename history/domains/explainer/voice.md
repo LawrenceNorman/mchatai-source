@@ -86,6 +86,10 @@ The titles and their rules are content (thresholds `boxes`, a project's `plan.bo
 carries a number, since the number gate would ask every chapter to source it. The usual set is:
 
 - **The picture.** The chapter's analogy, said as one, then where it breaks, in one sentence.
+- **Where we are** (a book whose map replaces the analogy box: `plan.boxes.whereBox`). The book's map
+  with this chapter's piece lit: it names the piece (one of the plan entry's `lights` when it has
+  them, else any piece of any ring of `plan.route`) and a piece beside it, before or after
+  [where_we_are]. `plan.route.keys` lists the words that name each piece in prose.
 - **Say it out loud.** The spoken answer, 55 to 95 words, about thirty seconds said aloud
   [box_spoken_length].
 - **Draw it.** The whiteboard: what to draw, in the order to draw it, matching the chapter's diagram.
@@ -144,3 +148,5 @@ the end. An explainer keeps no ending back.
 - **v1, 2026-11-10.** First version, for the first explainer (Phase FN). The fact sentences keep
   the base voice; the explanation is the writer's own; numbers come from sources, measurements or
   rerunnable computations; the glossary is the cast; fixed boxes; one picture per idea.
+- **v1.1, 2026-11-16.** The "Where we are" box and its check (where_we_are): a book whose map is its
+  real architecture (Phase FN, plan §17 and §19.1) names the piece a chapter lights and a neighbour.
