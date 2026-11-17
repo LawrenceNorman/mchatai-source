@@ -34,6 +34,7 @@ A verb record:
 | `appIntent` | may Shortcuts and Siri run it alone (never for `dangerous`) |
 | `aliases` | `{oldArgumentName: argument}` so a renamed argument keeps working |
 | `recipe` | true for a fixed chain the chat runs with no planner |
+| `privateChat` | `{keeps}`: present when a chat that keeps nothing (`retention: "none"`) may take this step; `keeps` is one sentence, for the person, on what the step leaves behind and where. Without it the app refuses the step in such a chat, and the persona validator refuses the pack. Never add it to a step that sends the person's words anywhere (a search, a page read) |
 
 Rules: a new **composition** of existing capabilities is a PR here (zero rebuild); new native power
 is a Swift capability first (`Shared/OnDeviceAgent/AgentCapabilityRegistry.swift`), then listed in

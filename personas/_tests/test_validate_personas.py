@@ -93,6 +93,74 @@ class ValidatePersonasTests(unittest.TestCase):
         self.assertTrue(any('needs model "on-device-only"' in p for p in found))
         self.assertTrue(any('cannot offer memory.optIn' in p for p in found))
 
+    # Phase FL.10 (2026-11-16): a companion pack, and steps in a pack that keeps nothing.
+
+    def companion(self, idx):
+        return next(p for p in idx['personas'] if (p.get('agent') or {}).get('mode') == 'companion')
+
+    def test_a_companion_says_how_each_step_is_asked_for(self):
+        idx = copy.deepcopy(INDEX)
+        pack = self.companion(idx)
+        del pack['agent']['ask'][pack['agent']['verbs'][0]]
+        self.assertTrue(any('agent.ask.' in p for p in v.problems(idx)))
+        idx = copy.deepcopy(INDEX)
+        self.companion(idx)['agent']['ask']['addToDo'] = ['task']   # one word would take ordinary sentences away from the chat
+        self.assertTrue(any('two or more words' in p for p in v.problems(idx)))
+
+    def test_a_companion_takes_only_the_steps_it_names(self):
+        idx = copy.deepcopy(INDEX)
+        self.companion(idx)['agent']['catalogVerbs'] = True
+        self.assertTrue(any('only the steps it names' in p for p in v.problems(idx)))
+
+    def test_a_private_pack_may_only_name_steps_that_say_what_they_keep(self):
+        idx = copy.deepcopy(INDEX)
+        pack = self.companion(idx)
+        self.assertEqual(pack.get('retention'), 'none')
+        pack['agent']['verbs'].append('makeQuiz')
+        pack['agent']['ask']['makeQuiz'] = ['make a quiz']
+        self.assertTrue(any('makeQuiz does not say what it keeps' in p for p in v.problems(idx)))
+
+    def test_a_private_pack_pauses_before_a_write_and_never_searches(self):
+        idx = copy.deepcopy(INDEX)
+        self.companion(idx)['agent']['confirm'] = 'never'
+        self.assertTrue(any('pauses before a step that writes' in p for p in v.problems(idx)))
+        idx = copy.deepcopy(INDEX)
+        self.companion(idx)['agent']['sources'] = ['duckduckgo']
+        self.assertTrue(any('cannot search' in p for p in v.problems(idx)))
+        idx = copy.deepcopy(INDEX)
+        self.companion(idx)['agent']['mode'] = 'agent'
+        self.assertTrue(any('only as a companion' in p for p in v.problems(idx)))
+        idx = copy.deepcopy(INDEX)
+        self.companion(idx)['agent']['localPlannerAllowed'] = True
+        self.assertTrue(any("Apple's on-device model only" in p for p in v.problems(idx)))
+
+    def test_media_and_offers_shapes(self):
+        idx = copy.deepcopy(INDEX)
+        pack = self.companion(idx)
+        pack['media'][0]['path'] = 'personas/money-check-in/media/missing.m4a'
+        self.assertTrue(any('is not in mchatai-source' in p for p in v.problems(idx, folder=HERE.parent)))
+        idx = copy.deepcopy(INDEX)
+        pack = self.companion(idx)
+        pack['offers']['rules'].append(dict(pack['offers']['rules'][0]))
+        self.assertTrue(any('two offers for' in p for p in v.problems(idx)))
+        idx = copy.deepcopy(INDEX)
+        self.companion(idx)['offers']['rules'][0]['verb'] = 'searchPapers'
+        self.assertTrue(any('a step the pack does not have' in p for p in v.problems(idx)))
+        idx = copy.deepcopy(INDEX)
+        self.companion(idx)['offers']['rules'][1]['say'] = 'x' * 141
+        self.assertTrue(any('at most 140 characters' in p for p in v.problems(idx)))
+
+    def test_every_note_of_a_companion_names_a_federal_source(self):
+        """The pack's notes are generated (never hand-edited); "show me where that comes from" opens only what they carry."""
+        notes = json.loads((HERE.parent / 'money-check-in' / 'chunks.json').read_text())
+        for note in notes:
+            self.assertTrue(note.get('sources'), note['id'])
+            self.assertIsInstance(note.get('chapter'), int, note['id'])
+            for source in note['sources']:
+                host = source['url'].split('/')[2]
+                self.assertTrue(source['url'].startswith('https://') and (host.endswith('.gov') or host == 'investor.gov'), source['url'])
+                self.assertNotIn('ouinvest', source['url'])
+
 
 if __name__ == '__main__':
     unittest.main()

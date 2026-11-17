@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """Checks personas/_index.json: every record has what the apps read, every pack folder matches its record,
 an `agent` block names only verbs the index lists (Phase AG.2, 2026-11-09), its `confirm`/`sources` are well formed
-and the index's verbs are the compiled verbs/ios catalog (Phase AV.0).
+and the index's verbs are the compiled verbs/ios catalog (Phase AV.0). Phase FL.10 (2026-11-16): a companion pack
+(`agent.mode: "companion"`) says how a person asks for each step, and a pack that keeps nothing (`retention: "none"`) may only
+name steps that say what they keep (`privateChat.keeps`), pauses before a step that writes, and never searches.
 
     python3 personas/validate_personas.py personas/_index.json
 """
@@ -12,6 +14,9 @@ PLANNERS = {'apple', 'local'}
 CONFIRM = {'plan', 'writes', 'never'}   # Phase AV.2: when the agent pauses for the person
 # Phase FL.7: `none` = a private companion keeps nothing (no saved chat, no pinned lines, no mini-app storage).
 RETENTION = {'default', 'none'}
+MODES = {'agent', 'companion'}   # Phase FL.10: a companion chats as a persona and takes a step only when asked
+OFFER_WHEN = {'personSays', 'noteHasSource', 'noteHasQuiz', 'noteHasEpisode'}
+PHRASE = re.compile(r'^[a-z0-9]+( [a-z0-9]+)*$')
 REQUIRED = ('id', 'name', 'prompt')
 VERB_REQUIRED = ('id', 'title', 'summary', 'arguments', 'example')
 
@@ -94,6 +99,8 @@ def problems(index, folder=None, source_ids=None):
                 found.append(f'{where}: an agent pack needs starters (the sentences a person can say)')
             if not (p.get('surfaces') or {}).get('chat', True):
                 found.append(f'{where}: an agent pack must be a chat surface')
+            found.extend(companion_problems(where, p, agent, ids, {v.get('id'): v for v in verbs}))
+        found.extend(pack_content_problems(where, p, folder))
         if folder is not None:
             pj = Path(folder) / p.get('id', '') / 'persona.json'
             if pj.exists():
@@ -107,6 +114,142 @@ def problems(index, folder=None, source_ids=None):
         unknown = [x for x in template.get('sources') or [] if x not in source_ids]
         if unknown:
             found.append(f'agentTemplate.sources not in sources/_index.json: {unknown}')
+    return found
+
+
+def phrases_ok(value, least_words=1):
+    return isinstance(value, list) and bool(value) and all(
+        isinstance(x, str) and PHRASE.match(x) and len(x.split()) >= least_words for x in value)
+
+
+def companion_problems(where, p, agent, ids, verbs_by_id):
+    """Phase FL.10: the companion mode, and what a pack that keeps nothing may do with steps."""
+    found = []
+    mode = agent.get('mode', 'agent')
+    if mode not in MODES:
+        found.append(f"{where}: agent.mode must be one of {sorted(MODES)}, not {mode!r}")
+    if mode == 'companion':
+        if not ids:
+            found.append(f'{where}: a companion names its steps (agent.verbs)')
+        if agent.get('catalogVerbs') or agent.get('fallbackVerbs'):
+            found.append(f'{where}: a companion takes only the steps it names (no catalogVerbs, no fallbackVerbs)')
+        ask = agent.get('ask')
+        if not isinstance(ask, dict):
+            found.append(f'{where}: a companion needs agent.ask: the phrases that ask for each step')
+        else:
+            for vid in ids:
+                # Two words or more: one word ("quiz", "task") would take a sentence that only mentions it away from the chat.
+                if not phrases_ok(ask.get(vid), least_words=2):
+                    found.append(f'{where}: agent.ask.{vid} must be lowercase phrases of two or more words (letters, digits, spaces)')
+            extra = sorted(set(ask) - set(ids))
+            if extra:
+                found.append(f'{where}: agent.ask names steps the pack does not have: {extra}')
+        back = agent.get('pointBack', {})
+        if not isinstance(back, dict) or set(back) - set(ids):
+            found.append(f'{where}: agent.pointBack must be keyed by steps the pack has')
+        else:
+            for vid, rule in back.items():
+                names = [a.get('name') for a in (verbs_by_id.get(vid) or {}).get('arguments') or []]
+                if not isinstance(rule, dict) or rule.get('argument') not in names or not str(rule.get('ask') or '').strip():
+                    found.append(f'{where}: agent.pointBack.{vid} needs an argument of that step and the line that asks for it')
+        decline = agent.get('decline', [])
+        if not isinstance(decline, list) or any(
+                not isinstance(rule, dict) or not phrases_ok(rule.get('ask'), least_words=2) or not str(rule.get('say') or '').strip()
+                for rule in decline):
+            found.append(f'{where}: each agent.decline rule needs ask (lowercase phrases of two or more words) and the line to say')
+        after = agent.get('afterNotes', [])
+        if not isinstance(after, list) or set(after) - set(ids):
+            found.append(f'{where}: agent.afterNotes must list steps the pack has')
+    elif 'ask' in agent:
+        found.append(f'{where}: agent.ask is read only in mode "companion"')
+    if p.get('retention') == 'none':
+        if mode != 'companion':
+            found.append(f'{where}: a pack that keeps nothing may take steps only as a companion (agent.mode "companion")')
+        if agent.get('planner', 'apple') != 'apple' or agent.get('localPlannerAllowed'):
+            found.append(f'{where}: a pack that keeps nothing plans on Apple\'s on-device model only')
+        if agent.get('sources') or agent.get('catalogSources') or agent.get('useInterests'):
+            found.append(f'{where}: a pack that keeps nothing cannot search (its words would leave the device) or read interests')
+        writes = False
+        for vid in ids:
+            verb = verbs_by_id.get(vid) or {}
+            keeps = (verb.get('privateChat') or {}).get('keeps')
+            if not isinstance(keeps, str) or not keeps.strip():
+                found.append(f'{where}: step {vid} does not say what it keeps (privateChat.keeps), so a private chat cannot use it')
+            writes = writes or verb.get('safetyClass', 'read') != 'read'
+        if writes and agent.get('confirm') != 'writes':
+            found.append(f'{where}: a pack that keeps nothing pauses before a step that writes (agent.confirm "writes")')
+    return found
+
+
+def pack_content_problems(where, p, folder):
+    """Phase FL.10: what a pack carries beside its notes (`media`), and the offers the app may make (`offers`)."""
+    found = []
+    media = p.get('media')
+    if media is not None:
+        if not isinstance(media, list):
+            return found + [f'{where}: media must be a list']
+        seen = set()
+        for m in media:
+            mid = m.get('id') if isinstance(m, dict) else None
+            if not mid or mid in seen:
+                found.append(f'{where}: every media item needs its own id'); continue
+            seen.add(mid)
+            if m.get('kind') != 'episode':
+                found.append(f"{where}: media {mid}: kind must be 'episode'")
+            if not m.get('title'):
+                found.append(f'{where}: media {mid}: missing title')
+            path, url = m.get('path'), m.get('url')
+            if bool(path) == bool(url):
+                found.append(f'{where}: media {mid}: give path (in mchatai-source) or url (https), not both')
+            elif url and not str(url).startswith('https://'):
+                found.append(f'{where}: media {mid}: url must be https')
+            elif path and (str(path).startswith('/') or '..' in str(path)):
+                found.append(f'{where}: media {mid}: path must be relative to mchatai-source')
+            elif path and folder is not None and not (Path(folder).parent / path).exists():
+                found.append(f'{where}: media {mid}: {path} is not in mchatai-source')
+    explain = (p.get('knowledge') or {}).get('explain')
+    if explain is not None and not phrases_ok(explain):
+        found.append(f'{where}: knowledge.explain must be lowercase phrases (letters, digits, spaces)')
+    guard = p.get('guard')
+    if guard is not None:
+        drop = guard.get('drop') if isinstance(guard, dict) else None
+        for flag in ('numbersFromNotes', 'noLists'):
+            if isinstance(guard, dict) and flag in guard and not isinstance(guard[flag], bool):
+                found.append(f'{where}: guard.{flag} must be true or false')
+        if not isinstance(drop, list) or not drop or not str(guard.get('empty') or '').strip():
+            found.append(f'{where}: guard needs drop (regular expressions) and the line shown when nothing is left (empty)')
+        else:
+            for pattern in drop:
+                try:
+                    re.compile(pattern)
+                except (re.error, TypeError):
+                    found.append(f'{where}: guard.drop has a pattern that does not compile: {pattern!r}')
+    offers = p.get('offers')
+    if offers is not None:
+        agent = p.get('agent') or {}
+        if agent.get('mode') != 'companion':
+            found.append(f'{where}: offers are made only by a companion (agent.mode "companion")')
+        if not isinstance(offers, dict) or not isinstance(offers.get('rules'), list):
+            return found + [f'{where}: offers.rules must be a list']
+        if 'accept' in offers and not phrases_ok(offers['accept']):
+            found.append(f'{where}: offers.accept must be lowercase phrases (letters, digits, spaces)')
+        used = set()
+        for rule in offers['rules']:
+            verb = rule.get('verb') if isinstance(rule, dict) else None
+            if verb not in (agent.get('verbs') or []):
+                found.append(f'{where}: an offer names a step the pack does not have: {verb!r}'); continue
+            if verb in used:
+                found.append(f'{where}: two offers for {verb} (each step is offered by one rule)')
+            used.add(verb)
+            if rule.get('when') not in OFFER_WHEN:
+                found.append(f"{where}: offer {verb}: when must be one of {sorted(OFFER_WHEN)}")
+            if rule.get('when') == 'personSays' and not phrases_ok(rule.get('phrases'), least_words=2):
+                found.append(f'{where}: offer {verb}: personSays needs lowercase phrases of two or more words')
+            if 'unless' in rule and not (isinstance(rule['unless'], list) and all(isinstance(w, str) and re.match(r'^[a-z0-9]+$', w) for w in rule['unless'])):
+                found.append(f'{where}: offer {verb}: unless must be single lowercase words')
+            say = rule.get('say')
+            if not isinstance(say, str) or not say.strip() or len(say) > 140:
+                found.append(f'{where}: offer {verb}: say must be one line of at most 140 characters')
     return found
 
 
