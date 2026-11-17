@@ -683,12 +683,15 @@ function lettersOf(text) { return (text.match(/\p{L}/gu) || []).join(""); }
 // name the conversation already used.
 // `person`: what they just said; one of the pack's `restate` phrases ("in one
 // line", "say that again") asks for a repeat, and the repeat stands.
+function restates(person) {
+  const g = PACK.guard; if (!g) return false;
+  const words = s => " " + s.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim() + " ";
+  return (g.restate || []).some(p => words(p).trim() && words(person || "").includes(words(p)));
+}
 function guardReply(text, earlier, person) {
   const g = PACK.guard; if (!g) return text;
   const patterns = (g.drop || []).map(p => { try { return new RegExp(p, "i"); } catch (e) { return null; } }).filter(Boolean);
-  const words = s => " " + s.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim() + " ";
-  const restating = (g.restate || []).some(p => words(p).trim() && words(person || "").includes(words(p)));
-  const said = g.noRepeats && !restating ? earlier.flatMap(r => r.split("\n").flatMap(sentencesIn)).map(s => new Set(stemsOf(s))).filter(s => s.size) : [];
+  const said = g.noRepeats && !restates(person) ? earlier.flatMap(r => r.split("\n").flatMap(sentencesIn)).map(s => new Set(stemsOf(s))).filter(s => s.size) : [];
   const seen = new Set(); let repeat = false;
   const lines = text.split("\n").map(line => sentencesIn(line).filter(s => {
     const key = s.toLowerCase().replace(/[^\p{L}\p{N}]/gu, "");
@@ -755,7 +758,9 @@ async function send(text) {
 
   const prior = history.slice();
   const asked = assentTurn(text, prior);
-  const latest = asked ? asked.prompt : text, query = asked ? asked.query : undefined;
+  // "Just tell me in one line" is about the previous sentence: its notes are picked by that.
+  const before = restates(text) ? prior.filter(t => t.role === "user").pop() : null;
+  const latest = asked ? asked.prompt : text, query = asked ? asked.query : (before ? before.text : undefined);
   history.push({ role: "user", text });
   noteProgress(text);
   // The reply bubble appears with the first words and grows as they arrive.

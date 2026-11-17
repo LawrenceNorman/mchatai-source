@@ -59,7 +59,7 @@ cases = [
     ("assent", ["Yes, I rent my place", [{"role": "assistant", "text": FIRST}]], None),
     ("assent", ["yes", [{"role": "assistant", "text": "Compound interest is interest on interest."}]], None),
 ]
-js = "\n".join(block(n) for n in ("stemsOf", "sentencesIn", "lettersOf", "guardReply", "shortenNames", "assentTurn")) + """
+js = "\n".join(block(n) for n in ("stemsOf", "sentencesIn", "lettersOf", "restates", "guardReply", "shortenNames", "assentTurn")) + """
 var PACK = %s; var CASES = %s;
 JSON.stringify(CASES.map(function (c) {
   if (c[0] === "guard") return guardReply(c[1][0], c[1][1], c[1][2]);
