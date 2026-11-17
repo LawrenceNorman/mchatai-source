@@ -23,6 +23,13 @@ from the source alone, and you must prove it by quoting the source.
 5. **No giveaways.** The stem must not contain the answer's words, and no option may be the only one that matches
    the stem's grammar.
 6. Spread the questions across the whole text, not only its first pages.
+7. **Stand on its own.** The learner answers with the text closed, often days later, in another app. Never point at the
+   text or its devices: no "the chapter", "the text", "the book", "the guide", "according to", "based on", and no "the
+   example", "the exercise", "the picture", "the survey", "the story" or "the scenario" the text described. If a question
+   needs one of those, tell it in the question in a few plain words ("Picture a month's money as a bathtub: income fills
+   it and expenses drain it. Why can that picture mislead someone whose month balances on paper?"). A learner who
+   understood the idea must be able to answer without remembering the text's own example. Name people and numbers the
+   question itself supplies; never a figure the learner would have to remember from the text.
 
 ## Multiple choice (`mc`)
 

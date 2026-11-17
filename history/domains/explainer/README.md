@@ -34,5 +34,6 @@ glossary entry (`acronym_undefined`), a term is defined before any chapter uses 
 hard here), and every chapter carries the fixed boxes (`box_missing`, `box_spoken_length`,
 `box_questions`). `explainer.py terms <project>` lists the names the glossary still lacks.
 
-**Not here yet:** the Glossary page title in `cite.py book` (it renders the cast as a Who's who) and
-sources of kind `measurement` with `local:` addresses in the Sources list. Built with the first book.
+The glossary page lands as **Key terms** (`thresholds.json` `cast.title`; `cite.py book` renders the cast under it).
+
+**Not here yet:** sources of kind `measurement` with `local:` addresses in the Sources list. Built with the first book.

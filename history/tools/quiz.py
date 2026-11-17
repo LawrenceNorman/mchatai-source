@@ -16,6 +16,7 @@ a revised chapter can leave a question quoting a sentence that is gone.
 """
 import json
 import os
+import re
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -50,6 +51,26 @@ def request_payload(project, n, count=10, types=("mc", "short"), require_claim=F
     }
 
 
+# A question the learner answers with the text closed (learning/prompts/quiz-writer.md rule 7). "In the classroom
+# exercise, why…" and "Why can the bathtub picture mislead…" passed the open-book check, which reads the passage, and
+# made no sense on a phone (Money, Plainly, 2026-11-16). A question that tells its picture first ("Picture a month's
+# money as a bathtub…") is fine: a device word counts only in the question's first sentence, before it has told anything.
+POINTS_AT_TEXT = re.compile(r"\b(?:the|this)\s+(?:chapter|text|book|handbook|guide|passage|article|lesson|reading)\b(?:['’]s)?", re.I)
+POINTS_AT_DEVICE = re.compile(
+    r"\b(?:the|this|that)\s+(?:[\w'’-]+\s+){0,2}?(?:example|exercise|picture|survey|story|scenario|illustration|box|table|"
+    r"figure|chart|diagram|analogy|metaphor)s?\b", re.I)
+
+
+def leans_on_text(question):
+    q = question or ""
+    m = POINTS_AT_TEXT.search(q)
+    if m:
+        return m.group(0)
+    first = re.split(r"(?<=[.?!:])\s+", q.strip(), maxsplit=1)[0]
+    m = POINTS_AT_DEVICE.search(first)
+    return m.group(0) if m else ""
+
+
 def quiz_findings(project, n):
     ch = project.chapter(n)
     if not ch:
@@ -76,6 +97,11 @@ def quiz_findings(project, n):
                 out.append(finding("quiz_structure", "hard", f"{qid}: the key must be exactly one of distinct options", q.get("question", "")))
         elif not q.get("rubric"):
             out.append(finding("quiz_structure", "hard", f"{qid}: an open question needs its rubric", q.get("question", "")))
+        leans = leans_on_text(q.get("question", ""))
+        if leans:
+            out.append(finding("quiz_not_standalone", "hard",
+                               f"{qid}: it points at the text ({leans!r}); a learner answers with the text closed, so tell "
+                               "the example in the question or test the idea", q.get("question", "")))
         quote = (q.get("source") or {}).get("quote", "")
         if not quoted(quote):
             out.append(finding("quiz_quote_unverified", "hard", f"{qid}: its quote is no longer in the chapter or a claim's evidence", quote))

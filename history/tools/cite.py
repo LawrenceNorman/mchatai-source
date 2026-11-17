@@ -1106,8 +1106,11 @@ def check_findings(project, numbers):
 
 
 def book_numbers(project):
-    """The introduction (chapter 0) when written, then every chapter the plan holds."""
-    planned = [int(c.get("n")) for c in project.plan.get("chapters", [])]
+    """The introduction (chapter 0) when written, then every chapter the plan holds. A plan chapter the author held back
+    (`"deferred": "<why>"`, e.g. Money, Plainly's crypto chapter, his call 2026-11-14) is left out until it is written:
+    the rest of the book still lands for his review."""
+    planned = [int(c.get("n")) for c in project.plan.get("chapters", [])
+               if not (c.get("deferred") and project.chapter(c.get("n")) is None)]
     nums = sorted(set(planned) | set(project.chapter_numbers()))
     return nums
 

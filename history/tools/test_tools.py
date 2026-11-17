@@ -1783,6 +1783,20 @@ class QuizCheck(unittest.TestCase):
             fh.write("The source was replaced by something else entirely.")
         self.assertEqual(self.save(self.q), ["quiz_claim_source_changed"])
 
+    def test_a_question_that_needs_the_text_open_is_refused(self):
+        # Money, Plainly's chapter 1 set (2026-11-16): fine open-book, nonsense on a phone.
+        for stem in ("In the classroom exercise, why do students pick their wants at the very end?",
+                     "Why can the bathtub picture mislead someone whose month balances on paper?",
+                     "According to the chapter, what makes it possible for a bank to pay you interest?",
+                     "Maya has $1,000 and a card at 18 percent. Following the chapter's order, where does it go first?",
+                     "In the SEC's 1929 example, why did steady savers do better?"):
+            q = dict(self.q, question=stem)
+            self.assertEqual(self.save(q), ["quiz_not_standalone"], stem)
+        # A question that tells its picture first, or never needs one, stands on its own.
+        for stem in ("Picture a month's money as a bathtub: income fills it and expenses drain it. Why can that picture mislead?",
+                     "Jordan has $200,000 in checking and $100,000 in savings at one insured bank. How much is guaranteed?"):
+            self.assertEqual(self.save(dict(self.q, question=stem)), [], stem)
+
 
 class BookMap(unittest.TestCase):
     """book_map.py: the places a book's chapters name, pinned where the record allows (2026-10-08,
