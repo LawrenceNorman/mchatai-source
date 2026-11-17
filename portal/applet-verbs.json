@@ -3259,6 +3259,38 @@
           }
         }
       },
+      "renameproject": {
+        "kind": "modify",
+        "summary": "Rename a book. Its chapters, outline and bible stay as they are; the open StoryMaker window takes the new title too.",
+        "required": [
+          "project",
+          "title"
+        ],
+        "notes": "`project` names the book by its id or current exact title; `title` is the new name (`newTitle` is accepted too). A book the author made is theirs: renaming it needs `authorAsked`, the author's own words asking for the new name. A title another book already has is refused, because the verbs find a book by its exact title. `result.previousTitle` holds the old name.",
+        "example": {
+          "command": "applet",
+          "applet": "storymaker",
+          "verb": "renameProject",
+          "args": {
+            "project": "Seaborn Collins",
+            "title": "Seaborn Collins: A Life"
+          }
+        },
+        "args": {
+          "project": {
+            "type": "string",
+            "description": "The book's id or current exact title (from listProjects). A miss returns the projects that exist."
+          },
+          "title": {
+            "type": "string",
+            "description": "The new name."
+          },
+          "authorAsked": {
+            "type": "string",
+            "description": "The author's own words asking for this name. Required for a book the author made; optional for one an agent made."
+          }
+        }
+      },
       "getchapter": {
         "kind": "read",
         "summary": "One chapter's full text, with `ifModifiedAt` to echo back to replaceChapter.",
