@@ -57,6 +57,26 @@
   .chips { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 14px; }
   .chips button { font-size: 13px; color: var(--accent); border-color: var(--accent); background: transparent; }
 
+  /* Phase FL.11: the pack's front door (pack.door), when the app opens its content natively. */
+  #door { flex: 1; overflow-y: auto; padding: 16px 16px calc(24px + env(safe-area-inset-bottom)); -webkit-overflow-scrolling: touch; }
+  #door .wrap { max-width: 640px; margin: 0 auto; }
+  #door .card { background: var(--surface); border: 1px solid var(--border); border-radius: 18px; padding: 20px 18px; text-align: center; }
+  #door .card h2 { margin: 0 0 6px; font-size: 22px; }
+  #door .card p { margin: 0 auto 14px; max-width: 34em; color: var(--muted); font-size: 15px; }
+  #door .card .primary { width: 100%; margin-top: 14px; padding: 13px 16px; font-size: 16px; }
+  #door h3 { margin: 22px 4px 8px; font-size: 13px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+  #door .tile { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; margin: 8px 0; padding: 14px;
+    border-radius: 14px; border: 1px solid var(--border); background: var(--surface); color: var(--text); }
+  #door .tile .ic { font-size: 22px; width: 30px; text-align: center; flex: none; }
+  #door .tile .t { font-weight: 600; display: block; }
+  #door .tile .sub { display: block; color: var(--muted); font-size: 13px; }
+  #door .chapters { margin: 0 0 8px 42px; }
+  #door .chapters button { display: block; width: 100%; text-align: left; margin: 6px 0; padding: 10px 12px; border-radius: 12px;
+    border: 1px solid var(--border); background: transparent; color: var(--text); font-size: 14px; }
+  #door .status { min-height: 20px; margin: 10px 4px 0; font-size: 14px; color: var(--muted); }
+  #door .status a, #door .foot a { color: var(--accent); }
+  #door .foot { margin: 26px 4px 0; font-size: 13px; color: var(--muted); text-align: center; }
+
   form { display: flex; gap: 8px; align-items: flex-end; padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
     border-top: 1px solid var(--border); background: var(--surface); }
   textarea { flex: 1; resize: none; max-height: 140px; min-height: 42px; padding: 10px 12px;
@@ -156,6 +176,7 @@
     <div class="links" id="gateLinks"></div>
   </section>
 
+  <section id="door" hidden></section>
   <main id="messages" hidden></main>
 
   <form id="composer" hidden>
@@ -199,7 +220,7 @@ const $ = (id) => document.getElementById(id);
 const els = {
   title: $("title"), badge: $("badge"), more: $("more"), newChat: $("newChat"),
   gate: $("gate"), gateIcon: $("gateIcon"), gateTitle: $("gateTitle"), gateBody: $("gateBody"), gateRetry: $("gateRetry"), gateLinks: $("gateLinks"),
-  messages: $("messages"), composer: $("composer"), input: $("input"), send: $("send"),
+  messages: $("messages"), composer: $("composer"), input: $("input"), send: $("send"), door: $("door"),
   sheet: $("sheet"), sheetPanel: $("sheetPanel")
 };
 
@@ -239,6 +260,16 @@ async function detectEnvironment() {
   if (!(navigator.maxTouchPoints > 0)) {
     return showGate("📱", "Open this on your iPhone or iPad",
       CONFIG.title + " runs in mChatAI on iPhone and iPad, where Apple's on-device model is available to mini-apps.", false, true);
+  }
+  // Phase FL.11: a pack with a front door opens its content in the app's own Chat, quiz player, Podcasts and AI Reader,
+  // the same code the coach uses there. An app without the pack bridge keeps the chat on this page.
+  if (!skipDoor && bridge().pack && typeof bridge().pack.info === "function") {
+    await loadPackFromSource();
+    if (PACK.door) {
+      let packInfo = null;
+      try { packInfo = await withTimeout(bridge().pack.info(), 6000); } catch (e) {}
+      if (packInfo && (packInfo.features || []).includes("chat")) { await loadQuiz(); return showDoor(packInfo); }
+    }
   }
   if (!llm || typeof llm.info !== "function") {
     return showGate("⬆️", "Coming in the next mChatAI update",
@@ -292,7 +323,94 @@ async function loadPackFromSource() {
   } catch (e) { /* offline, not published yet, or an older app: the inline pack stands */ }
 }
 
+// ─── The front door (pack.door, Phase FL.11) ─────────────────────────────────
+let skipDoor = false;
+function doorTile(icon, title, sub, onClick) {
+  const b = document.createElement("button"); b.type = "button"; b.className = "tile";
+  const ic = document.createElement("span"); ic.className = "ic"; ic.textContent = icon;
+  const words = document.createElement("span");
+  const t = document.createElement("span"); t.className = "t"; t.textContent = title;
+  words.appendChild(t);
+  if (sub) { const s = document.createElement("span"); s.className = "sub"; s.textContent = sub; words.appendChild(s); }
+  b.append(ic, words);
+  b.addEventListener("click", onClick);
+  return b;
+}
+function minutes(sec) { sec = Math.round(sec || 0); return sec ? Math.floor(sec / 60) + ":" + String(sec % 60).padStart(2, "0") : ""; }
+function doorSay(status, text, link) {
+  status.textContent = text;
+  if (link) { status.append(" "); const a = document.createElement("a"); a.href = "#"; a.textContent = link.text;
+    a.addEventListener("click", (e) => { e.preventDefault(); link.run(); }); status.appendChild(a); }
+}
+async function doorRun(status, promise, done) {
+  try { const r = await promise; if (done) done(r); }
+  catch (e) { doorSay(status, String((e && e.message) || e).replace(/^\[[a-z_]+\]\s*/, "")); }
+}
+function showDoor(info) {
+  const door = PACK.door || {}, p = bridge().pack, features = info.features || [];
+  els.gate.hidden = true; els.messages.hidden = true; els.composer.hidden = true;
+  els.newChat.hidden = true; els.more.hidden = true;
+  els.door.hidden = false; els.door.innerHTML = "";
+  const wrap = document.createElement("div"); wrap.className = "wrap";
+  const status = document.createElement("div"); status.className = "status"; status.setAttribute("aria-live", "polite");
+
+  const card = document.createElement("div"); card.className = "card";
+  const h = document.createElement("h2"); h.textContent = CONFIG.welcomeTitle;
+  const intro = document.createElement("p"); intro.textContent = (door.chat && door.chat.sub) || CONFIG.welcomeBody;
+  const starters = document.createElement("div"); starters.className = "starters";
+  (PACK.starters || []).forEach((s, i) => {
+    const b = document.createElement("button"); b.type = "button"; b.textContent = s;
+    b.addEventListener("click", () => doorRun(status, p.chat({ starter: i })));
+    starters.appendChild(b);
+  });
+  const go = document.createElement("button"); go.type = "button"; go.className = "primary";
+  go.textContent = (door.chat && door.chat.label) || "Talk it through in Chat";
+  go.addEventListener("click", () => doorRun(status, p.chat({})));
+  card.append(h, intro, starters, go);
+  wrap.append(card, status);
+
+  const learn = [];
+  const lib = door.library;
+  if (lib && lib.item && (info.library || []).includes(lib.item) && bridge().library) {
+    learn.push(doorTile("📖", lib.label || "Read the book", lib.sub || "", () => doorRun(status, bridge().library.open({ item: lib.item }))));
+  }
+  const episodes = (PACK.media || []).filter(m => m.kind === "episode");
+  if (features.includes("episode")) episodes.forEach(m => {
+    const sub = [door.episodeSub || "", minutes(m.seconds)].filter(Boolean).join(" · ");
+    learn.push(doorTile("🎧", m.title, sub, () => {
+      doorSay(status, "Getting the episode…");
+      doorRun(status, p.episode({ id: m.id }), () => doorSay(status, "Playing in Podcasts.",
+        { text: "Open Podcasts", run: () => bridge().app.navigate({ applet: "Podcasts" }) }));
+    }));
+  });
+  const sets = (PACK.quiz && PACK.quiz.sets) || [];
+  if (features.includes("quiz") && sets.length) {
+    const list = document.createElement("div"); list.className = "chapters"; list.hidden = true;
+    sets.forEach(s => {
+      const b = document.createElement("button"); b.type = "button";
+      b.textContent = s.title + " · " + (s.questions || []).length + " questions";
+      b.addEventListener("click", () => doorRun(status, p.quiz({ chapter: Number(s.chapter) })));
+      list.appendChild(b);
+    });
+    learn.push(doorTile("✅", door.quizLabel || (PACK.quiz.label || "Quiz me"), door.quizSub || PACK.quiz.sub || "",
+      () => { list.hidden = !list.hidden; }));
+    learn.push(list);
+  }
+  if (learn.length) {
+    const h3 = document.createElement("h3"); h3.textContent = door.learnTitle || "Learn";
+    wrap.append(h3, ...learn);
+  }
+  const foot = document.createElement("div"); foot.className = "foot";
+  if (door.footer) foot.append(door.footer + " ");
+  const here = document.createElement("a"); here.href = "#"; here.textContent = door.hereLabel || "Chat on this page instead";
+  here.addEventListener("click", (e) => { e.preventDefault(); skipDoor = true; els.door.hidden = true; detectEnvironment(); });
+  foot.appendChild(here);
+  wrap.appendChild(foot);
+  els.door.appendChild(wrap);
+}
+
 function showGate(icon, title, body, retry, offerLinks) {
+  els.door.hidden = true;
   els.gate.hidden = false;
   els.messages.hidden = true;
   els.composer.hidden = true;
@@ -314,6 +432,7 @@ function showGate(icon, title, body, retry, offerLinks) {
 }
 
 function showChat() {
+  els.door.hidden = true;
   els.gate.hidden = true;
   els.messages.hidden = false;
   els.composer.hidden = false;
