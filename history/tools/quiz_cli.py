@@ -45,10 +45,20 @@ def prompt_file(name):
 
 
 def json_in(text):
-    """The first JSON object in a model's reply (fenced or not)."""
-    m = re.search(r"```(?:json)?\s*(\{.*\})\s*```", text, re.S)
-    raw = m.group(1) if m else text[text.find("{"): text.rfind("}") + 1]
-    return json.loads(raw)
+    """The first JSON object in a model's reply (fenced or not). It decodes one object and stops there: slicing from the
+    first `{` to the last `}` broke when the checker added a note with braces after its JSON (ch 12, 2026-11-17)."""
+    m = re.search(r"```(?:json)?\s*\{", text)
+    starts = [m.end() - 1] if m else []
+    starts += [i for i, ch in enumerate(text) if ch == "{" and i not in starts]
+    decoder = json.JSONDecoder()
+    for i in starts:
+        try:
+            found, _ = decoder.raw_decode(text, i)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(found, dict):
+            return found
+    raise json.JSONDecodeError("no JSON object in the reply", text, 0)
 
 
 def claude(prompt, model="opus", timeout=900):

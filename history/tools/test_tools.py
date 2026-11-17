@@ -1847,6 +1847,13 @@ class QuizOnThePlan(unittest.TestCase):
         import quiz_cli
         self.assertEqual(quiz_cli.json_in('Here:\n```json\n{"questions": [1]}\n```'), {"questions": [1]})
         self.assertEqual(quiz_cli.json_in('{"results": []}'), {"results": []})
+        # A note after the JSON, braces and all, must not break the read (ch 12's blind check, 2026-11-17).
+        self.assertEqual(quiz_cli.json_in('{"results": [{"id": "q1"}]}\n\nNote: q3 leans on {context}.'),
+                         {"results": [{"id": "q1"}]})
+        self.assertEqual(quiz_cli.json_in('```json\n{"a": 1}\n```\nthen ```json\n{"b": 2}\n```'), {"a": 1})
+        self.assertEqual(quiz_cli.json_in('I read {the chapter}. {"results": []}'), {"results": []})
+        with self.assertRaises(ValueError):
+            quiz_cli.json_in("no object here")
         mc = {"type": "mc", "question": "Q?", "options": ["a", "b", "c", "d"], "correctAnswer": "b"}
         self.assertIsNone(quiz_cli.structure_problem(mc))
         self.assertEqual(quiz_cli.structure_problem(dict(mc, correctAnswer="e")), "structure")
