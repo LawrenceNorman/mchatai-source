@@ -37,7 +37,8 @@ field notes: `mchatai_macOS/docs/PERSONA_PACKS_ARCHITECTURE.md` (Phase EX).
   `mode: "companion"` (Phase FL.10): the pack chats as a persona from its notes and takes one of its
   steps only when the sentence asks. It then needs `ask: {verbId: [phrases of two or more lowercase
   words]}`, and may have `afterNotes: [verbIds]`, `pointBack: {verbId: {argument, ask}}`, and beside
-  the agent block `media: [{id, kind: "episode", title, path | url, seconds, chapter}]` and
+  the agent block `media: [{id, kind: "episode", title, path | url, seconds, chapter}]` (audio goes by `url` in the
+  public downloads bucket, `gs://mchatai-downloads/personas/<pack>/media/`, never into this repo: FL.12) and
   `offers: {accept, rules: [{verb, when, phrases?, unless?, say}]}` (one offer at most per reply,
   chosen by the app), `knowledge.explain` (phrases that ask what something means: in Chat the notes
   ride only on such a sentence) and `guard: {drop: [regular expressions], empty}` (sentences an

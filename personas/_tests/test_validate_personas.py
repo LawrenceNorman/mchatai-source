@@ -138,6 +138,8 @@ class ValidatePersonasTests(unittest.TestCase):
         idx = copy.deepcopy(INDEX)
         pack = self.companion(idx)
         pack['media'][0]['path'] = 'personas/money-check-in/media/missing.m4a'
+        self.assertTrue(any('not both' in p for p in v.problems(idx)), 'FL.12: the episodes are named by url (the bucket)')
+        pack['media'][0].pop('url', None)
         self.assertTrue(any('is not in mchatai-source' in p for p in v.problems(idx, folder=HERE.parent)))
         idx = copy.deepcopy(INDEX)
         pack = self.companion(idx)
