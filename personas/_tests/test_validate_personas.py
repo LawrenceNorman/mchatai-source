@@ -152,6 +152,19 @@ class ValidatePersonasTests(unittest.TestCase):
         self.companion(idx)['offers']['rules'][1]['say'] = 'x' * 141
         self.assertTrue(any('at most 140 characters' in p for p in v.problems(idx)))
 
+    def test_guides_shapes(self):
+        # Phase FL.13: the pack's own answers, matched before any decline.
+        self.assertEqual([p for p in v.problems(copy.deepcopy(INDEX)) if 'guides' in p], [])
+        for change in (lambda g: g.update(ask=['Invest']), lambda g: g.update(say=''), lambda g: g.update(say='x' * 901),
+                       lambda g: g.update(also='anxious'), lambda g: g.pop('id')):
+            idx = copy.deepcopy(INDEX)
+            change(self.companion(idx)['agent']['guides'][0])
+            self.assertTrue(any('agent.guides' in p for p in v.problems(idx)))
+        idx = copy.deepcopy(INDEX)
+        guides = self.companion(idx)['agent']['guides']
+        guides[1]['id'] = guides[0]['id']
+        self.assertTrue(any('agent.guides' in p for p in v.problems(idx)), 'two guides with one id')
+
     def test_guard_repeat_name_and_assent_shapes(self):
         # A malformed field drops the whole guard in the app, advice patterns and all.
         self.assertEqual([p for p in v.problems(copy.deepcopy(INDEX)) if 'guard' in p], [])

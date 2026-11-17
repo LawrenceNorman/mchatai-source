@@ -157,6 +157,16 @@ def companion_problems(where, p, agent, ids, verbs_by_id):
                 not isinstance(rule, dict) or not phrases_ok(rule.get('ask'), least_words=2) or not str(rule.get('say') or '').strip()
                 for rule in decline):
             found.append(f'{where}: each agent.decline rule needs ask (lowercase phrases of two or more words) and the line to say')
+        # Phase FL.13: answers the pack gives from its own text, before any decline.
+        guides = agent.get('guides', [])
+        guide_ids = [g.get('id') for g in guides if isinstance(g, dict)]
+        if not isinstance(guides, list) or any(
+                not isinstance(g, dict) or not str(g.get('id') or '').strip() or not phrases_ok(g.get('ask'), least_words=2)
+                or not str(g.get('say') or '').strip() or len(str(g.get('say') or '')) > 900
+                or not isinstance(g.get('also', []), list) or not isinstance(g.get('notes', []), list)
+                for g in guides) or len(set(guide_ids)) != len(guide_ids):
+            found.append(f'{where}: each agent.guides entry needs its own id, ask (lowercase phrases of two or more words), '
+                         f'the answer to say (900 characters at most), and also/notes as lists')
         after = agent.get('afterNotes', [])
         if not isinstance(after, list) or set(after) - set(ids):
             found.append(f'{where}: agent.afterNotes must list steps the pack has')
