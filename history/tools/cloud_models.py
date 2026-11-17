@@ -640,6 +640,15 @@ class ClaudeCodeClient:
                                             f"(stop_reason {env_json.get('stop_reason')!r})")
         # The model that wrote the reply: the one with the most output, not a side call's.
         model = max(by_model, key=lambda k: int((by_model[k] or {}).get("outputTokens") or 0)) if by_model else r["model"]
+        # Claude Code does not stop at CLAUDE_CODE_MAX_OUTPUT_TOKENS: it asks the model to go on in a second message,
+        # and `result` holds only that one, with stop_reason end_turn. Chapter 5's first write came back as the tail
+        # of a chapter, starting mid-sentence, at 340K plan tokens against a normal 120K (2026-11-17). One message
+        # cannot pass the cap, so output at or over it means the reply was cut: report it as "length", which the
+        # writer stops on, instead of passing the tail on as the reply.
+        cap = int(max_output_tokens or r.get("maxOutputTokens") or 0)
+        wrote = int((by_model.get(model) or {}).get("outputTokens") or 0) if by_model else int(usage.get("output_tokens") or 0)
+        if cap and wrote >= cap:
+            finish = "length"
         return {"text": text, "finishReason": finish, "tokensUsed": 0, "planTokens": plan, "model": model,
                 "usage": usage}
 

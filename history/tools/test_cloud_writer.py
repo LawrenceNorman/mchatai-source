@@ -502,7 +502,8 @@ class ClaudeCodeBackend(Base):
         w = self.ccfg["roles"]["writer"]
         self.assertEqual((self.ccfg["backend"], w["provider"]), ("claude-code", "claude-code"))
         self.assertEqual(w["prompt"], self.cfg["roles"]["writer"]["prompt"])
-        self.assertEqual(w["maxOutputTokens"], self.cfg["roles"]["writer"]["maxOutputTokens"])
+        # On the plan the writer may write past compute-proxy's 32,000 cap (the overlay raises it).
+        self.assertGreaterEqual(w["maxOutputTokens"], self.cfg["roles"]["writer"]["maxOutputTokens"])
         self.assertTrue(self.ccfg["chapterPlanBudgetTokens"])
         self.assertNotIn("backend", cloud_models.load_config())   # no backend: the base, unchanged
         self.assertIsInstance(cloud_models.make_client(self.ccfg), cloud_models.ClaudeCodeClient)
@@ -529,6 +530,16 @@ class ClaudeCodeBackend(Base):
         self.assertFalse(os.path.exists(call["cwd"]))   # an empty folder, removed after the call
         self.assertEqual((r["text"], r["tokensUsed"], r["model"]), ("hello", 0, "claude-opus-5-5"))
         self.assertEqual(r["planTokens"], 3 + 40 + 1000 + 200 + 50 + 5)
+
+    def test_a_reply_continued_past_the_output_cap_reads_as_cut_off(self):
+        # Claude Code went past the cap in a second message and returned only that message (chapter 5, 2026-11-17).
+        cap = self.ccfg["roles"]["writer"]["maxOutputTokens"]
+        cli = FakeCLI([envelope("parameters and 650,000 neurons, in five layers", out_tokens=cap + 9000)])
+        r = cloud_models.ClaudeCodeClient(cfg=self.ccfg, run=cli, sleep=self.sleeps.append).chat("writer", "s", "u")
+        self.assertEqual(r["finishReason"], "length")
+        cli = FakeCLI([envelope("{}", out_tokens=cap - 1)])
+        r = cloud_models.ClaudeCodeClient(cfg=self.ccfg, run=cli, sleep=self.sleeps.append).chat("writer", "s", "u")
+        self.assertEqual(r["finishReason"], "end_turn")
 
     def test_a_plan_limit_stops_at_once_and_other_failures_are_retried(self):
         limit = (1, json.dumps({"is_error": True, "result": "You've hit your weekly limit · resets Nov 21"}), "")

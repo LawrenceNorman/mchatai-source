@@ -121,12 +121,14 @@
         "writer": {
           "provider": "claude-code",
           "model": "opus",
-          "effort": "low"
+          "effort": "low",
+          "maxOutputTokens": 64000
         },
         "reviser": {
           "provider": "claude-code",
           "model": "sonnet",
-          "effort": "low"
+          "effort": "low",
+          "maxOutputTokens": 64000
         },
         "auditor": {
           "provider": "claude-code",
@@ -140,7 +142,8 @@
         }
       },
       "chapterPlanBudgetTokens": 3000000,
-      "_chapterPlanBudgetTokens": "Plan tokens (input, cache writes and reads, output, as the CLI reports them) one chapter's write run, or one chapter's gathering, may use before it stops, so a looping run cannot eat the author's week (memory feedback_usage_cap_needs_a_token_budget). --plan-budget raises it for one run."
+      "_chapterPlanBudgetTokens": "Plan tokens (input, cache writes and reads, output, as the CLI reports them) one chapter's write run, or one chapter's gathering, may use before it stops, so a looping run cannot eat the author's week (memory feedback_usage_cap_needs_a_token_budget). --plan-budget raises it for one run.",
+      "_maxOutputTokens": "Writer and reviser get 64,000 on the plan (compute-proxy caps at 32,000). Chapter 5's first write passed 32,000 (thinking plus a long claims list) and Claude Code continued in a second message, returning only that tail (2026-11-17); cloud_models now reads output at or over the cap as 'length', and the writer stops on it."
     }
   }
 }
