@@ -3419,6 +3419,27 @@ class ExplainerDomain(DomainCase):
         self.assertEqual(early(0, walk + " The transformer is fed from DRAM by CUDA."), ["CUDA", "DRAM", "transformer"])
         self.assertEqual(early(1, "A photo becomes tokens in memory."), ["DRAM", "token"])
 
+    def test_the_introduction_may_spell_out_a_map_pieces_acronym(self):
+        # A piece named with an acronym (the KV cache) may be spelled out in the introduction, through its glossary
+        # entry's aliases; the words inside it (key, value) stay its mention. A piece without one gains no aliases.
+        import storytelling
+        self.glossary([{"name": "KV cache", "aliases": ["key-value cache"], "who": "the stored keys and values"},
+                       {"name": "key", "aliases": ["keys"], "who": "what a token offers"},
+                       {"name": "kernel", "aliases": ["filter"], "who": "a small grid of weights"}],
+                      {"KV cache": 2, "key": 2, "kernel": 2})
+        plan = self.project.plan
+        plan["route"] = {"inside": ["the loop and the KV cache"], "under": ["kernels and drivers"]}
+        _hw.save_json(self.project.path("plan.json"), plan)
+        self.project = _hw.Project(self.project.root)
+
+        def early(n, text):
+            return sorted(f["message"].split(" is named")[0] for f in storytelling.cast_findings(self.project, n, {"text": text})
+                          if f["rule"] == "cast_before_intro")
+
+        self.assertEqual(early(0, "The KV cache, short for key-value cache, waits on the kernels."), [])
+        self.assertEqual(early(0, "The KV cache holds the keys. A filter slides."), ["kernel", "key"])
+        self.assertEqual(early(1, "The key-value cache waits."), ["KV cache"])
+
     def test_every_chapter_carries_its_boxes(self):
         import explainer
         spoken = " ".join(["word"] * 70)

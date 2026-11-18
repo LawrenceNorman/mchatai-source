@@ -362,7 +362,10 @@ def map_piece_pattern(project):
     """The book map's own piece names (plan.route's rings), as one pattern, or None when the plan has no
     route. Each piece is split at "or" and "and" ("tokens or patches" is tokens and patches), and each part
     is matched with or without "the", singular or plural. Only the pieces' names: route.keys (CUDA, MCP,
-    attention) are not."""
+    attention) are not. A piece named with an acronym ("the KV cache") may be spelled out where it is named, so
+    the aliases of its glossary entry ("key-value cache") are its own name too (domains/explainer/voice.md §4:
+    an acronym is spelled out at its first use; 2026-11-17). A piece without an acronym gains no aliases
+    ("kernel" is not "filter")."""
     import explainer
     rings, _, _ = explainer.route_rings(project)
     parts = set()
@@ -378,8 +381,16 @@ def map_piece_pattern(project):
                     parts.add(p)
     if not parts:
         return None
-    alts = "|".join(r"\s+".join(map(re.escape, p.split())) + r"(?:e?s)?" for p in sorted(parts, key=len, reverse=True))
-    return re.compile(r"(?<![\w-])(?:the\s+)?(?:" + alts + r")(?![\w-])", re.I)
+
+    def compile_(names):
+        alts = "|".join(r"\s+".join(map(re.escape, p.split())) + r"(?:e?s)?" for p in sorted(names, key=len, reverse=True))
+        return re.compile(r"(?<![\w-])(?:the\s+)?(?:" + alts + r")(?![\w-])", re.I)
+
+    pieces_only = compile_(parts)
+    for e in cast_entries(project):
+        if re.search(r"(?<![\w-])[A-Z]{2,}(?![\w-])", e["name"]) and pieces_only.fullmatch(e["name"]):
+            parts.update(k.lower() for k in e["keys"])
+    return compile_(parts)
 
 
 def cast_findings(project, n, ch):
