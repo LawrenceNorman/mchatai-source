@@ -1,0 +1,271 @@
+<!doctype html>
+<!-- Money - Calculators (Phase FL.15, 2026-11-18). A companion to the handbook "Money, Plainly": the math from its chapters with
+     your own numbers. The formulas are the app's own (AgentCompanion.calculation) and the handbook's: a sum compounds once a
+     year and a monthly saving monthly (chapter 5), a fee comes off the yearly growth (chapter 7), a card's APR is charged at a
+     twelfth a month (chapter 4). Tested by tools/test_calculators.js against the handbook's worked figures. Education, not advice. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Money - Calculators</title>
+<style>
+  :root {
+    --bg: #f6f4ef; --card: #ffffff; --ink: #1d2320; --muted: #5d6762; --line: #dcd8cf;
+    --accent: #2f6f5e; --accent-soft: #e3efe9; --warn: #9a4b1c; --bar: #2f6f5e; --bar2: #c8902e;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #121614; --card: #1b201d; --ink: #eef1ee; --muted: #a3ada7; --line: #2c3430;
+            --accent: #7cc4ad; --accent-soft: #1f3029; --warn: #f0a46c; --bar: #7cc4ad; --bar2: #e4b25c; }
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+         font: 1.0625rem/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+         padding: max(16px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom)); }
+  main { max-width: 640px; margin: 0 auto; }
+  header p { margin: .25rem 0 0; color: var(--muted); }
+  .kicker { font-size: .75rem; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); font-weight: 700; }
+  h1 { font-size: 1.75rem; line-height: 1.15; margin: .2rem 0 0; }
+  nav { display: flex; flex-wrap: wrap; gap: .5rem; margin: 1.25rem 0 1rem; }
+  nav button { flex: 1 1 8.5rem; border: 1px solid var(--line); background: var(--card); color: var(--ink); border-radius: 999px;
+               padding: .6rem .9rem; font: inherit; font-weight: 600; cursor: pointer; }
+  nav button[aria-selected="true"] { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+  section.calc { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 1.1rem; }
+  section.calc[hidden] { display: none; }
+  h2 { font-size: 1.2rem; margin: 0 0 .75rem; }
+  .fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr)); gap: .75rem; }
+  label { display: block; font-size: .875rem; color: var(--muted); font-weight: 600; }
+  .field { position: relative; margin-top: .3rem; }
+  .field span { position: absolute; top: 50%; transform: translateY(-50%); color: var(--muted); pointer-events: none; }
+  .field .pre { left: .75rem; } .field .post { right: .75rem; }
+  input { width: 100%; font: inherit; font-size: 1.1rem; color: var(--ink); background: var(--bg); border: 1px solid var(--line);
+          border-radius: 10px; padding: .6rem .75rem; }
+  input.has-pre { padding-left: 1.6rem; } input.has-post { padding-right: 2.6rem; }
+  input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .result { margin: 1rem 0 .25rem; font-size: 1.15rem; line-height: 1.45; }
+  .result strong { font-size: 1.35rem; color: var(--accent); }
+  .result.warn strong { color: var(--warn); }
+  svg { width: 100%; height: auto; margin: .5rem 0 .25rem; display: block; }
+  .legend { display: flex; flex-wrap: wrap; gap: .25rem 1rem; font-size: .85rem; color: var(--muted); }
+  .legend i { display: inline-block; width: .8rem; height: .8rem; border-radius: 3px; margin-right: .35rem; vertical-align: -1px; }
+  blockquote { margin: 1rem 0 0; padding: .75rem .9rem; background: var(--accent-soft); border-radius: 10px; font-style: italic; }
+  blockquote cite { display: block; margin-top: .4rem; font-style: normal; font-size: .85rem; color: var(--muted); }
+  .read { margin-top: .6rem; border: 0; background: none; color: var(--accent); font: inherit; font-weight: 700; padding: .25rem 0;
+          cursor: pointer; text-align: left; }
+  footer { margin-top: 1.25rem; color: var(--muted); font-size: .9rem; text-align: center; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div class="kicker">A companion to the handbook “Money, Plainly”</div>
+    <h1>Money - Calculators</h1>
+    <p>The math from the handbook's chapters, with your own numbers.</p>
+  </header>
+  <nav role="tablist" aria-label="Calculators">
+    <button role="tab" id="t-growth" aria-controls="growth">A sum grows</button>
+    <button role="tab" id="t-monthly" aria-controls="monthly">Save each month</button>
+    <button role="tab" id="t-card" aria-controls="card">Pay off a card</button>
+    <button role="tab" id="t-fee" aria-controls="fee">What a fee costs</button>
+  </nav>
+
+  <section class="calc" id="growth" role="tabpanel" aria-labelledby="t-growth">
+    <h2>A sum that grows</h2>
+    <div class="fields">
+      <div><label for="g-amount">Amount</label><div class="field"><span class="pre">$</span><input id="g-amount" class="has-pre" inputmode="decimal" value="1000"></div></div>
+      <div><label for="g-rate">Yearly rate</label><div class="field"><input id="g-rate" class="has-post" inputmode="decimal" value="5"><span class="post">%</span></div></div>
+      <div><label for="g-years">Years</label><div class="field"><input id="g-years" inputmode="numeric" value="30"></div></div>
+    </div>
+    <p class="result" id="g-out" aria-live="polite"></p>
+    <svg id="g-chart" viewBox="0 0 320 140" role="img" aria-label="Growth by year"></svg>
+    <div class="legend"><span><i style="background:var(--bar)"></i>Compounded once a year</span><span><i style="background:var(--bar2)"></i>Simple interest</span></div>
+    <blockquote>Compound interest means you earn interest on your deposit and on the interest it already earned, so growth speeds up over time.<cite>Money, Plainly, chapter 5: Compound growth and time</cite></blockquote>
+    <button class="read" data-chapter="5" hidden>Read chapter 5 ›</button>
+  </section>
+
+  <section class="calc" id="monthly" role="tabpanel" aria-labelledby="t-monthly" hidden>
+    <h2>Saving the same amount each month</h2>
+    <div class="fields">
+      <div><label for="m-amount">Each month</label><div class="field"><span class="pre">$</span><input id="m-amount" class="has-pre" inputmode="decimal" value="100"></div></div>
+      <div><label for="m-rate">Yearly rate</label><div class="field"><input id="m-rate" class="has-post" inputmode="decimal" value="5"><span class="post">%</span></div></div>
+      <div><label for="m-years">Years</label><div class="field"><input id="m-years" inputmode="numeric" value="30"></div></div>
+    </div>
+    <p class="result" id="m-out" aria-live="polite"></p>
+    <svg id="m-chart" viewBox="0 0 320 140" role="img" aria-label="Deposits and growth by year"></svg>
+    <div class="legend"><span><i style="background:var(--bar2)"></i>Your deposits</span><span><i style="background:var(--bar)"></i>Growth</span></div>
+    <blockquote>The rate matters, but time matters most, and steady saving beats waiting for the perfect moment. No return is guaranteed.<cite>Money, Plainly, chapter 5: Compound growth and time</cite></blockquote>
+    <button class="read" data-chapter="5" hidden>Read chapter 5 ›</button>
+  </section>
+
+  <section class="calc" id="card" role="tabpanel" aria-labelledby="t-card" hidden>
+    <h2>Paying off a card</h2>
+    <div class="fields">
+      <div><label for="c-balance">Balance</label><div class="field"><span class="pre">$</span><input id="c-balance" class="has-pre" inputmode="decimal" value="2000"></div></div>
+      <div><label for="c-apr">APR</label><div class="field"><input id="c-apr" class="has-post" inputmode="decimal" value="22"><span class="post">%</span></div></div>
+      <div><label for="c-pay">Paid each month</label><div class="field"><span class="pre">$</span><input id="c-pay" class="has-pre" inputmode="decimal" value="100"></div></div>
+    </div>
+    <p class="result" id="c-out" aria-live="polite"></p>
+    <svg id="c-chart" viewBox="0 0 320 140" role="img" aria-label="Balance by month"></svg>
+    <div class="legend"><span><i style="background:var(--bar2)"></i>What is still owed, adding nothing new</span></div>
+    <blockquote>Pay only the minimum and interest piles onto the balance for years.<cite>Money, Plainly, chapter 4: Credit, debt and your credit report</cite></blockquote>
+    <button class="read" data-chapter="4" hidden>Read chapter 4 ›</button>
+  </section>
+
+  <section class="calc" id="fee" role="tabpanel" aria-labelledby="t-fee" hidden>
+    <h2>What a yearly fee costs</h2>
+    <div class="fields">
+      <div><label for="f-amount">Amount</label><div class="field"><span class="pre">$</span><input id="f-amount" class="has-pre" inputmode="decimal" value="10000"></div></div>
+      <div><label for="f-rate">Growth before fees</label><div class="field"><input id="f-rate" class="has-post" inputmode="decimal" value="6"><span class="post">%</span></div></div>
+      <div><label for="f-fee">Yearly fee</label><div class="field"><input id="f-fee" class="has-post" inputmode="decimal" value="1"><span class="post">%</span></div></div>
+      <div><label for="f-years">Years</label><div class="field"><input id="f-years" inputmode="numeric" value="30"></div></div>
+    </div>
+    <p class="result" id="f-out" aria-live="polite"></p>
+    <svg id="f-chart" viewBox="0 0 320 140" role="img" aria-label="With and without the fee by year"></svg>
+    <div class="legend"><span><i style="background:var(--bar)"></i>No fee</span><span><i style="background:var(--bar2)"></i>With the fee</span></div>
+    <blockquote>Fees are the cost you always pay. A small yearly fee, compounded over decades, can take a large share of what you would have had.<cite>Money, Plainly, chapter 7: Risk, diversification and fees</cite></blockquote>
+    <button class="read" data-chapter="7" hidden>Read chapter 7 ›</button>
+  </section>
+
+  <footer>Education, not advice. Every rate here is an assumption, not a promise.</footer>
+</main>
+<script>
+"use strict";
+const BOOK = "money-plainly-handbook-en";
+const $ = (id) => document.getElementById(id);
+const num = (id) => { const v = parseFloat(String($(id).value).replace(/[$,%\s]/g, "")); return Number.isFinite(v) ? v : NaN; };
+
+// Money as the handbook writes it: cents below $10,000, whole dollars above.
+function money(x, given) {
+  const whole = Math.abs(x) >= 10000 || (given && x === Math.round(x));
+  return "$" + (whole ? Math.round(x) : x).toLocaleString("en-US", { minimumFractionDigits: whole ? 0 : 2, maximumFractionDigits: whole ? 0 : 2 });
+}
+function pct(x) { return String(+x.toFixed(2)) + "%"; }
+function span(months) {
+  const y = Math.floor(months / 12), m = months % 12;
+  const ys = y === 1 ? "1 year" : y + " years", ms = m === 1 ? "1 month" : m + " months";
+  return y === 0 ? ms : m === 0 ? ys : ys + " and " + ms;
+}
+
+// The formulas (the same as the app's: AgentCompanion.calculation).
+const math = {
+  lumpSum: (a, rate, n) => a * Math.pow(1 + rate / 100, n),
+  simple: (a, rate, n) => a * (1 + rate / 100 * n),
+  monthly: (each, rate, n) => { const r = rate / 100 / 12, k = n * 12; return r === 0 ? each * k : each * (Math.pow(1 + r, k) - 1) / r; },
+  fee: (a, growth, fee, n) => a * Math.pow(1 + (growth - fee) / 100, n),
+  card: (balance, apr, pay) => {
+    const r = apr / 100 / 12;
+    if (pay <= balance * r) return { never: true, monthlyInterest: balance * r };
+    let owed = balance, interest = 0, months = 0; const path = [balance];
+    while (owed > 0.005 && months < 1200) { const c = owed * r; interest += c; owed = owed + c - pay; months += 1; path.push(Math.max(0, owed)); }
+    return { never: false, months, interest, path };
+  },
+};
+window.__calc = math;   // for the page's test
+
+// A small chart: one or two series of points, scaled to the box.
+function chart(svg, series, colors) {
+  const W = 320, H = 140, pad = 6, max = Math.max(1, ...series.flat());
+  const n = Math.max(...series.map(s => s.length));
+  const x = (i) => pad + (W - 2 * pad) * (n <= 1 ? 0 : i / (n - 1));
+  const y = (v) => H - pad - (H - 2 * pad) * (v / max);
+  svg.innerHTML = '<line x1="' + pad + '" y1="' + (H - pad) + '" x2="' + (W - pad) + '" y2="' + (H - pad) + '" stroke="var(--line)"/>' +
+    series.map((s, k) => '<polyline fill="none" stroke-width="2.5" stroke-linejoin="round" stroke="' + colors[k] + '" points="' +
+      s.map((v, i) => x(i).toFixed(1) + "," + y(v).toFixed(1)).join(" ") + '"/>').join("");
+}
+function bars(svg, a, b, colors) {   // stacked bars: a (bottom) and b (top) per year
+  const W = 320, H = 140, pad = 6, n = a.length, max = Math.max(1, ...a.map((v, i) => v + b[i]));
+  const w = (W - 2 * pad) / n;
+  svg.innerHTML = a.map((v, i) => {
+    const h1 = (H - 2 * pad) * v / max, h2 = (H - 2 * pad) * b[i] / max, x = pad + i * w;
+    return '<rect x="' + (x + w * .1).toFixed(1) + '" y="' + (H - pad - h1).toFixed(1) + '" width="' + (w * .8).toFixed(1) + '" height="' + h1.toFixed(1) + '" fill="' + colors[0] + '"/>' +
+           '<rect x="' + (x + w * .1).toFixed(1) + '" y="' + (H - pad - h1 - h2).toFixed(1) + '" width="' + (w * .8).toFixed(1) + '" height="' + h2.toFixed(1) + '" fill="' + colors[1] + '"/>';
+  }).join("");
+}
+const range = (n) => Array.from({ length: n + 1 }, (_, i) => i);
+const ok = (...xs) => xs.every(v => Number.isFinite(v) && v >= 0);
+function ask(out, text) { out.className = "result"; out.textContent = text; }
+
+function growth() {
+  const a = num("g-amount"), rate = num("g-rate"), n = Math.round(num("g-years")), out = $("g-out");
+  if (!ok(a, rate, n) || n < 1 || n > 100) return ask(out, "Give an amount, a yearly rate and a number of years.");
+  out.className = "result";
+  out.innerHTML = "At an assumed " + pct(rate) + " a year, compounded once a year, " + money(a, true) + " grows to <strong>" +
+    money(math.lumpSum(a, rate, n)) + "</strong> after " + n + (n === 1 ? " year" : " years") + ". With simple interest it would be " +
+    money(math.simple(a, rate, n)) + ".";
+  chart($("g-chart"), [range(n).map(i => math.lumpSum(a, rate, i)), range(n).map(i => math.simple(a, rate, i))], ["var(--bar)", "var(--bar2)"]);
+}
+function monthly() {
+  const each = num("m-amount"), rate = num("m-rate"), n = Math.round(num("m-years")), out = $("m-out");
+  if (!ok(each, rate, n) || n < 1 || n > 100) return ask(out, "Give an amount each month, a yearly rate and a number of years.");
+  const total = math.monthly(each, rate, n), put = each * 12 * n;
+  out.className = "result";
+  out.innerHTML = "Saving " + money(each, true) + " a month at an assumed " + pct(rate) + " a year, compounded monthly, builds <strong>" +
+    money(total) + "</strong> after " + n + (n === 1 ? " year" : " years") + ": " + money(put) + " deposited and " + money(total - put) + " grown.";
+  const ys = range(n).slice(1);
+  bars($("m-chart"), ys.map(i => each * 12 * i), ys.map(i => math.monthly(each, rate, i) - each * 12 * i), ["var(--bar2)", "var(--bar)"]);
+}
+function card() {
+  const b = num("c-balance"), apr = num("c-apr"), pay = num("c-pay"), out = $("c-out");
+  if (!ok(b, apr, pay) || b <= 0 || pay <= 0) return ask(out, "Give a balance, the APR and what you pay each month.");
+  const r = math.card(b, apr, pay);
+  if (r.never) {
+    out.className = "result warn";
+    out.innerHTML = "At " + pct(apr) + " APR, a " + money(b, true) + " balance adds about <strong>" + money(r.monthlyInterest) +
+      "</strong> of interest a month, so " + money(pay, true) + " a month never pays it off.";
+    $("c-chart").innerHTML = "";
+    return;
+  }
+  out.className = "result";
+  out.innerHTML = "A " + money(b, true) + " balance at " + pct(apr) + " APR, paying " + money(pay, true) + " a month and adding nothing new, " +
+    "is paid off in <strong>" + span(r.months) + "</strong>, with about " + money(r.interest) + " paid in interest, worked out a month at a time. " +
+    "Many cards charge interest daily, so a real card can cost a little more.";
+  chart($("c-chart"), [r.path], ["var(--bar2)"]);
+}
+function fee() {
+  const a = num("f-amount"), g = num("f-rate"), f = num("f-fee"), n = Math.round(num("f-years")), out = $("f-out");
+  if (!ok(a, g, f, n) || n < 1 || n > 100) return ask(out, "Give an amount, the growth before fees, the yearly fee and the years.");
+  const withFee = math.fee(a, g, f, n), without = math.lumpSum(a, g, n);
+  out.className = "result";
+  out.innerHTML = money(a, true) + " growing an assumed " + pct(g) + " a year before fees is worth about <strong>" + money(withFee) +
+    "</strong> after " + n + (n === 1 ? " year" : " years") + " with a yearly fee of " + pct(f) + ", against " + money(without) +
+    " with no fee: the fee costs " + money(without - withFee) + ".";
+  chart($("f-chart"), [range(n).map(i => math.lumpSum(a, g, i)), range(n).map(i => math.fee(a, g, f, i))], ["var(--bar)", "var(--bar2)"]);
+}
+const panels = { growth, monthly, card, fee };
+
+function show(id) {
+  for (const key of Object.keys(panels)) {
+    $(key).hidden = key !== id;
+    $("t-" + key).setAttribute("aria-selected", String(key === id));
+  }
+  panels[id]();
+}
+document.querySelectorAll("nav button").forEach(b => b.addEventListener("click", () => show(b.getAttribute("aria-controls"))));
+document.querySelectorAll("input").forEach(i => i.addEventListener("input", () => panels[i.closest("section").id]()));
+
+// ?calc=growth&amount=500&rate=5&years=10 (also payment, fee) opens one calculator with those numbers.
+(function prefill() {
+  const q = new URLSearchParams(location.search), id = q.get("calc");
+  const map = { growth: { amount: "g-amount", rate: "g-rate", years: "g-years" }, monthly: { amount: "m-amount", rate: "m-rate", years: "m-years" },
+                card: { amount: "c-balance", rate: "c-apr", payment: "c-pay" }, fee: { amount: "f-amount", rate: "f-rate", fee: "f-fee", years: "f-years" } };
+  if (id && map[id]) for (const [k, field] of Object.entries(map[id])) if (q.get(k)) $(field).value = q.get(k);
+  Object.values(panels).forEach(p => p());
+  show(id && map[id] ? id : "growth");
+})();
+
+// "Read chapter N" only where the app can open one chapter over this page, for an account that has the book (a silent upgrade:
+// nothing is named otherwise).
+(async function chapterLinks() {
+  const m = window.mChatAI || {};
+  if (!m.pack || typeof m.pack.info !== "function" || !m.library) return;
+  let info = null;
+  try { info = await m.pack.info(); } catch (e) { return; }
+  if (!info || !(info.features || []).includes("libraryChapter") || !(info.library || []).includes(BOOK)) return;
+  document.querySelectorAll(".read").forEach(b => {
+    b.hidden = false;
+    b.addEventListener("click", () => m.library.open({ item: BOOK, chapter: Number(b.dataset.chapter) }).catch(() => {}));
+  });
+})();
+</script>
+</body>
+</html>

@@ -65,6 +65,12 @@ field notes: `mchatai_macOS/docs/PERSONA_PACKS_ARCHITECTURE.md` (Phase EX).
   the companion opens it when a sentence says one of `ask` (verb-led phrases, no model) and offers it after an explanation
   from one of `chapters` with an `offers` rule `{verb: "openGame", when: "noteHasGame", say}`. `openGame` is the app's own
   step and never one of `agent.verbs`, so a build without it skips the rule. Words come from the game's own Hub listing.
+  FL.15: `tools` (the same shape) are Hub tools such as a calculator: Learn's Calculate section, the door's 🧮 tile (feature
+  `tool`), and an offer `{verb: "openTool", when: "afterCalculation"}` after a sum the app worked out. `agent.calculators:
+  [{id, formula: lumpSum|monthlySaving|cardPayoff|feeDrag, ask, say, never?, missing?, notes}]` are sums the app works out
+  itself before any guide. An offer rule's `line`, `button` and `send` make it a chip that sends `send` as if typed (a build
+  without chips shows `say`); `door.library.ask/opening/readLabel/readSend` open the book from the chat and put a "Read
+  chapter N" chip on an explanation, for an entitled account.
   A Hub page can open one chapter of a Library book over itself with `window.mChatAI.library.open({item, chapter})`
   when `window.mChatAI.pack.info()` lists `libraryChapter` in `features` and the book in `library`.
   Check everything with `python3 personas/validate_personas.py personas/_index.json`

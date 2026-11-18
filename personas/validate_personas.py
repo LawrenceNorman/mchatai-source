@@ -15,7 +15,10 @@ CONFIRM = {'plan', 'writes', 'never'}   # Phase AV.2: when the agent pauses for 
 # Phase FL.7: `none` = a private companion keeps nothing (no saved chat, no pinned lines, no mini-app storage).
 RETENTION = {'default', 'none'}
 MODES = {'agent', 'companion'}   # Phase FL.10: a companion chats as a persona and takes a step only when asked
-OFFER_WHEN = {'personSays', 'noteHasSource', 'noteHasQuiz', 'noteHasEpisode', 'noteHasGame'}
+OFFER_WHEN = {'personSays', 'noteHasSource', 'noteHasQuiz', 'noteHasEpisode', 'noteHasGame', 'afterCalculation'}
+# Phase FL.15: the app's own sums (AgentCompanion.calculation) and its step that opens one of the pack's `tools`.
+FORMULAS = {'lumpSum', 'monthlySaving', 'cardPayoff', 'feeDrag'}
+TOOL_VERB = 'openTool'
 # Phase FL.14: the app's own step that opens one of the pack's `games` (no planner, no catalog verb). It is never in
 # agent.verbs, so a build without it skips the offer.
 GAME_VERB = 'openGame'
@@ -170,6 +173,16 @@ def companion_problems(where, p, agent, ids, verbs_by_id):
                 for g in guides) or len(set(guide_ids)) != len(guide_ids):
             found.append(f'{where}: each agent.guides entry needs its own id, ask (lowercase phrases of two or more words), '
                          f'the answer to say (900 characters at most), and also/notes as lists')
+        # FL.15: sums the app works out itself.
+        calcs = agent.get('calculators', [])
+        if not isinstance(calcs, list) or any(
+                not isinstance(c, dict) or not str(c.get('id') or '').strip() or c.get('formula') not in FORMULAS
+                or not phrases_ok(c.get('ask')) or not str(c.get('say') or '').strip() or len(str(c.get('say') or '')) > 600
+                or not isinstance(c.get('notes', []), list)
+                or any(k in c and (not isinstance(c[k], str) or not c[k].strip()) for k in ('never', 'missing'))
+                for c in calcs):
+            found.append(f'{where}: each agent.calculators entry needs an id, a formula ({", ".join(sorted(FORMULAS))}), ask '
+                         f'(lowercase words), the line to say (600 characters at most), notes as a list, and never/missing as lines')
         after = agent.get('afterNotes', [])
         if not isinstance(after, list) or set(after) - set(ids):
             found.append(f'{where}: agent.afterNotes must list steps the pack has')
@@ -220,15 +233,18 @@ def pack_content_problems(where, p, folder):
                 found.append(f'{where}: media {mid}: path must be relative to mchatai-source')
             elif path and folder is not None and not (Path(folder).parent / path).exists():
                 found.append(f'{where}: media {mid}: {path} is not in mchatai-source')
-    games = p.get('games')
-    if games is not None:
+    # FL.14 games and FL.15 tools: published Hub products the pack offers (one id space).
+    seen = set()
+    for key in ('games', 'tools'):
+        games = p.get(key)
+        if games is None:
+            continue
         if not isinstance(games, list):
-            return found + [f'{where}: games must be a list']
-        seen = set()
+            return found + [f'{where}: {key} must be a list']
         for g in games:
             gid = g.get('id') if isinstance(g, dict) else None
             if not gid or gid in seen:
-                found.append(f'{where}: every game needs its own id'); continue
+                found.append(f'{where}: every game and tool needs its own id'); continue
             seen.add(gid)
             if not str(g.get('title') or '').strip():
                 found.append(f'{where}: game {gid}: missing title')
@@ -248,6 +264,11 @@ def pack_content_problems(where, p, folder):
             # Two words or more and verb-led: "fast forward" alone would take "I want to fast forward to retirement".
             if 'ask' in g and not phrases_ok(g['ask'], least_words=2):
                 found.append(f'{where}: game {gid}: ask must be lowercase phrases of two or more words')
+    library = (p.get('door') or {}).get('library') or {}
+    if 'ask' in library and not phrases_ok(library['ask'], least_words=2):
+        found.append(f'{where}: door.library.ask must be lowercase phrases of two or more words')
+    if ('readLabel' in library) != ('readSend' in library):
+        found.append(f'{where}: door.library needs both readLabel and readSend for its chip')
     explain = (p.get('knowledge') or {}).get('explain')
     if explain is not None and not phrases_ok(explain):
         found.append(f'{where}: knowledge.explain must be lowercase phrases (letters, digits, spaces)')
@@ -305,8 +326,13 @@ def pack_content_problems(where, p, folder):
                     found.append(f'{where}: an {GAME_VERB} offer needs when "noteHasGame" and a pack with games')
                 if GAME_VERB in (agent.get('verbs') or []):
                     found.append(f'{where}: {GAME_VERB} is the app\'s own step; keep it out of agent.verbs (a build without it would route it)')
-            elif rule.get('when') == 'noteHasGame':
-                found.append(f'{where}: a noteHasGame offer is made with verb {GAME_VERB!r}')
+            elif verb == TOOL_VERB:
+                if rule.get('when') != 'afterCalculation' or not p.get('tools'):
+                    found.append(f'{where}: an {TOOL_VERB} offer needs when "afterCalculation" and a pack with tools')
+                if TOOL_VERB in (agent.get('verbs') or []):
+                    found.append(f'{where}: {TOOL_VERB} is the app\'s own step; keep it out of agent.verbs')
+            elif rule.get('when') in ('noteHasGame', 'afterCalculation'):
+                found.append(f'{where}: a {rule.get("when")} offer is made with verb {GAME_VERB!r} or {TOOL_VERB!r}')
             elif verb not in (agent.get('verbs') or []):
                 found.append(f'{where}: an offer names a step the pack does not have: {verb!r}'); continue
             if verb in used:
@@ -321,6 +347,12 @@ def pack_content_problems(where, p, folder):
             say = rule.get('say')
             if not isinstance(say, str) or not say.strip() or len(say) > 140:
                 found.append(f'{where}: offer {verb}: say must be one line of at most 140 characters')
+            # FL.15: a chip needs its label and the words it sends; the line shown with it is optional.
+            if ('button' in rule) != ('send' in rule):
+                found.append(f'{where}: offer {verb}: a chip needs both button and send')
+            for field, most in (('line', 140), ('button', 40), ('send', 80)):
+                if field in rule and (not isinstance(rule[field], str) or not rule[field].strip() or len(rule[field]) > most):
+                    found.append(f'{where}: offer {verb}: {field} must be a line of at most {most} characters')
     return found
 
 

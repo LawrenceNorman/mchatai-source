@@ -78,7 +78,7 @@
     "miniapp": true
   },
   "retired": false,
-  "version": 11,
+  "version": 12,
   "legacyPersonaID": null,
   "aliases": [],
   "retention": "none",
@@ -333,6 +333,102 @@
         "say": "Chapter 2 suggests a first goal of $500 to $1,000 set aside, which can cover many unexpected expenses. Chapter 11 gives the habit that fills it: a set amount moved automatically from checking to a separate savings account each pay period, so saving happens without a decision. One catch: an automatic transfer can trigger overdraft fees if checking is short on the day it runs, so keep an eye on the balance. Would that fit your month?"
       }
     ],
+    "calculators": [
+      {
+        "id": "card-payoff",
+        "formula": "cardPayoff",
+        "notes": [
+          "ch04-key",
+          "term-apr"
+        ],
+        "ask": [
+          "owe",
+          "balance",
+          "debt",
+          "card",
+          "pay off",
+          "pay it off",
+          "paying off",
+          "payoff"
+        ],
+        "say": "A {amount} balance at {rate} APR, paying {payment} a month and adding nothing new, is paid off in {time}, with about {interest} paid in interest, worked out a month at a time. Chapter 4 explains APR: many cards charge interest daily on your average balance, so a real card can cost a little more.",
+        "never": "At {rate} APR, a {amount} balance adds about {monthlyInterest} of interest a month, so {payment} a month never pays it off. Chapter 4 explains how APR works.",
+        "missing": "Give me the balance, the APR and the monthly payment, like “$2,000 at 22% paying $100 a month”, and I'll work out how long it takes."
+      },
+      {
+        "id": "fee-drag",
+        "formula": "feeDrag",
+        "notes": [
+          "ch07-key",
+          "term-expense-ratio"
+        ],
+        "ask": [
+          "fee",
+          "fees",
+          "expense ratio",
+          "expenses",
+          "charge",
+          "charges"
+        ],
+        "say": "{amount} growing an assumed {rate} a year before fees is worth about {results}. Chapter 7 shows the same effect with the SEC's own example; the growth is an assumption, not a promise."
+      },
+      {
+        "id": "monthly-saving",
+        "formula": "monthlySaving",
+        "notes": [
+          "ch05-key",
+          "term-compound-interest"
+        ],
+        "ask": [
+          "save",
+          "saving",
+          "saved",
+          "invest",
+          "investing",
+          "put away",
+          "put in",
+          "deposit",
+          "add",
+          "grow",
+          "interest",
+          "will i have",
+          "end up",
+          "be worth",
+          "compound"
+        ],
+        "say": "Saving {amount} a month at an assumed {rate} a year, compounded monthly, builds {results}. That is chapter 5's math; the rate is an assumption, not a promise.",
+        "missing": "Give me the amount, a yearly rate and the years, like “$100 a month at 5% for 30 years”, and I'll work it out with chapter 5's math."
+      },
+      {
+        "id": "growth",
+        "formula": "lumpSum",
+        "notes": [
+          "ch05-key",
+          "term-compound-interest"
+        ],
+        "ask": [
+          "save",
+          "saved",
+          "invest",
+          "invested",
+          "put away",
+          "put in",
+          "deposit",
+          "grow",
+          "grows",
+          "interest",
+          "will i have",
+          "end up",
+          "be worth",
+          "worth",
+          "compound",
+          "leave it",
+          "left alone"
+        ],
+        "say": "At an assumed {rate} a year, compounded once a year, {amount} grows to {results}, with nothing added after the first day. That is chapter 5's math; the rate is an assumption, not a promise.",
+        "missing": "Give me the amount, a yearly rate and the years, like “$500 at 5% for 10 years”, and I'll work it out with chapter 5's math."
+      }
+    ],
     "pointBack": {
       "addToDo": {
         "argument": "items",
@@ -561,27 +657,50 @@
           "worry",
           "panic"
         ],
-        "say": "Want that on your to-do list? Say “add that to my to-dos”."
+        "say": "Want that on your to-do list? Say “add that to my to-dos”.",
+        "line": "Want that on your to-do list?",
+        "button": "Add to my to-dos",
+        "send": "add that to my to-dos"
+      },
+      {
+        "verb": "openTool",
+        "when": "afterCalculation",
+        "say": "Money - Calculators has these sums with your own numbers. Say “open the calculator” to try it.",
+        "line": "Try other numbers in Money - Calculators.",
+        "button": "Open the calculator",
+        "send": "open the calculator"
       },
       {
         "verb": "openGame",
         "when": "noteHasGame",
-        "say": "There is a game on this too: Fast Forward, a life from 22 to 65, one year a turn. Say “play Fast Forward” to try it."
+        "say": "There is a game on this too: Fast Forward, a life from 22 to 65, one year a turn. Say “play Fast Forward” to try it.",
+        "line": "There is a game on this too: Fast Forward, a life from 22 to 65, one year a turn.",
+        "button": "Play Fast Forward",
+        "send": "play Fast Forward"
       },
       {
         "verb": "playEpisode",
         "when": "noteHasEpisode",
-        "say": "There is a short episode on this. Say “play the money podcast” to hear it."
+        "say": "There is a short episode on this. Say “play the money podcast” to hear it.",
+        "line": "There is a short episode on this.",
+        "button": "Play the episode",
+        "send": "play the money podcast"
       },
       {
         "verb": "showSource",
         "when": "noteHasSource",
-        "say": "Say “show me where that comes from” to open the federal page behind it."
+        "say": "Say “show me where that comes from” to open the federal page behind it.",
+        "line": "The federal page behind it is one tap away.",
+        "button": "Show the source",
+        "send": "show me where that comes from"
       },
       {
         "verb": "openQuiz",
         "when": "noteHasQuiz",
-        "say": "Say “quiz me on chapter {chapter}” to check yourself on this."
+        "say": "Say “quiz me on chapter {chapter}” to check yourself on this.",
+        "line": "Check yourself on chapter {chapter}.",
+        "button": "Quiz me on chapter {chapter}",
+        "send": "quiz me on chapter {chapter}"
       }
     ]
   },
@@ -667,7 +786,21 @@
       "label": "Read the handbook",
       "sub": "Money, Plainly in AI Reader, chapter by chapter",
       "listenLabel": "Listen to the handbook",
-      "listenSub": "Read aloud, in Audio Books"
+      "listenSub": "Read aloud, in Audio Books",
+      "readLabel": "Read chapter {chapter}",
+      "readSend": "read chapter {chapter}",
+      "ask": [
+        "read chapter",
+        "open chapter",
+        "read the chapter",
+        "open the chapter",
+        "read that chapter",
+        "read the handbook",
+        "open the handbook",
+        "show me the chapter",
+        "show me chapter"
+      ],
+      "opening": "Opening chapter {chapter} of the handbook."
     },
     "episodeSub": "Podcast, two voices",
     "episodesLabel": "Listen to an episode",
@@ -707,6 +840,31 @@
         "what games"
       ],
       "say": "Opening Fast Forward. Each turn is a year: split what is left after costs between a cushion for bad days, investing, paying down debt and living. At 65 you see where the life ended up. The numbers come from a simple model, not a forecast. Education, not advice."
+    }
+  ],
+  "tools": [
+    {
+      "id": "money-calculators",
+      "product": "com.mchatai.miniApp.money-calculators",
+      "url": "https://mchatai.com/u/GI1GHQ7w/money-calculators/",
+      "title": "Money - Calculators",
+      "label": "Money calculators",
+      "sub": "A sum that grows, saving each month, paying off a card, and what a yearly fee costs, with the handbook's math.",
+      "ask": [
+        "open the calculator",
+        "open the calculators",
+        "open a calculator",
+        "use the calculator",
+        "use a calculator",
+        "show me the calculator",
+        "the money calculator",
+        "the money calculators",
+        "is there a calculator",
+        "do you have a calculator",
+        "any calculators",
+        "try other numbers"
+      ],
+      "say": "Opening Money - Calculators: a sum that grows, saving each month, paying off a card, and what a yearly fee costs, with the handbook's math. Every rate is an assumption, not a promise."
     }
   ]
 }

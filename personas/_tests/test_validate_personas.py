@@ -182,6 +182,24 @@ class ValidatePersonasTests(unittest.TestCase):
         self.companion(idx).pop('games')
         self.assertTrue(any('a pack with games' in p for p in v.problems(idx)), 'an offer with no game to open')
 
+    def test_calculators_and_offer_chips(self):
+        # Phase FL.15: sums the app works out, and offers as chips (a build without chips shows `say`).
+        self.assertEqual([p for p in v.problems(copy.deepcopy(INDEX)) if 'calculators' in p or 'chip' in p], [])
+        self.assertTrue(self.companion(copy.deepcopy(INDEX))['agent'].get('calculators'), 'the pack carries its calculators')
+        for change in (lambda c: c.update(formula='compoundDaily'), lambda c: c.update(say=''), lambda c: c.update(ask='save'),
+                       lambda c: c.update(missing='  ')):
+            idx = copy.deepcopy(INDEX)
+            change(self.companion(idx)['agent']['calculators'][0])
+            self.assertTrue(any('agent.calculators' in p for p in v.problems(idx)), 'a malformed calculator is refused')
+        idx = copy.deepcopy(INDEX)
+        rule = next(r for r in self.companion(idx)['offers']['rules'] if 'button' in r)
+        rule.pop('send')
+        self.assertTrue(any('a chip needs both button and send' in p for p in v.problems(idx)))
+        idx = copy.deepcopy(INDEX)
+        self.companion(idx)['offers']['rules'].append({'verb': 'openTool', 'when': 'afterCalculation', 'say': 'Try the calculator.'})
+        if not self.companion(idx).get('tools'):
+            self.assertTrue(any('a pack with tools' in p for p in v.problems(idx)), 'an offer with no tool to open')
+
     def test_guard_repeat_name_and_assent_shapes(self):
         # A malformed field drops the whole guard in the app, advice patterns and all.
         self.assertEqual([p for p in v.problems(copy.deepcopy(INDEX)) if 'guard' in p], [])
