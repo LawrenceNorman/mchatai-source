@@ -165,6 +165,23 @@ class ValidatePersonasTests(unittest.TestCase):
         guides[1]['id'] = guides[0]['id']
         self.assertTrue(any('agent.guides' in p for p in v.problems(idx)), 'two guides with one id')
 
+    def test_games_and_their_offer(self):
+        # Phase FL.14: a published Hub game the pack offers; its offer verb is the app's own, never one of agent.verbs.
+        self.assertEqual([p for p in v.problems(copy.deepcopy(INDEX)) if 'game' in p.lower()], [])
+        self.assertTrue(self.companion(copy.deepcopy(INDEX)).get('games'), 'the pack carries its game')
+        for change in (lambda g: g.update(url='http://example.com/'), lambda g: g.update(ask=['Play']),
+                       lambda g: g.update(chapters=['two']), lambda g: g.pop('title'), lambda g: g.update(say=''),
+                       lambda g: (g.pop('product'), g.pop('url'))):
+            idx = copy.deepcopy(INDEX)
+            change(self.companion(idx)['games'][0])
+            self.assertTrue(any('game' in p for p in v.problems(idx)), 'a malformed game is refused')
+        idx = copy.deepcopy(INDEX)
+        self.companion(idx)['agent']['verbs'].append('openGame')
+        self.assertTrue(any('keep it out of agent.verbs' in p for p in v.problems(idx)), 'an older build would route it')
+        idx = copy.deepcopy(INDEX)
+        self.companion(idx).pop('games')
+        self.assertTrue(any('a pack with games' in p for p in v.problems(idx)), 'an offer with no game to open')
+
     def test_guard_repeat_name_and_assent_shapes(self):
         # A malformed field drops the whole guard in the app, advice patterns and all.
         self.assertEqual([p for p in v.problems(copy.deepcopy(INDEX)) if 'guard' in p], [])

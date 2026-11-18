@@ -374,6 +374,16 @@ function showDoor(info) {
   if (lib && lib.item && (info.library || []).includes(lib.item) && bridge().library) {
     learn.push(doorTile("📖", lib.label || "Read the book", lib.sub || "", () => doorRun(status, bridge().library.open({ item: lib.item }))));
   }
+  // Phase FL.14: the pack's games. An app with the game step opens one in its Hub player over this page; an older app opens
+  // the game's hosted copy in its own browser.
+  (PACK.games || []).filter(g => g && g.id && g.title).forEach(g => {
+    const words = [g.label || g.title, g.sub || ""];
+    if (features.includes("game") && typeof p.game === "function") {
+      learn.push(doorTile("🎮", ...words, () => doorRun(status, p.game({ id: g.id }))));
+    } else if (g.url && bridge().app && typeof bridge().app.openWeb === "function") {
+      learn.push(doorTile("🎮", ...words, () => doorRun(status, bridge().app.openWeb({ url: g.url }))));
+    }
+  });
   const episodes = (PACK.media || []).filter(m => m.kind === "episode");
   const playEpisode = (m) => {
     doorSay(status, "Getting the episode…");

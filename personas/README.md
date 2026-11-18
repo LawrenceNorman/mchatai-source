@@ -44,7 +44,8 @@ field notes: `mchatai_macOS/docs/PERSONA_PACKS_ARCHITECTURE.md` (Phase EX).
   ride only on such a sentence) and `guard: {drop: [regular expressions], empty}` (sentences an
   ordinary reply may not carry, such as advice language; also `numbersFromNotes`, `noLists`,
   `noRepeats` with `repeated` and `restate`, `shortNames: {long: short}` and `assent` with
-  `{said}`/`{question}`, applied the same way in Chat and on the Hub page), and `agent.decline: [{ask, say}]` (asks
+  `{said}`/`{question}`, applied the same way in Chat and on the Hub page; FL.14 `dropWithoutNotes`, more patterns Chat
+  applies only on a turn given no notes, such as a sentence quoting the handbook), and `agent.decline: [{ask, say}]` (asks
   the app answers with the pack's own line: what no step does, and advice it must never give), and before any
   decline `agent.guides: [{id, ask, also?, say, notes}]` (FL.13: answers from the pack's own text, checked against
   its sources when the pack is built; `notes` become what "that" means next). A pack with `retention: "none"` may take steps only this way, on Apple's
@@ -58,6 +59,14 @@ field notes: `mchatai_macOS/docs/PERSONA_PACKS_ARCHITECTURE.md` (Phase EX).
   the welcome, the starters and tiles, and hands each one to the app's own code: Chat with this persona (a starter is sent as
   if tapped), Quiznect's player for a chapter's set, the episode in Podcasts, and `library.item` in AI Reader, shown only
   when the Library marks that book entitled for the account. An app without the bridge keeps the chat on the page.
+- `games` (Phase FL.14) — published Hub games the pack offers: `[{id, product, url, title, label, sub, chapters, ask, say}]`.
+  `product` is the Hub product id (the app's Hub player opens it over the chat, the Learn sheet or the door); `url` is its
+  hosted copy, which an app without the game step opens in its browser. The door and the Learn sheet show `label`/`sub`;
+  the companion opens it when a sentence says one of `ask` (verb-led phrases, no model) and offers it after an explanation
+  from one of `chapters` with an `offers` rule `{verb: "openGame", when: "noteHasGame", say}`. `openGame` is the app's own
+  step and never one of `agent.verbs`, so a build without it skips the rule. Words come from the game's own Hub listing.
+  A Hub page can open one chapter of a Library book over itself with `window.mChatAI.library.open({item, chapter})`
+  when `window.mChatAI.pack.info()` lists `libraryChapter` in `features` and the book in `library`.
   Check everything with `python3 personas/validate_personas.py personas/_index.json`
   (tests: `python3 -m unittest discover -s personas/_tests`).
 - `preinstalled: true` — in the Chat picker until the person removes it (the original six);

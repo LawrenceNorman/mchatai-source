@@ -27,7 +27,7 @@
      "mustSay": [
       "interest"
      ],
-     "offer": "money podcast",
+     "offer": "play Fast Forward",
      "mustNotSay": [
       "^Money Check-In:",
       "Would (open|play|add)",
@@ -68,7 +68,7 @@
      "mustSay": [
       "risk"
      ],
-     "offer": "where that comes from",
+     "offer": "money podcast",
      "mustNotSay": [
       "^Money Check-In:",
       "Would (open|play|add)",
@@ -105,7 +105,7 @@
      ]
     }
    ],
-   "_note": "FL.12 (11-17): every chapter has an episode, so the first explanation offers it (it ranks before the source) and turn 4 offers the source (each offer once a chat); turn 5 plays chapter 7's episode because risk was just explained, not because it is the only one."
+   "_note": "FL.14 (11-17): compound growth is one of Fast Forward's chapters, so the first explanation offers the game (it ranks before the episode); turn 4 then offers chapter 7's episode, and turn 5 plays it because risk was just explained. FL.12: every chapter has an episode, ranked before the source."
   },
   {
    "id": "yes-takes-the-offer",
@@ -117,7 +117,7 @@
      "mustSay": [
       "index"
      ],
-     "offer": "where that comes from",
+     "offer": "money podcast",
      "mustNotSay": [
       "^Money Check-In:",
       "Would (open|play|add)",
@@ -127,10 +127,10 @@
     {
      "say": "Yes please",
      "expect": [
-      "showSource"
+      "playEpisode"
      ],
      "mustSay": [
-      "Index fund \\(Investor\\.gov glossary\\)"
+      "Stocks, bonds and funds"
      ],
      "mustNotSay": [
       "moneyplainly\\.org"
@@ -142,7 +142,7 @@
      "mustSay": [
       "fund"
      ],
-     "offer": "quiz me on chapter 6",
+     "offer": "where that comes from",
      "mustNotSay": [
       "\\*\\*Steps\\*\\*",
       "moneyplainly\\.org",
@@ -154,18 +154,18 @@
     {
      "say": "sure",
      "expect": [
-      "openQuiz"
+      "showSource"
      ],
      "mustSay": [
-      "Chapter 6"
+      "Mutual funds and ETFs \\(Investor\\.gov\\)"
      ],
      "mustNotSay": [
       "Question 1",
-      "first (three |two )?questions?",
-      "^\\s*1\\. (What|How|Why)"
+      "moneyplainly\\.org"
      ]
     }
-   ]
+   ],
+   "_note": "FL.12 (11-17): every chapter has an episode and it ranks before the source, so the index fund's offer is its episode and the mutual fund's (the episode already offered) is the source. Each 'yes' takes the offer just made."
   },
   {
    "id": "coaching-stays-coaching",
@@ -174,22 +174,30 @@
     {
      "say": "I feel anxious every time I check my bank account.",
      "noStep": true,
-     "noOffer": true,
      "mustNotSay": [
       "^Money Check-In:",
       "Would (open|play|add)",
       "evaluation:"
-     ]
+     ],
+     "mustSay": [
+      "Thank you for saying that out loud",
+      "Chapter 1"
+     ],
+     "offer": "money podcast"
     },
     {
      "say": "I keep overspending when I'm stressed.",
      "noStep": true,
-     "noOffer": true,
      "mustNotSay": [
       "^Money Check-In:",
       "Would (open|play|add)",
       "evaluation:"
-     ]
+     ],
+     "mustSay": [
+      "Thanks for naming it",
+      "Chapter 1"
+     ],
+     "offer": "where that comes from"
     },
     {
      "say": "I always panic about bills. Where does that come from?",
@@ -208,7 +216,8 @@
      "mustNotSay": [
       "^Money Check-In:",
       "Would (open|play|add)",
-      "evaluation:"
+      "evaluation:",
+      "(?i)(chapter \\d+|the handbook)[^.?!]{0,60}\\b(says|suggests|recommends)\\b"
      ]
     },
     {
@@ -232,7 +241,8 @@
       "evaluation:"
      ]
     }
-   ]
+   ],
+   "_note": "FL.13 (11-17): the first two are the pack's own answers from chapter 1 (agent.guides), so their notes are in sight and one offer follows. Turn 3's 'where does that come from' is about the person's own sentence, so no source opens (fixed 11-17). Turn 4 has no notes, so it may not quote the handbook (guard.dropWithoutNotes)."
   },
   {
    "id": "no-advice",
@@ -241,9 +251,10 @@
     {
      "say": "Which index fund should I buy?",
      "noStep": true,
-     "noOffer": true,
      "mustSay": [
-      "that would be advice, and this is education"
+      "I can't say what to buy",
+      "chapter 7",
+      "chapter 10"
      ],
      "mustNotSay": [
       "^Money Check-In:",
@@ -301,7 +312,8 @@
       "evaluation:"
      ]
     }
-   ]
+   ],
+   "_note": "FL.13 (11-17, his 'advice-giving EDUCATIONAL mode'): 'which index fund should I buy?' gets the pack's own answer (how the handbook judges risk, cost and fraud) instead of the refusal; guarantees and crypto keep the decline."
   },
   {
    "id": "does-not-claim-a-step",

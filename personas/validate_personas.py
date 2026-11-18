@@ -15,7 +15,10 @@ CONFIRM = {'plan', 'writes', 'never'}   # Phase AV.2: when the agent pauses for 
 # Phase FL.7: `none` = a private companion keeps nothing (no saved chat, no pinned lines, no mini-app storage).
 RETENTION = {'default', 'none'}
 MODES = {'agent', 'companion'}   # Phase FL.10: a companion chats as a persona and takes a step only when asked
-OFFER_WHEN = {'personSays', 'noteHasSource', 'noteHasQuiz', 'noteHasEpisode'}
+OFFER_WHEN = {'personSays', 'noteHasSource', 'noteHasQuiz', 'noteHasEpisode', 'noteHasGame'}
+# Phase FL.14: the app's own step that opens one of the pack's `games` (no planner, no catalog verb). It is never in
+# agent.verbs, so a build without it skips the offer.
+GAME_VERB = 'openGame'
 PHRASE = re.compile(r'^[a-z0-9]+( [a-z0-9]+)*$')
 REQUIRED = ('id', 'name', 'prompt')
 VERB_REQUIRED = ('id', 'title', 'summary', 'arguments', 'example')
@@ -217,6 +220,34 @@ def pack_content_problems(where, p, folder):
                 found.append(f'{where}: media {mid}: path must be relative to mchatai-source')
             elif path and folder is not None and not (Path(folder).parent / path).exists():
                 found.append(f'{where}: media {mid}: {path} is not in mchatai-source')
+    games = p.get('games')
+    if games is not None:
+        if not isinstance(games, list):
+            return found + [f'{where}: games must be a list']
+        seen = set()
+        for g in games:
+            gid = g.get('id') if isinstance(g, dict) else None
+            if not gid or gid in seen:
+                found.append(f'{where}: every game needs its own id'); continue
+            seen.add(gid)
+            if not str(g.get('title') or '').strip():
+                found.append(f'{where}: game {gid}: missing title')
+            product, url = g.get('product'), g.get('url')
+            if not product and not url:
+                found.append(f'{where}: game {gid}: name its Hub product id, its hosted https url, or both')
+            if product is not None and not re.match(r'^[A-Za-z0-9._-]+$', str(product)):
+                found.append(f'{where}: game {gid}: product must be a Hub product id')
+            if url is not None and not str(url).startswith('https://'):
+                found.append(f'{where}: game {gid}: url must be https')
+            for field in ('label', 'sub', 'say'):
+                if field in g and (not isinstance(g[field], str) or not g[field].strip() or len(g[field]) > 400):
+                    found.append(f'{where}: game {gid}: {field} must be a line of text (400 characters at most)')
+            chapters = g.get('chapters', [])
+            if not isinstance(chapters, list) or not all(isinstance(n, int) and not isinstance(n, bool) for n in chapters):
+                found.append(f'{where}: game {gid}: chapters must be chapter numbers')
+            # Two words or more and verb-led: "fast forward" alone would take "I want to fast forward to retirement".
+            if 'ask' in g and not phrases_ok(g['ask'], least_words=2):
+                found.append(f'{where}: game {gid}: ask must be lowercase phrases of two or more words')
     explain = (p.get('knowledge') or {}).get('explain')
     if explain is not None and not phrases_ok(explain):
         found.append(f'{where}: knowledge.explain must be lowercase phrases (letters, digits, spaces)')
@@ -246,6 +277,17 @@ def pack_content_problems(where, p, folder):
                     re.compile(pattern)
                 except (re.error, TypeError):
                     found.append(f'{where}: guard.drop has a pattern that does not compile: {pattern!r}')
+        # FL.14: patterns applied only on a turn given no notes.
+        without = guard.get('dropWithoutNotes') if isinstance(guard, dict) else None
+        if without is not None:
+            if not isinstance(without, list):
+                found.append(f'{where}: guard.dropWithoutNotes must be a list of regular expressions')
+            else:
+                for pattern in without:
+                    try:
+                        re.compile(pattern)
+                    except (re.error, TypeError):
+                        found.append(f'{where}: guard.dropWithoutNotes has a pattern that does not compile: {pattern!r}')
     offers = p.get('offers')
     if offers is not None:
         agent = p.get('agent') or {}
@@ -258,7 +300,14 @@ def pack_content_problems(where, p, folder):
         used = set()
         for rule in offers['rules']:
             verb = rule.get('verb') if isinstance(rule, dict) else None
-            if verb not in (agent.get('verbs') or []):
+            if verb == GAME_VERB:
+                if rule.get('when') != 'noteHasGame' or not p.get('games'):
+                    found.append(f'{where}: an {GAME_VERB} offer needs when "noteHasGame" and a pack with games')
+                if GAME_VERB in (agent.get('verbs') or []):
+                    found.append(f'{where}: {GAME_VERB} is the app\'s own step; keep it out of agent.verbs (a build without it would route it)')
+            elif rule.get('when') == 'noteHasGame':
+                found.append(f'{where}: a noteHasGame offer is made with verb {GAME_VERB!r}')
+            elif verb not in (agent.get('verbs') or []):
                 found.append(f'{where}: an offer names a step the pack does not have: {verb!r}'); continue
             if verb in used:
                 found.append(f'{where}: two offers for {verb} (each step is offered by one rule)')
