@@ -387,9 +387,25 @@ def brief_parts(project, n, cfg, gathered=False):
 
     gl = ("Terms up to this chapter (`introduceHere`: this chapter defines it, with a claim of kind `cast` whose "
           "`about` is its name, in the paragraph of its first mention):\n" + jblock(upto))
+    except_here = ""
+    if later and n == 0:
+        # The introduction's one exception (storytelling.cast_findings): a map piece's own name may be used.
+        import explainer
+        import storytelling
+        pat = storytelling.map_piece_pattern(project)
+        if pat:
+            for row in later:
+                ok = [k for k in [row["name"]] + list(row.get("aliases") or []) if pat.fullmatch(k.strip())]
+                if ok:
+                    row["mapNameHere"] = ok
+            rings = explainer.route_rings(project)[0]
+            except_here = (", except a row's `mapNameHere` words: in the introduction only, a map piece's own name in "
+                           "plan.route may be used before its chapter, as a name on the map, and a later term inside one "
+                           "(the \"transformer\" of \"transformer blocks\") is not counted. The map's pieces: "
+                           + "; ".join(f"{r}: {', '.join(v)}" for r, v in rings.items()))
     if later:
         gl += ("\n\nTerms later chapters define. The gate refuses any of these names or aliases in this chapter "
-               "(cast_before_intro):\n" + jblock(later))
+               "(cast_before_intro)" + except_here + ":\n" + jblock(later))
     return {
         "voices": "\n\n".join(f"## The voice: {label}\n\n{text.strip()}" for label, text in voices(project)),
         "thresholds": "## The thresholds the gate holds you to\n\n" + jblock(writer_thresholds(project, cfg)),

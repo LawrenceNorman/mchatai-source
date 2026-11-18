@@ -358,10 +358,37 @@ def entry_named(entries, label):
     return None
 
 
+def map_piece_pattern(project):
+    """The book map's own piece names (plan.route's rings), as one pattern, or None when the plan has no
+    route. Each piece is split at "or" and "and" ("tokens or patches" is tokens and patches), and each part
+    is matched with or without "the", singular or plural. Only the pieces' names: route.keys (CUDA, MCP,
+    attention) are not."""
+    import explainer
+    rings, _, _ = explainer.route_rings(project)
+    parts = set()
+    for pieces in rings.values():
+        for piece in pieces:
+            for p in re.split(r"\s+(?:or|and)\s+", piece.strip()):
+                p = re.sub(r"^the\s+", "", p.strip(), flags=re.I).lower()
+                if re.search(r"(?:ch|sh|x|ss)es$", p):
+                    p = p[:-2]
+                elif p.endswith("s") and not p.endswith("ss"):
+                    p = p[:-1]
+                if p:
+                    parts.add(p)
+    if not parts:
+        return None
+    alts = "|".join(r"\s+".join(map(re.escape, p.split())) + r"(?:e?s)?" for p in sorted(parts, key=len, reverse=True))
+    return re.compile(r"(?<![\w-])(?:the\s+)?(?:" + alts + r")(?![\w-])", re.I)
+
+
 def cast_findings(project, n, ch):
     """voice.md §11: the chapter that introduces a cast entry says who they were, with a claim of kind
     `cast` (its `about` names the entry) in the paragraph of the first mention; a name used before
-    the chapter that introduces it is noted."""
+    the chapter that introduces it is noted. The one exception: the introduction (chapter 0) walks the
+    whole map once by its real names before any chapter teaches them (plan §19.8), so there a mention
+    that lies inside a map piece's own name (map_piece_pattern: "tokens", "the KV cache", "transformer
+    blocks") is not a use before its chapter. Every other mention, there and in every chapter, still is."""
     t = thresholds(project)
     if not (t.get("cast") or {}).get("required") or not v2(project):
         return []
@@ -378,10 +405,14 @@ def cast_findings(project, n, ch):
     # 2026-11-14): every entry's matches are collected first, and a match lying inside a longer match of another
     # entry does not count.
     covers = [(mm.start(), mm.end(), e["name"]) for e in entries for mm in key_pattern(e["keys"]).finditer(text)]
+    pat = map_piece_pattern(project) if n == 0 else None
+    pieces = [(mm.start(), mm.end()) for mm in pat.finditer(text)] if pat else []
 
-    def first_own(e):
+    def first_own(e, skip=()):
         for mm in key_pattern(e["keys"]).finditer(text):
             a, b = mm.start(), mm.end()
+            if any(s0 <= a and b <= s1 for s0, s1 in skip):
+                continue
             if not any(name != e["name"] and s0 <= a and b <= s1 and (s1 - s0) > (b - a) for s0, s1, name in covers):
                 return mm
         return None
@@ -403,7 +434,7 @@ def cast_findings(project, n, ch):
                                    f"mention needs a claim of kind `cast` with \"about\": \"{e['name']}\" saying who they were "
                                    f"(the dossier's line: {e['who'][:80]!r}) (voice.md §11)", spans[next(
                                        i for i, x in enumerate(spans) if x[2] <= m.start() < x[3])][4][:200]))
-        elif where and m and n < min(where):
+        elif where and m and n < min(where) and (not pieces or first_own(e, pieces)):
             # An explainer defines a term before any chapter uses it (domains/explainer/voice.md §4).
             out.append(finding("cast_before_intro", (t.get("cast") or {}).get("beforeIntroSeverity", "soft"),
                                f"{e['name']} is named here, before chapter {min(where)} introduces them: introduce them at the "

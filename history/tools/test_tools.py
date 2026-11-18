@@ -3395,6 +3395,30 @@ class ExplainerDomain(DomainCase):
         found = storytelling.cast_findings(self.project, 1, {"text": "A kernel slides over the photo."})
         self.assertEqual([(f["rule"], f["severity"]) for f in found], [("cast_before_intro", "hard")])
 
+    def test_the_introduction_may_name_the_map_pieces_and_nothing_else_early(self):
+        # Plan §19.8: the introduction walks the whole map once by its real names before any chapter
+        # teaches them. Only a map piece's own name (plan.route) is let through, and only in chapter 0.
+        import storytelling
+        self.glossary([{"name": "token", "aliases": ["tokens"], "who": "a piece of text"},
+                       {"name": "transformer", "who": "a network built on attention"},
+                       {"name": "DRAM", "aliases": ["memory"], "who": "off-chip main memory"},
+                       {"name": "CUDA", "who": "NVIDIA's platform for its GPUs"}],
+                      {"token": 2, "transformer": 1, "DRAM": 2, "CUDA": 2})
+        plan = self.project.plan
+        plan["route"] = {"inside": ["input", "tokens or patches", "transformer blocks"],
+                         "under": ["kernels and drivers", "memory"], "keys": {"kernels and drivers": ["CUDA"]}}
+        _hw.save_json(self.project.path("plan.json"), plan)
+        self.project = _hw.Project(self.project.root)
+
+        def early(n, text):
+            return sorted(f["message"].split(" is named")[0] for f in storytelling.cast_findings(self.project, n, {"text": text})
+                          if f["rule"] == "cast_before_intro")
+
+        walk = "A photo becomes Tokens, the transformer blocks read them, and the kernels wait on memory."
+        self.assertEqual(early(0, walk), [])
+        self.assertEqual(early(0, walk + " The transformer is fed from DRAM by CUDA."), ["CUDA", "DRAM", "transformer"])
+        self.assertEqual(early(1, "A photo becomes tokens in memory."), ["DRAM", "token"])
+
     def test_every_chapter_carries_its_boxes(self):
         import explainer
         spoken = " ".join(["word"] * 70)
