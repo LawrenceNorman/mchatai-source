@@ -33,8 +33,9 @@ def glossary_keys(project):
     keys = set()
     for e in storytelling.cast_entries(project):
         keys |= {k.lower() for k in e["keys"]}
-        # A hyphenated key names its parts too: "SWE-bench" teaches "SWE" (2026-11-17).
-        keys |= {w.lower() for k in e["keys"] for w in re.split(r"[\s\-]+", k) if TECH.fullmatch(w)}
+        # A hyphenated or slashed key names its parts too: "SWE-bench" teaches "SWE", "CI/CD" teaches "CI" and
+        # "CD" (2026-11-17).
+        keys |= {w.lower() for k in e["keys"] for w in re.split(r"[\s\-/]+", k) if TECH.fullmatch(w)}
     keys |= {a.lower() for a in (project.plan or {}).get("glossaryAllow") or []}
     keys |= {a.lower() for a in (thresholds(project).get("glossary") or {}).get("allow") or []}
     return keys
