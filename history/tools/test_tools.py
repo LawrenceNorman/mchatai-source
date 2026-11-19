@@ -4941,5 +4941,114 @@ class CampaignBook(unittest.TestCase):
             self.assertIn(slug, slugs, "book.skip names a season of this campaign")
 
 
+class Epub(FixtureCase):
+    """epub.py: a private EPUB 3 of a project, for Apple Books (the author, 2026-11-18: "bound the audiobook & ebook
+    for this so I can read it on my iphone")."""
+
+    def setUp(self):
+        super().setUp()
+        import epub
+        with self.assertRaises(epub.Refused, msg="an unanchored claim refuses the book, as cite.py render does"):
+            epub.build(self.root, os.path.join(self.tmp, "refused.epub"))
+        ch2 = self.project.chapter(2)
+        ch2["claims"] = [c for c in ch2["claims"] if c["source"] in self.project.sources]
+        for c in ch2["claims"]:
+            c["anchor"] = " ".join(cite.flat_sentences(ch2["text"])[0][2].split()[:6])
+        _hw.save_json(self.project.chapter_path(2), ch2)
+
+    def build(self):
+        import epub
+        path, info = epub.build(self.root, os.path.join(self.tmp, "book.epub"))
+        import zipfile
+        return zipfile.ZipFile(path), info
+
+    def add_box(self):
+        ch = _hw.load_json(self.project.chapter_path(1))
+        ch["text"] += "\n\nCheck yourself\n\nWhat did she open?\n\nA boarding house on Water Street.\n\nThe next part is the war."
+        _hw.save_json(self.project.chapter_path(1), ch)
+
+    def test_a_tiny_project_builds(self):
+        z, info = self.build()
+        self.assertEqual(info["chapters"], len(cite.book_numbers(self.project)))
+        self.assertGreater(info["words"], 0)
+        self.assertEqual(info["warnings"], [])
+        self.assertIn("OEBPS/ch01.xhtml", z.namelist())
+
+    def test_the_first_entry_is_the_uncompressed_mimetype(self):
+        import zipfile
+        z, _ = self.build()
+        first = z.infolist()[0]
+        self.assertEqual(first.filename, "mimetype")
+        self.assertEqual(first.compress_type, zipfile.ZIP_STORED)
+        self.assertEqual(z.read("mimetype"), b"application/epub+zip")
+        with open(z.filename, "rb") as fh:
+            self.assertEqual(fh.read(58)[30:58], b"mimetypeapplication/epub+zip", "readers sniff the bytes at offset 30")
+
+    def test_every_xhtml_and_the_package_parse_as_xml(self):
+        from xml.etree import ElementTree
+        self.add_box()
+        z, _ = self.build()
+        docs = [n for n in z.namelist() if n.endswith((".xhtml", ".opf", ".xml"))]
+        self.assertGreaterEqual(len(docs), 4)
+        for name in docs:
+            ElementTree.fromstring(z.read(name))
+
+    def test_the_nav_lists_every_chapter(self):
+        z, _ = self.build()
+        nav = z.read("OEBPS/nav.xhtml").decode()
+        chapters = [n for n in z.namelist() if re.fullmatch(r"OEBPS/ch\d\d\.xhtml", n)]
+        self.assertEqual(len(chapters), len(cite.book_numbers(self.project)))
+        for name in chapters:
+            self.assertIn(f'href="{name[6:]}"', nav)
+        for n in cite.book_numbers(self.project):
+            self.assertIn(html_escape(self.project.chapter(n)["title"]), nav)
+
+    def test_markers_link_to_the_chapters_notes_and_boxes_are_boxes(self):
+        self.add_box()
+        z, _ = self.build()
+        doc = z.read("OEBPS/ch01.xhtml").decode()
+        self.assertIn('href="#n1"', doc)
+        self.assertIn('<li id="n1"', doc)
+        self.assertIn('<section class="box box-check-yourself"', doc)
+        self.assertIn('<p class="q">What did she open?</p>', doc)
+        box = doc[doc.index("box-check-yourself"):]
+        self.assertLess(box.index("</section>"), box.index("The next part is the war."),
+                        "the chapter's last paragraph is its turn, outside the last box")
+
+    def test_a_picture_lands_after_the_paragraph_its_after_names(self):
+        from xml.etree import ElementTree
+        tiny_png(self.project.path("images", "img1.png"), 4, 3)
+        _hw.save_json(self.project.path("images", "index.json"), [{
+            "id": "img1", "chapter": 1, "after": "That year she opened her boarding house", "file": "images/img1.png",
+            "caption": "The boarding house on Water Street, about 1895", "artist": "Fixture studio",
+            "license": "Public domain"}])
+        os.makedirs(self.project.path("diagrams"))
+        with open(self.project.path("diagrams", "d1.svg"), "w") as fh:
+            fh.write('<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"><rect width="10" height="10"/></svg>')
+        _hw.save_json(self.project.path("diagrams", "index.json"),
+                      [{"chapter": 1, "file": "diagrams/d1.svg", "after": "came to Harbor Town from Ohio", "caption": "A map"}])
+        z, info = self.build()
+        self.assertEqual(info["pictures"], 2)
+        self.assertIn("OEBPS/pictures/img1.png", z.namelist())
+        self.assertIn("OEBPS/diagrams/d1.svg", z.namelist())
+        ns = {"x": "http://www.w3.org/1999/xhtml"}
+        section = ElementTree.fromstring(z.read("OEBPS/ch01.xhtml")).find("x:body/x:section", ns)
+        kids = list(section)
+        for src, after in (("pictures/img1.png", "That year she opened her boarding house"),
+                           ("diagrams/d1.svg", "came to Harbor Town from Ohio")):
+            at = next(i for i, el in enumerate(kids) if el.tag.endswith("figure") and el.find("x:img", ns).get("src") == src)
+            self.assertIn(after, "".join(kids[at - 1].itertext()), f"{src} follows the paragraph its `after` names")
+        opf = z.read("OEBPS/content.opf").decode()
+        self.assertIn('href="pictures/img1.png" media-type="image/png"', opf)
+        doc = z.read("OEBPS/ch01.xhtml").decode()
+        self.assertIn("The boarding house on Water Street, about 1895.", doc)
+        self.assertIn('<span class="credit">Fixture studio, Public domain.</span>', doc)
+
+
+def html_escape(text):
+    import html
+    return html.escape(text, quote=True)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=1)
