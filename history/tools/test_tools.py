@@ -921,6 +921,77 @@ class Pictures(FixtureCase):
         with open(self.project.path("book", "sources.txt")) as fh:
             self.assertIn("\nPictures\n", fh.read())
 
+    # Diagrams the author drew (images.py diagram, How AI Works, 2026-11-18): hosted in mChatAI's books folder.
+    BOOKS = "https://storage.googleapis.com/mchatai-downloads/books/fixture/"
+    AFTER = "That year she opened her boarding house"
+
+    def place_diagram(self, url, caption="The boarding house and the mill on Water Street", alt="Two boxes joined by a line"):
+        import contextlib
+        import io
+        import images
+        with mock.patch.object(images, "head_size", return_value=(200, 48000, "image/png")) as head, \
+                contextlib.redirect_stdout(io.StringIO()):
+            try:
+                return images.cmd_diagram(self.project, url, 1, self.AFTER, caption, "Diagram by the author", alt)
+            finally:
+                self.head_calls = head.call_count
+
+    def test_a_diagram_the_author_drew_is_placed_rendered_and_checked_clean(self):
+        import images
+        url = self.BOOKS + "fig-01.png"
+        self.assertEqual(self.place_diagram(url), 0)
+        self.assertEqual(self.head_calls, 1, "one HEAD request, nothing downloaded")
+        rec = images.index(self.project)[0]
+        self.assertEqual((rec["kind"], rec["id"], rec["alt"], rec["file"]), ("diagram", "img1", "Two boxes joined by a line", ""))
+        self.assertEqual([f for f in images.image_findings(self.project) if f["severity"] == "hard"], [], "check is clean")
+        self.assertEqual(images.credit_line(rec), "Diagram by the author")
+        text, problems = cite.landed_text(self.project, 1, pictures=True)
+        self.assertEqual(problems, [])
+        paras = text.split("\n\n")
+        at = next(i for i, p in enumerate(paras) if self.AFTER in p)
+        self.assertEqual(paras[at + 1], f"![The boarding house and the mill on Water Street. Diagram by the author.]({url})")
+        self.assertNotIn("![", cite.landed_text(self.project, 1)[0], "the picture lines only when asked")
+        self.assertEqual(" ".join(cite.strip_additions(text).split()),
+                         " ".join(cite.strip_additions(cite.landed_text(self.project, 1)[0]).split()),
+                         "the pictures are all the render adds")
+        self.assertEqual(self.place_diagram(url, caption="The boarding house on Water Street"), 0)
+        self.assertEqual([(r["id"], r["caption"]) for r in images.index(self.project)],
+                         [("img1", "The boarding house on Water Street")], "the same url again moves it and keeps its id")
+        rec.update(creditOverride="")
+        _hw.save_json(self.project.path("images", "index.json"), [rec])
+        self.assertIn("image_uncredited", self.rules(images.image_findings(self.project)))
+
+    def test_a_diagram_from_a_host_the_readers_will_not_fetch_is_refused(self):
+        import images
+        for url in ("https://storage.googleapis.com/someone-else/fig.png",      # the shared host, another bucket
+                    "https://storage.googleapis.com/mchatai-downloads/booksX/fig.png",
+                    "https://example.org/fig.png",
+                    "http://storage.googleapis.com/mchatai-downloads/books/fig.png",
+                    "https://storage.googleapis.com:8443/mchatai-downloads/books/fig.png",
+                    "https://someone@storage.googleapis.com/mchatai-downloads/books/fig.png"):
+            with self.assertRaises(images.Refused, msg=url):
+                self.place_diagram(url)
+            self.assertEqual(self.head_calls, 0, f"refused before any request: {url}")
+        self.assertEqual(images.index(self.project), [])
+        rules = images.reader_rules()
+        self.assertTrue(images.host_allowed(self.BOOKS + "fig-01.png", rules))
+        self.assertTrue(images.host_allowed("https://upload.wikimedia.org/wikipedia/commons/2/20/X.jpg", rules))
+        self.assertFalse(images.host_allowed("https://storage.googleapis.com/mchatai-downloads/books/", ["storage.googleapis.com/mchatai-downloads/books"]),
+                         "a folder entry must end in a slash")
+
+    def test_a_diagram_path_that_climbs_out_of_the_folder_is_refused(self):
+        import images
+        for url in ("https://storage.googleapis.com/mchatai-downloads/books/../other/fig.png",
+                    "https://storage.googleapis.com/mchatai-downloads/books/%2E%2E/other/fig.png",
+                    "https://storage.googleapis.com/mchatai-downloads/books/%252e%252E/other/fig.png",
+                    "https://storage.googleapis.com/mchatai-downloads/books/./fig.png",
+                    "https://storage.googleapis.com/mchatai-downloads/books/x%5C..%5Cfig.png",
+                    "https://storage.googleapis.com/mchatai-downloads/books/%zz.png"):
+            with self.assertRaises(images.Refused, msg=url):
+                self.place_diagram(url)
+            self.assertEqual(self.head_calls, 0, url)
+        self.assertEqual(images.index(self.project), [])
+
     def test_an_ordinal_in_a_landmark_name_matches_as_a_numeral_or_a_word(self):
         # The pack files it as "1st African Methodist Episcopal Church"; the second story wrote it out.
         name = r"[\s\-–]+".join(cite.word_pattern(w) for w in "1st African Methodist Episcopal Church".split())
@@ -3388,6 +3459,20 @@ class ExplainerDomain(DomainCase):
         found = [f["message"] for f in explainer.term_findings(self.project, 3, {"text": text})]
         self.assertEqual(len(found), 2)
         self.assertTrue(any("'ViT'" in m for m in found) and any("'NPU'" in m for m in found))
+
+    def test_a_diagram_caption_naming_a_later_chapter_term_is_held_like_the_text(self):
+        import images
+        self.glossary([{"name": "kernel", "who": "a small grid of weights"}], {"kernel": 2})
+        rec = {"id": "img1", "kind": "diagram", "url": "https://storage.googleapis.com/mchatai-downloads/books/x/fig.png",
+               "caption": "A kernel slides over the photo", "creditOverride": "Diagram by the author", "chapter": 1,
+               "after": self.project.chapter(1)["text"].split("\n\n")[0].split(".")[0]}
+        os.makedirs(self.project.path("images"), exist_ok=True)
+        _hw.save_json(self.project.path("images", "index.json"), [rec])
+        self.assertEqual([(f["rule"], f["severity"]) for f in images.image_findings(self.project) if f["rule"].endswith("later_term")],
+                         [("image_caption_later_term", "hard")])
+        rec["chapter"], rec["after"] = 2, self.project.chapter(2)["text"].split("\n\n")[0].split(".")[0]
+        _hw.save_json(self.project.path("images", "index.json"), [rec])
+        self.assertNotIn("image_caption_later_term", self.rules(images.image_findings(self.project), hard_only=False))
 
     def test_a_term_used_before_the_chapter_that_defines_it_is_hard(self):
         import storytelling

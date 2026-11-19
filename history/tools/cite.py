@@ -22,7 +22,9 @@ written and a narration reads it aloud unchanged.
   cite.py anchors <project> [n] --list     every claim beside the sentence its anchor resolves
                                            to, for the writer to check before anything lands
   cite.py check   <project> [n]            anchors resolve to one sentence; sources can be cited
-  cite.py render  <project> <n>            one chapter with its notes, as it will land
+  cite.py render  <project> <n> [--no-pictures]
+                                           one chapter with its notes and its placed pictures (each
+                                           on its own line after its paragraph), as it will land
   cite.py sources <project>                the Sources list for every source a claim cites
   cite.py book    <project>                book/: the introduction, every chapter with notes, the
                                            Sources, and manifest.json saying what lands where.
@@ -449,10 +451,25 @@ def chapter_notes(project, n):
     return "\n\n".join(rendered), note_lines, out
 
 
-def landed_text(project, n):
+def with_pictures(project, n, body):
+    """The body with each placed picture on its own line after its paragraph, the opening picture first:
+    what `render` lands (with_pictures_and_links without the landmark links, which stay `book`'s)."""
+    pics = chapter_images(project, n)
+    if not pics:
+        return body
+    out = list(pics.get(-1, []))
+    for i, p in enumerate(re.split(r"\n\s*\n", body.strip())):
+        out.append(p)
+        out.extend(pics.get(i, []))
+    return "\n\n".join(out)
+
+
+def landed_text(project, n, pictures=False):
     body, notes, problems = chapter_notes(project, n)
     if body is None:
         return None, problems
+    if pictures:
+        body = with_pictures(project, n, body)
     label = style().get("notesHeading", "Notes")
     return (body + ("\n\n" + label + "\n\n" + "\n".join(notes) if notes else "")), problems
 
@@ -1661,7 +1678,7 @@ def main(argv):
     if cmd == "check":
         return report("citations", check_findings(project, nums))
     if cmd == "render" and len(argv) >= 4:
-        text, problems = landed_text(project, int(argv[3]))
+        text, problems = landed_text(project, int(argv[3]), pictures="--no-pictures" not in argv)
         if problems:
             return report("render", problems)
         print(text)

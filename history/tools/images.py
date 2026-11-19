@@ -8,8 +8,17 @@
   images.py add   <project> "File:Name.jpg" --caption "…" --evidence "…" --chapter N
                   --after "words copied from the paragraph it follows"
                   [--evidence-source description|<source id>] [--credit "…"]
+                  [--alt "what the picture shows, for a reader who cannot see it"]
                          record it in images/index.json, save its description (the caption's
                          default source) and a copy of the picture
+  images.py diagram <project> --url <https url> --chapter N --after "words copied from the paragraph"
+                  --caption "…" --credit "Diagram by the author" [--alt "…"]
+                         a diagram the AUTHOR drew and already hosts, recorded as kind `diagram`. The
+                         url must pass content/markdown-images.json (a listed host, or a listed folder
+                         such as storage.googleapis.com/mchatai-downloads/books/, no ".."). One HEAD
+                         request checks it is there, an image, under maxImageBytes; nothing is drawn,
+                         called or copied. Its caption is the author's own description, so `check`
+                         holds it to the terms a later chapter teaches, not to a source
   images.py portrait <project> <id | "File:Name.jpg"> [--crop x,y,w,h]
                   [--caption "…" --evidence "…" [--evidence-source …] [--credit "…"]]
                          the story's portrait, on the book's cards and the story's first page: a
@@ -91,13 +100,71 @@ def config():
     return load_json(os.path.join(HISTORY, "images.json"), {}) or {}
 
 
-def reader_hosts():
-    """Hosts StoryMaker's Read view may fetch pictures from (content/markdown-images.json), or
-    None when that file is not beside history/. A picture from any other host shows as a link."""
-    rules = load_json(os.path.join(os.path.dirname(HISTORY), "content", "markdown-images.json"), None)
-    if not rules:
+def reader_config():
+    """content/markdown-images.json, or None when that file is not beside history/."""
+    return load_json(os.path.join(os.path.dirname(HISTORY), "content", "markdown-images.json"), None) or None
+
+
+def reader_rules():
+    """What StoryMaker's Read view and AI Reader may fetch pictures from (content/markdown-images.json
+    `remoteHosts`, as written: a bare host, or a host and a folder ending in "/"), or None when that file
+    is not beside history/. A picture from anywhere else shows as a link."""
+    rules = reader_config()
+    return None if rules is None else [str(h) for h in rules.get("remoteHosts", [])]
+
+
+def _dot_segment(path):
+    return any(seg in (".", "..") for seg in path.split("/"))
+
+
+def _strict_unquote(text):
+    """Percent-decoding that fails where Foundation's removingPercentEncoding returns nil: a "%" not
+    followed by two hex digits, or bytes that are not UTF-8."""
+    if re.search(r"%(?![0-9A-Fa-f]{2})", text):
         return None
-    return {h.lower() for h in rules.get("remoteHosts", [])}
+    try:
+        return urllib.parse.unquote_to_bytes(text).decode("utf-8")
+    except UnicodeDecodeError:
+        return None
+
+
+def host_allowed(url, entries):
+    """May a reader fetch this picture without asking: the apps' PictureHostRule (Mac
+    MarkdownDocumentView.swift, iPhone Shared/MarkdownImages.swift), kept in step with it. A bare host
+    allows any https URL on exactly that host. A host and a path prefix ending in "/"
+    ("storage.googleapis.com/mchatai-downloads/books/", 2026-11-18) allows only an https URL on that host,
+    on the default port, with no user info, whose path starts with the prefix as written and at every
+    percent-decoding, with no "." or ".." segment and no backslash at any of them."""
+    try:
+        u = urllib.parse.urlsplit(url or "")
+        port = u.port
+    except ValueError:
+        return False
+    host = (u.hostname or "").lower()
+    if u.scheme.lower() != "https" or not host:
+        return False
+    for entry in entries or []:
+        if "/" not in entry:
+            if host == entry.lower():
+                return True
+            continue
+        slash = entry.index("/")
+        entry_host, prefix = entry[:slash].lower(), entry[slash:]
+        if (not entry_host or host != entry_host or len(prefix) <= 1 or not prefix.endswith("/")
+                or any(c in entry for c in ":%\\") or _dot_segment(prefix) or port not in (None, 443) or "@" in u.netloc):
+            continue
+        path = u.path
+        # A server reads %2E%2E as ".." and %2F as "/": decode until nothing changes, checking each round.
+        for _ in range(4):
+            if not path.startswith(prefix) or "\\" in path or _dot_segment(path):
+                break
+            decoded = _strict_unquote(path)
+            if decoded is None:
+                break
+            if decoded == path:
+                return True
+            path = decoded
+    return False
 
 
 # ── licences ─────────────────────────────────────────────────────────────────
@@ -287,7 +354,7 @@ def credit_line(rec):
     return lic
 
 
-def cmd_add(project, title, caption, evidence, evidence_source, chapter, after, credit, portrait_only=False):
+def cmd_add(project, title, caption, evidence, evidence_source, chapter, after, credit, portrait_only=False, alt=None):
     cands = {r["title"]: r for r in load_json(project.path("images", "candidates.json"), []) or []}
     rec = cands.get(title) or file_info([title]).get(title)
     if not rec:
@@ -319,12 +386,78 @@ def cmd_add(project, title, caption, evidence, evidence_source, chapter, after, 
                  "id": rid, "caption": caption.strip(), "evidence": evidence.strip(),
                  "evidenceSource": evidence_source or "description", "chapter": int(chapter),
                  "after": after.strip(), "file": local, "creditOverride": credit or "",
+                 **({"alt": alt.strip()} if alt and alt.strip() else {}),
                  **({"portraitOnly": True} if portrait_only else {}),
                  "addedAt": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds")})
     save_json(project.path("images", "index.json"), rows)
     where = "the story's portrait only" if portrait_only else f"chapter {chapter}, after “{after[:50]}”"
     print(f"{rid}  {rec['title']}  → {where}  ({credit_line(rows[-1])})")
     return 0
+
+
+def head_size(url):
+    """(HTTP status, bytes, content type) from one HEAD request: all `diagram` fetches."""
+    host = urllib.parse.urlsplit(url).hostname or ""
+    fetch.throttle(host, fetch.host_interval(host))
+    req = urllib.request.Request(url, method="HEAD", headers={"User-Agent": API_UA})
+    try:
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            return resp.status, int(resp.headers.get("Content-Length") or 0), resp.headers.get("Content-Type") or ""
+    except urllib.error.HTTPError as e:
+        return e.code, 0, ""
+    except (urllib.error.URLError, TimeoutError) as e:
+        raise Refused(f"could not reach {host} ({e}); run the same command again later")
+
+
+def cmd_diagram(project, url, chapter, after, caption, credit, alt=None):
+    """Record a diagram the author drew and already hosts (kind `diagram`, How AI Works, 2026-11-18). Not
+    an archive picture: no licence, no description, no copy. Its host must be one the readers fetch from
+    (host_allowed), it must answer a HEAD request as an image under the readers' size cap, and `after`
+    must name one paragraph. Placing the same url again moves it and keeps its id."""
+    rules = reader_rules()
+    if rules is None:
+        raise Refused("content/markdown-images.json is not beside history/, so there is no host rule to check the url against")
+    if not host_allowed(url, rules):
+        raise Refused(f"{url}: not an https URL the readers fetch from (content/markdown-images.json: a listed host, "
+                      "or a listed folder, with no '.' or '..' segment)")
+    caption, credit, after = (caption or "").strip(), (credit or "").strip(), (after or "").strip()
+    if not caption or not credit:
+        raise Refused("a diagram needs a --caption and a --credit (\"Diagram by the author\")")
+    if project.chapter(chapter) is None:
+        raise Refused(f"chapter {chapter} does not exist")
+    if paragraph_index(project, chapter, after) is None:
+        raise Refused(f"--after must be words copied from exactly one paragraph of chapter {chapter}")
+    status, size, mime = head_size(url)
+    cap = (reader_config() or {}).get("maxImageBytes")
+    if status != 200:
+        raise Refused(f"{url}: HTTP {status}")
+    if not mime.lower().startswith("image/"):
+        raise Refused(f"{url}: {mime or 'no content type'}, not an image")
+    if cap and size > cap:
+        raise Refused(f"{url}: {size} bytes, over the readers' {cap}-byte cap (markdown-images.json maxImageBytes)")
+    rows = index(project)
+    held = [r for r in rows if r.get("url") == url]
+    nums = [int(m.group(1)) for r in rows for m in [re.fullmatch(r"img(\d+)", r.get("id", ""))] if m]
+    rid = held[0]["id"] if held else f"img{(max(nums) + 1) if nums else 1}"
+    rows = [r for r in rows if r.get("url") != url]
+    rows.append({"id": rid, "kind": "diagram", "title": os.path.basename(urllib.parse.urlsplit(url).path), "url": url,
+                 "caption": caption, "creditOverride": credit, **({"alt": alt.strip()} if alt and alt.strip() else {}),
+                 "chapter": int(chapter), "after": after, "file": "", "bytes": size, "mime": mime,
+                 "addedAt": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds")})
+    os.makedirs(project.path("images"), exist_ok=True)
+    save_json(project.path("images", "index.json"), rows)
+    print(f"{rid}  {rows[-1]['title']}  → chapter {chapter}, after “{after[:50]}”  (diagram, {credit}, {size} bytes)")
+    return 0
+
+
+def later_term_findings(project, rec):
+    """A diagram's caption and alt text are the author's own words, so they are checked the way the gate
+    checks a chapter's text for a term used before the chapter that teaches it (storytelling.cast_findings,
+    cast_before_intro; the introduction may name the map's pieces). Off unless the domain asks for it."""
+    import storytelling
+    text = " ".join(x for x in (rec.get("caption"), rec.get("alt")) if x)
+    return [finding("image_caption_later_term", f["severity"], f"{rec.get('id', '?')}: caption or alt — {f['message']}", text[:120])
+            for f in storytelling.cast_findings(project, rec.get("chapter"), {"text": text}) if f["rule"] == "cast_before_intro"]
 
 
 def parse_crop(text):
@@ -693,32 +826,36 @@ def cmd_follow(project):
 def image_findings(project):
     cfg = config()
     floor = cfg.get("minCaptionEvidenceWords", 6)
-    hosts = reader_hosts()
+    hosts = reader_rules()
     out, per = [], {}
     for rec in index(project):
         label = rec.get("id", "?")
+        diagram = rec.get("kind") == "diagram"
         url = urllib.parse.urlparse(rec.get("url", ""))
         if rec.get("generated"):
             # A declared illustration (domain voice §6): a local file, so the Read view always loads it;
             # its own checks stand in for the host and the licence.
             out += illustration_findings(project, rec)
         # A portrait only is never in StoryMaker's text, so its host need not be one the Read view shows.
-        elif hosts is not None and not rec.get("portraitOnly") and (url.scheme != "https" or (url.hostname or "").lower() not in hosts):
+        elif hosts is not None and not rec.get("portraitOnly") and not host_allowed(rec.get("url", ""), hosts):
             out.append(finding("image_host_unlisted", "hard",
                                f"{label}: {url.hostname or rec.get('url')!r} is not an https host in content/markdown-images.json, "
                                "so StoryMaker's Read view shows a link instead of the picture. Use a copy from a listed "
                                "host, or add the host to that file by PR"))
-        ok, why = (True, "") if permission_ok(rec) or rec.get("generated") else licence_verdict(rec.get("license"))
+        # A diagram is the author's own drawing (images.py diagram): no archive licence to check.
+        ok, why = (True, "") if permission_ok(rec) or rec.get("generated") or diagram else licence_verdict(rec.get("license"))
         if not ok:
             out.append(finding("image_licence", "hard", f"{label}: {why}"))
-        if cfg.get("creditRequired", True) and not credit_line(rec):
+        if (diagram or cfg.get("creditRequired", True)) and not credit_line(rec):
             out.append(finding("image_uncredited", "hard", f"{label}: no credit"))
         cap = rec.get("caption", "")
         if not cap:
             out.append(finding("image_uncaptioned", "hard", f"{label}: no caption"))
         ev = rec.get("evidence", "")
-        text = evidence_text(project, rec)
-        if text is None:
+        text = None if diagram else evidence_text(project, rec)
+        if diagram:
+            out += later_term_findings(project, rec)
+        elif text is None:
             out.append(finding("image_evidence_missing", "hard", f"{label}: evidence source {rec.get('evidenceSource')!r} has no text"))
         elif words(ev) < floor or norm(ev) not in norm(text):
             out.append(finding("image_caption_unverified", "hard",
@@ -1094,7 +1231,15 @@ def main(argv):
                 print("add needs --caption, --evidence, --chapter and --after")
                 return 2
             return cmd_add(Project(argv[2]), argv[3], need["--caption"], need["--evidence"],
-                           flag(argv, "--evidence-source"), need["--chapter"], need["--after"], flag(argv, "--credit"))
+                           flag(argv, "--evidence-source"), need["--chapter"], need["--after"], flag(argv, "--credit"),
+                           alt=flag(argv, "--alt"))
+        if len(argv) >= 3 and argv[1] == "diagram":
+            need = {k: flag(argv, k) for k in ("--url", "--chapter", "--after", "--caption", "--credit")}
+            if not all(need.values()):
+                print("diagram needs --url, --chapter, --after, --caption and --credit")
+                return 2
+            return cmd_diagram(Project(argv[2]), need["--url"], int(need["--chapter"]), need["--after"],
+                               need["--caption"], need["--credit"], flag(argv, "--alt"))
         if len(argv) >= 2 and argv[1] == "opening":
             argv = [argv[0], "portrait"] + argv[2:]      # an episode's opening picture is set the same way
         if len(argv) >= 4 and argv[1] == "portrait" and argv[3] == "permission":
