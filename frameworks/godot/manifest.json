@@ -1,0 +1,61 @@
+{
+ "id": "godot",
+ "version": 1,
+ "displayName": "Godot",
+ "_purpose": "A build profile for the Harness: how a Godot project builds and what it yields. A Godot game is a mini-app (one index.html with the game's pack inside, the shared engine in ./libs/) plus native builds kept as downloads. mChatAI+ reads this generically; no Godot names live in Swift. See README.md and docs/GODOT_LANE_PLAN.md section 11 in mchatai_macOS.",
+ "engine": {
+  "version": "4.7.2",
+  "build": "4.7.2.stable.official.ed1daf0bf",
+  "renderer": "gl_compatibility",
+  "webTemplate": "web_nothreads_release.zip"
+ },
+ "tool": {
+  "command": "godot",
+  "versionCommand": "godot --version",
+  "expectPrefix": "4.7.2.stable",
+  "installHint": "Godot 4.7.2 with its export templates (Editor > Manage Export Templates), and `godot` on the PATH"
+ },
+ "projectDir": "game",
+ "build": "python3 {framework}/tools/build_all.py {project} . {flavors}",
+ "flavors": [
+  {
+   "id": "web",
+   "label": "Web (mini-app)",
+   "preset": "Web",
+   "role": "miniApp",
+   "output": "index.html",
+   "always": true
+  },
+  {
+   "id": "macos",
+   "label": "Mac app",
+   "preset": "macOS",
+   "role": "download",
+   "output": "builds/mac/*.zip"
+  },
+  {
+   "id": "windows",
+   "label": "Windows",
+   "preset": "Windows",
+   "role": "download",
+   "output": "builds/windows/*.zip"
+  }
+ ],
+ "libs": [
+  {
+   "id": "godot-4.7.2",
+   "localFile": "godot-4.7.2.js",
+   "vendorPath": "frameworks/godot/dist/godot-4.7.2.js"
+  },
+  {
+   "id": "godot-4.7.2-files",
+   "localFile": "godot-4.7.2-files.js",
+   "vendorPath": "frameworks/godot/dist/godot-4.7.2-files.js"
+  }
+ ],
+ "pageLimitBytes": 25000000,
+ "devices": {
+  "default": "desktop-tablet",
+  "why": "Godot games are built for a mouse or a large touch screen; a phone layout is a separate design"
+ }
+}

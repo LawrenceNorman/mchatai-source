@@ -1,0 +1,190 @@
+{
+  "_comment": "LoopStar's MIDI controller layouts (asked 2026-11-17; the Mac too, same day). A layout binds LoopStar's actions (a fixed vocabulary in the apps: pad.1-8 on the iPhone are its pads, pad.1-6 on the Mac are its lanes Drums..FX; record.take and record.longTake are the Mac's record buttons; transport.playStop, section.next, section.hold, song.next, song.previous, pedals.board, pedal.<comp|wah|drive|pitch|amp|mod|eq|delay|reverb>, preset.next, preset.previous, expr.<wah|volume|ampGain|drive|delayMix|reverbMix|modMix>) to messages: program (0-127 as sent: a display's 'program 1' is 0), cc (0-127) or note, with an optional channel (1-16; absent = any). A switch fires on a program change, a note on, or a CC at 64 or more; expr.* follow a CC's value. An action may have several messages (play/stop on every bank); a message does one thing (bound twice, the later wins). Each app skips an action it doesn't have, so one message can be pad.7 on the iPhone and record.take on the Mac. 'platforms': {'mac': {'blurb', 'banks'}} is what the Mac's window shows instead (the bindings are shared). 'Use this layout' in LoopStar's MIDI view copies the bindings onto the device, and Learn changes any of them there. Edit here; zero rebuild (the apps ship a frozen copy).",
+  "version": 1,
+  "controllers": [
+    {
+      "id": "fcb1010",
+      "name": "Behringer FCB1010",
+      "blurb": "Its factory setup: each footswitch sends a program change on channel 1 (bank 0 = programs 1-10, bank 1 = 11-20, bank 2 = 21-30; the UP/DOWN switches change bank on the FCB1010 itself), expression A sends CC 27 and expression B CC 7. Into the iPhone through a USB MIDI interface, or a Bluetooth MIDI adapter on its MIDI OUT. If a switch does nothing, Learn it.",
+      "banks": [
+        {
+          "name": "Bank 0 · Looper",
+          "pedals": "1-4 pads 1-4 · 5 play/stop · 6 next section · 7 hold section · 8 previous song · 9 next song · 10 pedals on/off"
+        },
+        {
+          "name": "Bank 1 · Pedals",
+          "pedals": "1 comp · 2 wah · 3 drive · 4 amp · 5 mod · 6 delay · 7 reverb · 8 pitch · 9 previous preset · 10 next preset"
+        },
+        {
+          "name": "Bank 2 · Pads 5-8",
+          "pedals": "1-4 pads 5-8 · 5 play/stop · 6 next section · 7 hold section · 8 EQ · 9 next song · 10 pedals on/off"
+        },
+        {
+          "name": "Expression",
+          "pedals": "A (CC 27) wah · B (CC 7) volume"
+        }
+      ],
+      "bindings": [
+        {
+          "action": "pad.1",
+          "program": 0
+        },
+        {
+          "action": "pad.2",
+          "program": 1
+        },
+        {
+          "action": "pad.3",
+          "program": 2
+        },
+        {
+          "action": "pad.4",
+          "program": 3
+        },
+        {
+          "action": "transport.playStop",
+          "program": 4
+        },
+        {
+          "action": "section.next",
+          "program": 5
+        },
+        {
+          "action": "section.hold",
+          "program": 6
+        },
+        {
+          "action": "song.previous",
+          "program": 7
+        },
+        {
+          "action": "song.next",
+          "program": 8
+        },
+        {
+          "action": "pedals.board",
+          "program": 9
+        },
+        {
+          "action": "pedal.comp",
+          "program": 10
+        },
+        {
+          "action": "pedal.wah",
+          "program": 11
+        },
+        {
+          "action": "pedal.drive",
+          "program": 12
+        },
+        {
+          "action": "pedal.amp",
+          "program": 13
+        },
+        {
+          "action": "pedal.mod",
+          "program": 14
+        },
+        {
+          "action": "pedal.delay",
+          "program": 15
+        },
+        {
+          "action": "pedal.reverb",
+          "program": 16
+        },
+        {
+          "action": "pedal.pitch",
+          "program": 17
+        },
+        {
+          "action": "preset.previous",
+          "program": 18
+        },
+        {
+          "action": "preset.next",
+          "program": 19
+        },
+        {
+          "action": "pad.5",
+          "program": 20
+        },
+        {
+          "action": "pad.6",
+          "program": 21
+        },
+        {
+          "action": "pad.7",
+          "program": 22
+        },
+        {
+          "action": "pad.8",
+          "program": 23
+        },
+        {
+          "action": "record.take",
+          "program": 22
+        },
+        {
+          "action": "record.longTake",
+          "program": 23
+        },
+        {
+          "action": "transport.playStop",
+          "program": 24
+        },
+        {
+          "action": "section.next",
+          "program": 25
+        },
+        {
+          "action": "section.hold",
+          "program": 26
+        },
+        {
+          "action": "pedal.eq",
+          "program": 27
+        },
+        {
+          "action": "song.next",
+          "program": 28
+        },
+        {
+          "action": "pedals.board",
+          "program": 29
+        },
+        {
+          "action": "expr.wah",
+          "cc": 27
+        },
+        {
+          "action": "expr.volume",
+          "cc": 7
+        }
+      ],
+      "platforms": {
+        "mac": {
+          "blurb": "Its factory setup: each footswitch sends a program change on channel 1 (bank 0 = programs 1-10, bank 1 = 11-20, bank 2 = 21-30; the UP/DOWN switches change bank on the FCB1010 itself), expression A sends CC 27 and expression B CC 7. Into the Mac through a USB MIDI interface on its MIDI OUT. If a switch does nothing, Learn it.",
+          "banks": [
+            {
+              "name": "Bank 0 · Looper",
+              "pedals": "1-4 lanes Drums, Hats, Perc, Bass · 5 play/stop · 6 next Part · 7 hold Part · 8 previous song · 9 next song · 10 pedals on/off"
+            },
+            {
+              "name": "Bank 1 · Pedals",
+              "pedals": "1 comp · 2 wah · 3 drive · 4 amp · 5 mod · 6 delay · 7 reverb · 8 pitch · 9 previous preset · 10 next preset"
+            },
+            {
+              "name": "Bank 2 · Record",
+              "pedals": "1-2 lanes Music, FX · 3 record a take · 4 long take (start / finish) · 5 play/stop · 6 next Part · 7 hold Part · 8 EQ · 9 next song · 10 pedals on/off"
+            },
+            {
+              "name": "Expression",
+              "pedals": "A (CC 27) wah · B (CC 7) volume"
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

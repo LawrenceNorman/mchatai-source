@@ -114,6 +114,13 @@ Build these on the vendored **retro-fps engine** (Woof! with Freedoom art, in We
 - If a starter `index.html` for another genre was placed in your working directory (a Space Invaders file, for example), REPLACE it entirely: its "EXTEND this file" note does not apply to a first-person shooter.
 - Before finishing, check the levels: `node /Users/lawrencenorman/mystuff/src/mchatai_platform/mchatai-source/frameworks/retro-fps/tools/rfps-check.js index.html`. It must exit 0, including its DESIGN lines (for example, no monster may see the player's start).
 
+### Godot games (the Goal names Godot, or continues a Godot build)
+Build these as a **Godot 4.7.2 project**, not as hand-written HTML. One project gives the mini-app (its web build, one page with the game inside) and Mac and Windows downloads.
+- `/Users/lawrencenorman/mystuff/src/mchatai_platform/mchatai-source/frameworks/godot/CONTEXT.md` — the working-folder layout, the build commands, the rules. Read it first; it overrides the single-file HTML guidance in this file.
+- `/Users/lawrencenorman/mystuff/src/mchatai_platform/mchatai-source/frameworks/godot/template/` — the starting project (`cp -R` it to `game/`), unless the Goal names an existing project path to build from.
+- Build with `python3 /Users/lawrencenorman/mystuff/src/mchatai_platform/mchatai-source/frameworks/godot/tools/build_all.py game . web,macos,windows`; it writes `./index.html`, `./libs/` and `./builds/`.
+- **Output:** the page is too big to paste. End with a `miniapp` fence whose JSON has `id`, `name`, `manifest` and `"htmlFile": "index.html"` INSTEAD of `html`.
+
 ### Fighting games and beat-'em-ups (one-on-one versus fighters: "a Street Fighter type game"; side-scrolling brawlers: "a Streets of Rage type game")
 Build these on the vendored **versus-fighter runtime**. Fighters with frame data, blocking, combos, special-move inputs, projectiles, rounds, a CPU opponent, two-player and touch controls, the HUD, stages, sound, the start card, character select and the pause menu are all provided; you write only the game, as JSON. A beat-'em-up is the same page with `"mode": "brawler"` (waves of enemies along a street, bosses, lives): see "Brawler mode" in CONTEXT.md and `examples/iron-alley.html`. Do NOT hand-roll a fighting engine, sprites or a canvas game loop. (Not for dogfights between planes.)
 - `/Users/lawrencenorman/mystuff/src/mchatai_platform/mchatai-source/frameworks/versus-fighter/CONTEXT.md` — the page shape, the game JSON, the two bodies, special moves. Read it first.
@@ -197,6 +204,8 @@ What the best catalog game so far (Echo Reef, 2026-10-16) had, and what a game s
 If the context includes a **Web Components Recipe**, prefer module imports in `html` from `./web-components/<component-path>` and include the required `mchatai-web-components-used` marker. The installer will bundle those sidecar modules from the Lego catalog. Do not collapse that recipe back into a hand-written monolith.
 
 If there is no Web Components Recipe, use the legacy single-file `index.html` style with inline CSS and JS.
+
+**Godot games** (see their section above) are the one exception to pasting the page: the fence names the page the build wrote, `"htmlFile": "index.html"`, and carries no `html`.
 
 **If you decided you're building a native macOS Swift app** (per the "🟦 ARTIFACT TYPE" section near the top): output a `\`\`\`macosapp` fenced JSON block instead, with `id`, `name`, `template`, and `files`. NEVER use the `miniapp` fence for a macOSApp — the wizard's parser routes on the fence marker, and a macOSApp inside a `miniapp` fence will be installed as an HTML mini-app.
 

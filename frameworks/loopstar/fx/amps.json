@@ -1,0 +1,385 @@
+{
+  "_comment": "LoopStar's own amps, cabinets and pedal voicings (asked 2026-11-17: 'warm guitar tube emulators'). The iPhone's engine (LoopStar/DSP/LoopStarDSP.c) is generic; THIS file says what each amp is. An amp: tightHz = input high-pass; preMid = a mid push before the gain (db 0 = none); gainDB = what the Gain knob spans; stages = two triode stages (gain into tanh(u + bias) - tanh(bias): bias makes the even harmonics; lowPassHz = the stage's Miller roll-off); couplingHz = the coupling caps' high-pass; toneStack = a key of toneStacks (the passive treble/bass/mid network: farads and ohms); toneMakeupDB = its loss made up; power = the power stage (driveDB into it, sag 0-1 = how much a loud note squeezes the supply, releaseMs, bias); presenceDB (high shelf 3.5 kHz) and depthDB (100 Hz) after it; cab = a cabinet id (its filters run after the amp; 'none' = into a real amp); outputDB = the model's trim so every amp sits at about the same loudness at its default knobs (set by the calibration in the DSP test harness, not by ear alone); knobs = the defaults a preset without its own takes. Cabinet filters: type lowpass|highpass|peak|lowshelf|highshelf, hz, q, db (peak/shelf). pedals.wah = the wah's sweep (heel lowHz to toe highHz) and q. Names are our own: never an amp maker's or a model's trademark. Edit here; zero rebuild (the app also ships a frozen copy as its offline floor). pedals.comp.styles (2026-11-18): LoopStar's own compressor, one knob (the preset's comp.amount / the board's Squeeze) spanning thresholdMinDB..thresholdMaxDB (dB of the peak detector) and ratioMin..ratioMax; kneeDB soft knee; attackMs; releaseFastMs after a short loud moment, releaseSlowMs after a stretch of compression (an optical cell's recovery); makeup is automatic: the reduction a signal at makeupRefDB (dBFS) would get is given back, so a voice at a typical level comes out as loud as it went in at any amount; warmth is a tanh drive after it (0 = none, 1.2 = a touch of second harmonic with bias 0.08); sidechainHz high-passes the detector so the low end doesn't pump it. A preset picks one with comp: {style, amount}; no style = Apple's compressor, as before.",
+  "version": 1,
+  "toneStacks": {
+    "american": {
+      "c1": 2.5e-10,
+      "c2": 2e-08,
+      "c3": 2e-08,
+      "r1": 250000,
+      "r2": 1000000,
+      "r3": 25000,
+      "r4": 56000
+    },
+    "british": {
+      "c1": 4.7e-10,
+      "c2": 2.2e-08,
+      "c3": 2.2e-08,
+      "r1": 220000,
+      "r2": 1000000,
+      "r3": 22000,
+      "r4": 33000
+    }
+  },
+  "cabs": [
+    {
+      "id": "open-1x12",
+      "name": "1×12 open back",
+      "filters": [
+        {
+          "type": "highpass",
+          "hz": 85,
+          "q": 0.8
+        },
+        {
+          "type": "peak",
+          "hz": 125,
+          "q": 1.4,
+          "db": 2.0
+        },
+        {
+          "type": "peak",
+          "hz": 520,
+          "q": 1.0,
+          "db": -2.0
+        },
+        {
+          "type": "peak",
+          "hz": 2300,
+          "q": 1.8,
+          "db": 3.0
+        },
+        {
+          "type": "lowpass",
+          "hz": 5600,
+          "q": 0.75
+        },
+        {
+          "type": "lowpass",
+          "hz": 7200,
+          "q": 0.6
+        }
+      ]
+    },
+    {
+      "id": "open-2x12",
+      "name": "2×12 open back",
+      "filters": [
+        {
+          "type": "highpass",
+          "hz": 75,
+          "q": 0.8
+        },
+        {
+          "type": "peak",
+          "hz": 110,
+          "q": 1.3,
+          "db": 2.5
+        },
+        {
+          "type": "peak",
+          "hz": 420,
+          "q": 1.0,
+          "db": -2.5
+        },
+        {
+          "type": "peak",
+          "hz": 1500,
+          "q": 1.5,
+          "db": 2.0
+        },
+        {
+          "type": "peak",
+          "hz": 3000,
+          "q": 2.0,
+          "db": 2.5
+        },
+        {
+          "type": "lowpass",
+          "hz": 5200,
+          "q": 0.8
+        },
+        {
+          "type": "lowpass",
+          "hz": 6600,
+          "q": 0.6
+        }
+      ]
+    },
+    {
+      "id": "closed-4x12",
+      "name": "4×12 closed back",
+      "filters": [
+        {
+          "type": "highpass",
+          "hz": 68,
+          "q": 1.0
+        },
+        {
+          "type": "peak",
+          "hz": 100,
+          "q": 1.2,
+          "db": 4.0
+        },
+        {
+          "type": "peak",
+          "hz": 400,
+          "q": 0.9,
+          "db": -3.0
+        },
+        {
+          "type": "peak",
+          "hz": 1800,
+          "q": 1.2,
+          "db": 2.0
+        },
+        {
+          "type": "peak",
+          "hz": 3200,
+          "q": 2.2,
+          "db": 4.0
+        },
+        {
+          "type": "lowpass",
+          "hz": 4800,
+          "q": 0.8
+        },
+        {
+          "type": "lowpass",
+          "hz": 6000,
+          "q": 0.65
+        }
+      ]
+    },
+    {
+      "id": "none",
+      "name": "No cabinet (into an amp)",
+      "filters": []
+    }
+  ],
+  "amps": [
+    {
+      "id": "warm-clean",
+      "name": "Warm Clean",
+      "blurb": "Round and glassy, breaks up only when you dig in",
+      "toneStack": "american",
+      "cab": "open-1x12",
+      "tightHz": 60,
+      "gainDB": [
+        0,
+        18
+      ],
+      "stages": [
+        {
+          "gain": 0.7,
+          "bias": 0.12,
+          "lowPassHz": 16000
+        },
+        {
+          "gain": 0.9,
+          "bias": 0.2,
+          "lowPassHz": 11000
+        }
+      ],
+      "couplingHz": 20,
+      "toneMakeupDB": 12,
+      "power": {
+        "driveDB": 0,
+        "sag": 0.25,
+        "releaseMs": 160,
+        "bias": 0.04
+      },
+      "presenceDB": 1.5,
+      "depthDB": 1.0,
+      "outputDB": -1.0,
+      "knobs": {
+        "gain": 0.35,
+        "bass": 0.5,
+        "mid": 0.55,
+        "treble": 0.6,
+        "level": 0.5
+      }
+    },
+    {
+      "id": "edge",
+      "name": "Edge of Breakup",
+      "blurb": "Clean when you play soft, gritty when you push",
+      "toneStack": "american",
+      "cab": "open-2x12",
+      "tightHz": 70,
+      "gainDB": [
+        0,
+        24
+      ],
+      "stages": [
+        {
+          "gain": 1.1,
+          "bias": 0.18,
+          "lowPassHz": 14000
+        },
+        {
+          "gain": 1.35,
+          "bias": 0.28,
+          "lowPassHz": 9000
+        }
+      ],
+      "couplingHz": 25,
+      "toneMakeupDB": 12,
+      "power": {
+        "driveDB": 4,
+        "sag": 0.45,
+        "releaseMs": 180,
+        "bias": 0.06
+      },
+      "presenceDB": 1.0,
+      "depthDB": 1.5,
+      "outputDB": -13.7,
+      "knobs": {
+        "gain": 0.5,
+        "bass": 0.5,
+        "mid": 0.6,
+        "treble": 0.55,
+        "level": 0.5
+      }
+    },
+    {
+      "id": "brit-crunch",
+      "name": "Brit Crunch",
+      "blurb": "Chewy mids and a crunch that chords sit in",
+      "toneStack": "british",
+      "cab": "closed-4x12",
+      "tightHz": 90,
+      "preMid": {
+        "hz": 800,
+        "db": 3,
+        "q": 0.8
+      },
+      "gainDB": [
+        12,
+        36
+      ],
+      "stages": [
+        {
+          "gain": 1.8,
+          "bias": 0.22,
+          "lowPassHz": 12000
+        },
+        {
+          "gain": 2.4,
+          "bias": 0.3,
+          "lowPassHz": 7500
+        }
+      ],
+      "couplingHz": 30,
+      "toneMakeupDB": 10,
+      "power": {
+        "driveDB": 5,
+        "sag": 0.3,
+        "releaseMs": 140,
+        "bias": 0.05
+      },
+      "presenceDB": 2.5,
+      "depthDB": 1.5,
+      "outputDB": -18.7,
+      "knobs": {
+        "gain": 0.55,
+        "bass": 0.5,
+        "mid": 0.65,
+        "treble": 0.6,
+        "level": 0.5
+      }
+    },
+    {
+      "id": "hot-lead",
+      "name": "Hot Lead",
+      "blurb": "Singing sustain for solos, tight low end",
+      "toneStack": "british",
+      "cab": "closed-4x12",
+      "tightHz": 110,
+      "preMid": {
+        "hz": 720,
+        "db": 6,
+        "q": 0.8
+      },
+      "gainDB": [
+        20,
+        46
+      ],
+      "stages": [
+        {
+          "gain": 3.0,
+          "bias": 0.25,
+          "lowPassHz": 9000
+        },
+        {
+          "gain": 3.0,
+          "bias": 0.32,
+          "lowPassHz": 6500
+        }
+      ],
+      "couplingHz": 40,
+      "toneMakeupDB": 9,
+      "power": {
+        "driveDB": 3,
+        "sag": 0.2,
+        "releaseMs": 120,
+        "bias": 0.05
+      },
+      "presenceDB": 2.0,
+      "depthDB": 2.0,
+      "outputDB": -19.8,
+      "knobs": {
+        "gain": 0.65,
+        "bass": 0.5,
+        "mid": 0.6,
+        "treble": 0.55,
+        "level": 0.5
+      }
+    }
+  ],
+  "pedals": {
+    "wah": {
+      "lowHz": 400,
+      "highHz": 2200,
+      "q": 5.5
+    },
+    "comp": {
+      "styles": [
+        {
+          "id": "warm",
+          "name": "Warm (opto)",
+          "blurb": "Slow and smooth, a little second harmonic: a vocal sits down and stays warm",
+          "thresholdMinDB": -8,
+          "thresholdMaxDB": -32,
+          "ratioMin": 1.6,
+          "ratioMax": 5,
+          "kneeDB": 8,
+          "attackMs": 12,
+          "releaseFastMs": 70,
+          "releaseSlowMs": 900,
+          "makeupRefDB": -18,
+          "warmth": 1.2,
+          "bias": 0.08,
+          "sidechainHz": 90
+        },
+        {
+          "id": "glue",
+          "name": "Glue (firm)",
+          "blurb": "Quicker and cleaner: holds a performance together without colouring it",
+          "thresholdMinDB": -10,
+          "thresholdMaxDB": -30,
+          "ratioMin": 2,
+          "ratioMax": 8,
+          "kneeDB": 4,
+          "attackMs": 5,
+          "releaseFastMs": 50,
+          "releaseSlowMs": 300,
+          "makeupRefDB": -18,
+          "warmth": 0,
+          "bias": 0,
+          "sidechainHz": 70
+        }
+      ]
+    }
+  }
+}

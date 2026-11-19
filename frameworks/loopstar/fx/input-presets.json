@@ -1,10 +1,65 @@
 {
-  "_comment": "LoopStar input FX presets (Phase LI, iPhone). What the mic or instrument goes through on its way into a loop: you hear it while you play (headphones), and it is printed into the take. Fields, all optional (absent = off): compression 0-1; drive {style: lofi|crush|speaker|funk|overdrive|highgain, mix 0-100}; pitch semitones -12..12; eq {low, mid, high} dB -12..12; delay {beats (quarter-note beats: 0.75 = dotted eighth), feedback 0-90, mix 0-100}; reverb {space: room|chamber|plate|hall|cathedral, mix 0-100}. Delay is ALWAYS a note value -- it follows the tempo (../LOOPSTAR_SOUL.md). Edit or add here; zero rebuild. INPUT TYPES (2026-10-15, the board's pedals): `inputTypes` groups presets by what is plugged in or played; a type lists preset ids in order, `icon` is an SF Symbol name. A preset may sit in several types.",
+  "_comment": "LoopStar input FX presets (Phase LI, iPhone). What the mic or instrument goes through on its way into a loop: you hear it while you play (headphones), and it is printed into the take. Fields, all optional (absent = off): compression 0-1; drive {style: lofi|crush|speaker|funk|overdrive|highgain, mix 0-100}; pitch semitones -12..12; eq {low, mid, high} dB -12..12; delay {beats (quarter-note beats: 0.75 = dotted eighth), feedback 0-90, mix 0-100}; reverb {space: room|chamber|plate|hall|cathedral, mix 0-100}. Delay is ALWAYS a note value -- it follows the tempo (../LOOPSTAR_SOUL.md). Edit or add here; zero rebuild. INPUT TYPES (2026-10-15, the board's pedals): `inputTypes` groups presets by what is plugged in or played; a type lists preset ids in order, `icon` is an SF Symbol name. A preset may sit in several types. OUR OWN PEDALS (2026-11-17): amp {model (an amps.json id), cab (a cabinet id; absent = the amp's own), gain, bass, mid, treble, level 0-1; knobs left out = the amp's defaults}; wah {mode pedal|auto, position 0-1, sensitivity 0-1}; mod {type chorus|phaser|tremolo, beats (a note value, quarter-note beats), depth 0-1 (tremolo: shape), mix 0-100 (tremolo: depth)}. comp {style: warm|glue (amps.json pedals.comp.styles), amount 0-1} (2026-11-18): LoopStar's own compressor instead of the plain `compression`.",
   "presets": [
     {
       "id": "clean",
       "name": "Clean",
       "blurb": "Straight in, nothing added"
+    },
+    {
+      "id": "warm-vocal",
+      "name": "Warm Vocal",
+      "blurb": "An optical compressor sits the voice down, a plate behind it and a dotted-eighth echo",
+      "comp": {
+        "style": "warm",
+        "amount": 0.55
+      },
+      "eq": {
+        "low": -2,
+        "mid": 0,
+        "high": 2
+      },
+      "delay": {
+        "beats": 0.75,
+        "feedback": 22,
+        "mix": 10
+      },
+      "reverb": {
+        "space": "plate",
+        "mix": 16
+      }
+    },
+    {
+      "id": "radio-vocal",
+      "name": "Radio Vocal",
+      "blurb": "Squeezed hard and close, the low end out: a voice that cuts through a mix",
+      "comp": {
+        "style": "warm",
+        "amount": 0.85
+      },
+      "eq": {
+        "low": -6,
+        "mid": 3,
+        "high": 1
+      }
+    },
+    {
+      "id": "glue-vocal",
+      "name": "Glue Vocal",
+      "blurb": "Firm and clean: held together, nothing added",
+      "comp": {
+        "style": "glue",
+        "amount": 0.5
+      },
+      "eq": {
+        "low": -2,
+        "mid": 0,
+        "high": 2
+      },
+      "reverb": {
+        "space": "room",
+        "mix": 10
+      }
     },
     {
       "id": "vocal",
@@ -353,6 +408,153 @@
         "space": "hall",
         "mix": 22
       }
+    },
+    {
+      "id": "tube-clean",
+      "name": "Tube Clean",
+      "blurb": "A warm clean amp that breaks up when you dig in",
+      "compression": 0.25,
+      "amp": {
+        "model": "warm-clean"
+      },
+      "reverb": {
+        "space": "room",
+        "mix": 14
+      }
+    },
+    {
+      "id": "tube-breakup",
+      "name": "Tube Breakup",
+      "blurb": "Clean when soft, gritty when you push",
+      "amp": {
+        "model": "edge"
+      },
+      "reverb": {
+        "space": "plate",
+        "mix": 14
+      }
+    },
+    {
+      "id": "tube-crunch",
+      "name": "Tube Crunch",
+      "blurb": "Chewy British crunch through a 4×12",
+      "amp": {
+        "model": "brit-crunch"
+      },
+      "reverb": {
+        "space": "room",
+        "mix": 10
+      }
+    },
+    {
+      "id": "tube-lead",
+      "name": "Tube Lead",
+      "blurb": "Singing sustain, a dotted-eighth echo",
+      "amp": {
+        "model": "hot-lead"
+      },
+      "delay": {
+        "beats": 0.75,
+        "feedback": 30,
+        "mix": 20
+      },
+      "reverb": {
+        "space": "hall",
+        "mix": 16
+      }
+    },
+    {
+      "id": "chorus-clean",
+      "name": "Chorus Clean",
+      "blurb": "Shimmering chorus on a warm clean amp",
+      "compression": 0.25,
+      "amp": {
+        "model": "warm-clean",
+        "gain": 0.3
+      },
+      "mod": {
+        "type": "chorus",
+        "beats": 2,
+        "depth": 0.5,
+        "mix": 50
+      },
+      "reverb": {
+        "space": "plate",
+        "mix": 18
+      }
+    },
+    {
+      "id": "tremolo-clean",
+      "name": "Tremolo Clean",
+      "blurb": "Eighth-note tremolo and a big room",
+      "amp": {
+        "model": "warm-clean",
+        "gain": 0.3
+      },
+      "mod": {
+        "type": "tremolo",
+        "beats": 0.5,
+        "depth": 0.3,
+        "mix": 60
+      },
+      "reverb": {
+        "space": "hall",
+        "mix": 20
+      }
+    },
+    {
+      "id": "autowah-funk",
+      "name": "Auto-Wah Funk",
+      "blurb": "The wah opens as you pick harder",
+      "compression": 0.5,
+      "wah": {
+        "mode": "auto",
+        "sensitivity": 0.6
+      },
+      "amp": {
+        "model": "warm-clean",
+        "gain": 0.3
+      }
+    },
+    {
+      "id": "phased-crunch",
+      "name": "Phased Crunch",
+      "blurb": "A slow phaser over the crunch",
+      "amp": {
+        "model": "brit-crunch",
+        "gain": 0.5
+      },
+      "mod": {
+        "type": "phaser",
+        "beats": 4,
+        "depth": 0.6,
+        "mix": 50
+      },
+      "reverb": {
+        "space": "room",
+        "mix": 10
+      }
+    },
+    {
+      "id": "wah-lead",
+      "name": "Wah Lead",
+      "blurb": "Rock the expression pedal for the wah",
+      "wah": {
+        "mode": "pedal",
+        "position": 0.5
+      },
+      "amp": {
+        "model": "hot-lead"
+      },
+      "delay": {
+        "beats": 0.75,
+        "feedback": 28,
+        "mix": 18
+      },
+      "reverb": {
+        "space": "hall",
+        "mix": 14
+      }
     }
   ],
   "inputTypes": [
@@ -361,6 +563,15 @@
       "name": "Electric guitar",
       "icon": "guitars",
       "presets": [
+        "tube-clean",
+        "tube-breakup",
+        "tube-crunch",
+        "tube-lead",
+        "chorus-clean",
+        "tremolo-clean",
+        "autowah-funk",
+        "phased-crunch",
+        "wah-lead",
         "guitar-clean",
         "blues",
         "guitar-crunch",
@@ -410,6 +621,9 @@
       "name": "Voice",
       "icon": "music.mic",
       "presets": [
+        "warm-vocal",
+        "radio-vocal",
+        "glue-vocal",
         "vocal",
         "vocal-dry",
         "beatbox",
