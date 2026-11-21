@@ -419,6 +419,28 @@
     "projectFolderNotice": "The user pointed this conversation at a project folder: {path}. Treat it as the project this conversation is about and read what you need from it — its README, CLAUDE.md or AGENTS.md are usually the fastest way in. It is the user's own folder: change files in it only when they ask you to.",
     "projectFolderRemovedNotice": "The user removed the project folder from this conversation. Do not read from it or change it unless they point you at it again."
   },
+  "localRuntimes": {
+    "_comment": "Phase LW (docs/WORKBENCH_ARCHITECTURE.md §0b, 2026-11-19): the New Session sheet's 'Runs on' choice. A session that runs on a local runtime starts the SAME CLI with its model requests sent to a model server on this Mac. {baseURL} is the user's own server address (Settings → Ollama), never a value here. Models are read from the server at runtime: the ones whose /api/show capabilities include requiredCapability (a coding CLI needs tool calls). env is applied over the subscription-login env on a structured spawn, and exported AFTER the login shell's profile and the CLAUDE_CODE_* scrub on an interactive one; an empty value unsets the variable. A backend absent from 'backends' does not offer the choice: codex is absent on purpose (codex-cli 0.150.1 `exec --oss --local-provider ollama` on qwen3-coder:30b-cc64k hung 5 minutes on a one-word reply, 2026-11-19). The CLI's own USD figure is ignored for these sessions (Claude Code prices an unknown model by guess, costBasis 'unknown'), and the context meter uses the server's window, not the 1M the CLI assumes. Baked _fallback_only mirror: CLIInvocationConfig.fallbackLocalRuntimes.",
+    "ollama": {
+      "label": "On this Mac (Ollama)",
+      "shortLabel": "This Mac",
+      "help": "The model runs in Ollama on this Mac and nothing is drawn from your plan. Claude Code's own web search and web fetch still use the internet. Local models are much weaker than cloud ones at multi-step work: give each session one clear task, and keep permission prompts on.",
+      "requiredCapability": "tools",
+      "planFirstDefault": false,
+      "backends": {
+        "claude": {
+          "env": {
+            "ANTHROPIC_BASE_URL": "{baseURL}",
+            "ANTHROPIC_AUTH_TOKEN": "ollama",
+            "ANTHROPIC_API_KEY": "",
+            "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1"
+          },
+          "_tuiPinsPermissionMode": "The interactive CLI is otherwise started in the user's own default mode, and Claude Code's auto mode runs its safety check on Anthropic's server: through a local gateway the check never arrives and every action stops on an 'Auto mode can't check actions in this session' dialog (2026-11-19). true = the TUI gets interactiveMapping.permissionModeFlag + the session's permissionModes value, like a structured spawn.",
+          "tuiPinsPermissionMode": true
+        }
+      }
+    }
+  },
   "backends": {
     "claude": {
       "displayName": "Claude Code CLI",
