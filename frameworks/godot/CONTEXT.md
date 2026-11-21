@@ -74,3 +74,7 @@ this folder and vendors `./libs/` itself.
 7. **Size:** pictures as `.png`/`.jpg` under `game/`; keep the game's pack small enough that the page stays
    under 25 MB (the build says so if not). Big media belongs on a URL, not in the pack.
 8. **Never** put a signing identity, an API key or a personal path into the project.
+9. **Never edit this framework folder** (`tools/`, `template/`, `dist/`, this file) from a game build: a change here
+   reaches every Godot game. If the build seems to need one, finish the game without it and say what the
+   framework should change in your final message. (2026-11-18: a build added the page's start screen to
+   `pack_web.py` on its own; the change was good and kept after review, but it is a separate, reviewed change.)

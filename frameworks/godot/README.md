@@ -34,6 +34,11 @@ mini-app, and every published game shares one cached copy of the engine.
    `audioWorklet.addModule()` of the two worklets, from memory (worklets as `data:` URLs: a `file://`
    page has an opaque origin, and Chromium refuses a worklet from `blob:null`). Nothing is read from
    disk, so no fetch→XHR shim is needed.
+3b. **The page frame.** HTML controls around the canvas, because everything inside a Godot game is drawn on
+   it and a page check (or a hand) would find nothing to press: a start screen (name, premise from `--blurb`
+   or the project's `config/description`, a loading bar, Play), a Full screen button in the corner during
+   play, and "Play again" if the game quits. Play only uncovers the canvas and gives it the keyboard.
+   (Added by a Harness build of Alesia, reviewed and kept 2026-11-18.)
 4. **Publishing.** Publishing rewrites `./libs/<file>.js` to `https://mchatai.com/v/lib/<file>.js`, so both
    dist files must be hosted under `mchataiweb/public/v/lib/` before a Godot game is published (GD.8).
    The page itself must stay under the Hub's 25 MB.
