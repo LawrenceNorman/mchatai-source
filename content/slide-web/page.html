@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{TITLE}}</title>
+<meta name="description" content="{{DESCRIPTION}}">
+<meta property="og:title" content="{{TITLE}}">
+<meta property="og:description" content="{{DESCRIPTION}}">
+<meta property="og:image" content="{{COVER}}">
+<style>
+  :root { --bg: {{BG}}; --surface: {{SURFACE}}; --fg: {{FG}}; --muted: {{MUTED}}; --accent: {{ACCENT}}; --on-accent: {{ON_ACCENT}}; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg); font: 17px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  header, main { max-width: 1100px; margin: 0 auto; padding: 0 16px; }
+  header { padding-top: 40px; padding-bottom: 8px; }
+  h1 { font-size: clamp(26px, 4vw, 40px); line-height: 1.15; margin: 0 0 6px; }
+  .sub { color: var(--muted); margin: 0; }
+  .stage { position: relative; margin: 24px 0 8px; background: var(--surface); border-radius: 14px; overflow: hidden;
+           box-shadow: 0 10px 30px rgba(0,0,0,.08); }
+  .stage img { display: block; width: 100%; height: auto; aspect-ratio: 16 / 9; object-fit: contain; background: var(--surface); }
+  .controls { display: flex; gap: 8px; align-items: center; justify-content: center; margin: 10px 0 32px; flex-wrap: wrap; }
+  button { font: inherit; border: 1px solid color-mix(in srgb, var(--fg) 18%, transparent); background: var(--surface); color: var(--fg);
+           border-radius: 999px; padding: 8px 16px; cursor: pointer; min-width: 44px; min-height: 44px; }
+  button.primary { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+  button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+  #pos { color: var(--muted); min-width: 80px; text-align: center; font-variant-numeric: tabular-nums; }
+  .all { display: grid; gap: 28px; padding-bottom: 64px; }
+  .slide { display: grid; grid-template-columns: minmax(0, 320px) minmax(0, 1fr); gap: 20px; align-items: start; }
+  .slide img { width: 100%; height: auto; border-radius: 10px; background: var(--surface); cursor: pointer;
+               box-shadow: 0 4px 14px rgba(0,0,0,.06); }
+  .slide h2 { font-size: 20px; margin: 0 0 6px; }
+  .slide .n { color: var(--accent); font-weight: 700; margin-right: 6px; }
+  .slide ul { margin: 0 0 8px; padding-left: 20px; }
+  .slide details { color: var(--muted); }
+  .slide summary { cursor: pointer; }
+  footer { max-width: 1100px; margin: 0 auto; padding: 0 16px 40px; color: var(--muted); font-size: 14px; }
+  @media (max-width: 640px) { .slide { grid-template-columns: 1fr; } }
+  body.presenting { background: #000; }
+  body.presenting header, body.presenting .all, body.presenting footer, body.presenting .controls { display: none; }
+  body.presenting main { max-width: none; padding: 0; }
+  body.presenting .stage { margin: 0; border-radius: 0; height: 100vh; display: flex; align-items: center; background: #000; box-shadow: none; }
+  body.presenting .stage img { height: 100vh; width: 100%; background: #000; }
+</style>
+</head>
+<body>
+<header>
+  <h1>{{TITLE}}</h1>
+  <p class="sub">{{COUNT}}</p>
+</header>
+<main>
+  <section class="stage" aria-label="Current slide">
+    <img id="current" src="{{COVER}}" alt="">
+  </section>
+  <div class="controls">
+    <button id="prev" aria-label="Previous slide">←</button>
+    <span id="pos" aria-live="polite"></span>
+    <button id="next" aria-label="Next slide">→</button>
+    <button id="present" class="primary">Present</button>
+  </div>
+  <section class="all" aria-label="Every slide">
+{{SLIDES}}
+  </section>
+</main>
+<footer>{{FOOTER}}</footer>
+<script>
+  (function () {
+    var slides = Array.prototype.slice.call(document.querySelectorAll('.slide'));
+    var current = document.getElementById('current');
+    var pos = document.getElementById('pos');
+    var i = 0;
+    function show(n) {
+      if (!slides.length) return;
+      i = (n + slides.length) % slides.length;
+      var img = slides[i].querySelector('img');
+      current.src = img.getAttribute('src');
+      current.alt = img.getAttribute('alt');
+      pos.textContent = (i + 1) + ' / ' + slides.length;
+    }
+    document.getElementById('prev').onclick = function () { show(i - 1); };
+    document.getElementById('next').onclick = function () { show(i + 1); };
+    document.getElementById('present').onclick = function () {
+      document.body.classList.add('presenting');
+      if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(function () {});
+    };
+    document.addEventListener('fullscreenchange', function () {
+      if (!document.fullscreenElement) document.body.classList.remove('presenting');
+    });
+    current.onclick = function () { if (document.body.classList.contains('presenting')) show(i + 1); };
+    slides.forEach(function (s, n) { s.querySelector('img').onclick = function () { show(n); window.scrollTo({ top: 0, behavior: 'smooth' }); }; });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') { show(i + 1); e.preventDefault(); }
+      else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { show(i - 1); e.preventDefault(); }
+      else if (e.key === 'Escape') { document.body.classList.remove('presenting'); }
+    });
+    show(0);
+  })();
+</script>
+</body>
+</html>

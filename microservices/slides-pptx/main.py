@@ -229,6 +229,37 @@ def _rect(slide, x, y, w, h, color: str, *, radius: bool = False, alpha: Optiona
     return shape
 
 
+def _alpha(shape, alpha: Optional[int]):
+    """Fill transparency on any shape filled with `fill.solid()` (python-pptx has no API)."""
+    from pptx.oxml.ns import qn
+    from lxml import etree
+    if alpha is None:
+        return
+    srgb = shape.fill._xPr.find(".//" + qn("a:srgbClr"))
+    if srgb is not None:
+        etree.SubElement(srgb, qn("a:alpha")).set("val", str(int(alpha) * 1000))
+
+
+def _polyline(slide, points, color: str, width_px: float, close: bool = False, fill: Optional[str] = None,
+              alpha: Optional[int] = None):
+    """A freeform through design-px points: a line (no fill) or, with `fill`, a closed shape."""
+    builder = slide.shapes.build_freeform(_emu(points[0][0]), _emu(points[0][1]), scale=1.0)
+    builder.add_line_segments([(_emu(px), _emu(py)) for px, py in points[1:]], close=close)
+    shape = builder.convert_to_shape()
+    shape.shadow.inherit = False
+    if fill:
+        shape.fill.solid()
+        shape.fill.fore_color.rgb = _rgb(fill)
+        _alpha(shape, alpha)
+    else:
+        shape.fill.background()
+    if color:
+        _outline(shape, color, width_px)
+    else:
+        shape.line.fill.background()
+    return shape
+
+
 def _oval(slide, x, y, d, color: str):
     from pptx.enum.shapes import MSO_SHAPE
     shape = slide.shapes.add_shape(MSO_SHAPE.OVAL, _emu(x), _emu(y), _emu(d), _emu(d))
@@ -709,13 +740,45 @@ def _layout_diagram(slide, s, ctx):
     for node in diagram.get("nodes") or []:
         x, y, w, h = node["x"], node["y"], node["w"], node["h"]
         fill = node.get("fill")
-        shape = _rect(slide, x, y, w, h, fill or ctx.background, radius=True,
-                      alpha=node.get("fillAlpha") if fill else 0)
-        shape.adjustments[0] = min(0.5, float(node.get("radius", 12)) / max(1.0, min(w, h)))
-        if node.get("stroke"):
-            _outline(shape, node["stroke"], 2.5, dashed=bool(node.get("dashed")))
-        _node_text(slide, ctx, x, y, w, h, node.get("label") or "", node.get("detail"), sizes,
+        kind = node.get("shape", "box")
+        shape = None
+        if kind == "band":
+            # 0.3.0 — a pyramid or funnel level: a trapezoid.
+            top, bottom = float(node.get("bandTop", 0)), float(node.get("bandBottom", 0))
+            shape = _polyline(slide, [(x + top, y), (x + w - top, y), (x + w - bottom, y + h), (x + bottom, y + h)],
+                              node.get("stroke") or "", 2.5, close=True, fill=fill or ctx.background,
+                              alpha=node.get("fillAlpha") if fill else 0)
+        elif kind == "ellipse":
+            from pptx.enum.shapes import MSO_SHAPE
+            shape = slide.shapes.add_shape(MSO_SHAPE.OVAL, _emu(x), _emu(y), _emu(w), _emu(h))
+            shape.fill.solid()
+            shape.fill.fore_color.rgb = _rgb(fill or ctx.accent)
+            _alpha(shape, node.get("fillAlpha", 12))
+            shape.shadow.inherit = False
+            shape.line.fill.background()
+            if node.get("stroke"):
+                _outline(shape, node["stroke"], 2.5, dashed=bool(node.get("dashed")))
+        elif kind != "bare":
+            shape = _rect(slide, x, y, w, h, fill or ctx.background, radius=True,
+                          alpha=node.get("fillAlpha") if fill else 0)
+            shape.adjustments[0] = min(0.5, float(node.get("radius", 12)) / max(1.0, min(w, h)))
+            if node.get("stroke"):
+                _outline(shape, node["stroke"], 2.5, dashed=bool(node.get("dashed")))
+        # The words' own area when the app sends one (a band's narrow width, a venn set's part of
+        # its circle, the top of a ladder step), grown by the text box's margins.
+        if "textW" in node:
+            tx, ty, tw, th = node["textX"] - 14, node["textY"] - 8, node["textW"] + 28, node["textH"] + 16
+        else:
+            tx, ty, tw, th = x, y, w, h
+        _node_text(slide, ctx, tx, ty, tw, th, node.get("label") or "", node.get("detail"), sizes,
                    {"label": node.get("labelColor"), "detail": node.get("detailColor")})
+        for line in node.get("icon") or []:
+            points = [(float(p[0]), float(p[1])) for p in line if len(p) == 2]
+            if len(points) >= 2:
+                closed = points[0] == points[-1] and len(points) > 2
+                icon = _polyline(slide, points[:-1] if closed else points, node.get("iconColor") or ctx.fg,
+                                 float(node.get("iconWidth", 3)), close=closed)
+                icon.line._get_or_add_ln().set("cap", "rnd")
     for edge in diagram.get("edges") or []:
         points = [(float(p[0]), float(p[1])) for p in (edge.get("points") or []) if len(p) == 2]
         if len(points) < 2:
@@ -750,6 +813,21 @@ def _layout_diagram(slide, s, ctx):
                    node.get("badgeInk") or ctx.accent_contrast, bold=True, align="center")
         disc.text_frame.margin_left = disc.text_frame.margin_right = 0
         disc.text_frame.margin_top = disc.text_frame.margin_bottom = 0
+    for node in diagram.get("nodes") or []:
+        if not node.get("marker"):
+            continue
+        d = float(node.get("markerD", 40))
+        disc = _oval(slide, node["markerX"], node["markerY"], d, node.get("markerColor") or ctx.accent)
+        _fill_text(disc.text_frame, str(node["marker"]), ctx, 20, node.get("markerInk") or ctx.accent_contrast,
+                   bold=True, align="center")
+        disc.text_frame.margin_left = disc.text_frame.margin_right = 0
+        disc.text_frame.margin_top = disc.text_frame.margin_bottom = 0
+    for axis in diagram.get("axes") or []:
+        (fx, fy), (tx, ty) = axis["from"], axis["to"]
+        line = _polyline(slide, [(float(fx), float(fy)), (float(tx), float(ty))], axis.get("color") or ctx.muted, 2.5)
+        _arrowheads(line, False, True)
+        _text_box(slide, ctx, axis["x"], axis["y"], axis["w"], axis["h"], axis["text"], sizes.get("callout", 22),
+                  axis.get("color") or ctx.muted, bold=True, align=axis.get("align", "left"))
     for callout in diagram.get("callouts") or []:
         _text_box(slide, ctx, callout["x"], callout["y"], callout["w"], callout["h"], callout["text"],
                   sizes.get("callout", 22), callout.get("color") or ctx.muted, italic=True)
@@ -890,8 +968,8 @@ def info():
         version = getattr(pptx, "__version__", "unknown")
     except ImportError:
         version = None
-    return {"service": "slides-pptx", "version": "0.2.1", "python_pptx": version, "layouts": sorted(LAYOUTS),
-            "features": ["diagram"]}
+    return {"service": "slides-pptx", "version": "0.3.0", "python_pptx": version, "layouts": sorted(LAYOUTS),
+            "features": ["diagram", "diagram-shapes"]}
 
 
 @router.post("/prepare")

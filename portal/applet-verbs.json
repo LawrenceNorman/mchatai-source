@@ -2050,6 +2050,51 @@
             "height": 900
           }
         }
+      },
+      "exportdiagram": {
+        "kind": "produce",
+        "summary": "Each diagram slide (or the one named by `slide`) written out as a PNG and a vector PDF, laid out fresh at the size asked for — a figure for a book, a document or a web page, not a cropped slide.",
+        "required": [
+          "deck"
+        ],
+        "optional": [
+          "slide",
+          "width",
+          "height",
+          "format",
+          "background"
+        ],
+        "notes": "`slide` is a 1-based number among ALL the deck's slides (or omit it for every diagram slide). Default 1600×1000; the engine lays the boxes out for that shape, so ask for the destination's own aspect (a book column 1600×1200, a wide page 2000×900). `format`: png, pdf or both (default both). `background`: theme (default) or none (a transparent PNG). Returns [{slide, title, png, pdf, text}] where `text` is the diagram's Mermaid text. The PDF keeps every label as text.",
+        "example": {
+          "command": "applet",
+          "applet": "aislides",
+          "verb": "exportDiagram",
+          "args": {
+            "deck": "Money, Plainly figures",
+            "width": 1600,
+            "height": 1200
+          }
+        }
+      },
+      "exportweb": {
+        "kind": "produce",
+        "summary": "Write the deck as a web page folder — index.html with resources/ beside it (a picture of every presented slide, and every slide's words, diagram labels and speaker notes as text under it). The folder hub.deploy publishes.",
+        "required": [
+          "deck"
+        ],
+        "optional": [
+          "folder",
+          "footer"
+        ],
+        "notes": "Writes only; nothing is published. The reply's `publish` is the hub.deploy call that would put it at mchatai.com/u/<you>/<slug>/ (plain, unlisted) — the person decides that. `folder` defaults to the portal documents folder's web/<deck slug>/; an existing index.html and resources/slide-*.png there are replaced, nothing else. `footer` replaces the 'Made with mChatAI AI Slides' line ('' for none). The page's look is content: content/slide-web/page.html.",
+        "example": {
+          "command": "applet",
+          "applet": "aislides",
+          "verb": "exportWeb",
+          "args": {
+            "deck": "Q3 Review"
+          }
+        }
       }
     },
     "mapguide": {
