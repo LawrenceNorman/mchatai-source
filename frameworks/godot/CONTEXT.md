@@ -78,3 +78,7 @@ this folder and vendors `./libs/` itself.
    reaches every Godot game. If the build seems to need one, finish the game without it and say what the
    framework should change in your final message. (2026-11-18: a build added the page's start screen to
    `pack_web.py` on its own; the change was good and kept after review, but it is a separate, reviewed change.)
+10. **Test web servers:** never use port 8765 (mChatAIShell listens there; a server on 127.0.0.1:8765 hides the
+   Shell from mChatAI+ and every Harness build and Workbench session goes dark: 2026-11-21, `python3 -m http.server
+   8765` left running by a Godot build's phone test). Serve on a free high port (e.g. `python3 -m http.server 0` and read
+   the port it prints, or 47xxx), and STOP the server before the turn ends (`kill $!` in the same shell step).

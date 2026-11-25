@@ -38,7 +38,11 @@ mini-app, and every published game shares one cached copy of the engine.
    it and a page check (or a hand) would find nothing to press: a start screen (name, premise from `--blurb`
    or the project's `config/description`, a loading bar, Play), a Full screen button in the corner during
    play, and "Play again" if the game quits. Play only uncovers the canvas and gives it the keyboard.
-   (Added by a Harness build of Alesia, reviewed and kept 2026-11-18.)
+   (Added by a Harness build of Alesia, reviewed and kept 2026-11-18.) The start screen's HTML opens the
+   `<body>`, ahead of the pack, and the loader names each step under its bar ("Unpacking the engine…",
+   "Starting the game…"): before 2026-11-21 the pack came first and a phone showed a blank page until it
+   had read all of it (Lawrence on iOS: "I thought it was hung"). Measured on a 6×-throttled iPhone 13
+   emulation: the start screen in 0.16 s instead of 1.2 s, ready in 8.8 s instead of 10.3 s.
 4. **Publishing.** Publishing rewrites `./libs/<file>.js` to `https://mchatai.com/v/lib/<file>.js`, so both
    dist files must be hosted under `mchataiweb/public/v/lib/` before a Godot game is published (GD.8).
    The page itself must stay under the Hub's 25 MB.

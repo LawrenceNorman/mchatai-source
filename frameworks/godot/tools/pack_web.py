@@ -67,8 +67,16 @@ LOADER = r"""<script>
   // The pack sits at the end of the page, so it is looked up when Godot asks for it, not now.
   function pckNode() { return document.getElementById('mchatai-godot-pck'); }
   var memo = {};
+  // Each loading step is named under the start screen's bar, so a slow phone never looks hung.
+  function stage(text) { var f = window.MChatAIGodotFrame; if (f && f.stage) f.stage(text); }
   function body(kind) {
-    if (!memo[kind]) memo[kind] = kind === 'wasm' ? gunzip(files.wasm) : gunzip(pckNode().textContent.trim());
+    if (!memo[kind]) {
+      stage(kind === 'wasm' ? 'Unpacking the engine…' : 'Unpacking the game…');
+      memo[kind] = (kind === 'wasm' ? gunzip(files.wasm) : gunzip(pckNode().textContent.trim())).then(function (b) {
+        stage(kind === 'wasm' ? 'Starting the engine…' : 'Starting the game…');
+        return b;
+      });
+    }
     return memo[kind];
   }
   var realFetch = window.fetch.bind(window);
@@ -151,15 +159,17 @@ FRAME = r"""<div id="mc-start" role="dialog" aria-modal="true" aria-labelledby="
     <div class="mc-rule"></div>
     <p class="mc-blurb" id="mc-blurb"%(blurb_hidden)s>%(blurb)s</p>
     <div class="mc-bar mc-busy" id="mc-bar"><i></i></div>
-    <p class="mc-state" id="mc-state" aria-live="polite">Loading the game…</p>
+    <p class="mc-state" id="mc-state" aria-live="polite">Loading the game… on a phone this takes a little while.</p>
     <div class="mc-row">
-      <button type="button" class="mc-btn" id="mc-play">Play</button>
+      <button type="button" class="mc-btn" id="mc-play" disabled>Play</button>
       <button type="button" class="mc-btn mc-quiet" id="mc-full" hidden>%(icon_full)sFull screen</button>
     </div>
   </div>
 </div>
 <div id="mc-dock" hidden><button type="button" id="mc-dock-full" aria-label="Full screen" title="Full screen">%(icon_full)s</button></div>
-<script>
+"""
+
+FRAME_SCRIPT = r"""<script>
 /* mChatAI Godot page frame (frameworks/godot/tools/pack_web.py): HTML controls around the canvas. */
 (function () {
   var ICON_FULL = %(icon_full_js)s, ICON_SMALL = %(icon_small_js)s;
@@ -259,6 +269,7 @@ FRAME = r"""<div id="mc-start" role="dialog" aria-modal="true" aria-labelledby="
     setTimeout(watch, 120);
   }
 
+  play.disabled = false;   // the button is drawn disabled until this script can answer it
   play.addEventListener('click', onPlay);
   full.addEventListener('click', toggleFull);
   dockFull.addEventListener('click', toggleFull);
@@ -292,17 +303,22 @@ FRAME = r"""<div id="mc-start" role="dialog" aria-modal="true" aria-labelledby="
       return out;
     },
     state: function () { return mode; },
-    play: onPlay
+    play: onPlay,
+    /** A loading step the page's loader has reached, shown under the bar while the game loads. */
+    stage: function (text) { if (mode === 'loading') say(text); }
   };
 })();
 </script>
 """
 
 
-def frame(title: str, blurb: str) -> str:
+def frame(title: str, blurb: str) -> tuple[str, str]:
+    """(the start screen's HTML, its script). The HTML goes first in <body>, ahead of the game's pack, so a
+    phone shows the start screen while it is still reading the page; the script stays after the canvas."""
     esc = lambda s: (s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;"))
-    return FRAME % {"title": esc(title or "Play"), "blurb": esc(blurb), "blurb_hidden": "" if blurb else " hidden",
-                    "icon_full": ICON_FULL, "icon_full_js": json.dumps(ICON_FULL), "icon_small_js": json.dumps(ICON_SMALL)}
+    v = {"title": esc(title or "Play"), "blurb": esc(blurb), "blurb_hidden": "" if blurb else " hidden",
+         "icon_full": ICON_FULL, "icon_full_js": json.dumps(ICON_FULL), "icon_small_js": json.dumps(ICON_SMALL)}
+    return FRAME % v, FRAME_SCRIPT % v
 
 
 def main() -> int:
@@ -334,8 +350,9 @@ def main() -> int:
 
     # The page: Godot's own, with the page frame, the engine from libs/, the loader, and the pack inside.
     title = a.title or (re.search(r"<title>(.*?)</title>", page, flags=re.S) or [None, ""])[1].strip()
+    frame_html, frame_script = frame(title, a.blurb.strip())
     page, n = re.subn(re.escape(f'<script src="{exe}.js"></script>'),
-                      lambda _: frame(title, a.blurb.strip()) +
+                      lambda _: frame_script +
                       f'\t\t<script src="./libs/godot-{v}.js"></script>\n'
                       f'\t\t<script src="./libs/godot-{v}-files.js"></script>\n' + LOADER % {"version": json.dumps(v)},
                       page, count=1)
@@ -360,8 +377,12 @@ def main() -> int:
     if a.title:
         page = re.sub(r"<title>.*?</title>", f"<title>{a.title}</title>", page, flags=re.S)
     pck = b64gz(need["pck"].read_bytes())
-    # At the top of the body: Godot asks for its pack as soon as the page's start script runs.
-    page, n = re.subn(r"(<body[^>]*>)", lambda m: m.group(1) + f'\n<script type="application/octet-stream" id="mchatai-godot-pck">{pck}</script>', page, count=1)
+    # The body opens with the start screen, then the pack. A phone shows the start screen while it is still
+    # reading the ~20 MB pack (2026-11-21, Lawrence on iOS: "it took quite a while to load (I thought it was
+    # hung)"); before that the pack came first and the page stayed blank until all of it was read. The pack
+    # still comes before Godot's start script, which asks for it as soon as it runs.
+    page, n = re.subn(r"(<body[^>]*>)", lambda m: m.group(1) + "\n" + frame_html +
+                      f'\n<script type="application/octet-stream" id="mchatai-godot-pck">{pck}</script>', page, count=1)
     if n != 1:
         sys.exit("no <body> in the export's index.html")
     if len(page.encode()) > MAX_PAGE:

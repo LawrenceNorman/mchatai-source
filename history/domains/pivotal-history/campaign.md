@@ -109,3 +109,41 @@ On the series' site (`series_book.py build`, PLAYBOOK §6) a campaign is one ent
 its title, span and question, then its published seasons in `episode` order, filed into the part its
 first season falls in. A season's page names its place in the war ("Caesar in Gaul, part 3 of 9").
 Each season is still published on the author's word, recorded in its own `project.json` `review`.
+
+## 6. A campaign that is not a war
+
+The author, 2026-11-21: *"I think for pivotal histories I would like to do a history of
+mathematics."* A campaign can be an idea's history. `campaigns/history-of-mathematics.json` tells
+mathematics as a book of episodes, each one a problem people needed solved (a scribe's rations, an
+astronomer's sums, a gambler's stake, a lost planet) and the idea that solved it. Everything above
+holds, with these changes:
+
+- **A season is an episode, not a year.** The seasons are chosen, not consecutive. A season the
+  record cannot carry is dropped, or swapped for one of the file's `bench`, on the author's word.
+  It is not told short to fill a gap (§2's "a war book cannot skip a year" does not apply).
+- **The main account is the mathematician's own text**: a treatise, a table's preface, a letter,
+  in an old translation (the file's `mainAccounts`). It is `ownWords`, with `ownWordsSpan` around
+  the part about the season's idea, and it earns the immersive passages (`voice.md` §2): the
+  reader is placed, by declaration, at the page or the table where the work was done. A legend
+  about a mathematician (a drowning, a bath, last words to a soldier) is never own words. It is
+  attributed to the writer who tells it, with that writer's distance from the events
+  (`storytelling.md`, weighing).
+- **The edge is the idea**, shown with Mechanism, Cost and Limit (`voice.md` §3): how it works,
+  worked once on a small example; what it took (years of hand-computed tables, a lifetime's
+  notebooks); where it stopped (what it could not solve, which a later season may).
+- **The edge re-check also tries to refute priority and legend.** Did someone have the idea first
+  (Babylon's tablets and the Pythagorean theorem; Kerala's series and the calculus)? Did anyone
+  who was there tell the story of the discovery? When the story is legend, the season keeps the
+  idea and tells the story as legend.
+- **Every worked number is computed.** A sum, a bound or a table entry the prose works out comes
+  from a script in the story's `figures/` folder, whose printout is fetched as kind `measurement`
+  with licence `own`; the claim quotes the printed line (`domains/explainer/voice.md` §3). A
+  number a source prints is quoted from that source, as always.
+- **Mathematics read aloud.** The book is heard as well as read (the podcast, the audiobook). A
+  formula is said in words ("the square on the long side equals the squares on the other two
+  together"), with symbols only beside the words. A chapter has at most one worked example, short
+  enough to follow by ear. A shape is shown as a picture (`images.py diagram`) and described in the
+  sentence that shows it.
+- **Never tell a later season's idea** (as with a war's outcomes, §3). Zero does not appear in the
+  Greek seasons' prose, and the calculus does not appear in Archimedes' season except in a
+  writer's sentence that looks ahead without naming it.
