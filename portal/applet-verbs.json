@@ -892,7 +892,7 @@
       },
       "getdoc": {
         "kind": "read",
-        "summary": "One document's full text. Address it by `id` or exact `title`; a miss returns the ids that exist.",
+        "summary": "One document's full text. Address it by `id` or exact `title`; a miss returns the ids that exist. When editDoc has changed it, `versions` lists what each edit replaced (newest first).",
         "optional": [
           "id",
           "title"
@@ -918,7 +918,7 @@
       },
       "createdoc": {
         "kind": "create",
-        "summary": "Write a new document. Takes the text INLINE — no file, no path, no sandbox problem. Optional `folder` files it (the folder is created if it does not exist).",
+        "summary": "Write a new document. Takes the text INLINE — no file, no path, no sandbox problem. Pass `folder` (the folder is created if it does not exist); if you are unsure which, ask aiwrite.suggestFolder first. Unfiled documents pile up: a reply that leaves one unfiled names the folder it most likely belongs in.",
         "optional": [
           "text",
           "title",
@@ -946,7 +946,7 @@
           },
           "folder": {
             "type": "string",
-            "description": "Folder to file it in, e.g. Music. Omit to leave it unfiled."
+            "description": "Folder to file it in, e.g. Music. Omit it and a dated series document (\"Daily Update — <date>\") goes where the last of its series was filed; otherwise it stays unfiled. \"\" always means Unfiled."
           }
         }
       },
@@ -1124,6 +1124,151 @@
           "args": {
             "title": "Drum loops at 92 BPM",
             "folder": "Music"
+          }
+        }
+      },
+      "search": {
+        "kind": "read",
+        "summary": "Find documents by title or by words in their text. Every word must appear in the title or the body; title matches rank first, then how often the words occur, then recency. Returns ids, titles, folders and a snippet, never whole bodies — read one with getDoc.",
+        "required": [
+          "query"
+        ],
+        "optional": [
+          "folder",
+          "limit"
+        ],
+        "notes": "The same in-memory index as AI Write's ⌘K box, refreshed per call (only changed documents are re-read).",
+        "example": {
+          "command": "applet",
+          "applet": "aiwrite",
+          "verb": "search",
+          "args": {
+            "query": "ship plan"
+          }
+        },
+        "args": {
+          "query": {
+            "type": "string",
+            "description": "A few words from the title or the text."
+          },
+          "folder": {
+            "type": "string",
+            "description": "Only this folder; \"\" searches Unfiled."
+          },
+          "limit": {
+            "type": "integer",
+            "description": "How many to return (default 10, max 50)."
+          }
+        }
+      },
+      "links": {
+        "kind": "read",
+        "summary": "A document's [[links]] (each with the id of the document it opens, or resolved:false when no document has that title yet) and the documents that link to it (`linkedFrom`).",
+        "optional": [
+          "id",
+          "title"
+        ],
+        "notes": "A link is [[Title]], [[Title|label]] or [[Title#Heading]]; titles match ignoring case and accents. Links inside code are not links. createDoc with an unresolved link's exact title makes it resolve.",
+        "example": {
+          "command": "applet",
+          "applet": "aiwrite",
+          "verb": "links",
+          "args": {
+            "title": "Ship plan"
+          }
+        },
+        "args": {
+          "id": {
+            "type": "string",
+            "description": "The document's id (from listDocs, search or an entity)."
+          },
+          "title": {
+            "type": "string",
+            "description": "The document's exact title, when you have no id."
+          }
+        }
+      },
+      "editdoc": {
+        "kind": "modify",
+        "summary": "Change an existing document. The text it replaces is kept as a version FIRST, so every edit can be undone. Exactly one form per call: `find` + `replace` (one exact occurrence; refused when it matches more than once unless `all`), `text` (the whole new body), or `restore` (a version id from getDoc's `versions`).",
+        "optional": [
+          "id",
+          "title",
+          "find",
+          "replace",
+          "all",
+          "text",
+          "restore"
+        ],
+        "notes": "Copy `find` from getDoc exactly; an ambiguous or missing match is refused, never guessed. Versions live on the Mac that made the edit (the newest 20 per document); the person can restore one from AI Write's ⌘K box. Verified by reading the document back.",
+        "pairedCheck": "applet aiwrite getDoc with the same id",
+        "example": {
+          "command": "applet",
+          "applet": "aiwrite",
+          "verb": "editDoc",
+          "args": {
+            "title": "Research notes",
+            "find": "launch on Monday",
+            "replace": "launch on Tuesday"
+          }
+        },
+        "args": {
+          "id": {
+            "type": "string",
+            "description": "The document's id (from listDocs, search or an entity)."
+          },
+          "title": {
+            "type": "string",
+            "description": "The document's exact title, when you have no id."
+          },
+          "find": {
+            "type": "string",
+            "description": "Exact text to replace, copied from getDoc."
+          },
+          "replace": {
+            "type": "string",
+            "description": "What replaces it (\"\" deletes it). Required with find."
+          },
+          "all": {
+            "type": "boolean",
+            "description": "Replace every occurrence of find instead of requiring exactly one."
+          },
+          "text": {
+            "type": "string",
+            "description": "The whole new body, as markdown."
+          },
+          "restore": {
+            "type": "string",
+            "description": "A version id from getDoc's `versions`; puts that text back."
+          }
+        }
+      },
+      "suggestfolder": {
+        "kind": "read",
+        "summary": "Where a document you are about to write belongs: the folder its series is already filed in (\"Daily Update — <date>\"), a folder its title names, or the folder its most similar filed documents are in. Also lists every folder. Call it before createDoc when you are not sure, then pass the answer as `folder`.",
+        "required": [
+          "title"
+        ],
+        "optional": [
+          "text"
+        ],
+        "notes": "Deterministic, no model. confidence: high (its series), medium, low, none. With none, pick an existing folder or name a short new one for the topic, never a date.",
+        "example": {
+          "command": "applet",
+          "applet": "aiwrite",
+          "verb": "suggestFolder",
+          "args": {
+            "title": "Competitive Brief — November 26, 2026"
+          }
+        },
+        "args": {
+          "title": {
+            "type": "string",
+            "description": "The title you are about to give the document."
+          },
+          "text": {
+            "type": "string",
+            "description": "Optional: its opening, for a better match."
           }
         }
       }

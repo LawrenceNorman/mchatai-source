@@ -138,7 +138,8 @@ a time with `assistant.ask`, exactly as before.
 returned counts. If you ever find yourself reporting a NUMBER of tasks instead
 of naming them, that is the bug returning; say so rather than padding.)
 
-**3. Write it up.** `aiwrite.createDoc` titled `Daily Update — <date>`.
+**3. Write it up.** `aiwrite.createDoc` titled `Daily Update — <date>`, with
+`folder: "Daily Update"` so the reports collect in one folder instead of Unfiled.
 Attribute every item to its source — the assistant, thread or table it came from
 — and give it that source's link, so the user can open it in one tap. Lead with
 what changed since yesterday; a report that reads the same every morning trains

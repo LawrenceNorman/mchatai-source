@@ -50,3 +50,11 @@ does every web page inside it (AI Web, the Preview pane). They can't.
   app.
 - **To post to GitHub**, open the page in AI Web and use `proposeActions`. The
   person approves each step on a card.
+
+### AI Write documents
+
+- **File every document you write.** Pass `folder` to `aiwrite.createDoc`. If you are unsure which folder, call
+  `aiwrite.suggestFolder` with the title first and use its answer. Reuse an existing folder; make a new one
+  only for a new topic, named for the topic (never a date). Unfiled documents pile up for the person to sort.
+- A dated series ("Daily Update — <date>") files itself beside its last filed sibling, so name each one
+  the same way every time.
