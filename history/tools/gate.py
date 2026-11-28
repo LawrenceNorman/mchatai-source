@@ -15,7 +15,9 @@ meeting (cast_*), a cold-open introduction that asks its question and keeps the 
 (intro_question_missing, intro_spoils_outcome), a picture in every chapter (picture_floor) and its
 era context capped over the book. `storytelling.py writer <project> <n>` shows which sentences are
 the writer's. An explainer (domains/explainer) also gets its glossary and fixed boxes checked
-(explainer.py: acronym_undefined, box_*).
+(explainer.py: acronym_undefined, box_*). A season of a campaign that teaches its mathematics
+(domains/pivotal-history/campaign.md §7) gets its lesson's boxes checked and any word naming a
+later season's idea noted (lesson.py: later_idea, lesson_concept_unnamed).
 
 Exit 0 only when no HARD finding remains. Fix the CAUSE, not the wording: a sentence that
 narrates the record is deleted, never softened; a number no source gave is removed or sourced.
@@ -31,6 +33,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import checks  # noqa: E402
 import cite  # noqa: E402
 import explainer  # noqa: E402
+import lesson  # noqa: E402
 import images  # noqa: E402
 import quiz  # noqa: E402
 import products  # noqa: E402
@@ -52,7 +55,8 @@ def chapter_findings(project, n):
             + checks.correction_findings(project, n)
             + cite.anchor_findings(project, n)
             + storytelling.cast_findings(project, n, project.chapter(n) or {})
-            + explainer.chapter_findings(project, n, project.chapter(n) or {}))
+            + explainer.chapter_findings(project, n, project.chapter(n) or {})
+            + lesson.chapter_findings(project, n, project.chapter(n) or {}))
 
 
 def intro_findings(project):
@@ -68,7 +72,7 @@ def intro_findings(project):
     # meets, and keeps the ending. Each is off unless the domain asks for it.
     out += (storytelling.question_findings(project, ch, voice_lint.pov_findings(project, ch, ch.get("text", ""), thresholds(project))[0])
             + storytelling.outcome_findings(project, ch) + storytelling.cast_findings(project, 0, ch)
-            + explainer.chapter_findings(project, 0, ch))
+            + explainer.chapter_findings(project, 0, ch) + lesson.chapter_findings(project, 0, ch))
     lo, hi = thresholds(project).get("introWords", [200, 600])
     n = words(ch.get("text", ""))
     if n > hi:

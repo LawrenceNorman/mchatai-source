@@ -230,11 +230,13 @@ def writer_findings(project, n, ch, l1=()):
     role = chapter_role(project, n)
     total = words(text)
     mine = sum(words(spans[i][4]) for i in writer)
-    cap = cfg.get("afterwordMaxShare", 0.7) if role == "afterword" else cfg.get("maxShare", 0.25)
+    # The afterword weighs and the lesson (campaign.md §7) explains: both are mostly the writer's.
+    cap = {"afterword": cfg.get("afterwordMaxShare", 0.7),
+           "lesson": cfg.get("lessonMaxShare", 0.85)}.get(role, cfg.get("maxShare", 0.25))
     if total and mine / total > cap:
         out.append(finding("writer_share", "hard",
                            f"the writer's own sentences are {100 * mine / total:.0f}% of this "
-                           f"{'afterword' if role == 'afterword' else 'chapter'} (cap {100 * cap:.0f}%): the sourced "
+                           f"{role if role in ('afterword', 'lesson') else 'chapter'} (cap {100 * cap:.0f}%): the sourced "
                            "story carries it. Cut a question, a comparison or a reading, or anchor a claim on it"))
     if len(writer) < cfg.get("minSentences", 1):
         out.append(finding("writer_absent", "soft",
@@ -487,7 +489,7 @@ def era_book_findings(project):
         return []
     era = total = 0
     for c in project.plan.get("chapters", []):
-        if (c.get("role") or "chapter") == "afterword":
+        if (c.get("role") or "chapter") in ("afterword", "lesson"):
             continue
         ch = project.chapter(c.get("n")) or {}
         total += words(ch.get("text", ""))

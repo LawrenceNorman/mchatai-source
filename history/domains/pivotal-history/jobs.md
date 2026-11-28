@@ -52,8 +52,18 @@ Read `storytelling.md` (the five moves) with the voice, before you plan.
      edge and its sides make vivid; take each fact once (`world.py list stories/_world/<id> --stories
      stories` shows what other seasons told). Then `python3 history/tools/world.py adopt
      stories/_world/<id> stories/<slug> <ids…>`.
+   - **The lesson** (`campaign.md` §7), when the campaign file gives this season `mathematics`: one
+     chapter with `"role": "lesson"` after the last body chapter and before the afterword, no events,
+     `concepts` = the season's concept ids (plus any earlier one it revisits), `pictures` (the
+     source's own page, or a diagram for the author to draw). Write `figures/lesson.py` now, in the
+     story folder: it prints every number the lesson will use, each line with its working ("13 × 21
+     by doubling: 21 + 84 + 168 = 273"), the Try it answers included. Run it, save the printout as
+     `figures/lesson.txt`, and fetch that as a source (`fetch.py file`, kind `measurement`, licence
+     `own`). Check the season's leads (`asWritten`, `workedExample`) against the fetched sources: a
+     lead is not a fact.
 3. `richness.py plan stories/<slug>` until it exits 0 with no `question_missing`, `turn_missing`,
-   `observations_count`, `observation_incomplete`, `cast_*`, `plan_unknown_cast` or `context_*` left.
+   `observations_count`, `observation_incomplete`, `cast_*`, `plan_unknown_cast`, `context_*` or
+   `lesson_*` left.
 
 ## chapters
 
@@ -98,6 +108,19 @@ quoted only in clean spans; which is Wikipedia, facts only and never its sentenc
   what they disagree on, by name), the plan's observations in full, the modern scale of the edge,
   and the lesson that still holds. Its facts are claims like any other's, quoted from the sources.
   No new events." Then its auditor.
+- **The lesson** (`campaign.md` §7), after the body chapters and before the afterword, by a writer
+  given the domain line and this: "You write the LESSON, the plan's chapter with role lesson. Read
+  history/domains/pivotal-history/campaign.md §6 and §7 and this season's `mathematics` in the
+  campaign file, and `python3 history/tools/lesson.py ladder <campaign id>` for what the reader
+  already has. Six boxes, in order, each a paragraph that is exactly its title: The idea, As it was
+  written, How it works, Worked example, Try it, Where it stopped. Teach every concept plan.json
+  lists, by its name. Every number comes from figures/lesson.txt, quoted as a claim; the problem as
+  it was written is quoted from the main account; the rest is yours, said for the ear, and may say
+  'you'. Try it asks the season's tryIt questions, each ending in a question mark and followed at
+  once by its answer; where the ladder allows, the last one needs an earlier season's tool. Where it
+  stopped asks what this tool cannot do and never names the later idea. Aim inside the season's
+  lessonWords." Then its auditor, who also works every Try it answer from the printout and reads
+  `lesson.py terms stories/<slug>`.
 - **The introduction** is the §10 cold open. Add to its writer's brief: "chapters/00.json, 200–600
   words: one true scene from the sources, the most striking in the dossier; the book's question
   (plan.json `question`) in your own sentence; orientation (who the sides were and how they stood,
@@ -132,6 +155,9 @@ and what was left for the author.
   place, or a photograph of the site today. Set it with `python3 history/tools/images.py opening
   stories/<slug> …`, then `images.py open stories/<slug>`.
 - Every chapter but the afterword needs at least one picture (voice §13); `gate.py story` checks.
+  The lesson's is the source's own page from Commons (`images.py find` / `add`) or a diagram the
+  author drew and hosts (`images.py diagram`). A diagram he has not drawn yet is listed in the
+  report for him, and the gate stays red until it is in.
 - Tell the book editor the story is in the pivotal-history domain, voice v2, and to read especially
   for an introduction that gives the ending away, a name met before anyone says who it is, a chapter
   that closes on a summary instead of its turn, and long sentences.

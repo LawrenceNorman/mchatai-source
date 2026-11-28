@@ -143,7 +143,69 @@ holds, with these changes:
   formula is said in words ("the square on the long side equals the squares on the other two
   together"), with symbols only beside the words. A chapter has at most one worked example, short
   enough to follow by ear. A shape is shown as a picture (`images.py diagram`) and described in the
-  sentence that shows it.
+  sentence that shows it. That holds for the story's chapters; the lesson that teaches the idea is §7.
 - **Never tell a later season's idea** (as with a war's outcomes, §3). Zero does not appear in the
   Greek seasons' prose, and the calculus does not appear in Archimedes' season except in a
   writer's sentence that looks ahead without naming it.
+
+## 7. Every season teaches its mathematics
+
+The author, 2026-11-27: *"I want to be sure that there are mathematical useful concepts with each
+point in history so that students can learn both the history of mathematics and mathematics and
+then obviously this will accelerate as we move toward the future."* So a season of a campaign whose
+file gives its seasons a `mathematics` block is a story and a lesson. The story is told as §6 says.
+The lesson is one more chapter, after the story's last chapter and before the afterword, and it
+teaches the idea well enough that a student can use it.
+
+- **The ladder.** Each season's `mathematics` (in the campaign file) names its `concepts` (an `id`,
+  the `idea` in one plain line, the `terms` that name it, and `buildsOn`: the earlier concepts it
+  stands on), its `level` (a plain grade band), the lesson's `lessonWords`, how many `tryIt`
+  questions it asks, and leads for what it quotes, works and leaves open. The ladder climbs:
+  season 1 is grade-school arithmetic, the last is first-year university, so the lessons taken in
+  order are a course. A concept builds only on its own season's concepts or earlier ones, never on a
+  later season's: `python3 history/tools/lesson.py check <campaign id>` refuses a ladder that reaches
+  forward, and `lesson.py ladder <campaign id>` prints it. Later seasons carry more concepts, longer
+  lessons and more questions, and each reuses an earlier tool by name: season 11 does Archimedes'
+  four-thirds again in two lines, season 14 runs Euclid's greatest common measure as a program. The
+  file's `lessons.threads` are the ideas that come back (how good each age's pi was; the diagonal;
+  rules a machine could follow), for a lesson's last question to pick up.
+- **The lesson in the plan.** One chapter with `"role": "lesson"`, no events, `concepts` set to this
+  season's concept ids (and any earlier one it revisits), and `pictures`. It takes no share of the
+  story's ceiling: its length is the season's `lessonWords`. `richness.py plan` refuses a season's
+  plan without it (`lesson_missing`), with two, out of place, with events, or listing a concept no
+  season up to this one teaches.
+- **Six boxes, in this order,** each a paragraph that is exactly its title, followed by its body
+  (thresholds `boxes`; `gate.py chapter` checks them):
+  1. **The idea**: the season's idea said aloud in about thirty seconds (55 to 95 words).
+  2. **As it was written**: the problem or the rule as the main account sets it, quoted, with who
+     wrote it and when. A legend is not a source here either.
+  3. **How it works**: the method in today's words, with today's notation beside the words. The
+     student reads today, so digits, the decimal point, a letter for the unknown and the equals sign
+     are allowed from season 1. A later season's idea is not: no logarithm before season 9, no
+     derivative before 11.
+  4. **Worked example**: one or two, every step's number printed by the story's `figures/` script
+     and quoted from its printout (§6). The example starts small and ends on the size the source
+     itself worked.
+  5. **Try it**: the season's `tryIt` questions, easy to harder. Each is a sentence ending in a
+     question mark, followed at once by its answer and the short working, every number from the
+     printout. Where the ladder allows, the last question needs an earlier season's tool.
+  6. **Where it stopped**: the Limit (voice.md §3) as a question the reader can now ask: what this
+     tool cannot do. It never names the later idea that answers it.
+- **Read aloud.** The lesson is heard as well as read. Formulas are said in words with the symbols
+  beside them; each worked example can be followed by ear in about a minute; a table too long to
+  say is a picture, and the sentence says what it shows. §6's one worked example a chapter is the
+  story's rule, not the lesson's.
+- **Mostly the writer's own.** The explanation is the writer's (up to thresholds `writer`
+  `lessonMaxShare`), and it may say "you". Every number and every historical fact in it is still a
+  claim. It gives no one a feeling, and picks no world facts.
+- **A picture.** At least one, as for any chapter: the source's own page from Commons (the
+  papyrus's table, a manuscript's completed square, Napier's rods) or a diagram the author drew and
+  hosts (`images.py diagram`).
+- **The quiz.** The chapter's quiz (`quiz.py`) draws on the lesson as on any chapter: questions on
+  the history, and worked questions whose answers are the printout's.
+- **Never tell a later season's idea** (§3, §6) holds in every chapter. `gate.py chapter` notes
+  (soft, `later_idea`) any word that names a later season's concept (its `terms`) outside a
+  quotation, for the auditor to weigh: "a cubic" in a Greek season may be a solid. `lesson.py terms
+  stories/<slug>` lists them for a whole season.
+- **Cost.** A lesson is one more writer and auditor, about 7M tokens a season (jobs/README.md,
+  Cost): about 105M for fifteen seasons, on top of the outline's estimate of 1.4 billion.

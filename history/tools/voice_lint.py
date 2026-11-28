@@ -248,6 +248,14 @@ def chapter_findings(project, n):
         if n_words < lo:
             out.append(finding("under_floor", "soft", f"the afterword is {n_words} words, under {lo} (domain voice §12)"))
         return out
+    if pc.get("role") == "lesson":
+        # A season's lesson (campaign.md §7): its own length, from the season's `lessonWords`.
+        import lesson
+        lo = lesson.lesson_words(project)[0]
+        if n_words < lo:
+            out.append(finding("under_floor", "soft", f"the lesson is {n_words} words, under {lo} (campaign.md §7): "
+                               "every concept it lists is taught, worked and tried"))
+        return out
     aim = pc.get("targetWords")
     if aim and n_words > t.get("targetOverrun", 1.3) * aim:
         out.append(finding("over_target", "soft",

@@ -8,6 +8,8 @@ a project whose domain thresholds ask for them. A project in any other domain ge
   box_missing         a fixed box the chapter does not carry: a paragraph that is exactly its title
   box_spoken_length   the spoken box's body is outside its word range (said aloud, about thirty seconds)
   box_questions       the questions box asks fewer questions than it must, or leaves one unanswered
+  box_order           the boxes are out of the order `required` gives (boxes.ordered)
+  (boxes.roles limits the boxes to chapters with those plan roles: a pivotal history's lesson)
   where_we_are        the map box (boxes.whereBox; its first whereParagraphs paragraphs, default 1)
                       names no piece of plan.route next to a neighbour in the same ring: one of the chapter's `lights` when the plan lists them, else a
                       piece of any ring (inside, around, under); route.keys are the words for each
@@ -76,14 +78,23 @@ def box_config(project):
     cfg = thresholds(project).get("boxes")
     if not isinstance(cfg, dict):
         return None
-    return {**cfg, **((project.plan or {}).get("boxes") or {})}
+    # A season's lesson (domains/pivotal-history/campaign.md §7) asks its season's `tryIt` questions.
+    import lesson
+    asks = lesson.try_it_questions(project)
+    season = {"questions": asks} if asks else {}
+    return {**cfg, **season, **((project.plan or {}).get("boxes") or {})}
 
 
 def box_findings(project, n, ch):
     cfg = box_config(project)
     if not cfg or not storytelling.v2(project):
         return []
-    if storytelling.chapter_role(project, n) in (cfg.get("exemptRoles") or []):
+    role = storytelling.chapter_role(project, n)
+    if role in (cfg.get("exemptRoles") or []):
+        return []
+    # `roles`: the boxes bind only chapters with these plan roles (a pivotal history's lesson,
+    # campaign.md §7), where an explainer's bind every chapter.
+    if cfg.get("roles") and role not in cfg["roles"]:
         return []
     titles = cfg.get("required") or []
     paras = [p.strip() for p in re.split(r"\n\s*\n", ch.get("text", "")) if p.strip()]
@@ -95,6 +106,9 @@ def box_findings(project, n, ch):
                    f"the chapter has no {t!r} box: a paragraph that is exactly {t!r}, followed by its body (voice.md §5)")
            for t in titles if t not in at]
     starts = sorted(at.values())
+    if cfg.get("ordered") and len(at) == len(titles) and [at[t] for t in titles] != starts:
+        out.append(finding("box_order", "hard",
+                           f"the boxes come in this order: {', '.join(titles)} (campaign.md §7)"))
 
     def body(title):
         i = at[title]

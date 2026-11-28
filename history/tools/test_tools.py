@@ -4995,6 +4995,126 @@ class WorldPool(FixtureCase):
         self.assertEqual(self.plan_rules(), set())
 
 
+LESSON_BOXES = ["The idea", "As it was written", "How it works", "Worked example", "Try it", "Where it stopped"]
+
+
+def lesson_text(boxes=LESSON_BOXES, questions=6):
+    idea = ("A logarithm turns a long multiplication into an addition. You look up each number's logarithm in a "
+            "table, add the two, and look the sum back up. The answer is the product. Napier spent years "
+            "computing his table by hand so that anyone could do this in a minute, and Briggs made the table "
+            "easier still by building it on ten.")
+    body = {
+        "The idea": idea,
+        "As it was written": "Napier wrote his preface for the calculators who spent their days on long sums.",
+        "How it works": "Each logarithm is an exponent, and adding exponents multiplies the numbers they stand for.",
+        "Worked example": "Take two numbers, find their logarithms, add them, and read the answer back.",
+        "Try it": " ".join(["What do you add to multiply? You add the logarithms."] * questions),
+        "Where it stopped": "Logarithms only compute. What is a speed at one instant?",
+    }
+    return "\n\n".join(f"{b}\n\n{body[b]}" for b in boxes)
+
+
+class MathLessons(VoiceTwoCase):
+    """Every season teaches its mathematics (campaign.md §7; the author, 2026-11-27: "I want to be sure
+    that there are mathematical useful concepts with each point in history")."""
+
+    SLUG = "math-1614-logarithms"
+
+    def setUp(self):
+        super().setUp()
+        import lesson
+        self.lesson = lesson
+        season_root = os.path.join(self.tmp, self.SLUG)
+        shutil.copytree(self.root, season_root)
+        self.project = _hw.Project(season_root)
+        meta = _hw.load_json(self.project.path("project.json"))
+        meta["campaign"] = "history-of-mathematics"
+        _hw.save_json(self.project.path("project.json"), meta)
+        self.camp, self.season = lesson.season_of(self.project)
+        self.ids = [c["id"] for c in lesson.concepts(self.season)]
+
+    def plan_rules(self, hard_only=False):
+        return {r for r in self.rules(richness.validate_plan(self.project, write=False), hard_only) if r.startswith("lesson")}
+
+    def add_lesson(self, n=3, **kw):
+        self.edit_plan(lambda p: p["chapters"].append({"n": n, "title": "The mathematics", "role": "lesson",
+                                                       "events": [], "concepts": list(self.ids), **kw}))
+
+    def test_the_campaign_files_ladder_never_reaches_forward(self):
+        self.assertEqual(self.rules(self.lesson.check_findings(self.camp)), set())
+        camp = json.loads(json.dumps(self.camp))
+        camp["seasons"][0]["mathematics"]["concepts"][0]["buildsOn"] = ["derivative"]
+        self.assertIn("builds_forward", self.rules(self.lesson.check_findings(camp)))
+        self.assertEqual(len(camp["seasons"]), 15, "the outline approved 2026-11-22, Lovelace as episode 14")
+        self.assertEqual([s["episode"] for s in camp["seasons"]], list(range(1, 16)))
+
+    def test_a_math_season_plans_one_lesson_after_its_story(self):
+        self.assertEqual(self.plan_rules(hard_only=True), {"lesson_missing"})
+        self.add_lesson()
+        self.assertEqual(self.plan_rules(), set())
+        richness.validate_plan(self.project, write=True)
+        planned = self.project.plan_chapter(3)
+        self.assertEqual(planned["ceilingWords"], self.season["mathematics"]["lessonWords"][1])
+        self.assertNotIn("floorWords", planned)
+        self.edit_plan(lambda p: p["chapters"].append({"n": 4, "title": "Afterword", "role": "afterword", "events": []}))
+        self.assertEqual(self.plan_rules(), set())                       # lesson, then the afterword
+        self.edit_plan(lambda p: p["chapters"].insert(0, p["chapters"].pop(2)))
+        self.assertIn("lesson_misplaced", self.plan_rules())              # before the story's chapters
+
+    def test_a_lesson_takes_no_events_and_never_reaches_forward(self):
+        self.add_lesson(concepts=self.ids + ["orders-of-magnitude"])     # an earlier season's concept: welcome
+        self.assertEqual(self.plan_rules(), set())
+        self.edit_plan(lambda p: p["chapters"][-1].update(concepts=self.ids + ["derivative"], events=["e01"]))
+        self.assertTrue({"lesson_concepts_unknown", "lesson_has_events"} <= self.plan_rules(hard_only=True))
+        self.edit_plan(lambda p: p["chapters"][-1].update(concepts=self.ids[:1], events=[]))
+        self.assertEqual(self.plan_rules(), {"lesson_concepts_missing"})  # soft: the season's others
+
+    def test_the_lesson_carries_its_six_boxes_in_order(self):
+        import explainer
+        self.add_lesson()
+        self.write(3, lesson_text())
+        self.assertEqual(self.rules(explainer.box_findings(self.project, 3, self.project.chapter(3))), set())
+        self.write(3, lesson_text(boxes=[b for b in LESSON_BOXES if b != "Try it"]))
+        self.assertIn("box_missing", self.rules(explainer.box_findings(self.project, 3, self.project.chapter(3))))
+        swapped = LESSON_BOXES[:2] + [LESSON_BOXES[3], LESSON_BOXES[2]] + LESSON_BOXES[4:]
+        self.write(3, lesson_text(boxes=swapped))
+        self.assertIn("box_order", self.rules(explainer.box_findings(self.project, 3, self.project.chapter(3))))
+        self.write(3, lesson_text(questions=4))                          # the season asks tryIt = 6
+        self.assertEqual(self.season["mathematics"]["tryIt"], 6)
+        self.assertIn("box_questions", self.rules(explainer.box_findings(self.project, 3, self.project.chapter(3))))
+        self.assertEqual(explainer.box_findings(self.project, 1, self.project.chapter(1)), [])   # a story chapter
+
+    def test_the_lesson_is_mostly_the_writers_and_names_its_concepts(self):
+        self.add_lesson()
+        take = " ".join(["Think of what four hundred dollars meant to a house on Water Street, and what a house meant."] * 4)
+        self.write(3, f"{ARRIVAL} {COST} {take}", FACTS)
+        self.assertNotIn("writer_share", self.found())
+        unnamed = self.rules(self.lesson.chapter_findings(self.project, 3, self.project.chapter(3)), hard_only=False)
+        self.assertIn("lesson_concept_unnamed", unnamed)
+        self.write(3, lesson_text())
+        notes = [f for f in self.lesson.chapter_findings(self.project, 3, self.project.chapter(3))
+                 if f["rule"] == "lesson_concept_unnamed"]
+        unnamed = {f["message"].split()[3] for f in notes}                  # "the lesson lists <id> and …"
+        self.assertNotIn("logarithms", unnamed)                            # it says "logarithm"
+        self.assertIn("log-tables", unnamed)                               # it never says "log table"
+
+    def test_a_later_seasons_idea_is_noted_and_an_earlier_ones_welcome(self):
+        self.write(1, f"{ARRIVAL} {COST} The myriad of earlier sums was nothing like the derivative.", FACTS)
+        found = self.lesson.chapter_findings(self.project, 1, self.project.chapter(1))
+        self.assertEqual({f["rule"] for f in found}, {"later_idea"})
+        self.assertTrue(all(f["severity"] == "soft" for f in found))
+        self.assertTrue(any("'derivative'" in f["message"] for f in found))
+        self.assertFalse(any("myriad" in f["message"] for f in found))   # season 4's word, a callback
+        self.write(1, f'{ARRIVAL} {COST} A later reader called it "the derivative of the table" in print.', FACTS)
+        self.assertEqual(self.lesson.chapter_findings(self.project, 1, self.project.chapter(1)), [])
+
+    def test_a_story_outside_a_teaching_campaign_is_untouched(self):
+        self.project = _hw.Project(self.root)
+        self.assertEqual(self.plan_rules(), set())
+        self.write(1, f"{ARRIVAL} {COST} The derivative of it all.", FACTS)
+        self.assertEqual(self.lesson.chapter_findings(self.project, 1, self.project.chapter(1)), [])
+
+
 class CampaignBook(unittest.TestCase):
     """A war told as a book reads its seasons in order under short part titles (campaign.md §5)."""
 

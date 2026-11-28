@@ -63,6 +63,8 @@ def growth_findings(project, n):
     pc = project.plan_chapter(n)
     if pc is None:
         return [finding("plan_chapter_missing", "hard", f"plan.json has no chapter {n}")]
+    if pc.get("role") == "lesson":
+        return []        # a season's lesson teaches; the story's chapters move the ledger (campaign.md §7)
     rows = project.ledger_rows()
     ids = pc.get("ledger", [])
     if not ids:

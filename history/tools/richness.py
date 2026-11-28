@@ -471,9 +471,12 @@ def validate_plan(project, write):
         for eid in ch.get("events", []):
             if eid not in events:
                 out.append(finding("plan_unknown_event", "hard", f"chapter {ch.get('n')} allots event {eid!r}, which the dossier does not hold"))
-        if ch.get("role") != "afterword":
+        if ch.get("role") not in ("afterword", "lesson"):
             allotted += len(ch.get("events", []))
     out += story_shape_findings(project, chapters, events, t)
+    # campaign.md §7: a season that teaches its mathematics has one lesson, after its story.
+    import lesson
+    out += lesson.plan_findings(project, chapters)
     sources = project.sources
     rows = plan.get("ledger", [])
     for r in rows:
@@ -523,7 +526,7 @@ def validate_plan(project, write):
         target = None
     planned_total = 0
     if t.get("chapterShare") == "planned":
-        body = [ch for ch in chapters if ch.get("role") != "afterword"]
+        body = [ch for ch in chapters if ch.get("role") not in ("afterword", "lesson")]
         if all(isinstance(ch.get("plannedWords"), (int, float)) and ch["plannedWords"] > 0 for ch in body):
             planned_total = sum(ch["plannedWords"] for ch in body)
         else:
@@ -536,6 +539,13 @@ def validate_plan(project, write):
                 # The afterword takes no share of the story's events or its ceiling: it has its own
                 # length (domain voice §12), and no floor but a note.
                 ch["ceilingWords"] = ((t.get("afterword") or {}).get("words") or [0, 600])[1]
+                ch.pop("floorWords", None)
+                ch.pop("targetWords", None)
+                continue
+            if ch.get("role") == "lesson":
+                # The lesson (campaign.md §7) is the mathematics, not the record: its length is the
+                # season's `lessonWords`, never a share of the story's ceiling or its events.
+                ch["ceilingWords"] = lesson.lesson_words(project)[1]
                 ch.pop("floorWords", None)
                 ch.pop("targetWords", None)
                 continue
@@ -561,7 +571,7 @@ def validate_plan(project, write):
     # Every chapter costs a writer and an auditor, about 7M tokens whatever its length: the tier-B
     # stories planned five chapters of 280-560 words and cost as much as the book-length ones
     # (2026-10-05). A short chapter is better merged with its neighbour.
-    thin = [ch for ch in chapters if target and allotted and len(chapters) > 2 and ch.get("role") != "afterword"
+    thin = [ch for ch in chapters if target and allotted and len(chapters) > 2 and ch.get("role") not in ("afterword", "lesson")
             and round(target * len(ch.get("events", [])) / allotted) < t.get("thinChapterWords", 450)]
     if thin:
         out.append(finding("chapters_thin", "soft",
@@ -588,8 +598,9 @@ def story_shape_findings(project, chapters, events, t):
     if after and chapters[-1] is not after[0]:
         out.append(finding("afterword_not_last", "hard", f"the afterword (chapter {after[0].get('n')}) must be the plan's last chapter"))
     for c in chapters:
-        if c.get("role") not in (None, "chapter", "afterword"):
-            out.append(finding("plan_role_unknown", "hard", f"chapter {c.get('n')} has role {c.get('role')!r}; a chapter is a chapter or the afterword"))
+        if c.get("role") not in (None, "chapter", "afterword", "lesson"):
+            out.append(finding("plan_role_unknown", "hard", f"chapter {c.get('n')} has role {c.get('role')!r}; a chapter is a "
+                               "chapter, the afterword, or a season's lesson (campaign.md §7)"))
     import storytelling
     if (t.get("cast") or {}).get("required") and storytelling.v2(project):
         import voice_lint
@@ -628,7 +639,7 @@ def story_shape_findings(project, chapters, events, t):
                            f"the plan's `question` runs {len(str(plan['question']).split())} words; keep it one short line of "
                            f"{cap} or fewer, the way the author would ask it aloud (domain thresholds `plan`)", plan["question"]))
     if shape.get("turns"):
-        flat = [str(c.get("n")) for c in chapters if c.get("role") != "afterword" and not str(c.get("turn") or "").strip()]
+        flat = [str(c.get("n")) for c in chapters if c.get("role") not in ("afterword", "lesson") and not str(c.get("turn") or "").strip()]
         if flat:
             out.append(finding("turn_missing", "soft",
                                f"chapter(s) {', '.join(flat)} have no `turn`: what the reader wants to know next, which the chapter "

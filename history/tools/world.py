@@ -229,10 +229,10 @@ def plan_findings(project, chapters, t):
             if not any(norm(f.get("evidence") or "") in text for text in adopted):
                 out.append(finding("context_not_adopted", "hard", f"world fact {fid}'s source is not in this story's "
                                    f"sources: run `world.py adopt stories/_world/{pid} {project.root} {fid}`"))
-        if ch.get("role") == "afterword":
+        if ch.get("role") in ("afterword", "lesson"):
             if picks:
-                out.append(finding("context_in_afterword", "soft", f"the afterword picks world facts; they belong "
-                                   "in the chapters, where the story is"))
+                out.append(finding(f"context_in_{ch.get('role')}", "soft", f"the {ch.get('role')} picks world facts; "
+                                   "they belong in the chapters, where the story is"))
             continue
         lo, hi = pick_range(ch.get("ceilingWords"), c)
         if not lo <= len(picks) <= hi:
