@@ -1,0 +1,54 @@
+{
+  "_comment": "Public starter (ship plan P4, 2026-11-27): the generic half of job-search, for anyone who taps Make your own. job-search itself is the owner's running assistant (daily, relayed by the coordinator, LinkedIn flow) and is left untouched; this one never automates LinkedIn.",
+  "id": "job-applications",
+  "displayName": "Job Applications",
+  "blurb": "Reads the job postings you open, tailors your résumé and cover letter, and fills the application after you approve.",
+  "memoryScope": "job-applications",
+  "cadence": "manual",
+  "_whyCadenceManual": "Applications happen when the person brings a posting; there is nothing to do on a schedule, and per-assistant schedules are not built (ASSISTANT_SDK_ARCHITECTURE AS.4).",
+  "pattern": {
+    "trigger": [
+      "conversation"
+    ],
+    "state": [
+      "memories",
+      "records"
+    ],
+    "records": [
+      "Job Applications",
+      "Potential Jobs"
+    ],
+    "recordLeads": {
+      "applied to": "Job Applications",
+      "application to": "Job Applications",
+      "applying to": "Job Applications",
+      "submitted to": "Job Applications",
+      "in progress": "Job Applications"
+    },
+    "continuity": "thread-per-topic",
+    "qualityControl": [
+      "human"
+    ],
+    "freshness": "none"
+  },
+  "_whyRecords": "Same lesson as job-search (CW.4): an application is a ROW of Job Applications (matchOn Key = 'Company - Role'), a shortlisted role a row of Potential Jobs; recordLeads makes assistant.remember refuse an 'Applied to ...' memory.",
+  "tools": [
+    "aiweb.*",
+    "aiwrite.*",
+    "ledger.*",
+    "assistant.getApplicationProfile",
+    "assistant.saveApplicationProfile",
+    "assistant.remember",
+    "assistant.forget",
+    "assistant.getContext",
+    "assistant.recall",
+    "assistant.openLoop",
+    "assistant.closeLoop",
+    "assistant.listLoops",
+    "assistant.listProposals",
+    "assistant.proposeAction"
+  ],
+  "_whyNoMail": "job-search reads the owner's authorized mail (Phase JM). The starter grants no mail, calendar or contacts verbs: its CONTEXT.md has no mail rules, and a recruiter's email is untrusted text in front of an assistant that drives a signed-in browser. Add them only with the rules.",
+  "budgetUSDPerDay": 3.0,
+  "backend": null
+}
